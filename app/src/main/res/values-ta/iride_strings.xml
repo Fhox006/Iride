@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="charts">à®ªà®Ÿà¯à®Ÿà®¿à®¯à®²à¯à®•à®³à¯</string>
+    <string name="back_button_desc">à®ªà®¿à®©à¯à®šà¯†à®²à¯</string>
+    <string name="album_cover_desc">à®†à®²à¯à®ªà®®à¯ à®•à®µà®°à¯</string>
+    <string name="top_music_videos">à®šà®¿à®±à®¨à¯à®¤ à®‡à®šà¯ˆ à®µà¯€à®Ÿà®¿à®¯à¯‹à®•à¯à®•à®³à¯</string>
+    <string name="trending">à®Ÿà®¿à®°à¯†à®£à¯à®Ÿà®¿à®™à¯</string>
+    <string name="offline">à®ªà®¤à®¿à®µà®¿à®±à®•à¯à®•à®®à¯ à®šà¯†à®¯à¯à®¯à®ªà¯à®ªà®Ÿà¯à®Ÿà®¤à¯</string>
+    <string name="months">à®®à®¾à®¤à®™à¯à®•à®³à¯</string>
+    <string name="weeks">à®µà®¾à®°à®™à¯à®•à®³à¯</string>
+    <string name="years">à®†à®£à¯à®Ÿà¯à®•à®³à¯</string>
+    <string name="continuous">à®¤à¯Šà®Ÿà®°à¯à®šà¯à®šà®¿</string>
+    <string name="liked">à®ªà®¿à®Ÿà®¿à®¤à¯à®¤à®¿à®°à¯à®¨à¯à®¤à®¤à¯</string>
+    <string name="my_top">à®Žà®©à¯ à®šà®¿à®±à®¨à¯à®¤</string>
+    <string name="cached_playlist">à®ªà®¤à¯à®•à¯à®•à®®à¯ à®šà¯†à®¯à¯à®¯à®ªà¯à®ªà®Ÿà¯à®Ÿ</string>
+    <string name="local_history">à®…à®•à®®à¯</string>
+    <string name="remote_history">à®ªà¯à®±à®®à¯</string>
+    <string name="sync_playlist">à®’à®¤à¯à®¤à®¿à®šà¯ˆà®µà¯ à®ªà®¾à®Ÿà®²à¯à®•à®³à¯</string>
+    <string name="sync_disabled">à®’à®¤à¯à®¤à®¿à®šà¯ˆà®µà¯ à®®à¯à®Ÿà®•à¯à®•à®ªà¯à®ªà®Ÿà¯à®Ÿà¯à®³à¯à®³à®¤à¯</string>
+    <string name="uploaded_playlist">à®ªà®¤à®¿à®µà¯‡à®±à¯à®±à®ªà¯à®ªà®Ÿà¯à®Ÿà®¤à¯</string>
+    <string name="filter_uploaded">à®ªà®¤à®¿à®µà¯‡à®±à¯à®±à®ªà¯à®ªà®Ÿà¯à®Ÿà®¤à¯</string>
+    <string name="allows_for_sync_witch_youtube">à®•à¯à®±à®¿à®ªà¯à®ªà¯: à®‡à®¤à¯ YouTube Music à®‰à®Ÿà®©à¯ à®’à®¤à¯à®¤à®¿à®šà¯ˆà®•à¯à®• à®…à®©à¯à®®à®¤à®¿à®•à¯à®•à®¿à®±à®¤à¯. à®‡à®¤à¯ˆ à®ªà®¿à®©à¯à®©à®°à¯ à®®à®¾à®±à¯à®± à®®à¯à®Ÿà®¿à®¯à®¾à®¤à¯.</string>
+    <string name="generating_image">à®ªà®Ÿà®¤à¯à®¤à¯ˆ à®‰à®°à¯à®µà®¾à®•à¯à®•à¯à®•à®¿à®±à®¤à¯</string>
+    <string name="please_wait">à®¤à®¯à®µà¯à®šà¯†à®¯à¯à®¤à¯ à®•à®¾à®¤à¯à®¤à®¿à®°à¯à®•à¯à®•à®µà¯à®®à¯</string>
+    <string name="cancel">à®°à®¤à¯à®¤à¯à®šà¯†à®¯à¯</string>
+    <string name="enable">à®‡à®¯à®•à¯à®•à¯</string>
+    <string name="share_lyrics">à®ªà®¾à®Ÿà®²à¯ à®µà®°à®¿à®•à®³à¯ˆà®ªà¯ à®ªà®•à®¿à®°à®µà¯à®®à¯</string>
+    <string name="share_as_text">à®‰à®°à¯ˆà®¯à®¾à®•à®ªà¯ à®ªà®•à®¿à®°à®µà¯à®®à¯</string>
+    <string name="share_as_image">à®ªà®Ÿà®®à®¾à®•à®ªà¯ à®ªà®•à®¿à®°à®µà¯à®®à¯</string>
+    <string name="max_selection_limit">à®…à®¤à®¿à®•à®ªà®Ÿà¯à®š à®¤à¯‡à®°à¯à®µà¯ à®µà®°à®®à¯à®ªà¯</string>
+    <string name="share_selected">à®¤à¯‡à®°à¯à®¨à¯à®¤à¯†à®Ÿà¯à®¤à¯à®¤à®µà®±à¯à®±à¯ˆà®ªà¯ à®ªà®•à®¿à®°à¯</string>
+    <string name="customize_colors">à®µà®£à¯à®£à®™à¯à®•à®³à¯ˆà®¤à¯ à®¤à®©à®¿à®ªà¯à®ªà®¯à®©à®¾à®•à¯à®•à¯à®™à¯à®•à®³à¯</string>
+</resources>

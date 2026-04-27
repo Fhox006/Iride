@@ -1,8 +1,3 @@
-/**
- * Metrolist Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
-
 package com.metrolist.music.viewmodels
 
 import android.content.Context
@@ -13,8 +8,13 @@ import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.filterVideoSongs
+import com.metrolist.music.constants.HideVideoOnlyResultsKey
 import com.metrolist.music.constants.HideVideoSongsKey
+import com.metrolist.music.constants.HideVideosInLibraryKey
+import com.metrolist.music.constants.MaxResolvedTrackCacheSizeKey
+import com.metrolist.music.constants.ResolveVideoSongsKey
 import com.metrolist.music.db.MusicDatabase
+import com.metrolist.music.db.entities.SetVideoIdEntity
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import com.metrolist.music.utils.reportException
@@ -22,6 +22,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay // ✅ FIX
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,7 +32,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import com.metrolist.music.constants.SongSortType
 import com.metrolist.innertube.models.Artist
-import com.metrolist.innertube.models.Album
 import javax.inject.Inject
 
 @HiltViewModel
@@ -40,9 +40,9 @@ class OnlinePlaylistViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val database: MusicDatabase
 ) : ViewModel() {
+
     private val playlistId = savedStateHandle.get<String>("playlistId")!!
 
-    // Check if this is a special podcast playlist (with or without VL prefix)
     private val normalizedPlaylistId = playlistId.removePrefix("VL")
     val isPodcastPlaylist = normalizedPlaylistId == "RDPN" || normalizedPlaylistId == "SE"
 
@@ -65,6 +65,7 @@ class OnlinePlaylistViewModel @Inject constructor(
         private set
 
     private var proactiveLoadJob: Job? = null
+    private var resolveVideoJob: Job? = null
 
     init {
         fetchInitialPlaylistData()
@@ -75,13 +76,11 @@ class OnlinePlaylistViewModel @Inject constructor(
             _isLoading.value = true
             _error.value = null
             continuation = null
-            proactiveLoadJob?.cancel() // Cancel any ongoing proactive load
+            proactiveLoadJob?.cancel()
 
             if (isPodcastPlaylist) {
-                // Use special podcast playlist APIs
                 fetchPodcastPlaylist()
             } else {
-                // Use regular playlist API
                 fetchRegularPlaylist()
             }
         }
@@ -103,21 +102,19 @@ class OnlinePlaylistViewModel @Inject constructor(
                             radioEndpoint = null,
                         )
                         playlistSongs.value = applySongFilters(episodes)
+                        resolveVideoSongsAsync()
                         _isLoading.value = false
-                    }.onFailure { throwable ->
-                        _error.value = throwable.message ?: "Failed to load new episodes"
+                    }.onFailure {
+                        _error.value = it.message
                         _isLoading.value = false
-                        reportException(throwable)
                     }
             }
+
             "SE" -> {
-                timber.log.Timber.d("[SE_LOCAL] Fetching SE playlist...")
                 val result = YouTube.episodesForLater()
                 val episodes = result.getOrNull() ?: emptyList()
-                timber.log.Timber.d("[SE_LOCAL] YouTube API result: ${if (result.isSuccess) "success" else "failed"}, ${episodes.size} episodes")
 
                 if (result.isSuccess && episodes.isNotEmpty()) {
-                    // Use YouTube episodes
                     playlist.value = PlaylistItem(
                         id = playlistId,
                         title = "Episodes for Later",
@@ -131,149 +128,220 @@ class OnlinePlaylistViewModel @Inject constructor(
                     playlistSongs.value = applySongFilters(episodes)
                     _isLoading.value = false
                 } else {
-                    // Fall back to local saved episodes when API fails or returns empty
-                    timber.log.Timber.d("[SE_LOCAL] Falling back to local saved episodes")
                     loadLocalSavedEpisodes()
                 }
-            }
-            else -> {
-                _error.value = "Unknown podcast playlist"
-                _isLoading.value = false
             }
         }
     }
 
     private suspend fun fetchRegularPlaylist() {
         YouTube.playlist(playlistId)
-            .onSuccess { playlistPage ->
-                playlist.value = playlistPage.playlist
-                playlistSongs.value = applySongFilters(playlistPage.songs)
-                continuation = playlistPage.songsContinuation
+            .onSuccess { page ->
+                playlist.value = page.playlist
+                playlistSongs.value = applySongFilters(page.songs)
+                resolveVideoSongsAsync()
+                continuation = page.songsContinuation
                 _isLoading.value = false
+
                 if (continuation != null) {
                     startProactiveBackgroundLoading()
                 }
-            }.onFailure { throwable ->
-                _error.value = throwable.message ?: "Failed to load playlist"
-                _isLoading.value = false
-                reportException(throwable)
             }
     }
 
     private suspend fun loadLocalSavedEpisodes() {
-        timber.log.Timber.d("[SE_LOCAL] loadLocalSavedEpisodes called")
-        val savedEpisodes = database.savedPodcastEpisodes(SongSortType.CREATE_DATE, true).firstOrNull() ?: emptyList()
-        timber.log.Timber.d("[SE_LOCAL] Found ${savedEpisodes.size} saved episodes")
-        savedEpisodes.forEachIndexed { index, ep ->
-            timber.log.Timber.d("[SE_LOCAL] Episode $index: id=${ep.song.id}, title=${ep.song.title}, isEpisode=${ep.song.isEpisode}, inLibrary=${ep.song.inLibrary}")
-        }
-        if (savedEpisodes.isNotEmpty()) {
-            // Convert local Song entities to SongItem format
-            val songItems = savedEpisodes.map { song ->
-                SongItem(
-                    id = song.song.id,
-                    title = song.song.title,
-                    artists = song.artists.map { Artist(it.id, it.name) },
-                    album = song.album?.let { com.metrolist.innertube.models.Album(it.id, it.title) },
-                    duration = song.song.duration,
-                    thumbnail = song.song.thumbnailUrl ?: "",
-                    explicit = song.song.explicit,
-                    endpoint = null,
-                )
-            }
-            timber.log.Timber.d("[SE_LOCAL] Converted to ${songItems.size} SongItems")
-            playlist.value = PlaylistItem(
-                id = playlistId,
-                title = "Episodes for Later",
-                author = null,
-                songCountText = "${songItems.size} episodes",
-                thumbnail = songItems.firstOrNull()?.thumbnail ?: "",
-                playEndpoint = null,
-                shuffleEndpoint = null,
-                radioEndpoint = null,
+        val saved = database.savedPodcastEpisodes(SongSortType.CREATE_DATE, true)
+            .firstOrNull() ?: emptyList()
+
+        val songItems = saved.map {
+            SongItem(
+                id = it.song.id,
+                title = it.song.title,
+                artists = it.artists.map { a -> Artist(a.id, a.name) },
+                album = it.album?.let { a -> com.metrolist.innertube.models.Album(a.id, a.title) },
+                duration = it.song.duration,
+                thumbnail = it.song.thumbnailUrl ?: "",
+                explicit = it.song.explicit,
+                endpoint = null
             )
-            val filtered = applySongFilters(songItems)
-            timber.log.Timber.d("[SE_LOCAL] After filter: ${filtered.size} episodes, setting playlistSongs")
-            playlistSongs.value = filtered
-            _isLoading.value = false
-            timber.log.Timber.d("[SE_LOCAL] Done, isLoading=false")
-        } else {
-            timber.log.Timber.d("[SE_LOCAL] No saved episodes found")
-            _error.value = "No saved episodes"
-            _isLoading.value = false
         }
+
+        playlist.value = PlaylistItem(
+            id = playlistId,
+            title = "Episodes for Later",
+            author = null,
+            songCountText = "${songItems.size} episodes",
+            thumbnail = songItems.firstOrNull()?.thumbnail ?: "",
+            playEndpoint = null,
+            shuffleEndpoint = null,
+            radioEndpoint = null,
+        )
+
+        playlistSongs.value = applySongFilters(songItems)
+        _isLoading.value = false
     }
 
     private fun startProactiveBackgroundLoading() {
-        proactiveLoadJob?.cancel() // Cancel previous job if any
-        proactiveLoadJob = viewModelScope.launch(Dispatchers.IO) {
-            var currentProactiveToken = continuation
-            while (currentProactiveToken != null && isActive) {
-                // If a manual loadMore is happening, pause proactive loading
-                if (_isLoadingMore.value) {
-                    // Wait until manual load is finished, then re-evaluate
-                    // This simple break and restart strategy from loadMoreSongs is preferred
-                    break 
-                }
+        proactiveLoadJob?.cancel()
 
-                YouTube.playlistContinuation(currentProactiveToken)
-                    .onSuccess { playlistContinuationPage ->
-                        val currentSongs = playlistSongs.value.toMutableList()
-                        currentSongs.addAll(playlistContinuationPage.songs)
-                        playlistSongs.value = applySongFilters(currentSongs)
-                        currentProactiveToken = playlistContinuationPage.continuation
-                        // Update the class-level continuation for manual loadMore if needed
-                        this@OnlinePlaylistViewModel.continuation = currentProactiveToken 
-                    }.onFailure { throwable ->
-                        reportException(throwable)
-                        currentProactiveToken = null // Stop proactive loading on error
+        proactiveLoadJob = viewModelScope.launch(Dispatchers.IO) {
+            var token = continuation
+
+            while (token != null && isActive) {
+                if (_isLoadingMore.value) break
+
+                YouTube.playlistContinuation(token)
+                    .onSuccess {
+                        val updated = playlistSongs.value.toMutableList()
+                        updated.addAll(it.songs)
+                        playlistSongs.value = applySongFilters(updated)
+                        resolveVideoSongsAsync()
+
+                        token = it.continuation
+                        continuation = token
+                    }
+                    .onFailure {
+                        token = null
                     }
             }
-            // If loop finishes because currentProactiveToken is null, all songs are loaded proactively.
         }
     }
 
     fun loadMoreSongs() {
-        if (_isLoadingMore.value) return // Already loading more (manually)
-        
-        val tokenForManualLoad = continuation ?: return // No more songs to load
+        if (_isLoadingMore.value) return
+        val token = continuation ?: return
 
-        proactiveLoadJob?.cancel() // Cancel proactive loading to prioritize manual scroll
+        proactiveLoadJob?.cancel()
         _isLoadingMore.value = true
 
         viewModelScope.launch(Dispatchers.IO) {
-            YouTube.playlistContinuation(tokenForManualLoad)
-                .onSuccess { playlistContinuationPage ->
-                    val currentSongs = playlistSongs.value.toMutableList()
-                    currentSongs.addAll(playlistContinuationPage.songs)
-                    playlistSongs.value = applySongFilters(currentSongs)
-                    continuation = playlistContinuationPage.continuation
-                }.onFailure { throwable ->
-                    reportException(throwable)
-                }.also {
-                    _isLoadingMore.value = false
-                    // Resume proactive loading if there's still a continuation
-                    if (continuation != null && isActive) {
-                        startProactiveBackgroundLoading()
-                    }
+            YouTube.playlistContinuation(token)
+                .onSuccess {
+                    val updated = playlistSongs.value.toMutableList()
+                    updated.addAll(it.songs)
+                    playlistSongs.value = applySongFilters(updated)
+                    resolveVideoSongsAsync()
+                    continuation = it.continuation
                 }
+
+            _isLoadingMore.value = false
+
+            if (continuation != null) {
+                startProactiveBackgroundLoading()
+            }
         }
     }
 
     fun retry() {
         proactiveLoadJob?.cancel()
-        fetchInitialPlaylistData() // This will also restart proactive loading if applicable
+        fetchInitialPlaylistData()
     }
 
     private fun applySongFilters(songs: List<SongItem>): List<SongItem> {
-        val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-        return songs
-            .distinctBy { it.id }
-            .filterVideoSongs(hideVideoSongs)
+        val hide = context.dataStore.get(HideVideoSongsKey, false)
+        return songs.distinctBy { it.id }.filterVideoSongs(hide)
+    }
+
+    private fun resolveVideoSongsAsync() {
+        resolveVideoJob?.cancel()
+
+        resolveVideoJob = viewModelScope.launch(Dispatchers.IO) {
+            val resolveEnabled = context.dataStore.get(ResolveVideoSongsKey, true)
+            if (!resolveEnabled) return@launch
+
+            val hideVideoOnlyResults = context.dataStore.get(HideVideoOnlyResultsKey, false)
+            val hideVideosInLibrary = context.dataStore.get(HideVideosInLibraryKey, false)
+            val maxCacheSize = context.dataStore.get(MaxResolvedTrackCacheSizeKey, 1000)
+
+            // Detected user/library playlists: VL... (Library), PL... (Playlists), LM (Liked Music)
+            val isUserPlaylistOrLibrary = playlistId.startsWith("VL") || 
+                                          playlistId.startsWith("PL") || 
+                                          playlistId == "LM"
+
+            val shouldHideVideoOnly = if (isUserPlaylistOrLibrary) hideVideosInLibrary else hideVideoOnlyResults
+
+            playlistSongs.value.forEach { song ->
+                if (!isActive) return@launch
+                if (!song.isVideoSong) return@forEach
+
+                val live = playlistSongs.value.toMutableList()
+                val liveIndex = live.indexOfFirst { it.id == song.id }
+                if (liveIndex == -1) return@forEach
+
+                // Check cache
+                val cached = database.getSetVideoId(song.id)
+                val resolved = if (cached != null) {
+                    cached.setVideoId?.let { id ->
+                        // Simulate a resolved SongItem or find a way to get full info?
+                        // findAudioTrack returns a full SongItem.
+                        // If we only have the ID, we might need to fetch it or just use it.
+                        // For now, if cached, we might still want to call findAudioTrack 
+                        // but with the ID directly if we want full metadata.
+                        // Or just copy the song and change ID.
+                        song.copy(id = id, musicVideoType = null) // musicVideoType = null means it's not a video anymore
+                    }
+                } else {
+                    val track = findAudioTrack(song)
+                    database.insert(com.metrolist.music.db.entities.SetVideoIdEntity(song.id, track?.id))
+                    if (maxCacheSize != -1) {
+                        database.trimSetVideoIdCache(maxCacheSize)
+                    }
+                    track
+                }
+
+                if (resolved != null) {
+                    live[liveIndex] = resolved
+                    playlistSongs.value = live.toList()
+                } else if (shouldHideVideoOnly) {
+                    live.removeAt(liveIndex)
+                    playlistSongs.value = live.toList()
+                }
+                
+                if (cached == null) {
+                    delay(400) // Only delay if we made a network request
+                }
+            }
+        }
+    }
+
+    private suspend fun findAudioTrack(song: SongItem): SongItem? {
+        val cleanTitle = song.title
+            .replace(Regex("(?i)\\s*[\\[\\(](Official Video|Official Music Video|MV|Official Audio|Lyric Video|Audio)[\\]\\)]"), "")
+            .replace(Regex("(?i)\\s*-\\s*(Visual Video|Official Video|Video|Music Video|Audio)"), "")
+            .trim()
+        val artistName = song.artists.firstOrNull()?.name ?: ""
+
+        return YouTube.search("$cleanTitle $artistName", YouTube.SearchFilter.FILTER_SONG)
+            .getOrNull()?.items?.filterIsInstance<SongItem>()?.firstOrNull { candidate ->
+                if (candidate.isVideoSong) return@firstOrNull false
+
+                val candidateCleanTitle = candidate.title
+                    .replace(Regex("(?i)\\s*[\\[\\(](Official Video|Official Music Video|MV|Official Audio|Lyric Video|Audio)[\\]\\)]"), "")
+                    .replace(Regex("(?i)\\s*-\\s*(Visual Video|Official Video|Video|Music Video|Audio)"), "")
+                    .trim()
+
+                val titleMatches = candidateCleanTitle.contains(cleanTitle, ignoreCase = true) ||
+                        cleanTitle.contains(candidateCleanTitle, ignoreCase = true)
+                if (!titleMatches) return@firstOrNull false
+
+                val artistMatches = candidate.artists.any { it.name.equals(artistName, ignoreCase = true) }
+                if (!artistMatches) return@firstOrNull false
+
+                val songDuration = song.duration
+                val candidateDuration = candidate.duration
+                if (songDuration != null && candidateDuration != null) {
+                    if (kotlin.math.abs(songDuration - candidateDuration) > 10) return@firstOrNull false
+                }
+
+                val blacklist = listOf("live", "instrumental", "acoustic", "cover", "karaoke", "remix", "performance", "session")
+                if (blacklist.any { candidate.title.contains(it, ignoreCase = true) }) return@firstOrNull false
+
+                true
+            }
     }
 
     override fun onCleared() {
-        super.onCleared()
         proactiveLoadJob?.cancel()
+        resolveVideoJob?.cancel()
     }
 }

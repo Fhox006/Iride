@@ -157,13 +157,19 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                             put("max_tokens", lineCount * 100) // Adequate tokens for translation
                         }
 
+                    val effectiveUrl = baseUrl.ifBlank { "https://openrouter.ai/api/v1/chat/completions" }
+                    val isGemini = effectiveUrl.contains("generativelanguage.googleapis.com")
+
                     val request =
                         Request
                             .Builder()
-                            .url(baseUrl.ifBlank { "https://openrouter.ai/api/v1/chat/completions" })
+                            .url(effectiveUrl)
                             .apply {
                                 if (apiKey.isNotBlank()) {
                                     addHeader("Authorization", "Bearer ${apiKey.trim()}")
+                                    if (isGemini) {
+                                        addHeader("x-goog-api-key", apiKey.trim())
+                                    }
                                 }
                             }.addHeader("Content-Type", "application/json")
                             .addHeader("HTTP-Referer", "https://github.com/MetrolistGroup/Metrolist")

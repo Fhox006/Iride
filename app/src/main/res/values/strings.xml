@@ -3,12 +3,13 @@
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
 <!-- Try to re-use strings here, but be careful on its usage e.g. verb vs noun -->
-<!-- "InnerTune" is replaced with "Metrolist" -->
+<!-- "InnerTune" is replaced with "Iride" -->
 <!-- Translators: Do not modify this file for translations, use InnerTune's Weblate instead. -->
 
 <resources>
     <!-- Bottom navigation -->
     <string name="home">Home</string>
+    <string name="what_new">What\'s New</string>
     <string name="songs">Songs</string>
     <string name="artists">Artists</string>
     <string name="albums">Albums</string>
@@ -47,7 +48,7 @@
     <string name="search">Search</string>
     <string name="search_yt_music">Search YouTube Music…</string>
     <string name="search_library">Search library…</string>
-    <string name="filter_library">Library</string>
+    <string name="filter_library">Collection</string>
     <string name="filter_liked">Liked</string>
     <string name="filter_downloaded">Downloaded</string>
     <string name="filter_all">All</string>
@@ -324,6 +325,8 @@
     <string name="enable_lrclib">Enable LrcLib lyrics provider</string>
     <string name="enable_kugou">Enable KuGou lyrics provider</string>
     <string name="hide_explicit">Hide explicit content</string>
+    <string name="show_explicit_badge">Show explicit badge</string>
+    <string name="show_explicit_badge_desc">Show the \"E\" icon for explicit songs</string>
 
     <string name="backup_restore">Backup and restore</string>
     <string name="action_backup">Backup</string>
@@ -334,7 +337,7 @@
     <string name="restore_failed">Failed to restore backup</string>
 
     <string name="discord_integration">Discord Integration</string>
-    <string name="discord_information">Metrolist uses the KizzyRPC library to set your Discord account\'s status. This involves using the Discord Gateway connection, which may be considered a violation of Discord\'s TOS. However, there are no known cases of user accounts being suspended for this reason. Use at your own risk.\n\Metrolist will only extract your token, and everything else is stored locally.</string>
+    <string name="discord_information">Iride uses the KizzyRPC library to set your Discord account\'s status. This involves using the Discord Gateway connection, which may be considered a violation of Discord\'s TOS. However, there are no known cases of user accounts being suspended for this reason. Use at your own risk.\n\Iride will only extract your token, and everything else is stored locally.</string>
     <string name="dismiss">Dismiss</string>
     <string name="options">Options</string>
     <string name="preview">Preview</string>
@@ -346,4 +349,16 @@
     <string name="new_version_available">New version available</string>
     <string name="translation_models">Translation Models</string>
     <string name="clear_translation_models">Clear translation models</string>
+
+    <!-- New settings for track resolution -->
+    <string name="resolve_video_songs">Resolve video songs</string>
+    <string name="resolve_video_songs_desc">Automatically find and replace video tracks with audio versions</string>
+    <string name="hide_video_only_results">Hide video-only results</string>
+    <string name="hide_video_only_results_desc">Hide tracks that only have a video version available (when resolution fails)</string>
+    <string name="hide_videos_in_library">Hide videos in library/playlists</string>
+    <string name="hide_videos_in_library_desc">Apply video hiding logic to your library and created playlists</string>
+    <string name="resolved_track_cache">Resolved Track Cache</string>
+    <string name="max_resolved_track_cache_size">Max cache size</string>
+    <string name="clear_resolved_track_cache">Clear resolved track cache</string>
+    <string name="clear_resolved_track_cache_dialog">Do you really want to clear the resolved track cache? This will force the app to re-search for audio versions of videos.</string>
 </resources>

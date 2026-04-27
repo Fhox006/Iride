@@ -16,7 +16,7 @@ dependencyResolutionManagement {
 //     id("org.gradle.toolchains.foojay-resolver-convention") version("1.0.0")
 // }
 
-rootProject.name = "Metrolist"
+rootProject.name = "Iride"
 include(":app")
 include(":innertube")
 include(":kugou")

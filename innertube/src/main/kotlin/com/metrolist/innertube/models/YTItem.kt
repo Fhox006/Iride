@@ -158,6 +158,9 @@ data class EpisodeItem(
     )
 }
 
+val YTItem.isMixtape: Boolean
+    get() = this is PlaylistItem && (id.startsWith("RD") || title.contains("Mix", ignoreCase = true))
+
 fun <T : YTItem> List<T>.filterExplicit(enabled: Boolean = true) =
     if (enabled) {
         filter { !it.explicit }

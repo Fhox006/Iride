@@ -21,6 +21,7 @@ import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.models.filterExplicit
 import com.metrolist.innertube.models.filterVideoSongs
 import com.metrolist.innertube.models.filterYoutubeShorts
+import com.metrolist.innertube.models.isMixtape
 import com.metrolist.innertube.pages.ExplorePage
 import com.metrolist.innertube.pages.HomePage
 import com.metrolist.innertube.utils.completed
@@ -100,6 +101,29 @@ class HomeViewModel @Inject constructor(
     val communityPlaylists = MutableStateFlow<List<CommunityPlaylistItem>?>(null)
     val selectedChip = MutableStateFlow<HomePage.Chip?>(null)
     private val previousHomePage = MutableStateFlow<HomePage?>(null)
+
+    private val moodMapping = mapOf(
+        "Energize" to "Dopaminergic",
+        "Workout" to "Dopaminergic",
+        "Gym" to "Dopaminergic",
+        "Relax" to "Rest",
+        "Sleep" to "Rest",
+        "Sad" to "Melancholic",
+        "Focus" to "Wellness",
+        "Feel Good" to "Wellness",
+        "Party" to "Festive",
+        "Commute" to "Travel",
+        "Romance" to "Love"
+    )
+
+    private fun transformChips(chips: List<HomePage.Chip>?): List<HomePage.Chip>? {
+        return chips?.filter { chip ->
+            val title = chip.title.lowercase()
+            !title.contains("home") && !title.contains("podcast")
+        }?.shuffled()?.map { chip ->
+            chip.copy(title = moodMapping[chip.title] ?: chip.title)
+        }
+    }
 
     // Official API data for podcast sections
     val savedPodcastShows = MutableStateFlow<List<com.metrolist.innertube.models.PodcastItem>>(emptyList())
@@ -468,15 +492,26 @@ class HomeViewModel @Inject constructor(
 
             launch(Dispatchers.IO) {
                 YouTube.home().onSuccess { page ->
-                    homePage.value = page.copy(
+                    val transformedChips = transformChips(page.chips)
+                    val transformedPage = page.copy(
+                        chips = transformedChips,
                         sections = page.sections.mapNotNull { section ->
                             val filtered = section.items
                                 .filterExplicit(hideExplicit)
                                 .filterVideoSongs(hideVideoSongs)
                                 .filterYoutubeShorts(hideYoutubeShorts)
+                                .filter { !it.isMixtape }
                             if (filtered.isEmpty()) null else section.copy(items = filtered)
                         }
                     )
+                    homePage.value = transformedPage
+
+                    // Preselect the first chip (which is random because we shuffled them)
+                    if (selectedChip.value == null) {
+                        transformedChips?.firstOrNull()?.let { randomChip ->
+                            toggleChip(randomChip)
+                        }
+                    }
                 }.onFailure { reportException(it) }
             }
 
@@ -559,7 +594,7 @@ class HomeViewModel @Inject constructor(
                     SimilarRecommendation(
                         title = album,
                         items = items
-                            .distinctBy { it.id }
+                            .distinctBy { item -> item.id }
                             .filterExplicit(hideExplicit)
                             .filterVideoSongs(hideVideoSongs)
                             .shuffled().take(10)
@@ -579,6 +614,7 @@ class HomeViewModel @Inject constructor(
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
         val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+        val currentChip = selectedChip.value
 
         viewModelScope.launch(Dispatchers.IO) {
             _isLoadingMore.value = true
@@ -590,7 +626,13 @@ class HomeViewModel @Inject constructor(
             homePage.value = nextSections.copy(
                 chips = homePage.value?.chips,
                 sections = (homePage.value?.sections.orEmpty() + nextSections.sections).mapNotNull { section ->
-                    val filteredItems = section.items.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs).filterYoutubeShorts(hideYoutubeShorts)
+                    val filteredItems = section.items
+                        .filterExplicit(hideExplicit)
+                        .filterVideoSongs(hideVideoSongs)
+                        .filterYoutubeShorts(hideYoutubeShorts)
+                        .let { items ->
+                            if (currentChip == null) items.filter { !it.isMixtape } else items
+                        }
                     if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
                 }
             )
@@ -618,8 +660,12 @@ class HomeViewModel @Inject constructor(
 
             homePage.value = nextSections.copy(
                 chips = homePage.value?.chips,
-                sections = nextSections.sections.map { section ->
-                    section.copy(items = section.items.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs).filterYoutubeShorts(hideYoutubeShorts))
+                sections = nextSections.sections.mapNotNull { section ->
+                    val filteredItems = section.items
+                        .filterExplicit(hideExplicit)
+                        .filterVideoSongs(hideVideoSongs)
+                        .filterYoutubeShorts(hideYoutubeShorts)
+                    if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
                 }
             )
             selectedChip.value = chip
@@ -672,8 +718,12 @@ class HomeViewModel @Inject constructor(
                 if (nextSections != null) {
                     homePage.value = nextSections.copy(
                         chips = homePage.value?.chips,
-                        sections = nextSections.sections.map { section ->
-                            section.copy(items = section.items.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs).filterYoutubeShorts(hideYoutubeShorts))
+                        sections = nextSections.sections.mapNotNull { section ->
+                            val filteredItems = section.items
+                                .filterExplicit(hideExplicit)
+                                .filterVideoSongs(hideVideoSongs)
+                                .filterYoutubeShorts(hideYoutubeShorts)
+                            if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
                         }
                     )
                 }

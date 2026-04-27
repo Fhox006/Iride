@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_history">à¦¸à§à¦¥à¦¾à¦¨à§€à§Ÿ</string>
+    <string name="remote_history">à¦¦à§‚à§°à§±à§°à§à¦¤à§€</string>
+    <string name="charts">à¦šà¦¾à§°à§à¦Ÿ</string>
+    <string name="back_button_desc">à¦ªà¦¿à¦›à¦²à§ˆ</string>
+    <string name="album_cover_desc">à¦à¦²à¦¬à¦¾à¦®à§° à¦•à¦­à¦¾à§°</string>
+    <string name="top_music_videos">à¦¶à§€à§°à§à¦· à¦®à¦¿à¦‰à¦œà¦¿à¦• à¦­à¦¿à¦¡à¦¿à¦…\'</string>
+    <string name="trending">à¦Ÿà§à§°à§‡à¦£à§à¦¡à¦¿à¦‚</string>
+    <string name="weeks">à¦¸à¦ªà§à¦¤à¦¾à¦¹</string>
+    <string name="months">à¦®à¦¾à¦¹</string>
+    <string name="years">à¦¬à¦›à§°</string>
+    <string name="continuous">à¦…à¦¬à¦¿à§°à¦¤</string>
+    <string name="liked">à¦­à¦¾à¦² à¦²à¦¾à¦—à¦¿à¦²</string>
+    <string name="offline">à¦¡à¦¾à¦‰à¦¨à¦²à§‹à¦¡ à¦•à§°à¦¾ à¦¹à§ˆà¦›à§‡</string>
+    <string name="my_top">à¦®à§‹à§° à¦Ÿà¦ª</string>
+    <string name="cached_playlist">à¦•à§‡à¦š à¦•à§°à¦¾ à¦¹à§ˆà¦›à§‡</string>
+    <string name="uploaded_playlist">à¦†à¦ªà¦²à§‹à¦¡ à¦•à§°à¦¾ à¦¹à§ˆà¦›à§‡</string>
+    <string name="filter_uploaded">à¦†à¦ªà¦²à§‹à¦¡ à¦•à§°à¦¾ à¦¹à§ˆà¦›à§‡</string>
+    <string name="sync_playlist">à¦ªà§à¦²à§‡à¦²à¦¿à¦·à§à¦Ÿ à¦›à¦¿à¦™à§à¦• à¦•à§°à¦•</string>
+    <string name="sync_disabled">à¦›à¦¿à¦™à§à¦• à¦¨à¦¿à¦·à§à¦•à§à§°à¦¿à¦¯à¦¼ à¦•à§°à¦¾ à¦¹à§ˆà¦›à§‡</string>
+    <string name="allows_for_sync_witch_youtube">à¦¬à¦¿:à¦¦à§à§°: à¦‡à¦¯à¦¼à¦¾à§° à¦¦à§à¦¬à¦¾à§°à¦¾ YouTube Music à§° à¦¸à§ˆà¦¤à§‡ à¦›à¦¿à¦‚à¦•à¦¿à¦‚ à¦•à§°à¦¿à¦¬ à¦ªà§°à¦¾ à¦¯à¦¾à¦¯à¦¼à¥¤ à¦à¦‡à¦Ÿà§‹ à¦ªà¦¿à¦›à¦¤ à¦¸à¦²à¦¨à¦¿ à¦¹\'à¦¬ à¦¨à§‹à§±à¦¾à§°à§‡à¥¤</string>
+    <string name="generating_image">à¦›à¦¬à¦¿ à¦¸à§ƒà¦·à§à¦Ÿà¦¿ à¦•à§°à¦¾</string>
+    <string name="please_wait">à¦…à¦¨à§à¦—à§à§°à¦¹ à¦•à§°à¦¿ à¦…à¦ªà§‡à¦•à§à¦·à¦¾ à¦•à§°à¦•</string>
+    <string name="cancel">à¦¬à¦¾à¦¤à¦¿à¦² à¦•à§°à¦•</string>
+    <string name="share_lyrics">à¦—à§€à¦¤à§° à¦¶à¦¾à§°à§€ à¦¶à§à¦¬à§‡à¦¯à¦¼à¦¾à§° à¦•à§°à¦•</string>
+    <string name="share_as_text">à¦Ÿà§‡à¦•à§à¦¸à¦Ÿ à¦¹à¦¿à¦šà¦¾à¦ªà§‡ à¦¶à§à¦¬à§‡à¦¯à¦¼à¦¾à§° à¦•à§°à¦•</string>
+    <string name="share_as_image">à¦‡à¦®à§‡à¦œ à¦¹à¦¿à¦šà¦¾à¦ªà§‡ à¦¶à§à¦¬à§‡à¦¯à¦¼à¦¾à§° à¦•à§°à¦•</string>
+    <string name="max_selection_limit">à¦¸à§°à§à¦¬à§‹à¦šà§à¦š à¦¨à¦¿à§°à§à¦¬à¦¾à¦šà¦¨ à¦¸à§€à¦®à¦¾</string>
+    <string name="share_selected">à¦¶à§à¦¬à§‡à¦¯à¦¼à¦¾à§° à¦¨à¦¿à§°à§à¦¬à¦¾à¦šà¦¿à¦¤ à¦•à§°à¦¾ à¦¹à§ˆà¦›à§‡</string>
+    <string name="customize_colors">à§°à¦‚ à¦•à¦¾à¦·à§à¦Ÿà¦®à¦¾à¦‡à¦œ à¦•à§°à¦•</string>
+    <string name="text_color">à¦²à¦¿à¦–à¦¨à§€à§° à§°à¦‚</string>
+    <string name="secondary_text_color">à¦¦à§à¦¬à¦¿à¦¤à§€à¦¯à¦¼ à¦Ÿà§‡à¦·à§à¦Ÿà§° à§°à¦‚</string>
+    <string name="background_color">à¦¬à§‡à¦•à¦—à§à§°à¦¾à¦‰à¦£à§à¦¡ à§°à¦‚</string>
+    <string name="remove_from_cache">à¦•à§‡à¦šà§° à¦ªà§°à¦¾ à¦†à¦à¦¤à§°à¦¾à¦“à¦•</string>
+    <string name="about_artist">à¦¬à¦¿à¦·à§Ÿ</string>
+    <string name="show_more">à¦…à¦§à¦¿à¦• à¦¦à§‡à¦–à§à§±à¦¾à¦“à¦•</string>
+    <string name="show_less">à¦•à¦® à¦¦à§‡à¦–à§à§±à¦¾à¦“à¦•</string>
+</resources>

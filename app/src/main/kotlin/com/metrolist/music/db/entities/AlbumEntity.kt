@@ -22,6 +22,7 @@ data class AlbumEntity(
     val playlistId: String? = null,
     val title: String,
     val year: Int? = null,
+    @ColumnInfo(defaultValue = "NULL") val releaseDate: String? = null,
     val thumbnailUrl: String? = null,
     val themeColor: Int? = null,
     val songCount: Int,

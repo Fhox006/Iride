@@ -131,8 +131,8 @@ internal fun LyricsLine(
         )
         .background(if (isSelected && isSelectionModeActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else Color.Transparent)
         .padding(
-            start = when (lyricsTextPosition) { LyricsPosition.LEFT, LyricsPosition.RIGHT -> 11.dp; LyricsPosition.CENTER -> 24.dp },
-            end = when (lyricsTextPosition) { LyricsPosition.LEFT, LyricsPosition.RIGHT -> 11.dp; LyricsPosition.CENTER -> 24.dp },
+            start = 32.dp,
+            end = 32.dp,
             top = if (item.isBackground) 0.dp else 12.dp,
             bottom = if (item.isBackground) 2.dp else 12.dp // simplified gap logic
         )

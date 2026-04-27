@@ -9,6 +9,7 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -81,9 +82,66 @@ class ArtistViewModel @Inject constructor(
         .map { it[HideExplicitKey] ?: false }
         .distinctUntilChanged()
         .flatMapLatest { hideExplicit ->
-            database.artistAlbumsPreview(artistId).map { it.filterExplicitAlbums(hideExplicit) }
+            database.artistAlbumsPreview(artistId, previewSize = 20).map { it.filterExplicitAlbums(hideExplicit) }
         }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val recentAlbum = kotlinx.coroutines.flow.combine(
+        snapshotFlow { artistPage },
+        libraryAlbums
+    ) { page, localAlbums ->
+        // First, try to find a recent album in the library (most accurate date)
+        val threeMonthsAgo = java.time.LocalDate.now().minusMonths(3)
+        val localRecent = localAlbums.filter { it.album.releaseDate != null }.mapNotNull { album ->
+            val dateStr = album.album.releaseDate!!
+            val date = try {
+                val parts = dateStr.split("-")
+                when (parts.size) {
+                    3 -> java.time.LocalDate.of(parts[0].toInt(), parts[1].toInt(), parts[2].toInt())
+                    2 -> java.time.LocalDate.of(parts[0].toInt(), parts[1].toInt(), 1)
+                    else -> java.time.LocalDate.of(parts[0].toInt(), 1, 1)
+                }
+            } catch (e: Exception) {
+                null
+            }
+            if (date != null && date.isAfter(threeMonthsAgo)) album to date else null
+        }.maxByOrNull { it.second }?.first
+
+        if (localRecent != null) return@combine localRecent
+
+        // If not in library, look at the artist page from YTM
+        val albumSection = page?.sections
+            ?.find { 
+                it.title.contains("Album", ignoreCase = true) || 
+                it.title.contains("Singol", ignoreCase = true) ||
+                it.title.contains("Single", ignoreCase = true) ||
+                it.title.contains("Latest", ignoreCase = true) ||
+                it.title.contains("Uscita", ignoreCase = true) ||
+                it.title.contains("Release", ignoreCase = true)
+            }
+        
+        val albumItem = albumSection?.items
+            ?.filterIsInstance<com.metrolist.innertube.models.AlbumItem>()
+            ?.firstOrNull()
+
+        albumItem?.let { item ->
+            val isSingle = albumSection?.title?.contains("Single", ignoreCase = true) == true || 
+                          albumSection?.title?.contains("Singol", ignoreCase = true) == true
+            
+            com.metrolist.music.db.entities.Album(
+                album = com.metrolist.music.db.entities.AlbumEntity(
+                    id = item.browseId,
+                    playlistId = item.playlistId,
+                    title = item.title,
+                    year = item.year,
+                    thumbnailUrl = item.thumbnail,
+                    explicit = item.explicit,
+                    songCount = if (isSingle) 1 else 0,
+                    duration = 0
+                )
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     init {
         // Load artist page and reload when hide explicit setting changes

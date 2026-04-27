@@ -107,6 +107,12 @@ object LyricsTranslationHelper {
         }
     }
 
+    fun clearErrorStatus() {
+        if (_status.value is TranslationStatus.Error) {
+            _status.value = TranslationStatus.Idle
+        }
+    }
+
     private fun getCacheKey(text: String, mode: String, targetLanguage: String): String {
         return "${text.hashCode()}_${mode}_${targetLanguage}"
     }

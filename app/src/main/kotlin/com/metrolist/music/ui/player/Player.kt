@@ -7,6 +7,7 @@ package com.metrolist.music.ui.player
 
 import androidx.activity.compose.BackHandler
 import android.content.ClipData
+import androidx.compose.runtime.saveable.rememberSaveable
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -178,6 +179,7 @@ import com.metrolist.music.utils.rememberPreference
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -202,6 +204,7 @@ fun BottomSheetPlayer(
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val menuState = LocalMenuState.current
+    val database = LocalDatabase.current
     val sleepTimerDefaultSetTemplate = stringResource(R.string.sleep_timer_default_set)
     val copiedTitleStr = stringResource(R.string.copied_title)
     val copiedArtistStr = stringResource(R.string.copied_artist)
@@ -221,8 +224,20 @@ fun BottomSheetPlayer(
         mutableStateOf(false)
     }
 
+    var showQueue by rememberSaveable {
+        mutableStateOf(false)
+    }
+
     var isFullScreen by rememberSaveable {
         mutableStateOf(false)
+    }
+
+    LaunchedEffect(state.isExpanded) {
+        if (!state.isExpanded) {
+            showQueue = false
+            showInlineLyrics = false
+            isFullScreen = false
+        }
     }
 
     val playerBackground by rememberEnumPreference(
@@ -235,7 +250,7 @@ fun BottomSheetPlayer(
     )
 
     val isSystemInDarkTheme = isSystemInDarkTheme()
-    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
+    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
     val useDarkTheme =
         remember(darkTheme, isSystemInDarkTheme) {
             if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
@@ -292,9 +307,10 @@ fun BottomSheetPlayer(
         }
     }
 
-    BackHandler(enabled = state.isExpanded) {
-        state.collapseSoft()
+    BackHandler(enabled = state.isExpanded && showQueue) {
+        showQueue = false
     }
+
 
     val onBackgroundColor =
         when (playerBackground) {
@@ -311,6 +327,7 @@ fun BottomSheetPlayer(
     val playbackState by playerConnection.playbackState.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val currentSong by playerConnection.currentSong.collectAsState(initial = null)
+    val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
     val automix by playerConnection.service.automixItems.collectAsState()
     val repeatMode by playerConnection.repeatMode.collectAsState()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()
@@ -423,6 +440,43 @@ fun BottomSheetPlayer(
             }
         } else {
             gradientColors = emptyList()
+        }
+    }
+
+    // Prefetch lyrics as soon as the player expands, so they are ready when the user opens the lyrics view
+    LaunchedEffect(state.isExpanded, mediaMetadata?.id) {
+        if (state.isExpanded && mediaMetadata != null) {
+            val capturedMetadata = mediaMetadata ?: return@LaunchedEffect
+            withContext(Dispatchers.IO) {
+                try {
+                    val currentLyricsValue = playerConnection.currentLyrics.first()
+                    if (currentLyricsValue == null) {
+                        val entryPoint = EntryPointAccessors.fromApplication(
+                            context.applicationContext,
+                            com.metrolist.music.di.LyricsHelperEntryPoint::class.java,
+                        )
+                        val lyricsHelper = entryPoint.lyricsHelper()
+                        val fetchedLyricsWithProvider = lyricsHelper.getLyrics(capturedMetadata)
+                        database.query {
+                            upsert(LyricsEntity(capturedMetadata.id, fetchedLyricsWithProvider.lyrics, fetchedLyricsWithProvider.provider))
+                        }
+                    }
+                } catch (_: Exception) {
+                    // Prefetch fallito silenziosamente; le lyrics verranno caricate quando l'utente apre la vista lyrics
+                }
+            }
+        }
+    }
+
+    // When the song changes, close lyrics view unless lyrics are already cached
+    LaunchedEffect(mediaMetadata?.id) {
+        isFullScreen = false
+        if (showInlineLyrics && mediaMetadata != null) {
+            // Give Room a moment to emit the cached value for the new song
+            delay(200)
+            if (currentLyrics == null) {
+                showInlineLyrics = false
+            }
         }
     }
 
@@ -895,10 +949,10 @@ fun BottomSheetPlayer(
                         .padding(horizontal = PlayerHorizontalPadding),
             ) {
                 AnimatedContent(
-                    targetState = showInlineLyrics,
+                    targetState = showInlineLyrics || showQueue,
                     label = "ThumbnailAnimation",
-                ) { showLyrics ->
-                    if (showLyrics) {
+                ) { show ->
+                    if (show) {
                         Row {
                             if (hidePlayerThumbnail) {
                                 Box(
@@ -906,7 +960,8 @@ fun BottomSheetPlayer(
                                         Modifier
                                             .size(56.dp)
                                             .clip(RoundedCornerShape(ThumbnailCornerRadius))
-                                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                                            .clickable { if (isFullScreen) { isFullScreen = false; showInlineLyrics = false; showQueue = false } else { showInlineLyrics = false; showQueue = false } },
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
@@ -926,7 +981,8 @@ fun BottomSheetPlayer(
                                     modifier =
                                         Modifier
                                             .size(56.dp)
-                                            .clip(RoundedCornerShape(ThumbnailCornerRadius)),
+                                            .clip(RoundedCornerShape(ThumbnailCornerRadius))
+                                            .clickable { if (isFullScreen) { isFullScreen = false; showInlineLyrics = false; showQueue = false } else { showInlineLyrics = false; showQueue = false } },
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
@@ -958,12 +1014,17 @@ fun BottomSheetPlayer(
                                         indication = null,
                                         interactionSource = remember { MutableInteractionSource() },
                                         onClick = {
-                                            val albumId = mediaMetadata.album?.id
-                                                ?: currentSong?.album?.id
-                                                ?: currentSong?.song?.albumId
-                                            if (albumId != null) {
-                                                navController.navigate("album/$albumId")
-                                                state.collapseSoft()
+                                            if (isFullScreen) {
+                                                isFullScreen = false
+                                                showInlineLyrics = false
+                                            } else {
+                                                val albumId = mediaMetadata.album?.id
+                                                    ?: currentSong?.album?.id
+                                                    ?: currentSong?.song?.albumId
+                                                if (albumId != null) {
+                                                    navController.navigate("album/$albumId")
+                                                    state.collapseSoft()
+                                                }
                                             }
                                         },
                                         onLongClick = {
@@ -1092,24 +1153,7 @@ fun BottomSheetPlayer(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         AnimatedContent(targetState = showInlineLyrics, label = "ShareButton") { showLyrics ->
-                            if (showLyrics) {
-                                FilledIconButton(
-                                    onClick = { isFullScreen = !isFullScreen },
-                                    shape = shareShape,
-                                    colors =
-                                        IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = textButtonColor,
-                                            contentColor = iconButtonColor,
-                                        ),
-                                    modifier = Modifier.size(42.dp),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.fullscreen),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                }
-                            } else {
+                            if (!showLyrics) {
                                 FilledIconButton(
                                     onClick = {
                                         val intent =
@@ -1142,36 +1186,18 @@ fun BottomSheetPlayer(
 
                         AnimatedContent(targetState = showInlineLyrics, label = "LikeButton") { showLyrics ->
                             if (showLyrics) {
-                                val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
-                                FilledIconButton(
-                                    onClick = {
-                                        menuState.show {
-                                            com.metrolist.music.ui.menu.LyricsMenu(
-                                                lyricsProvider = { currentLyrics },
-                                                songProvider = { currentSong?.song },
-                                                mediaMetadataProvider = { mediaMetadata },
-                                                onDismiss = menuState::dismiss,
-                                                onShowOffsetDialog = {
-                                                    bottomSheetPageState.show {
-                                                        ShowOffsetDialog(
-                                                            songProvider = { currentSong?.song },
-                                                        )
-                                                    }
-                                                },
-                                            )
-                                        }
-                                    },
-                                    shape = favShape,
-                                    colors =
-                                        IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = textButtonColor,
-                                            contentColor = iconButtonColor,
-                                        ),
-                                    modifier = Modifier.size(42.dp),
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(RoundedCornerShape(24.dp))
+                                        .background(textButtonColor)
+                                        .clickable { isFullScreen = !isFullScreen },
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
-                                        painter = painterResource(R.drawable.more_horiz),
+                                        painter = painterResource(if (isFullScreen) R.drawable.expand_less else R.drawable.fullscreen),
                                         contentDescription = null,
+                                        tint = iconButtonColor,
                                         modifier = Modifier.size(24.dp),
                                     )
                                 }
@@ -1207,26 +1233,7 @@ fun BottomSheetPlayer(
                     }
                 } else {
                     AnimatedContent(targetState = showInlineLyrics, label = "ShareButton") { showLyrics ->
-                        if (showLyrics) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(24.dp))
-                                        .background(textButtonColor)
-                                        .clickable { isFullScreen = !isFullScreen },
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.fullscreen),
-                                    contentDescription = null,
-                                    tint = iconButtonColor,
-                                    modifier =
-                                        Modifier
-                                            .align(Alignment.Center)
-                                            .size(24.dp),
-                                )
-                            }
-                        } else {
+                        if (!showLyrics) {
                             Box(
                                 modifier =
                                     Modifier
@@ -1809,18 +1816,47 @@ fun BottomSheetPlayer(
                         val sliderPositionProvider = remember { { currentSliderPosition } }
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
                         AnimatedContent(
-                            targetState = showInlineLyrics,
-                            label = "Lyrics",
+                            targetState = when {
+                                showInlineLyrics -> "lyrics"
+                                showQueue -> "queue"
+                                else -> "thumbnail"
+                            },
+                            label = "PlayerView",
                             transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        ) { showLyrics ->
-                            if (showLyrics) {
-                                InlineLyricsView(
+                        ) { view ->
+                            when (view) {
+                                "lyrics" -> InlineLyricsView(
                                     mediaMetadata = mediaMetadata,
-                                    showLyrics = showLyrics,
+                                    showLyrics = true,
                                     positionProvider = { effectivePosition },
+                                    isFullScreen = isFullScreen,
+                                    onExitFullScreen = { isFullScreen = false },
+                                    onShowOptionsMenu = {
+                                        mediaMetadata?.let { mm ->
+                                            menuState.show {
+                                                com.metrolist.music.ui.menu.LyricsMenu(
+                                                    lyricsProvider = { currentLyrics },
+                                                    songProvider = { currentSong?.song },
+                                                    mediaMetadataProvider = { mm },
+                                                    onDismiss = menuState::dismiss,
+                                                    onShowOffsetDialog = {
+                                                        bottomSheetPageState.show {
+                                                            ShowOffsetDialog(songProvider = { currentSong?.song })
+                                                        }
+                                                    },
+                                                )
+                                            }
+                                        }
+                                    },
                                 )
-                            } else {
-                                Thumbnail(
+                                "queue" -> InlineQueuePanel(
+                                    navController = navController,
+                                    playerBottomSheetState = state,
+                                    textButtonColor = textButtonColor,
+                                    iconButtonColor = iconButtonColor,
+                                    onClose = { showQueue = false },
+                                )
+                                else -> Thumbnail(
                                     sliderPositionProvider = sliderPositionProvider,
                                     modifier = Modifier.animateContentSize(),
                                     isPlayerExpanded = isExpandedProvider,
@@ -1835,7 +1871,7 @@ fun BottomSheetPlayer(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier =
                             Modifier
-                                .weight(if (showInlineLyrics) 0.65f else 1f, false)
+                                .weight(if (showInlineLyrics || showQueue) 0.65f else 1f, false)
                                 .animateContentSize()
                                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
                     ) {
@@ -1872,18 +1908,47 @@ fun BottomSheetPlayer(
                         val sliderPositionProvider = remember { { currentSliderPosition } }
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
                         AnimatedContent(
-                            targetState = showInlineLyrics,
-                            label = "Lyrics",
+                            targetState = when {
+                                showInlineLyrics -> "lyrics"
+                                showQueue -> "queue"
+                                else -> "thumbnail"
+                            },
+                            label = "PlayerView",
                             transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        ) { showLyrics ->
-                            if (showLyrics) {
-                                InlineLyricsView(
+                        ) { view ->
+                            when (view) {
+                                "lyrics" -> InlineLyricsView(
                                     mediaMetadata = mediaMetadata,
-                                    showLyrics = showLyrics,
+                                    showLyrics = true,
                                     positionProvider = { effectivePosition },
+                                    isFullScreen = isFullScreen,
+                                    onExitFullScreen = { isFullScreen = false },
+                                    onShowOptionsMenu = {
+                                        mediaMetadata?.let { mm ->
+                                            menuState.show {
+                                                com.metrolist.music.ui.menu.LyricsMenu(
+                                                    lyricsProvider = { currentLyrics },
+                                                    songProvider = { currentSong?.song },
+                                                    mediaMetadataProvider = { mm },
+                                                    onDismiss = menuState::dismiss,
+                                                    onShowOffsetDialog = {
+                                                        bottomSheetPageState.show {
+                                                            ShowOffsetDialog(songProvider = { currentSong?.song })
+                                                        }
+                                                    },
+                                                )
+                                            }
+                                        }
+                                    },
                                 )
-                            } else {
-                                Thumbnail(
+                                "queue" -> InlineQueuePanel(
+                                    navController = navController,
+                                    playerBottomSheetState = state,
+                                    textButtonColor = textButtonColor,
+                                    iconButtonColor = iconButtonColor,
+                                    onClose = { showQueue = false },
+                                )
+                                else -> Thumbnail(
                                     sliderPositionProvider = sliderPositionProvider,
                                     modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
                                     isPlayerExpanded = isExpandedProvider,
@@ -1900,6 +1965,19 @@ fun BottomSheetPlayer(
                     Spacer(Modifier.height(30.dp))
                 }
             }
+        }
+
+        if (isFullScreen && showInlineLyrics) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(queueSheetState.collapsedBound + 60.dp)
+                    .align(Alignment.BottomCenter)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) { isFullScreen = false },
+            )
         }
 
         AnimatedVisibility(
@@ -1924,8 +2002,15 @@ fun BottomSheetPlayer(
                 pureBlack = pureBlack,
                 showInlineLyrics = showInlineLyrics,
                 playerBackground = playerBackground,
+                isLyricsLoading = mediaMetadata != null && currentLyrics == null,
+                isQueueActive = showQueue,
                 onToggleLyrics = {
                     showInlineLyrics = !showInlineLyrics
+                    if (showInlineLyrics) showQueue = false
+                },
+                onToggleQueue = {
+                    showQueue = !showQueue
+                    if (showQueue) showInlineLyrics = false
                 },
             )
         }
@@ -1938,6 +2023,9 @@ fun InlineLyricsView(
     mediaMetadata: MediaMetadata?,
     showLyrics: Boolean,
     positionProvider: () -> Long,
+    onShowOptionsMenu: () -> Unit = {},
+    isFullScreen: Boolean = false,
+    onExitFullScreen: () -> Unit = {},
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
@@ -1976,10 +2064,6 @@ fun InlineLyricsView(
         contentAlignment = Alignment.Center,
     ) {
         when {
-            lyrics == null -> {
-                ContainedLoadingIndicator()
-            }
-
             lyrics == LyricsEntity.LYRICS_NOT_FOUND -> {
                 Text(
                     text = stringResource(R.string.lyrics_not_found),
@@ -1993,8 +2077,10 @@ fun InlineLyricsView(
                 val lyricsContent: @Composable () -> Unit = {
                     Lyrics(
                         sliderPositionProvider = positionProvider,
-                        modifier = Modifier.padding(horizontal = 24.dp),
                         showLyrics = showLyrics,
+                        onShowOptionsMenu = onShowOptionsMenu,
+                        isFullScreen = isFullScreen,
+                        onExitFullScreen = onExitFullScreen,
                     )
                 }
                 ProvideTextStyle(

@@ -46,6 +46,8 @@ import com.metrolist.music.constants.AutoDownloadOnLikeKey
 import com.metrolist.music.constants.CrossfadeDurationKey
 import com.metrolist.music.constants.CrossfadeEnabledKey
 import com.metrolist.music.constants.CrossfadeGaplessKey
+import com.metrolist.music.constants.SkipFadeKey
+import com.metrolist.music.constants.SkipFadeDurationKey
 import com.metrolist.music.constants.AutoLoadMoreKey
 import com.metrolist.music.constants.AutoSkipNextOnErrorKey
 import com.metrolist.music.constants.DisableLoadMoreWhenRepeatAllKey
@@ -106,6 +108,14 @@ fun PlayerSettings(
     val (crossfadeGapless, onCrossfadeGaplessChange) = rememberPreference(
         CrossfadeGaplessKey,
         defaultValue = true
+    )
+    val (skipFade, onSkipFadeChange) = rememberPreference(
+        SkipFadeKey,
+        defaultValue = true
+    )
+    val (skipFadeDuration, onSkipFadeDurationChange) = rememberPreference(
+        SkipFadeDurationKey,
+        defaultValue = 3.5f
     )
     val (persistentQueue, onPersistentQueueChange) = rememberPreference(
         PersistentQueueKey,
@@ -266,7 +276,7 @@ fun PlayerSettings(
         )
 
         Material3SettingsGroup(
-            title = stringResource(R.string.player),
+            title = stringResource(R.string.settings_section_audio),
             items = buildList {
                 add(Material3SettingsItem(
                     icon = painterResource(R.drawable.graphic_eq),
@@ -316,6 +326,44 @@ fun PlayerSettings(
                         }
                     }
                 ))
+                add(Material3SettingsItem(
+                    icon = painterResource(R.drawable.skip_next),
+                    title = { Text(stringResource(R.string.skip_fade)) },
+                    description = { Text(stringResource(R.string.skip_fade_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = skipFade,
+                            onCheckedChange = onSkipFadeChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (skipFade) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onSkipFadeChange(!skipFade) }
+                ))
+                if (skipFade) {
+                    add(Material3SettingsItem(
+                        icon = painterResource(R.drawable.timer),
+                        title = { Text(stringResource(R.string.skip_fade_duration)) },
+                        description = {
+                            Column {
+                                Text(pluralStringResource(R.plurals.seconds, skipFadeDuration.toInt(), skipFadeDuration.toInt()))
+                                Slider(
+                                    value = skipFadeDuration,
+                                    onValueChange = onSkipFadeDurationChange,
+                                    valueRange = 1f..8f,
+                                    steps = 7
+                                )
+                            }
+                        }
+                    ))
+                }
                 if (crossfadeEnabled) {
                     add(Material3SettingsItem(
                         icon = painterResource(R.drawable.timer),
@@ -706,7 +754,7 @@ fun PlayerSettings(
         Spacer(modifier = Modifier.height(27.dp))
 
         Material3SettingsGroup(
-            title = stringResource(R.string.queue),
+            title = stringResource(R.string.settings_section_behavior),
             items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.queue_music),
@@ -924,7 +972,7 @@ fun PlayerSettings(
         Spacer(modifier = Modifier.height(27.dp))
 
         Material3SettingsGroup(
-            title = stringResource(R.string.misc),
+            title = stringResource(R.string.settings_section_system_short),
             items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.clear_all),

@@ -130,12 +130,13 @@ fun PlayerMenu(
 
     val varispeedMode by rememberPreference(VarispeedKey, defaultValue = false)
 
-    val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
 
     val download by LocalDownloadUtil.current
         .getDownload(mediaMetadata.id)
         .collectAsState(initial = null)
+
+    val albumData by database.album(mediaMetadata.album?.id ?: "").collectAsState(initial = null)
 
     val artists =
         remember(mediaMetadata.artists) {
@@ -336,33 +337,82 @@ fun PlayerMenu(
                             text = stringResource(R.string.add_to_playlist),
                             onClick = { showChoosePlaylistDialog = true },
                         ),
-                        NewAction(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.link),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            text = stringResource(R.string.copy_link),
-                            onClick = {
-                                val clipboard =
-                                    context.getSystemService(
-                                        android.content.Context.CLIPBOARD_SERVICE,
-                                    ) as android.content.ClipboardManager
-                                val clip =
-                                    android.content.ClipData.newPlainText(
-                                        "Song Link",
-                                        "https://music.youtube.com/watch?v=${mediaMetadata.id}",
+                        when (download?.state) {
+                            Download.STATE_COMPLETED -> NewAction(
+                                icon = {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50)),
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.offline),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(28.dp),
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        )
+                                    }
+                                },
+                                text = stringResource(R.string.remove_download),
+                                onClick = {
+                                    DownloadService.sendRemoveDownload(
+                                        context, ExoDownloadService::class.java, mediaMetadata.id, false,
                                     )
-                                clipboard.setPrimaryClip(clip)
-                                android.widget.Toast
-                                    .makeText(context, R.string.link_copied, android.widget.Toast.LENGTH_SHORT)
-                                    .show()
-                                onDismiss()
-                            },
-                        ),
+                                },
+                            )
+                            Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> NewAction(
+                                icon = {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50)),
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        )
+                                    }
+                                },
+                                text = stringResource(R.string.downloading),
+                                onClick = {
+                                    DownloadService.sendRemoveDownload(
+                                        context, ExoDownloadService::class.java, mediaMetadata.id, false,
+                                    )
+                                },
+                            )
+                            else -> NewAction(
+                                icon = {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50)),
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.download),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(28.dp),
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        )
+                                    }
+                                },
+                                text = stringResource(R.string.action_download),
+                                onClick = {
+                                    database.transaction { insert(mediaMetadata) }
+                                    val downloadRequest = DownloadRequest
+                                        .Builder(mediaMetadata.id, mediaMetadata.id.toUri())
+                                        .setCustomCacheKey(mediaMetadata.id)
+                                        .setData(mediaMetadata.title.toByteArray())
+                                        .build()
+                                    DownloadService.sendAddDownload(
+                                        context, ExoDownloadService::class.java, downloadRequest, false,
+                                    )
+                                },
+                            )
+                        },
                     ),
                 columns = if (isListenTogetherGuest) 2 else 3,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
@@ -376,44 +426,15 @@ fun PlayerMenu(
             Material3MenuGroup(
                 items =
                     buildList {
-                        // Don't show "View Artist" for podcasts - only show "View Podcast"
-                        if (artists.isNotEmpty() && !isPodcast) {
-                            add(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.view_artist)) },
-                                    description = {
-                                        Text(
-                                            text = mediaMetadata.artists.joinToString { it.name },
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.artist),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                    },
-                                    onClick = {
-                                        if (mediaMetadata.artists.size == 1) {
-                                            navController.navigate("artist/${mediaMetadata.artists[0].id}")
-                                            playerBottomSheetState.collapseSoft()
-                                            onDismiss()
-                                        } else {
-                                            showSelectArtistDialog = true
-                                        }
-                                    },
-                                ),
-                            )
-                        }
-                        if (mediaMetadata.album != null) {
+                        val albumSongCount = albumData?.album?.songCount ?: 0
+                        val album = mediaMetadata.album
+                        if (album != null && (isPodcast || albumSongCount > 1)) {
                             add(
                                 Material3MenuItemData(
                                     title = { Text(text = stringResource(if (isPodcast) R.string.view_podcast else R.string.view_album)) },
                                     description = {
                                         Text(
-                                            text = mediaMetadata.album.title,
+                                            text = album.title,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                         )
@@ -427,9 +448,9 @@ fun PlayerMenu(
                                     },
                                     onClick = {
                                         if (isPodcast) {
-                                            navController.navigate("online_podcast/${mediaMetadata.album.id}")
+                                            navController.navigate("online_podcast/${album.id}")
                                         } else {
-                                            navController.navigate("album/${mediaMetadata.album.id}")
+                                            navController.navigate("album/${album.id}")
                                         }
                                         playerBottomSheetState.collapseSoft()
                                         onDismiss()
@@ -437,129 +458,7 @@ fun PlayerMenu(
                                 ),
                             )
                         }
-                        // Add to Library option
-                        val isInLibrary = librarySong?.song?.inLibrary != null
-                        add(
-                            Material3MenuItemData(
-                                title = {
-                                    Text(
-                                        text =
-                                            stringResource(
-                                                if (isInLibrary) {
-                                                    R.string.remove_from_library
-                                                } else {
-                                                    R.string.add_to_library
-                                                },
-                                            ),
-                                    )
-                                },
-                                icon = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                if (isInLibrary) {
-                                                    R.drawable.library_add_check
-                                                } else {
-                                                    R.drawable.library_add
-                                                },
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                },
-                                onClick = {
-                                    playerConnection.toggleLibrary()
-                                    onDismiss()
-                                },
-                            ),
-                        )
                     },
-            )
-        }
-
-        item { Spacer(modifier = Modifier.height(12.dp)) }
-
-        item {
-            Material3MenuGroup(
-                items =
-                    listOf(
-                        when (download?.state) {
-                            Download.STATE_COMPLETED -> {
-                                Material3MenuItemData(
-                                    title = {
-                                        Text(
-                                            text = stringResource(R.string.remove_download),
-                                        )
-                                    },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.offline),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                    },
-                                    onClick = {
-                                        DownloadService.sendRemoveDownload(
-                                            context,
-                                            ExoDownloadService::class.java,
-                                            mediaMetadata.id,
-                                            false,
-                                        )
-                                    },
-                                )
-                            }
-
-                            Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.downloading)) },
-                                    icon = {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            strokeWidth = 2.dp,
-                                        )
-                                    },
-                                    onClick = {
-                                        DownloadService.sendRemoveDownload(
-                                            context,
-                                            ExoDownloadService::class.java,
-                                            mediaMetadata.id,
-                                            false,
-                                        )
-                                    },
-                                )
-                            }
-
-                            else -> {
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.action_download)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.download),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                    },
-                                    onClick = {
-                                        database.transaction {
-                                            insert(mediaMetadata)
-                                        }
-                                        val downloadRequest =
-                                            DownloadRequest
-                                                .Builder(mediaMetadata.id, mediaMetadata.id.toUri())
-                                                .setCustomCacheKey(mediaMetadata.id)
-                                                .setData(mediaMetadata.title.toByteArray())
-                                                .build()
-                                        DownloadService.sendAddDownload(
-                                            context,
-                                            ExoDownloadService::class.java,
-                                            downloadRequest,
-                                            false,
-                                        )
-                                    },
-                                )
-                            }
-                        },
-                    ),
             )
         }
 
@@ -630,6 +529,38 @@ fun PlayerMenu(
             Material3MenuGroup(
                 items =
                     buildList {
+                        // Check if this is a podcast episode (album ID doesn't start with MPREb_)
+                        val isPodcastDetails = mediaMetadata.album?.let { !it.id.startsWith("MPREb_") } ?: false
+                        if (artists.isNotEmpty() && !isPodcastDetails) {
+                            add(
+                                Material3MenuItemData(
+                                    title = { Text(text = stringResource(R.string.view_artist)) },
+                                    description = {
+                                        Text(
+                                            text = mediaMetadata.artists.joinToString { it.name },
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    },
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.artist),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    },
+                                    onClick = {
+                                        if (mediaMetadata.artists.size == 1) {
+                                            navController.navigate("artist/${mediaMetadata.artists[0].id}")
+                                            playerBottomSheetState.collapseSoft()
+                                            onDismiss()
+                                        } else {
+                                            showSelectArtistDialog = true
+                                        }
+                                    },
+                                ),
+                            )
+                        }
                         add(
                             Material3MenuItemData(
                                 title = { Text(text = stringResource(R.string.details)) },
@@ -649,23 +580,6 @@ fun PlayerMenu(
                         )
 
                         if (isQueueTrigger != true) {
-                            add(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.equalizer)) },
-                                    description = { Text(text = stringResource(R.string.equalizer_desc)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.equalizer),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                    },
-                                    onClick = {
-                                        navController.navigate("equalizer")
-                                        onDismiss()
-                                    },
-                                ),
-                            )
                             add(
                                 Material3MenuItemData(
                                     title = { Text(text = stringResource(R.string.advanced)) },

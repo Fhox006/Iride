@@ -18,16 +18,22 @@ fun Lyrics(
     sliderPositionProvider: () -> Long?,
     modifier: Modifier = Modifier,
     showLyrics: Boolean,
-    lyricsViewModel: LyricsViewModel = hiltViewModel()
+    lyricsViewModel: LyricsViewModel = hiltViewModel(),
+    onShowOptionsMenu: () -> Unit = {},
+    isFullScreen: Boolean = false,
+    onExitFullScreen: () -> Unit = {},
 ) {
-    val (experimentalLyrics, _) = rememberPreference(key = ExperimentalLyricsKey, defaultValue = false)
+    val (experimentalLyrics, _) = rememberPreference(key = ExperimentalLyricsKey, defaultValue = true)
 
     if (experimentalLyrics) {
         ExperimentalLyrics(
             sliderPositionProvider = sliderPositionProvider,
             modifier = modifier,
             showLyrics = showLyrics,
-            lyricsViewModel = lyricsViewModel
+            lyricsViewModel = lyricsViewModel,
+            onShowOptionsMenu = onShowOptionsMenu,
+            isFullScreen = isFullScreen,
+            onExitFullScreen = onExitFullScreen,
         )
     } else {
         OriginalLyrics(

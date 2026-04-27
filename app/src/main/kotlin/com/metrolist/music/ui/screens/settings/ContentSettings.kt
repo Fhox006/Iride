@@ -64,7 +64,10 @@ import com.metrolist.music.constants.EnableLrcLibKey
 import com.metrolist.music.constants.EnablePaxsenixKey
 import com.metrolist.music.constants.EnableLyricsPlus
 import com.metrolist.music.constants.HideExplicitKey
+import com.metrolist.music.constants.HideVideoOnlyResultsKey
 import com.metrolist.music.constants.HideVideoSongsKey
+import com.metrolist.music.constants.HideVideosInLibraryKey
+import com.metrolist.music.constants.ResolveVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.LanguageCodeToName
 import com.metrolist.music.constants.LyricsProviderOrderKey
@@ -75,12 +78,11 @@ import com.metrolist.music.constants.ProxyUrlKey
 import com.metrolist.music.constants.ProxyUsernameKey
 import com.metrolist.music.constants.QuickPicks
 import com.metrolist.music.constants.QuickPicksKey
-import com.metrolist.music.constants.RandomizeHomeOrderKey
 import com.metrolist.music.constants.SYSTEM_DEFAULT
 import com.metrolist.music.constants.ShowArtistDescriptionKey
 import com.metrolist.music.constants.ShowArtistSubscriberCountKey
+import com.metrolist.music.constants.ShowExplicitBadgeKey
 import com.metrolist.music.constants.ShowMonthlyListenersKey
-import com.metrolist.music.constants.ShowWrappedCardKey
 import com.metrolist.music.constants.TopSize
 import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.IconButton
@@ -106,7 +108,11 @@ fun ContentSettings(
     val (contentLanguage, onContentLanguageChange) = rememberPreference(key = ContentLanguageKey, defaultValue = "system")
     val (contentCountry, onContentCountryChange) = rememberPreference(key = ContentCountryKey, defaultValue = "system")
     val (hideExplicit, onHideExplicitChange) = rememberPreference(key = HideExplicitKey, defaultValue = false)
+    val (showExplicitBadge, onShowExplicitBadgeChange) = rememberPreference(key = ShowExplicitBadgeKey, defaultValue = false)
     val (hideVideoSongs, onHideVideoSongsChange) = rememberPreference(key = HideVideoSongsKey, defaultValue = false)
+    val (resolveVideoSongs, onResolveVideoSongsChange) = rememberPreference(key = ResolveVideoSongsKey, defaultValue = true)
+    val (hideVideoOnlyResults, onHideVideoOnlyResultsChange) = rememberPreference(key = HideVideoOnlyResultsKey, defaultValue = false)
+    val (hideVideosInLibrary, onHideVideosInLibraryChange) = rememberPreference(key = HideVideosInLibraryKey, defaultValue = false)
     val (hideYoutubeShorts, onHideYoutubeShortsChange) = rememberPreference(key = HideYoutubeShortsKey, defaultValue = false)
     val (showArtistDescription, onShowArtistDescriptionChange) = rememberPreference(key = ShowArtistDescriptionKey, defaultValue = true)
     val (showArtistSubscriberCount, onShowArtistSubscriberCountChange) = rememberPreference(key = ShowArtistSubscriberCountKey, defaultValue = true)
@@ -127,12 +133,6 @@ fun ContentSettings(
     )
     val (lengthTop, onLengthTopChange) = rememberPreference(key = TopSize, defaultValue = "50")
     val (quickPicks, onQuickPicksChange) = rememberEnumPreference(key = QuickPicksKey, defaultValue = QuickPicks.QUICK_PICKS)
-    val (showWrappedCard, onShowWrappedCardChange) = rememberPreference(key = ShowWrappedCardKey, defaultValue = false)
-    val (randomizeHomeOrder, onRandomizeHomeOrderChange) = rememberPreference(
-        RandomizeHomeOrderKey,
-        defaultValue = true
-    )
-
     val providerDisplayNames =
         mapOf(
             "BetterLyrics" to "Better Lyrics",
@@ -692,6 +692,27 @@ fun ContentSettings(
                     onClick = { onHideExplicitChange(!hideExplicit) }
                 ),
                 Material3SettingsItem(
+                    icon = painterResource(R.drawable.explicit),
+                    title = { Text(stringResource(R.string.show_explicit_badge)) },
+                    description = { Text(stringResource(R.string.show_explicit_badge_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = showExplicitBadge,
+                            onCheckedChange = onShowExplicitBadgeChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (showExplicitBadge) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onShowExplicitBadgeChange(!showExplicitBadge) }
+                ),
+                Material3SettingsItem(
                     icon = painterResource(R.drawable.slow_motion_video),
                     title = { Text(stringResource(R.string.hide_video_songs)) },
                     trailingContent = {
@@ -711,6 +732,81 @@ fun ContentSettings(
                     },
                     onClick = { onHideVideoSongsChange(!hideVideoSongs) }
                 ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.cached),
+                    title = { Text(stringResource(R.string.resolve_video_songs)) },
+                    description = { Text(stringResource(R.string.resolve_video_songs_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = resolveVideoSongs,
+                            onCheckedChange = onResolveVideoSongsChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (resolveVideoSongs) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onResolveVideoSongsChange(!resolveVideoSongs) }
+                )
+            )
+        )
+
+        AnimatedVisibility(visible = resolveVideoSongs) {
+            Material3SettingsGroup(
+                items = listOf(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.close),
+                        title = { Text(stringResource(R.string.hide_video_only_results)) },
+                        description = { Text(stringResource(R.string.hide_video_only_results_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = hideVideoOnlyResults,
+                                onCheckedChange = onHideVideoOnlyResultsChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (hideVideoOnlyResults) R.drawable.check else R.drawable.close
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onHideVideoOnlyResultsChange(!hideVideoOnlyResults) }
+                    ),
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.library_music),
+                        title = { Text(stringResource(R.string.hide_videos_in_library)) },
+                        description = { Text(stringResource(R.string.hide_videos_in_library_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = hideVideosInLibrary,
+                                onCheckedChange = onHideVideosInLibraryChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (hideVideosInLibrary) R.drawable.check else R.drawable.close
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onHideVideosInLibraryChange(!hideVideosInLibrary) }
+                    )
+                )
+            )
+        }
+
+        Material3SettingsGroup(
+            items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.hide_image),
                     title = { Text(stringResource(R.string.hide_youtube_shorts)) },
@@ -902,57 +998,8 @@ fun ContentSettings(
         Spacer(modifier = Modifier.height(27.dp))
 
         Material3SettingsGroup(
-            title = "Wrapped",
+            title = stringResource(R.string.home),
             items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.trending_up),
-                    title = { Text(stringResource(R.string.show_wrapped_card)) },
-                    trailingContent = {
-                        Switch(
-                            checked = showWrappedCard,
-                            onCheckedChange = onShowWrappedCardChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (showWrappedCard) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onShowWrappedCardChange(!showWrappedCard) }
-                )
-            )
-        )
-
-        Spacer(modifier = Modifier.height(27.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.misc),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.shuffle),
-                    title = { Text(stringResource(R.string.randomize_home_order)) },
-                    description = { Text(stringResource(R.string.randomize_home_order_desc)) },
-                    trailingContent = {
-                        Switch(
-                            checked = randomizeHomeOrder,
-                            onCheckedChange = onRandomizeHomeOrderChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (randomizeHomeOrder) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onRandomizeHomeOrderChange(!randomizeHomeOrder) }
-                ),
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.trending_up),
                     title = { Text(stringResource(R.string.top_length)) },

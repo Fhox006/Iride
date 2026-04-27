@@ -1543,8 +1543,17 @@ interface DatabaseDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(playCountEntity: PlayCountEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     fun insert(setVideoIdEntity: SetVideoIdEntity)
+
+    @Query("DELETE FROM set_video_id WHERE videoId NOT IN (SELECT videoId FROM set_video_id ORDER BY timestamp DESC LIMIT :limit)")
+    fun trimSetVideoIdCache(limit: Int)
+
+    @Query("DELETE FROM set_video_id")
+    fun clearSetVideoIdCache()
+
+    @Query("SELECT COUNT(*) FROM set_video_id")
+    fun getSetVideoIdCount(): Int
 
     @Transaction
     fun insert(

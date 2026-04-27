@@ -398,12 +398,15 @@ class PlayerConnection(
                 castHandler.skipToNext()
                 return
             }
-            player.seekToNext()
-            if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
-                player.prepare()
+            val faded = service.skipWithFade(forward = true, onComplete = { onSkipNext?.invoke() })
+            if (!faded) {
+                player.seekToNext()
+                if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+                    player.prepare()
+                }
+                player.playWhenReady = true
+                onSkipNext?.invoke()
             }
-            player.playWhenReady = true
-            onSkipNext?.invoke()
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error in seekToNext")
         }
@@ -423,20 +426,26 @@ class PlayerConnection(
             // Logic to mimic standard seekToPrevious behavior but with explicit callbacks
             // If we are more than 3 seconds in, just restart the song
             if (player.currentPosition > 3000 || !player.hasPreviousMediaItem()) {
-                player.seekTo(0)
-                if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
-                    player.prepare()
+                val faded = service.skipWithFade(restartCurrent = true, onComplete = { onRestartSong?.invoke() })
+                if (!faded) {
+                    player.seekTo(0)
+                    if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+                        player.prepare()
+                    }
+                    player.playWhenReady = true
+                    onRestartSong?.invoke()
                 }
-                player.playWhenReady = true
-                onRestartSong?.invoke()
             } else {
                 // Otherwise go to previous media item
-                player.seekToPreviousMediaItem()
-                if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
-                    player.prepare()
+                val faded = service.skipWithFade(forward = false, onComplete = { onSkipPrevious?.invoke() })
+                if (!faded) {
+                    player.seekToPreviousMediaItem()
+                    if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+                        player.prepare()
+                    }
+                    player.playWhenReady = true
+                    onSkipPrevious?.invoke()
                 }
-                player.playWhenReady = true
-                onSkipPrevious?.invoke()
             }
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error in seekToPrevious")

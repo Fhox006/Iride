@@ -1,5 +1,5 @@
 /**
- * Metrolist Project (C) 2026
+ * Iride Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
@@ -132,7 +132,7 @@ import com.metrolist.music.constants.DisableScreenshotKey
 import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.ExperimentalLyricsKey
-import com.metrolist.music.constants.LastSeenVersionKey
+import com.metrolist.music.constants.OnboardingCompletedKey
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.ListenTogetherUsernameKey
 import com.metrolist.music.constants.LyricsProviderOrderKey
@@ -163,7 +163,6 @@ import com.metrolist.music.playback.MusicService
 import com.metrolist.music.playback.MusicService.MusicBinder
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.YouTubeQueue
-import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.AppNavigationBar
 import com.metrolist.music.ui.component.AppNavigationRail
 import com.metrolist.music.ui.component.BottomSheetMenu
@@ -176,12 +175,11 @@ import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.player.BottomSheetPlayer
 import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.screens.navigationBuilder
-import com.metrolist.music.ui.screens.settings.ChangelogScreen
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.screens.settings.NavigationTab
 import com.metrolist.music.ui.theme.ColorSaver
 import com.metrolist.music.ui.theme.DefaultThemeColor
-import com.metrolist.music.ui.theme.MetrolistTheme
+import com.metrolist.music.ui.theme.IrideTheme
 import com.metrolist.music.ui.theme.extractThemeColor
 import com.metrolist.music.ui.utils.appBarScrollBehavior
 import com.metrolist.music.ui.utils.resetHeightOffset
@@ -301,10 +299,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        // Request notification permission on Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1000)
+        // Request notification permission on Android 13+ only for users who already
+        // completed onboarding (new users handle this in the onboarding flow)
+        if (dataStore.get(OnboardingCompletedKey, false)) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1000)
+                }
             }
         }
 
@@ -329,10 +330,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        // CRITICAL FIX: Do NOT unbind service or dispose playerConnection here!
-        // Just disconnect ListenTogetherManager to stop audio routing
-        // This prevents UI recomposition when switching apps
-        listenTogetherManager.setPlayerConnection(null)
         super.onStop()
     }
 
@@ -344,12 +341,13 @@ class MainActivity : ComponentActivity() {
         ) {
             stopService(Intent(this, MusicService::class.java))
         }
-        
+
         // Full cleanup - only on actual destroy
+        listenTogetherManager.setPlayerConnection(null)
         playerConnection?.dispose()
         playerConnection = null
         playerConnectionSnapshot = null
-        
+
         safeUnbindService("onDestroy()")
     }
 
@@ -398,7 +396,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            MetrolistApp(
+            IrideApp(
                 latestVersionName = latestVersionName,
                 onLatestVersionNameChange = { latestVersionName = it },
                 playerConnection = playerConnectionSnapshot,
@@ -412,7 +410,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    private fun MetrolistApp(
+    private fun IrideApp(
         latestVersionName: String,
         onLatestVersionNameChange: (String) -> Unit,
         playerConnection: PlayerConnection?,
@@ -470,7 +468,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = true)
+        val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = false)
         val enableHighRefreshRate by rememberPreference(EnableHighRefreshRateKey, defaultValue = true)
 
         LaunchedEffect(enableHighRefreshRate) {
@@ -501,7 +499,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
+        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
         val isSystemInDarkTheme = isSystemInDarkTheme()
         val useDarkTheme =
             remember(darkTheme, isSystemInDarkTheme) {
@@ -512,16 +510,14 @@ class MainActivity : ComponentActivity() {
             setSystemBarAppearance(useDarkTheme)
         }
 
-        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
+        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = true)
         val pureBlack =
             remember(pureBlackEnabled, useDarkTheme) {
                 pureBlackEnabled && useDarkTheme
             }
 
-        val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = DefaultThemeColor.toArgb())
+        val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = Color(0xFF1E88E5).toArgb())
         val selectedThemeColor = Color(selectedThemeColorInt)
-
-        val showChangelog = rememberSaveable { mutableStateOf(false) }
 
         var themeColor by rememberSaveable(stateSaver = ColorSaver) {
             mutableStateOf(selectedThemeColor)
@@ -568,7 +564,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        MetrolistTheme(
+        IrideTheme(
             darkTheme = useDarkTheme,
             pureBlack = pureBlack,
             themeColor = themeColor,
@@ -589,12 +585,6 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
 
                 LaunchedEffect(Unit) {
-                    val lastSeenVersion = dataStore.data.first()[LastSeenVersionKey] ?: ""
-                    val currentVersion = BuildConfig.VERSION_NAME
-                    if (lastSeenVersion != currentVersion) {
-                        showChangelog.value = true
-                    }
-
                     // SimpMusic Removal Migration
                     if (dataStore.data.first()[SimpMusicMigrationDoneKey] != true) {
                         dataStore.edit { settings ->
@@ -620,10 +610,6 @@ class MainActivity : ComponentActivity() {
 
                             settings[SimpMusicMigrationDoneKey] = true
                         }
-                    }
-
-                    dataStore.edit { settings ->
-                        settings[LastSeenVersionKey] = currentVersion
                     }
                 }
 
@@ -889,8 +875,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                var showAccountDialog by remember { mutableStateOf(false) }
-
                 val pauseListenHistory by rememberPreference(PauseListenHistoryKey, defaultValue = false)
                 val eventCount by database.eventCount().collectAsState(initial = 0)
                 val showHistoryButton =
@@ -909,12 +893,7 @@ class MainActivity : ComponentActivity() {
                     LocalShimmerTheme provides ShimmerTheme,
                     LocalSyncUtils provides syncUtils,
                     LocalListenTogetherManager provides listenTogetherManager,
-                    LocalChangelogState provides showChangelog,
                 ) {
-                    if (showChangelog.value) {
-                        ChangelogScreen(onDismiss = { showChangelog.value = false })
-                    }
-
                     Scaffold(
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
@@ -952,30 +931,6 @@ class MainActivity : ComponentActivity() {
                                                         painter = painterResource(R.drawable.group_outlined),
                                                         contentDescription = stringResource(R.string.together),
                                                     )
-                                                }
-                                            }
-                                            IconButton(onClick = { showAccountDialog = true }) {
-                                                BadgedBox(badge = {
-                                                    if (latestVersionName != BuildConfig.VERSION_NAME) {
-                                                        Badge()
-                                                    }
-                                                }) {
-                                                    if (accountImageUrl != null) {
-                                                        AsyncImage(
-                                                            model = accountImageUrl,
-                                                            contentDescription = stringResource(R.string.account),
-                                                            modifier =
-                                                                Modifier
-                                                                    .size(24.dp)
-                                                                    .clip(CircleShape),
-                                                        )
-                                                    } else {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.account),
-                                                            contentDescription = stringResource(R.string.account),
-                                                            modifier = Modifier.size(24.dp),
-                                                        )
-                                                    }
                                                 }
                                             }
                                         },
@@ -1074,6 +1029,7 @@ class MainActivity : ComponentActivity() {
                                         pureBlack = pureBlack,
                                         slimNav = slimNav,
                                         onSearchLongClick = onSearchLongClick,
+                                        accountImageUrl = accountImageUrl,
                                         modifier =
                                             Modifier
                                                 .align(Alignment.BottomCenter)
@@ -1188,18 +1144,25 @@ class MainActivity : ComponentActivity() {
                                     onItemClick = onRailItemClick,
                                     pureBlack = pureBlack,
                                     onSearchLongClick = onRailSearchLongClick,
+                                    accountImageUrl = accountImageUrl,
                                 )
                             }
                             Box(Modifier.weight(1f)) {
+                                val onboardingCompleted = remember { dataStore[OnboardingCompletedKey] ?: false }
+
                                 // NavHost with animations (Material 3 Expressive style)
                                 NavHost(
                                     navController = navController,
                                     startDestination =
-                                        when (tabOpenedFromShortcut ?: defaultOpenTab) {
-                                            NavigationTab.HOME -> Screens.Home
-                                            NavigationTab.LIBRARY -> Screens.Library
-                                            else -> Screens.Home
-                                        }.route,
+                                        if (!onboardingCompleted) {
+                                            "onboarding"
+                                        } else {
+                                            when (tabOpenedFromShortcut ?: defaultOpenTab) {
+                                                NavigationTab.HOME -> Screens.Home
+                                                NavigationTab.LIBRARY -> Screens.Library
+                                                else -> Screens.Home
+                                            }.route
+                                        },
                                     // Enter Transition - smoother with smaller offset and longer duration
                                     enterTransition = {
                                         val currentRouteIndex =
@@ -1291,17 +1254,6 @@ class MainActivity : ComponentActivity() {
                         state = LocalBottomSheetPageState.current,
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
-
-                    if (showAccountDialog) {
-                        AccountSettingsDialog(
-                            navController = navController,
-                            onDismiss = {
-                                showAccountDialog = false
-                                homeViewModel.refresh()
-                            },
-                            latestVersionName = latestVersionName,
-                        )
-                    }
 
                     sharedSong?.let { song ->
                         playerConnection?.let {
@@ -1480,5 +1432,4 @@ val LocalPlayerAwareWindowInsets = compositionLocalOf<WindowInsets> { error("No 
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }
 val LocalListenTogetherManager = staticCompositionLocalOf<com.metrolist.music.listentogether.ListenTogetherManager?> { null }
-val LocalChangelogState = staticCompositionLocalOf<MutableState<Boolean>> { error("No LocalChangelogState provided") }
 val LocalIsPlayerExpanded = compositionLocalOf { false }

@@ -24,6 +24,13 @@ sealed class Screens(
         route = "home"
     )
 
+    object WhatNew : Screens(
+        titleId = R.string.what_new,
+        iconIdInactive = R.drawable.newspaper,
+        iconIdActive = R.drawable.newspaper,
+        route = "what_new"
+    )
+
     object Search : Screens(
         titleId = R.string.search,
         iconIdInactive = R.drawable.search,
@@ -40,12 +47,19 @@ sealed class Screens(
 
     object Library : Screens(
         titleId = R.string.filter_library,
-        iconIdInactive = R.drawable.library_music_outlined,
-        iconIdActive = R.drawable.library_music_filled,
+        iconIdInactive = R.drawable.bookmark_outlined,
+        iconIdActive = R.drawable.bookmark_filled,
         route = "library"
     )
 
+    object Account : Screens(
+        titleId = R.string.account,
+        iconIdInactive = R.drawable.account,
+        iconIdActive = R.drawable.account,
+        route = "settings"
+    )
+
     companion object {
-        val MainScreens = listOf(Home, Search, ListenTogether, Library)
+        val MainScreens = listOf(Home, WhatNew, Library, Account, Search)
     }
 }

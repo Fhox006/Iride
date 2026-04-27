@@ -606,9 +606,10 @@ fun LibraryMixScreen(
                             is Song -> {
                                 SongListItem(
                                     song = item,
-                                    showInLibraryIcon = true,
+                                    showInLibraryIcon = false,
                                     isActive = item.id == mediaMetadata?.id,
                                     isPlaying = isPlaying,
+                                    showLikedIcon = false,
                                     trailingContent = {
                                         IconButton(
                                             onClick = {
@@ -663,6 +664,7 @@ fun LibraryMixScreen(
                             is Artist -> {
                                 ArtistListItem(
                                     artist = item,
+                                    showLikedIcon = false,
                                     trailingContent = {
                                         IconButton(
                                             onClick = {
@@ -705,6 +707,7 @@ fun LibraryMixScreen(
                             is Album -> {
                                 AlbumListItem(
                                     album = item,
+                                    showLikedIcon = false,
                                     isActive = item.id == mediaMetadata?.album?.id,
                                     isPlaying = isPlaying,
                                     trailingContent = {
@@ -936,9 +939,10 @@ fun LibraryMixScreen(
                             is Song -> {
                                 SongGridItem(
                                     song = item,
-                                    showInLibraryIcon = true,
+                                    showInLibraryIcon = false,
                                     isActive = item.id == mediaMetadata?.id,
                                     isPlaying = isPlaying,
+                                    showLikedIcon = false,
                                     fillMaxWidth = true,
                                     modifier =
                                         Modifier
@@ -976,6 +980,7 @@ fun LibraryMixScreen(
                             is Artist -> {
                                 ArtistGridItem(
                                     artist = item,
+                                    showLikedIcon = false,
                                     fillMaxWidth = true,
                                     modifier =
                                         Modifier
@@ -1001,6 +1006,7 @@ fun LibraryMixScreen(
                             is Album -> {
                                 AlbumGridItem(
                                     album = item,
+                                    showLikedIcon = false,
                                     isActive = item.id == mediaMetadata?.album?.id,
                                     isPlaying = isPlaying,
                                     coroutineScope = coroutineScope,

@@ -5,7 +5,12 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,11 +33,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.metrolist.music.R
 
 /**
  * A Material 3 Expressive style settings group component
@@ -43,10 +54,11 @@ import androidx.compose.ui.unit.dp
 fun Material3SettingsGroup(
     title: String? = null,
     items: List<Material3SettingsItem>,
-    useLowContrast: Boolean = false
+    useLowContrast: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
     ) {
         // Section title
@@ -200,6 +212,72 @@ private fun Material3SettingsItemRow(
         item.trailingContent?.let { trailing ->
             Spacer(modifier = Modifier.width(8.dp))
             trailing()
+        }
+    }
+}
+
+/**
+ * A collapsible section within a settings screen.
+ * Renders a styled header row that toggles visibility of [content].
+ * @param title Label shown in the header row
+ * @param defaultExpanded Whether the section starts expanded (default: false)
+ */
+@Composable
+fun ExpandableSettingsSection(
+    title: String,
+    modifier: Modifier = Modifier,
+    defaultExpanded: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    var expanded by remember { mutableStateOf(defaultExpanded) }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded },
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Icon(
+                    painter = painterResource(
+                        if (expanded) R.drawable.expand_less else R.drawable.expand_more
+                    ),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                content()
+            }
         }
     }
 }

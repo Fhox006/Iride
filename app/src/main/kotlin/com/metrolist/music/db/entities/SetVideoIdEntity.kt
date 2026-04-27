@@ -13,4 +13,6 @@ data class SetVideoIdEntity(
     @PrimaryKey(autoGenerate = false)
     val videoId: String = "",
     val setVideoId: String? = null,
+    @androidx.room.ColumnInfo(defaultValue = "0")
+    val timestamp: Long = System.currentTimeMillis(),
 )

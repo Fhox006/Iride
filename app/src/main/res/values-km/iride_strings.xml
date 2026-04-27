@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_history">áž›áž¾áž§áž”áž€ážšážŽáŸ</string>
+    <string name="charts">ážáž¶ážšáž¶áž„</string>
+    <string name="back_button_desc">ážáŸ’ážšáž¡áž”áŸ‹áž€áŸ’ážšáŸ„áž™</string>
+    <string name="album_cover_desc">áž‚áž˜áŸ’ážšáž”áž¢áž¶áž›áŸ‹áž”áŸŠáž»áž˜</string>
+    <string name="top_music_videos">ážœáž¸ážŠáŸáž¢áž¼áž…áž˜áŸ’ážšáŸ€áž„áž–áŸáž‰áž“áž·áž™áž˜</string>
+    <string name="trending">áž€áŸ†áž–áž»áž„áž–áŸáž‰áž“áž·áž™áž˜</string>
+    <string name="weeks">ážŸáž”áŸ’ážáž¶áž áŸ</string>
+    <string name="months">ážáŸ‚</string>
+    <string name="years">áž†áŸ’áž“áž¶áŸ†</string>
+    <string name="continuous">áž”áž“áŸ’ážáž‡áž¶áž”áŸ‹áž‚áŸ’áž“áž¶</string>
+    <string name="liked">áž…áž¼áž›áž…áž·ážáŸ’áž</string>
+    <string name="offline">áž”áž¶áž“áž‘áž¶áž‰áž™áž€</string>
+    <string name="time_transfer_target_song">Brano di destinazione</string>
+    <string name="time_transfer_listen_time_label">Tempo d\'ascolto:</string>
+    <string name="time_transfer_convert">Convertire</string>
+    <string name="song_dropdown_more_results">Scrivi ancora per restringere i risultati (%d in piÃ¹)</string>
+</resources>

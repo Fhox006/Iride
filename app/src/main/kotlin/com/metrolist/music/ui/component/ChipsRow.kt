@@ -7,6 +7,7 @@ package com.metrolist.music.ui.component
 
 import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.layout.height
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -62,6 +63,11 @@ fun <E> ChipsRow(
     onValueUpdate: (E) -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    selectedContainerColor: Color = MaterialTheme.colorScheme.primary,
+    onSelectedContainerColor: Color = MaterialTheme.colorScheme.onPrimary,
+    chipHeight: androidx.compose.ui.unit.Dp = 32.dp,
+    horizontalPadding: androidx.compose.ui.unit.Dp = 12.dp,
+    labelStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.labelLarge,
 ) {
     Row(
         modifier =
@@ -70,18 +76,31 @@ fun <E> ChipsRow(
             .horizontalScroll(rememberScrollState())
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
     ) {
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(horizontalPadding))
 
         chips.forEach { (value, label) ->
             FilterChip(
-                label = { Text(label) },
+                modifier = Modifier.height(chipHeight),
+                label = { 
+                    Text(
+                        text = label,
+                        style = labelStyle
+                    ) 
+                },
                 selected = currentValue == value,
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = containerColor,
+                    selectedContainerColor = selectedContainerColor,
+                    selectedLabelColor = onSelectedContainerColor,
+                    selectedLeadingIconColor = onSelectedContainerColor,
+                    selectedTrailingIconColor = onSelectedContainerColor,
                 ),
                 onClick = { onValueUpdate(value) },
                 shape = RoundedCornerShape(16.dp),
-                border = null
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = currentValue == value,
+                ),
             )
 
             Spacer(Modifier.width(8.dp))

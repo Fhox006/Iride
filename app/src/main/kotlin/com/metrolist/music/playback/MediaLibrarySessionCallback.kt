@@ -14,6 +14,7 @@ import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
@@ -100,6 +101,30 @@ constructor(
                 .build(),
             connectionResult.availablePlayerCommands,
         )
+    }
+
+    override fun onPlayerCommandRequest(
+        session: MediaSession,
+        controller: MediaSession.ControllerInfo,
+        playerCommand: Int,
+    ): Int {
+        when (playerCommand) {
+            Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
+                if (service.skipWithFade(forward = true)) {
+                    return SessionResult.RESULT_ERROR_NOT_SUPPORTED
+                }
+            }
+            Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
+                val p = session.player
+                val faded = if (p.currentPosition > 3000 || !p.hasPreviousMediaItem()) {
+                    service.skipWithFade(restartCurrent = true)
+                } else {
+                    service.skipWithFade(forward = false)
+                }
+                if (faded) return SessionResult.RESULT_ERROR_NOT_SUPPORTED
+            }
+        }
+        return super.onPlayerCommandRequest(session, controller, playerCommand)
     }
 
     override fun onCustomCommand(

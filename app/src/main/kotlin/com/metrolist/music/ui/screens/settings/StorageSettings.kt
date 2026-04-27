@@ -52,6 +52,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.EnableSongCacheKey
 import com.metrolist.music.constants.MaxImageCacheSizeKey
+import com.metrolist.music.constants.MaxResolvedTrackCacheSizeKey
 import com.metrolist.music.constants.MaxSongCacheSizeKey
 import com.metrolist.music.extensions.tryOrNull
 import com.metrolist.music.ui.component.ActionPromptDialog
@@ -88,18 +89,14 @@ fun StorageSettings(
         key = MaxImageCacheSizeKey,
         defaultValue = 512
     )
-    val (maxSongCacheSize, onMaxSongCacheSizeChange) = rememberPreference(
-        key = MaxSongCacheSizeKey,
-        defaultValue = 1024
-    )
-    val (enableSongCache, onEnableSongCacheChange) = rememberPreference(
-        key = EnableSongCacheKey,
-        defaultValue = true
-    )
+    val (maxSongCacheSize, onMaxSongCacheSizeChange) = rememberPreference(key = MaxSongCacheSizeKey, defaultValue = 1024)
+    val (maxResolvedTrackCacheSize, onMaxResolvedTrackCacheSizeChange) = rememberPreference(key = MaxResolvedTrackCacheSizeKey, defaultValue = 1000)
+    val (enableSongCache, onEnableSongCacheChange) = rememberPreference(key = EnableSongCacheKey, defaultValue = true)
 
     var clearDownloads by remember { mutableStateOf(false) }
     var clearCacheDialog by remember { mutableStateOf(false) }
     var clearImageCacheDialog by remember { mutableStateOf(false) }
+    var clearResolvedTrackCacheDialog by remember { mutableStateOf(false) }
 
     // State for the confirmation dialog
     var showCacheWarningDialog by remember { mutableStateOf(false) }
@@ -116,6 +113,16 @@ fun StorageSettings(
     var downloadCacheSize by remember {
         mutableLongStateOf(tryOrNull { downloadCache.cacheSpace } ?: 0)
     }
+    var resolvedTrackCount by remember {
+        mutableStateOf(0)
+    }
+
+    LaunchedEffect(Unit) {
+        coroutineScope.launch(Dispatchers.IO) {
+            resolvedTrackCount = database.getSetVideoIdCount()
+        }
+    }
+
     val imageCacheProgress by animateFloatAsState(
         targetValue =
             (imageCacheSize.toFloat() / (maxImageCacheSize * 1024 * 1024L)).coerceIn(
@@ -241,6 +248,24 @@ fun StorageSettings(
             onCancel = { clearImageCacheDialog = false },
             content = {
                 Text(text = stringResource(R.string.clear_image_cache_dialog))
+            },
+        )
+    }
+
+    if (clearResolvedTrackCacheDialog) {
+        ActionPromptDialog(
+            title = stringResource(R.string.clear_resolved_track_cache),
+            onDismiss = { clearResolvedTrackCacheDialog = false },
+            onConfirm = {
+                coroutineScope.launch(Dispatchers.IO) {
+                    database.clearSetVideoIdCache()
+                    resolvedTrackCount = 0
+                }
+                clearResolvedTrackCacheDialog = false
+            },
+            onCancel = { clearResolvedTrackCacheDialog = false },
+            content = {
+                Text(text = stringResource(R.string.clear_resolved_track_cache_dialog))
             },
         )
     }
@@ -472,6 +497,46 @@ fun StorageSettings(
                         },
                     ),
                 ),
+        )
+
+        Material3SettingsGroup(
+            title = stringResource(R.string.resolved_track_cache),
+            items = listOf(
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.manage_search),
+                    title = { Text(stringResource(R.string.max_resolved_track_cache_size)) },
+                    description = {
+                        val cacheValues = remember { listOf(100, 500, 1000, 2000, 5000, 10000, -1) }
+                        Column {
+                            Text(
+                                text = when (maxResolvedTrackCacheSize) {
+                                    -1 -> stringResource(R.string.unlimited)
+                                    else -> "$maxResolvedTrackCacheSize entries"
+                                }
+                            )
+                            Slider(
+                                value = cacheValues.indexOf(maxResolvedTrackCacheSize).toFloat(),
+                                onValueChange = {
+                                    onMaxResolvedTrackCacheSizeChange(cacheValues[it.roundToInt()])
+                                },
+                                steps = cacheValues.size - 2,
+                                valueRange = 0f..(cacheValues.size - 1).toFloat(),
+                            )
+                            Text(
+                                text = "$resolvedTrackCount / ${if (maxResolvedTrackCacheSize == -1) "∞" else maxResolvedTrackCacheSize}",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.clear_all),
+                    title = { Text(stringResource(R.string.clear_resolved_track_cache)) },
+                    onClick = {
+                        clearResolvedTrackCacheDialog = true
+                    }
+                )
+            )
         )
     }
 

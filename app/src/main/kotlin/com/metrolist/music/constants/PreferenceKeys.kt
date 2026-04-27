@@ -90,7 +90,11 @@ val EnableBetterLyricsKey = booleanPreferencesKey("enableBetterLyrics")
 val EnablePaxsenixKey = booleanPreferencesKey("enablePaxsenix")
 val EnableLyricsPlus = booleanPreferencesKey("enableLyricsPlus")
 val HideExplicitKey = booleanPreferencesKey("hideExplicit")
+val ShowExplicitBadgeKey = booleanPreferencesKey("showExplicitBadge")
 val HideVideoSongsKey = booleanPreferencesKey("hideVideoSongs")
+val ResolveVideoSongsKey = booleanPreferencesKey("resolveVideoSongs")
+val HideVideoOnlyResultsKey = booleanPreferencesKey("hideVideoOnlyResults")
+val HideVideosInLibraryKey = booleanPreferencesKey("hideVideosInLibrary")
 val HideYoutubeShortsKey = booleanPreferencesKey("hideYoutubeShorts")
 val ShowArtistDescriptionKey = booleanPreferencesKey("showArtistDescription")
 val ShowArtistSubscriberCountKey = booleanPreferencesKey("showArtistSubscriberCount")
@@ -136,9 +140,12 @@ val PreventDuplicateTracksInQueueKey = booleanPreferencesKey("preventDuplicateTr
 val CrossfadeEnabledKey = booleanPreferencesKey("crossfadeEnabled")
 val CrossfadeDurationKey = floatPreferencesKey("crossfadeDurationFloat")
 val CrossfadeGaplessKey = booleanPreferencesKey("crossfadeGapless")
+val SkipFadeKey = booleanPreferencesKey("skipFade")
+val SkipFadeDurationKey = floatPreferencesKey("skipFadeDuration")
 
 val MaxImageCacheSizeKey = intPreferencesKey("maxImageCacheSize")
 val MaxSongCacheSizeKey = intPreferencesKey("maxSongCacheSize")
+val MaxResolvedTrackCacheSizeKey = intPreferencesKey("maxResolvedTrackCacheSize")
 val EnableSongCacheKey = booleanPreferencesKey("enableSongCache")
 
 val PauseListenHistoryKey = booleanPreferencesKey("pauseListenHistory")
@@ -238,10 +245,10 @@ val QuickPicksKey = stringPreferencesKey("discover")
 val PreferredLyricsProviderKey = stringPreferencesKey("lyricsProvider")
 val LyricsProviderOrderKey = stringPreferencesKey("lyricsProviderOrder")
 val SimpMusicMigrationDoneKey = booleanPreferencesKey("simpMusicMigrationDone")
+val OnboardingCompletedKey = booleanPreferencesKey("onboardingCompleted")
 val QueueEditLockKey = booleanPreferencesKey("queueEditLock")
 val ShowWrappedCardKey = booleanPreferencesKey("show_wrapped_card")
 val WrappedSeenKey = booleanPreferencesKey("wrapped_seen")
-val LastSeenVersionKey = stringPreferencesKey("lastSeenVersion")
 val RandomizeHomeOrderKey = booleanPreferencesKey("randomizeHomeOrder")
 
 val ShowLikedPlaylistKey = booleanPreferencesKey("show_liked_playlist")
@@ -249,6 +256,9 @@ val ShowDownloadedPlaylistKey = booleanPreferencesKey("show_downloaded_playlist"
 val ShowTopPlaylistKey = booleanPreferencesKey("show_top_playlist")
 val ShowCachedPlaylistKey = booleanPreferencesKey("show_cached_playlist")
 val ShowUploadedPlaylistKey = booleanPreferencesKey("show_uploaded_playlist")
+
+val GlobalTop50CacheKey = stringPreferencesKey("global_top_50_cache")
+val GlobalTop50LastUpdateKey = longPreferencesKey("global_top_50_last_update")
 
 enum class LibraryViewType {
     LIST,

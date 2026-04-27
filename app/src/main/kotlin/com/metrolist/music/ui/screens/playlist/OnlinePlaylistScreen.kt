@@ -147,7 +147,7 @@ fun OnlinePlaylistScreen(
             } else {
                 songs.mapIndexed { i, s -> i to s }.filter {
                     it.second.title.contains(query.text, true) ||
-                        it.second.artists.fastAny { a -> a.name.contains(query.text, true) }
+                            it.second.artists.fastAny { a -> a.name.contains(query.text, true) }
                 }
             }
         }
@@ -226,7 +226,9 @@ fun OnlinePlaylistScreen(
                                 textAlign = TextAlign.Center,
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            androidx.compose.material3.TextButton(onClick = { viewModel.retry() }) {
+                            androidx.compose.material3.TextButton(
+                                onClick = { viewModel.retry() }
+                            ) {
                                 Text(stringResource(R.string.retry))
                             }
                         }
@@ -542,7 +544,6 @@ private fun OnlinePlaylistHeader(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Metadata - Song Count • Duration
         val totalDuration = songs.sumOf { it.duration ?: 0 }
         Text(
             text =
@@ -573,7 +574,6 @@ private fun OnlinePlaylistHeader(
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Like Button - Smaller secondary button
             Surface(
                 onClick = {
                     if (dbPlaylist != null) {
@@ -640,7 +640,6 @@ private fun OnlinePlaylistHeader(
                 }
             }
 
-            // Play Button - Larger primary circular button
             Surface(
                 onClick = {
                     if (!isListenTogetherGuest && songs.isNotEmpty()) {
@@ -671,7 +670,6 @@ private fun OnlinePlaylistHeader(
                 }
             }
 
-            // Menu Button - Smaller secondary button
             Surface(
                 onClick = {
                     menuState.show {

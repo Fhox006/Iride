@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_history">à¬¸à­à¬¥à¬¾à¬¨à­€à­Ÿ</string>
+    <string name="remote_history">à¬¦à­‚à¬°à¬¸à­à¬¥</string>
+    <string name="charts">à¬šà¬¾à¬°à­à¬Ÿ</string>
+    <string name="back_button_desc">à¬ªà¬›à¬•à­</string>
+    <string name="album_cover_desc">à¬†à¬²à¬¬à¬®à­ à¬®à¬²à¬¾à¬Ÿ</string>
+    <string name="top_music_videos">à¬¶à­à¬°à­‡à¬·à­à¬  à¬¸à¬™à­à¬—à­€à¬¤ à¬­à¬¿à¬¡à¬¿à¬“</string>
+    <string name="trending">à¬¸à¬¦à­à­Ÿà¬¤à¬® à¬šà¬°à­à¬šà­à¬šà¬¿à¬¤</string>
+    <string name="weeks">à¬¸à¬ªà­à¬¤à¬¾à¬¹</string>
+    <string name="months">à¬®à¬¾à¬¸</string>
+    <string name="years">à¬¬à¬°à­à¬·</string>
+    <string name="continuous">à¬²à¬—à¬¾à¬¤à¬¾à¬°</string>
+    <string name="liked">à¬ªà¬¸à¬¨à­à¬¦ à¬•à¬°à¬¿à¬¥à¬¿à¬¬à¬¾</string>
+    <string name="offline">à¬¡à¬¾à¬‰à¬¨à¬²à­‹à¬¡ à¬¹à­‹à¬‡à¬›à¬¿</string>
+    <string name="my_top">à¬®à­‹à¬° à¬ªà­à¬°à¬¿à­Ÿ</string>
+    <string name="uploaded_playlist">à¬‰à¬ªà¬²à­‹à¬¡ à¬¹à­‡à¬‡à¬›à¬¿</string>
+    <string name="filter_uploaded">à¬…à¬ªà¬²à­‹à¬¡à¬¼ à¬¹à­‡à¬‡à¬›à¬¿</string>
+    <string name="generating_image">à¬šà¬¿à¬¤à­à¬° à¬ªà­à¬°à¬¸à­à¬¤à­à¬¤ à¬¹à­‡à¬‰à¬›à¬¿</string>
+    <string name="please_wait">à¬…à¬ªà­‡à¬•à­à¬·à¬¾ à¬•à¬°à¬¨à­à¬¤à­</string>
+    <string name="cancel">à¬¬à¬¨à­à¬¦ à¬•à¬°à¬¨à­à¬¤à­</string>
+    <string name="enable">à¬šà¬¾à¬²à­</string>
+</resources>

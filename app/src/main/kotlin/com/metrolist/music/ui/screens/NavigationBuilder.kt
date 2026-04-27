@@ -49,6 +49,9 @@ import com.metrolist.music.ui.screens.settings.BackupAndRestore
 import com.metrolist.music.ui.screens.settings.ContentSettings
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.screens.settings.DiscordLoginScreen
+import com.metrolist.music.ui.screens.settings.InterfaceSettings
+import com.metrolist.music.ui.screens.settings.LyricsSettings
+import com.metrolist.music.ui.screens.settings.PlayerAppearanceSettings
 import com.metrolist.music.ui.screens.settings.PlayerSettings
 import com.metrolist.music.ui.screens.settings.PrivacySettings
 import com.metrolist.music.ui.screens.settings.RomanizationSettings
@@ -72,13 +75,21 @@ fun NavGraphBuilder.navigationBuilder(
     activity: Activity,
     snackbarHostState: SnackbarHostState,
 ) {
+    composable("onboarding") {
+        OnboardingScreen(navController = navController)
+    }
+
     composable(Screens.Home.route) {
         HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
     }
 
+    composable(Screens.WhatNew.route) {
+        WhatNewScreen(navController = navController)
+    }
+
     composable(Screens.Search.route) { backStackEntry ->
-        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
-        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
+        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = true)
+        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
         val isSystemInDarkTheme = isSystemInDarkTheme()
         val useDarkTheme =
             remember(darkTheme, isSystemInDarkTheme) {
@@ -354,7 +365,19 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable("settings/appearance/theme") {
-        ThemeScreen(navController)
+        ThemeScreen(navController, activity, snackbarHostState)
+    }
+
+    composable("settings/appearance/interface") {
+        InterfaceSettings(navController, activity)
+    }
+
+    composable("settings/appearance/player") {
+        PlayerAppearanceSettings(navController)
+    }
+
+    composable("settings/appearance/lyrics") {
+        LyricsSettings(navController)
     }
 
     composable("settings/content") {

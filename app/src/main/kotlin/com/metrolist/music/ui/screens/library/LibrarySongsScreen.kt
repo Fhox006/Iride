@@ -50,6 +50,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -339,7 +340,7 @@ fun LibrarySongsScreen(
                 key = "filter",
                 contentType = CONTENT_TYPE_HEADER,
             ) {
-                Row {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Spacer(Modifier.width(12.dp))
                     FilterChip(
                         label = { Text(stringResource(R.string.songs)) },
@@ -442,10 +443,10 @@ fun LibrarySongsScreen(
             ) { index, song ->
                 SongListItem(
                     song = song,
-                    showInLibraryIcon = true,
+                    showInLibraryIcon = false,
                     isActive = song.id == mediaMetadata?.id,
                     isPlaying = isPlaying,
-                    showLikedIcon = true,
+                    showLikedIcon = false,
                     showDownloadIcon = filter != SongFilter.DOWNLOADED,
                     trailingContent = {
                         IconButton(

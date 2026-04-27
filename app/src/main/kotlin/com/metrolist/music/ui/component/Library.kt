@@ -35,6 +35,7 @@ fun LibraryArtistListItem(
     modifier: Modifier = Modifier
 ) = ArtistListItem(
     artist = artist,
+    showLikedIcon = false,
     trailingContent = {
         androidx.compose.material3.IconButton(
             onClick = {
@@ -70,6 +71,7 @@ fun LibraryArtistGridItem(
     modifier: Modifier = Modifier
 ) = ArtistGridItem(
     artist = artist,
+    showLikedIcon = false,
     fillMaxWidth = true,
     modifier = modifier
         .fillMaxWidth()
@@ -99,6 +101,7 @@ fun LibraryAlbumListItem(
     isPlaying: Boolean = false
 ) = AlbumListItem(
     album = album,
+    showLikedIcon = false,
     isActive = isActive,
     isPlaying = isPlaying,
     trailingContent = {
@@ -138,6 +141,7 @@ fun LibraryAlbumGridItem(
     isPlaying: Boolean = false
 ) = AlbumGridItem(
     album = album,
+    showLikedIcon = false,
     isActive = isActive,
     isPlaying = isPlaying,
     coroutineScope = coroutineScope,

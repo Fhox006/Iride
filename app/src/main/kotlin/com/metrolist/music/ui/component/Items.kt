@@ -103,6 +103,7 @@ import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
+import com.metrolist.music.constants.ShowExplicitBadgeKey
 import com.metrolist.music.constants.SmallGridThumbnailHeight
 import com.metrolist.music.constants.SwipeToSongKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
@@ -157,7 +158,7 @@ inline fun ListItem(
                 .background(
                     color = // selected active
                         if (isSelected == true) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                        else MaterialTheme.colorScheme.secondaryContainer
+                        else Color.White.copy(alpha = 0.1f)
                 )
         } else if (isSelected == true) {
             modifier // inactive selected
@@ -295,17 +296,17 @@ fun GridItem(
     thumbnailContent: @Composable BoxWithConstraintsScope.() -> Unit,
     thumbnailRatio: Float = 1f,
     fillMaxWidth: Boolean = false,
+    size: Dp = currentGridThumbnailHeight(),
 ) {
-    val gridHeight = currentGridThumbnailHeight()
     Column(
         modifier = if (fillMaxWidth) {
             modifier
-                .padding(12.dp)
+                .padding(8.dp)
                 .fillMaxWidth()
         } else {
             modifier
-                .padding(12.dp)
-                .width(gridHeight * thumbnailRatio)
+                .padding(8.dp)
+                .width(size * thumbnailRatio)
         }
     ) {
         BoxWithConstraints(
@@ -313,7 +314,7 @@ fun GridItem(
             modifier = if (fillMaxWidth) {
                 Modifier.fillMaxWidth()
             } else {
-                Modifier.height(gridHeight)
+                Modifier.height(size)
             }
                 .aspectRatio(thumbnailRatio)
         ) {
@@ -508,8 +509,9 @@ fun SongGridItem(
 fun ArtistListItem(
     artist: Artist,
     modifier: Modifier = Modifier,
+    showLikedIcon: Boolean = true,
     badges: @Composable RowScope.() -> Unit = {
-        if (artist.artist.bookmarkedAt != null) {
+        if (showLikedIcon && artist.artist.bookmarkedAt != null) {
             Icon(
                 painter = painterResource(R.drawable.favorite),
                 contentDescription = null,
@@ -547,8 +549,9 @@ fun ArtistListItem(
 fun ArtistGridItem(
     artist: Artist,
     modifier: Modifier = Modifier,
+    showLikedIcon: Boolean = true,
     badges: @Composable RowScope.() -> Unit = {
-        if (artist.artist.bookmarkedAt != null) {
+        if (showLikedIcon && artist.artist.bookmarkedAt != null) {
             Icon.Favorite()
         }
     },
@@ -644,6 +647,7 @@ fun AlbumGridItem(
     album: Album,
     modifier: Modifier = Modifier,
     coroutineScope: CoroutineScope,
+    showLikedIcon: Boolean = true,
     badges: @Composable RowScope.() -> Unit = {
         val downloadUtil = LocalDownloadUtil.current
         val database = LocalDatabase.current
@@ -670,7 +674,7 @@ fun AlbumGridItem(
             )
         }
 
-        if (album.album.bookmarkedAt != null) {
+        if (showLikedIcon && album.album.bookmarkedAt != null) {
             Icon.Favorite()
         }
         if (album.album.explicit) {
@@ -681,6 +685,8 @@ fun AlbumGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
+    showPlayButton: Boolean = true,
+    size: Dp = currentGridThumbnailHeight(),
 ) = GridItem(
     title = {
         Text(
@@ -714,21 +720,24 @@ fun AlbumGridItem(
             shape = RoundedCornerShape(ThumbnailCornerRadius),
         )
 
-        AlbumPlayButton(
-            visible = !isActive,
-            onClick = {
-                scope.launch {
-                    val albumWithSongs = withContext(Dispatchers.IO) {
-                        database.albumWithSongs(album.id).firstOrNull()
-                    }
-                    albumWithSongs?.let {
-                        playerConnection.playQueue(LocalAlbumRadio(it))
+        if (showPlayButton) {
+            AlbumPlayButton(
+                visible = !isActive,
+                onClick = {
+                    scope.launch {
+                        val albumWithSongs = withContext(Dispatchers.IO) {
+                            database.albumWithSongs(album.id).firstOrNull()
+                        }
+                        albumWithSongs?.let {
+                            playerConnection.playQueue(LocalAlbumRadio(it))
+                        }
                     }
                 }
-            }
-        )
+            )
+        }
     },
     fillMaxWidth = fillMaxWidth,
+    size = size,
     modifier = modifier
 )
 
@@ -1070,20 +1079,26 @@ fun YouTubeGridItem(
         }
     },
     thumbnailRatio: Float = if (item is SongItem) 16f / 9 else 1f,
+    thumbnailCornerRadius: Dp = ThumbnailCornerRadius,
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
+    showPlayButton: Boolean = true,
+    size: Dp = currentGridThumbnailHeight(),
+    showTitle: Boolean = true,
 ) = GridItem(
     title = {
-        Text(
-            text = item.title,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start,
-            modifier = Modifier.basicMarquee().fillMaxWidth()
-        )
+        if (showTitle) {
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start,
+                modifier = Modifier.basicMarquee().fillMaxWidth()
+            )
+        }
     },
     subtitle = {
         val subtitle = when (item) {
@@ -1114,7 +1129,7 @@ fun YouTubeGridItem(
             thumbnailUrl = item.thumbnail,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(ThumbnailCornerRadius),
+            shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(thumbnailCornerRadius),
         )
 
         if (item is SongItem && !isActive) {
@@ -1123,28 +1138,31 @@ fun YouTubeGridItem(
             )
         }
 
-        AlbumPlayButton(
-            visible = item is AlbumItem && !isActive,
-            onClick = {
-                scope.launch(Dispatchers.IO) {
-                    var albumWithSongs = database.albumWithSongs(item.id).first()
-                    if (albumWithSongs?.songs.isNullOrEmpty()) {
-                        YouTube.album(item.id).onSuccess { albumPage ->
-                            database.transaction { insert(albumPage) }
-                            albumWithSongs = database.albumWithSongs(item.id).first()
-                        }.onFailure { reportException(it) }
-                    }
-                    albumWithSongs?.let {
-                        withContext(Dispatchers.Main) {
-                            playerConnection.playQueue(LocalAlbumRadio(it))
+        if (showPlayButton) {
+            AlbumPlayButton(
+                visible = item is AlbumItem && !isActive,
+                onClick = {
+                    scope.launch(Dispatchers.IO) {
+                        var albumWithSongs = database.albumWithSongs(item.id).first()
+                        if (albumWithSongs?.songs.isNullOrEmpty()) {
+                            YouTube.album(item.id).onSuccess { albumPage ->
+                                database.transaction { insert(albumPage) }
+                                albumWithSongs = database.albumWithSongs(item.id).first()
+                            }.onFailure { reportException(it) }
+                        }
+                        albumWithSongs?.let {
+                            withContext(Dispatchers.Main) {
+                                playerConnection.playQueue(LocalAlbumRadio(it))
+                            }
                         }
                     }
                 }
-            }
-        )
+            )
+        }
     },
     thumbnailRatio = thumbnailRatio,
     fillMaxWidth = fillMaxWidth,
+    size = size,
     modifier = modifier
 )
 
@@ -1775,12 +1793,15 @@ object Icon {
 
     @Composable
     fun Explicit() {
-        Icon(
-            painter = painterResource(R.drawable.explicit),
-            contentDescription = null,
-            modifier = Modifier
-                .size(18.dp)
-                .padding(end = 2.dp)
-        )
+        val showExplicitBadge by rememberPreference(ShowExplicitBadgeKey, defaultValue = false)
+        if (showExplicitBadge) {
+            Icon(
+                painter = painterResource(R.drawable.explicit),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(18.dp)
+                    .padding(end = 2.dp)
+            )
+        }
     }
 }

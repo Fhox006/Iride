@@ -272,10 +272,33 @@ fun AlbumScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        // Year
-                        if (albumWithSongs.album.year != null) {
+                        // Year / Release Date
+                        val releaseDate = albumWithSongs.album.releaseDate
+                        val displayDate = remember(releaseDate, albumWithSongs.album.year) {
+                            if (releaseDate == null) {
+                                albumWithSongs.album.year?.toString()
+                            } else {
+                                val parts = releaseDate.split("-")
+                                when (parts.size) {
+                                    3 -> {
+                                        val y = parts[0]
+                                        val m = parts[1].toInt().toString()
+                                        val d = parts[2].toInt().toString()
+                                        "$d/$m/$y"
+                                    }
+                                    2 -> {
+                                        val y = parts[0]
+                                        val m = parts[1].toInt().toString()
+                                        "$m/$y"
+                                    }
+                                    else -> parts[0]
+                                }
+                            }
+                        }
+
+                        if (displayDate != null) {
                             Text(
-                                text = albumWithSongs.album.year.toString(),
+                                text = displayDate,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                             )

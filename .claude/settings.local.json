@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew :app:compileDebugKotlin)",
+      "Bash(queue)",
+      "Bash(more)",
+      "Bash(radio)",
+      "Bash(replay)",
+      "Bash(loop\" | head -30)",
+      "Bash(./gradlew :app:compileFossDebugKotlin)",
+      "Bash(./gradlew :app:compileDebugKotlin --no-daemon)",
+      "Bash(./gradlew :app:compileFossDebugKotlin --no-daemon)",
+      "Bash(xargs grep *)",
+      "Bash(./gradlew :app:compileFossDebugKotlin --rerun-tasks)",
+      "Bash(./gradlew :app:compileGmsDebugKotlin)",
+      "Bash(text_)",
+      "Bash(format_)",
+      "Bash(note_\")",
+      "Bash(grep -v \"^$\")",
+      "Bash(grep -v \"^[+-]import\\\\|^[+-] \\\\*\\\\|^[+-]//\\\\|^[+-]$\")"
+    ]
+  }
+}

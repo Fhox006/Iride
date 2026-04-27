@@ -1,20 +1,20 @@
 <div align="center">
 
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/icon.png" alt="Metrolist app icon" width="200" />
+<img src="https://github.com/IrideGroup/Iride/blob/main/fastlane/metadata/android/en-US/images/icon.png" alt="Iride app icon" width="200" />
 
-# Metrolist
+# Iride
 
 ### YouTube Music client for Android
 
 <br/>
 
-<a href="https://trendshift.io/repositories/20652" target="_blank"><img src="https://trendshift.io/api/badge/repositories/20652" alt="MetrolistGroup%2FMetrolist | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+<a href="https://trendshift.io/repositories/20652" target="_blank"><img src="https://trendshift.io/api/badge/repositories/20652" alt="IrideGroup%2FIride | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
 <br/>
 
-[![Latest release](https://img.shields.io/github/v/release/MetrolistGroup/Metrolist?style=for-the-badge&labelColor=0d1117)](https://github.com/MetrolistGroup/Metrolist/releases)
-[![License](https://img.shields.io/github/license/MetrolistGroup/metrolist?style=for-the-badge&labelColor=0d1117)](https://github.com/MetrolistGroup/Metrolist/blob/main/LICENSE)
-[![Downloads](https://img.shields.io/github/downloads/MetrolistGroup/Metrolist/total?style=for-the-badge&labelColor=0d1117)](https://github.com/MetrolistGroup/Metrolist/releases)
+[![Latest release](https://img.shields.io/github/v/release/IrideGroup/Iride?style=for-the-badge&labelColor=0d1117)](https://github.com/IrideGroup/Iride/releases)
+[![License](https://img.shields.io/github/license/IrideGroup/metrolist?style=for-the-badge&labelColor=0d1117)](https://github.com/IrideGroup/Iride/blob/main/LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/IrideGroup/Iride/total?style=for-the-badge&labelColor=0d1117)](https://github.com/IrideGroup/Iride/releases)
 
 <br/>
 
@@ -36,12 +36,12 @@
 
 <h1><a id="screenshots"></a>Screenshots</h1>
 
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_1.png" alt="Home screen" width="30%" />
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_2.png" alt="Artist screen" width="30%" />
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_3.png" alt="Recognize music screen" width="30%" />
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_4.png" alt="Listen together screen" width="30%" />
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_5.png" alt="Player screen" width="30%" />
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_6.png" alt="Player lyrics screen" width="30%" />
+<img src="https://github.com/IrideGroup/Iride/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_1.png" alt="Home screen" width="30%" />
+<img src="https://github.com/IrideGroup/Iride/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_2.png" alt="Artist screen" width="30%" />
+<img src="https://github.com/IrideGroup/Iride/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_3.png" alt="Recognize music screen" width="30%" />
+<img src="https://github.com/IrideGroup/Iride/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_4.png" alt="Listen together screen" width="30%" />
+<img src="https://github.com/IrideGroup/Iride/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_5.png" alt="Player screen" width="30%" />
+<img src="https://github.com/IrideGroup/Iride/blob/main/fastlane/metadata/android/en-US/images/screenshots/screenshot_6.png" alt="Player lyrics screen" width="30%" />
 
 </div>
 
@@ -130,7 +130,7 @@
   </tr>
   <tr>
     <td align="center">
-      <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/MetrolistGroup/Metrolist/">
+      <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/IrideGroup/Iride/">
         <img src="https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png" alt="Download from Obtainium" height="50">
       </a>
     </td>
@@ -145,7 +145,7 @@
   </tr>
   <tr>
     <td align="center" colspan="2">
-      <a href="https://github.com/MetrolistGroup/Metrolist/releases/latest/download/Metrolist.apk">
+      <a href="https://github.com/IrideGroup/Iride/releases/latest/download/Iride.apk">
         <img src="https://github.com/machiav3lli/oandbackupx/blob/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png" alt="Download from GitHub" height="75">
       </a>
     </td>
@@ -162,7 +162,7 @@
     </td>
     <td align="center">
       <a href="https://belberi.com/metrolist/">
-        <img src="https://github.com/MetrolistGroup/Metrolist/blob/main/fastlane/metadata/android/en-US/images/belberi_github.png" alt="Download from Belberi" height="75">
+        <img src="https://github.com/IrideGroup/Iride/blob/main/fastlane/metadata/android/en-US/images/belberi_github.png" alt="Download from Belberi" height="75">
       </a>
     </td>
   </tr>
@@ -179,7 +179,7 @@
   <tbody>
     <tr>
       <td align="center">
-        <a href="https://nightly.link/MetrolistGroup/Metrolist/workflows/build/main/app-with-Google-Cast.zip">
+        <a href="https://nightly.link/IrideGroup/Iride/workflows/build/main/app-with-Google-Cast.zip">
           <img src="https://github.com/machiav3lli/oandbackupx/blob/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png" alt="Download from GitHub" height="75">
         </a>
       </td>
@@ -207,13 +207,13 @@
 
 [![Translation status](https://img.shields.io/weblate/progress/metrolist?style=for-the-badge&labelColor=0d1117)](https://hosted.weblate.org/engage/metrolist/)
 
-<h3>We use Weblate to translate Metrolist. <a href="https://hosted.weblate.org/projects/Metrolist/">Help us bring Metrolist to more people!</a></h3>
+<h3>We use Weblate to translate Iride. <a href="https://hosted.weblate.org/projects/Iride/">Help us bring Iride to more people!</a></h3>
 
-<a href="https://hosted.weblate.org/projects/Metrolist/">
-  <img src="https://hosted.weblate.org/widget/Metrolist/horizontal-auto.svg" alt="Translation status" />
+<a href="https://hosted.weblate.org/projects/Iride/">
+  <img src="https://hosted.weblate.org/widget/Iride/horizontal-auto.svg" alt="Translation status" />
 </a>
 
-<h3>Thank you very much. Every translation makes Metrolist a little more accessible to someone, somewhere in the world!</h3>
+<h3>Thank you very much. Every translation makes Iride a little more accessible to someone, somewhere in the world!</h3>
 
 </div>
 
@@ -223,13 +223,13 @@
 
 <h1><a id="support-the-project"></a>Support the Project</h1>
 
-<h3>Metrolist is free and open-source. If it brings you joy, consider supporting its development!</h3>
+<h3>Iride is free and open-source. If it brings you joy, consider supporting its development!</h3>
 
 <div align="center">
 
 ### Monero (XMR)
 
-<img src="https://github.com/MetrolistGroup/Metrolist/blob/main/assets/XMR.png" alt="Monero QR code" width="150" />
+<img src="https://github.com/IrideGroup/Iride/blob/main/assets/XMR.png" alt="Monero QR code" width="150" />
 
 ```text
 44XjSELSWcgJTZiCKzjpCQWyXhokrH9RqH3rpp35FkSKi57T25hniHWHQNhLeXyFn3DDYqufmfRB1iEtENerZpJc7xJCcqt
@@ -238,7 +238,7 @@
 ### Buy Me a Coffee
 
 <a href="https://www.buymeacoffee.com/mostafaalagamy">
-  <img src="https://github.com/MetrolistGroup/Metrolist/blob/main/assets/buymeacoffee.png?raw=true" alt="Buy Me a Coffee" width="150" />
+  <img src="https://github.com/IrideGroup/Iride/blob/main/assets/buymeacoffee.png?raw=true" alt="Buy Me a Coffee" width="150" />
 </a>
 
 </div>
@@ -251,7 +251,7 @@
 
 <h1>Special Thanks</h1>
 
-<h3>Metrolist stands on the shoulders of incredible open-source work!</h3>
+<h3>Iride stands on the shoulders of incredible open-source work!</h3>
 
 <h3>Main Inspirations</h3>
  
@@ -297,7 +297,7 @@
       <td>Lyrics data via the SimpMusic Lyrics API</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/MetrolistGroup/metroserver"><strong>metroserver</strong></a></td>
+      <td><a href="https://github.com/IrideGroup/metroserver"><strong>metroserver</strong></a></td>
       <td>Listen-together real-time backend</td>
     </tr>
     <tr>
@@ -319,8 +319,8 @@
 
 <h3>This project wouldn't exist without these amazing people!</h3>
 
-<a href="https://github.com/MetrolistGroup/Metrolist/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=MetrolistGroup/Metrolist" alt="Contributors"/>
+<a href="https://github.com/IrideGroup/Iride/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=IrideGroup/Iride" alt="Contributors"/>
 </a>
 
 </div>
@@ -331,7 +331,7 @@
 
 <h1>Disclaimer</h1>
 
-This project is **not affiliated with, funded, authorized, endorsed by, or associated** with YouTube, Google LLC, Metrolist Group LLC, or any of their affiliates and subsidiaries.
+This project is **not affiliated with, funded, authorized, endorsed by, or associated** with YouTube, Google LLC, Iride Group LLC, or any of their affiliates and subsidiaries.
 
 All trademarks, service marks, and intellectual property rights referenced in this project belong to their respective owners.
 

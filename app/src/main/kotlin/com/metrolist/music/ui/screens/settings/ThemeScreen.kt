@@ -1,5 +1,7 @@
 package com.metrolist.music.ui.screens.settings
 
+import android.app.Activity
+import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
@@ -25,15 +27,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -46,6 +51,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -54,6 +63,7 @@ import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,16 +82,23 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
+import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.DynamicThemeKey
+import com.metrolist.music.constants.EnableDynamicIconKey
+import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.PureBlackMiniPlayerKey
 import com.metrolist.music.constants.SelectedThemeColorKey
+import com.metrolist.music.ui.component.Material3SettingsGroup
+import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.theme.DefaultThemeColor
-import com.metrolist.music.ui.theme.MetrolistTheme
+import com.metrolist.music.ui.theme.IrideTheme
+import com.metrolist.music.utils.IconUtils
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
+import kotlinx.coroutines.launch
 
 data class ThemePalette(
     val nameRes: Int,
@@ -115,13 +132,22 @@ val PaletteColors = listOf(
 @Composable
 fun ThemeScreen(
     navController: NavController,
+    activity: Activity,
+    snackbarHostState: SnackbarHostState,
 ) {
-    val (darkMode, onDarkModeChange) = rememberEnumPreference(DarkModeKey, DarkMode.AUTO)
-    val (pureBlack, onPureBlackChangeRaw) = rememberPreference(PureBlackKey, defaultValue = false)
+    val (darkMode, onDarkModeChange) = rememberEnumPreference(DarkModeKey, DarkMode.ON)
+    val (pureBlack, onPureBlackChangeRaw) = rememberPreference(PureBlackKey, defaultValue = true)
     val (_, onPureBlackMiniPlayerChange) = rememberPreference(
         PureBlackMiniPlayerKey,
-        defaultValue = false
+        defaultValue = true
     )
+    val (dynamicTheme, onDynamicThemeChange) = rememberPreference(DynamicThemeKey, defaultValue = false)
+    val (enableDynamicIcon, onEnableDynamicIconChange) =
+        rememberPreference(EnableDynamicIconKey, defaultValue = true)
+    val (enableHighRefreshRate, onEnableHighRefreshRateChange) =
+        rememberPreference(EnableHighRefreshRateKey, defaultValue = true)
+
+    val coroutineScope = rememberCoroutineScope()
 
     val onPureBlackChange: (Boolean) -> Unit = { enabled ->
         onPureBlackChangeRaw(enabled)
@@ -129,22 +155,39 @@ fun ThemeScreen(
     }
     val (selectedThemeColorInt, onSelectedThemeColorChange) = rememberPreference(
         SelectedThemeColorKey,
-        DefaultThemeColor.toArgb()
+        Color(0xFF1E88E5).toArgb()
     )
-    val (_, onDynamicThemeChange) = rememberPreference(DynamicThemeKey, defaultValue = true)
 
     val selectedThemeColor = Color(selectedThemeColorInt)
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    // Helper function to handle color selection with dynamic theme toggle
     val handleColorSelection: (Color) -> Unit = { color ->
         onSelectedThemeColorChange(color.toArgb())
-        // Enable dynamic theme only when selecting the default/dynamic color
-        // Disable it when selecting any other color
         val isDynamicColor = color == DefaultThemeColor
         onDynamicThemeChange(isDynamicColor)
     }
+
+    fun handleIconChange(enabled: Boolean) {
+        onEnableDynamicIconChange(enabled)
+        IconUtils.setIcon(activity, enabled)
+        coroutineScope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "Icon updated, restart to apply",
+                actionLabel = "Restart"
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                val packageManager = activity.packageManager
+                val intent = packageManager.getLaunchIntentForPackage(activity.packageName)
+                val componentName = intent?.component
+                val mainIntent = Intent.makeRestartActivityTask(componentName)
+                activity.startActivity(mainIntent)
+                Runtime.getRuntime().exit(0)
+            }
+        }
+    }
+
+    val isUsingCustomColor = selectedThemeColorInt != DefaultThemeColor.toArgb()
 
     if (isLandscape) {
         LandscapeThemeLayout(
@@ -154,7 +197,14 @@ fun ThemeScreen(
             pureBlack = pureBlack,
             onPureBlackChange = onPureBlackChange,
             selectedThemeColor = selectedThemeColor,
-            onSelectedThemeColorChange = handleColorSelection
+            onSelectedThemeColorChange = handleColorSelection,
+            enableDynamicIcon = enableDynamicIcon,
+            onEnableDynamicIconChange = { handleIconChange(it) },
+            enableHighRefreshRate = enableHighRefreshRate,
+            onEnableHighRefreshRateChange = onEnableHighRefreshRateChange,
+            dynamicTheme = dynamicTheme,
+            onDynamicThemeChange = onDynamicThemeChange,
+            isUsingCustomColor = isUsingCustomColor
         )
     } else {
         PortraitThemeLayout(
@@ -164,12 +214,19 @@ fun ThemeScreen(
             pureBlack = pureBlack,
             onPureBlackChange = onPureBlackChange,
             selectedThemeColor = selectedThemeColor,
-            onSelectedThemeColorChange = handleColorSelection
+            onSelectedThemeColorChange = handleColorSelection,
+            enableDynamicIcon = enableDynamicIcon,
+            onEnableDynamicIconChange = { handleIconChange(it) },
+            enableHighRefreshRate = enableHighRefreshRate,
+            onEnableHighRefreshRateChange = onEnableHighRefreshRateChange,
+            dynamicTheme = dynamicTheme,
+            onDynamicThemeChange = onDynamicThemeChange,
+            isUsingCustomColor = isUsingCustomColor
         )
     }
 
     TopAppBar(
-        title = { Text(stringResource(R.string.theme_colors)) },
+        title = { Text(stringResource(R.string.settings_theme)) },
         navigationIcon = {
             IconButton(onClick = { navController.navigateUp() }) {
                 Icon(
@@ -189,7 +246,14 @@ fun PortraitThemeLayout(
     pureBlack: Boolean,
     onPureBlackChange: (Boolean) -> Unit,
     selectedThemeColor: Color,
-    onSelectedThemeColorChange: (Color) -> Unit
+    onSelectedThemeColorChange: (Color) -> Unit,
+    enableDynamicIcon: Boolean = false,
+    onEnableDynamicIconChange: (Boolean) -> Unit = {},
+    enableHighRefreshRate: Boolean = true,
+    onEnableHighRefreshRateChange: (Boolean) -> Unit = {},
+    dynamicTheme: Boolean = false,
+    onDynamicThemeChange: (Boolean) -> Unit = {},
+    isUsingCustomColor: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -220,7 +284,14 @@ fun PortraitThemeLayout(
             pureBlack = pureBlack,
             onPureBlackChange = onPureBlackChange,
             selectedThemeColor = selectedThemeColor,
-            onSelectedThemeColorChange = onSelectedThemeColorChange
+            onSelectedThemeColorChange = onSelectedThemeColorChange,
+            enableDynamicIcon = enableDynamicIcon,
+            onEnableDynamicIconChange = onEnableDynamicIconChange,
+            enableHighRefreshRate = enableHighRefreshRate,
+            onEnableHighRefreshRateChange = onEnableHighRefreshRateChange,
+            dynamicTheme = dynamicTheme,
+            onDynamicThemeChange = onDynamicThemeChange,
+            isUsingCustomColor = isUsingCustomColor
         )
 
         Spacer(modifier = Modifier.height(120.dp))
@@ -235,7 +306,14 @@ fun LandscapeThemeLayout(
     pureBlack: Boolean,
     onPureBlackChange: (Boolean) -> Unit,
     selectedThemeColor: Color,
-    onSelectedThemeColorChange: (Color) -> Unit
+    onSelectedThemeColorChange: (Color) -> Unit,
+    enableDynamicIcon: Boolean = false,
+    onEnableDynamicIconChange: (Boolean) -> Unit = {},
+    enableHighRefreshRate: Boolean = true,
+    onEnableHighRefreshRateChange: (Boolean) -> Unit = {},
+    dynamicTheme: Boolean = false,
+    onDynamicThemeChange: (Boolean) -> Unit = {},
+    isUsingCustomColor: Boolean = false
 ) {
     Row(
         modifier = Modifier
@@ -277,7 +355,14 @@ fun LandscapeThemeLayout(
                 pureBlack = pureBlack,
                 onPureBlackChange = onPureBlackChange,
                 selectedThemeColor = selectedThemeColor,
-                onSelectedThemeColorChange = onSelectedThemeColorChange
+                onSelectedThemeColorChange = onSelectedThemeColorChange,
+                enableDynamicIcon = enableDynamicIcon,
+                onEnableDynamicIconChange = onEnableDynamicIconChange,
+                enableHighRefreshRate = enableHighRefreshRate,
+                onEnableHighRefreshRateChange = onEnableHighRefreshRateChange,
+                dynamicTheme = dynamicTheme,
+                onDynamicThemeChange = onDynamicThemeChange,
+                isUsingCustomColor = isUsingCustomColor
             )
 
             Spacer(modifier = Modifier.height(80.dp))
@@ -292,7 +377,14 @@ fun ThemeControls(
     pureBlack: Boolean,
     onPureBlackChange: (Boolean) -> Unit,
     selectedThemeColor: Color,
-    onSelectedThemeColorChange: (Color) -> Unit
+    onSelectedThemeColorChange: (Color) -> Unit,
+    enableDynamicIcon: Boolean = false,
+    onEnableDynamicIconChange: (Boolean) -> Unit = {},
+    enableHighRefreshRate: Boolean = true,
+    onEnableHighRefreshRateChange: (Boolean) -> Unit = {},
+    dynamicTheme: Boolean = false,
+    onDynamicThemeChange: (Boolean) -> Unit = {},
+    isUsingCustomColor: Boolean = false
 ) {
     Card(
         modifier = Modifier
@@ -314,7 +406,7 @@ fun ThemeControls(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
@@ -404,6 +496,96 @@ fun ThemeControls(
                             onClick = { 
                                 val colorToSave = if (isDynamicPalette) DefaultThemeColor else palette.seedColor
                                 onSelectedThemeColorChange(colorToSave) 
+                            }
+                        )
+                    }
+                }
+            }
+
+            // ── System toggles ────────────────────────────────────────────
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = stringResource(R.string.settings_theme),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                // Dynamic icon row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.enable_dynamic_icon),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(
+                        checked = enableDynamicIcon,
+                        onCheckedChange = onEnableDynamicIconChange,
+                        thumbContent = {
+                            Icon(
+                                painter = androidx.compose.ui.res.painterResource(
+                                    if (enableDynamicIcon) R.drawable.check else R.drawable.close
+                                ),
+                                contentDescription = null,
+                                modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)
+                            )
+                        }
+                    )
+                }
+                // High refresh rate row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.enable_high_refresh_rate),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(
+                        checked = enableHighRefreshRate,
+                        onCheckedChange = onEnableHighRefreshRateChange,
+                        thumbContent = {
+                            Icon(
+                                painter = androidx.compose.ui.res.painterResource(
+                                    if (enableHighRefreshRate) R.drawable.check else R.drawable.close
+                                ),
+                                contentDescription = null,
+                                modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)
+                            )
+                        }
+                    )
+                }
+                // Dynamic theme row (only when using default colour)
+                if (!isUsingCustomColor) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.enable_dynamic_theme),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = dynamicTheme,
+                            onCheckedChange = onDynamicThemeChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = androidx.compose.ui.res.painterResource(
+                                        if (dynamicTheme) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)
+                                )
                             }
                         )
                     }
@@ -674,7 +856,7 @@ fun ThemeMockup(
         DarkMode.OFF -> false
     }
 
-    MetrolistTheme(
+    IrideTheme(
         darkTheme = useDark,
         pureBlack = pureBlack,
         themeColor = themeColor
@@ -782,7 +964,7 @@ fun ThemeMockupPortrait(
         DarkMode.OFF -> false
     }
 
-    MetrolistTheme(
+    IrideTheme(
         darkTheme = useDark,
         pureBlack = pureBlack,
         themeColor = themeColor

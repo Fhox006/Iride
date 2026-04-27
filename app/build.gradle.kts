@@ -35,7 +35,7 @@ android {
         targetSdk = 36
         versionCode = 144
         versionName = "13.4.0"
-        resValue("string", "app_name", appNameOverride ?: "Metrolist")
+        resValue("string", "app_name", appNameOverride ?: "Iride")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -118,7 +118,7 @@ android {
             }
             isDebuggable = true
             if (appNameOverride == null) {
-                resValue("string", "app_name", "Metrolist Debug")
+                resValue("string", "app_name", "Iride Debug")
             }
             signingConfig =
                 if (workflowDebugKeystoreFile != null) {

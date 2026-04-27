@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
@@ -92,16 +94,6 @@ fun SearchScreen(
     val scrollToTopCount by savedStateHandle.getStateFlow("scrollToTopCount", 0).collectAsState(initial = 0)
 
     var lastHandledCount by rememberSaveable { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) {
-        if (!isPlayerExpanded) {
-            kotlinx.coroutines.delay(100)
-            try {
-                focusRequester.requestFocus()
-                keyboardController?.show()
-            } catch (e: Exception) {
-            }
-        }
-    }
     LaunchedEffect(scrollToTopCount) {
         if (scrollToTopCount > lastHandledCount) {
             lastHandledCount = scrollToTopCount
@@ -111,14 +103,8 @@ fun SearchScreen(
 
             if (!isPlayerExpanded) {
                 focusManager.clearFocus(force = true)
-                kotlinx.coroutines.delay(50)
-                try {
-                    focusRequester.requestFocus()
-                    keyboardController?.show()
-                } catch (e: Exception) {
-                }
             }
-
+            
             kotlinx.coroutines.delay(500)
             isHandlingScrollToTop = false
         }
@@ -128,6 +114,7 @@ fun SearchScreen(
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue())
     }
+    var isFocused by remember { mutableStateOf(false) }
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
 
     fun handleSearch(searchQuery: String) {
@@ -190,7 +177,8 @@ fun SearchScreen(
                             modifier =
                                 Modifier
                                     .weight(1f)
-                                    .focusRequester(focusRequester),
+                                    .focusRequester(focusRequester)
+                                    .onFocusChanged { isFocused = it.isFocused },
                             textStyle =
                                 TextStyle(
                                     color = MaterialTheme.colorScheme.onSurface,
@@ -237,7 +225,7 @@ fun SearchScreen(
                                     )
                                 }
                             }
-                            IconButton(
+                            FilledTonalIconButton(
                                 onClick = {
                                     searchSource =
                                         if (searchSource == SearchSource.ONLINE) {
@@ -256,7 +244,6 @@ fun SearchScreen(
                                             },
                                         ),
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface,
                                 )
                             }
                         }
@@ -311,6 +298,7 @@ fun SearchScreen(
                             onSearch = onSearchFromSuggestion,
                             onDismiss = { /* Don't dismiss when searching from suggestions */ },
                             pureBlack = pureBlack,
+                            isFocused = isFocused,
                         )
                     }
                 }
