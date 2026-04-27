@@ -391,6 +391,7 @@ class PlayerConnection(
     }
 
     fun seekToNext() {
+        playSkipTick()
         try {
             // When casting, use Cast skip instead of local player
             val castHandler = service.castConnectionHandler
@@ -415,6 +416,7 @@ class PlayerConnection(
     var onRestartSong: (() -> Unit)? = null
 
     fun seekToPrevious() {
+        playSkipTick()
         try {
             // When casting, use Cast skip instead of local player
             val castHandler = service.castConnectionHandler
@@ -650,6 +652,17 @@ class PlayerConnection(
             canSkipPrevious.value = false
             canSkipNext.value = false
         }
+    }
+
+    private fun playSkipTick() {
+        Thread {
+            try {
+                val tg = android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, 8) // 8/100 volume = very quiet
+                tg.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 40) // 40ms duration
+                Thread.sleep(60)
+                tg.release()
+            } catch (_: Exception) {}
+        }.start()
     }
 
     fun dispose() {

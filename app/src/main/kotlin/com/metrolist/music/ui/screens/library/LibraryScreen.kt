@@ -7,61 +7,77 @@ package com.metrolist.music.ui.screens.library
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.metrolist.music.R
-import com.metrolist.music.constants.ChipSortTypeKey
 import com.metrolist.music.constants.LibraryFilter
-import com.metrolist.music.ui.component.ChipsRow
-import com.metrolist.music.utils.rememberEnumPreference
+
+enum class LibraryView { LIBRARY, DOWNLOADS }
 
 @Composable
 fun LibraryScreen(navController: NavController) {
-    var filterType by rememberEnumPreference(ChipSortTypeKey, LibraryFilter.LIBRARY)
-
-    val filterContent = @Composable {
-        Row {
-            ChipsRow(
-                chips = listOf(
-                    LibraryFilter.PLAYLISTS to stringResource(R.string.filter_playlists),
-                    LibraryFilter.SONGS to stringResource(R.string.filter_songs),
-                    LibraryFilter.ALBUMS to stringResource(R.string.filter_albums),
-                    LibraryFilter.ARTISTS to stringResource(R.string.filter_artists),
-                    LibraryFilter.PODCASTS to stringResource(R.string.filter_podcasts),
-                ),
-                currentValue = filterType,
-                onValueUpdate = {
-                    filterType = if (filterType == it) LibraryFilter.LIBRARY else it
-                },
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
+    var currentView by remember { mutableStateOf(LibraryView.LIBRARY) }
+    var selectedCategory by remember { mutableStateOf<LibraryFilter?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        when (filterType) {
-            LibraryFilter.LIBRARY -> LibraryMixScreen(navController, filterContent)
-            LibraryFilter.PLAYLISTS -> LibraryPlaylistsScreen(navController, filterContent)
-            LibraryFilter.SONGS -> LibrarySongsScreen(
-                navController,
-                { filterType = LibraryFilter.LIBRARY },
+        when {
+            selectedCategory == LibraryFilter.PLAYLISTS -> LibraryPlaylistsScreen(
+                navController = navController,
+                filterContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Spacer(Modifier.width(12.dp))
+                        FilterChip(
+                            selected = true,
+                            onClick = { selectedCategory = null },
+                            label = { Text(stringResource(R.string.playlists)) },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.close),
+                                    contentDescription = null,
+                                )
+                            },
+                        )
+                    }
+                },
             )
-            LibraryFilter.ALBUMS -> LibraryAlbumsScreen(
-                navController,
-                { filterType = LibraryFilter.LIBRARY },
+            selectedCategory == LibraryFilter.SONGS -> LibrarySongsScreen(
+                navController = navController,
+                onDeselect = { selectedCategory = null },
             )
-            LibraryFilter.ARTISTS -> LibraryArtistsScreen(
-                navController,
-                { filterType = LibraryFilter.LIBRARY },
+            selectedCategory == LibraryFilter.ALBUMS -> LibraryAlbumsScreen(
+                navController = navController,
+                onDeselect = { selectedCategory = null },
             )
-            LibraryFilter.PODCASTS -> LibraryPodcastsScreen(
-                navController,
-                { filterType = LibraryFilter.LIBRARY },
+            selectedCategory == LibraryFilter.ARTISTS -> LibraryArtistsScreen(
+                navController = navController,
+                onDeselect = { selectedCategory = null },
+            )
+            currentView == LibraryView.LIBRARY -> LibraryMixScreen(
+                navController = navController,
+                currentView = currentView,
+                onViewChange = { currentView = it },
+                onNavigateToCategory = { selectedCategory = it },
+            )
+            else -> LibraryDownloadsScreen(
+                navController = navController,
+                currentView = currentView,
+                onViewChange = { currentView = it },
+                onNavigateToCategory = { selectedCategory = it },
             )
         }
     }

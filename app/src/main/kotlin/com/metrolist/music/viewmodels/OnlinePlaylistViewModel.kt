@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
-import com.metrolist.innertube.models.filterVideoSongs
 import com.metrolist.music.constants.HideVideoOnlyResultsKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideVideosInLibraryKey
@@ -67,6 +66,9 @@ class OnlinePlaylistViewModel @Inject constructor(
     private var proactiveLoadJob: Job? = null
     private var resolveVideoJob: Job? = null
 
+    // Video songs buffered for background resolution when hide=true
+    private val pendingVideoSongs = mutableListOf<SongItem>()
+
     init {
         fetchInitialPlaylistData()
     }
@@ -77,6 +79,7 @@ class OnlinePlaylistViewModel @Inject constructor(
             _error.value = null
             continuation = null
             proactiveLoadJob?.cancel()
+            pendingVideoSongs.clear()
 
             if (isPodcastPlaylist) {
                 fetchPodcastPlaylist()
@@ -239,7 +242,13 @@ class OnlinePlaylistViewModel @Inject constructor(
 
     private fun applySongFilters(songs: List<SongItem>): List<SongItem> {
         val hide = context.dataStore.get(HideVideoSongsKey, false)
-        return songs.distinctBy { it.id }.filterVideoSongs(hide)
+        val deduped = songs.distinctBy { it.id }
+        if (!hide) return deduped
+
+        val (videos, nonVideos) = deduped.partition { it.isVideoSong }
+        val existingPendingIds = pendingVideoSongs.map { it.id }.toHashSet()
+        pendingVideoSongs.addAll(videos.filter { it.id !in existingPendingIds })
+        return nonVideos
     }
 
     private fun resolveVideoSongsAsync() {
@@ -252,53 +261,70 @@ class OnlinePlaylistViewModel @Inject constructor(
             val hideVideoOnlyResults = context.dataStore.get(HideVideoOnlyResultsKey, false)
             val hideVideosInLibrary = context.dataStore.get(HideVideosInLibraryKey, false)
             val maxCacheSize = context.dataStore.get(MaxResolvedTrackCacheSizeKey, 1000)
+            val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
 
-            // Detected user/library playlists: VL... (Library), PL... (Playlists), LM (Liked Music)
-            val isUserPlaylistOrLibrary = playlistId.startsWith("VL") || 
-                                          playlistId.startsWith("PL") || 
+            val isUserPlaylistOrLibrary = playlistId.startsWith("VL") ||
+                                          playlistId.startsWith("PL") ||
                                           playlistId == "LM"
 
             val shouldHideVideoOnly = if (isUserPlaylistOrLibrary) hideVideosInLibrary else hideVideoOnlyResults
 
-            playlistSongs.value.forEach { song ->
-                if (!isActive) return@launch
-                if (!song.isVideoSong) return@forEach
+            if (hideVideoSongs) {
+                // Resolve buffered video songs and APPEND audio equivalents to the displayed list
+                val toResolve = pendingVideoSongs.toList()
+                toResolve.forEach { song ->
+                    if (!isActive) return@launch
 
-                val live = playlistSongs.value.toMutableList()
-                val liveIndex = live.indexOfFirst { it.id == song.id }
-                if (liveIndex == -1) return@forEach
-
-                // Check cache
-                val cached = database.getSetVideoId(song.id)
-                val resolved = if (cached != null) {
-                    cached.setVideoId?.let { id ->
-                        // Simulate a resolved SongItem or find a way to get full info?
-                        // findAudioTrack returns a full SongItem.
-                        // If we only have the ID, we might need to fetch it or just use it.
-                        // For now, if cached, we might still want to call findAudioTrack 
-                        // but with the ID directly if we want full metadata.
-                        // Or just copy the song and change ID.
-                        song.copy(id = id, musicVideoType = null) // musicVideoType = null means it's not a video anymore
+                    val cached = database.getSetVideoId(song.id)
+                    val resolved = if (cached != null) {
+                        cached.setVideoId?.let { id -> song.copy(id = id, musicVideoType = null) }
+                    } else {
+                        val track = findAudioTrack(song)
+                        database.insert(com.metrolist.music.db.entities.SetVideoIdEntity(song.id, track?.id))
+                        if (maxCacheSize != -1) database.trimSetVideoIdCache(maxCacheSize)
+                        track
                     }
-                } else {
-                    val track = findAudioTrack(song)
-                    database.insert(com.metrolist.music.db.entities.SetVideoIdEntity(song.id, track?.id))
-                    if (maxCacheSize != -1) {
-                        database.trimSetVideoIdCache(maxCacheSize)
-                    }
-                    track
-                }
 
-                if (resolved != null) {
-                    live[liveIndex] = resolved
-                    playlistSongs.value = live.toList()
-                } else if (shouldHideVideoOnly) {
-                    live.removeAt(liveIndex)
-                    playlistSongs.value = live.toList()
+                    if (resolved != null) {
+                        val live = playlistSongs.value.toMutableList()
+                        if (live.none { it.id == resolved.id }) {
+                            live.add(resolved)
+                            playlistSongs.value = live.toList()
+                        }
+                    }
+                    // Unresolvable + hide=true → simply don't add
+
+                    if (cached == null) delay(400)
                 }
-                
-                if (cached == null) {
-                    delay(400) // Only delay if we made a network request
+            } else {
+                // Replace video songs in-place with resolved audio equivalents
+                playlistSongs.value.forEach { song ->
+                    if (!isActive) return@launch
+                    if (!song.isVideoSong) return@forEach
+
+                    val live = playlistSongs.value.toMutableList()
+                    val liveIndex = live.indexOfFirst { it.id == song.id }
+                    if (liveIndex == -1) return@forEach
+
+                    val cached = database.getSetVideoId(song.id)
+                    val resolved = if (cached != null) {
+                        cached.setVideoId?.let { id -> song.copy(id = id, musicVideoType = null) }
+                    } else {
+                        val track = findAudioTrack(song)
+                        database.insert(com.metrolist.music.db.entities.SetVideoIdEntity(song.id, track?.id))
+                        if (maxCacheSize != -1) database.trimSetVideoIdCache(maxCacheSize)
+                        track
+                    }
+
+                    if (resolved != null) {
+                        live[liveIndex] = resolved
+                        playlistSongs.value = live.toList()
+                    } else if (shouldHideVideoOnly) {
+                        live.removeAt(liveIndex)
+                        playlistSongs.value = live.toList()
+                    }
+
+                    if (cached == null) delay(400)
                 }
             }
         }

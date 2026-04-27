@@ -3799,7 +3799,7 @@ class MusicService :
         val nextItem = try { player.getMediaItemAt(nextIndex) } catch (_: Exception) { return }
 
         preloadJob = scope.launch {
-            delay(15_000L)
+            delay(2_000L)
             if (!isActive) return@launch
             try {
                 val ghost = createGhostExoPlayer()

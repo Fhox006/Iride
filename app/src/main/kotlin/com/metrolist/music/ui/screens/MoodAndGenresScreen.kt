@@ -6,6 +6,12 @@
 package com.metrolist.music.ui.screens
 
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -13,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,6 +35,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -39,8 +48,6 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.NavigationTitle
-import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
-import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.viewmodels.MoodAndGenresViewModel
 
@@ -60,11 +67,22 @@ fun MoodAndGenresScreen(
     ) {
         if (moodAndGenresList == null) {
             item(key = "mood_and_genres_shimmer") {
-                ShimmerHost(
-                    modifier = Modifier.animateItem()
+                Column(
+                    modifier = Modifier
+                        .animateItem()
+                        .padding(horizontal = 6.dp)
+                        .padding(top = 12.dp)
                 ) {
                     repeat(8) {
-                        ListItemPlaceHolder()
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            repeat(itemsPerRow) {
+                                MoodAndGenresPlaceholder(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(6.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -147,3 +165,36 @@ fun MoodAndGenresButton(
 }
 
 val MoodAndGenresButtonHeight = 48.dp
+
+@Composable
+fun MoodAndGenresPlaceholder(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val translateAnim by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmerTranslate"
+    )
+
+    val shimmerColors = listOf(
+        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f),
+        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.2f),
+        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f),
+    )
+
+    val brush = Brush.linearGradient(
+        colors = shimmerColors,
+        start = Offset.Zero,
+        end = Offset(x = translateAnim, y = translateAnim)
+    )
+
+    Box(
+        modifier = modifier
+            .height(MoodAndGenresButtonHeight)
+            .clip(RoundedCornerShape(6.dp))
+            .background(brush)
+    )
+}

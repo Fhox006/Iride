@@ -17,6 +17,7 @@
 
     <string name="liked">Liked</string>
     <string name="offline">Downloaded</string>
+    <string name="downloads">Downloads</string>
     <string name="my_top">My Top</string>
     <string name="weekly_most_playlist_name">Weekly Most</string>
     <string name="monthly_most_playlist_name">Monthly Most</string>

@@ -327,12 +327,19 @@ fun rememberBottomSheetState(
     var previousAnchor by rememberSaveable {
         mutableIntStateOf(initialAnchor)
     }
+
+    val initialValue = when (previousAnchor) {
+        expandedAnchor -> expandedBound
+        collapsedAnchor -> collapsedBound
+        else -> dismissedBound
+    }
+
     val animatable = remember {
-        Animatable(0.dp, Dp.VectorConverter)
+        Animatable(initialValue, Dp.VectorConverter)
     }
 
     return remember(dismissedBound, expandedBound, collapsedBound, coroutineScope) {
-        val initialValue = when (previousAnchor) {
+        val targetValue = when (previousAnchor) {
             expandedAnchor -> expandedBound
             collapsedAnchor -> collapsedBound
             dismissedAnchor -> dismissedBound
@@ -341,7 +348,9 @@ fun rememberBottomSheetState(
 
         animatable.updateBounds(dismissedBound.coerceAtMost(expandedBound), expandedBound)
         coroutineScope.launch {
-            animatable.animateTo(initialValue, NavigationBarAnimationSpec)
+            if (animatable.value != targetValue) {
+                animatable.snapTo(targetValue)
+            }
         }
 
         BottomSheetState(

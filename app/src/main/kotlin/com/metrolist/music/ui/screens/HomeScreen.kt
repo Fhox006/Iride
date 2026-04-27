@@ -147,6 +147,12 @@ import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.SpeedDialGridItem
 import com.metrolist.music.ui.component.YouTubeGridItem
+import com.metrolist.innertube.models.filterExplicit
+import com.metrolist.innertube.models.filterVideoSongs
+import com.metrolist.innertube.models.filterYoutubeShorts
+import com.metrolist.music.constants.HideExplicitKey
+import com.metrolist.music.constants.HideVideoSongsKey
+import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
@@ -689,6 +695,9 @@ fun HomeScreen(
     val accountImageUrl by viewModel.accountImageUrl.collectAsState()
     val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     val (randomizeHomeOrder) = rememberPreference(RandomizeHomeOrderKey, true)
+    val hideExplicit by rememberPreference(HideExplicitKey, false)
+    val hideVideoSongs by rememberPreference(HideVideoSongsKey, false)
+    val hideYoutubeShorts by rememberPreference(HideYoutubeShortsKey, false)
 
     val shouldShowWrappedCard by viewModel.showWrappedCard.collectAsState()
     val wrappedState by viewModel.wrappedManager.state.collectAsState()
@@ -1039,18 +1048,16 @@ fun HomeScreen(
             if (speedDialItems.isNotEmpty()) list.add(HomeSection.SpeedDial)
             list.add(HomeSection.YourMood)
 
-            if (!chipActive && quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
-            if (!chipActive && communityPlaylists?.isNotEmpty() == true) list.add(HomeSection.FromTheCommunity)
-            if (!chipActive && dailyDiscover?.isNotEmpty() == true) list.add(HomeSection.DailyDiscover)
-            if (!chipActive && keepListening?.isNotEmpty() == true) list.add(HomeSection.KeepListening)
-            if (!chipActive && accountPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
-            if (!chipActive && forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
-            if (!chipActive && globalTop50Songs.isNotEmpty()) list.add(HomeSection.GlobalTop50)
+            if (quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
+            if (communityPlaylists?.isNotEmpty() == true) list.add(HomeSection.FromTheCommunity)
+            if (dailyDiscover?.isNotEmpty() == true) list.add(HomeSection.DailyDiscover)
+            if (keepListening?.isNotEmpty() == true) list.add(HomeSection.KeepListening)
+            if (accountPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
+            if (forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
+            if (globalTop50Songs.isNotEmpty()) list.add(HomeSection.GlobalTop50)
 
-            if (!chipActive) {
-                similarRecommendations?.indices?.forEach { i ->
-                    list.add(HomeSection.SimilarRecommendation(i))
-                }
+            similarRecommendations?.indices?.forEach { i ->
+                list.add(HomeSection.SimilarRecommendation(i))
             }
 
             val homePageSections = homePage?.sections.orEmpty()
@@ -1430,11 +1437,35 @@ fun HomeScreen(
                 homeSections.forEach { section ->
                     when (section) {
                         HomeSection.YourMood -> {
+                            item(key = "your_mood_title") {
+                                NavigationTitle(title = "Your Mood")
+                            }
                             item(key = "your_mood_section") {
                                 val chips = remember(homePage?.chips) {
                                     val list = mutableListOf<Pair<com.metrolist.innertube.pages.HomePage.Chip?, String>>()
                                     homePage?.chips?.forEach { list.add(it to it.title) }
                                     list
+                                }
+
+                                var selectedMoodCategory by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage.Chip?>(null) }
+                                var moodPage by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage?>(null) }
+
+                                LaunchedEffect(selectedMoodCategory) {
+                                    if (selectedMoodCategory != null) {
+                                        YouTube.home(params = selectedMoodCategory!!.endpoint?.params).onSuccess { nextSections ->
+                                            moodPage = nextSections.copy(
+                                                sections = nextSections.sections.mapNotNull { section ->
+                                                    val filteredItems = section.items
+                                                        .filterExplicit(hideExplicit)
+                                                        .filterVideoSongs(hideVideoSongs)
+                                                        .filterYoutubeShorts(hideYoutubeShorts)
+                                                    if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
+                                                }
+                                            )
+                                        }
+                                    } else {
+                                        moodPage = null
+                                    }
                                 }
 
                                 val isDark = isSystemInDarkTheme()
@@ -1454,17 +1485,17 @@ fun HomeScreen(
                                 ) {
                                     ChipsRow(
                                         chips = chips,
-                                        currentValue = selectedChip,
+                                        currentValue = selectedMoodCategory,
                                         onValueUpdate = {
-                                            viewModel.toggleChip(it)
+                                            selectedMoodCategory = it
                                         },
                                         chipHeight = 40.dp,
                                         horizontalPadding = 16.dp,
                                         labelStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp)
                                     )
 
-                                    if (selectedChip != null) {
-                                        val sections = homePage?.sections.orEmpty()
+                                    if (selectedMoodCategory != null) {
+                                        val sections = moodPage?.sections.orEmpty()
                                         
                                         // Find tracks section (usually the first one with songs)
                                         val tracksSection = sections.firstOrNull { it.items.any { item -> item is SongItem } }
@@ -1472,7 +1503,7 @@ fun HomeScreen(
                                         if (tracksSection != null) {
                                             val audioTracks = tracksSection.items
                                                 .filterIsInstance<SongItem>()
-                                                .filter { !it.isVideoSong }
+                                                .filterVideoSongs(true) // Always hide videos in Your Mood mixtape as requested
                                             if (audioTracks.isNotEmpty()) {
                                                 LazyHorizontalGrid(
                                                     state = moodTracksState,

@@ -67,7 +67,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -326,115 +325,93 @@ fun ArtistScreen(
                     val thumbnail = artistPage?.artist?.thumbnail ?: libraryArtist?.artist?.thumbnailUrl
                     val artistName = artistPage?.artist?.title ?: libraryArtist?.artist?.name
 
-                    Box {
-                        // Artist Image with offset
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            // Shift the whole header up to extend behind status bar + app bar
+                            .offset { IntOffset(x = 0, y = headerOffset) }
+                            // Add extra bottom padding equal to the negative offset so content below
+                            // is not swallowed — the LazyColumn still sees the correct used height
+                            .padding(bottom = with(density) { (-headerOffset).toDp() }),
+                    ) {
                         if (thumbnail != null) {
+                            // Image fills the width; use FillWidth so it never crops/zooms the subject
+                            // height is determined by the image aspect ratio naturally
+                            AsyncImage(
+                                model = thumbnail.resize(1200, 900),
+                                contentDescription = null,
+                                contentScale = ContentScale.FillWidth,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1200f / 900f), // honour the actual requested image ratio
+                            )
+
+                            // Gradient: transparent at top, full background colour at bottom
+                            val bgColor = MaterialTheme.colorScheme.background
                             Box(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(1.3f)
-                                        .offset {
-                                            IntOffset(x = 0, y = headerOffset)
-                                        }
-                                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                                        .fadingEdge(
-                                            top = systemBarsTopPadding + AppBarHeight,
-                                        ),
-                            ) {
-                                AsyncImage(
-                                    model = thumbnail.resize(1200, 900),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                                // Full gradient overlay: 0% background at top → 100% at bottom
-                                val bgColor = MaterialTheme.colorScheme.background
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(160.dp)
-                                        .align(Alignment.BottomCenter)
-                                        .background(
-                                            Brush.verticalGradient(
-                                                colors = listOf(Color.Transparent, bgColor),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1200f / 900f)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colorStops = arrayOf(
+                                                0.0f to Color.Transparent,
+                                                0.5f to bgColor.copy(alpha = 0.15f),
+                                                0.78f to bgColor.copy(alpha = 0.75f),
+                                                1.0f to bgColor,
                                             )
-                                        ),
-                                )
-                            }
+                                        )
+                                    ),
+                            )
                         }
 
-                        // Artist Name and Controls Section - positioned at bottom of image
+                        // Artist name + info pinned at the bottom of the image
                         Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        top =
-                                            if (thumbnail != null) {
-                                                // Position content at the bottom part of the image
-                                                // Using screen width to calculate aspect ratio height minus overlap
-                                                LocalResources.current.displayMetrics.widthPixels.let { screenWidth ->
-                                                    with(density) {
-                                                        ((screenWidth / 1.2f) - 144).toDp()
-                                                    }
-                                                }
-                                            } else {
-                                                16.dp
-                                            },
-                                    ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.BottomStart)
+                                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                         ) {
-                            Column(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp),
-                            ) {
-                                // Artist Name
+                            Text(
+                                text = artistName ?: "Unknown",
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                fontSize = 32.sp,
+                            )
+
+                            val monthlyListeners = artistPage?.monthlyListenerCount
+                            if (showMonthlyListeners && !monthlyListeners.isNullOrEmpty()) {
+                                val cleanListeners = remember(monthlyListeners) {
+                                    monthlyListeners
+                                        .replace("monthly listeners", "", ignoreCase = true)
+                                        .replace("ascoltatori mensili", "", ignoreCase = true)
+                                        .trim()
+                                }
                                 Text(
-                                    text = artistName ?: "Unknown",
-                                    style = MaterialTheme.typography.headlineLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    fontSize = 32.sp,
+                                    text = "$cleanListeners listeners this month",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-
-                                val monthlyListeners = artistPage?.monthlyListenerCount
-                                if (showMonthlyListeners && !monthlyListeners.isNullOrEmpty()) {
-                                    val cleanListeners = remember(monthlyListeners) {
-                                        monthlyListeners
-                                            .replace("monthly listeners", "", ignoreCase = true)
-                                            .replace("ascoltatori mensili", "", ignoreCase = true)
-                                            .trim()
-                                    }
-                                    Text(
-                                        text = "$cleanListeners listeners this month",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-
-                                // Recent Album Panel
-                                if (recentAlbum != null) {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    RecentAlbumPanel(
-                                        album = recentAlbum!!,
-                                        onClick = { navController.navigate("album/${recentAlbum!!.id}") },
-                                        onLongClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            menuState.show {
-                                                AlbumMenu(
-                                                    originalAlbum = recentAlbum!!,
-                                                    navController = navController,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-                                        }
-                                    )
-                                }
                             }
+
                             if (recentAlbum != null) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                RecentAlbumPanel(
+                                    album = recentAlbum!!,
+                                    onClick = { navController.navigate("album/${recentAlbum!!.id}") },
+                                    onLongClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        menuState.show {
+                                            AlbumMenu(
+                                                originalAlbum = recentAlbum!!,
+                                                navController = navController,
+                                                onDismiss = menuState::dismiss,
+                                            )
+                                        }
+                                    }
+                                )
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
                         }

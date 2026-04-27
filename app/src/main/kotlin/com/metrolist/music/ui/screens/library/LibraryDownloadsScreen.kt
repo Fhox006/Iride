@@ -6,15 +6,11 @@
 package com.metrolist.music.ui.screens.library
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,9 +24,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,16 +43,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -121,9 +110,9 @@ import java.util.UUID
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryMixScreen(
+fun LibraryDownloadsScreen(
     navController: NavController,
-    currentView: LibraryView = LibraryView.LIBRARY,
+    currentView: LibraryView = LibraryView.DOWNLOADS,
     onViewChange: (LibraryView) -> Unit = {},
     onNavigateToCategory: (LibraryFilter) -> Unit = {},
     viewModel: LibraryMixViewModel = hiltViewModel(),
@@ -219,7 +208,7 @@ fun LibraryMixScreen(
     val (showTop) = rememberPreference(ShowTopPlaylistKey, true)
     val (showCached) = rememberPreference(ShowCachedPlaylistKey, true)
     val (showUploaded) = rememberPreference(ShowUploadedPlaylistKey, true)
-    
+
     val showLikedPlaylist = showLiked && matchesNormalizedQuery(normalizedQuery, likedPlaylist.playlist.name)
     val showDownloadedPlaylist =
         showDownloaded && matchesNormalizedQuery(normalizedQuery, downloadPlaylist.playlist.name)
@@ -228,13 +217,17 @@ fun LibraryMixScreen(
         showUploaded && matchesNormalizedQuery(normalizedQuery, uploadedPlaylist.playlist.name)
     val showCachedPlaylists = showCached && matchesNormalizedQuery(normalizedQuery, cachedPlaylist.playlist.name)
 
+    val albumsRaw = viewModel.albums.collectAsState()
+    val artistRaw = viewModel.artists.collectAsState()
+    val songsRaw = viewModel.songs.collectAsState()
+    val playlistRaw = viewModel.playlists.collectAsState()
 
-    val albums = viewModel.albums.collectAsState()
-    val artist = viewModel.artists.collectAsState()
-    val songs = viewModel.songs.collectAsState()
-    val playlist = viewModel.playlists.collectAsState()
+    // Filter songs to only downloaded
+    val downloadedSongs = remember(songsRaw.value) {
+        songsRaw.value.filter { it.isDownloaded }
+    }
 
-    var allItems = albums.value + artist.value + playlist.value
+    var allItems = albumsRaw.value + artistRaw.value + playlistRaw.value
     val locale = LocalLocale.current.platformLocale
     val collator = remember(locale) {
         Collator.getInstance(locale).apply {
@@ -279,7 +272,7 @@ fun LibraryMixScreen(
             }
         }.reversed(sortDescending)
 
-    val searchableItems = if (normalizedQuery.isBlank()) allItems else allItems + songs.value
+    val searchableItems = if (normalizedQuery.isBlank()) allItems else allItems + downloadedSongs
 
     val filteredItems = remember(searchableItems, normalizedQuery, collator) {
         val matchedItems =
@@ -466,6 +459,7 @@ fun LibraryMixScreen(
                             currentView = currentView,
                             onViewChange = onViewChange,
                             onNavigateToCategory = onNavigateToCategory,
+                            showCacheBox = true,
                         )
                     }
 
@@ -807,6 +801,7 @@ fun LibraryMixScreen(
                             currentView = currentView,
                             onViewChange = onViewChange,
                             onNavigateToCategory = onNavigateToCategory,
+                            showCacheBox = true,
                         )
                     }
 
@@ -1088,157 +1083,5 @@ fun LibraryMixScreen(
                     .align(Alignment.TopCenter)
                     .padding(LocalPlayerAwareWindowInsets.current.asPaddingValues()),
         )
-    }
-}
-
-private data class LibraryCategoryItem(
-    val labelRes: Int,
-    val iconRes: Int,
-    val color: Color,
-    val onClick: () -> Unit,
-)
-
-@Composable
-internal fun LibraryCategorySection(
-    navController: NavController,
-    currentView: LibraryView,
-    onViewChange: (LibraryView) -> Unit,
-    onNavigateToCategory: (LibraryFilter) -> Unit,
-    showCacheBox: Boolean = false,
-) {
-    var showDropdown by remember { mutableStateOf(false) }
-    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
-    val secondaryContainer = MaterialTheme.colorScheme.secondaryContainer
-    val tertiaryContainer = MaterialTheme.colorScheme.tertiaryContainer
-    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
-    val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
-    val errorContainer = MaterialTheme.colorScheme.errorContainer
-
-    val categories = remember(showCacheBox, primaryContainer, secondaryContainer,
-        tertiaryContainer, surfaceVariant, surfaceContainer, errorContainer) {
-        buildList {
-            add(LibraryCategoryItem(R.string.liked, R.drawable.favorite_border, primaryContainer) {
-                navController.navigate("auto_playlist/liked")
-            })
-            add(LibraryCategoryItem(R.string.playlists, R.drawable.queue_music, secondaryContainer) {
-                onNavigateToCategory(LibraryFilter.PLAYLISTS)
-            })
-            add(LibraryCategoryItem(R.string.songs, R.drawable.music_note, tertiaryContainer) {
-                onNavigateToCategory(LibraryFilter.SONGS)
-            })
-            add(LibraryCategoryItem(R.string.albums, R.drawable.album, surfaceVariant) {
-                onNavigateToCategory(LibraryFilter.ALBUMS)
-            })
-            add(LibraryCategoryItem(R.string.artists, R.drawable.artist, surfaceContainer) {
-                onNavigateToCategory(LibraryFilter.ARTISTS)
-            })
-            if (showCacheBox) {
-                add(LibraryCategoryItem(R.string.cached_playlist, R.drawable.cached, errorContainer) {
-                    navController.navigate("cache_playlist/cached")
-                })
-            }
-        }
-    }
-
-    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-        Box {
-            Row(
-                modifier = Modifier
-                    .clickable { showDropdown = true }
-                    .padding(vertical = 8.dp, horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(
-                        when (currentView) {
-                            LibraryView.LIBRARY -> R.string.filter_library
-                            LibraryView.DOWNLOADS -> R.string.downloads
-                        }
-                    ),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Icon(
-                    painter = painterResource(R.drawable.expand_more),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-            DropdownMenu(
-                expanded = showDropdown,
-                onDismissRequest = { showDropdown = false },
-            ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.filter_library)) },
-                    onClick = {
-                        onViewChange(LibraryView.LIBRARY)
-                        showDropdown = false
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.downloads)) },
-                    onClick = {
-                        onViewChange(LibraryView.DOWNLOADS)
-                        showDropdown = false
-                    },
-                )
-            }
-        }
-
-        categories.chunked(2).forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                row.forEach { cat ->
-                    LibraryCategoryBox(
-                        labelRes = cat.labelRes,
-                        iconRes = cat.iconRes,
-                        color = cat.color,
-                        onClick = cat.onClick,
-                        modifier = Modifier.weight(1f).padding(vertical = 4.dp),
-                    )
-                }
-                repeat(2 - row.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LibraryCategoryBox(
-    labelRes: Int,
-    iconRes: Int,
-    color: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(12.dp))
-            .background(color)
-            .clickable(onClick = onClick),
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-            )
-            Text(
-                text = stringResource(labelRes),
-                style = MaterialTheme.typography.labelMedium,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 6.dp, start = 4.dp, end = 4.dp),
-            )
-        }
     }
 }
