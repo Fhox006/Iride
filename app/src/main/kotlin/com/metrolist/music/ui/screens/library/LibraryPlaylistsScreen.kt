@@ -64,14 +64,8 @@ import com.metrolist.music.constants.PlaylistSortDescendingKey
 import com.metrolist.music.constants.PlaylistSortType
 import com.metrolist.music.constants.PlaylistSortTypeKey
 import com.metrolist.music.constants.PlaylistViewTypeKey
-import com.metrolist.music.constants.ShowCachedPlaylistKey
-import com.metrolist.music.constants.ShowDownloadedPlaylistKey
-import com.metrolist.music.constants.ShowLikedPlaylistKey
-import com.metrolist.music.constants.ShowTopPlaylistKey
-import com.metrolist.music.constants.ShowUploadedPlaylistKey
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.db.entities.Playlist
-import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.ui.component.CreatePlaylistDialog
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
@@ -89,7 +83,6 @@ import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LibraryPlaylistsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.UUID
 
 private data class VisiblePlaylistItem(
     val key: String,
@@ -102,7 +95,7 @@ private data class VisiblePlaylistItem(
 @Composable
 fun LibraryPlaylistsScreen(
     navController: NavController,
-    filterContent: @Composable () -> Unit,
+    onDeselect: () -> Unit,
     viewModel: LibraryPlaylistsViewModel = hiltViewModel(),
     initialTextFieldValue: String? = null,
     allowSyncing: Boolean = true,
