@@ -324,52 +324,48 @@ fun ArtistScreen(
                 item(key = "header") {
                     val thumbnail = artistPage?.artist?.thumbnail ?: libraryArtist?.artist?.thumbnailUrl
                     val artistName = artistPage?.artist?.title ?: libraryArtist?.artist?.name
+                    val bgColor = MaterialTheme.colorScheme.background
 
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            // Shift the whole header up to extend behind status bar + app bar
                             .offset { IntOffset(x = 0, y = headerOffset) }
-                            // Add extra bottom padding equal to the negative offset so content below
-                            // is not swallowed — the LazyColumn still sees the correct used height
                             .padding(bottom = with(density) { (-headerOffset).toDp() }),
                     ) {
                         if (thumbnail != null) {
-                            // Image fills the width; use FillWidth so it never crops/zooms the subject
-                            // height is determined by the image aspect ratio naturally
-                            AsyncImage(
-                                model = thumbnail.resize(1200, 900),
-                                contentDescription = null,
-                                contentScale = ContentScale.FillWidth,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(1200f / 900f), // honour the actual requested image ratio
-                            )
-
-                            // Gradient: transparent at top, full background colour at bottom
-                            val bgColor = MaterialTheme.colorScheme.background
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(1200f / 900f)
-                                    .background(
-                                        Brush.verticalGradient(
-                                            colorStops = arrayOf(
-                                                0.0f to Color.Transparent,
-                                                0.5f to bgColor.copy(alpha = 0.15f),
-                                                0.78f to bgColor.copy(alpha = 0.75f),
-                                                1.0f to bgColor,
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                AsyncImage(
+                                    model = thumbnail.resize(1200, 900),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.FillWidth,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(1200f / 900f),
+                                )
+                                // Gradient overlay — covers bottom portion of image only
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(1200f / 900f)
+                                        .background(
+                                            Brush.verticalGradient(
+                                                colorStops = arrayOf(
+                                                    0.0f to Color.Transparent,
+                                                    0.5f to bgColor.copy(alpha = 0.15f),
+                                                    0.78f to bgColor.copy(alpha = 0.75f),
+                                                    1.0f to bgColor,
+                                                )
                                             )
-                                        )
-                                    ),
-                            )
+                                        ),
+                                )
+                            }
                         }
 
-                        // Artist name + info pinned at the bottom of the image
+                        // Artist info section — below image, on solid background
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .align(Alignment.BottomStart)
+                                .background(bgColor)
                                 .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                         ) {
                             Text(
