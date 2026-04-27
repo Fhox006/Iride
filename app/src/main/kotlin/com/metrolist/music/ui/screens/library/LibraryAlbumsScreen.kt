@@ -111,35 +111,6 @@ fun LibraryAlbumsScreen(
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
 
-    val filterContent = @Composable {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Spacer(Modifier.width(12.dp))
-            FilterChip(
-                label = { Text(stringResource(R.string.albums)) },
-                selected = true,
-                colors = FilterChipDefaults.filterChipColors(containerColor = MaterialTheme.colorScheme.surface),
-                onClick = onDeselect,
-                shape = RoundedCornerShape(16.dp),
-                leadingIcon = {
-                    Icon(painter = painterResource(R.drawable.close), contentDescription = "")
-                },
-            )
-            ChipsRow(
-                chips =
-                    listOf(
-                        AlbumFilter.LIKED to stringResource(R.string.filter_liked),
-                        AlbumFilter.LIBRARY to stringResource(R.string.filter_library),
-                        AlbumFilter.UPLOADED to stringResource(R.string.filter_uploaded),
-                    ),
-                currentValue = filter,
-                onValueUpdate = {
-                    filter = it
-                },
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-
     LaunchedEffect(Unit) {
         if (ytmSync) {
             withContext(Dispatchers.IO) {
@@ -263,7 +234,29 @@ fun LibraryAlbumsScreen(
                         key = "filter",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        filterContent()
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Spacer(Modifier.width(12.dp))
+                            FilterChip(
+                                label = { Text(stringResource(R.string.albums)) },
+                                selected = true,
+                                colors = FilterChipDefaults.filterChipColors(containerColor = MaterialTheme.colorScheme.surface),
+                                onClick = onDeselect,
+                                shape = RoundedCornerShape(16.dp),
+                                leadingIcon = {
+                                    Icon(painter = painterResource(R.drawable.close), contentDescription = "")
+                                },
+                            )
+                            ChipsRow(
+                                chips = listOf(
+                                    AlbumFilter.LIKED to stringResource(R.string.filter_liked),
+                                    AlbumFilter.LIBRARY to stringResource(R.string.filter_library),
+                                    AlbumFilter.UPLOADED to stringResource(R.string.filter_uploaded),
+                                ),
+                                currentValue = filter,
+                                onValueUpdate = { filter = it },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
 
                     item(
@@ -321,7 +314,29 @@ fun LibraryAlbumsScreen(
                         span = { GridItemSpan(maxLineSpan) },
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        filterContent()
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Spacer(Modifier.width(12.dp))
+                            FilterChip(
+                                label = { Text(stringResource(R.string.albums)) },
+                                selected = true,
+                                colors = FilterChipDefaults.filterChipColors(containerColor = MaterialTheme.colorScheme.surface),
+                                onClick = onDeselect,
+                                shape = RoundedCornerShape(16.dp),
+                                leadingIcon = {
+                                    Icon(painter = painterResource(R.drawable.close), contentDescription = "")
+                                },
+                            )
+                            ChipsRow(
+                                chips = listOf(
+                                    AlbumFilter.LIKED to stringResource(R.string.filter_liked),
+                                    AlbumFilter.LIBRARY to stringResource(R.string.filter_library),
+                                    AlbumFilter.UPLOADED to stringResource(R.string.filter_uploaded),
+                                ),
+                                currentValue = filter,
+                                onValueUpdate = { filter = it },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
 
                     item(

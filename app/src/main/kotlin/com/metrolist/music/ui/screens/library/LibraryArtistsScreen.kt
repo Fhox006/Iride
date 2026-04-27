@@ -99,34 +99,6 @@ fun LibraryArtistsScreen(
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
 
-    val filterContent = @Composable {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Spacer(Modifier.width(12.dp))
-            FilterChip(
-                label = { Text(stringResource(R.string.artists)) },
-                selected = true,
-                colors = FilterChipDefaults.filterChipColors(containerColor = MaterialTheme.colorScheme.surface),
-                onClick = onDeselect,
-                shape = RoundedCornerShape(16.dp),
-                leadingIcon = {
-                    Icon(painter = painterResource(R.drawable.close), contentDescription = "")
-                },
-            )
-            ChipsRow(
-                chips =
-                listOf(
-                    ArtistFilter.LIKED to stringResource(R.string.filter_liked),
-                    ArtistFilter.LIBRARY to stringResource(R.string.filter_library)
-                ),
-                currentValue = filter,
-                onValueUpdate = {
-                    filter = it
-                },
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-
     LaunchedEffect(Unit) {
         if (ytmSync) {
             withContext(Dispatchers.IO) {
@@ -242,7 +214,28 @@ fun LibraryArtistsScreen(
                         key = "filter",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        filterContent()
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Spacer(Modifier.width(12.dp))
+                            FilterChip(
+                                label = { Text(stringResource(R.string.artists)) },
+                                selected = true,
+                                colors = FilterChipDefaults.filterChipColors(containerColor = MaterialTheme.colorScheme.surface),
+                                onClick = onDeselect,
+                                shape = RoundedCornerShape(16.dp),
+                                leadingIcon = {
+                                    Icon(painter = painterResource(R.drawable.close), contentDescription = "")
+                                },
+                            )
+                            ChipsRow(
+                                chips = listOf(
+                                    ArtistFilter.LIKED to stringResource(R.string.filter_liked),
+                                    ArtistFilter.LIBRARY to stringResource(R.string.filter_library),
+                                ),
+                                currentValue = filter,
+                                onValueUpdate = { filter = it },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
 
                     item(
@@ -301,7 +294,28 @@ fun LibraryArtistsScreen(
                         span = { GridItemSpan(maxLineSpan) },
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        filterContent()
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Spacer(Modifier.width(12.dp))
+                            FilterChip(
+                                label = { Text(stringResource(R.string.artists)) },
+                                selected = true,
+                                colors = FilterChipDefaults.filterChipColors(containerColor = MaterialTheme.colorScheme.surface),
+                                onClick = onDeselect,
+                                shape = RoundedCornerShape(16.dp),
+                                leadingIcon = {
+                                    Icon(painter = painterResource(R.drawable.close), contentDescription = "")
+                                },
+                            )
+                            ChipsRow(
+                                chips = listOf(
+                                    ArtistFilter.LIKED to stringResource(R.string.filter_liked),
+                                    ArtistFilter.LIBRARY to stringResource(R.string.filter_library),
+                                ),
+                                currentValue = filter,
+                                onValueUpdate = { filter = it },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
 
                     item(
