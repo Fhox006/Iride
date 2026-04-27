@@ -1,16 +1,25 @@
-@'
-while ($true) {
-    Set-Location "C:\Users\mrffh\Desktop\Iride"
-    git pull --rebase origin main | Out-Null
-    $status = git status --porcelain
-    if ($status) {
-        git add .
-        git commit -m "."
-        git push origin main
-        Write-Host "SINCRONIZZATO - $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor Green
-    } else {
-        Write-Host "Nessuna modifica - $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor Gray
-    }
-    Start-Sleep -Seconds 60
-}
-'@ | Set-Content -Path "C:\Users\mrffh\Desktop\Iride\sync.ps1" -Encoding UTF8
+content = '''@echo off
+title Iride - Sync in corso...
+cd /d "C:\\Users\\mrffh\\Desktop\\Iride"
+
+echo.
+echo Sincronizzazione in corso...
+echo.
+
+git pull --rebase origin main
+git add .
+git commit -m "."
+git push origin main
+
+echo.
+echo ==============================
+echo   FATTO! Codice aggiornato.
+echo ==============================
+echo.
+pause
+'''
+
+with open('/tmp/SyncOra.bat', 'w', encoding='ascii') as f:
+    f.write(content)
+
+print("Creato!")
