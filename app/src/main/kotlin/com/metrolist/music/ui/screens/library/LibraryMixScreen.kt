@@ -11,8 +11,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.asPaddingValues
@@ -437,6 +439,37 @@ fun LibraryMixScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val pullRefreshState = rememberPullToRefreshState()
 
+    val categoriesContent = @Composable {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            val categories = listOf(
+                Triple(R.string.playlists, R.drawable.queue_music, "library_playlists"),
+                Triple(R.string.songs, R.drawable.music_note, "library_songs"),
+                Triple(R.string.albums, R.drawable.album, "library_albums"),
+                Triple(R.string.artists, R.drawable.artist, "library_artists"),
+                Triple(R.string.filter_liked, R.drawable.favorite, "auto_playlist/liked"),
+                Triple(R.string.downloads, R.drawable.download, "auto_playlist/downloaded"),
+                Triple(R.string.cache, R.drawable.cached, "cache_playlist/cached"),
+                Triple(R.string.filter_uploaded, R.drawable.upload, "auto_playlist/uploaded"),
+            )
+
+            categories.chunked(2).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { (labelRes, iconRes, route) ->
+                        LibraryCategoryCard(
+                            label = stringResource(labelRes),
+                            icon = iconRes,
+                            onClick = { navController.navigate(route) },
+                            modifier = Modifier.weight(1f).padding(vertical = 4.dp),
+                        )
+                    }
+                    if (row.size < 2) {
+                        Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+
     Box(
         modifier =
             Modifier
@@ -454,12 +487,10 @@ fun LibraryMixScreen(
                     contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
                 ) {
                     item(
-                        key = "filter",
+                        key = "categories",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        LibraryCategorySection(
-                            onNavigateToCategory = onNavigateToCategory,
-                        )
+                        categoriesContent()
                     }
 
                     item(
@@ -795,9 +826,7 @@ fun LibraryMixScreen(
                         span = { GridItemSpan(maxLineSpan) },
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        LibraryCategorySection(
-                            onNavigateToCategory = onNavigateToCategory,
-                        )
+                        categoriesContent()
                     }
 
                     item(
@@ -1081,84 +1110,35 @@ fun LibraryMixScreen(
     }
 }
 
-private data class LibraryCategoryItem(
-    val labelRes: Int,
-    val iconRes: Int,
-    val color: Color,
-    val onClick: () -> Unit,
-)
-
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun LibraryCategorySection(
-    onNavigateToCategory: (LibraryFilter) -> Unit,
-) {
-    val secondaryContainer = MaterialTheme.colorScheme.secondaryContainer
-    val tertiaryContainer = MaterialTheme.colorScheme.tertiaryContainer
-    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
-    val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
-
-    val categories = remember(secondaryContainer, tertiaryContainer, surfaceVariant, surfaceContainer) {
-        listOf(
-            LibraryCategoryItem(R.string.playlists, R.drawable.queue_music, secondaryContainer) {
-                onNavigateToCategory(LibraryFilter.PLAYLISTS)
-            },
-            LibraryCategoryItem(R.string.songs, R.drawable.music_note, tertiaryContainer) {
-                onNavigateToCategory(LibraryFilter.SONGS)
-            },
-            LibraryCategoryItem(R.string.albums, R.drawable.album, surfaceVariant) {
-                onNavigateToCategory(LibraryFilter.ALBUMS)
-            },
-            LibraryCategoryItem(R.string.artists, R.drawable.artist, surfaceContainer) {
-                onNavigateToCategory(LibraryFilter.ARTISTS)
-            },
-        )
-    }
-
-    FlowRow(
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        categories.forEach { cat ->
-            LibraryCategoryChip(
-                labelRes = cat.labelRes,
-                iconRes = cat.iconRes,
-                color = cat.color,
-                onClick = cat.onClick,
-            )
-        }
-    }
-}
-
-@Composable
-private fun LibraryCategoryChip(
-    labelRes: Int,
-    iconRes: Int,
-    color: Color,
+private fun LibraryCategoryCard(
+    label: String,
+    icon: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    Box(
+        contentAlignment = Alignment.CenterStart,
         modifier = modifier
             .height(48.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(color)
+            .clip(RoundedCornerShape(6.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 12.dp),
     ) {
-        Icon(
-            painter = painterResource(iconRes),
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-        )
-        Text(
-            text = stringResource(labelRes),
-            style = MaterialTheme.typography.labelLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }

@@ -21,37 +21,19 @@ enum class LibraryView { LIBRARY, DOWNLOADS }
 @Composable
 fun LibraryScreen(navController: NavController) {
     var currentView by remember { mutableStateOf(LibraryView.LIBRARY) }
-    var selectedCategory by remember { mutableStateOf<LibraryFilter?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        when {
-            selectedCategory == LibraryFilter.PLAYLISTS -> LibraryPlaylistsScreen(
-                navController = navController,
-                onDeselect = { selectedCategory = null },
-            )
-            selectedCategory == LibraryFilter.SONGS -> LibrarySongsScreen(
-                navController = navController,
-                onDeselect = { selectedCategory = null },
-            )
-            selectedCategory == LibraryFilter.ALBUMS -> LibraryAlbumsScreen(
-                navController = navController,
-                onDeselect = { selectedCategory = null },
-            )
-            selectedCategory == LibraryFilter.ARTISTS -> LibraryArtistsScreen(
-                navController = navController,
-                onDeselect = { selectedCategory = null },
-            )
-            currentView == LibraryView.LIBRARY -> LibraryMixScreen(
+        if (currentView == LibraryView.LIBRARY) {
+            LibraryMixScreen(
                 navController = navController,
                 currentView = currentView,
                 onViewChange = { currentView = it },
-                onNavigateToCategory = { selectedCategory = it },
             )
-            else -> LibraryDownloadsScreen(
+        } else {
+            LibraryDownloadsScreen(
                 navController = navController,
                 currentView = currentView,
                 onViewChange = { currentView = it },
-                onNavigateToCategory = { selectedCategory = it },
             )
         }
     }

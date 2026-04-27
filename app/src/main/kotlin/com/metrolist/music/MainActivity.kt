@@ -174,7 +174,7 @@ import com.metrolist.music.ui.component.shimmer.ShimmerTheme
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.player.BottomSheetPlayer
 import com.metrolist.music.ui.screens.Screens
-import com.metrolist.music.ui.screens.navigationBuilder
+import com.metrolist.music.ui.screens.NavigationBuilder
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.screens.settings.NavigationTab
 import com.metrolist.music.ui.theme.ColorSaver
@@ -1235,7 +1235,7 @@ class MainActivity : ComponentActivity() {
                                     },
                                     modifier = Modifier.nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
                                 ) {
-                                    navigationBuilder(
+                                    NavigationBuilder(
                                         navController = navController,
                                         scrollBehavior = topAppBarScrollBehavior,
                                         latestVersionName = latestVersionName,

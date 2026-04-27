@@ -32,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -96,7 +97,6 @@ private data class VisiblePlaylistItem(
 @Composable
 fun LibraryPlaylistsScreen(
     navController: NavController,
-    onDeselect: () -> Unit,
     viewModel: LibraryPlaylistsViewModel = hiltViewModel(),
     initialTextFieldValue: String? = null,
     allowSyncing: Boolean = true,
@@ -273,26 +273,6 @@ fun LibraryPlaylistsScreen(
                     contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
                 ) {
                     item(
-                        key = "filter",
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Spacer(Modifier.width(12.dp))
-                            FilterChip(
-                                selected = true,
-                                onClick = onDeselect,
-                                label = { Text(stringResource(R.string.playlists)) },
-                                leadingIcon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.close),
-                                        contentDescription = null,
-                                    )
-                                },
-                            )
-                        }
-                    }
-
-                    item(
                         key = "header",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
@@ -361,27 +341,6 @@ fun LibraryPlaylistsScreen(
                     contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
                 ) {
                     item(
-                        key = "filter",
-                        span = { GridItemSpan(maxLineSpan) },
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Spacer(Modifier.width(12.dp))
-                            FilterChip(
-                                selected = true,
-                                onClick = onDeselect,
-                                label = { Text(stringResource(R.string.playlists)) },
-                                leadingIcon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.close),
-                                        contentDescription = null,
-                                    )
-                                },
-                            )
-                        }
-                    }
-
-                    item(
                         key = "header",
                         span = { GridItemSpan(maxLineSpan) },
                         contentType = CONTENT_TYPE_HEADER,
@@ -444,5 +403,17 @@ fun LibraryPlaylistsScreen(
                 )
             }
         }
+
+        TopAppBar(
+            title = { Text(stringResource(R.string.playlists)) },
+            navigationIcon = {
+                IconButton(onClick = navController::navigateUp) {
+                    Icon(
+                        painter = painterResource(R.drawable.arrow_back),
+                        contentDescription = null,
+                    )
+                }
+            },
+        )
     }
 }
