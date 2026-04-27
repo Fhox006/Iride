@@ -22,6 +22,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationState
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDecay
 import androidx.compose.animation.core.animateFloatAsState
@@ -224,7 +225,7 @@ fun ExperimentalLyrics(
     val aiProvider by rememberPreference(AiProviderKey, "OpenRouter")
     val openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, OpenRouterDefaultBaseUrl)
     val openRouterModel by rememberPreference(OpenRouterModelKey, OpenRouterDefaultModel)
-    val translateLanguage by rememberPreference(TranslateLanguageKey, "en")
+    var translateLanguage by rememberPreference(TranslateLanguageKey, "en")
     val translateMode by rememberPreference(TranslateModeKey, "Literal")
     val deeplFormality by rememberPreference(DeeplFormalityKey, "default")
     val aiSystemPrompt by rememberPreference(AiSystemPromptKey, "")
@@ -300,6 +301,7 @@ fun ExperimentalLyrics(
     }
 
     var showApiSetupDialog by remember { mutableStateOf(false) }
+    var showLanguagePickerDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(
         showLyrics,
@@ -727,7 +729,7 @@ fun ExperimentalLyrics(
                                     LyricsTranslationHelper.triggerClearTranslations()
                                 }
                             } else {
-                                LyricsTranslationHelper.triggerManualTranslation()
+                                showLanguagePickerDialog = true
                             }
                         },
                     )
@@ -941,7 +943,7 @@ fun ExperimentalLyrics(
                     val animatedProviderBase by animateFloatAsState(
                         targetValue = targetProviderBase,
                         animationSpec = if (isInitialLayout || !isAutoScrollEnabled) snap()
-                        else tween(750, 0, FastOutSlowInEasing),
+                        else tween(680, 0, CubicBezierEasing(0.16f, 1f, 0.3f, 1f)),
                         label = "lyricsProviderOffset"
                     )
                     Text(
@@ -966,7 +968,7 @@ fun ExperimentalLyrics(
                         val animatedOffset by animateFloatAsState(
                             targetValue = if (isAutoScrollEnabled) targetOffset else frozenOffset.floatValue,
                             animationSpec = if (isInitialLayout || !isAutoScrollEnabled) snap()
-                            else tween(750, (distance * LYRICS_STAGGER_DELAY_PER_DISTANCE).coerceAtMost(LYRICS_STAGGER_DELAY_MAX_MS), FastOutSlowInEasing),
+                            else tween(680, (distance * LYRICS_STAGGER_DELAY_PER_DISTANCE).coerceAtMost(LYRICS_STAGGER_DELAY_MAX_MS), CubicBezierEasing(0.16f, 1f, 0.3f, 1f)),
                             label = "lyricStaggeredOffset_$listIndex"
                         )
                         Box(
@@ -1013,8 +1015,8 @@ fun ExperimentalLyrics(
                                         currentPositionState = currentPositionState,
                                         lyricsOffset = (currentSong?.song?.lyricsOffset ?: 0).toLong(),
                                         playerConnection = playerConnection,
-                                        lyricsTextSize = 36f,
-                                        lyricsLineSpacing = 1.3f,
+                                        lyricsTextSize = 32f,
+                                        lyricsLineSpacing = 1.2f,
                                         expressiveAccent = expressiveAccent,
                                         lyricsTextPosition = lyricsTextPosition,
                                         respectAgentPositioning = respectAgentPositioning,
@@ -1154,6 +1156,18 @@ fun ExperimentalLyrics(
                     showApiSetupDialog = false
                     LyricsTranslationHelper.clearErrorStatus()
                 },
+            )
+        }
+
+        if (showLanguagePickerDialog) {
+            LyricsLanguagePickerDialog(
+                currentLanguage = translateLanguage,
+                onDismiss = { showLanguagePickerDialog = false },
+                onConfirm = { selectedLanguage ->
+                    translateLanguage = selectedLanguage
+                    showLanguagePickerDialog = false
+                    LyricsTranslationHelper.triggerManualTranslation()
+                }
             )
         }
     }

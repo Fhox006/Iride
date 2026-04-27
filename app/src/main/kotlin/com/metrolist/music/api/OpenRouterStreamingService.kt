@@ -133,19 +133,13 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                         put("max_tokens", lineCount * 100)
                     }
 
-                val effectiveUrl = baseUrl.ifBlank { "https://openrouter.ai/api/v1/chat/completions" }
-                val isGemini = effectiveUrl.contains("generativelanguage.googleapis.com")
-
                 val request =
                     Request
                         .Builder()
-                        .url(effectiveUrl)
+                        .url(baseUrl.ifBlank { "https://openrouter.ai/api/v1/chat/completions" })
                         .apply {
                             if (apiKey.isNotBlank()) {
                                 addHeader("Authorization", "Bearer ${apiKey.trim()}")
-                                if (isGemini) {
-                                    addHeader("x-goog-api-key", apiKey.trim())
-                                }
                             }
                         }.addHeader("Content-Type", "application/json")
                         .addHeader("HTTP-Referer", "https://github.com/MetrolistGroup/Metrolist")
@@ -157,16 +151,9 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                     Timber.d("Got streaming response: ${response.code}")
 
                     if (!response.isSuccessful) {
-                        val errorMsg =
-                            try {
-                                JSONObject(response.body?.string() ?: "")
-                                    .optJSONObject("error")
-                                    ?.optString("message")
-                                    ?: "HTTP ${response.code}: ${response.message}"
-                            } catch (e: Exception) {
-                                "HTTP ${response.code}: ${response.message}"
-                            }
-                        emit(StreamChunk.Error("Translation failed: $errorMsg"))
+                        val rawBody = response.body?.string() ?: "(empty body)"
+                        Timber.e("API error [${response.code}] raw body: $rawBody")
+                        emit(StreamChunk.Error("HTTP ${response.code}: $rawBody"))
                         return@flow
                     }
 

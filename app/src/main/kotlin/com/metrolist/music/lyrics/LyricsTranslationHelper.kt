@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
@@ -354,6 +355,21 @@ object LyricsTranslationHelper {
                                             Timber.e("Streaming error: ${chunk.message}")
                                             hasError = true
                                             errorMessage = chunk.message
+                                            val maskedKey = if (apiKey.length > 4) apiKey.take(4) + "****" else "****"
+                                            val debugText = buildString {
+                                                appendLine("=== IRIDE AI DEBUG ===")
+                                                appendLine("Provider: $provider")
+                                                appendLine("URL: ${baseUrl.ifBlank { "https://openrouter.ai/api/v1/chat/completions" }}")
+                                                appendLine("Model: $model")
+                                                appendLine("Mode: $mode")
+                                                appendLine("API Key: $maskedKey")
+                                                appendLine("--- ERROR ---")
+                                                appendLine(chunk.message)
+                                            }
+                                            withContext(Dispatchers.Main) {
+                                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Iride Debug", debugText))
+                                            }
                                         }
                                     }
                                 }

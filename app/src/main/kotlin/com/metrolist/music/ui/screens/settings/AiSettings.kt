@@ -64,10 +64,10 @@ import com.metrolist.music.utils.rememberPreference
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiSettings(navController: NavController) {
-    var aiProvider by rememberPreference(AiProviderKey, "OpenRouter")
+    var aiProvider by rememberPreference(AiProviderKey, "Gemini")
     var openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
-    var openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, "https://openrouter.ai/api/v1/chat/completions")
-    var openRouterModel by rememberPreference(OpenRouterModelKey, "google/gemini-2.5-flash-lite")
+    var openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
+    var openRouterModel by rememberPreference(OpenRouterModelKey, "gemini-2.5-flash-lite")
     var translateLanguage by rememberPreference(TranslateLanguageKey, "en")
     var translateMode by rememberPreference(TranslateModeKey, "Literal")
     var deeplApiKey by rememberPreference(DeeplApiKey, "")
@@ -128,11 +128,11 @@ fun AiSettings(navController: NavController) {
                 ),
             "Gemini" to
                 listOf(
-                    "gemini-flash-lite-latest",
                     "gemini-2.5-flash-lite",
-                    "gemini-flash-latest",
                     "gemini-2.5-flash",
-                    "gemini-3-flash-preview",
+                    "gemini-2.5-pro",
+                    "gemini-2.0-flash",
+                    "gemini-2.0-flash-lite",
                 ),
             "Perplexity" to
                 listOf(

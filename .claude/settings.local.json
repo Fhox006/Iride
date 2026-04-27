@@ -18,7 +18,14 @@
       "Bash(note_\")",
       "Bash(grep -v \"^$\")",
       "Bash(grep -v \"^[+-]import\\\\|^[+-] \\\\*\\\\|^[+-]//\\\\|^[+-]$\")",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(python -c \"print\\('ok'\\)\")",
+      "Bash(py -c \"print\\('ok'\\)\")",
+      "Bash(py *)",
+      "Bash(curl *)",
+      "Bash(unzip -p /tmp/inter.zip \"Inter Desktop/Inter-Variable.ttf\")",
+      "Bash(unzip -l /tmp/inter.zip)",
+      "Bash(unzip -p /tmp/inter.zip \"InterVariable.ttf\")"
     ]
   }
 }
