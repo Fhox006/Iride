@@ -70,7 +70,6 @@ import com.metrolist.music.constants.MixSortTypeKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
 import com.metrolist.music.constants.ShowLikedPlaylistKey
-import com.metrolist.music.constants.ShowTopPlaylistKey
 import com.metrolist.music.constants.ShowUploadedPlaylistKey
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.db.entities.Album
@@ -205,14 +204,13 @@ fun LibraryDownloadsScreen(
 
     val (showLiked) = rememberPreference(ShowLikedPlaylistKey, true)
     val (showDownloaded) = rememberPreference(ShowDownloadedPlaylistKey, true)
-    val (showTop) = rememberPreference(ShowTopPlaylistKey, true)
     val (showCached) = rememberPreference(ShowCachedPlaylistKey, true)
     val (showUploaded) = rememberPreference(ShowUploadedPlaylistKey, true)
 
     val showLikedPlaylist = showLiked && matchesNormalizedQuery(normalizedQuery, likedPlaylist.playlist.name)
     val showDownloadedPlaylist =
         showDownloaded && matchesNormalizedQuery(normalizedQuery, downloadPlaylist.playlist.name)
-    val showTopPlaylists = showTop && matchesNormalizedQuery(normalizedQuery, topPlaylist.playlist.name)
+    val showTopPlaylists = false
     val showUploadedPlaylists =
         showUploaded && matchesNormalizedQuery(normalizedQuery, uploadedPlaylist.playlist.name)
     val showCachedPlaylists = showCached && matchesNormalizedQuery(normalizedQuery, cachedPlaylist.playlist.name)
@@ -455,11 +453,7 @@ fun LibraryDownloadsScreen(
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         LibraryCategorySection(
-                            navController = navController,
-                            currentView = currentView,
-                            onViewChange = onViewChange,
                             onNavigateToCategory = onNavigateToCategory,
-                            showCacheBox = true,
                         )
                     }
 
@@ -797,11 +791,7 @@ fun LibraryDownloadsScreen(
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         LibraryCategorySection(
-                            navController = navController,
-                            currentView = currentView,
-                            onViewChange = onViewChange,
                             onNavigateToCategory = onNavigateToCategory,
-                            showCacheBox = true,
                         )
                     }
 
