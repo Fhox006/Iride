@@ -132,144 +132,13 @@ fun LibraryPlaylistsScreen(
         }
     }
 
-    val topSize by viewModel.topValue.collectAsState(initial = 50)
-
-    val likedPlaylist =
-        Playlist(
-            playlist = PlaylistEntity(
-                id = UUID.randomUUID().toString(),
-                name = stringResource(R.string.liked)
-            ),
-            songCount = 0,
-            songThumbnails = emptyList(),
-        )
-
-    val downloadPlaylist =
-        Playlist(
-            playlist = PlaylistEntity(
-                id = UUID.randomUUID().toString(),
-                name = stringResource(R.string.offline)
-            ),
-            songCount = 0,
-            songThumbnails = emptyList(),
-        )
-
-    val topPlaylist =
-        Playlist(
-            playlist = PlaylistEntity(
-                id = UUID.randomUUID().toString(),
-                name = stringResource(R.string.my_top) + " $topSize"
-            ),
-            songCount = 0,
-            songThumbnails = emptyList(),
-        )
-
-
-    val uploadedPlaylist =
-        Playlist(
-            playlist = PlaylistEntity(
-                id = UUID.randomUUID().toString(),
-                name = stringResource(R.string.uploaded_playlist)
-            ),
-            songCount = 0,
-            songThumbnails = emptyList(),
-        )
-
-    val cachedPlaylist =
-        Playlist(
-            playlist = PlaylistEntity(
-                id = UUID.randomUUID().toString(),
-                name = stringResource(R.string.cached_playlist)
-            ),
-            songCount = 0,
-            songThumbnails = emptyList(),
-        )
-
-    val (showLiked) = rememberPreference(ShowLikedPlaylistKey, true)
-    val (showDownloaded) = rememberPreference(ShowDownloadedPlaylistKey, true)
-    val (showTop) = rememberPreference(ShowTopPlaylistKey, true)
-    val (showUploaded) = rememberPreference(ShowUploadedPlaylistKey, true)
-    val (showCached) = rememberPreference(ShowCachedPlaylistKey, true)
-    val showLikedPlaylist = showLiked && matchesNormalizedQuery(normalizedQuery, likedPlaylist.playlist.name)
-    val showDownloadedPlaylist =
-        showDownloaded && matchesNormalizedQuery(normalizedQuery, downloadPlaylist.playlist.name)
-    val showCachedPlaylists = showCached && matchesNormalizedQuery(normalizedQuery, cachedPlaylist.playlist.name)
-    val showTopPlaylists = showTop && matchesNormalizedQuery(normalizedQuery, topPlaylist.playlist.name)
-    val showUploadedPlaylists =
-        showUploaded && matchesNormalizedQuery(normalizedQuery, uploadedPlaylist.playlist.name)
-
-    val visibleResults = remember(
-        filteredPlaylists,
-        showLikedPlaylist,
-        showDownloadedPlaylist,
-        showCachedPlaylists,
-        showTopPlaylists,
-        showUploadedPlaylists,
-        topSize,
-    ) {
-        buildList {
-            if (showLikedPlaylist) {
-                add(
-                    VisiblePlaylistItem(
-                        key = "likedPlaylist",
-                        playlist = likedPlaylist,
-                        autoPlaylist = true,
-                        route = "auto_playlist/liked",
-                    ),
-                )
-            }
-            if (showDownloadedPlaylist) {
-                add(
-                    VisiblePlaylistItem(
-                        key = "downloadedPlaylist",
-                        playlist = downloadPlaylist,
-                        autoPlaylist = true,
-                        route = "auto_playlist/downloaded",
-                    ),
-                )
-            }
-            if (showCachedPlaylists) {
-                add(
-                    VisiblePlaylistItem(
-                        key = "cachedPlaylist",
-                        playlist = cachedPlaylist,
-                        autoPlaylist = true,
-                        route = "cache_playlist/cached",
-                    ),
-                )
-            }
-            if (showTopPlaylists) {
-                add(
-                    VisiblePlaylistItem(
-                        key = "TopPlaylist",
-                        playlist = topPlaylist,
-                        autoPlaylist = true,
-                        route = "top_playlist/$topSize",
-                    ),
-                )
-            }
-            if (showUploadedPlaylists) {
-                add(
-                    VisiblePlaylistItem(
-                        key = "uploadedPlaylist",
-                        playlist = uploadedPlaylist,
-                        autoPlaylist = true,
-                        route = "auto_playlist/uploaded",
-                    ),
-                )
-            }
-
-            filteredPlaylists
-                .distinctBy { it.id }
-                .forEach { playlist ->
-                    add(
-                        VisiblePlaylistItem(
-                            key = playlist.id,
-                            playlist = playlist,
-                            autoPlaylist = false,
-                        ),
-                    )
-                }
+    val visibleResults = remember(filteredPlaylists) {
+        filteredPlaylists.distinctBy { it.id }.map { playlist ->
+            VisiblePlaylistItem(
+                key = playlist.id,
+                playlist = playlist,
+                autoPlaylist = false,
+            )
         }
     }
 
@@ -406,7 +275,20 @@ fun LibraryPlaylistsScreen(
                         key = "filter",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        filterContent()
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Spacer(Modifier.width(12.dp))
+                            FilterChip(
+                                selected = true,
+                                onClick = onDeselect,
+                                label = { Text(stringResource(R.string.playlists)) },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.close),
+                                        contentDescription = null,
+                                    )
+                                },
+                            )
+                        }
                     }
 
                     item(
@@ -482,7 +364,20 @@ fun LibraryPlaylistsScreen(
                         span = { GridItemSpan(maxLineSpan) },
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        filterContent()
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Spacer(Modifier.width(12.dp))
+                            FilterChip(
+                                selected = true,
+                                onClick = onDeselect,
+                                label = { Text(stringResource(R.string.playlists)) },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.close),
+                                        contentDescription = null,
+                                    )
+                                },
+                            )
+                        }
                     }
 
                     item(
