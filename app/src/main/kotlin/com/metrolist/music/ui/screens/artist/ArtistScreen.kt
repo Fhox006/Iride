@@ -329,8 +329,7 @@ fun ArtistScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .offset { IntOffset(x = 0, y = headerOffset) }
-                            .padding(bottom = with(density) { (-headerOffset).toDp() }),
+                            .offset { IntOffset(x = 0, y = headerOffset) },
                     ) {
                         if (thumbnail != null) {
                             Box(modifier = Modifier.fillMaxWidth()) {
@@ -366,7 +365,7 @@ fun ArtistScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(bgColor)
-                                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                                .padding(horizontal = 16.dp),
                         ) {
                             Text(
                                 text = artistName ?: "Unknown",
@@ -408,7 +407,6 @@ fun ArtistScreen(
                                         }
                                     }
                                 )
-                                Spacer(modifier = Modifier.height(16.dp))
                             }
                         }
                     }
