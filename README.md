@@ -1,7 +1,5 @@
 <div align="center">
 
-<img src="https://github.com/IrideGroup/Iride/blob/main/fastlane/metadata/android/en-US/images/icon.png" alt="Iride app icon" width="200" />
-
 # Iride
 
 ### A visually-focused YouTube Music client for Android
