@@ -459,9 +459,6 @@ fun LibraryMixScreen(
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         LibraryCategorySection(
-                            navController = navController,
-                            currentView = currentView,
-                            onViewChange = onViewChange,
                             onNavigateToCategory = onNavigateToCategory,
                         )
                     }
@@ -800,9 +797,6 @@ fun LibraryMixScreen(
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         LibraryCategorySection(
-                            navController = navController,
-                            currentView = currentView,
-                            onViewChange = onViewChange,
                             onNavigateToCategory = onNavigateToCategory,
                         )
                     }
@@ -1095,147 +1089,77 @@ private data class LibraryCategoryItem(
     val onClick: () -> Unit,
 )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun LibraryCategorySection(
-    navController: NavController,
-    currentView: LibraryView,
-    onViewChange: (LibraryView) -> Unit,
     onNavigateToCategory: (LibraryFilter) -> Unit,
-    showCacheBox: Boolean = false,
 ) {
-    var showDropdown by remember { mutableStateOf(false) }
-    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
     val secondaryContainer = MaterialTheme.colorScheme.secondaryContainer
     val tertiaryContainer = MaterialTheme.colorScheme.tertiaryContainer
     val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
     val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
-    val errorContainer = MaterialTheme.colorScheme.errorContainer
 
-    val categories = remember(showCacheBox, primaryContainer, secondaryContainer,
-        tertiaryContainer, surfaceVariant, surfaceContainer, errorContainer) {
-        buildList {
-            add(LibraryCategoryItem(R.string.liked, R.drawable.favorite_border, primaryContainer) {
-                navController.navigate("auto_playlist/liked")
-            })
-            add(LibraryCategoryItem(R.string.playlists, R.drawable.queue_music, secondaryContainer) {
+    val categories = remember(secondaryContainer, tertiaryContainer, surfaceVariant, surfaceContainer) {
+        listOf(
+            LibraryCategoryItem(R.string.playlists, R.drawable.queue_music, secondaryContainer) {
                 onNavigateToCategory(LibraryFilter.PLAYLISTS)
-            })
-            add(LibraryCategoryItem(R.string.songs, R.drawable.music_note, tertiaryContainer) {
+            },
+            LibraryCategoryItem(R.string.songs, R.drawable.music_note, tertiaryContainer) {
                 onNavigateToCategory(LibraryFilter.SONGS)
-            })
-            add(LibraryCategoryItem(R.string.albums, R.drawable.album, surfaceVariant) {
+            },
+            LibraryCategoryItem(R.string.albums, R.drawable.album, surfaceVariant) {
                 onNavigateToCategory(LibraryFilter.ALBUMS)
-            })
-            add(LibraryCategoryItem(R.string.artists, R.drawable.artist, surfaceContainer) {
+            },
+            LibraryCategoryItem(R.string.artists, R.drawable.artist, surfaceContainer) {
                 onNavigateToCategory(LibraryFilter.ARTISTS)
-            })
-            if (showCacheBox) {
-                add(LibraryCategoryItem(R.string.cached_playlist, R.drawable.cached, errorContainer) {
-                    navController.navigate("cache_playlist/cached")
-                })
-            }
-        }
+            },
+        )
     }
 
-    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-        Box {
-            Row(
-                modifier = Modifier
-                    .clickable { showDropdown = true }
-                    .padding(vertical = 8.dp, horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(
-                        when (currentView) {
-                            LibraryView.LIBRARY -> R.string.filter_library
-                            LibraryView.DOWNLOADS -> R.string.downloads
-                        }
-                    ),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Icon(
-                    painter = painterResource(R.drawable.expand_more),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-            DropdownMenu(
-                expanded = showDropdown,
-                onDismissRequest = { showDropdown = false },
-            ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.filter_library)) },
-                    onClick = {
-                        onViewChange(LibraryView.LIBRARY)
-                        showDropdown = false
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.downloads)) },
-                    onClick = {
-                        onViewChange(LibraryView.DOWNLOADS)
-                        showDropdown = false
-                    },
-                )
-            }
-        }
-
-        categories.chunked(2).forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                row.forEach { cat ->
-                    LibraryCategoryBox(
-                        labelRes = cat.labelRes,
-                        iconRes = cat.iconRes,
-                        color = cat.color,
-                        onClick = cat.onClick,
-                        modifier = Modifier.weight(1f).padding(vertical = 4.dp),
-                    )
-                }
-                repeat(2 - row.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
+    FlowRow(
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        categories.forEach { cat ->
+            LibraryCategoryChip(
+                labelRes = cat.labelRes,
+                iconRes = cat.iconRes,
+                color = cat.color,
+                onClick = cat.onClick,
+            )
         }
     }
 }
 
 @Composable
-private fun LibraryCategoryBox(
+private fun LibraryCategoryChip(
     labelRes: Int,
     iconRes: Int,
     color: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        contentAlignment = Alignment.Center,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(12.dp))
+            .height(48.dp)
+            .clip(RoundedCornerShape(8.dp))
             .background(color)
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-            )
-            Text(
-                text = stringResource(labelRes),
-                style = MaterialTheme.typography.labelMedium,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 6.dp, start = 4.dp, end = 4.dp),
-            )
-        }
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+        )
+        Text(
+            text = stringResource(labelRes),
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
