@@ -174,6 +174,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.min
 import kotlin.random.Random
 
@@ -712,8 +713,14 @@ fun HomeScreen(
     var isReadyToShow by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         if (!isReadyToShow) {
-            viewModel.isLoading.first { it }
-            viewModel.isLoading.first { !it }
+            // If loading hasn't started yet, wait up to 5s for it to begin
+            if (!viewModel.isLoading.value) {
+                withTimeoutOrNull(5000L) { viewModel.isLoading.first { it } }
+            }
+            // Wait for loading to finish if currently in progress
+            if (viewModel.isLoading.value) {
+                viewModel.isLoading.first { !it }
+            }
             isReadyToShow = true
         }
     }

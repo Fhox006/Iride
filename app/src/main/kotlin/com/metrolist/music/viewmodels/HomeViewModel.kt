@@ -470,65 +470,7 @@ class HomeViewModel @Inject constructor(
         val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
         val fromTimeStamp = System.currentTimeMillis() - 86400000L * 7 * 2
 
-        // Phase 1: Load essential sections in parallel — local DB (fast) + YouTube home page.
-        // isLoading is set to false as soon as all Phase 1 tasks complete so the UI appears quickly.
-        coroutineScope {
-            launch(Dispatchers.IO) { getQuickPicks() }
-
-            launch(Dispatchers.IO) {
-                forgottenFavorites.value = database.forgottenFavorites().first()
-                    .filterVideoSongs(hideVideoSongs).shuffled().take(20)
-            }
-
-            launch(Dispatchers.IO) {
-                val songs = database.mostPlayedSongs(fromTimeStamp, limit = 15, offset = 5).first()
-                    .filterVideoSongs(hideVideoSongs).shuffled().take(10)
-                val albums = database.mostPlayedAlbums(fromTimeStamp, limit = 8, offset = 2).first()
-                    .filter { it.album.thumbnailUrl != null }.shuffled().take(5)
-                val artists = database.mostPlayedArtists(fromTimeStamp).first()
-                    .filter { it.artist.isYouTubeArtist && it.artist.thumbnailUrl != null }.shuffled().take(5)
-                keepListening.value = (songs + albums + artists).shuffled()
-            }
-
-            launch(Dispatchers.IO) {
-                YouTube.home().onSuccess { page ->
-                    val transformedChips = transformChips(page.chips)
-                    val transformedPage = page.copy(
-                        chips = transformedChips,
-                        sections = page.sections.mapNotNull { section ->
-                            val filtered = section.items
-                                .filterExplicit(hideExplicit)
-                                .filterVideoSongs(hideVideoSongs)
-                                .filterYoutubeShorts(hideYoutubeShorts)
-                                .filter { !it.isMixtape }
-                            if (filtered.isEmpty()) null else section.copy(items = filtered)
-                        }
-                    )
-                    homePage.value = transformedPage
-
-                    // Preselect the first chip (which is random because we shuffled them)
-                    if (selectedChip.value == null) {
-                        transformedChips?.firstOrNull()?.let { randomChip ->
-                            toggleChip(randomChip)
-                        }
-                    }
-                }.onFailure { reportException(it) }
-            }
-
-            if (YouTube.cookie != null) {
-                launch(Dispatchers.IO) { loadAccountPlaylists() }
-            }
-        }
-
-        allLocalItems.value = (quickPicks.value.orEmpty() + forgottenFavorites.value.orEmpty() + keepListening.value.orEmpty())
-            .filter { it is Song || it is Album }
-        isLoading.value = false
-
-        // Phase 2: Heavy multi-request operations — run in background without blocking the UI.
-        viewModelScope.launch(Dispatchers.IO) { getDailyDiscover() }
-
-        viewModelScope.launch(Dispatchers.IO) { getCommunityPlaylists() }
-
+        // Start explore early so search moods are ready before Phase 1 completes
         viewModelScope.launch(Dispatchers.IO) {
             YouTube.explore().onSuccess { page ->
                 explorePage.value = page.copy(
@@ -536,6 +478,67 @@ class HomeViewModel @Inject constructor(
                 )
             }.onFailure { reportException(it) }
         }
+
+        // Phase 1: Load essential sections in parallel — local DB (fast) + YouTube home page.
+        // isLoading is set to false as soon as all Phase 1 tasks complete so the UI appears quickly.
+        try {
+            coroutineScope {
+                launch(Dispatchers.IO) { getQuickPicks() }
+
+                launch(Dispatchers.IO) {
+                    forgottenFavorites.value = database.forgottenFavorites().first()
+                        .filterVideoSongs(hideVideoSongs).shuffled().take(20)
+                }
+
+                launch(Dispatchers.IO) {
+                    val songs = database.mostPlayedSongs(fromTimeStamp, limit = 15, offset = 5).first()
+                        .filterVideoSongs(hideVideoSongs).shuffled().take(10)
+                    val albums = database.mostPlayedAlbums(fromTimeStamp, limit = 8, offset = 2).first()
+                        .filter { it.album.thumbnailUrl != null }.shuffled().take(5)
+                    val artists = database.mostPlayedArtists(fromTimeStamp).first()
+                        .filter { it.artist.isYouTubeArtist && it.artist.thumbnailUrl != null }.shuffled().take(5)
+                    keepListening.value = (songs + albums + artists).shuffled()
+                }
+
+                launch(Dispatchers.IO) {
+                    YouTube.home().onSuccess { page ->
+                        val transformedChips = transformChips(page.chips)
+                        val transformedPage = page.copy(
+                            chips = transformedChips,
+                            sections = page.sections.mapNotNull { section ->
+                                val filtered = section.items
+                                    .filterExplicit(hideExplicit)
+                                    .filterVideoSongs(hideVideoSongs)
+                                    .filterYoutubeShorts(hideYoutubeShorts)
+                                if (filtered.isEmpty()) null else section.copy(items = filtered)
+                            }
+                        )
+                        homePage.value = transformedPage
+
+                        // Preselect the first chip (which is random because we shuffled them)
+                        if (selectedChip.value == null) {
+                            transformedChips?.firstOrNull()?.let { randomChip ->
+                                toggleChip(randomChip)
+                            }
+                        }
+                    }.onFailure { reportException(it) }
+                }
+
+                if (YouTube.cookie != null) {
+                    launch(Dispatchers.IO) { loadAccountPlaylists() }
+                }
+            }
+
+            allLocalItems.value = (quickPicks.value.orEmpty() + forgottenFavorites.value.orEmpty() + keepListening.value.orEmpty())
+                .filter { it is Song || it is Album }
+        } finally {
+            isLoading.value = false
+        }
+
+        // Phase 2: Heavy multi-request operations — run in background without blocking the UI.
+        viewModelScope.launch(Dispatchers.IO) { getDailyDiscover() }
+
+        viewModelScope.launch(Dispatchers.IO) { getCommunityPlaylists() }
 
         viewModelScope.launch(Dispatchers.IO) {
             val artistRecommendations = database.mostPlayedArtists(fromTimeStamp, limit = 15).first()
@@ -630,9 +633,6 @@ class HomeViewModel @Inject constructor(
                         .filterExplicit(hideExplicit)
                         .filterVideoSongs(hideVideoSongs)
                         .filterYoutubeShorts(hideYoutubeShorts)
-                        .let { items ->
-                            if (currentChip == null) items.filter { !it.isMixtape } else items
-                        }
                     if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
                 }
             )

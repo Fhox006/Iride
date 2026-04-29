@@ -1144,19 +1144,38 @@ fun ExperimentalLyrics(
         }
 
         if (showApiSetupDialog) {
-            LyricsApiSetupDialog(
-                provider = aiProvider,
-                currentApiKey = openRouterApiKey,
-                onDismiss = {
-                    showApiSetupDialog = false
-                    LyricsTranslationHelper.clearErrorStatus()
-                },
-                onSave = { key ->
-                    openRouterApiKey = key
-                    showApiSetupDialog = false
-                    LyricsTranslationHelper.clearErrorStatus()
-                },
-            )
+            if (aiProvider == "Gemini" && openRouterApiKey.isBlank()) {
+                GeminiSetupDialog(
+                    currentApiKey = openRouterApiKey,
+                    currentLanguage = translateLanguage,
+                    onDismiss = {
+                        showApiSetupDialog = false
+                        LyricsTranslationHelper.clearErrorStatus()
+                    },
+                    onSave = { key: String ->
+                        openRouterApiKey = key
+                        showApiSetupDialog = false
+                        LyricsTranslationHelper.clearErrorStatus()
+                    },
+                    onLanguageSelected = { lang: String ->
+                        translateLanguage = lang
+                    }
+                )
+            } else {
+                LyricsApiSetupDialog(
+                    provider = aiProvider,
+                    currentApiKey = openRouterApiKey,
+                    onDismiss = {
+                        showApiSetupDialog = false
+                        LyricsTranslationHelper.clearErrorStatus()
+                    },
+                    onSave = { key ->
+                        openRouterApiKey = key
+                        showApiSetupDialog = false
+                        LyricsTranslationHelper.clearErrorStatus()
+                    },
+                )
+            }
         }
 
         if (showLanguagePickerDialog) {

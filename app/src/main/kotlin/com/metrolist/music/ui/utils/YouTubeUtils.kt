@@ -19,8 +19,13 @@ fun String.resize(
         if (w == null && h != null) w = (h / H) * W
         return "${split("=w")[0]}=w$w-h$h-p-l90-rj"
     }
-    if (this matches "https://yt3\\.ggpht\\.com/.*=s(\\d+)".toRegex()) {
-        return "$this-s${width ?: height}"
+    if (this.contains("yt3.ggpht.com")) {
+        val size = width ?: height ?: return this
+        return if (contains("=s")) {
+            "${substringBefore("=s")}=s$size"
+        } else {
+            "$this=s$size"
+        }
     }
     return this
 }

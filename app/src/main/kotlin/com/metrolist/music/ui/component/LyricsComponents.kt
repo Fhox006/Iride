@@ -571,7 +571,7 @@ internal fun LyricsLanguagePickerDialog(
         if (searchQuery.isBlank()) languages
         else languages.filter {
             it.value.contains(searchQuery, ignoreCase = true) ||
-            it.key.contains(searchQuery, ignoreCase = true)
+                    it.key.contains(searchQuery, ignoreCase = true)
         }
     }
 
@@ -632,7 +632,7 @@ internal fun LyricsLanguagePickerDialog(
                                 text = entry.value,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-                                        else MaterialTheme.colorScheme.onSurface,
+                                else MaterialTheme.colorScheme.onSurface,
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                             )
                             if (isSelected) {
@@ -658,6 +658,146 @@ internal fun LyricsLanguagePickerDialog(
                     Spacer(Modifier.width(8.dp))
                     Button(onClick = { onConfirm(selected) }) {
                         Text("Translate")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun GeminiSetupDialog(
+    currentApiKey: String,
+    currentLanguage: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+    onLanguageSelected: (String) -> Unit,
+) {
+    var keyInput by remember { mutableStateOf(currentApiKey) }
+    var selectedLanguage by remember { mutableStateOf(currentLanguage) }
+    val deviceLanguage = java.util.Locale.getDefault().language
+    val languages = com.metrolist.music.constants.LanguageCodeToName.entries.toList()
+    val sortedLanguages = remember {
+        val deviceEntry = languages.find { it.key == deviceLanguage }
+        if (deviceEntry != null) listOf(deviceEntry) + (languages - deviceEntry) else languages
+    }
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val url = "https://aistudio.google.com/apikey"
+
+    BasicAlertDialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(
+                        painterResource(R.drawable.key),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = primaryColor,
+                    )
+                    Text("Set up Gemini", style = MaterialTheme.typography.headlineSmall)
+                }
+
+                Text(
+                    "An API key is required for AI lyrics translation with Gemini.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+
+                val annotatedString = buildAnnotatedString {
+                    append("Get your free API key at ")
+                    val start = length
+                    append(url)
+                    addLink(
+                        LinkAnnotation.Url(
+                            url = url,
+                            styles = TextLinkStyles(SpanStyle(color = primaryColor, textDecoration = TextDecoration.Underline)),
+                        ),
+                        start = start,
+                        end = length,
+                    )
+                }
+                Text(annotatedString, style = MaterialTheme.typography.bodyMedium)
+
+                OutlinedTextField(
+                    value = keyInput,
+                    onValueChange = { keyInput = it },
+                    label = { Text("Gemini API Key") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = { Icon(painterResource(R.drawable.key), contentDescription = null) },
+                )
+
+                Text(
+                    "Translation language",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    sortedLanguages.forEach { entry ->
+                        val code = entry.key
+                        val name = entry.value
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedLanguage = code
+                                    onLanguageSelected(code)
+                                }
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                                color = if (selectedLanguage == code) primaryColor
+                                        else MaterialTheme.colorScheme.onSurface,
+                            )
+                            if (selectedLanguage == code) {
+                                Icon(
+                                    painterResource(R.drawable.check),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = primaryColor,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(android.R.string.cancel))
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = { onSave(keyInput.trim()) },
+                        enabled = keyInput.trim().isNotBlank(),
+                    ) {
+                        Text(stringResource(android.R.string.ok))
                     }
                 }
             }

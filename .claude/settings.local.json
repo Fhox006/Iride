@@ -25,7 +25,9 @@
       "Bash(curl *)",
       "Bash(unzip -p /tmp/inter.zip \"Inter Desktop/Inter-Variable.ttf\")",
       "Bash(unzip -l /tmp/inter.zip)",
-      "Bash(unzip -p /tmp/inter.zip \"InterVariable.ttf\")"
+      "Bash(unzip -p /tmp/inter.zip \"InterVariable.ttf\")",
+      "Bash(python3 -c ' *)",
+      "Bash(grep -q '^__TRACKED_VAR__$' /tmp/existing_strings.txt)"
     ]
   }
 }

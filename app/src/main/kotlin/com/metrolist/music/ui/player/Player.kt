@@ -930,6 +930,7 @@ fun BottomSheetPlayer(
             MiniPlayer(
                 positionState = positionState,
                 durationState = durationState,
+                playerBottomSheetState = state,
             )
         },
     ) {

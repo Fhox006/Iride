@@ -73,6 +73,7 @@ val AlarmRandomSongKey = booleanPreferencesKey("alarmRandomSong")
 val AlarmNextTriggerAtKey = longPreferencesKey("alarmNextTriggerAt")
 val AlarmEntriesKey = stringPreferencesKey("alarmEntries")
 val DeveloperModeKey = booleanPreferencesKey("developerMode")
+val AdvancedModeKey = booleanPreferencesKey("advancedMode")
 
 enum class SliderStyle {
     DEFAULT,

@@ -352,7 +352,7 @@ fun Queue(
                         icon = R.drawable.lyrics,
                         onClick = { onToggleLyrics() },
                         isActive = showInlineLyrics,
-                        shape = middleShape,
+                        shape = RoundedCornerShape(50.dp),
                         modifier = Modifier.size(buttonSize),
                         textButtonColor = textButtonColor,
                         iconButtonColor = iconButtonColor,

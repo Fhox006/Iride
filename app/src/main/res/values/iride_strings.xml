@@ -164,7 +164,10 @@
     <string name="token_shown">Tap again to copy or edit</string>
     <string name="token_adv_login_description">This is an ADVANCED login method. Instead of using the web portal, you can enter or update your login token directly. This can be useful for signing in across multiple devices quickly. Tokens in an unrecognized format will be rejected</string>
     <string name="yt_sync">Auto-sync with account</string>
+    <string name="auto_sync">Auto sync</string>
     <string name="more_content">More content</string>
+    <string name="other_content">Other content</string>
+    <string name="show_token">Show token</string>
 
     <string name="sort_ascending">Sort ascending</string>
     <string name="sort_descending">Sort descending</string>

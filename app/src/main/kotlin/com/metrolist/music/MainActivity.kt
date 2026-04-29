@@ -913,7 +913,7 @@ class MainActivity : ComponentActivity() {
                                             )
                                         },
                                         actions = {
-                                            if (showHistoryButton) {
+                                            if (false) {
                                                 IconButton(onClick = { navController.navigate("history") }) {
                                                     Icon(
                                                         painter = painterResource(R.drawable.history),
@@ -921,13 +921,15 @@ class MainActivity : ComponentActivity() {
                                                     )
                                                 }
                                             }
-                                            IconButton(onClick = { navController.navigate("stats") }) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.stats),
-                                                    contentDescription = stringResource(R.string.stats),
-                                                )
+                                            if (false) {
+                                                IconButton(onClick = { navController.navigate("stats") }) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.stats),
+                                                        contentDescription = stringResource(R.string.stats),
+                                                    )
+                                                }
                                             }
-                                            if (listenTogetherInTopBar) {
+                                            if (false) {
                                                 IconButton(onClick = { navController.navigate("listen_together_from_topbar") }) {
                                                     Icon(
                                                         painter = painterResource(R.drawable.group_outlined),

@@ -69,6 +69,7 @@ import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.size.Size
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
@@ -82,6 +83,7 @@ import com.metrolist.music.constants.SwipeThumbnailKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.ui.component.CastButton
+import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.delay
@@ -629,7 +631,8 @@ private fun ThumbnailImage(
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
-                .data(artworkUri)
+                .data(artworkUri?.resize(1080, 1080) ?: artworkUri)
+                .size(Size.ORIGINAL)
                 .memoryCachePolicy(CachePolicy.ENABLED)
                 .diskCachePolicy(CachePolicy.ENABLED)
                 .networkCachePolicy(CachePolicy.ENABLED)
