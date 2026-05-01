@@ -13,7 +13,6 @@ import com.metrolist.innertube.models.SongItem
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
-import com.metrolist.music.ui.utils.resize
 
 val MediaItem.metadata: MediaMetadata?
     get() = localConfiguration?.tag as? MediaMetadata
@@ -52,7 +51,7 @@ fun SongItem.toMediaItem() = MediaItem.Builder()
             .setTitle(title)
             .setSubtitle(artists.joinToString { it.name })
             .setArtist(artists.joinToString { it.name })
-            .setArtworkUri(thumbnail.resize(544, 544).toUri())
+            .setArtworkUri(thumbnail.toUri())
             .setAlbumTitle(album?.name)
             .setAlbumArtist(artists.firstOrNull()?.name)
             .setDisplayTitle(title)
@@ -60,7 +59,7 @@ fun SongItem.toMediaItem() = MediaItem.Builder()
             .setIsBrowsable(false)
             .setIsPlayable(true)
             .setExtras(Bundle().apply {
-                putString("artwork_uri", thumbnail.resize(544, 544))
+                putString("artwork_uri", thumbnail)
             })
             .build()
     )

@@ -61,6 +61,7 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.AccountChannelHandleKey
 import com.metrolist.music.constants.AccountEmailKey
 import com.metrolist.music.constants.AccountNameKey
+import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.DataSyncIdKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.UseLoginForBrowse
@@ -86,6 +87,7 @@ fun MyAccountScreen(
     val scope = rememberCoroutineScope()
     val accountSettingsViewModel: AccountSettingsViewModel = hiltViewModel()
 
+    val (advancedMode, _) = rememberPreference(AdvancedModeKey, false)
     val (innerTubeCookie, onInnerTubeCookieChange) = rememberPreference(InnerTubeCookieKey, "")
     val isLoggedIn = remember(innerTubeCookie) { "SAPISID" in parseCookieString(innerTubeCookie) }
     val (useLoginForBrowse, onUseLoginForBrowseChange) = rememberPreference(UseLoginForBrowse, true)
@@ -199,52 +201,53 @@ fun MyAccountScreen(
         ) {
             Column(Modifier.fillMaxWidth()) {
 
-                // Use login for browse
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = isLoggedIn) {
-                            YouTube.useLoginForBrowse = !useLoginForBrowse
-                            onUseLoginForBrowseChange(!useLoginForBrowse)
-                        }
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.library_music),
-                        contentDescription = null,
-                        tint = if (isLoggedIn) MaterialTheme.colorScheme.primary
-                               else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(16.dp))
-                    Text(
-                        text = stringResource(R.string.other_content),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (isLoggedIn) MaterialTheme.colorScheme.onSurface
-                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                        modifier = Modifier.weight(1f)
-                    )
-                    Switch(
-                        enabled = isLoggedIn,
-                        checked = useLoginForBrowse,
-                        onCheckedChange = {
-                            YouTube.useLoginForBrowse = it
-                            onUseLoginForBrowseChange(it)
-                        },
-                        thumbContent = {
-                            Icon(
-                                painter = painterResource(
-                                    if (useLoginForBrowse) R.drawable.check else R.drawable.close
-                                ),
-                                contentDescription = null,
-                                modifier = Modifier.size(SwitchDefaults.IconSize)
-                            )
-                        }
-                    )
+                // Other Content (advanced only)
+                if (advancedMode) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = isLoggedIn) {
+                                YouTube.useLoginForBrowse = !useLoginForBrowse
+                                onUseLoginForBrowseChange(!useLoginForBrowse)
+                            }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.library_music),
+                            contentDescription = null,
+                            tint = if (isLoggedIn) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text(
+                            text = stringResource(R.string.other_content),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (isLoggedIn) MaterialTheme.colorScheme.onSurface
+                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            enabled = isLoggedIn,
+                            checked = useLoginForBrowse,
+                            onCheckedChange = {
+                                YouTube.useLoginForBrowse = it
+                                onUseLoginForBrowseChange(it)
+                            },
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        if (useLoginForBrowse) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 }
-
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
                 // Auto sync
                 Row(
@@ -285,85 +288,86 @@ fun MyAccountScreen(
                     )
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                // Show token (advanced only, expands inline)
+                if (advancedMode) {
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
-                // Show token (expands inline)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = isLoggedIn) { showToken = !showToken }
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.token),
-                        contentDescription = null,
-                        tint = if (isLoggedIn) MaterialTheme.colorScheme.primary
-                               else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(16.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.show_token),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (isLoggedIn) MaterialTheme.colorScheme.onSurface
-                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = isLoggedIn) { showToken = !showToken }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.token),
+                            contentDescription = null,
+                            tint = if (isLoggedIn) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                            modifier = Modifier.size(20.dp)
                         )
-                        if (isLoggedIn) {
+                        Spacer(Modifier.width(16.dp))
+                        Column(Modifier.weight(1f)) {
                             Text(
-                                text = if (showToken) stringResource(R.string.token_shown)
-                                       else stringResource(R.string.token_hidden),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Icon(
-                        painter = painterResource(
-                            if (showToken) R.drawable.expand_less else R.drawable.expand_more
-                        ),
-                        contentDescription = null,
-                        tint = if (isLoggedIn) MaterialTheme.colorScheme.onSurfaceVariant
-                               else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                // Expandable preference below show token: advanced login
-                AnimatedVisibility(
-                    visible = showToken && isLoggedIn,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
-                ) {
-                    Column(Modifier.fillMaxWidth()) {
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showTokenEditor = true }
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.edit),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.width(16.dp))
-                            Text(
-                                text = stringResource(R.string.advanced_login),
+                                text = stringResource(R.string.show_token),
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.weight(1f)
+                                color = if (isLoggedIn) MaterialTheme.colorScheme.onSurface
+                                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                             )
-                            Icon(
-                                painter = painterResource(R.drawable.arrow_forward),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            if (isLoggedIn) {
+                                Text(
+                                    text = if (showToken) stringResource(R.string.token_shown)
+                                           else stringResource(R.string.token_hidden),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Icon(
+                            painter = painterResource(
+                                if (showToken) R.drawable.expand_less else R.drawable.expand_more
+                            ),
+                            contentDescription = null,
+                            tint = if (isLoggedIn) MaterialTheme.colorScheme.onSurfaceVariant
+                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = showToken && isLoggedIn,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Column(Modifier.fillMaxWidth()) {
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showTokenEditor = true }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.edit),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(16.dp))
+                                Text(
+                                    text = stringResource(R.string.advanced_login),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    painter = painterResource(R.drawable.arrow_forward),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
                 }

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.ExperimentalLyricsKey
 import com.metrolist.music.constants.HideStatusBarOnFullscreenKey
 import com.metrolist.music.constants.LyricsAnimationStyle
@@ -64,6 +65,7 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LyricsSettings(navController: NavController) {
+    val (advancedMode, _) = rememberPreference(AdvancedModeKey, defaultValue = false)
     val (experimentalLyrics, onExperimentalLyricsChange) =
         rememberPreference(ExperimentalLyricsKey, defaultValue = true)
     val (lyricsGlowEffect, onLyricsGlowEffectChange) =
@@ -71,7 +73,7 @@ fun LyricsSettings(navController: NavController) {
     val (lyricsAnimationStyle, onLyricsAnimationStyleChange) =
         rememberEnumPreference(LyricsAnimationStyleKey, defaultValue = LyricsAnimationStyle.FADE)
     val (lyricsTextSize, onLyricsTextSizeChange) =
-        rememberPreference(LyricsTextSizeKey, defaultValue = 24f)
+        rememberPreference(LyricsTextSizeKey, defaultValue = 28f)
     val (lyricsLineSpacing, onLyricsLineSpacingChange) =
         rememberPreference(LyricsLineSpacingKey, defaultValue = 1.2f)
     val (lyricsPosition, onLyricsPositionChange) =
@@ -144,7 +146,7 @@ fun LyricsSettings(navController: NavController) {
                 showLyricsTextSizeDialog = false
             },
             buttons = {
-                TextButton(onClick = { tempTextSize = 24f }) {
+                TextButton(onClick = { tempTextSize = 28f }) {
                     Text(stringResource(R.string.reset))
                 }
                 Spacer(modifier = Modifier.weight(1f))
@@ -258,6 +260,7 @@ fun LyricsSettings(navController: NavController) {
             )
         )
 
+        /* HIDDEN - experimental_lyrics group (always ON via default, toggle hidden from user)
         // ── Experimental lyrics ────────────────────────────────────────────
         Material3SettingsGroup(
             title = stringResource(R.string.experimental_lyrics),
@@ -356,11 +359,12 @@ fun LyricsSettings(navController: NavController) {
         )
 
         Spacer(modifier = Modifier.height(16.dp))
+        END HIDDEN */
 
         // ── Display ────────────────────────────────────────────────────────
         Material3SettingsGroup(
             title = stringResource(R.string.settings_section_interface),
-            items = listOf(
+            items = listOfNotNull(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.lyrics),
                     title = { Text(stringResource(R.string.lyrics_text_position)) },
@@ -375,7 +379,7 @@ fun LyricsSettings(navController: NavController) {
                     },
                     onClick = { showLyricsPositionDialog = true }
                 ),
-                Material3SettingsItem(
+                if (advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.lyrics),
                     title = { Text(stringResource(R.string.respect_agent_positioning)) },
                     description = { Text(stringResource(R.string.respect_agent_positioning_desc)) },
@@ -395,8 +399,8 @@ fun LyricsSettings(navController: NavController) {
                         )
                     },
                     onClick = { onRespectAgentPositioningChange(!respectAgentPositioning) }
-                ),
-                Material3SettingsItem(
+                ) else null,
+                if (advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.lyrics),
                     title = { Text(stringResource(R.string.lyrics_click_change)) },
                     trailingContent = {
@@ -415,8 +419,8 @@ fun LyricsSettings(navController: NavController) {
                         )
                     },
                     onClick = { onLyricsClickChange(!lyricsClick) }
-                ),
-                Material3SettingsItem(
+                ) else null,
+                if (advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.lyrics),
                     title = { Text(stringResource(R.string.lyrics_auto_scroll)) },
                     trailingContent = {
@@ -435,8 +439,8 @@ fun LyricsSettings(navController: NavController) {
                         )
                     },
                     onClick = { onLyricsScrollChange(!lyricsScroll) }
-                ),
-                Material3SettingsItem(
+                ) else null,
+                if (advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.lyrics),
                     title = { Text(stringResource(R.string.hide_status_bar_fullscreen)) },
                     description = { Text(stringResource(R.string.hide_status_bar_fullscreen_desc)) },
@@ -456,7 +460,7 @@ fun LyricsSettings(navController: NavController) {
                         )
                     },
                     onClick = { onHideStatusBarOnFullscreenChange(!hideStatusBarOnFullscreen) }
-                )
+                ) else null
             )
         )
 

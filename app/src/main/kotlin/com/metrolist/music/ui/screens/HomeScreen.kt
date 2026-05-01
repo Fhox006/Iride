@@ -1068,22 +1068,10 @@ fun HomeScreen(
             }
 
             val homePageSections = homePage?.sections.orEmpty()
-            if (chipActive) {
-                val mixtapeSectionIndices = homePageSections.indices.filter { i ->
-                    homePageSections[i].items.any { it.isMixtape }
-                }
-                val otherSectionIndices = homePageSections.indices.filter { it !in mixtapeSectionIndices }
-
-                mixtapeSectionIndices.forEach { i ->
-                    list.add(HomeSection.HomePageSection(i))
-                }
-                otherSectionIndices.forEach { i ->
-                    list.add(HomeSection.HomePageSection(i))
-                }
-            } else {
-                homePageSections.indices.forEach { i ->
-                    list.add(HomeSection.HomePageSection(i))
-                }
+            homePageSections.indices.filter { i ->
+                !homePageSections[i].items.any { it.isMixtape }
+            }.forEach { i ->
+                list.add(HomeSection.HomePageSection(i))
             }
 
             val sortedList =
@@ -1457,6 +1445,12 @@ fun HomeScreen(
                                 var selectedMoodCategory by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage.Chip?>(null) }
                                 var moodPage by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage?>(null) }
 
+                                LaunchedEffect(chips) {
+                                    if (selectedMoodCategory == null && chips.isNotEmpty()) {
+                                        selectedMoodCategory = chips.first().first
+                                    }
+                                }
+
                                 LaunchedEffect(selectedMoodCategory) {
                                     if (selectedMoodCategory != null) {
                                         YouTube.home(params = selectedMoodCategory!!.endpoint?.params).onSuccess { nextSections ->
@@ -1494,7 +1488,7 @@ fun HomeScreen(
                                         chips = chips,
                                         currentValue = selectedMoodCategory,
                                         onValueUpdate = {
-                                            selectedMoodCategory = it
+                                            if (it != null) selectedMoodCategory = it
                                         },
                                         chipHeight = 40.dp,
                                         horizontalPadding = 16.dp,

@@ -272,6 +272,9 @@ class MusicService :
     private var crossfadeTriggerJob: Job? = null
     private var skipFadeEnabled = true
     private var skipFadeDuration = 3500f
+    private var persistentQueueEnabled = true
+    private var shufflePlaylistFirst = false
+    private var rememberShuffleAndRepeat = true
     private var preloadGhostPlayer: ExoPlayer? = null
     private var preloadJob: Job? = null
 
@@ -565,7 +568,7 @@ class MusicService :
         player.repeatMode = dataStore.get(RepeatModeKey, REPEAT_MODE_OFF)
 
         // Restore shuffle mode if remember option is enabled
-        if (dataStore.get(RememberShuffleAndRepeatKey, true)) {
+        if (rememberShuffleAndRepeat) {
             player.shuffleModeEnabled = dataStore.get(ShuffleModeKey, false)
         }
 
@@ -913,7 +916,22 @@ class MusicService :
                 skipFadeDuration = duration * 1000f
             }
 
-        if (dataStore.get(PersistentQueueKey, true)) {
+        dataStore.data
+            .map { prefs -> prefs[PersistentQueueKey] ?: true }
+            .distinctUntilChanged()
+            .collect(scope) { persistentQueueEnabled = it }
+
+        dataStore.data
+            .map { prefs -> prefs[ShufflePlaylistFirstKey] ?: false }
+            .distinctUntilChanged()
+            .collect(scope) { shufflePlaylistFirst = it }
+
+        dataStore.data
+            .map { prefs -> prefs[RememberShuffleAndRepeatKey] ?: true }
+            .distinctUntilChanged()
+            .collect(scope) { rememberShuffleAndRepeat = it }
+
+        if (persistentQueueEnabled) {
             val queueFile = filesDir.resolve(PERSISTENT_QUEUE_FILE)
             if (queueFile.exists()) {
                 runCatching {
@@ -1001,7 +1019,7 @@ class MusicService :
         scope.launch {
             while (isActive) {
                 delay(15.seconds)
-                if (dataStore.get(PersistentQueueKey, true)) {
+                if (persistentQueueEnabled) {
                     saveQueueToDisk()
                 }
                 // Also save episode position periodically
@@ -1017,7 +1035,7 @@ class MusicService :
         scope.launch {
             while (isActive) {
                 delay(10.seconds)
-                if (dataStore.get(PersistentQueueKey, true) && player.isPlaying) {
+                if (persistentQueueEnabled && player.isPlaying) {
                     saveQueueToDisk()
                 }
             }
@@ -1463,7 +1481,7 @@ class MusicService :
 
             // Rebuild shuffle order if shuffle is enabled
             if (player.shuffleModeEnabled) {
-                val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+                val shufflePlaylistFirst = shufflePlaylistFirst
                 applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
             }
         }
@@ -1519,7 +1537,7 @@ class MusicService :
 
                     player.addMediaItems(currentIndex + 1, radioItems)
                     if (player.shuffleModeEnabled) {
-                        val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+                        val shufflePlaylistFirst = shufflePlaylistFirst
                         applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
                     }
                 }
@@ -1552,7 +1570,7 @@ class MusicService :
                                 }
                                 player.addMediaItems(currentIndex + 1, radioItems)
                                 if (player.shuffleModeEnabled) {
-                                    val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+                                    val shufflePlaylistFirst = shufflePlaylistFirst
                                     applyShuffleOrder(
                                         player.currentMediaItemIndex,
                                         player.mediaItemCount,
@@ -1787,7 +1805,7 @@ class MusicService :
 
         player.addMediaItems(items)
         if (player.shuffleModeEnabled) {
-            val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+            val shufflePlaylistFirst = shufflePlaylistFirst
             applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
         }
         player.prepare()
@@ -2095,7 +2113,7 @@ class MusicService :
 
         // Force Repeat One if the player ignored it and auto-advanced
         if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
-            val repeatMode = runBlocking { dataStore.get(RepeatModeKey, REPEAT_MODE_OFF) }
+            val repeatMode = player.repeatMode
             if (repeatMode == REPEAT_MODE_ONE &&
                 previousMediaItemIndex != C.INDEX_UNSET &&
                 previousMediaItemIndex != player.currentMediaItemIndex
@@ -2152,7 +2170,7 @@ class MusicService :
                 if (player.playbackState != STATE_IDLE && mediaItems.isNotEmpty()) {
                     player.addMediaItems(mediaItems)
                     if (player.shuffleModeEnabled) {
-                        val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+                        val shufflePlaylistFirst = shufflePlaylistFirst
                         applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
                     }
                 }
@@ -2160,7 +2178,7 @@ class MusicService :
         }
 
         // Save state when media item changes
-        if (dataStore.get(PersistentQueueKey, true)) {
+        if (persistentQueueEnabled) {
             saveQueueToDisk()
         }
 
@@ -2172,7 +2190,7 @@ class MusicService :
     ) {
         // Force Repeat All if the player ignored it and ended playback
         if (playbackState == Player.STATE_ENDED) {
-            val repeatMode = runBlocking { dataStore.get(RepeatModeKey, REPEAT_MODE_OFF) }
+            val repeatMode = player.repeatMode
             if (repeatMode == REPEAT_MODE_ALL && player.mediaItemCount > 0) {
                 player.seekTo(0, 0)
                 player.prepare()
@@ -2181,7 +2199,7 @@ class MusicService :
         }
 
         // Save state when playback state changes (but not during silence skipping)
-        if (dataStore.get(PersistentQueueKey, true) && !isSilenceSkipping) {
+        if (persistentQueueEnabled && !isSilenceSkipping) {
             saveQueueToDisk()
         }
 
@@ -2312,7 +2330,6 @@ class MusicService :
             // If queue is empty, don't shuffle
             if (player.mediaItemCount == 0) return
 
-            val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
             val currentIndex = player.currentMediaItemIndex
             val totalCount = player.mediaItemCount
 
@@ -2320,7 +2337,7 @@ class MusicService :
         }
 
         // Save shuffle mode to preferences
-        if (dataStore.get(RememberShuffleAndRepeatKey, true)) {
+        if (rememberShuffleAndRepeat) {
             scope.launch {
                 dataStore.edit { settings ->
                     settings[ShuffleModeKey] = shuffleModeEnabled
@@ -2329,7 +2346,7 @@ class MusicService :
         }
 
         // Save state when shuffle mode changes
-        if (dataStore.get(PersistentQueueKey, true)) {
+        if (persistentQueueEnabled) {
             saveQueueToDisk()
         }
     }
@@ -2343,7 +2360,7 @@ class MusicService :
         }
 
         // Save state when repeat mode changes
-        if (dataStore.get(PersistentQueueKey, true)) {
+        if (persistentQueueEnabled) {
             saveQueueToDisk()
         }
     }
@@ -3278,7 +3295,7 @@ class MusicService :
         }
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
         castConnectionHandler?.release()
-        if (dataStore.get(PersistentQueueKey, true)) {
+        if (persistentQueueEnabled) {
             saveQueueToDisk()
         }
         if (discordRpc?.isRpcRunning() == true) {
@@ -3569,8 +3586,8 @@ class MusicService :
         if (isCrossfading) cleanupCrossfade()
         cancelPreload()
 
-        val savedRepeatMode = runBlocking { dataStore.get(RepeatModeKey, REPEAT_MODE_OFF) }
-        val savedShuffleEnabled = runBlocking { dataStore.get(ShuffleModeKey, false) }
+        val savedRepeatMode = player.repeatMode
+        val savedShuffleEnabled = player.shuffleModeEnabled
 
         val targetIndex: Int = when {
             restartCurrent -> player.currentMediaItemIndex
@@ -3600,7 +3617,7 @@ class MusicService :
         performCrossfadeSwap(fadeDuration = skipFadeDuration, onComplete = onComplete)
 
         if (savedShuffleEnabled) {
-            val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+            val shufflePlaylistFirst = shufflePlaylistFirst
             applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
         }
 
@@ -3646,9 +3663,8 @@ class MusicService :
         if (isCrossfading) return
 
         // Preserve player state before creating the secondary player
-        // Use runBlocking to ensure we get the correct state from DataStore
-        val savedRepeatMode = runBlocking { dataStore.get(RepeatModeKey, REPEAT_MODE_OFF) }
-        val savedShuffleEnabled = runBlocking { dataStore.get(ShuffleModeKey, false) }
+        val savedRepeatMode = player.repeatMode
+        val savedShuffleEnabled = player.shuffleModeEnabled
 
         // For repeat-one, crossfade back into the same track
         val targetIndex =
@@ -3686,7 +3702,7 @@ class MusicService :
 
         // Rebuild shuffle order on the new primary player if shuffle was active
         if (savedShuffleEnabled) {
-            val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+            val shufflePlaylistFirst = shufflePlaylistFirst
             applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
         }
     }

@@ -44,6 +44,7 @@ import androidx.core.content.edit
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.ChipSortTypeKey
 import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.DensityScale
@@ -51,7 +52,6 @@ import com.metrolist.music.constants.DensityScaleKey
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.LibraryFilter
-import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.RandomizeHomeOrderKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
@@ -59,12 +59,10 @@ import com.metrolist.music.constants.ShowLikedPlaylistKey
 import com.metrolist.music.constants.ShowTopPlaylistKey
 import com.metrolist.music.constants.ShowUploadedPlaylistKey
 import com.metrolist.music.constants.ShowWrappedCardKey
-import com.metrolist.music.constants.SlimNavBarKey
 import com.metrolist.music.constants.SwipeToRemoveSongKey
 import com.metrolist.music.constants.SwipeToSongKey
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.EnumDialog
-import com.metrolist.music.ui.component.ExpandableSettingsSection
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
@@ -78,30 +76,27 @@ fun InterfaceSettings(
     navController: NavController,
     activity: Activity
 ) {
+    val (advancedMode, _) = rememberPreference(AdvancedModeKey, defaultValue = false)
     val (defaultOpenTab, onDefaultOpenTabChange) =
         rememberEnumPreference(DefaultOpenTabKey, defaultValue = NavigationTab.HOME)
     val (defaultChip, onDefaultChipChange) =
         rememberEnumPreference(ChipSortTypeKey, defaultValue = LibraryFilter.LIBRARY)
     val (gridItemSize, onGridItemSizeChange) =
         rememberEnumPreference(GridItemsSizeKey, defaultValue = GridItemSize.BIG)
-    val (slimNav, onSlimNavChange) =
-        rememberPreference(SlimNavBarKey, defaultValue = false)
     val (showLikedPlaylist, onShowLikedPlaylistChange) =
-        rememberPreference(ShowLikedPlaylistKey, defaultValue = true)
+        rememberPreference(ShowLikedPlaylistKey, defaultValue = false)
     val (showDownloadedPlaylist, onShowDownloadedPlaylistChange) =
-        rememberPreference(ShowDownloadedPlaylistKey, defaultValue = true)
+        rememberPreference(ShowDownloadedPlaylistKey, defaultValue = false)
     val (showTopPlaylist, onShowTopPlaylistChange) =
-        rememberPreference(ShowTopPlaylistKey, defaultValue = true)
+        rememberPreference(ShowTopPlaylistKey, defaultValue = false)
     val (showCachedPlaylist, onShowCachedPlaylistChange) =
-        rememberPreference(ShowCachedPlaylistKey, defaultValue = true)
+        rememberPreference(ShowCachedPlaylistKey, defaultValue = false)
     val (showUploadedPlaylist, onShowUploadedPlaylistChange) =
-        rememberPreference(ShowUploadedPlaylistKey, defaultValue = true)
-    val (listenTogetherInTopBar, onListenTogetherInTopBarChange) =
-        rememberPreference(ListenTogetherInTopBarKey, defaultValue = true)
+        rememberPreference(ShowUploadedPlaylistKey, defaultValue = false)
     val (swipeToSong, onSwipeToSongChange) =
-        rememberPreference(SwipeToSongKey, defaultValue = false)
+        rememberPreference(SwipeToSongKey, defaultValue = true)
     val (swipeToRemoveSong, onSwipeToRemoveSongChange) =
-        rememberPreference(SwipeToRemoveSongKey, defaultValue = false)
+        rememberPreference(SwipeToRemoveSongKey, defaultValue = true)
     val (showWrappedCard, onShowWrappedCardChange) =
         rememberPreference(ShowWrappedCardKey, defaultValue = false)
     val (randomizeHomeOrder, onRandomizeHomeOrderChange) =
@@ -269,7 +264,7 @@ fun InterfaceSettings(
         // ── Navigation ─────────────────────────────────────────────────────
         Material3SettingsGroup(
             title = stringResource(R.string.settings_section_interface),
-            items = listOf(
+            items = listOfNotNull(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.nav_bar),
                     title = { Text(stringResource(R.string.default_open_tab)) },
@@ -301,7 +296,7 @@ fun InterfaceSettings(
                     },
                     onClick = { showDefaultChipDialog = true }
                 ),
-                Material3SettingsItem(
+                if (advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.grid_view),
                     title = { Text(stringResource(R.string.grid_cell_size)) },
                     description = {
@@ -313,94 +308,65 @@ fun InterfaceSettings(
                         )
                     },
                     onClick = { showGridSizeDialog = true }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.nav_bar),
-                    title = { Text(stringResource(R.string.slim_navbar)) },
-                    trailingContent = {
-                        Switch(
-                            checked = slimNav, onCheckedChange = onSlimNavChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (slimNav) R.drawable.check else R.drawable.close),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onSlimNavChange(!slimNav) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.group_outlined),
-                    title = { Text(stringResource(R.string.listen_together_in_top_bar)) },
-                    description = { Text(stringResource(R.string.listen_together_in_top_bar_desc)) },
-                    trailingContent = {
-                        Switch(
-                            checked = listenTogetherInTopBar,
-                            onCheckedChange = onListenTogetherInTopBarChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        if (listenTogetherInTopBar) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onListenTogetherInTopBarChange(!listenTogetherInTopBar) }
-                )
+                ) else null,
+                if (advancedMode) Material3SettingsItem(
+                    icon = painterResource(R.drawable.grid_view),
+                    title = { Text(stringResource(R.string.display_density)) },
+                    description = { Text(DensityScale.fromValue(densityScale).label) },
+                    onClick = { showDensityScaleDialog = true }
+                ) else null
             )
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        if (advancedMode) {
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // ── Home Screen ─────────────────────────────────────────────────────
-        Material3SettingsGroup(
-            title = stringResource(R.string.home),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.star),
-                    title = { Text(stringResource(R.string.show_wrapped_card)) },
-                    trailingContent = {
-                        Switch(
-                            checked = showWrappedCard, onCheckedChange = onShowWrappedCardChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (showWrappedCard) R.drawable.check else R.drawable.close),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onShowWrappedCardChange(!showWrappedCard) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.shuffle),
-                    title = { Text(stringResource(R.string.randomize_home_order)) },
-                    description = { Text(stringResource(R.string.randomize_home_order_desc)) },
-                    trailingContent = {
-                        Switch(
-                            checked = randomizeHomeOrder, onCheckedChange = onRandomizeHomeOrderChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        if (randomizeHomeOrder) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onRandomizeHomeOrderChange(!randomizeHomeOrder) }
+            // ── Home Screen ─────────────────────────────────────────────────
+            Material3SettingsGroup(
+                title = stringResource(R.string.home),
+                items = listOf(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.star),
+                        title = { Text(stringResource(R.string.show_wrapped_card)) },
+                        trailingContent = {
+                            Switch(
+                                checked = showWrappedCard, onCheckedChange = onShowWrappedCardChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(if (showWrappedCard) R.drawable.check else R.drawable.close),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onShowWrappedCardChange(!showWrappedCard) }
+                    ),
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.shuffle),
+                        title = { Text(stringResource(R.string.randomize_home_order)) },
+                        description = { Text(stringResource(R.string.randomize_home_order_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = randomizeHomeOrder, onCheckedChange = onRandomizeHomeOrderChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            if (randomizeHomeOrder) R.drawable.check else R.drawable.close
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onRandomizeHomeOrderChange(!randomizeHomeOrder) }
+                    )
                 )
             )
-        )
+        }
 
+        /* HIDDEN - auto_playlists group (show liked/downloaded/top/cached/uploaded playlist toggles)
         Spacer(modifier = Modifier.height(16.dp))
 
         // ── Playlists ──────────────────────────────────────────────────────
@@ -494,6 +460,7 @@ fun InterfaceSettings(
                 )
             )
         )
+        END HIDDEN */
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -537,25 +504,6 @@ fun InterfaceSettings(
                 )
             )
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // ── Advanced ───────────────────────────────────────────────────────
-        ExpandableSettingsSection(
-            title = stringResource(R.string.advanced),
-            defaultExpanded = false
-        ) {
-            Material3SettingsGroup(
-                items = listOf(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.grid_view),
-                        title = { Text(stringResource(R.string.display_density)) },
-                        description = { Text(DensityScale.fromValue(densityScale).label) },
-                        onClick = { showDensityScaleDialog = true }
-                    )
-                )
-            )
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
     }

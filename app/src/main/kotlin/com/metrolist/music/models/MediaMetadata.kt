@@ -11,7 +11,6 @@ import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.db.entities.SongEntity
-import com.metrolist.music.ui.utils.resize
 import java.io.Serializable
 import java.time.LocalDateTime
 
@@ -112,7 +111,7 @@ fun SongItem.toMediaMetadata() =
             )
         },
         duration = duration ?: -1,
-        thumbnailUrl = thumbnail.resize(544, 544),
+        thumbnailUrl = thumbnail,
         album =
         album?.let {
             MediaMetadata.Album(
@@ -141,7 +140,7 @@ fun EpisodeItem.toMediaMetadata() =
             )
         },
         duration = duration ?: -1,
-        thumbnailUrl = thumbnail.resize(544, 544),
+        thumbnailUrl = thumbnail,
         album = podcast?.let {
             MediaMetadata.Album(
                 id = it.id,

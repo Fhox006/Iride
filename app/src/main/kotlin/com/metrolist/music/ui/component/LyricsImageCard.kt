@@ -61,6 +61,7 @@ import coil3.request.crossfade
 import coil3.toBitmap
 import com.metrolist.music.R
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.ui.theme.Inter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -269,14 +270,15 @@ fun LyricsImageCard(
 
             // Lyrics
             val lyricFontSize = when {
-                lyricText.length < 80 -> 28.sp
-                lyricText.length < 180 -> 23.sp
-                else -> 19.sp
+                lyricText.length < 80 -> 30.sp
+                lyricText.length < 180 -> 25.sp
+                else -> 21.sp
             }
 
             Text(
                 text = lyricText,
                 color = mainTextColor,
+                fontFamily = Inter,
                 fontSize = lyricFontSize,
                 fontWeight = FontWeight.Bold,
                 textAlign = textAlign,

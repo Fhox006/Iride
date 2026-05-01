@@ -92,6 +92,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboard
@@ -325,7 +326,7 @@ fun Queue(
                             bottomEnd = 3.dp,
                         )
                     val middleShape = RoundedCornerShape(3.dp)
-                    val repeatShape =
+                    val lyricsShape =
                         RoundedCornerShape(
                             topStart = 3.dp,
                             bottomStart = 3.dp,
@@ -352,7 +353,7 @@ fun Queue(
                         icon = R.drawable.lyrics,
                         onClick = { onToggleLyrics() },
                         isActive = showInlineLyrics,
-                        shape = RoundedCornerShape(50.dp),
+                        shape = lyricsShape,
                         modifier = Modifier.size(buttonSize),
                         textButtonColor = textButtonColor,
                         iconButtonColor = iconButtonColor,
@@ -1188,7 +1189,7 @@ private fun PlayerQueueButton(
     onClick: () -> Unit,
     isActive: Boolean,
     enabled: Boolean = true,
-    shape: RoundedCornerShape,
+    shape: Shape,
     modifier: Modifier = Modifier,
     text: String? = null,
     textButtonColor: Color,
@@ -1931,3 +1932,4 @@ private fun QueuePill(
         }
     }
 }
+

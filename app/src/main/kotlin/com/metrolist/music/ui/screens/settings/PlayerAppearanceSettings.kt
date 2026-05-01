@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
 import com.metrolist.music.constants.MiniPlayerBackgroundStyle
@@ -83,6 +84,7 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerAppearanceSettings(navController: NavController) {
+    val (advancedMode, _) = rememberPreference(AdvancedModeKey, defaultValue = false)
     val (useNewPlayerDesign, onUseNewPlayerDesignChange) =
         rememberPreference(UseNewPlayerDesignKey, defaultValue = true)
     val (playerBackground, onPlayerBackgroundChange) =
@@ -90,7 +92,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
     val (hidePlayerThumbnail, onHidePlayerThumbnailChange) =
         rememberPreference(HidePlayerThumbnailKey, defaultValue = false)
     val (cropAlbumArt, onCropAlbumArtChange) =
-        rememberPreference(CropAlbumArtKey, defaultValue = false)
+        rememberPreference(CropAlbumArtKey, defaultValue = true)
     val (playerButtonsStyle, onPlayerButtonsStyleChange) =
         rememberEnumPreference(PlayerButtonsStyleKey, defaultValue = PlayerButtonsStyle.DEFAULT)
     val (sliderStyle, onSliderStyleChange) =
@@ -398,6 +400,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
         Material3SettingsGroup(
             title = stringResource(R.string.player_appearance),
             items = buildList {
+                /* HIDDEN - new_player_design toggle
                 add(
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.palette),
@@ -420,6 +423,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         onClick = { onUseNewPlayerDesignChange(!useNewPlayerDesign) }
                     )
                 )
+                END HIDDEN */
                 add(
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.gradient),
@@ -436,6 +440,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         onClick = { showPlayerBackgroundDialog = true }
                     )
                 )
+                /* HIDDEN - hide_player_thumbnail toggle
                 add(
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.hide_image),
@@ -459,7 +464,8 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         onClick = { onHidePlayerThumbnailChange(!hidePlayerThumbnail) }
                     )
                 )
-                add(
+                END HIDDEN */
+                if (advancedMode) add(
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.crop),
                         title = { Text(stringResource(R.string.crop_album_art)) },
@@ -514,7 +520,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         onClick = { showSliderOptionDialog = true }
                     )
                 )
-                add(
+                if (advancedMode) add(
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.swipe),
                         title = { Text(stringResource(R.string.enable_swipe_thumbnail)) },
@@ -536,6 +542,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         onClick = { onSwipeThumbnailChange(!swipeThumbnail) }
                     )
                 )
+                /* HIDDEN - swipe_sensitivity setting
                 if (swipeThumbnail) {
                     add(
                         Material3SettingsItem(
@@ -553,6 +560,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         )
                     )
                 }
+                END HIDDEN */
             }
         )
 
@@ -562,6 +570,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
         Material3SettingsGroup(
             title = stringResource(R.string.mini_player),
             items = buildList {
+                /* HIDDEN - new_mini_player_design + mini_player_background_style
                 add(
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.nav_bar),
@@ -617,6 +626,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         enabled = useNewMiniPlayerDesign
                     )
                 )
+                END HIDDEN */
                 add(
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.contrast),

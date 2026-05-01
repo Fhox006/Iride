@@ -798,4 +798,6 @@
     <string name="mini_player_background_not_available">Non disponibile quando il nuovo mini lettore Ã¨ disabilitato</string>
     <string name="your_daily_discover">La tua scoperta quotidiana</string>
     <string name="time_transfer_warning">ATTENZIONE: non Ã¨ possibile annullare questa azione una volta completata. Crea un file di backup prima di procedere. Puoi scegliere come destinazione solo brani con almeno una riproduzione</string>
+    <string name="enable_advanced_settings">Abilita impostazioni avanzate</string>
+    <string name="disable_advanced_settings">Disabilita funzioni avanzate</string>
 </resources>

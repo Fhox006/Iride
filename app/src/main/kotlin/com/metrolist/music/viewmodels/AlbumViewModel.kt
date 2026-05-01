@@ -14,11 +14,14 @@ import com.metrolist.music.data.remote.MusicBrainzRepository
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
 
 @HiltViewModel
@@ -37,55 +40,81 @@ constructor(
             .stateIn(viewModelScope, SharingStarted.Eagerly, null)
     var otherVersions = MutableStateFlow<List<AlbumItem>>(emptyList())
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading = _isLoading.asStateFlow()
+
+    private val _hasError = MutableStateFlow(false)
+    val hasError = _hasError.asStateFlow()
+
     init {
+        fetchFromYouTube()
+    }
+
+    fun retry() {
+        _hasError.value = false
+        _isLoading.value = true
+        fetchFromYouTube()
+    }
+
+    private fun fetchFromYouTube() {
         viewModelScope.launch {
-            val album = database.album(albumId).first()
+            try {
+                withTimeout(30_000L) {
+                    val album = database.album(albumId).first()
+                    val ytResult = YouTube.album(albumId)
 
-            // ✅ Salva il Result in una variabile — così possiamo usarlo
-            // sia per onSuccess/onFailure sia dopo, nel coroutine body
-            val ytResult = YouTube.album(albumId)
+                    ytResult
+                        .onSuccess { albumPage ->
+                            playlistId.value = albumPage.album.playlistId
+                            otherVersions.value = albumPage.otherVersions
+                            database.transaction {
+                                if (album == null) {
+                                    insert(albumPage)
+                                } else {
+                                    update(album.album, albumPage, album.artists)
+                                }
+                            }
+                        }.onFailure {
+                            reportException(it)
+                            if (it.message?.contains("NOT_FOUND") == true) {
+                                database.query {
+                                    album?.album?.let(::delete)
+                                }
+                            }
+                            _hasError.value = true
+                        }
 
-            ytResult
-                .onSuccess { albumPage ->
-                    playlistId.value = albumPage.album.playlistId
-                    otherVersions.value = albumPage.otherVersions
-                    database.transaction {
-                        if (album == null) {
-                            insert(albumPage)
-                        } else {
-                            update(album.album, albumPage, album.artists)
+                    val albumPage = ytResult.getOrNull() ?: run {
+                        _isLoading.value = false
+                        return@withTimeout
+                    }
+
+                    val currentReleaseDate = album?.album?.releaseDate
+                    val regex = Regex("""\d{4}-\d{2}(-\d{2})?""")
+
+                    if (currentReleaseDate == null || !regex.matches(currentReleaseDate)) {
+                        val releaseDate = musicBrainzRepository.getAlbumReleaseDate(
+                            albumTitle = albumPage.album.title,
+                            artistName = albumPage.album.artists?.firstOrNull()?.name,
+                            year = albumPage.album.year
+                        )
+                        if (releaseDate != null) {
+                            database.album(albumId).first()?.let { currentAlbum ->
+                                database.query {
+                                    update(currentAlbum.album.copy(releaseDate = releaseDate))
+                                }
+                            }
                         }
                     }
-                }.onFailure {
-                    reportException(it)
-                    if (it.message?.contains("NOT_FOUND") == true) {
-                        database.query {
-                            album?.album?.let(::delete)
-                        }
-                    }
+                    _isLoading.value = false
                 }
-
-            // ✅ MusicBrainz enrichment — siamo ancora nel coroutine body,
-            // quindi le suspend functions sono chiamabili normalmente
-            val albumPage = ytResult.getOrNull() ?: return@launch
-
-            val currentReleaseDate = album?.album?.releaseDate
-            val regex = Regex("""\d{4}-\d{2}(-\d{2})?""")
-
-            if (currentReleaseDate == null || !regex.matches(currentReleaseDate)) {
-                val releaseDate = musicBrainzRepository.getAlbumReleaseDate(
-                    albumTitle = albumPage.album.title,
-                    artistName = albumPage.album.artists?.firstOrNull()?.name,
-                    year = albumPage.album.year
-                )
-                if (releaseDate != null) {
-                    // ✅ Re-fetch diretto nel coroutine body — nessun problema
-                    database.album(albumId).first()?.let { currentAlbum ->
-                        database.query {
-                            update(currentAlbum.album.copy(releaseDate = releaseDate))
-                        }
-                    }
-                }
+            } catch (e: TimeoutCancellationException) {
+                _hasError.value = true
+                _isLoading.value = false
+            } catch (e: Exception) {
+                reportException(e)
+                _hasError.value = true
+                _isLoading.value = false
             }
         }
     }

@@ -24,6 +24,7 @@ import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -57,52 +58,63 @@ class AccountViewModel @Inject constructor(
     // Selected content type for chips
     val selectedContentType = MutableStateFlow(AccountContentType.PLAYLISTS)
 
+    private suspend fun <T> withRetry(maxRetries: Int = 3, block: suspend () -> T): T? {
+        var retryDelay = 1000L
+        var lastError: Exception? = null
+        for (attempt in 0 until maxRetries) {
+            try {
+                return block()
+            } catch (e: Exception) {
+                lastError = e
+                if (attempt < maxRetries - 1) {
+                    delay(retryDelay)
+                    retryDelay *= 2
+                }
+            }
+        }
+        lastError?.let { reportException(it) }
+        return null
+    }
+
     private suspend fun loadPlaylists() {
         val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-        YouTube.library("FEmusic_liked_playlists").completed().onSuccess {
-            val all = it.items.filterIsInstance<PlaylistItem>()
-            // Extract SE playlist separately for Podcasts tab
+        withRetry {
+            YouTube.library("FEmusic_liked_playlists").completed().getOrThrow()
+        }?.let { page ->
+            val all = page.items.filterIsInstance<PlaylistItem>()
             sePlaylist.value = all.find { it.id == "SE" }
             playlists.value = all
                 .filterNot { it.id == "SE" }
                 .filterYoutubeShorts(hideYoutubeShorts)
-        }.onFailure {
-            reportException(it)
+        }
+    }
+
+    fun refresh() {
+        viewModelScope.launch {
+            loadPlaylists()
+            withRetry {
+                YouTube.library("FEmusic_liked_albums").completed().getOrThrow()
+            }?.let { albums.value = it.items.filterIsInstance<AlbumItem>() }
+            withRetry {
+                YouTube.library("FEmusic_library_corpus_artists").completed().getOrThrow()
+            }?.let {
+                artists.value = it.items.filterIsInstance<ArtistItem>().map { artist ->
+                    artist.copy(thumbnail = artist.thumbnail?.resize(544, 544))
+                }
+            }
+        }
+        viewModelScope.launch {
+            withRetry { YouTube.newEpisodesPlaylistInfo().getOrThrow() }
+                ?.let { rdpnPlaylist.value = it }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            withRetry { YouTube.libraryPodcastChannels().getOrThrow() }
+                ?.let { podcastChannels.value = it.items.filterIsInstance<ArtistItem>() }
         }
     }
 
     init {
-        viewModelScope.launch {
-            loadPlaylists()
-            YouTube.library("FEmusic_liked_albums").completed().onSuccess {
-                albums.value = it.items.filterIsInstance<AlbumItem>()
-            }.onFailure {
-                reportException(it)
-            }
-            YouTube.library("FEmusic_library_corpus_artists").completed().onSuccess {
-                artists.value = it.items.filterIsInstance<ArtistItem>().map { artist ->
-                    artist.copy(
-                        thumbnail = artist.thumbnail?.resize(544, 544)
-                    )
-                }
-            }.onFailure {
-                reportException(it)
-            }
-        }
-        viewModelScope.launch {
-            YouTube.newEpisodesPlaylistInfo().onSuccess {
-                rdpnPlaylist.value = it
-            }.onFailure {
-                reportException(it)
-            }
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            YouTube.libraryPodcastChannels().onSuccess {
-                podcastChannels.value = it.items.filterIsInstance<ArtistItem>()
-            }.onFailure {
-                reportException(it)
-            }
-        }
+        refresh()
 
         // Listen for HideYoutubeShorts preference changes and reload playlists instantly
         viewModelScope.launch(Dispatchers.IO) {
