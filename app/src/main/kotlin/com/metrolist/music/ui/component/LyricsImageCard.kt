@@ -61,7 +61,7 @@ import coil3.request.crossfade
 import coil3.toBitmap
 import com.metrolist.music.R
 import com.metrolist.music.models.MediaMetadata
-import com.metrolist.music.ui.theme.Inter
+import com.metrolist.music.ui.theme.InterFontFamily
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -278,7 +278,7 @@ fun LyricsImageCard(
             Text(
                 text = lyricText,
                 color = mainTextColor,
-                fontFamily = Inter,
+                fontFamily = InterFontFamily,
                 fontSize = lyricFontSize,
                 fontWeight = FontWeight.Bold,
                 textAlign = textAlign,

@@ -167,6 +167,7 @@ import com.metrolist.music.ui.component.shimmer.TextPlaceholder
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.screens.settings.LyricsPosition
 import com.metrolist.music.ui.screens.settings.defaultList
+import com.metrolist.music.ui.theme.InterFontFamily
 import com.metrolist.music.ui.utils.fadingEdge
 import com.metrolist.music.utils.ComposeToImage
 import com.metrolist.music.utils.rememberEnumPreference
@@ -1116,6 +1117,7 @@ fun OriginalLyrics(
                                     }
                                 Text(
                                     text = styledText,
+                                    fontFamily = InterFontFamily,
                                     fontSize = lyricsTextSize.sp,
                                     textAlign = alignment,
                                     lineHeight = (lyricsTextSize * lyricsLineSpacing).sp,
@@ -1192,6 +1194,7 @@ fun OriginalLyrics(
                                     }
                                 Text(
                                     text = styledText,
+                                    fontFamily = InterFontFamily,
                                     fontSize = lyricsTextSize.sp,
                                     textAlign = alignment,
                                     lineHeight = (lyricsTextSize * lyricsLineSpacing).sp,
@@ -1264,6 +1267,7 @@ fun OriginalLyrics(
                                     }
                                 Text(
                                     text = styledText,
+                                    fontFamily = InterFontFamily,
                                     fontSize = lyricsTextSize.sp,
                                     textAlign = alignment,
                                     lineHeight = (lyricsTextSize * lyricsLineSpacing).sp,
@@ -1348,6 +1352,7 @@ fun OriginalLyrics(
                                     }
                                 Text(
                                     text = styledText,
+                                    fontFamily = InterFontFamily,
                                     fontSize = lyricsTextSize.sp,
                                     textAlign = alignment,
                                     lineHeight =
@@ -1438,6 +1443,7 @@ fun OriginalLyrics(
                                     }
                                 Text(
                                     text = styledText,
+                                    fontFamily = InterFontFamily,
                                     fontSize = lyricsTextSize.sp,
                                     textAlign = alignment,
                                     lineHeight =
@@ -1522,6 +1528,7 @@ fun OriginalLyrics(
                                     }
                                 Text(
                                     text = styledText,
+                                    fontFamily = InterFontFamily,
                                     fontSize = lyricsTextSize.sp,
                                     textAlign = alignment,
                                     lineHeight =
@@ -1610,6 +1617,7 @@ fun OriginalLyrics(
 
                                 Text(
                                     text = styledText,
+                                    fontFamily = InterFontFamily,
                                     fontSize = lyricsTextSize.sp,
                                     textAlign = alignment,
                                     fontWeight = FontWeight.ExtraBold,
@@ -1625,6 +1633,7 @@ fun OriginalLyrics(
                                 // Active line without glow effect - just bold text
                                 Text(
                                     text = mainText,
+                                    fontFamily = InterFontFamily,
                                     fontSize = lyricsTextSize.sp,
                                     color = expressiveAccent,
                                     textAlign = alignment,
@@ -1635,6 +1644,7 @@ fun OriginalLyrics(
                                 // Inactive line
                                 Text(
                                     text = mainText,
+                                    fontFamily = InterFontFamily,
                                     fontSize = lyricsTextSize.sp,
                                     color = lineColor,
                                     textAlign = alignment,

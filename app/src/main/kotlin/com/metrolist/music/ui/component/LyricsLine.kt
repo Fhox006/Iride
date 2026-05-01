@@ -67,6 +67,7 @@ import com.metrolist.music.lyrics.LyricsEntry
 import com.metrolist.music.lyrics.WordTimestamp
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.ui.screens.settings.LyricsPosition
+import com.metrolist.music.ui.theme.InterFontFamily
 import kotlinx.coroutines.isActive
 import kotlin.math.abs
 import kotlin.math.cos
@@ -213,13 +214,9 @@ internal fun LyricsLine(
                 val inactiveAlpha = if (item.isBackground) 0.08f else 0.2f
                 val activeAlpha = 1f
                 val focusedAlpha = if (item.isBackground) 0.5f else 0.3f
-                val sungDistance = if (isSynced && isAutoScrollEnabled && displayedCurrentLineIndex >= 0 && !isActiveLine && !item.isBackground)
-                    displayedCurrentLineIndex - index else -1
 
                 val targetAlpha = if (item.isBackground || isActiveLine) {
                     activeAlpha
-                } else if (sungDistance in 1..5) {
-                    0f
                 } else if (isAutoScrollEnabled && displayedCurrentLineIndex >= 0) {
                     when (abs(index - displayedCurrentLineIndex)) {
                         0 -> focusedAlpha
@@ -242,6 +239,7 @@ internal fun LyricsLine(
                 val subText = if (item.isBackground) subTextRaw?.removePrefix("(")?.removeSuffix(")") else subTextRaw
 
                 val lyricStyle = TextStyle(
+                    fontFamily = InterFontFamily,
                     fontSize = if (item.isBackground) (lyricsTextSize * 0.7f).sp else lyricsTextSize.sp,
                     fontWeight = FontWeight.Bold,
                     fontStyle = if (item.isBackground) FontStyle.Italic else FontStyle.Normal,

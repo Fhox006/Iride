@@ -170,6 +170,7 @@ import com.metrolist.music.ui.menu.PlayerMenu
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.theme.PlayerColorExtractor
 import com.metrolist.music.ui.theme.PlayerSliderColors
+import com.metrolist.music.ui.theme.InterFontFamily
 import com.metrolist.music.ui.utils.ShowMediaInfo
 import com.metrolist.music.ui.utils.ShowOffsetDialog
 import com.metrolist.music.utils.dataStore
@@ -186,12 +187,6 @@ import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.roundToInt
 import com.metrolist.music.ui.component.Icon as MIcon
-import com.metrolist.music.constants.SleepTimerDefaultKey
-import com.metrolist.music.utils.dataStore
-import androidx.datastore.preferences.core.edit
-import com.metrolist.music.constants.SleepTimerFadeOutKey
-import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -2089,6 +2084,7 @@ fun InlineLyricsView(
                         MaterialTheme.typography.bodyMedium.copy(
                             fontSize = 14.sp,
                             textAlign = TextAlign.Center,
+                            fontFamily = InterFontFamily,
                         ),
                 ) {
                     lyricsContent()
