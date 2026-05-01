@@ -180,7 +180,7 @@ private fun LyricsPill(
     }
 }
 
-private const val LYRICS_ANCHOR_RATIO = 0.35f
+private const val LYRICS_ANCHOR_RATIO = 0.42f
 private val LYRICS_ITEM_FALLBACK_HEIGHT_DP = 68.dp
 private val LYRICS_ITEM_GAP_DP = 16.dp
 private val LYRICS_FADE_TOP_DP = 260.dp
@@ -564,7 +564,7 @@ fun ExperimentalLyrics(
         modifier = modifier.fillMaxSize().padding(bottom = 12.dp)
     ) {
         val maxHeightPx = constraints.maxHeight.toFloat()
-        val anchorY = maxHeightPx * LYRICS_ANCHOR_RATIO
+        val anchorY = if (isFullScreen) with(density) { 192.dp.toPx() } else maxHeightPx * LYRICS_ANCHOR_RATIO
         val lineHeightPx = with(density) { LYRICS_ITEM_FALLBACK_HEIGHT_DP.toPx() }
         val indicatorHeightPx = with(density) { 72.dp.toPx() }
         val constraintLineHeightPx = with(density) { 120.dp.toPx() }
@@ -696,7 +696,7 @@ fun ExperimentalLyrics(
                     .padding(horizontal = 20.dp)
                     .padding(top = 8.dp)
             ) {
-                Spacer(Modifier.fillMaxHeight(0.10f))
+                Spacer(Modifier.fillMaxHeight(0.22f))
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -865,7 +865,7 @@ fun ExperimentalLyrics(
                 )
             }
         } else if (lyrics == null && (translationStatus is LyricsTranslationHelper.TranslationStatus.Idle || translationStatus is LyricsTranslationHelper.TranslationStatus.Error)) {
-            Column(modifier = Modifier.padding(top = 100.dp)) {
+            Column(modifier = Modifier.padding(top = 160.dp)) {
                 ShimmerHost {
                     repeat(10) {
                         Box(

@@ -403,7 +403,7 @@ private fun WordLevelLyrics(
     val (effectiveWords, effectiveToOriginalIdx) = remember(words, isBackground) {
         words.flatMapIndexed { originalIdx, word ->
             val shouldSplit = word.text.contains('-') && word.text.length > 1 &&
-                (!word.hasTrailingSpace || words.size == 1)
+                    (!word.hasTrailingSpace || words.size == 1)
             if (shouldSplit) {
                 val segments = mutableListOf<String>()
                 var start = 0
@@ -521,8 +521,8 @@ private fun WordLevelLyrics(
                         val isWordSung = smoothPosition > wEndMs
                         val isWordActive = smoothPosition in wStartMs..wEndMs
                         val sungFactor = if (isWordSung) 1f
-                                        else if (isWordActive) ((smoothPosition - wStartMs).toFloat() / (wEndMs - wStartMs).coerceAtLeast(1)).coerceIn(0f, 1f)
-                                        else 0f
+                        else if (isWordActive) ((smoothPosition - wStartMs).toFloat() / (wEndMs - wStartMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+                        else 0f
                         Triple(sungFactor, isWordSung, isWordActive)
                     }
 
@@ -570,8 +570,8 @@ private fun WordLevelLyrics(
                     val isWordSung = smoothPosition > wEndMs
                     val isWordActive = smoothPosition in wStartMs..wEndMs
                     val sungFactor = if (isWordSung) 1f
-                                    else if (isWordActive) ((smoothPosition - wStartMs).toFloat() / (wEndMs - wStartMs).coerceAtLeast(1)).coerceIn(0f, 1f)
-                                    else 0f
+                    else if (isWordActive) ((smoothPosition - wStartMs).toFloat() / (wEndMs - wStartMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+                    else 0f
                     Triple(sungFactor, word, isWordSung)
                 }
 
@@ -834,4 +834,3 @@ private fun LineFadeAnimation(
         }
     }
 }
-
