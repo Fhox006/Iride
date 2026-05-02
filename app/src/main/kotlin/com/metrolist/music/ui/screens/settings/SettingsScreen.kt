@@ -332,20 +332,6 @@ fun SettingsScreen(
                     },
                     onClick = { navController.navigate("settings/content") }
                 ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.translate),
-                    title = { Text(stringResource(R.string.lyrics_translation)) },
-                    description = { Text(stringResource(R.string.settings_ai_desc), style = MaterialTheme.typography.bodySmall) },
-                    trailingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_forward),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    onClick = { navController.navigate("settings/ai") }
-                ),
             )
         )
 

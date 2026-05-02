@@ -533,6 +533,13 @@ class HomeViewModel @Inject constructor(
 
             allLocalItems.value = (quickPicks.value.orEmpty() + forgottenFavorites.value.orEmpty() + keepListening.value.orEmpty())
                 .filter { it is Song || it is Album }
+
+            HomeCache.homePage = homePage.value
+            HomeCache.quickPicks = quickPicks.value
+            HomeCache.keepListening = keepListening.value
+            HomeCache.forgottenFavorites = forgottenFavorites.value
+            HomeCache.explorePage = explorePage.value
+            HomeCache.lastLoadedAt = System.currentTimeMillis()
         } finally {
             isLoading.value = false
         }
@@ -610,6 +617,10 @@ class HomeViewModel @Inject constructor(
             similarRecommendations.value = (artistRecommendations + songRecommendations + albumRecommendations).shuffled()
             allYtItems.value = similarRecommendations.value?.flatMap { it.items }.orEmpty() +
                     homePage.value?.sections?.flatMap { it.items }.orEmpty()
+
+            HomeCache.similarRecommendations = similarRecommendations.value
+            HomeCache.dailyDiscover = dailyDiscover.value
+            HomeCache.communityPlaylists = communityPlaylists.value
         }
     }
 
@@ -747,12 +758,19 @@ class HomeViewModel @Inject constructor(
     init {
         // Load home data
         viewModelScope.launch(Dispatchers.IO) {
-            context.dataStore.data
-                .map { it[InnerTubeCookieKey] }
-                .distinctUntilChanged()
-                .first()
-
-            load()
+            context.dataStore.data.map { it[InnerTubeCookieKey] }.distinctUntilChanged().first()
+            if (!HomeCache.isStale() && HomeCache.homePage != null) {
+                homePage.value = HomeCache.homePage
+                quickPicks.value = HomeCache.quickPicks
+                keepListening.value = HomeCache.keepListening
+                forgottenFavorites.value = HomeCache.forgottenFavorites
+                explorePage.value = HomeCache.explorePage
+                similarRecommendations.value = HomeCache.similarRecommendations
+                dailyDiscover.value = HomeCache.dailyDiscover
+                communityPlaylists.value = HomeCache.communityPlaylists
+            } else {
+                load()
+            }
         }
 
         // Run sync in separate coroutine with cooldown to avoid blocking UI

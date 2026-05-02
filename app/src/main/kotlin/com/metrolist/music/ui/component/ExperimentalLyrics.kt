@@ -149,6 +149,14 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import androidx.compose.runtime.SideEffect
+
+class LyricsPillController {
+    var hasTranslations by mutableStateOf(false)
+    var isSelectionModeActive by mutableStateOf(false)
+    var translateAction: () -> Unit = {}
+    var selectionAction: () -> Unit = {}
+}
 
 @Composable
 private fun LyricsPill(
@@ -203,6 +211,8 @@ fun ExperimentalLyrics(
     onShowOptionsMenu: () -> Unit = {},
     isFullScreen: Boolean = false,
     onExitFullScreen: () -> Unit = {},
+    showPills: Boolean = true,
+    pillsController: LyricsPillController? = null,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val database = LocalDatabase.current
@@ -380,6 +390,11 @@ fun ExperimentalLyrics(
     val isLyricsProviderShown = lyricsEntity != null && lyricsEntity.provider != "Unknown" && lyricsEntity.provider != "Manual" && !isSelectionModeActive
     var isAutoScrollEnabled by rememberSaveable { mutableStateOf(true) }
     var pillsVisible by remember { mutableStateOf(true) }
+    val effectivePillsVisible by remember {
+        derivedStateOf {
+            if (!showPills && isSelectionModeActive) true else pillsVisible
+        }
+    }
 
     val hasTranslations by remember(lines) {
         derivedStateOf {
@@ -390,6 +405,37 @@ fun ExperimentalLyrics(
     BackHandler(enabled = isSelectionModeActive) {
         isSelectionModeActive = false
         selectedIndices.clear()
+    }
+
+    SideEffect {
+        if (pillsController != null) {
+            pillsController.hasTranslations = hasTranslations
+            pillsController.isSelectionModeActive = isSelectionModeActive
+            pillsController.translateAction = {
+                if (hasTranslations) {
+                    lyricsEntity?.let { entity ->
+                        val clearedLyrics = LyricsTranslationHelper.clearTranslations(entity)
+                        database.query { upsert(clearedLyrics) }
+                        LyricsTranslationHelper.triggerClearTranslations()
+                    }
+                } else {
+                    showLanguagePickerDialog = true
+                }
+            }
+            pillsController.selectionAction = {
+                if (isSelectionModeActive) {
+                    isSelectionModeActive = false
+                    selectedIndices.clear()
+                } else if (lines.isNotEmpty()) {
+                    isSelectionModeActive = true
+                    selectedIndices.clear()
+                    val currentLine = deferredCurrentLineIndex
+                    if (currentLine >= 0 && currentLine < lines.size) {
+                        selectedIndices.add(currentLine)
+                    }
+                }
+            }
+        }
     }
 
     val maxSelectionLimit = 5
@@ -682,7 +728,7 @@ fun ExperimentalLyrics(
 
 
         AnimatedVisibility(
-            visible = pillsVisible && !isFullScreen,
+            visible = effectivePillsVisible && !isFullScreen,
             enter = slideInVertically { -it } + fadeIn(),
             exit = slideOutVertically { -it } + fadeOut(),
             modifier = Modifier
@@ -696,8 +742,9 @@ fun ExperimentalLyrics(
                     .padding(horizontal = 20.dp)
                     .padding(top = 8.dp)
             ) {
-                Spacer(Modifier.fillMaxHeight(0.22f))
+                Spacer(Modifier.fillMaxHeight(0.10f))
 
+                if (showPills) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
@@ -751,9 +798,11 @@ fun ExperimentalLyrics(
                         },
                     )
                 }
+                } // end if(showPills)
 
                 // Action buttons below pills
                 val anySelected = selectedIndices.isNotEmpty()
+                if (showPills) {
                 AnimatedVisibility(
                     visible = !isAutoScrollEnabled && isSynced && !isSelectionModeActive,
                     enter = slideInVertically { -it } + fadeIn(),
@@ -805,6 +854,7 @@ fun ExperimentalLyrics(
                         }
                     }
                 }
+                } // end if(showPills)
 
                 AnimatedVisibility(
                     visible = isSelectionModeActive,
@@ -883,7 +933,7 @@ fun ExperimentalLyrics(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .fadingEdge(top = if (pillsVisible && !isFullScreen) 200.dp else 80.dp, bottom = 40.dp)
+                    .fadingEdge(top = if (showPills && pillsVisible && !isFullScreen) 200.dp else 80.dp, bottom = 40.dp)
                     .clipToBounds()
                     .nestedScroll(remember {
                         object : NestedScrollConnection {

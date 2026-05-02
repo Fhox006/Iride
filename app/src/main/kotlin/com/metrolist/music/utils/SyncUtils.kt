@@ -236,6 +236,9 @@ class SyncUtils @Inject constructor(
 
     fun performFullSync() {
         syncScope.launch {
+            if (processingJob?.isActive != true) {
+                startProcessingQueue()
+            }
             syncChannel.send(SyncOperation.FullSync)
         }
     }
@@ -265,11 +268,10 @@ class SyncUtils @Inject constructor(
                 return@launch
             }
 
-            syncChannel.send(SyncOperation.FullSync)
-
-            context.dataStore.edit { settings ->
-                settings[LastFullSyncKey] = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
+            if (processingJob?.isActive != true) {
+                startProcessingQueue()
             }
+            syncChannel.send(SyncOperation.FullSync)
         }
     }
 
@@ -558,6 +560,9 @@ class SyncUtils @Inject constructor(
             executeSyncAutoSyncPlaylists()
 
             updateState { copy(overallStatus = SyncStatus.Completed, currentOperation = "") }
+            context.dataStore.edit { settings ->
+                settings[LastFullSyncKey] = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
+            }
             Timber.d("Full sync completed successfully")
         } catch (e: CancellationException) {
             throw e

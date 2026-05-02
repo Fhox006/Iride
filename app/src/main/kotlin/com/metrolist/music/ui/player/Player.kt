@@ -32,6 +32,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -47,8 +48,11 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -161,6 +165,7 @@ import com.metrolist.music.ui.component.BottomSheetState
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.Lyrics
+import com.metrolist.music.ui.component.LyricsPillController
 import com.metrolist.music.ui.component.PlayerSliderTrack
 import com.metrolist.music.ui.component.ResizableIconButton
 import com.metrolist.music.ui.component.SquigglySlider
@@ -498,7 +503,7 @@ fun BottomSheetPlayer(
     val (textButtonColor, iconButtonColor) =
         when {
             playerBackground == PlayerBackgroundStyle.BLUR ||
-                playerBackground == PlayerBackgroundStyle.GRADIENT -> {
+                    playerBackground == PlayerBackgroundStyle.GRADIENT -> {
                 when (playerButtonsStyle) {
                     PlayerButtonsStyle.DEFAULT -> {
                         Pair(Color.White, Color.Black)
@@ -551,7 +556,7 @@ fun BottomSheetPlayer(
     val (sideButtonContainerColor, sideButtonContentColor) =
         when {
             playerBackground == PlayerBackgroundStyle.BLUR ||
-                playerBackground == PlayerBackgroundStyle.GRADIENT -> {
+                    playerBackground == PlayerBackgroundStyle.GRADIENT -> {
                 when (playerButtonsStyle) {
                     PlayerButtonsStyle.DEFAULT -> {
                         Pair(
@@ -1844,6 +1849,8 @@ fun BottomSheetPlayer(
                                             }
                                         }
                                     },
+                                    textButtonColor = textButtonColor,
+                                    iconButtonColor = iconButtonColor,
                                 )
                                 "queue" -> InlineQueuePanel(
                                     navController = navController,
@@ -1936,6 +1943,8 @@ fun BottomSheetPlayer(
                                             }
                                         }
                                     },
+                                    textButtonColor = textButtonColor,
+                                    iconButtonColor = iconButtonColor,
                                 )
                                 "queue" -> InlineQueuePanel(
                                     navController = navController,
@@ -2013,7 +2022,6 @@ fun BottomSheetPlayer(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun InlineLyricsView(
     mediaMetadata: MediaMetadata?,
@@ -2022,13 +2030,15 @@ fun InlineLyricsView(
     onShowOptionsMenu: () -> Unit = {},
     isFullScreen: Boolean = false,
     onExitFullScreen: () -> Unit = {},
+    textButtonColor: Color,
+    iconButtonColor: Color,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
-    val lyrics = remember(currentLyrics) { currentLyrics?.lyrics?.trim() }
     val context = LocalContext.current
     val database = LocalDatabase.current
     val coroutineScope = rememberCoroutineScope()
+    val pillsController = remember { LyricsPillController() }
 
     LaunchedEffect(mediaMetadata?.id, currentLyrics) {
         if (mediaMetadata != null && currentLyrics == null) {
@@ -2046,52 +2056,59 @@ fun InlineLyricsView(
                         upsert(LyricsEntity(mediaMetadata.id, fetchedLyricsWithProvider.lyrics, fetchedLyricsWithProvider.provider))
                     }
                 } catch (e: Exception) {
-                    // Handle error
+                    // silently ignored
                 }
             }
         }
     }
 
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(12.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        when {
-            lyrics == LyricsEntity.LYRICS_NOT_FOUND -> {
-                Text(
-                    text = stringResource(R.string.lyrics_not_found),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+    InlinePlayerPageFrame(
+        pills = {
+            PlayerPill(
+                icon = R.drawable.more_vert,
+                isActive = false,
+                textButtonColor = textButtonColor,
+                iconButtonColor = iconButtonColor,
+                modifier = Modifier.weight(1f),
+                onClick = onShowOptionsMenu,
+            )
+            PlayerPill(
+                icon = R.drawable.translate,
+                isActive = pillsController.hasTranslations,
+                textButtonColor = textButtonColor,
+                iconButtonColor = iconButtonColor,
+                modifier = Modifier.weight(1f),
+                onClick = { pillsController.translateAction() },
+            )
+            PlayerPill(
+                icon = R.drawable.lyrics,
+                isActive = pillsController.isSelectionModeActive,
+                textButtonColor = textButtonColor,
+                iconButtonColor = iconButtonColor,
+                modifier = Modifier.weight(1f),
+                onClick = { pillsController.selectionAction() },
+            )
+        },
+        content = {
+            ProvideTextStyle(
+                value = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 14.sp,
                     textAlign = TextAlign.Center,
+                    fontFamily = InterFontFamily,
+                ),
+            ) {
+                Lyrics(
+                    sliderPositionProvider = positionProvider,
+                    showLyrics = showLyrics,
+                    onShowOptionsMenu = onShowOptionsMenu,
+                    isFullScreen = isFullScreen,
+                    onExitFullScreen = onExitFullScreen,
+                    showPills = false,
+                    pillsController = pillsController,
                 )
             }
-
-            else -> {
-                val lyricsContent: @Composable () -> Unit = {
-                    Lyrics(
-                        sliderPositionProvider = positionProvider,
-                        showLyrics = showLyrics,
-                        onShowOptionsMenu = onShowOptionsMenu,
-                        isFullScreen = isFullScreen,
-                        onExitFullScreen = onExitFullScreen,
-                    )
-                }
-                ProvideTextStyle(
-                    value =
-                        MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center,
-                            fontFamily = InterFontFamily,
-                        ),
-                ) {
-                    lyricsContent()
-                }
-            }
-        }
-    }
+        },
+    )
 }
 
 @Composable
@@ -2178,5 +2195,73 @@ private fun PlayerMoreMenuButton(
             contentDescription = null,
             colorFilter = ColorFilter.tint(iconButtonColor),
         )
+    }
+}
+
+@Composable
+internal fun PlayerPill(
+    icon: Int,
+    isActive: Boolean,
+    enabled: Boolean = true,
+    textButtonColor: Color,
+    iconButtonColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    text: String? = null,
+) {
+    val bgColor = if (isActive) textButtonColor else Color.Transparent
+    val iconTint = if (isActive) iconButtonColor else textButtonColor.copy(alpha = if (enabled) 0.8f else 0.4f)
+    Box(
+        modifier = modifier
+            .height(42.dp)
+            .clip(RoundedCornerShape(50))
+            .background(bgColor)
+            .border(1.dp, textButtonColor.copy(alpha = if (enabled) 0.35f else 0.2f), RoundedCornerShape(50))
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (text != null) {
+            Text(
+                text = text,
+                color = iconTint,
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().basicMarquee(),
+            )
+        } else {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(17.dp),
+            )
+        }
+    }
+}
+
+@Composable
+internal fun InlinePlayerPageFrame(
+    modifier: Modifier = Modifier,
+    pills: @Composable RowScope.() -> Unit,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
+            .padding(horizontal = 20.dp)
+            .padding(top = 8.dp, bottom = 16.dp),
+    ) {
+        Spacer(Modifier.fillMaxHeight(0.10f))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 12.dp),
+            content = pills,
+        )
+        Box(modifier = Modifier.weight(1f), content = content)
     }
 }

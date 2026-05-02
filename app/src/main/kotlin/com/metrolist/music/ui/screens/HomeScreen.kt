@@ -63,6 +63,7 @@ import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -670,6 +671,7 @@ fun HomeScreen(
     val allYtItems by viewModel.allYtItems.collectAsState()
     val speedDialItems by viewModel.speedDialItems.collectAsState()
     val pinnedSpeedDialItems by viewModel.pinnedSpeedDialItems.collectAsState()
+    val pinnedIds: Set<String> by remember(pinnedSpeedDialItems) { derivedStateOf<Set<String>> { pinnedSpeedDialItems.map { it.id }.toSet() } }
     val selectedChip by viewModel.selectedChip.collectAsState()
 
     // Official podcast API data
@@ -782,6 +784,33 @@ fun HomeScreen(
         ?.collectAsState() ?: remember { mutableStateOf(false) }
 
     var randomSeed by rememberSaveable { mutableLongStateOf(System.currentTimeMillis()) }
+
+    var selectedMoodCategory by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage.Chip?>(null) }
+    var moodPage by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage?>(null) }
+
+    val moodChips = remember(homePage?.chips) {
+        homePage?.chips?.map { it to it.title } ?: emptyList()
+    }
+    LaunchedEffect(moodChips) {
+        if (selectedMoodCategory == null && moodChips.isNotEmpty()) selectedMoodCategory = moodChips.first().first
+    }
+    LaunchedEffect(selectedMoodCategory, hideExplicit, hideVideoSongs, hideYoutubeShorts) {
+        if (selectedMoodCategory != null) {
+            YouTube.home(params = selectedMoodCategory!!.endpoint?.params).onSuccess { nextSections ->
+                moodPage = nextSections.copy(
+                    sections = nextSections.sections.mapNotNull { section ->
+                        val filteredItems = section.items
+                            .filterExplicit(hideExplicit)
+                            .filterVideoSongs(hideVideoSongs)
+                            .filterYoutubeShorts(hideYoutubeShorts)
+                        if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
+                    }
+                )
+            }
+        } else {
+            moodPage = null
+        }
+    }
 
     LaunchedEffect(isRefreshing) {
         if (isRefreshing) {
@@ -1436,39 +1465,6 @@ fun HomeScreen(
                                 NavigationTitle(title = "Your Mood")
                             }
                             item(key = "your_mood_section") {
-                                val chips = remember(homePage?.chips) {
-                                    val list = mutableListOf<Pair<com.metrolist.innertube.pages.HomePage.Chip?, String>>()
-                                    homePage?.chips?.forEach { list.add(it to it.title) }
-                                    list
-                                }
-
-                                var selectedMoodCategory by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage.Chip?>(null) }
-                                var moodPage by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage?>(null) }
-
-                                LaunchedEffect(chips) {
-                                    if (selectedMoodCategory == null && chips.isNotEmpty()) {
-                                        selectedMoodCategory = chips.first().first
-                                    }
-                                }
-
-                                LaunchedEffect(selectedMoodCategory) {
-                                    if (selectedMoodCategory != null) {
-                                        YouTube.home(params = selectedMoodCategory!!.endpoint?.params).onSuccess { nextSections ->
-                                            moodPage = nextSections.copy(
-                                                sections = nextSections.sections.mapNotNull { section ->
-                                                    val filteredItems = section.items
-                                                        .filterExplicit(hideExplicit)
-                                                        .filterVideoSongs(hideVideoSongs)
-                                                        .filterYoutubeShorts(hideYoutubeShorts)
-                                                    if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
-                                                }
-                                            )
-                                        }
-                                    } else {
-                                        moodPage = null
-                                    }
-                                }
-
                                 val isDark = isSystemInDarkTheme()
                                 val backgroundColor = if (isDark) {
                                     MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
@@ -1485,7 +1481,7 @@ fun HomeScreen(
                                         .padding(vertical = 16.dp)
                                 ) {
                                     ChipsRow(
-                                        chips = chips,
+                                        chips = moodChips,
                                         currentValue = selectedMoodCategory,
                                         onValueUpdate = {
                                             if (it != null) selectedMoodCategory = it
@@ -1754,10 +1750,7 @@ fun HomeScreen(
                                                                 val actualItemIndex = if (isFirstPage && itemIndex > centerIndex) itemIndex - 1 else itemIndex
                                                                 if (actualItemIndex < pageItems.size) {
                                                                     val item = pageItems[actualItemIndex]
-                                                                    val isPinned by database.speedDialDao
-                                                                        .isPinned(
-                                                                            item.id,
-                                                                        ).collectAsState(initial = false)
+                                                                    val isPinned = item.id in pinnedIds
 
                                                                     Box(
                                                                         modifier =
@@ -1982,15 +1975,10 @@ fun HomeScreen(
                                             items = quickPicks.distinctBy { it.id },
                                             key = { "home_quickpick_${it.id}" },
                                         ) { originalSong ->
-                                            // fetch song from database to keep updated
-                                            val song by database
-                                                .song(originalSong.id)
-                                                .collectAsState(initial = originalSong)
-
                                             SongListItem(
-                                                song = song!!,
+                                                song = originalSong,
                                                 showInLibraryIcon = true,
-                                                isActive = song!!.id == mediaMetadata?.id,
+                                                isActive = originalSong.id == mediaMetadata?.id,
                                                 isPlaying = isPlaying,
                                                 isSwipeable = false,
                                                 trailingContent = {
@@ -1998,7 +1986,7 @@ fun HomeScreen(
                                                         onClick = {
                                                             menuState.show {
                                                                 SongMenu(
-                                                                    originalSong = song!!,
+                                                                    originalSong = originalSong,
                                                                     navController = navController,
                                                                     onDismiss = menuState::dismiss,
                                                                 )
@@ -2017,12 +2005,12 @@ fun HomeScreen(
                                                         .combinedClickable(
                                                             onClick = {
                                                                 if (!isListenTogetherGuest) {
-                                                                    if (song!!.id == mediaMetadata?.id) {
+                                                                    if (originalSong.id == mediaMetadata?.id) {
                                                                         playerConnection.togglePlayPause()
                                                                     } else {
                                                                         playerConnection.playQueue(
                                                                             YouTubeQueue.radio(
-                                                                                song!!.toMediaMetadata(),
+                                                                                originalSong.toMediaMetadata(),
                                                                             ),
                                                                         )
                                                                     }
@@ -2032,7 +2020,7 @@ fun HomeScreen(
                                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                                 menuState.show {
                                                                     SongMenu(
-                                                                        originalSong = song!!,
+                                                                        originalSong = originalSong,
                                                                         navController = navController,
                                                                         onDismiss = menuState::dismiss,
                                                                     )
@@ -2301,14 +2289,10 @@ fun HomeScreen(
                                             items = forgottenFavorites.distinctBy { it.id },
                                             key = { "home_forgotten_${it.id}" },
                                         ) { originalSong ->
-                                            val song by database
-                                                .song(originalSong.id)
-                                                .collectAsState(initial = originalSong)
-
                                             SongListItem(
-                                                song = song!!,
+                                                song = originalSong,
                                                 showInLibraryIcon = true,
-                                                isActive = song!!.id == mediaMetadata?.id,
+                                                isActive = originalSong.id == mediaMetadata?.id,
                                                 isPlaying = isPlaying,
                                                 isSwipeable = false,
                                                 trailingContent = {
@@ -2317,7 +2301,7 @@ fun HomeScreen(
                                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                             menuState.show {
                                                                 SongMenu(
-                                                                    originalSong = song!!,
+                                                                    originalSong = originalSong,
                                                                     navController = navController,
                                                                     onDismiss = menuState::dismiss,
                                                                 )
@@ -2336,12 +2320,12 @@ fun HomeScreen(
                                                         .combinedClickable(
                                                             onClick = {
                                                                 if (!isListenTogetherGuest) {
-                                                                    if (song!!.id == mediaMetadata?.id) {
+                                                                    if (originalSong.id == mediaMetadata?.id) {
                                                                         playerConnection.togglePlayPause()
                                                                     } else {
                                                                         playerConnection.playQueue(
                                                                             YouTubeQueue.radio(
-                                                                                song!!.toMediaMetadata(),
+                                                                                originalSong.toMediaMetadata(),
                                                                             ),
                                                                         )
                                                                     }
@@ -2351,7 +2335,7 @@ fun HomeScreen(
                                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                                 menuState.show {
                                                                     SongMenu(
-                                                                        originalSong = song!!,
+                                                                        originalSong = originalSong,
                                                                         navController = navController,
                                                                         onDismiss = menuState::dismiss,
                                                                     )

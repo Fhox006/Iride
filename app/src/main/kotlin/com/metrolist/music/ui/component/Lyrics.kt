@@ -22,6 +22,8 @@ fun Lyrics(
     onShowOptionsMenu: () -> Unit = {},
     isFullScreen: Boolean = false,
     onExitFullScreen: () -> Unit = {},
+    showPills: Boolean = true,
+    pillsController: LyricsPillController? = null,
 ) {
     val (experimentalLyrics, _) = rememberPreference(key = ExperimentalLyricsKey, defaultValue = true)
 
@@ -34,6 +36,8 @@ fun Lyrics(
             onShowOptionsMenu = onShowOptionsMenu,
             isFullScreen = isFullScreen,
             onExitFullScreen = onExitFullScreen,
+            showPills = showPills,
+            pillsController = pillsController,
         )
     } else {
         OriginalLyrics(

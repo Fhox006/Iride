@@ -54,6 +54,7 @@ import androidx.core.net.toUri
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.AppLanguageKey
 import com.metrolist.music.constants.ContentCountryKey
 import com.metrolist.music.constants.ContentLanguageKey
@@ -133,6 +134,7 @@ fun ContentSettings(
     )
     val (lengthTop, onLengthTopChange) = rememberPreference(key = TopSize, defaultValue = "50")
     val (quickPicks, onQuickPicksChange) = rememberEnumPreference(key = QuickPicksKey, defaultValue = QuickPicks.QUICK_PICKS)
+    val (advancedMode, _) = rememberPreference(AdvancedModeKey, false)
     val providerDisplayNames =
         mapOf(
             "BetterLyrics" to "Better Lyrics",
@@ -651,6 +653,31 @@ fun ContentSettings(
         Material3SettingsGroup(
             title = stringResource(R.string.general),
             items = listOf(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.language),
+                        title = { Text(stringResource(R.string.app_language)) },
+                        onClick = {
+                            context.startActivity(
+                                Intent(
+                                    Settings.ACTION_APP_LOCALE_SETTINGS,
+                                    "package:${context.packageName}".toUri()
+                                )
+                            )
+                        }
+                    )
+                } else {
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.language),
+                        title = { Text(stringResource(R.string.app_language)) },
+                        description = {
+                            Text(
+                                LanguageCodeToName.getOrElse(appLanguage) { stringResource(R.string.system_default) }
+                            )
+                        },
+                        onClick = { showAppLanguageDialog = true }
+                    )
+                },
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.language),
                     title = { Text(stringResource(R.string.content_language)) },
@@ -756,55 +783,58 @@ fun ContentSettings(
             )
         )
 
-        AnimatedVisibility(visible = resolveVideoSongs) {
-            Material3SettingsGroup(
-                items = listOf(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.close),
-                        title = { Text(stringResource(R.string.hide_video_only_results)) },
-                        description = { Text(stringResource(R.string.hide_video_only_results_desc)) },
-                        trailingContent = {
-                            Switch(
-                                checked = hideVideoOnlyResults,
-                                onCheckedChange = onHideVideoOnlyResultsChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            id = if (hideVideoOnlyResults) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize)
-                                    )
-                                }
-                            )
-                        },
-                        onClick = { onHideVideoOnlyResultsChange(!hideVideoOnlyResults) }
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.library_music),
-                        title = { Text(stringResource(R.string.hide_videos_in_library)) },
-                        description = { Text(stringResource(R.string.hide_videos_in_library_desc)) },
-                        trailingContent = {
-                            Switch(
-                                checked = hideVideosInLibrary,
-                                onCheckedChange = onHideVideosInLibraryChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            id = if (hideVideosInLibrary) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize)
-                                    )
-                                }
-                            )
-                        },
-                        onClick = { onHideVideosInLibraryChange(!hideVideosInLibrary) }
+        AnimatedVisibility(visible = advancedMode) {
+            AnimatedVisibility(visible = resolveVideoSongs) {
+                Material3SettingsGroup(
+                    items = listOf(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.close),
+                            title = { Text(stringResource(R.string.hide_video_only_results)) },
+                            description = { Text(stringResource(R.string.hide_video_only_results_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = hideVideoOnlyResults,
+                                    onCheckedChange = onHideVideoOnlyResultsChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter = painterResource(
+                                                id = if (hideVideoOnlyResults) R.drawable.check else R.drawable.close
+                                            ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize)
+                                        )
+                                    }
+                                )
+                            },
+                            onClick = { onHideVideoOnlyResultsChange(!hideVideoOnlyResults) }
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.library_music),
+                            title = { Text(stringResource(R.string.hide_videos_in_library)) },
+                            description = { Text(stringResource(R.string.hide_videos_in_library_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = hideVideosInLibrary,
+                                    onCheckedChange = onHideVideosInLibraryChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter = painterResource(
+                                                id = if (hideVideosInLibrary) R.drawable.check else R.drawable.close
+                                            ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize)
+                                        )
+                                    }
+                                )
+                            },
+                            onClick = { onHideVideosInLibraryChange(!hideVideosInLibrary) }
+                        )
                     )
                 )
-            )
+            }
         }
 
+        /*
         Material3SettingsGroup(
             items = listOf(
                 Material3SettingsItem(
@@ -930,97 +960,118 @@ fun ContentSettings(
                 }
             )
         )
+        */
 
-        Spacer(modifier = Modifier.height(27.dp))
+        AnimatedVisibility(visible = advancedMode) {
+            Column {
+                Spacer(modifier = Modifier.height(27.dp))
 
-        Material3SettingsGroup(
-            title = stringResource(R.string.proxy),
-            items = buildList {
-                add(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.wifi_proxy),
-                        title = { Text(stringResource(R.string.enable_proxy)) },
-                        trailingContent = {
-                            Switch(
-                                checked = proxyEnabled,
-                                onCheckedChange = onProxyEnabledChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            id = if (proxyEnabled) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                Material3SettingsGroup(
+                    title = stringResource(R.string.proxy),
+                    items = buildList {
+                        add(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.wifi_proxy),
+                                title = { Text(stringResource(R.string.enable_proxy)) },
+                                trailingContent = {
+                                    Switch(
+                                        checked = proxyEnabled,
+                                        onCheckedChange = onProxyEnabledChange,
+                                        thumbContent = {
+                                            Icon(
+                                                painter = painterResource(
+                                                    id = if (proxyEnabled) R.drawable.check else R.drawable.close
+                                                ),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(SwitchDefaults.IconSize)
+                                            )
+                                        }
                                     )
-                                }
+                                },
+                                onClick = { onProxyEnabledChange(!proxyEnabled) }
                             )
-                        },
-                        onClick = { onProxyEnabledChange(!proxyEnabled) }
-                    )
+                        )
+                        if (proxyEnabled) {
+                            add(
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.settings),
+                                    title = { Text(stringResource(R.string.config_proxy)) },
+                                    onClick = { showProxyConfigurationDialog = true }
+                                )
+                            )
+                        }
+                    }
                 )
-                if (proxyEnabled) {
-                    add(
+
+                Spacer(modifier = Modifier.height(27.dp))
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.lyrics),
+                    items = listOf(
                         Material3SettingsItem(
-                            icon = painterResource(R.drawable.settings),
-                            title = { Text(stringResource(R.string.config_proxy)) },
-                            onClick = { showProxyConfigurationDialog = true }
+                            icon = painterResource(R.drawable.translate),
+                            title = { Text(stringResource(R.string.lyrics_translation)) },
+                            description = { Text(stringResource(R.string.settings_ai_desc), style = MaterialTheme.typography.bodySmall) },
+                            trailingContent = {
+                                Icon(
+                                    painter = painterResource(R.drawable.arrow_forward),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = { navController.navigate("settings/ai") }
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.lyrics),
+                            title = { Text(stringResource(R.string.lyrics_provider_selection)) },
+                            description = { Text(stringResource(R.string.lyrics_provider_selection_desc)) },
+                            onClick = { showProviderSelectionDialog = true }
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.lyrics),
+                            title = { Text(stringResource(R.string.lyrics_provider_priority)) },
+                            description = { Text(stringResource(R.string.lyrics_provider_priority_desc)) },
+                            onClick = { showProviderPriorityDialog = true }
+                        ),
+                        /*
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.language_korean_latin),
+                            title = { Text(stringResource(R.string.lyrics_romanization)) },
+                            onClick = { navController.navigate("settings/content/romanization") }
+                        )
+                        */
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(27.dp))
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.home),
+                    items = listOf(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.trending_up),
+                            title = { Text(stringResource(R.string.top_length)) },
+                            description = { Text(lengthTop) },
+                            onClick = { showTopLengthDialog = true }
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.home_outlined),
+                            title = { Text(stringResource(R.string.set_quick_picks)) },
+                            description = {
+                                Text(
+                                    when (quickPicks) {
+                                        QuickPicks.QUICK_PICKS -> stringResource(R.string.quick_picks)
+                                        QuickPicks.LAST_LISTEN -> stringResource(R.string.last_song_listened)
+                                    }
+                                )
+                            },
+                            onClick = { showQuickPicksDialog = true }
                         )
                     )
-                }
+                )
             }
-        )
-
-        Spacer(modifier = Modifier.height(27.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.lyrics),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.lyrics),
-                    title = { Text(stringResource(R.string.lyrics_provider_selection)) },
-                    description = { Text(stringResource(R.string.lyrics_provider_selection_desc)) },
-                    onClick = { showProviderSelectionDialog = true }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.lyrics),
-                    title = { Text(stringResource(R.string.lyrics_provider_priority)) },
-                    description = { Text(stringResource(R.string.lyrics_provider_priority_desc)) },
-                    onClick = { showProviderPriorityDialog = true }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.language_korean_latin),
-                    title = { Text(stringResource(R.string.lyrics_romanization)) },
-                    onClick = { navController.navigate("settings/content/romanization") }
-                )
-            )
-        )
-
-        Spacer(modifier = Modifier.height(27.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.home),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.trending_up),
-                    title = { Text(stringResource(R.string.top_length)) },
-                    description = { Text(lengthTop) },
-                    onClick = { showTopLengthDialog = true }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.home_outlined),
-                    title = { Text(stringResource(R.string.set_quick_picks)) },
-                    description = {
-                        Text(
-                            when (quickPicks) {
-                                QuickPicks.QUICK_PICKS -> stringResource(R.string.quick_picks)
-                                QuickPicks.LAST_LISTEN -> stringResource(R.string.last_song_listened)
-                            }
-                        )
-                    },
-                    onClick = { showQuickPicksDialog = true }
-                )
-            )
-        )
+        }
         Spacer(modifier = Modifier.height(16.dp))
     }
 
