@@ -779,6 +779,20 @@ fun ContentSettings(
                         )
                     },
                     onClick = { onResolveVideoSongsChange(!resolveVideoSongs) }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.group_outlined),
+                    title = { Text(stringResource(R.string.together)) },
+                    description = { Text(stringResource(R.string.listen_together_description), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_forward),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    onClick = { navController.navigate("listen_together") }
                 )
             )
         )

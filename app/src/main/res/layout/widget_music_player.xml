@@ -76,7 +76,7 @@
                     android:padding="12dp"
                     android:scaleType="fitCenter"
                     android:background="@android:color/transparent"
-                    android:src="@drawable/ic_widget_heart_outline_nav"
+                    android:src="@drawable/ic_widget_star_outline_nav"
                     android:contentDescription="@string/like" />
             </FrameLayout>
 

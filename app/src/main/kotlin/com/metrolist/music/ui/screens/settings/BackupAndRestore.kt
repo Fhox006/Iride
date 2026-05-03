@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.Song
@@ -177,7 +178,7 @@ fun BackupAndRestore(
         val appName = stringResource(R.string.app_name)
         Material3SettingsGroup(
             items =
-                listOf(
+                listOfNotNull(
                     Material3SettingsItem(
                         title = { Text(stringResource(R.string.action_backup)) },
                         icon = painterResource(R.drawable.backup),
@@ -213,6 +214,21 @@ fun BackupAndRestore(
                             )
                         },
                     ),
+                    if (BuildConfig.UPDATER_AVAILABLE) {
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.update),
+                            title = { Text(stringResource(R.string.updater)) },
+                            trailingContent = {
+                                Icon(
+                                    painter = painterResource(R.drawable.arrow_forward),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = { navController.navigate("settings/updater") }
+                        )
+                    } else null
                 ),
         )
     }

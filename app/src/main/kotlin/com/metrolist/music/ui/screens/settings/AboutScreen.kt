@@ -5,6 +5,10 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -60,12 +64,14 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
@@ -223,6 +229,8 @@ fun AboutScreen(
     val yeahStr = stringResource(R.string.yeah)
     
     val windowInsets = LocalPlayerAwareWindowInsets.current
+    val context = LocalContext.current
+    val isAndroid12OrLater = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
     Column(
         modifier = Modifier
@@ -464,7 +472,40 @@ fun AboutScreen(
             }
         )
 
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(32.dp))
+
+        if (isAndroid12OrLater) {
+            Material3SettingsGroup(
+                items = listOf(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.link),
+                        title = { Text(stringResource(R.string.default_links)) },
+                        trailingContent = {
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_forward),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = {
+                            try {
+                                val intent = Intent(
+                                    Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS,
+                                    "package:${context.packageName}".toUri()
+                                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, R.string.open_app_settings_error, Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    )
+                )
+            )
+            Spacer(Modifier.height(16.dp))
+        }
+
+        Spacer(Modifier.height(16.dp))
         
         Text(
             text = stringResource(R.string.stands_with_palestine),

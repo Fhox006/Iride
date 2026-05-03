@@ -18,6 +18,7 @@ import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.toBitmap
 import com.google.common.util.concurrent.ListenableFuture
+import com.metrolist.music.ui.utils.resize
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.guava.future
@@ -58,8 +59,9 @@ class CoilBitmapLoader(
 
     override fun loadBitmap(uri: Uri): ListenableFuture<Bitmap> =
         scope.future(Dispatchers.IO) {
+            val highResUri = uri.toString().resize(1080, 1080).let { Uri.parse(it) }
             val request = ImageRequest.Builder(context)
-                .data(uri)
+                .data(highResUri)
                 .allowHardware(false)
                 .build()
 

@@ -379,14 +379,11 @@ fun SongListItem(
     showDownloadIcon: Boolean = true,
     subtitleOverride: String? = null,
     badges: @Composable RowScope.() -> Unit = {
-        if (showLikedIcon && song.song.liked) {
-            Icon.Favorite()
+        if (showLikedIcon && (song.song.liked || (showInLibraryIcon && song.song.inLibrary != null))) {
+            Icon.Starred()
         }
         if (song.song.explicit) {
             Icon.Explicit()
-        }
-        if (showInLibraryIcon && song.song.inLibrary != null) {
-            Icon.Library()
         }
         if (showDownloadIcon) {
             val download by LocalDownloadUtil.current.getDownload(song.id)
@@ -448,11 +445,8 @@ fun SongGridItem(
     showInLibraryIcon: Boolean = false,
     showDownloadIcon: Boolean = true,
     badges: @Composable RowScope.() -> Unit = {
-        if (showLikedIcon && song.song.liked) {
-            Icon.Favorite()
-        }
-        if (showInLibraryIcon && song.song.inLibrary != null) {
-            Icon.Library()
+        if (showLikedIcon && (song.song.liked || (showInLibraryIcon && song.song.inLibrary != null))) {
+            Icon.Starred()
         }
         if (showDownloadIcon) {
             val download by LocalDownloadUtil.current.getDownload(song.id).collectAsState(initial = null)
@@ -515,7 +509,7 @@ fun ArtistListItem(
             Icon(
                 painter = painterResource(R.drawable.favorite),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
+                tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
                     .size(18.dp)
                     .padding(end = 2.dp),
@@ -552,7 +546,7 @@ fun ArtistGridItem(
     showLikedIcon: Boolean = true,
     badges: @Composable RowScope.() -> Unit = {
         if (showLikedIcon && artist.artist.bookmarkedAt != null) {
-            Icon.Favorite()
+            Icon.Starred()
         }
     },
     fillMaxWidth: Boolean = false,
@@ -611,7 +605,7 @@ fun AlbumListItem(
         }
 
         if (showLikedIcon && album.album.bookmarkedAt != null) {
-            Icon.Favorite()
+            Icon.Starred()
         }
         if (album.album.explicit) {
             Icon.Explicit()
@@ -675,7 +669,7 @@ fun AlbumGridItem(
         }
 
         if (showLikedIcon && album.album.bookmarkedAt != null) {
-            Icon.Favorite()
+            Icon.Starred()
         }
         if (album.album.explicit) {
             Icon.Explicit()
@@ -994,15 +988,12 @@ fun YouTubeListItem(
             if (item is AlbumItem) value = database.album(item.id).firstOrNull()
         }
 
-        if ((item is SongItem && song?.song?.liked == true) ||
+        if ((item is SongItem && (song?.song?.liked == true || song?.song?.inLibrary != null)) ||
             (item is AlbumItem && album?.album?.bookmarkedAt != null)
         ) {
-            Icon.Favorite()
+            Icon.Starred()
         }
         if (item.explicit) Icon.Explicit()
-        // if (item is SongItem && song?.song?.inLibrary != null) {
-        //     Icon.Library()
-        // }
         if (item is SongItem) {
             val download by LocalDownloadUtil.current.getDownload(item.id).collectAsState(null)
             Icon.Download(download?.state)
@@ -1066,13 +1057,12 @@ fun YouTubeGridItem(
             if (item is AlbumItem) value = database.album(item.id).firstOrNull()
         }
 
-        if (item is SongItem && song?.song?.liked == true ||
+        if (item is SongItem && (song?.song?.liked == true || song?.song?.inLibrary != null) ||
             item is AlbumItem && album?.album?.bookmarkedAt != null
         ) {
-            Icon.Favorite()
+            Icon.Starred()
         }
         if (item.explicit) Icon.Explicit()
-        // if (item is SongItem && song?.song?.inLibrary != null) Icon.Library()
         if (item is SongItem) {
             val download by LocalDownloadUtil.current.getDownload(item.id).collectAsState(null)
             Icon.Download(download?.state)
@@ -1749,22 +1739,11 @@ data class Quadruple<A, B, C, D>(
 
 object Icon {
     @Composable
-    fun Favorite() {
+    fun Starred() {
         Icon(
             painter = painterResource(R.drawable.favorite),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.error,
-            modifier = Modifier
-                .size(18.dp)
-                .padding(end = 2.dp)
-        )
-    }
-
-    @Composable
-    fun Library() {
-        Icon(
-            painter = painterResource(R.drawable.library_add_check),
-            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
                 .size(18.dp)
                 .padding(end = 2.dp)

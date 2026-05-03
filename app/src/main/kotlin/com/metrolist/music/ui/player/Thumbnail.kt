@@ -67,8 +67,11 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
+import coil3.imageLoader
+import coil3.memory.MemoryCache
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import coil3.size.Size
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
@@ -246,6 +249,18 @@ fun Thumbnail(
     
     val mediaItems = mediaItemsData.items
     val currentMediaIndex = mediaItemsData.currentIndex
+
+    // Preload next track artwork into Coil cache to eliminate blank flash on skip
+    val nextItem = mediaItems.getOrNull(currentMediaIndex + 1)
+    LaunchedEffect(nextItem?.mediaId) {
+        val url = nextItem?.mediaMetadata?.artworkUri?.toString()?.resize(1080, 1080) ?: return@LaunchedEffect
+        val request = ImageRequest.Builder(context)
+            .data(url)
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .build()
+        context.imageLoader.enqueue(request)
+    }
 
     // Snap behavior - created once per grid state
     val thumbnailSnapLayoutInfoProvider = remember(thumbnailLazyGridState) {
@@ -636,6 +651,8 @@ private fun ThumbnailImage(
                 .memoryCachePolicy(CachePolicy.ENABLED)
                 .diskCachePolicy(CachePolicy.ENABLED)
                 .networkCachePolicy(CachePolicy.ENABLED)
+                .crossfade(300)
+                .placeholderMemoryCacheKey(artworkUri?.resize(120, 120)?.let { MemoryCache.Key(it) })
                 .build(),
             contentDescription = null,
             contentScale = if (cropArtwork) ContentScale.Crop else ContentScale.Fit,

@@ -136,7 +136,7 @@ class HomeViewModel @Inject constructor(
 
     val pinnedSpeedDialItems: StateFlow<List<SpeedDialItem>> =
         database.speedDialDao.getAll()
-            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val speedDialItems: StateFlow<List<YTItem>> =
         combine(
@@ -198,7 +198,7 @@ class HomeViewModel @Inject constructor(
             }
             
             filled.take(targetSize)
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     suspend fun getRandomItem(): YTItem? {
         try {
@@ -268,11 +268,11 @@ class HomeViewModel @Inject constructor(
         val isBeforeDate = LocalDate.now().isBefore(LocalDate.of(2026, 2, 1))
 
         isBeforeDate && (!seen || showWrappedPref)
-    }.stateIn(viewModelScope, SharingStarted.Lazily, false)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val wrappedSeen: StateFlow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[WrappedSeenKey] ?: false
-    }.stateIn(viewModelScope, SharingStarted.Lazily, false)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun togglePin(item: YTItem) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -752,6 +752,14 @@ class HomeViewModel @Inject constructor(
         // Run sync when user manually refreshes
         viewModelScope.launch(Dispatchers.IO) {
             syncUtils.tryAutoSync()
+        }
+    }
+
+    fun refreshIfStale() {
+        if (HomeCache.isStale() || HomeCache.homePage == null) {
+            viewModelScope.launch(Dispatchers.IO) {
+                load()
+            }
         }
     }
 

@@ -44,6 +44,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -118,13 +119,13 @@ fun AlbumScreen(
 
     val scope = rememberCoroutineScope()
 
-    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsStateWithLifecycle()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
-    val playlistId by viewModel.playlistId.collectAsState()
-    val albumWithSongs by viewModel.albumWithSongs.collectAsState()
-    val otherVersions by viewModel.otherVersions.collectAsState()
-    val hasError by viewModel.hasError.collectAsState()
+    val playlistId by viewModel.playlistId.collectAsStateWithLifecycle()
+    val albumWithSongs by viewModel.albumWithSongs.collectAsStateWithLifecycle()
+    val otherVersions by viewModel.otherVersions.collectAsStateWithLifecycle()
+    val hasError by viewModel.hasError.collectAsStateWithLifecycle()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val hideVideoSongs by rememberPreference(key = HideVideoSongsKey, defaultValue = false)
 

@@ -1770,7 +1770,7 @@ fun BottomSheetPlayer(
                                 val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
                                 ResizableIconButton(
                                     icon = if (isFavorite) R.drawable.favorite else R.drawable.favorite_border,
-                                    color = if (isFavorite) MaterialTheme.colorScheme.error else TextBackgroundColor,
+                                    color = if (isFavorite) MaterialTheme.colorScheme.onSurface else TextBackgroundColor,
                                     modifier =
                                         Modifier
                                             .size(32.dp)

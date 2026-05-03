@@ -177,6 +177,7 @@ import com.metrolist.music.playback.queues.Queue
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.playback.queues.filterExplicit
 import com.metrolist.music.playback.queues.filterVideoSongs
+import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.CoilBitmapLoader
 import com.metrolist.music.utils.DiscordRPC
 import com.metrolist.music.utils.NetworkConnectivityObserver
@@ -3474,7 +3475,7 @@ class MusicService :
                 widgetManager.updateWidgets(
                     title = songTitle,
                     artist = artistName,
-                    artworkUri = song?.thumbnailUrl,
+                    artworkUri = song?.thumbnailUrl?.resize(512, 512),
                     isPlaying = isPlaying,
                     isLiked = isLiked,
                     duration = if (player.duration != C.TIME_UNSET) player.duration else 0,

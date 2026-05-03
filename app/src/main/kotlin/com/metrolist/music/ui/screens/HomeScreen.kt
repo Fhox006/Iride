@@ -63,6 +63,7 @@ import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -169,8 +170,10 @@ import com.metrolist.music.ui.utils.SnapLayoutInfoProvider
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.CommunityPlaylistItem
-import com.metrolist.music.viewmodels.GlobalTop50ViewModel
 import com.metrolist.music.viewmodels.HomeViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -200,8 +203,6 @@ sealed class HomeSection(
     data class SimilarRecommendation(
         val index: Int,
     ) : HomeSection("similar_recommendation_$index", 10)
-
-    data object GlobalTop50 : HomeSection("global_top_50", 15)
 
     data class HomePageSection(
         val index: Int,
@@ -442,42 +443,40 @@ fun CommunityPlaylistCard(
                     onClick = {
                         scope.launch(Dispatchers.IO) {
                             if (dbPlaylist?.playlist == null) {
-                                database.transaction {
-                                    val playlistEntity =
-                                        PlaylistEntity(
-                                            name = item.playlist.title,
-                                            browseId = item.playlist.id,
-                                            thumbnailUrl = item.playlist.thumbnail,
-                                            remoteSongCount =
-                                                item.playlist.songCountText
-                                                    ?.split(" ")
-                                                    ?.firstOrNull()
-                                                    ?.toIntOrNull(),
-                                            playEndpointParams = item.playlist.playEndpoint?.params,
-                                            shuffleEndpointParams = item.playlist.shuffleEndpoint?.params,
-                                            radioEndpointParams = item.playlist.radioEndpoint?.params,
-                                        ).toggleLike()
+                                val playlistEntity =
+                                    PlaylistEntity(
+                                        name = item.playlist.title,
+                                        browseId = item.playlist.id,
+                                        thumbnailUrl = item.playlist.thumbnail,
+                                        remoteSongCount =
+                                            item.playlist.songCountText
+                                                ?.split(" ")
+                                                ?.firstOrNull()
+                                                ?.toIntOrNull(),
+                                        playEndpointParams = item.playlist.playEndpoint?.params,
+                                        shuffleEndpointParams = item.playlist.shuffleEndpoint?.params,
+                                        radioEndpointParams = item.playlist.radioEndpoint?.params,
+                                    ).toggleLike()
+                                val songMetadata = item.songs
+                                    .ifEmpty {
+                                        YouTube
+                                            .playlist(item.playlist.id)
+                                            .completed()
+                                            .getOrNull()
+                                            ?.songs
+                                            .orEmpty()
+                                    }.map { it.toMediaMetadata() }
+                                database.withTransaction {
                                     insert(playlistEntity)
-                                    scope.launch(Dispatchers.IO) {
-                                        item.songs
-                                            .ifEmpty {
-                                                YouTube
-                                                    .playlist(item.playlist.id)
-                                                    .completed()
-                                                    .getOrNull()
-                                                    ?.songs
-                                                    .orEmpty()
-                                            }.map { it.toMediaMetadata() }
-                                            .onEach(::insert)
-                                            .mapIndexed { index, song ->
-                                                PlaylistSongMap(
-                                                    songId = song.id,
-                                                    playlistId = playlistEntity.id,
-                                                    position = index,
-                                                    setVideoId = song.setVideoId,
-                                                )
-                                            }.forEach(::insert)
-                                    }
+                                    songMetadata.forEach { insert(it) }
+                                    songMetadata.mapIndexed { index, song ->
+                                        PlaylistSongMap(
+                                            songId = song.id,
+                                            playlistId = playlistEntity.id,
+                                            position = index,
+                                            setVideoId = song.setVideoId,
+                                        )
+                                    }.forEach { insert(it) }
                                 }
                             } else {
                                 database.transaction {
@@ -643,7 +642,6 @@ fun HomeScreen(
     navController: NavController,
     snackbarHostState: SnackbarHostState,
     viewModel: HomeViewModel = hiltViewModel(),
-    globalTop50ViewModel: GlobalTop50ViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
@@ -653,34 +651,33 @@ fun HomeScreen(
     val listenTogetherManager = LocalListenTogetherManager.current
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
 
-    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsStateWithLifecycle()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
-    val quickPicks by viewModel.quickPicks.collectAsState()
-    val forgottenFavorites by viewModel.forgottenFavorites.collectAsState()
-    val keepListening by viewModel.keepListening.collectAsState()
-    val similarRecommendations by viewModel.similarRecommendations.collectAsState()
-    val accountPlaylists by viewModel.accountPlaylists.collectAsState()
-    val homePage by viewModel.homePage.collectAsState()
-    val explorePage by viewModel.explorePage.collectAsState()
-    val dailyDiscover by viewModel.dailyDiscover.collectAsState()
-    val communityPlaylists by viewModel.communityPlaylists.collectAsState()
-    val globalTop50Songs by globalTop50ViewModel.songs.collectAsState()
+    val quickPicks by viewModel.quickPicks.collectAsStateWithLifecycle()
+    val forgottenFavorites by viewModel.forgottenFavorites.collectAsStateWithLifecycle()
+    val keepListening by viewModel.keepListening.collectAsStateWithLifecycle()
+    val similarRecommendations by viewModel.similarRecommendations.collectAsStateWithLifecycle()
+    val accountPlaylists by viewModel.accountPlaylists.collectAsStateWithLifecycle()
+    val homePage by viewModel.homePage.collectAsStateWithLifecycle()
+    val explorePage by viewModel.explorePage.collectAsStateWithLifecycle()
+    val dailyDiscover by viewModel.dailyDiscover.collectAsStateWithLifecycle()
+    val communityPlaylists by viewModel.communityPlaylists.collectAsStateWithLifecycle()
 
-    val allLocalItems by viewModel.allLocalItems.collectAsState()
-    val allYtItems by viewModel.allYtItems.collectAsState()
-    val speedDialItems by viewModel.speedDialItems.collectAsState()
-    val pinnedSpeedDialItems by viewModel.pinnedSpeedDialItems.collectAsState()
+    val allLocalItems by viewModel.allLocalItems.collectAsStateWithLifecycle()
+    val allYtItems by viewModel.allYtItems.collectAsStateWithLifecycle()
+    val speedDialItems by viewModel.speedDialItems.collectAsStateWithLifecycle()
+    val pinnedSpeedDialItems by viewModel.pinnedSpeedDialItems.collectAsStateWithLifecycle()
     val pinnedIds: Set<String> by remember(pinnedSpeedDialItems) { derivedStateOf<Set<String>> { pinnedSpeedDialItems.map { it.id }.toSet() } }
-    val selectedChip by viewModel.selectedChip.collectAsState()
+    val selectedChip by viewModel.selectedChip.collectAsStateWithLifecycle()
 
     // Official podcast API data
-    val savedPodcastShows by viewModel.savedPodcastShows.collectAsState()
-    val episodesForLater by viewModel.episodesForLater.collectAsState()
+    val savedPodcastShows by viewModel.savedPodcastShows.collectAsStateWithLifecycle()
+    val episodesForLater by viewModel.episodesForLater.collectAsStateWithLifecycle()
 
-    val isLoading: Boolean by viewModel.isLoading.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val isRandomizing by viewModel.isRandomizing.collectAsState()
+    val isLoading: Boolean by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val isRandomizing by viewModel.isRandomizing.collectAsStateWithLifecycle()
     val pullRefreshState = rememberPullToRefreshState()
 
     val quickPicksLazyGridState = rememberLazyGridState()
@@ -694,16 +691,16 @@ fun HomeScreen(
         moodMixesState.scrollToItem(0)
     }
 
-    val accountName by viewModel.accountName.collectAsState()
-    val accountImageUrl by viewModel.accountImageUrl.collectAsState()
+    val accountName by viewModel.accountName.collectAsStateWithLifecycle()
+    val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
     val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     val (randomizeHomeOrder) = rememberPreference(RandomizeHomeOrderKey, true)
     val hideExplicit by rememberPreference(HideExplicitKey, false)
     val hideVideoSongs by rememberPreference(HideVideoSongsKey, false)
     val hideYoutubeShorts by rememberPreference(HideYoutubeShortsKey, false)
 
-    val shouldShowWrappedCard by viewModel.showWrappedCard.collectAsState()
-    val wrappedState by viewModel.wrappedManager.state.collectAsState()
+    val shouldShowWrappedCard by viewModel.showWrappedCard.collectAsStateWithLifecycle()
+    val wrappedState by viewModel.wrappedManager.state.collectAsStateWithLifecycle()
     val isWrappedDataReady = wrappedState.isDataReady
 
     val isLoggedIn =
@@ -724,6 +721,13 @@ fun HomeScreen(
                 viewModel.isLoading.first { !it }
             }
             isReadyToShow = true
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.refreshIfStale()
         }
     }
 
@@ -1090,7 +1094,6 @@ fun HomeScreen(
             if (keepListening?.isNotEmpty() == true) list.add(HomeSection.KeepListening)
             if (accountPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
             if (forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
-            if (globalTop50Songs.isNotEmpty()) list.add(HomeSection.GlobalTop50)
 
             similarRecommendations?.indices?.forEach { i ->
                 list.add(HomeSection.SimilarRecommendation(i))
@@ -2343,42 +2346,6 @@ fun HomeScreen(
                                                             },
                                                         ),
                                             )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        HomeSection.GlobalTop50 -> {
-                            if (globalTop50Songs.isNotEmpty()) {
-                                item(key = "global_top_50_title") {
-                                    val title = "Top 50 Global"
-                                    NavigationTitle(
-                                        title = title,
-                                        modifier = Modifier.animateItem(),
-                                        onPlayAllClick = if (!isListenTogetherGuest) {
-                                            {
-                                                playerConnection.playQueue(
-                                                    ListQueue(
-                                                        title = title,
-                                                        items = globalTop50Songs.map { it.toMediaItem() }
-                                                    )
-                                                )
-                                            }
-                                        } else null
-                                    )
-                                }
-
-                                item(key = "global_top_50_list") {
-                                    LazyRow(
-                                        contentPadding = WindowInsets.systemBars
-                                            .only(WindowInsetsSides.Horizontal)
-                                            .asPaddingValues(),
-                                        modifier = Modifier.animateItem(),
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                                    ) {
-                                        items(globalTop50Songs) { song ->
-                                            ytGridItem(song, null)
                                         }
                                     }
                                 }

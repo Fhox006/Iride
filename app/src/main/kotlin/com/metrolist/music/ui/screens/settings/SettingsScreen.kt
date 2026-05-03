@@ -337,11 +337,9 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ── Secondary settings ────────────────────────────────────────────
         val arrowIcon = painterResource(R.drawable.arrow_forward)
         val updateIcon = painterResource(R.drawable.update)
-        val releaseInfo = if (BuildConfig.UPDATER_AVAILABLE && latestVersionName != BuildConfig.VERSION_NAME)
-            Updater.getCachedLatestRelease() else null
+        val releaseInfo = if (BuildConfig.UPDATER_AVAILABLE && latestVersionName != BuildConfig.VERSION_NAME) Updater.getCachedLatestRelease() else null
         val downloadUrl = releaseInfo?.let { Updater.getDownloadUrlForCurrentVariant(it) }
 
         Material3SettingsGroup(
@@ -353,18 +351,19 @@ fun SettingsScreen(
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
                     onClick = { navController.navigate("settings/integrations") }
                 ),
-                if (hasAndroidAuto) Material3SettingsItem(
+                if (hasAndroidAuto && advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.ic_android_auto),
                     title = { Text(stringResource(R.string.android_auto)) },
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
                     onClick = { navController.navigate("settings/android_auto") }
-                ) else null,
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.group_outlined),
-                    title = { Text(stringResource(R.string.together)) },
-                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
-                    onClick = { navController.navigate("listen_together") }
-                ),
+                ) else null
+            )
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Material3SettingsGroup(
+            items = listOfNotNull(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.security),
                     title = { Text(stringResource(R.string.privacy)) },
@@ -373,40 +372,18 @@ fun SettingsScreen(
                     onClick = { navController.navigate("settings/privacy") }
                 ),
                 Material3SettingsItem(
+                    icon = painterResource(R.drawable.restore),
+                    title = { Text(stringResource(R.string.backup_restore)) },
+                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
+                    onClick = { navController.navigate("settings/backup_restore") }
+                ),
+                Material3SettingsItem(
                     icon = painterResource(R.drawable.storage),
                     title = { Text(stringResource(R.string.storage)) },
                     description = { Text(stringResource(R.string.settings_storage_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
                     onClick = { navController.navigate("settings/storage") }
                 ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.restore),
-                    title = { Text(stringResource(R.string.backup_restore)) },
-                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
-                    onClick = { navController.navigate("settings/backup_restore") }
-                ),
-                if (isAndroid12OrLater) Material3SettingsItem(
-                    icon = painterResource(R.drawable.link),
-                    title = { Text(stringResource(R.string.default_links)) },
-                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
-                    onClick = {
-                        try {
-                            val intent = Intent(
-                                Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS,
-                                "package:${context.packageName}".toUri()
-                            ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            Toast.makeText(context, R.string.open_app_settings_error, Toast.LENGTH_LONG).show()
-                        }
-                    }
-                ) else null,
-                if (BuildConfig.UPDATER_AVAILABLE) Material3SettingsItem(
-                    icon = painterResource(R.drawable.update),
-                    title = { Text(stringResource(R.string.updater)) },
-                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
-                    onClick = { navController.navigate("settings/updater") }
-                ) else null,
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.info),
                     title = { Text(stringResource(R.string.about)) },
@@ -436,7 +413,7 @@ fun SettingsScreen(
                     description = { Text(latestVersionName, style = MaterialTheme.typography.bodySmall) },
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
                     onClick = { uriHandler.openUri(downloadUrl) }
-                ) else null,
+                ) else null
             )
         )
 

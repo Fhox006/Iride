@@ -230,6 +230,7 @@ dependencies {
 
     implementation(libs.viewmodel)
     implementation(libs.viewmodel.compose)
+    implementation(libs.lifecycle.runtime.compose)
 
     implementation(libs.material3)
     implementation(libs.palette)
