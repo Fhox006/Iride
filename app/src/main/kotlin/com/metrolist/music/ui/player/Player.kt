@@ -170,6 +170,7 @@ import com.metrolist.music.extensions.toggleRepeatMode
 import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.PlayerConnection
+import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground
 import com.metrolist.music.ui.component.BottomSheet
 import com.metrolist.music.ui.component.BottomSheetState
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -928,7 +929,7 @@ fun BottomSheetPlayer(
 
                     PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
                         var currentBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
-                        LaunchedEffect(mediaMetadata?.thumbnailUrl) {
+                        LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl) {
                             if (mediaMetadata?.thumbnailUrl != null) {
                                 val request = ImageRequest.Builder(context)
                                     .data(mediaMetadata?.thumbnailUrl)
@@ -937,6 +938,8 @@ fun BottomSheetPlayer(
                                     .build()
                                 val result = context.imageLoader.execute(request)
                                 currentBitmap = result.image?.toBitmap()
+                            } else {
+                                currentBitmap = null
                             }
                         }
 
@@ -2300,81 +2303,4 @@ internal fun InlinePlayerPageFrame(
     }
 }
 
-@Composable
-fun AnimatedAlbumGradientBackground(
-    thumbnail: android.graphics.Bitmap?,
-    modifier: Modifier = Modifier
-) {
-    val palette = remember(thumbnail) {
-        thumbnail?.let {
-            Palette.from(it).maximumColorCount(8).generate()
-        }
-    }
 
-    // Extract 2-3 non-neutral vivid colors from palette
-    val rawColors = remember(palette) {
-        if (palette == null) return@remember listOf(
-            Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)
-        )
-        val swatches = listOfNotNull(
-            palette.vibrantSwatch,
-            palette.mutedSwatch,
-            palette.darkVibrantSwatch,
-            palette.lightVibrantSwatch,
-            palette.dominantSwatch
-        ).filter { swatch ->
-            // Filter out near-neutral colors (low saturation)
-            val hsv = FloatArray(3)
-            android.graphics.Color.colorToHSV(swatch.rgb, hsv)
-            hsv[1] > 0.25f // saturation threshold
-        }.take(3).map { Color(it.rgb) }
-
-        if (swatches.size < 2) listOf(Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460))
-        else swatches
-    }
-
-    // Animate color transitions smoothly
-    val animatedColors = rawColors.map { target ->
-        val animatedColor = animateColorAsState(
-            targetValue = target,
-            animationSpec = tween(durationMillis = 3000, easing = LinearEasing),
-            label = "gradientColor"
-        )
-        animatedColor.value
-    }
-
-    // Animate gradient offset for non-unidirectional movement
-    val infiniteTransition = rememberInfiniteTransition(label = "gradientAnim")
-    val offsetX by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween<Float>(8000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "offsetX"
-    )
-    val offsetY by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween<Float>(11000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "offsetY"
-    )
-
-    val colors = if (animatedColors.size >= 3)
-        listOf(animatedColors[0], animatedColors[1], animatedColors[2], animatedColors[0])
-    else
-        listOf(animatedColors[0], animatedColors[1], animatedColors[0])
-
-    Canvas(modifier = modifier.fillMaxSize()) {
-        val brush = Brush.radialGradient(
-            colors = colors,
-            center = Offset(size.width * offsetX, size.height * offsetY),
-            radius = size.maxDimension * 0.9f
-        )
-        drawRect(brush = brush)
-    }
-}
