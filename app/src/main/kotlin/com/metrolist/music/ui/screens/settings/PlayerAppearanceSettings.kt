@@ -88,7 +88,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
     val (useNewPlayerDesign, onUseNewPlayerDesignChange) =
         rememberPreference(UseNewPlayerDesignKey, defaultValue = true)
     val (playerBackground, onPlayerBackgroundChange) =
-        rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.GRADIENT)
+        rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.ANIMATED_GRADIENT)
     val (hidePlayerThumbnail, onHidePlayerThumbnailChange) =
         rememberPreference(HidePlayerThumbnailKey, defaultValue = false)
     val (cropAlbumArt, onCropAlbumArtChange) =
@@ -110,10 +110,10 @@ fun PlayerAppearanceSettings(navController: NavController) {
     val (pureBlackMiniPlayer, onPureBlackMiniPlayerChange) =
         rememberPreference(PureBlackMiniPlayerKey, defaultValue = false)
 
-    val availableBackgroundStyles = PlayerBackgroundStyle.entries.filter {
+    val availableBackgroundStyles = PlayerBackgroundStyle.values().filter {
         it != PlayerBackgroundStyle.BLUR || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     }
-    val availableMiniPlayerBackgroundStyles = MiniPlayerBackgroundStyle.entries.filter {
+    val availableMiniPlayerBackgroundStyles = MiniPlayerBackgroundStyle.values().filter {
         it != MiniPlayerBackgroundStyle.BLUR || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     }
 
@@ -136,7 +136,9 @@ fun PlayerAppearanceSettings(navController: NavController) {
                 when (it) {
                     PlayerBackgroundStyle.DEFAULT -> stringResource(R.string.follow_theme)
                     PlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
+                    PlayerBackgroundStyle.ANIMATED_GRADIENT -> stringResource(R.string.animated_gradient)
                     PlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
+                    else -> ""
                 }
             }
         )
@@ -154,6 +156,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                     PlayerButtonsStyle.DEFAULT -> stringResource(R.string.default_style)
                     PlayerButtonsStyle.PRIMARY -> stringResource(R.string.primary_color_style)
                     PlayerButtonsStyle.TERTIARY -> stringResource(R.string.tertiary_color_style)
+                    else -> ""
                 }
             }
         )
@@ -173,6 +176,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                     MiniPlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
                     MiniPlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
                     MiniPlayerBackgroundStyle.PURE_BLACK -> stringResource(R.string.pure_black)
+                    else -> ""
                 }
             }
         )
@@ -433,7 +437,9 @@ fun PlayerAppearanceSettings(navController: NavController) {
                                 when (playerBackground) {
                                     PlayerBackgroundStyle.DEFAULT -> stringResource(R.string.follow_theme)
                                     PlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
+                                    PlayerBackgroundStyle.ANIMATED_GRADIENT -> stringResource(R.string.animated_gradient)
                                     PlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
+                                    else -> ""
                                 }
                             )
                         },
@@ -498,6 +504,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                                     PlayerButtonsStyle.DEFAULT -> stringResource(R.string.default_style)
                                     PlayerButtonsStyle.PRIMARY -> stringResource(R.string.primary_color_style)
                                     PlayerButtonsStyle.TERTIARY -> stringResource(R.string.tertiary_color_style)
+                                    else -> ""
                                 }
                             )
                         },
@@ -514,6 +521,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                                     SliderStyle.DEFAULT -> stringResource(R.string.default_)
                                     SliderStyle.WAVY -> if (squigglySlider) stringResource(R.string.squiggly) else stringResource(R.string.wavy)
                                     SliderStyle.SLIM -> stringResource(R.string.slim)
+                                    else -> ""
                                 }
                             )
                         },
@@ -615,6 +623,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                                         MiniPlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
                                         MiniPlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
                                         MiniPlayerBackgroundStyle.PURE_BLACK -> stringResource(R.string.pure_black)
+                                        else -> ""
                                     }
                                 },
                                 color = if (!useNewMiniPlayerDesign)

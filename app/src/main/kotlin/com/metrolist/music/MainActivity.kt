@@ -278,8 +278,8 @@ class MainActivity : ComponentActivity() {
                 // Disconnect Listen Together manager
                 listenTogetherManager.setPlayerConnection(null)
                 playerConnection?.dispose()
-                // DO NOT null out playerConnection here - keep it for when service reconnects
-                // DO NOT update playerConnectionSnapshot - this is the key to preventing recomposition
+                playerConnection = null
+                playerConnectionSnapshot = null
             }
         }
 

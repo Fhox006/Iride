@@ -59,7 +59,7 @@ class CoilBitmapLoader(
 
     override fun loadBitmap(uri: Uri): ListenableFuture<Bitmap> =
         scope.future(Dispatchers.IO) {
-            val highResUri = uri.toString().resize(1080, 1080).let { Uri.parse(it) }
+            val highResUri = uri.toString().resize(512, 512).let { Uri.parse(it) }
             val request = ImageRequest.Builder(context)
                 .data(highResUri)
                 .allowHardware(false)

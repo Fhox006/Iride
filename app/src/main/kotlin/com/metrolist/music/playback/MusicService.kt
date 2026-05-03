@@ -3331,7 +3331,7 @@ class MusicService :
         }
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = mediaSession
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = if (::mediaSession.isInitialized) mediaSession else null
 
     override fun onStartCommand(
         intent: Intent?,

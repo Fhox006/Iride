@@ -248,6 +248,7 @@ val LyricsProviderOrderKey = stringPreferencesKey("lyricsProviderOrder")
 val SimpMusicMigrationDoneKey = booleanPreferencesKey("simpMusicMigrationDone")
 val OnboardingCompletedKey = booleanPreferencesKey("onboardingCompleted")
 val QueueEditLockKey = booleanPreferencesKey("queueEditLock")
+val HomeCacheLastLoadedKey = longPreferencesKey("home_cache_last_loaded")
 val ShowWrappedCardKey = booleanPreferencesKey("show_wrapped_card")
 val WrappedSeenKey = booleanPreferencesKey("wrapped_seen")
 val RandomizeHomeOrderKey = booleanPreferencesKey("randomizeHomeOrder")
@@ -429,6 +430,7 @@ enum class PlayerButtonsStyle {
 enum class PlayerBackgroundStyle {
     DEFAULT,
     GRADIENT,
+    ANIMATED_GRADIENT,
     BLUR,
 }
 

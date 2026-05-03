@@ -5,22 +5,26 @@
 
 package com.metrolist.music.ui.player
 
-import androidx.activity.compose.BackHandler
+import android.app.Activity
 import android.content.ClipData
-import androidx.compose.runtime.saveable.rememberSaveable
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.view.WindowManager
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -29,6 +33,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -40,19 +45,19 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -60,7 +65,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -97,6 +104,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
@@ -117,13 +125,13 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.datastore.preferences.core.edit
 import androidx.media3.common.C
 import androidx.media3.common.Player
-import androidx.media3.common.Player.STATE_ENDED
 import androidx.navigation.NavController
 import androidx.palette.graphics.Palette
 import coil3.compose.AsyncImage
@@ -156,10 +164,12 @@ import com.metrolist.music.constants.SquigglySliderKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.constants.UseNewPlayerDesignKey
 import com.metrolist.music.db.entities.LyricsEntity
+import com.metrolist.music.di.LyricsHelperEntryPoint
 import com.metrolist.music.extensions.togglePlayPause
 import com.metrolist.music.extensions.toggleRepeatMode
 import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.ui.component.BottomSheet
 import com.metrolist.music.ui.component.BottomSheetState
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -173,11 +183,12 @@ import com.metrolist.music.ui.component.WavySlider
 import com.metrolist.music.ui.component.rememberBottomSheetState
 import com.metrolist.music.ui.menu.PlayerMenu
 import com.metrolist.music.ui.screens.settings.DarkMode
+import com.metrolist.music.ui.theme.InterFontFamily
 import com.metrolist.music.ui.theme.PlayerColorExtractor
 import com.metrolist.music.ui.theme.PlayerSliderColors
-import com.metrolist.music.ui.theme.InterFontFamily
 import com.metrolist.music.ui.utils.ShowMediaInfo
 import com.metrolist.music.ui.utils.ShowOffsetDialog
+import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
@@ -188,12 +199,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import androidx.media3.common.Player.STATE_ENDED
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.roundToInt
 import com.metrolist.music.ui.component.Icon as MIcon
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun BottomSheetPlayer(
     state: BottomSheetState,
@@ -242,7 +254,7 @@ fun BottomSheetPlayer(
 
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.GRADIENT,
+        defaultValue = PlayerBackgroundStyle.ANIMATED_GRADIENT,
     )
     val playerButtonsStyle by rememberEnumPreference(
         key = PlayerButtonsStyleKey,
@@ -259,8 +271,8 @@ fun BottomSheetPlayer(
     val shouldUseDarkButtonColors =
         remember(playerBackground, useDarkTheme) {
             when (playerBackground) {
-                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT -> true
-                PlayerBackgroundStyle.DEFAULT -> useDarkTheme
+                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT -> true
+                else -> useDarkTheme
             }
         }
 
@@ -269,16 +281,16 @@ fun BottomSheetPlayer(
     val keepScreenOn = isPlaying && isKeepScreenOn
 
     DisposableEffect(playerBackground, state.isExpanded, useDarkTheme, keepScreenOn, isFullScreen, hideStatusBarOnFullscreen) {
-        val window = (context as? android.app.Activity)?.window
+        val window = (context as? Activity)?.window
         if (window != null && state.isExpanded) {
             val insetsController = WindowCompat.getInsetsController(window, window.decorView)
 
             when (playerBackground) {
-                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT -> {
+                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
                     insetsController.isAppearanceLightStatusBars = false
                 }
 
-                PlayerBackgroundStyle.DEFAULT -> {
+                else -> {
                     insetsController.isAppearanceLightStatusBars = !useDarkTheme
                 }
             }
@@ -484,8 +496,7 @@ fun BottomSheetPlayer(
         targetValue =
             when (playerBackground) {
                 PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.onBackground
-                PlayerBackgroundStyle.BLUR -> Color.White
-                PlayerBackgroundStyle.GRADIENT -> Color.White
+                else -> Color.White
             },
         label = "TextBackgroundColor",
     )
@@ -494,8 +505,7 @@ fun BottomSheetPlayer(
         targetValue =
             when (playerBackground) {
                 PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.surface
-                PlayerBackgroundStyle.BLUR -> Color.Black
-                PlayerBackgroundStyle.GRADIENT -> Color.Black
+                else -> Color.Black
             },
         label = "icBackgroundColor",
     )
@@ -503,7 +513,8 @@ fun BottomSheetPlayer(
     val (textButtonColor, iconButtonColor) =
         when {
             playerBackground == PlayerBackgroundStyle.BLUR ||
-                    playerBackground == PlayerBackgroundStyle.GRADIENT -> {
+                playerBackground == PlayerBackgroundStyle.GRADIENT ||
+                playerBackground == PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
                 when (playerButtonsStyle) {
                     PlayerButtonsStyle.DEFAULT -> {
                         Pair(Color.White, Color.Black)
@@ -522,6 +533,7 @@ fun BottomSheetPlayer(
                             MaterialTheme.colorScheme.onTertiary,
                         )
                     }
+                    else -> Pair(Color.White, Color.Black)
                 }
             }
 
@@ -548,6 +560,7 @@ fun BottomSheetPlayer(
                             MaterialTheme.colorScheme.onTertiary,
                         )
                     }
+                    else -> if (useDarkTheme) Pair(Color.White, Color.Black) else Pair(Color.Black, Color.White)
                 }
             }
         }
@@ -556,7 +569,8 @@ fun BottomSheetPlayer(
     val (sideButtonContainerColor, sideButtonContentColor) =
         when {
             playerBackground == PlayerBackgroundStyle.BLUR ||
-                    playerBackground == PlayerBackgroundStyle.GRADIENT -> {
+                playerBackground == PlayerBackgroundStyle.GRADIENT ||
+                playerBackground == PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
                 when (playerButtonsStyle) {
                     PlayerButtonsStyle.DEFAULT -> {
                         Pair(
@@ -578,6 +592,7 @@ fun BottomSheetPlayer(
                             MaterialTheme.colorScheme.onTertiaryContainer,
                         )
                     }
+                    else -> Pair(Color.White.copy(alpha = 0.2f), Color.White)
                 }
             }
 
@@ -603,6 +618,7 @@ fun BottomSheetPlayer(
                             MaterialTheme.colorScheme.onTertiaryContainer,
                         )
                     }
+                    else -> Pair(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -769,8 +785,8 @@ fun BottomSheetPlayer(
     // Position update - only for local playback
     // When casting, we use castPosition directly to avoid sync issues
     // Use isPlaying instead of playbackState to ensure continuous updates during playback
-    LaunchedEffect(isPlaying, isCasting) {
-        if (!isCasting && isPlaying) {
+    LaunchedEffect(effectiveIsPlaying, isCasting) {
+        if (!isCasting && effectiveIsPlaying) {
             while (isActive) {
                 delay(100) // Update more frequently for smoother progress bar
                 if (sliderPosition == null) { // Only update if user isn't dragging
@@ -814,7 +830,7 @@ fun BottomSheetPlayer(
 
     val bottomSheetBackgroundColor =
         when (playerBackground) {
-            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT -> {
+            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
                 MaterialTheme.colorScheme.surfaceContainer
             }
 
@@ -910,9 +926,27 @@ fun BottomSheetPlayer(
                         }
                     }
 
-                    else -> {
-                        PlayerBackgroundStyle.DEFAULT
+                    PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
+                        var currentBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+                        LaunchedEffect(mediaMetadata?.thumbnailUrl) {
+                            if (mediaMetadata?.thumbnailUrl != null) {
+                                val request = ImageRequest.Builder(context)
+                                    .data(mediaMetadata?.thumbnailUrl)
+                                    .size(100, 100)
+                                    .allowHardware(false)
+                                    .build()
+                                val result = context.imageLoader.execute(request)
+                                currentBitmap = result.image?.toBitmap()
+                            }
+                        }
+
+                        AnimatedAlbumGradientBackground(
+                            thumbnail = currentBitmap,
+                            modifier = Modifier.fillMaxSize().alpha(backgroundAlpha)
+                        )
                     }
+
+                    else -> {}
                 }
             }
         },
@@ -936,7 +970,7 @@ fun BottomSheetPlayer(
     ) {
         val controlsContent: @Composable ColumnScope.(MediaMetadata) -> Unit = { mediaMetadata ->
             val playPauseRoundness by animateDpAsState(
-                targetValue = if (isPlaying) 24.dp else 36.dp,
+                targetValue = if (effectiveIsPlaying) 24.dp else 36.dp,
                 animationSpec = tween(durationMillis = 90, easing = LinearEasing),
                 label = "playPauseRoundness",
             )
@@ -1667,7 +1701,7 @@ fun BottomSheetPlayer(
                                         when (repeatMode) {
                                             Player.REPEAT_MODE_OFF, Player.REPEAT_MODE_ALL -> R.drawable.repeat
                                             Player.REPEAT_MODE_ONE -> R.drawable.repeat_one
-                                            else -> throw IllegalStateException()
+                                            else -> R.drawable.repeat
                                         },
                                     color = TextBackgroundColor,
                                     modifier =
@@ -2263,5 +2297,84 @@ internal fun InlinePlayerPageFrame(
             content = pills,
         )
         Box(modifier = Modifier.weight(1f), content = content)
+    }
+}
+
+@Composable
+fun AnimatedAlbumGradientBackground(
+    thumbnail: android.graphics.Bitmap?,
+    modifier: Modifier = Modifier
+) {
+    val palette = remember(thumbnail) {
+        thumbnail?.let {
+            Palette.from(it).maximumColorCount(8).generate()
+        }
+    }
+
+    // Extract 2-3 non-neutral vivid colors from palette
+    val rawColors = remember(palette) {
+        if (palette == null) return@remember listOf(
+            Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)
+        )
+        val swatches = listOfNotNull(
+            palette.vibrantSwatch,
+            palette.mutedSwatch,
+            palette.darkVibrantSwatch,
+            palette.lightVibrantSwatch,
+            palette.dominantSwatch
+        ).filter { swatch ->
+            // Filter out near-neutral colors (low saturation)
+            val hsv = FloatArray(3)
+            android.graphics.Color.colorToHSV(swatch.rgb, hsv)
+            hsv[1] > 0.25f // saturation threshold
+        }.take(3).map { Color(it.rgb) }
+
+        if (swatches.size < 2) listOf(Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460))
+        else swatches
+    }
+
+    // Animate color transitions smoothly
+    val animatedColors = rawColors.map { target ->
+        val animatedColor = animateColorAsState(
+            targetValue = target,
+            animationSpec = tween(durationMillis = 3000, easing = LinearEasing),
+            label = "gradientColor"
+        )
+        animatedColor.value
+    }
+
+    // Animate gradient offset for non-unidirectional movement
+    val infiniteTransition = rememberInfiniteTransition(label = "gradientAnim")
+    val offsetX by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween<Float>(8000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "offsetX"
+    )
+    val offsetY by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween<Float>(11000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "offsetY"
+    )
+
+    val colors = if (animatedColors.size >= 3)
+        listOf(animatedColors[0], animatedColors[1], animatedColors[2], animatedColors[0])
+    else
+        listOf(animatedColors[0], animatedColors[1], animatedColors[0])
+
+    Canvas(modifier = modifier.fillMaxSize()) {
+        val brush = Brush.radialGradient(
+            colors = colors,
+            center = Offset(size.width * offsetX, size.height * offsetY),
+            radius = size.maxDimension * 0.9f
+        )
+        drawRect(brush = brush)
     }
 }

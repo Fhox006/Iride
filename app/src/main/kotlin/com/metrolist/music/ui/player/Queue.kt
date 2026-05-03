@@ -1256,15 +1256,14 @@ private fun PlayerQueueButton(
                     iconButtonColor
                 } else {
                     when (playerBackground) {
-                        PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT -> {
+                        PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
                             Color.White
                         }
 
-                        PlayerBackgroundStyle.DEFAULT -> {
+                        else -> {
                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         }
-                    }
-                }
+                    }                }
             val finalTint = if (enabled) baseTint else baseTint.copy(alpha = 0.5f)
             Icon(
                 painter = painterResource(id = icon),

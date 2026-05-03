@@ -93,6 +93,7 @@
     <string name="player_background_solid">Color</string>
     <string name="follow_theme">Follow theme</string>
     <string name="gradient">Gradient</string>
+    <string name="animated_gradient">Animated Gradient</string>
     <string name="new_player_design">New player design</string>
     <string name="new_mini_player_design">New mini-player design</string>
     <string name="player_background_blur">Blur</string>

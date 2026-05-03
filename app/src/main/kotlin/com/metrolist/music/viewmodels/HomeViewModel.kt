@@ -28,6 +28,7 @@ import com.metrolist.innertube.utils.completed
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
+import com.metrolist.music.constants.HomeCacheLastLoadedKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.QuickPicks
 import com.metrolist.music.constants.QuickPicksKey
@@ -540,6 +541,7 @@ class HomeViewModel @Inject constructor(
             HomeCache.forgottenFavorites = forgottenFavorites.value
             HomeCache.explorePage = explorePage.value
             HomeCache.lastLoadedAt = System.currentTimeMillis()
+            context.dataStore.edit { it[HomeCacheLastLoadedKey] = HomeCache.lastLoadedAt }
         } finally {
             isLoading.value = false
         }
@@ -766,7 +768,9 @@ class HomeViewModel @Inject constructor(
     init {
         // Load home data
         viewModelScope.launch(Dispatchers.IO) {
-            context.dataStore.data.map { it[InnerTubeCookieKey] }.distinctUntilChanged().first()
+            if (HomeCache.lastLoadedAt == 0L) {
+                HomeCache.lastLoadedAt = context.dataStore.get(HomeCacheLastLoadedKey, 0L)
+            }
             if (!HomeCache.isStale() && HomeCache.homePage != null) {
                 homePage.value = HomeCache.homePage
                 quickPicks.value = HomeCache.quickPicks
@@ -776,6 +780,7 @@ class HomeViewModel @Inject constructor(
                 similarRecommendations.value = HomeCache.similarRecommendations
                 dailyDiscover.value = HomeCache.dailyDiscover
                 communityPlaylists.value = HomeCache.communityPlaylists
+                isLoading.value = false
             } else {
                 load()
             }

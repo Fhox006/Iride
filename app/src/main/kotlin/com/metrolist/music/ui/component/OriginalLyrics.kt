@@ -177,6 +177,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
+import kotlin.math.max
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -235,7 +237,7 @@ fun OriginalLyrics(
 
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.GRADIENT,
+        defaultValue = PlayerBackgroundStyle.ANIMATED_GRADIENT,
     )
 
     val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
@@ -429,7 +431,7 @@ fun OriginalLyrics(
                 MaterialTheme.colorScheme.primary
             }
 
-            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT -> {
+            else -> {
                 // For blur/gradient backgrounds, always use light colors regardless of theme
                 Color.White
             }

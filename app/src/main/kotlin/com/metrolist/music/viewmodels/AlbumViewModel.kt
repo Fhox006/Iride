@@ -14,6 +14,7 @@ import com.metrolist.music.data.remote.MusicBrainzRepository
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -74,6 +75,7 @@ constructor(
                                     update(album.album, albumPage, album.artists)
                                 }
                             }
+                            _isLoading.value = false
                         }.onFailure {
                             reportException(it)
                             if (it.message?.contains("NOT_FOUND") == true) {
@@ -82,31 +84,30 @@ constructor(
                                 }
                             }
                             _hasError.value = true
+                            _isLoading.value = false
                         }
 
-                    val albumPage = ytResult.getOrNull() ?: run {
-                        _isLoading.value = false
-                        return@withTimeout
-                    }
+                    val albumPage = ytResult.getOrNull() ?: return@withTimeout
 
                     val currentReleaseDate = album?.album?.releaseDate
                     val regex = Regex("""\d{4}-\d{2}(-\d{2})?""")
 
                     if (currentReleaseDate == null || !regex.matches(currentReleaseDate)) {
-                        val releaseDate = musicBrainzRepository.getAlbumReleaseDate(
-                            albumTitle = albumPage.album.title,
-                            artistName = albumPage.album.artists?.firstOrNull()?.name,
-                            year = albumPage.album.year
-                        )
-                        if (releaseDate != null) {
-                            database.album(albumId).first()?.let { currentAlbum ->
-                                database.query {
-                                    update(currentAlbum.album.copy(releaseDate = releaseDate))
+                        viewModelScope.launch(Dispatchers.IO) {
+                            val releaseDate = musicBrainzRepository.getAlbumReleaseDate(
+                                albumTitle = albumPage.album.title,
+                                artistName = albumPage.album.artists?.firstOrNull()?.name,
+                                year = albumPage.album.year
+                            )
+                            if (releaseDate != null) {
+                                database.album(albumId).first()?.let { currentAlbum ->
+                                    database.query {
+                                        update(currentAlbum.album.copy(releaseDate = releaseDate))
+                                    }
                                 }
                             }
                         }
                     }
-                    _isLoading.value = false
                 }
             } catch (e: TimeoutCancellationException) {
                 _hasError.value = true
