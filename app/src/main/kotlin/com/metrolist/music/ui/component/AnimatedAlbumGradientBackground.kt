@@ -1,3 +1,4 @@
+
 package com.metrolist.music.ui.component
 
 import android.graphics.Bitmap
@@ -50,8 +51,8 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-private val WhiteMappedGray = Color(0xFF8A8C8E)
-private val DarkGrayBlack   = Color(0xFF1C1C1E)
+private val WhiteMappedGray = Color(0xFF2596BE)
+private val DarkGrayBlack   = Color(0xFF0B0B0B)
 
 private val FallbackColors = listOf(
     Color(0xFF1C1C1E),
@@ -156,57 +157,57 @@ private fun normalizeColorForBackground(color: Color): Color {
     val hsl = colorToHsl(color)
 
     // CASO 1: artefatto JPEG — nero con lieve tinta spuria (S bassa, 0.12–0.45) → nero pulito
-    // NON toccare colori saturi veri (S > 0.45) anche se molto scuri
     if (hsl.l < 0.16f && hsl.s in 0.12f..0.45f) {
         return hslToColor(HslColor(hsl.h, 0f, 0.12f))
     }
 
-    // CASO 2: nero / molto scuro con saturazione bassa → mantieni scuro
+    // CASO 2: nero / molto scuro con saturazione bassa → mantieni scuro ma più profondo
     if (hsl.l < 0.16f && hsl.s < 0.12f) {
-        return hslToColor(HslColor(hsl.h, hsl.s.coerceAtMost(0.10f), 0.13f))
+        return hslToColor(HslColor(hsl.h, hsl.s.coerceAtMost(0.10f), 0.09f))
     }
 
     // CASO 2b: colore saturo scuro (es. arancione bruciato, rosso scuro, verde scuro)
-    // L < 0.16 ma S > 0.45 → è un vero colore, alzare L per renderlo visibile come sfondo
     if (hsl.l < 0.16f && hsl.s > 0.45f) {
-        val targetL = (hsl.l + 0.12f).coerceIn(0.18f, 0.32f)
+        val targetL = (hsl.l + 0.13f).coerceIn(0.19f, 0.33f)
         return hslToColor(HslColor(hsl.h, hsl.s, targetL))
     }
 
-    // CASO 3: bianco / quasi-bianco / pastello slavato → WhiteMappedGray
+    // CASO 3: bianco / quasi-bianco / pastello slavato → mappa a colore più chiaro e piacevole
     if (hsl.l > 0.72f && hsl.s < 0.40f) {
-        return WhiteMappedGray
+        val targetL = 0.48f
+        val targetS = (hsl.s + 0.25f).coerceAtMost(0.65f)
+        return hslToColor(HslColor(hsl.h, targetS, targetL))
     }
 
     // CASO 4: neutro (grigio) → lieve colorcast percepibile
     if (hsl.s < 0.09f) {
         val targetL = when {
-            hsl.l > 0.72f -> 0.36f
-            hsl.l < 0.22f -> 0.16f
-            else           -> hsl.l.coerceIn(0.18f, 0.40f)
+            hsl.l > 0.72f -> 0.42f
+            hsl.l < 0.22f -> 0.11f
+            else           -> hsl.l.coerceIn(0.18f, 0.42f)
         }
-        return hslToColor(HslColor(hsl.h, hsl.s.coerceIn(0.06f, 0.20f), targetL))
+        return hslToColor(HslColor(hsl.h, hsl.s.coerceIn(0.06f, 0.22f), targetL))
     }
 
     // CASO 5: colore già intenso (s >= 0.60) → preserva tonalità, abbassa solo L
     if (hsl.s >= 0.60f) {
         val targetL = when {
-            hsl.l > 0.70f -> (hsl.l - 0.25f).coerceIn(0.28f, 0.50f)
-            hsl.l > 0.50f -> (hsl.l - 0.12f).coerceIn(0.28f, 0.50f)
-            else           -> hsl.l.coerceIn(0.20f, 0.50f)
+            hsl.l > 0.70f -> (hsl.l - 0.22f).coerceIn(0.32f, 0.52f)
+            hsl.l > 0.50f -> (hsl.l - 0.11f).coerceIn(0.30f, 0.52f)
+            else           -> hsl.l.coerceIn(0.22f, 0.52f)
         }
         return hslToColor(HslColor(hsl.h, hsl.s, targetL))
     }
 
     // CASO 6: colore normale (0.09 <= s < 0.60)
     val targetL = when {
-        hsl.l > 0.72f -> (hsl.l - 0.28f).coerceIn(0.22f, 0.48f)
-        hsl.l > 0.55f -> (hsl.l - 0.18f).coerceIn(0.22f, 0.48f)
-        else           -> hsl.l.coerceIn(0.16f, 0.48f)
+        hsl.l > 0.72f -> (hsl.l - 0.24f).coerceIn(0.28f, 0.50f)
+        hsl.l > 0.55f -> (hsl.l - 0.15f).coerceIn(0.28f, 0.50f)
+        else           -> hsl.l.coerceIn(0.19f, 0.50f)
     }
     val compensation = (hsl.l - targetL).coerceAtLeast(0f)
-    val satBoost     = compensation * 0.20f
-    val targetS      = (hsl.s + satBoost).coerceAtMost(0.88f).coerceAtLeast(hsl.s)
+    val satBoost     = compensation * 0.18f
+    val targetS      = (hsl.s + satBoost).coerceAtMost(0.85f).coerceAtLeast(hsl.s)
     return hslToColor(HslColor(hsl.h, targetS, targetL))
 }
 
@@ -237,12 +238,31 @@ private fun extractColors(bitmap: Bitmap): List<ExtractedColor> {
         }
     }
 
+    // Bilanciamento proporzioni per evitare troppi scuri quando ci sono molti colori simili
+    if (distinct.size >= 3) {
+        val hslList = distinct.map { colorToHsl(it.color) }
+        val hueGroups = mutableMapOf<Int, MutableList<Int>>()
+
+        hslList.forEachIndexed { idx, hsl ->
+            val hueBucket = (hsl.h * 12).toInt() % 12
+            hueGroups.getOrPut(hueBucket) { mutableListOf() }.add(idx)
+        }
+
+        val dominantGroup = hueGroups.maxByOrNull { it.value.size }?.value
+        if (dominantGroup != null && dominantGroup.size > 3) {
+            // Mantieni più colori della tinta dominante e riduci scuri estremi
+            while (distinct.size > 4) {
+                distinct.removeAt(distinct.lastIndex)
+            }
+        }
+    }
+
     while (distinct.size < 5) {
         val base = distinct.getOrElse(distinct.size % max(1, distinct.size)) {
             ExtractedColor(DarkGrayBlack, 1)
         }
         val hsl     = colorToHsl(base.color)
-        val variant = hslToColor(HslColor(hsl.h, hsl.s * 0.85f, (hsl.l - 0.06f).coerceAtLeast(0.13f)))
+        val variant = hslToColor(HslColor(hsl.h, hsl.s * 0.82f, (hsl.l - 0.05f).coerceAtLeast(0.11f)))
         distinct += ExtractedColor(variant, 1)
     }
 
@@ -252,7 +272,7 @@ private fun extractColors(bitmap: Bitmap): List<ExtractedColor> {
 private fun buildBackgroundSpec(bitmap: Bitmap): BackgroundSpec {
     val extracted      = extractColors(bitmap)
     val baseColor      = extracted.firstOrNull()?.color ?: DarkGrayBlack
-    val baseBackground = blend(baseColor, Color.Black, 0.65f)
+    val baseBackground = blend(baseColor, Color.Black, 0.58f)
     return BackgroundSpec(baseBackground, extracted)
 }
 
@@ -481,7 +501,7 @@ private fun DebugColorPipelineDialog(
             }
 
             Spacer(Modifier.height(12.dp))
-            Text("③ baseBackground (blend → Black 65%):",
+            Text("③ baseBackground (blend → Black 58%):",
                 color = Color(0xFF90FF90), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
             Spacer(Modifier.height(4.dp))
             ColorSwatch(baseBackground, "Base")
