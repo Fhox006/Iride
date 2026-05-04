@@ -310,14 +310,16 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Explicitly start the service so it becomes an "explicitly started" service.
-        // Without this, the service only exists while a client is bound (BIND_AUTO_CREATE).
-        // When onStop() releases the binding (e.g. screen off, app backgrounded), Media3's
-        // MediaNotificationManager tries to keep the service alive, but this is blocked on
-        // Android 12+ when the app is in the background. Using startForegroundService() ensures
-        // the service persists independently of binding state on all Android versions, including
-        // Android 16+ where startService() from background contexts is not allowed.
-        ContextCompat.startForegroundService(this, Intent(this, MusicService::class.java))
+        // Only start service if not already running — redundant startForegroundService() on a
+        // running service re-triggers onStartCommand(), which on Android 12+ can interrupt active
+        // coroutine flows and cause library/lyrics collectors to drop and never re-subscribe.
+        if (!MusicService.isRunning) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ContextCompat.startForegroundService(this, Intent(this, MusicService::class.java))
+            } else {
+                startService(Intent(this, MusicService::class.java))
+            }
+        }
         
         // Bind to service - if already bound, this is a no-op but ensures we stay connected
         if (!isServiceBound) {
@@ -335,21 +337,21 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-        if (dataStore.get(StopMusicOnTaskClearKey, false) &&
-            playerConnection?.isPlaying?.value == true &&
-            isFinishing
-        ) {
-            stopService(Intent(this, MusicService::class.java))
+        if (isFinishing) {
+            listenTogetherManager.disconnect()
         }
-
-        // Full cleanup - only on actual destroy
-        listenTogetherManager.setPlayerConnection(null)
+        super.onDestroy()
+        val stopServiceOnClear =
+            dataStore.get(StopMusicOnTaskClearKey, false) &&
+                playerConnection?.isPlaying?.value == true &&
+                isFinishing
         playerConnection?.dispose()
         playerConnection = null
         playerConnectionSnapshot = null
-
         safeUnbindService("onDestroy()")
+        if (stopServiceOnClear) {
+            stopService(Intent(this, MusicService::class.java))
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

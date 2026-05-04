@@ -29,7 +29,8 @@
       "Bash(python3 -c ' *)",
       "Bash(grep -q '^__TRACKED_VAR__$' /tmp/existing_strings.txt)",
       "Bash(git show *)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "PowerShell(git *)"
     ]
   }
 }
