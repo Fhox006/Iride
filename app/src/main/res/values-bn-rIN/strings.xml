@@ -36,7 +36,7 @@
     <string name="filter_featured_playlists">বিশিষ্ট প্লেলিস্ট</string>
     <string name="no_results_found">কিছু পাওয়া যায়নি</string>
     <string name="from_your_library">আপনার লাইব্রেরি থেকে</string>
-    <string name="liked_songs">আপনার পছন্দের গান</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">ডাউনলোড করা গান</string>
     <string name="playlist_is_empty">প্লেলিস্ট খালি</string>
     <string name="retry">পুনরায় চেষ্টা করুন</string>
@@ -135,8 +135,8 @@
     <string name="error_no_internet">নেটওয়ার্ক সংযোগ নেই</string>
     <string name="error_timeout">ত্রুটি সময়সীমা শেষ</string>
     <string name="error_unknown">অজানা ত্রুটি</string>
-    <string name="action_like">পছন্দ</string>
-    <string name="action_remove_like">অপছন্দ</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="queue_all_songs">সব গান</string>
     <string name="queue_searched_songs">অনুসন্ধান করা গান</string>
     <string name="music_player">প্লেয়ার</string>
@@ -206,7 +206,7 @@
     <string name="your_youtube_playlists">আপনার ইউটিউব প্লেলিস্টগুলি</string>
     <string name="similar_to">এর মতো</string>
     <string name="filter_library">লাইব্রেরি</string>
-    <string name="filter_liked">লাইক করা</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">ডাউনলোড করা</string>
     <string name="filter_bookmarked">বুকমার্ক করা</string>
     <string name="library_song_empty">লাইব্রেরির গান এখানে দেখানো হবে</string>

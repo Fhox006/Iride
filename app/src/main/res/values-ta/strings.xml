@@ -71,10 +71,10 @@
     <string name="playlist_synced">பிளேலிச்ட் ஒத்திசைக்கப்பட்டது</string>
     <string name="error_timeout">நேரம் முடிந்தது</string>
     <string name="error_unknown">தெரியாத பிழை</string>
-    <string name="action_like">போன்ற</string>
-    <string name="action_like_all">எல்லாவற்றையும் போல</string>
-    <string name="action_remove_like">அகற்றவும்</string>
-    <string name="action_remove_like_all">எல்லா விருப்பங்களையும் அகற்று</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">கலக்கு</string>
     <string name="action_shuffle_off">கலக்கவும்</string>
     <string name="queue_all_songs">அனைத்து பாடல்களும்</string>
@@ -119,7 +119,7 @@
     <string name="search_yt_music">யூடியூப் இசையைத் தேடுங்கள்…</string>
     <string name="search_library">தேடல் நூலகம்…</string>
     <string name="filter_library">நூலகம்</string>
-    <string name="filter_liked">பிடித்திருந்தது</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_featured_playlists">சிறப்பு பிளேலிச்ட்கள்</string>
     <string name="filter_bookmarked">புக்மார்க்கு செய்யப்பட்டது</string>
     <string name="no_results_found">முடிவுகள் எதுவும் கிடைக்கவில்லை</string>
@@ -129,7 +129,7 @@
     <string name="library_playlist_empty">உங்கள் பிளேலிச்ட்கள் இங்கே காண்பிக்கப்படும்</string>
     <string name="from_your_library">உங்கள் நூலகத்திலிருந்து</string>
     <string name="other_versions">பிற பதிப்புகள்</string>
-    <string name="liked_songs">பாடல்கள் விரும்பின</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">பதிவிறக்கம் செய்யப்பட்ட பாடல்கள்</string>
     <string name="playlist_is_empty">பிளேலிச்ட் காலியாக உள்ளது</string>
     <string name="remove_download_playlist_confirm">பதிவிறக்கம் செய்யப்பட்ட பாடல்கள் சேமிப்பகத்திலிருந்து அனைத்து \"%s\" பிளேலிச்ட் பாடல்களையும் அகற்ற விரும்புகிறீர்களா?</string>

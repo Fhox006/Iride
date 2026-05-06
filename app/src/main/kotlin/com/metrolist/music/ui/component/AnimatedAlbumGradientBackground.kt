@@ -1,4 +1,3 @@
-
 package com.metrolist.music.ui.component
 
 import android.graphics.Bitmap
@@ -51,8 +50,8 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-private val WhiteMappedGray = Color(0xFF2596BE)
-private val DarkGrayBlack   = Color(0xFF0B0B0B)
+private val WhiteMappedGray = Color(0xFF8A8C8E)
+private val DarkGrayBlack   = Color(0xFF1C1C1E)
 
 private val FallbackColors = listOf(
     Color(0xFF1C1C1E),
@@ -156,59 +155,87 @@ private fun downscaleBitmap(bitmap: Bitmap, maxSide: Int = 96): Bitmap {
 private fun normalizeColorForBackground(color: Color): Color {
     val hsl = colorToHsl(color)
 
-    // CASO 1: artefatto JPEG — nero con lieve tinta spuria (S bassa, 0.12–0.45) → nero pulito
-    if (hsl.l < 0.16f && hsl.s in 0.12f..0.45f) {
+    // CASO 1: nero con artefatto JPEG (tinta scurissima) → nero pulito
+    if (hsl.l < 0.16f && hsl.s > 0.12f) {
         return hslToColor(HslColor(hsl.h, 0f, 0.12f))
     }
 
-    // CASO 2: nero / molto scuro con saturazione bassa → mantieni scuro ma più profondo
-    if (hsl.l < 0.16f && hsl.s < 0.12f) {
-        return hslToColor(HslColor(hsl.h, hsl.s.coerceAtMost(0.10f), 0.09f))
+    // CASO 2: nero / molto scuro → mantieni scuro
+    if (hsl.l < 0.16f) {
+        return hslToColor(HslColor(hsl.h, hsl.s.coerceAtMost(0.10f), 0.13f))
     }
 
-    // CASO 2b: colore saturo scuro (es. arancione bruciato, rosso scuro, verde scuro)
-    if (hsl.l < 0.16f && hsl.s > 0.45f) {
-        val targetL = (hsl.l + 0.13f).coerceIn(0.19f, 0.33f)
-        return hslToColor(HslColor(hsl.h, hsl.s, targetL))
-    }
-
-    // CASO 3: bianco / quasi-bianco / pastello slavato → mappa a colore più chiaro e piacevole
+    // CASO 3: bianco / quasi-bianco / pastello slavato → WhiteMappedGray
     if (hsl.l > 0.72f && hsl.s < 0.40f) {
-        val targetL = 0.48f
-        val targetS = (hsl.s + 0.25f).coerceAtMost(0.65f)
-        return hslToColor(HslColor(hsl.h, targetS, targetL))
+        return WhiteMappedGray
     }
 
-    // CASO 4: neutro (grigio) → lieve colorcast percepibile
+    // CASO 4: neutro (grigio) → Tieni la tinta originale, normalizza solo L in range ristretto
     if (hsl.s < 0.09f) {
-        val targetL = when {
-            hsl.l > 0.72f -> 0.42f
-            hsl.l < 0.22f -> 0.11f
-            else           -> hsl.l.coerceIn(0.18f, 0.42f)
-        }
-        return hslToColor(HslColor(hsl.h, hsl.s.coerceIn(0.06f, 0.22f), targetL))
+        // Massimo 2 grigi: uno scuro (0b0b0b) e uno medio (818483)
+        // Mantieni la tinta originale degli altri grigi
+        val targetL = hsl.l.coerceIn(0.16f, 0.51f)  // range medio tra i 2 grigi estremi
+        return hslToColor(HslColor(hsl.h, hsl.s, targetL))
     }
 
     // CASO 5: colore già intenso (s >= 0.60) → preserva tonalità, abbassa solo L
     if (hsl.s >= 0.60f) {
         val targetL = when {
-            hsl.l > 0.70f -> (hsl.l - 0.22f).coerceIn(0.32f, 0.52f)
-            hsl.l > 0.50f -> (hsl.l - 0.11f).coerceIn(0.30f, 0.52f)
-            else           -> hsl.l.coerceIn(0.22f, 0.52f)
+            hsl.l > 0.70f -> (hsl.l - 0.25f).coerceIn(0.28f, 0.50f)
+            hsl.l > 0.50f -> (hsl.l - 0.12f).coerceIn(0.28f, 0.50f)
+            else           -> hsl.l.coerceIn(0.20f, 0.50f)
         }
         return hslToColor(HslColor(hsl.h, hsl.s, targetL))
     }
 
     // CASO 6: colore normale (0.09 <= s < 0.60)
     val targetL = when {
-        hsl.l > 0.72f -> (hsl.l - 0.24f).coerceIn(0.28f, 0.50f)
-        hsl.l > 0.55f -> (hsl.l - 0.15f).coerceIn(0.28f, 0.50f)
-        else           -> hsl.l.coerceIn(0.19f, 0.50f)
+        hsl.l > 0.72f -> (hsl.l - 0.28f).coerceIn(0.22f, 0.48f)
+        hsl.l > 0.55f -> (hsl.l - 0.18f).coerceIn(0.22f, 0.48f)
+        else           -> hsl.l.coerceIn(0.16f, 0.48f)
     }
     val compensation = (hsl.l - targetL).coerceAtLeast(0f)
-    val satBoost     = compensation * 0.18f
-    val targetS      = (hsl.s + satBoost).coerceAtMost(0.85f).coerceAtLeast(hsl.s)
+    val satBoost     = compensation * 0.20f
+    val targetS      = (hsl.s + satBoost).coerceAtMost(0.88f).coerceAtLeast(hsl.s)
     return hslToColor(HslColor(hsl.h, targetS, targetL))
+}
+
+// ─────────────────────────────────────────────────────────────
+// Rimossa postProcessColor - ora i grigi mantengono la loro tinta
+// La deduplicazione tiene MAX 2 grigi (scuro + medio)
+// ─────────────────────────────────────────────────────────────
+
+private fun deduplicateGrays(colors: List<ExtractedColor>): List<ExtractedColor> {
+    var darkGrayCount = 0
+    var midGrayCount = 0
+    val result = mutableListOf<ExtractedColor>()
+
+    colors.forEach { ec ->
+        val hsl = colorToHsl(ec.color)
+        if (hsl.s < 0.09f) {  // è un grigio
+            when {
+                hsl.l < 0.16f && darkGrayCount < 1 -> {
+                    result += ec
+                    darkGrayCount++
+                }
+                hsl.l >= 0.16f && hsl.l <= 0.55f && midGrayCount < 1 -> {
+                    result += ec
+                    midGrayCount++
+                }
+                hsl.l > 0.55f -> {
+                    // grigio chiaro → mappalo a WhiteMappedGray se non già presente
+                    if (result.none { colorDistanceHsl(it.color, WhiteMappedGray) < 10f }) {
+                        result += ec.copy(color = WhiteMappedGray)
+                    }
+                }
+            }
+        } else {
+            // colore saturo → tieni sempre
+            result += ec
+        }
+    }
+
+    return result
 }
 
 private fun extractColors(bitmap: Bitmap): List<ExtractedColor> {
@@ -238,41 +265,63 @@ private fun extractColors(bitmap: Bitmap): List<ExtractedColor> {
         }
     }
 
-    // Bilanciamento proporzioni per evitare troppi scuri quando ci sono molti colori simili
-    if (distinct.size >= 3) {
-        val hslList = distinct.map { colorToHsl(it.color) }
-        val hueGroups = mutableMapOf<Int, MutableList<Int>>()
-
-        hslList.forEachIndexed { idx, hsl ->
-            val hueBucket = (hsl.h * 12).toInt() % 12
-            hueGroups.getOrPut(hueBucket) { mutableListOf() }.add(idx)
-        }
-
-        val dominantGroup = hueGroups.maxByOrNull { it.value.size }?.value
-        if (dominantGroup != null && dominantGroup.size > 3) {
-            // Mantieni più colori della tinta dominante e riduci scuri estremi
-            while (distinct.size > 4) {
-                distinct.removeAt(distinct.lastIndex)
-            }
-        }
-    }
-
     while (distinct.size < 5) {
         val base = distinct.getOrElse(distinct.size % max(1, distinct.size)) {
             ExtractedColor(DarkGrayBlack, 1)
         }
         val hsl     = colorToHsl(base.color)
-        val variant = hslToColor(HslColor(hsl.h, hsl.s * 0.82f, (hsl.l - 0.05f).coerceAtLeast(0.11f)))
+        val variant = hslToColor(
+            HslColor(
+                hsl.h,
+                hsl.s * 0.85f,
+                (hsl.l - 0.06f).coerceAtLeast(0.13f)
+            )
+        )
         distinct += ExtractedColor(variant, 1)
     }
 
-    return distinct.take(5)
+    val deduplicated = deduplicateGrays(distinct)
+
+    val result = deduplicated.toMutableList()
+    var hasDarkGray = result.any {
+        colorToHsl(it.color).let { hsl -> hsl.s < 0.09f && hsl.l < 0.16f }
+    }
+    var hasMidGray = result.any {
+        colorToHsl(it.color).let { hsl -> hsl.s < 0.09f && hsl.l in 0.16f..0.55f }
+    }
+
+    while (result.size < 5) {
+        if (!hasDarkGray) {
+            result += ExtractedColor(Color(0xFF0B0B0B), 1)
+            hasDarkGray = true
+        } else if (!hasMidGray) {
+            result += ExtractedColor(Color(0xFF818483), 1)
+            hasMidGray = true
+        } else {
+            val saturated = result.firstOrNull { colorToHsl(it.color).s >= 0.09f }
+            if (saturated != null) {
+                val hsl = colorToHsl(saturated.color)
+                val variant = hslToColor(
+                    HslColor(
+                        hsl.h,
+                        hsl.s * 0.85f,
+                        (hsl.l - 0.06f).coerceAtLeast(0.13f)
+                    )
+                )
+                result += ExtractedColor(variant, 1)
+            } else {
+                result += ExtractedColor(DarkGrayBlack, 1)
+            }
+        }
+    }
+
+    return result.take(5)
 }
 
 private fun buildBackgroundSpec(bitmap: Bitmap): BackgroundSpec {
     val extracted      = extractColors(bitmap)
     val baseColor      = extracted.firstOrNull()?.color ?: DarkGrayBlack
-    val baseBackground = blend(baseColor, Color.Black, 0.58f)
+    val baseBackground = blend(baseColor, Color.Black, 0.65f)
     return BackgroundSpec(baseBackground, extracted)
 }
 
@@ -285,44 +334,16 @@ fun AnimatedAlbumGradientBackground(
 ) {
     var spec by remember(thumbnail) { mutableStateOf<BackgroundSpec?>(null) }
 
-    // ═══════════════ [DEBUG MODE START] ═══════════════
-    var debugData by remember(thumbnail) {
-        mutableStateOf<Triple<List<ExtractedColor>, List<ExtractedColor>, Color>?>(null)
-    }
-    var showDebug by remember { mutableStateOf(false) }
-    // ══════════════════════════════════════════════════
-
     LaunchedEffect(thumbnail) {
         if (thumbnail == null) {
-            spec      = null
-            debugData = null
-            showDebug = false
+            spec = null
             return@LaunchedEffect
         }
 
-        val (builtSpec, rawSwatches) = withContext(Dispatchers.IO) {
-            val builtSpec   = runCatching { buildBackgroundSpec(thumbnail) }.getOrNull()
-            val rawSwatches = runCatching {
-                val scaled  = downscaleBitmap(thumbnail, 96)
-                val palette = Palette.from(scaled).maximumColorCount(12).generate()
-                listOfNotNull(
-                    palette.dominantSwatch,
-                    palette.darkVibrantSwatch,
-                    palette.vibrantSwatch,
-                    palette.lightVibrantSwatch,
-                    palette.darkMutedSwatch,
-                    palette.mutedSwatch,
-                    palette.lightMutedSwatch
-                ).map { ExtractedColor(Color(it.rgb), it.population) }
-            }.getOrDefault(emptyList())
-            builtSpec to rawSwatches
+        val builtSpec = withContext(Dispatchers.IO) {
+            runCatching { buildBackgroundSpec(thumbnail) }.getOrNull()
         }
-
         spec = builtSpec
-        if (builtSpec != null) {
-            debugData = Triple(rawSwatches, builtSpec.palette, builtSpec.baseBackground)
-            showDebug = true
-        }
     }
 
     val palette = spec?.palette ?: FallbackColors.map { ExtractedColor(it, 1) }
@@ -387,80 +408,10 @@ fun AnimatedAlbumGradientBackground(
                 )
             )
         }
-
-        // ═══════════════ [DEBUG MODE START] ═══════════════
-        if (showDebug && debugData != null) {
-            DebugColorPipelineDialog(
-                rawColors        = debugData!!.first,
-                normalizedColors = debugData!!.second,
-                baseBackground   = debugData!!.third,
-                onDismiss        = { showDebug = false }
-            )
-        }
-        // ═══════════════ [DEBUG MODE END] ═════════════════
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// [DEBUG MODE START] — rimuovi tutto fino a [DEBUG MODE END]
-// ═══════════════════════════════════════════════════════════════
-
-private fun Color.toHexString(): String {
-    val r = (red   * 255).roundToInt()
-    val g = (green * 255).roundToInt()
-    val b = (blue  * 255).roundToInt()
-    return "#%02X%02X%02X".format(r, g, b)
-}
-
-private fun Color.toHslString(): String {
-    val hsl = colorToHsl(this)
-    return "H:${(hsl.h * 360).roundToInt()}° S:${(hsl.s * 100).roundToInt()}% L:${(hsl.l * 100).roundToInt()}%"
-}
-
-private fun Color.normalizeLabel(): String {
-    val hsl = colorToHsl(this)
-    return when {
-        hsl.l < 0.16f && hsl.s in 0.12f..0.45f -> "→ NeroArtefatto"
-        hsl.l < 0.16f && hsl.s < 0.12f          -> "→ VeryDark"
-        hsl.l < 0.16f && hsl.s > 0.45f          -> "→ SaturoDark"
-        hsl.l > 0.72f && hsl.s < 0.40f          -> "→ WhiteLike"
-        hsl.s < 0.09f                            -> "→ Neutral"
-        hsl.s >= 0.60f                           -> "→ IntenseColor"
-        else                                      -> "→ Normal"
-    }
-}
-
-@Composable
-private fun ColorSwatch(color: Color, label: String, extra: String = "") {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = 3.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(color)
-        )
-        Spacer(Modifier.width(8.dp))
-        Column {
-            Text(
-                text       = "$label  ${color.toHexString()}",
-                color      = Color.White,
-                fontSize   = 11.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
-            )
-            Text(
-                text       = color.toHslString() + if (extra.isNotEmpty()) "  $extra" else "",
-                color      = Color.White.copy(alpha = 0.6f),
-                fontSize   = 10.sp,
-                fontFamily = FontFamily.Monospace
-            )
-        }
-    }
-}
-
+/*
 @Composable
 private fun DebugColorPipelineDialog(
     rawColors        : List<ExtractedColor>,
@@ -493,15 +444,15 @@ private fun DebugColorPipelineDialog(
             }
 
             Spacer(Modifier.height(12.dp))
-            Text("② Dopo normalizeColorForBackground():",
+            Text("② Dopo normalize + postProcess + dedup:",
                 color = Color(0xFF60D0FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
             Spacer(Modifier.height(4.dp))
             normalizedColors.forEachIndexed { i, ec ->
-                ColorSwatch(ec.color, "Norm[$i]", ec.color.normalizeLabel())
+                ColorSwatch(ec.color, "Final[$i]", ec.color.normalizeLabel())
             }
 
             Spacer(Modifier.height(12.dp))
-            Text("③ baseBackground (blend → Black 58%):",
+            Text("③ baseBackground (blend → Black 65%):",
                 color = Color(0xFF90FF90), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
             Spacer(Modifier.height(4.dp))
             ColorSwatch(baseBackground, "Base")
@@ -524,7 +475,4 @@ private fun DebugColorPipelineDialog(
         }
     }
 }
-
-// ═══════════════════════════════════════════════════════════════
-// [DEBUG MODE END]
-// ═══════════════════════════════════════════════════════════════
+*/

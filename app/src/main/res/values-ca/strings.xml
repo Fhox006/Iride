@@ -26,7 +26,7 @@
     <string name="most_played_albums">Àlbums més reproduïts</string>
     <string name="search_yt_music">Cerca a YouTube Music…</string>
     <string name="search_library">Cerca a la col·lecció…</string>
-    <string name="filter_liked">M’ha agradat</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Descarregat</string>
     <string name="filter_songs">Cançons</string>
     <string name="filter_videos">Vídeos</string>
@@ -39,7 +39,7 @@
     <string name="library_artist_empty">Els artistes de la col·lecció apareixeran aquí</string>
     <string name="library_playlist_empty">Les teves llistes de reproducció apareixeran aquí</string>
     <string name="from_your_library">De la vostra col·lecció</string>
-    <string name="liked_songs">Cançons que m’han agradat</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Cançons descarregades</string>
     <string name="playlist_is_empty">Llista de reproducció buida</string>
     <string name="retry">Reintenta</string>
@@ -153,7 +153,7 @@
     <string name="undo">Desfés</string>
     <string name="removed_song_from_playlist">S’ha tret «%s» de la llista</string>
     <string name="lyrics_not_found">No s’ha trobat la lletra</string>
-    <string name="action_like">M’agrada</string>
+    <string name="action_like">Star</string>
     <string name="error_no_internet">No hi ha cap connexió de xarxa</string>
     <string name="repeat_mode_off">Mode de repetició desactivat</string>
     <string name="queue_all_songs">Totes les cançons</string>
@@ -247,9 +247,9 @@
     <string name="playlist_imported">S’ha importat la llista</string>
     <string name="playlist_synced">S’ha sincronitzat la llista</string>
     <string name="end_of_song">Fi de la cançó</string>
-    <string name="action_like_all">M’agrada tot</string>
-    <string name="action_remove_like">Ja no m’agrada</string>
-    <string name="action_remove_like_all">Ja no m’agrada res</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="sleep_timer">Temportizador</string>
     <string name="error_unknown">Error desconegut</string>
     <string name="action_shuffle_on">Reproducció aleatoria activada</string>

@@ -27,7 +27,7 @@
     <string name="search_yt_music">Keresés a YouTube Zenén…</string>
     <string name="search_library">Keresés a könyvtárban…</string>
     <string name="filter_library">Könyvtár</string>
-    <string name="filter_liked">Kedvelt</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Letöltött</string>
     <string name="filter_all">Összes</string>
     <string name="filter_songs">Dalok</string>
@@ -40,7 +40,7 @@
     <string name="filter_bookmarked">Könyvjelzőzött</string>
     <string name="no_results_found">Nincs találat</string>
     <string name="from_your_library">Saját könyvtárból</string>
-    <string name="liked_songs">Kedvelt dalok</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Letöltött dalok</string>
     <string name="playlist_is_empty">A lejátszási lista üres</string>
     <string name="retry">Újra</string>
@@ -146,8 +146,8 @@
     <string name="error_no_internet">Nincs hálózati kapcsolat</string>
     <string name="error_timeout">Időtúllépés</string>
     <string name="error_unknown">Ismeretlen hiba</string>
-    <string name="action_like">Tetszik</string>
-    <string name="action_remove_like">Tetszés eltávolítása</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">Keverés BE</string>
     <string name="action_shuffle_off">Keverés KI</string>
     <string name="repeat_mode_off">Ismétlő mód KI</string>
@@ -241,8 +241,8 @@
     <string name="add_anyway">Adja hozzá mindenképp</string>
     <string name="duplicates_description_single">A dal már megtalálható a lejátszási listában</string>
     <string name="duplicates_description_multiple">%d dal már megtalálható a lejátszási listájában</string>
-    <string name="action_like_all">Összes tetszik</string>
-    <string name="action_remove_like_all">Minden tetszés eltávolítása</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="theme">Téma</string>
     <string name="player">Lejátszó</string>
     <string name="player_text_alignment">Lejátszó szöveg igazítás</string>

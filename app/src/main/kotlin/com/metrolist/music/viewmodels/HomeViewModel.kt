@@ -137,7 +137,7 @@ class HomeViewModel @Inject constructor(
 
     val pinnedSpeedDialItems: StateFlow<List<SpeedDialItem>> =
         database.speedDialDao.getAll()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val speedDialItems: StateFlow<List<YTItem>> =
         combine(
@@ -199,7 +199,7 @@ class HomeViewModel @Inject constructor(
             }
             
             filled.take(targetSize)
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     suspend fun getRandomItem(): YTItem? {
         try {
@@ -269,11 +269,11 @@ class HomeViewModel @Inject constructor(
         val isBeforeDate = LocalDate.now().isBefore(LocalDate.of(2026, 2, 1))
 
         isBeforeDate && (!seen || showWrappedPref)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, false)
 
     val wrappedSeen: StateFlow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[WrappedSeenKey] ?: false
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, false)
 
     fun togglePin(item: YTItem) {
         viewModelScope.launch(Dispatchers.IO) {

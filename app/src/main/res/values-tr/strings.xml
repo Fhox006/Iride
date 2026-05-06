@@ -27,7 +27,7 @@
     <string name="search_yt_music">YouTube Müzik\'te Ara…</string>
     <string name="search_library">Kütüphanede ara…</string>
     <string name="filter_library">Kütüphane</string>
-    <string name="filter_liked">Beğenilenler</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">İndirilenler</string>
     <string name="filter_all">Hepsi</string>
     <string name="filter_songs">Şarkılar</string>
@@ -40,7 +40,7 @@
     <string name="filter_bookmarked">Favoriler</string>
     <string name="no_results_found">Sonuç bulunamadı</string>
     <string name="from_your_library">Kütüphanenizden</string>
-    <string name="liked_songs">Beğenilen şarkılar</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">İndirilen şarkılar</string>
     <string name="playlist_is_empty">Çalma listesi boş</string>
     <string name="retry">Tekrar dene</string>
@@ -146,8 +146,8 @@
     <string name="error_no_internet">Ağ bağlantısı yok</string>
     <string name="error_timeout">Zaman aşımı</string>
     <string name="error_unknown">Bilinmeyen hata</string>
-    <string name="action_like">Beğen</string>
-    <string name="action_remove_like">Beğeniyi kaldır</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">Karıştırma açık</string>
     <string name="action_shuffle_off">Karıştırma kapalı</string>
     <string name="repeat_mode_off">Tekrarlama modu kapalı</string>
@@ -259,8 +259,8 @@
     <string name="skip_duplicates">Yinelemeleri atla</string>
     <string name="add_anyway">Yine de ekle</string>
     <string name="duplicates_description_multiple">%d şarkı zaten çalma listenizde</string>
-    <string name="action_like_all">Hepsini beğen</string>
-    <string name="action_remove_like_all">Tüm beğenileri kaldır</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="sided">Kenarlı</string>
     <string name="default_">Varsayılan</string>
     <string name="squiggly">Dalgalı</string>

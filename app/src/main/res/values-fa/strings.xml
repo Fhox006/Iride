@@ -27,7 +27,7 @@
     <string name="search_yt_music">جستجو در یوتیوب موزیک…</string>
     <string name="search_library">جستجوی کتاب‌خانه…</string>
     <string name="filter_library">کتاب‌خانه</string>
-    <string name="filter_liked">پسندشده</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">بارگیری‌شده</string>
     <string name="filter_all">همه</string>
     <string name="filter_songs">ترانه‌ها</string>
@@ -40,7 +40,7 @@
     <string name="filter_bookmarked">نشانک‌گذاری‌شده</string>
     <string name="no_results_found">نتیجه‌ای پیدا نشد</string>
     <string name="from_your_library">از کتابخانه شما</string>
-    <string name="liked_songs">آهنگ های پسندیده شده</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">آهنگ های دانلود شده</string>
     <string name="playlist_is_empty">فهرست‌ پخش خالی است</string>
     <string name="retry">تلاش‌ مجدد</string>
@@ -146,8 +146,8 @@
     <string name="error_no_internet">بدون اتصال به تارکده</string>
     <string name="error_timeout">اتمام وقت</string>
     <string name="error_unknown">خطای ناشناخته</string>
-    <string name="action_like">پسندیدن</string>
-    <string name="action_remove_like">حذف پسندیدن</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">بُرزدن روشن</string>
     <string name="action_shuffle_off">بُرزدن خاموش</string>
     <string name="repeat_mode_off">حالت تکرار خاموش</string>

@@ -17,7 +17,7 @@
     <string name="most_played_albums">الألبومات الأكثر استماعًا</string>
     <string name="search_yt_music">ابحث في YouTube Music…</string>
     <string name="search_library">ابحث في المكتبة…</string>
-    <string name="filter_liked">أعجبك</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">تم تنزيلها</string>
     <string name="filter_all">جميع</string>
     <string name="filter_songs">اغاني</string>
@@ -53,7 +53,7 @@
         <item quantity="many">%d تم اختيارها</item>
         <item quantity="other">%d تم اختيارهم</item>
     </plurals>
-    <string name="liked_songs">أغاني مفضلة</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">أغاني تم تنزيلها</string>
     <string name="playlist_is_empty">قائمة الأغاني فارغة</string>
     <string name="remove_download_playlist_confirm">هل تريد حقًا إزالة جميع أغاني قائمة الأغاني \"%s\" من مساحة تخزين الأغاني التي تم تنزيلها؟</string>
@@ -266,11 +266,11 @@
     <string name="end_of_song">نهاية الأغنية</string>
     <string name="error_no_internet">لا يوجد اتصال بالشبكة</string>
     <string name="error_no_stream">لا يوجد تدفق متاح</string>
-    <string name="action_like">أعجبتني</string>
+    <string name="action_like">Star</string>
     <string name="error_unknown">خطأ غير معروف</string>
-    <string name="action_like_all">أعجبني الكل</string>
-    <string name="action_remove_like">مسح الإعجاب</string>
-    <string name="action_remove_like_all">مسح كل الأعجابات</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="squiggly">متعرج</string>
     <string name="player_and_audio">المشغل والصوت</string>
     <string name="audio_quality_auto">تلقائي</string>

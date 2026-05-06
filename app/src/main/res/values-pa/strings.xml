@@ -27,7 +27,7 @@
     <string name="search_yt_music">ਯੂਟਿਊਬ ਮਿਊਜ਼ਿਕ ਖੋਜੋ…</string>
     <string name="search_library">ਲਾਇਬ੍ਰੇਰੀ ਖੋਜੋ…</string>
     <string name="filter_library">ਲਾਇਬ੍ਰੇਰੀ</string>
-    <string name="filter_liked">ਪਸੰਦ ਕੀਤੇ</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">ਡਾਊਨਲੋਡ ਕੀਤੇ</string>
     <string name="filter_all">ਸਾਰੇ</string>
     <string name="filter_songs">ਗੀਤ</string>
@@ -40,7 +40,7 @@
     <string name="filter_bookmarked">ਬੁੱਕਮਾਰਕ ਕੀਤੇ</string>
     <string name="no_results_found">ਕੋਈ ਨਤੀਜੇ ਨਹੀਂ ਲੱਭੇ</string>
     <string name="from_your_library">ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਤੋਂ</string>
-    <string name="liked_songs">ਪਸੰਦ ਕੀਤੇ ਗੀਤ</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">ਡਾਊਨਲੋਡ ਕੀਤੇ ਗੀਤ</string>
     <string name="playlist_is_empty">ਪਲੇਲਿਸਟ ਖਾਲੀ ਹੈ</string>
     <string name="retry">ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ</string>
@@ -146,8 +146,8 @@
     <string name="error_no_internet">ਕੋਈ ਨੈੱਟਵਰਕ ਕਨੈਕਸ਼ਨ ਨਹੀਂ</string>
     <string name="error_timeout">ਸਮਾਂ ਸਮਾਪਤ</string>
     <string name="error_unknown">ਅਗਿਆਤ ਤਰੁੱਟੀ</string>
-    <string name="action_like">ਪਸੰਦ ਕਰੋ</string>
-    <string name="action_remove_like">ਪਸੰਦ ਹਟਾਓ</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">ਸ਼ਫ਼ਲ ਆਨ</string>
     <string name="action_shuffle_off">ਸ਼ਫ਼ਲ ਆਫ</string>
     <string name="repeat_mode_off">ਰਿਪੀਟ ਮੋਡ ਆਫ</string>

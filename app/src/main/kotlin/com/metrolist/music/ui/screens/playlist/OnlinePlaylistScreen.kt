@@ -337,7 +337,12 @@ fun OnlinePlaylistScreen(
                                 } else {
                                     IconButton(onClick = {
                                         menuState.show {
-                                            YouTubeSongMenu(songItem, navController, menuState::dismiss)
+                                            YouTubeSongMenu(
+                                                song = songItem,
+                                                navController = navController,
+                                                onDismiss = menuState::dismiss,
+                                                showStarButton = false,
+                                            )
                                         }
                                     }) {
                                         Icon(painterResource(R.drawable.more_vert), null)

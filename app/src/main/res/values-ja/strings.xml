@@ -30,7 +30,7 @@
     <string name="search_yt_music">YouTube Musicを検索…</string>
     <string name="search_library">ライブラリを検索…</string>
     <string name="filter_library">ライブラリ</string>
-    <string name="filter_liked">高評価済み</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">ダウンロード済み</string>
     <string name="filter_all">すべて</string>
     <string name="filter_songs">曲</string>
@@ -48,7 +48,7 @@
     <string name="library_playlist_empty">プレイリストはここに表示されます</string>
     <string name="from_your_library">ライブラリから</string>
     <string name="other_versions">別のバージョン</string>
-    <string name="liked_songs">高評価した曲</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">ダウンロードした曲</string>
     <string name="playlist_is_empty">プレイリストが空です</string>
     <string name="remove_download_playlist_confirm">”%s”のプレイリスト上のすべての曲をダウンロード済みから削除しますか？</string>
@@ -158,10 +158,10 @@
     <string name="error_no_internet">ネットワーク接続がありません</string>
     <string name="error_timeout">タイムアウトしました</string>
     <string name="error_unknown">不明なエラー</string>
-    <string name="action_like">高評価</string>
-    <string name="action_like_all">すべて高評価</string>
-    <string name="action_remove_like">高評価した曲を削除</string>
-    <string name="action_remove_like_all">高評価した曲をすべて削除</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">シャッフル オン</string>
     <string name="action_shuffle_off">シャッフル オフ</string>
     <string name="repeat_mode_off">リピート オフ</string>

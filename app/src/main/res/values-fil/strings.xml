@@ -27,7 +27,7 @@
     <string name="search_yt_music">Maghanap sa YouTube Music…</string>
     <string name="search_library">Maghanap sa aklatan…</string>
     <string name="filter_library">Aklatan</string>
-    <string name="filter_liked">Na-like</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Na-download</string>
     <string name="filter_all">Lahat</string>
     <string name="filter_songs">Mga kanta</string>
@@ -45,7 +45,7 @@
     <string name="library_playlist_empty">Ipapakita dito ang iyong mga playlist</string>
     <string name="from_your_library">Mula sa aklatan mo</string>
     <string name="other_versions">Ibang bersyon</string>
-    <string name="liked_songs">Mga Na-like na kanta</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Mga Na-download na kanta</string>
     <string name="playlist_is_empty">Walang laman ang playlist</string>
     <string name="remove_download_playlist_confirm">Nais mo ba talagang alisin ang lahat ng \"%s\" na mga kanta sa playlist mula sa imbakan ng Mga Na-download na Kanta?</string>
@@ -162,10 +162,10 @@
     <string name="error_no_internet">Walang koneksyon sa internet</string>
     <string name="error_timeout">Nag-timeout</string>
     <string name="error_unknown">Hindi kilalang pagkakamali</string>
-    <string name="action_like">I-like</string>
-    <string name="action_like_all">I-like lahat</string>
-    <string name="action_remove_like">Alisin ang like</string>
-    <string name="action_remove_like_all">Alisin ang lahat ng mga like</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">Pinagana ang pagbalasa</string>
     <string name="action_shuffle_off">Nakapatay ang pagbalasa</string>
     <string name="repeat_mode_off">Nakapatay ang modong paulit-ulit</string>

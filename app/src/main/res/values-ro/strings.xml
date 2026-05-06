@@ -27,7 +27,7 @@
     <string name="search_yt_music">Caută pe YouTube Music…</string>
     <string name="search_library">Caută în bibliotecă…</string>
     <string name="filter_library">Bibliotecă</string>
-    <string name="filter_liked">Apreciate</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Descărcate</string>
     <string name="filter_all">Toate</string>
     <string name="filter_songs">Melodii</string>
@@ -45,7 +45,7 @@
     <string name="library_playlist_empty">Playlisturile tale vor apărea aici</string>
     <string name="from_your_library">Din biblioteca ta</string>
     <string name="other_versions">Alte versiuni</string>
-    <string name="liked_songs">Melodii apreciate</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Melodii descărcate</string>
     <string name="playlist_is_empty">Playlistul este gol</string>
     <string name="delete_playlist_confirm">Sigur vrei să ștergi playlistul \"%s\"?</string>
@@ -169,10 +169,10 @@
     <string name="error_no_internet">Fără conexiune la rețea</string>
     <string name="error_timeout">Timeout</string>
     <string name="error_unknown">Eroare necunoscută</string>
-    <string name="action_like">Apreciază</string>
-    <string name="action_like_all">Apreciază tot</string>
-    <string name="action_remove_like">Elimină aprecierea</string>
-    <string name="action_remove_like_all">Elimină toate aprecierile</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">Amestecare pornită</string>
     <string name="action_shuffle_off">Amestecare oprită</string>
     <string name="repeat_mode_off">Mod repetare oprit</string>

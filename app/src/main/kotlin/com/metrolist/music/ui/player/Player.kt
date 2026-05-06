@@ -514,8 +514,8 @@ fun BottomSheetPlayer(
     val (textButtonColor, iconButtonColor) =
         when {
             playerBackground == PlayerBackgroundStyle.BLUR ||
-                playerBackground == PlayerBackgroundStyle.GRADIENT ||
-                playerBackground == PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
+                    playerBackground == PlayerBackgroundStyle.GRADIENT ||
+                    playerBackground == PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
                 when (playerButtonsStyle) {
                     PlayerButtonsStyle.DEFAULT -> {
                         Pair(Color.White, Color.Black)
@@ -570,8 +570,8 @@ fun BottomSheetPlayer(
     val (sideButtonContainerColor, sideButtonContentColor) =
         when {
             playerBackground == PlayerBackgroundStyle.BLUR ||
-                playerBackground == PlayerBackgroundStyle.GRADIENT ||
-                playerBackground == PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
+                    playerBackground == PlayerBackgroundStyle.GRADIENT ||
+                    playerBackground == PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
                 when (playerButtonsStyle) {
                     PlayerButtonsStyle.DEFAULT -> {
                         Pair(

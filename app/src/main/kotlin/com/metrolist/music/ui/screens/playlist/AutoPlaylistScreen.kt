@@ -595,6 +595,7 @@ fun AutoPlaylistScreen(
                                                     originalSong = song,
                                                     navController = navController,
                                                     onDismiss = menuState::dismiss,
+                                                    showStarButton = playlistType == PlaylistType.LIKE,
                                                 )
                                             }
                                         },

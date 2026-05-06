@@ -26,7 +26,7 @@
     <string name="search_yt_music">YouTube Music 검색…</string>
     <string name="search_library">보관함 검색…</string>
     <string name="filter_library">보관함</string>
-    <string name="filter_liked">좋아요 표시 됨</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">다운로드 됨</string>
     <string name="filter_all">모두</string>
     <string name="filter_songs">노래</string>
@@ -39,7 +39,7 @@
     <string name="filter_bookmarked">북마크 됨</string>
     <string name="no_results_found">검색 결과가 없음</string>
     <string name="from_your_library">보관함에서</string>
-    <string name="liked_songs">좋아요 표시한 노래</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">다운로드 한 노래</string>
     <string name="playlist_is_empty">재생목록이 비어있습니다</string>
     <string name="retry">재시도</string>
@@ -137,8 +137,8 @@
     <string name="error_no_internet">네트워크 연결 없음</string>
     <string name="error_timeout">타임아웃</string>
     <string name="error_unknown">알 수 없는 오류</string>
-    <string name="action_like">좋아요</string>
-    <string name="action_remove_like">좋아요 취소</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">셔플 활성화</string>
     <string name="action_shuffle_off">셔플 비활성화</string>
     <string name="repeat_mode_off">반복 해제</string>
@@ -254,8 +254,8 @@
     <string name="discord_information">Metrolist은 KizzyRPC 라이브러리를 사용하여 Discord 계정의 상태를 설정합니다. 여기에는 Discord Gateway 연결을 사용하는 것이 포함되며, 이는 Discord의 TOS 위반으로 간주될 수 있습니다. 그러나 이러한 이유로 사용자 계정이 정지된 사례는 알려진 바가 없습니다. 사용에 따른 책임은 본인에게 있습니다. \n \nMetrolist은 토큰만 추출하며 그 밖의 모든 내용은 로컬에 저장됩니다.</string>
     <string name="options">옵션</string>
     <string name="action_logout">로그아웃</string>
-    <string name="action_like_all">모두 좋아요</string>
-    <string name="action_remove_like_all">좋아요 모두 취소</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="squiggly">구불구불</string>
     <string name="sided">측면</string>
     <string name="forgotten_favorites">잊고 있던 좋은 음악</string>

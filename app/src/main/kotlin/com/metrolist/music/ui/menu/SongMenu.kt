@@ -113,6 +113,7 @@ fun SongMenu(
     playlistBrowseId: String? = null,
     onDismiss: () -> Unit,
     isFromCache: Boolean = false,
+    showStarButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -427,66 +428,66 @@ fun SongMenu(
         song = song,
         badges = {},
         trailingContent = {
-            // For episodes, show saved state and toggle save for later
-            val isEpisode = song.song.isEpisode
-            val isFavorite = if (isEpisode) song.song.inLibrary != null else song.song.liked
-            IconButton(
-                onClick = {
-                    if (isEpisode) {
-                        // Episode: toggle save for later (same pattern as songs)
-                        val isCurrentlySaved = song.song.inLibrary != null
-                        database.query {
-                            update(
-                                song.song.copy(
-                                    inLibrary = if (isCurrentlySaved) null else LocalDateTime.now(),
-                                    isEpisode = true,
-                                ),
-                            )
-                        }
-                        coroutineScope.launch(Dispatchers.IO) {
-                            if (isCurrentlySaved) {
-                                val setVideoIdEntity = database.getSetVideoId(song.id)
-                                val setVideoId = setVideoIdEntity?.setVideoId
-                                if (setVideoId != null) {
+            if (showStarButton) {
+                val isEpisode = song.song.isEpisode
+                val isFavorite = if (isEpisode) song.song.inLibrary != null else song.song.liked
+
+                IconButton(
+                    onClick = {
+                        if (isEpisode) {
+                            val isCurrentlySaved = song.song.inLibrary != null
+                            database.query {
+                                update(
+                                    song.song.copy(
+                                        inLibrary = if (isCurrentlySaved) null else LocalDateTime.now(),
+                                        isEpisode = true,
+                                    ),
+                                )
+                            }
+                            coroutineScope.launch(Dispatchers.IO) {
+                                if (isCurrentlySaved) {
+                                    val setVideoIdEntity = database.getSetVideoId(song.id)
+                                    val setVideoId = setVideoIdEntity?.setVideoId
+                                    if (setVideoId != null) {
+                                        YouTube
+                                            .removeEpisodeFromSavedEpisodes(song.id, setVideoId)
+                                            .onSuccess {
+                                                Timber.d("[EPISODE_SAVE] Removed episode from Episodes for Later: ${song.id}")
+                                            }.onFailure { e ->
+                                                Timber.e(e, "[EPISODE_SAVE] Failed to remove episode: ${song.id}")
+                                                withContext(Dispatchers.Main) {
+                                                    Toast.makeText(context, R.string.error_episode_remove, Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                    }
+                                } else {
                                     YouTube
-                                        .removeEpisodeFromSavedEpisodes(song.id, setVideoId)
+                                        .addEpisodeToSavedEpisodes(song.id)
                                         .onSuccess {
-                                            Timber.d("[EPISODE_SAVE] Removed episode from Episodes for Later: ${song.id}")
+                                            Timber.d("[EPISODE_SAVE] Saved episode to Episodes for Later: ${song.id}")
                                         }.onFailure { e ->
-                                            Timber.e(e, "[EPISODE_SAVE] Failed to remove episode: ${song.id}")
+                                            Timber.e(e, "[EPISODE_SAVE] Failed to save episode: ${song.id}")
                                             withContext(Dispatchers.Main) {
-                                                Toast.makeText(context, R.string.error_episode_remove, Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, R.string.error_episode_save, Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                 }
-                            } else {
-                                YouTube
-                                    .addEpisodeToSavedEpisodes(song.id)
-                                    .onSuccess {
-                                        Timber.d("[EPISODE_SAVE] Saved episode to Episodes for Later: ${song.id}")
-                                    }.onFailure { e ->
-                                        Timber.e(e, "[EPISODE_SAVE] Failed to save episode: ${song.id}")
-                                        withContext(Dispatchers.Main) {
-                                            Toast.makeText(context, R.string.error_episode_save, Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
                             }
+                        } else {
+                            val s = song.song.toggleLike()
+                            database.query {
+                                update(s)
+                            }
+                            syncUtils.likeSong(s)
                         }
-                    } else {
-                        // Regular song: toggle like
-                        val s = song.song.toggleLike()
-                        database.query {
-                            update(s)
-                        }
-                        syncUtils.likeSong(s)
-                    }
-                },
-            ) {
-                Icon(
-                    painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
-                    tint = if (isFavorite) MaterialTheme.colorScheme.error else LocalContentColor.current,
-                    contentDescription = null,
-                )
+                    },
+                ) {
+                    Icon(
+                        painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
+                        tint = if (isFavorite) MaterialTheme.colorScheme.error else LocalContentColor.current,
+                        contentDescription = null,
+                    )
+                }
             }
         },
     )

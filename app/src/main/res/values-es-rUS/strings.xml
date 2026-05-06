@@ -33,7 +33,7 @@
     <string name="search_yt_music">Buscar música en YouTube…</string>
     <string name="search_library">Buscar biblioteca…</string>
     <string name="filter_library">Biblioteca</string>
-    <string name="filter_liked">Favoritos</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Descargado</string>
     <string name="filter_all">Todo</string>
     <string name="filter_songs">Canciones</string>
@@ -51,7 +51,7 @@
     <string name="library_playlist_empty">Las listas de reproducción aparecerán aquí</string>
     <string name="from_your_library">Desde tu biblioteca</string>
     <string name="other_versions">Otras versiones</string>
-    <string name="liked_songs">Canciones favoritas</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Canciones descargadas</string>
     <string name="playlist_is_empty">La lista de reproducción está vacía</string>
     <string name="remove_download_playlist_confirm">¿Realmente quieres eliminar todas las canciones de la lista de reproducción \"%s\" del almacenamiento de canciones descargadas?</string>
@@ -175,9 +175,9 @@
     <string name="error_no_internet">Sin conexión a la red</string>
     <string name="error_timeout">Tiempo de espera</string>
     <string name="error_unknown">Error desconocido</string>
-    <string name="action_like">Me gusta</string>
-    <string name="action_remove_like">Eliminar «Me gusta»</string>
-    <string name="action_remove_like_all">Eliminar todos los «Me gusta»</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">Mezclar activado</string>
     <string name="action_shuffle_off">Mezclar apagado</string>
     <string name="repeat_mode_one">Repetir la canción actual</string>
@@ -286,6 +286,6 @@
     <string name="new_version_available">Nueva versión disponible</string>
     <string name="translation_models">Modelos de traducción</string>
     <string name="clear_translation_models">Modelos de traducción claros</string>
-    <string name="action_like_all">Me gustan todas</string>
+    <string name="action_like_all">Star all</string>
     <string name="squiggly">Ondulado</string>
 </resources>

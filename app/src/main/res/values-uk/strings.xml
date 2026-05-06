@@ -33,7 +33,7 @@
     <string name="search_yt_music">Пошук в YouTube Music…</string>
     <string name="search_library">Пошук в бібліотеці…</string>
     <string name="filter_library">Бібліотека</string>
-    <string name="filter_liked">Вподобані</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Завантажені</string>
     <string name="filter_all">Всі</string>
     <string name="filter_songs">Композиції</string>
@@ -51,7 +51,7 @@
     <string name="library_playlist_empty">Тут будуть відображатися ваші плейлисти</string>
     <string name="from_your_library">З вашої бібліотеки</string>
     <string name="other_versions">Інші версії</string>
-    <string name="liked_songs">Улюблені треки</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Завантажена музика</string>
     <string name="playlist_is_empty">Плейлист порожній</string>
     <string name="remove_download_playlist_confirm">Ви впевнені, що хочете видалити всі пісні з плейлиста «%s» зі сховища завантаженої музики?</string>
@@ -185,10 +185,10 @@
     <string name="error_no_internet">Відсутнє підключення до мережі</string>
     <string name="error_timeout">Тайм-аут</string>
     <string name="error_unknown">Невідома помилка</string>
-    <string name="action_like">Поставити «Подобається»</string>
-    <string name="action_like_all">Відзначити все як «Подобається»</string>
-    <string name="action_remove_like">Прибрати «Подобається»</string>
-    <string name="action_remove_like_all">Прибрати всі позначки «Подобається»</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">Увімкнути перемішування</string>
     <string name="action_shuffle_off">Вимкнути перемішування</string>
     <string name="repeat_mode_off">Вимкнути повторення</string>

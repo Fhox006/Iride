@@ -26,7 +26,7 @@
     <string name="search_yt_music">Cari di Youtube Music…</string>
     <string name="search_library">Cari di pustaka</string>
     <string name="filter_library">Pustaka</string>
-    <string name="filter_liked">Suka</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Dimuat turun</string>
     <string name="filter_all">Semua</string>
     <string name="filter_songs">Lagu</string>
@@ -45,7 +45,7 @@
     <string name="library_playlist_empty">Senarai lagu anda akan muncul di sini</string>
     <string name="from_your_library">Dari pustaka anda</string>
     <string name="other_versions">Versi lain</string>
-    <string name="liked_songs">Lagu di sukai</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Lagu yang telah di muat turun</string>
     <string name="playlist_is_empty">Senarai lagu ini kosong</string>
     <string name="play">Main</string>

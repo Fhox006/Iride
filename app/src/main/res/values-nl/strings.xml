@@ -27,7 +27,7 @@
     <string name="search_yt_music">Zoeken via YouTube Music…</string>
     <string name="search_library">Zoeken in bibliotheek…</string>
     <string name="filter_library">Bibliotheek</string>
-    <string name="filter_liked">Geliked</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Gedownload</string>
     <string name="filter_all">Alles</string>
     <string name="filter_songs">Nummers</string>
@@ -40,7 +40,7 @@
     <string name="filter_bookmarked">Gebookmarked</string>
     <string name="no_results_found">Geen resultaten gevonden</string>
     <string name="from_your_library">Verwijderen van bibliotheek</string>
-    <string name="liked_songs">Favoriete nummers</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Gedownloade nummers</string>
     <string name="playlist_is_empty">Afspeellijst is leeg</string>
     <string name="retry">Opnieuw</string>
@@ -146,8 +146,8 @@
     <string name="error_no_internet">Geen netwerkverbinding</string>
     <string name="error_timeout">Time-out</string>
     <string name="error_unknown">Onbekende fout</string>
-    <string name="action_like">Leuk vinden</string>
-    <string name="action_remove_like">Verwijder like</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">Schuifelen aan</string>
     <string name="action_shuffle_off">Schuifelen uit</string>
     <string name="repeat_mode_off">Herhaalmodus uit</string>
@@ -245,8 +245,8 @@
     <string name="add_anyway">Toch toevoegen</string>
     <string name="duplicates_description_single">Het nummer staat al in je afspeellijst</string>
     <string name="duplicates_description_multiple">%d nummers staan al in je afspeellijst</string>
-    <string name="action_like_all">Alle leuk vinden</string>
-    <string name="action_remove_like_all">Alle \'vind ik leuks\' verwijderen</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="theme">Thema</string>
     <string name="player">Speler</string>
     <string name="player_text_alignment">Tekstuitlijning van speler</string>

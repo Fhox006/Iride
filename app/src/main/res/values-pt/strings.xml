@@ -23,7 +23,7 @@
     <string name="most_played_albums">Álbuns mais reproduzidos</string>
     <string name="search">Pesquisar</string>
     <string name="search_yt_music">Pesquisar no YouTube Music…</string>
-    <string name="filter_liked">Gosto</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Transferidas</string>
     <string name="filter_all">Tudo</string>
     <string name="search_library">Pesquisar na biblioteca…</string>
@@ -163,10 +163,10 @@
     <string name="error_no_internet">Sem ligação de rede</string>
     <string name="error_timeout">Caducidade</string>
     <string name="error_unknown">Erro desconhecido</string>
-    <string name="action_like">Gostar</string>
-    <string name="action_like_all">Gostar de tudo</string>
-    <string name="action_remove_like">Remover gosto</string>
-    <string name="action_remove_like_all">Remover gosto de tudo</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">Baralhar ativo</string>
     <string name="action_shuffle_off">Baralhar inativo</string>
     <string name="repeat_mode_off">Modo de repetição ativo</string>
@@ -251,7 +251,7 @@
     <string name="filter_artists">Artistas</string>
     <string name="filter_playlists">Listas de reprodução</string>
     <string name="from_your_library">Da sua biblioteca</string>
-    <string name="liked_songs">Músicas de que gosto</string>
+    <string name="liked_songs">Starred</string>
     <string name="sort_by_name">Nome</string>
     <string name="remove_from_queue">Remover da fila</string>
     <string name="reset">Repor</string>

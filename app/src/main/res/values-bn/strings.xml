@@ -27,7 +27,7 @@
     <string name="search_yt_music">YouTube Music এ সার্চ করুন</string>
     <string name="search_library">লাইব্রেরিতে সার্চ করুন</string>
     <string name="filter_library">লাইব্রেরি</string>
-    <string name="filter_liked">লাইকড</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">ডাউনলোডেড</string>
     <string name="filter_all">সব</string>
     <string name="filter_songs">গান</string>
@@ -40,7 +40,7 @@
     <string name="filter_bookmarked">বুকমার্কর্ড</string>
     <string name="no_results_found">কিছু পাওয়া যায়নি</string>
     <string name="from_your_library">আপনার লাইব্রেরি থেকে</string>
-    <string name="liked_songs">আপনার লাইক করা গান</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">ডাউনলোড করা গান</string>
     <string name="playlist_is_empty">প্লেলিস্ট খালি</string>
     <string name="retry">আবার চেষ্টা করুন</string>
@@ -146,8 +146,8 @@
     <string name="error_no_internet">নেটওয়ার্ক কানেকশন নেই</string>
     <string name="error_timeout">ইরর টাইমআউট</string>
     <string name="error_unknown">আননোন ইরর</string>
-    <string name="action_like">লাইক</string>
-    <string name="action_remove_like">অলাইক</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">শাফেল অন</string>
     <string name="action_shuffle_off">শাফেল অফ</string>
     <string name="repeat_mode_off">রিপিট অফ</string>
@@ -241,8 +241,8 @@
     <string name="add_anyway">যাই হোক যোগ করুন</string>
     <string name="duplicates_description_single">গানটি ইতিমধ্যেই আপনার প্লেলিস্টে রয়েছে</string>
     <string name="duplicates_description_multiple">%d গান ইতিমধ্যেই আপনার প্লেলিস্টে রয়েছে</string>
-    <string name="action_like_all">সবাইয়ের মতো</string>
-    <string name="action_remove_like_all">সব লাইক মুছে ফেলুন</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="theme">থিম</string>
     <string name="player">প্লয়ার</string>
     <string name="player_text_alignment">প্লেয়ার টেক্সট সারিবদ্ধকরণ</string>

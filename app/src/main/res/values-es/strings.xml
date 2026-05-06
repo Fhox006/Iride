@@ -31,7 +31,7 @@
     <string name="search_yt_music">Buscar en YouTube Music…</string>
     <string name="search_library">Buscar en la biblioteca…</string>
     <string name="filter_library">Biblioteca</string>
-    <string name="filter_liked">Me gusta</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Descargado</string>
     <string name="filter_all">Todo</string>
     <string name="filter_songs">Canciones</string>
@@ -48,7 +48,7 @@
     <string name="library_album_empty">Los álbumes de la biblioteca aparecerán aquí</string>
     <string name="library_playlist_empty">Tus listas de reproducción aparecerán aquí</string>
     <string name="from_your_library">De tu biblioteca</string>
-    <string name="liked_songs">Canciones que te gustan</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Canciones descargadas</string>
     <string name="playlist_is_empty">La lista de reproducción está vacía</string>
     <string name="remove_download_playlist_confirm">¿Realmente quiere quitar todas las canciones de la lista de reproducción «%s» del almacenamiento de canciones descargadas?</string>
@@ -172,10 +172,10 @@
     <string name="error_no_internet">No hay conexión a internet</string>
     <string name="error_timeout">Tiempo de espera agotado</string>
     <string name="error_unknown">Error desconocido</string>
-    <string name="action_like">Me gusta</string>
-    <string name="action_like_all">Marcar todo como me gusta</string>
-    <string name="action_remove_like">Quitar me gusta</string>
-    <string name="action_remove_like_all">Eliminar todos los me gusta</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">Activar aleatorio</string>
     <string name="action_shuffle_off">Desactivar aleatorio</string>
     <string name="repeat_mode_off">Repetición desactivada</string>

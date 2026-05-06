@@ -15,7 +15,7 @@
     <string name="search_yt_music">Otsi YouTube Musicust…</string>
     <string name="search_library">Otsi muusikakogust…</string>
     <string name="filter_library">Muusikakogu</string>
-    <string name="filter_liked">Meeldivaks märgitud</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Allalaaditud</string>
     <string name="filter_all">Kõik</string>
     <string name="filter_songs">Lood</string>
@@ -71,7 +71,7 @@
     <string name="filter_bookmarked">Lisatud järjehoidjaks</string>
     <string name="from_your_library">Sinu muusikakogust</string>
     <string name="other_versions">Muud versioonid</string>
-    <string name="liked_songs">Meeldivaks märgitud lood</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Allalaaditud lood</string>
     <string name="playlist_is_empty">Esitusloend on tühi</string>
     <string name="start_radio">Pane raadio tööle</string>
@@ -130,7 +130,7 @@
         <item quantity="other">%d minutit</item>
     </plurals>
     <string name="error_no_stream">Meediavoogu pole saadaval</string>
-    <string name="action_remove_like_all">Eemalda kõik meeldivaks märkimised</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">Lugude segamine on kasutusel</string>
     <string name="action_shuffle_off">Lugude segamine pole kasutusel</string>
     <string name="repeat_mode_off">Kordus pole kasutusel</string>
@@ -231,9 +231,9 @@
     </plurals>
     <string name="playlist_imported">Esitusloend on imporditud</string>
     <string name="error_no_internet">Võrguühendus puudub</string>
-    <string name="action_like_all">Kõik meeldivad</string>
-    <string name="action_like">Meeldib</string>
-    <string name="action_remove_like">Eemalda meeldivaks märkimine</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="dark_theme_follow_system">Järgi süsteemi kujundust</string>
     <string name="dark_theme_on">Kasutusel</string>
     <string name="dark_theme_off">Pole kasutusel</string>

@@ -30,7 +30,7 @@
     <string name="search_yt_music">ค้นหาใน YouTube Music…</string>
     <string name="search_library">ค้นหาในคลังเพลง…</string>
     <string name="filter_library">คลังเพลง</string>
-    <string name="filter_liked">ถูกใจ</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">ดาวน์โหลดแล้ว</string>
     <string name="filter_all">ทั้งหมด</string>
     <string name="filter_songs">เพลง</string>
@@ -48,7 +48,7 @@
     <string name="library_playlist_empty">เพลย์ลิสต์ของคุณจะแสดงที่นี่</string>
     <string name="from_your_library">จากคลังของคุณ</string>
     <string name="other_versions">เวอร์ชันอื่น</string>
-    <string name="liked_songs">เพลงที่ถูกใจ</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">เพลงที่ดาวน์โหลดแล้ว</string>
     <string name="playlist_is_empty">เพลย์ลิสต์ว่างเปล่า</string>
     <string name="remove_download_playlist_confirm">คุณแน่ใจหรือไม่ว่าต้องการลบเพลงทั้งหมดในเพลย์ลิสต์ \"%s\" ออกจากพื้นที่จัดเก็บเพลงที่ดาวน์โหลด?</string>
@@ -158,10 +158,10 @@
     <string name="error_no_internet">ไม่มีการเชื่อมต่อเครือข่าย</string>
     <string name="error_timeout">หมดเวลาการเชื่อมต่อ</string>
     <string name="error_unknown">เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ</string>
-    <string name="action_like">ถูกใจ</string>
-    <string name="action_like_all">ถูกใจทั้งหมด</string>
-    <string name="action_remove_like">ยกเลิกถูกใจ</string>
-    <string name="action_remove_like_all">ยกเลิกถูกใจทั้งหมด</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">เปิดการสุ่มเพลง</string>
     <string name="action_shuffle_off">ปิดการสุ่มเพลง</string>
     <string name="repeat_mode_off">ปิดการเล่นซ้ำ</string>

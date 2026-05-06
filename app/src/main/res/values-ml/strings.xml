@@ -21,7 +21,7 @@
     <string name="filter_community_playlists">കമ്മ്യൂണിറ്റി പ്ലേലിസ്റ്റുകൾ</string>
     <string name="filter_featured_playlists">തിരഞ്ഞെടുത്ത പ്ലേലിസ്റ്റുകൾ</string>
     <string name="from_your_library">നിങ്ങളുടെ ലൈബ്രറിയിൽ നിന്ന്</string>
-    <string name="liked_songs">ഇഷ്ടപ്പെട്ട പാട്ടുകൾ</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">ഡൗൺലോഡ് ചെയ്‌ത പാട്ടുകൾ</string>
     <string name="retry">വീണ്ടും ശ്രമിക്കുക</string>
     <string name="radio">റേഡിയോ</string>
@@ -124,7 +124,7 @@
     <string name="forgotten_favorites">മറന്നുപോയ പ്രിയപ്പെട്ടവ</string>
     <string name="keep_listening">കേള്‍ക്കുന്നത് തുടരൂ</string>
     <string name="your_youtube_playlists">നിങ്ങളുടെ യൂട്യൂബ് പ്ലേലിസ്റ്റുകൾ</string>
-    <string name="action_remove_like_all">Like എല്ലാം നീക്കം ചെയ്യുക</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="player">മ്യൂസിക് പ്ലെയർ</string>
     <string name="auto_load_more_desc">സാധ്യമെങ്കിൽ, ക്യൂവിന്റെ അവസാനം എത്തുമ്പോൾ കൂടുതൽ പാട്ടുകൾ യാന്ത്രികമായി ചേർക്കുക</string>
     <string name="search_history">തിരയൽ ചരിത്രം</string>
@@ -149,7 +149,7 @@
     <string name="add_anyway">എന്തായാലും ചേര്‍ക്കുക</string>
     <string name="duplicates_description_single">ആ പാട്ട് നിങ്ങളുടെ പ്ലേലിസ്റ്റിൽ ഉണ്ട്</string>
     <string name="duplicates_description_multiple">%d പാട്ടുകള്‍ നിങ്ങളുടെ പ്ലേലിസ്റ്റിൽ ഇതിനകം ഉണ്ട്</string>
-    <string name="action_like_all">എല്ലാം like ചെയ്യുക</string>
+    <string name="action_like_all">Star all</string>
     <string name="theme">തീം</string>
     <string name="player_text_alignment">പ്ലെയർ ടെക്സ്റ്റ് വിന്യാസം</string>
     <string name="sided">വശത്തേക്ക്</string>
@@ -188,7 +188,7 @@
     <string name="most_played_artists">കൂടുതൽ കേട്ട കലാകാരൻമാർ</string>
     <string name="most_played_albums">കൂടുതൽ കേട്ട ആൽബങ്ങൾ</string>
     <string name="filter_library">ലൈബ്രറി</string>
-    <string name="filter_liked">ഇഷ്ടപ്പെട്ടത്</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">ഡൌൺലോഡ് ചെയ്തത്</string>
     <string name="filter_bookmarked">മാർക്ക് ചെയ്തവ</string>
     <string name="no_results_found">ഒന്നും കണ്ടെത്താനായില്ല</string>
@@ -240,8 +240,8 @@
     <string name="error_no_internet">നെറ്റ്‌വർക്ക് കണക്ഷൻ ഇല്ല</string>
     <string name="error_timeout">ടൈം ഔട്ട്</string>
     <string name="error_unknown">എന്തോ പ്രെശ്നം പറ്റി</string>
-    <string name="action_like">ലൈക്ക്</string>
-    <string name="action_remove_like">ലൈക്ക് കളയുക</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">ഷഫിൾ ഓൺ</string>
     <string name="action_shuffle_off">ഷഫിൾ ഓഫ്</string>
     <string name="repeat_mode_off">റിപീറ്റ് മോഡ് ഓഫ്</string>

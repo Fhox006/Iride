@@ -28,7 +28,7 @@
     <string name="search_yt_music">Hledat v YouTube Music…</string>
     <string name="search_library">Hledat v knihovně…</string>
     <string name="filter_library">Knihovna</string>
-    <string name="filter_liked">Oblíbené</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Stažené</string>
     <string name="filter_all">Vše</string>
     <string name="filter_songs">Skladby</string>
@@ -41,7 +41,7 @@
     <string name="filter_bookmarked">Záložky</string>
     <string name="no_results_found">Nenalezeny žádné výsledky</string>
     <string name="from_your_library">Z vaší knihovny</string>
-    <string name="liked_songs">Oblíbené skladby</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Stažené skladby</string>
     <string name="playlist_is_empty">Playlist je prázdný</string>
     <string name="retry">Zkusit znovu</string>
@@ -155,8 +155,8 @@
     <string name="error_no_internet">Není dostupné připojení k internetu</string>
     <string name="error_timeout">Vypršel čas</string>
     <string name="error_unknown">Neznámá chyba</string>
-    <string name="action_like">Oblíbené</string>
-    <string name="action_remove_like">Odebrat z oblíbených</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">Náhodně zapnuto</string>
     <string name="action_shuffle_off">Náhodně vypnuto</string>
     <string name="repeat_mode_off">Režim opakování vypnut</string>
@@ -263,8 +263,8 @@
     <string name="skip_duplicates">Přeskočit duplikáty</string>
     <string name="add_anyway">Přesto přidat</string>
     <string name="duplicates_description_multiple">%d skladeb se již nachází ve vašem playlistu</string>
-    <string name="action_like_all">Oblíbit vše</string>
-    <string name="action_remove_like_all">Odstranit všechny oblíbené</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="not_logged_in">Nejste přihlášeni</string>
     <string name="persistent_queue_desc">Obnovit poslední frontu po spuštění aplikace</string>
     <string name="auto_load_more_desc">Automaticky přidat více skladeb po dosažení konce fronty, pokud je to možné</string>

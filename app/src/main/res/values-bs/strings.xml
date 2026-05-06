@@ -107,7 +107,7 @@
     <string name="filter_library">Biblioteka</string>
     <string name="filter_bookmarked">Obilježeno</string>
     <string name="library_song_empty">Pjesme biblioteke će se ovdje pokazati</string>
-    <string name="filter_liked">Sviđa mi se</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Preuzeto</string>
     <string name="filter_all">Sve</string>
     <string name="tempo_and_pitch">Tempo i Visina tona</string>
@@ -118,7 +118,7 @@
     <string name="filter_community_playlists">Zajednički spisci</string>
     <string name="no_results_found">Nema rezultata</string>
     <string name="library_album_empty">Albumi biblioteke će se ovdje pojaviti</string>
-    <string name="liked_songs">Pjesme koje vam se sviđaju</string>
+    <string name="liked_songs">Starred</string>
     <string name="other_versions">Druge verzije</string>
     <string name="playlist_is_empty">Popis je prazan</string>
     <string name="remove_download_playlist_confirm">Da li zaista želite da obrišete sve \"%s\" pjesme iz spiska iz skladišta Preuzetih Pjesama?</string>
@@ -185,14 +185,14 @@
         <item quantity="few">%d minute</item>
         <item quantity="other">%d minuta</item>
     </plurals>
-    <string name="action_like_all">Sviđa mi se sve</string>
-    <string name="action_remove_like_all">Ukloni sva sviđanja</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="queue_searched_songs">Pretražene pjesme</string>
     <string name="proxy_type">Tip proksija</string>
     <string name="removed_song_from_playlist">Ukloni \"%s\" iz spiske</string>
     <string name="playlist_synced">Spiska sinkronizovana</string>
     <string name="error_unknown">Nepoznata greška</string>
-    <string name="action_like">Sviđa mi se</string>
+    <string name="action_like">Star</string>
     <string name="sleep_timer">Mjerač vremena za spavanje</string>
     <string name="end_of_song">Kraj pjesme</string>
     <string name="error_no_internet">Nema internet veze</string>
@@ -200,7 +200,7 @@
     <string name="repeat_mode_off">Režim ponavljanja je isključen</string>
     <string name="repeat_mode_one">Ponavljaj trenutnu pjesmu</string>
     <string name="repeat_mode_all">Ponovi red</string>
-    <string name="action_remove_like">Ukloni sviđanje</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_off">Miješanje isključeno</string>
     <string name="music_player">Muzički Plejer</string>
     <string name="queue_all_songs">Sve pjesme</string>

@@ -32,7 +32,7 @@
     <string name="search_yt_music">Iskanje v YouTube Music…</string>
     <string name="search_library">Iskanje v knjižnici…</string>
     <string name="filter_library">Knjižnica</string>
-    <string name="filter_liked">Všečkano</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Preneseno</string>
     <string name="filter_all">Vse</string>
     <string name="keep_listening">Nadaljuj z poslušanjem</string>
@@ -51,7 +51,7 @@
     <string name="library_playlist_empty">Vaši seznami predvajanja bodo prikazani tukaj</string>
     <string name="from_your_library">Iz vaše knjižnice</string>
     <string name="other_versions">Druge različice</string>
-    <string name="liked_songs">Všečkane skladbe</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Prenesene skladbe</string>
     <string name="playlist_is_empty">Seznam predvajanja je prazen</string>
     <string name="delete_playlist_confirm">Ali res želite izbrisati seznam predvajanja %s?</string>

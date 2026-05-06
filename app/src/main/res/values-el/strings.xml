@@ -30,7 +30,7 @@
     <string name="search_yt_music">Αναζήτηση Μουσικής YouTube…</string>
     <string name="search_library">Αναζήτηση βιβλιοθήκης…</string>
     <string name="filter_library">Βιβλιοθήκη</string>
-    <string name="filter_liked">Αγαπημένα</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Κατεβασμένα</string>
     <string name="filter_all">Όλα</string>
     <string name="filter_songs">Τραγούδια</string>
@@ -47,7 +47,7 @@
     <string name="library_album_empty">Τα άλμπουμ βιβλιοθήκης εμφανίζονται εδώ</string>
     <string name="library_playlist_empty">Οι λίστες αναπαραγωγής θα εμφανίζονται εδώ</string>
     <string name="from_your_library">Από τη βιβλιοθήκη σας</string>
-    <string name="liked_songs">Αγαπημένα τραγούδια</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Κατεβασμένα τραγούδια</string>
     <string name="playlist_is_empty">Η λίστα αναπαρ. είναι κενή</string>
     <string name="remove_download_playlist_confirm">Θέλετε πραγματικά να αφαιρέσετε όλα τα τραγούδια της λίστας αναπαραγωγής \\\"%s\\\" από τα Ληφθέντα Τραγούδια;</string>
@@ -163,10 +163,10 @@
     <string name="error_no_internet">Δεν υπάρχει σύνδεση δικτύου</string>
     <string name="error_timeout">Τέλος χρονικού ορίου</string>
     <string name="error_unknown">Άγνωστο σφάλμα</string>
-    <string name="action_like">Αγαπημένο</string>
-    <string name="action_like_all">Αγαπημένα όλα</string>
-    <string name="action_remove_like">Αφαίρεση αγαπημένο</string>
-    <string name="action_remove_like_all">Αφαίρεση όλων των αγαπημένων</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">Ανακάτεμα ενεργό</string>
     <string name="action_shuffle_off">Ανακάτεμα ανενεργό</string>
     <string name="repeat_mode_off">Λειτουργία επανάληψης ανενεργό</string>

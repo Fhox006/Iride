@@ -98,7 +98,8 @@ fun YouTubeSongMenu(
     song: SongItem,
     navController: NavController,
     onDismiss: () -> Unit,
-    onHistoryRemoved: () -> Unit = {}
+    onHistoryRemoved: () -> Unit = {},
+    showStarButton: Boolean = true,
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -219,54 +220,56 @@ fun YouTubeSongMenu(
             }
         },
         trailingContent = {
-            // For episodes, show saved state and toggle save for later
-            val isEpisode = song.isEpisode
-            val isFavorite = if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
-            IconButton(
-                onClick = {
-                    if (isEpisode) {
-                        // Episode: toggle save for later
-                        val currentLibrarySong = librarySong
-                        val isCurrentlySaved = currentLibrarySong?.song?.inLibrary != null
-                        val shouldBeSaved = !isCurrentlySaved
+            if (showStarButton) {
+                // For episodes, show saved state and toggle save for later
+                val isEpisode = song.isEpisode
+                val isFavorite = if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
+                IconButton(
+                    onClick = {
+                        if (isEpisode) {
+                            // Episode: toggle save for later
+                            val currentLibrarySong = librarySong
+                            val isCurrentlySaved = currentLibrarySong?.song?.inLibrary != null
+                            val shouldBeSaved = !isCurrentlySaved
 
-                        // Update local database first (optimistic update)
-                        database.query {
-                            if (currentLibrarySong != null) {
-                                update(currentLibrarySong.song.copy(inLibrary = if (shouldBeSaved) LocalDateTime.now() else null))
-                            } else {
-                                insert(song.toMediaMetadata().toSongEntity().copy(inLibrary = LocalDateTime.now(), isEpisode = true))
-                            }
-                        }
-
-                        // Sync with YouTube (handles login check internally)
-                        coroutineScope.launch(Dispatchers.IO) {
-                            val setVideoId = if (isCurrentlySaved) song.setVideoId ?: database.getSetVideoId(song.id)?.setVideoId else null
-                            syncUtils.saveEpisode(song.id, shouldBeSaved, setVideoId)
-                        }
-                    } else {
-                        // Regular song: toggle like
-                        database.transaction {
-                            librarySong.let { librarySong ->
-                                val s: SongEntity
-                                if (librarySong == null) {
-                                    insert(song.toMediaMetadata(), SongEntity::toggleLike)
-                                    s = song.toMediaMetadata().toSongEntity().let(SongEntity::toggleLike)
+                            // Update local database first (optimistic update)
+                            database.query {
+                                if (currentLibrarySong != null) {
+                                    update(currentLibrarySong.song.copy(inLibrary = if (shouldBeSaved) LocalDateTime.now() else null))
                                 } else {
-                                    s = librarySong.song.toggleLike()
-                                    update(s)
+                                    insert(song.toMediaMetadata().toSongEntity().copy(inLibrary = LocalDateTime.now(), isEpisode = true))
                                 }
-                                syncUtils.likeSong(s)
+                            }
+
+                            // Sync with YouTube (handles login check internally)
+                            coroutineScope.launch(Dispatchers.IO) {
+                                val setVideoId = if (isCurrentlySaved) song.setVideoId ?: database.getSetVideoId(song.id)?.setVideoId else null
+                                syncUtils.saveEpisode(song.id, shouldBeSaved, setVideoId)
+                            }
+                        } else {
+                            // Regular song: toggle like
+                            database.transaction {
+                                librarySong.let { librarySong ->
+                                    val s: SongEntity
+                                    if (librarySong == null) {
+                                        insert(song.toMediaMetadata(), SongEntity::toggleLike)
+                                        s = song.toMediaMetadata().toSongEntity().let(SongEntity::toggleLike)
+                                    } else {
+                                        s = librarySong.song.toggleLike()
+                                        update(s)
+                                    }
+                                    syncUtils.likeSong(s)
+                                }
                             }
                         }
-                    }
-                },
-            ) {
-                Icon(
-                    painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
-                    tint = if (isFavorite) MaterialTheme.colorScheme.error else LocalContentColor.current,
-                    contentDescription = null,
-                )
+                    },
+                ) {
+                    Icon(
+                        painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
+                        tint = if (isFavorite) MaterialTheme.colorScheme.error else LocalContentColor.current,
+                        contentDescription = null,
+                    )
+                }
             }
         },  
     )  

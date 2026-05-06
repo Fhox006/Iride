@@ -27,7 +27,7 @@
     <string name="search_yt_music">YouTube Music durchsuchen…</string>
     <string name="search_library">Bibliothek durchsuchen…</string>
     <string name="filter_library">Bibliothek</string>
-    <string name="filter_liked">Mag ich</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Heruntergeladen</string>
     <string name="filter_all">Alles</string>
     <string name="filter_songs">Songs</string>
@@ -39,7 +39,7 @@
     <string name="filter_featured_playlists">Ausgewählte Playlists</string>
     <string name="no_results_found">Keine Ergebnisse gefunden</string>
     <string name="from_your_library">Aus der Bibliothek</string>
-    <string name="liked_songs">Songs, die ich mag</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Heruntergeladene Songs</string>
     <string name="playlist_is_empty">Die Playlist ist leer</string>
     <string name="retry">Erneut versuchen</string>
@@ -145,8 +145,8 @@
     <string name="error_no_internet">Keine Netzwerkverbindung</string>
     <string name="error_timeout">Zeitüberschreitung</string>
     <string name="error_unknown">Unbekannter Fehler</string>
-    <string name="action_like">Mag ich</string>
-    <string name="action_remove_like">„Mag ich“ entfernen</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">Shuffle an</string>
     <string name="action_shuffle_off">Shuffle aus</string>
     <string name="repeat_mode_off">Wiederholungsmodus aus</string>
@@ -220,7 +220,7 @@
     <string name="translation_models">Übersetzungs-Modelle</string>
     <string name="clear_translation_models">Lösche Übersetzungs-Modelle</string>
     <string name="forgotten_favorites">Vergessene Favoriten</string>
-    <string name="action_remove_like_all">Alle „Mag ich“ entfernen</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="default_">Standard</string>
     <string name="auto_load_more">Automatisch mehr Songs laden</string>
     <string name="action_logout">Abmelden</string>
@@ -271,7 +271,7 @@
     <string name="remove_download_playlist_confirm">Möchtest du wirklich alle Songs der Playlist „%s“ aus dem Speicher für heruntergeladene Songs entfernen?</string>
     <string name="delete_playlist_confirm">Möchtest du die Playlist „%s“ wirklich löschen?</string>
     <string name="duplicates_description_single">Der Song befindet sich bereits in deiner Playlist</string>
-    <string name="action_like_all">Allen „Mag ich“ geben</string>
+    <string name="action_like_all">Star all</string>
     <string name="remove_all_from_library">Alle aus Bibliothek entfernen</string>
     <string name="persistent_queue_desc">Wiederherstellung der letzten Warteschlange beim Starten der App</string>
     <string name="auto_load_more_desc">Automatisches Hinzufügen weiterer Songs, wenn das Ende der Warteschlange erreicht ist, sofern möglich</string>

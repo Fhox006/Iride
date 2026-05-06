@@ -17,12 +17,12 @@
     <string name="most_played_artists">ఎక్కువగా వినిన కళాకారులు</string>
     <string name="most_played_albums">ఎక్కువగా వినిన చిత్రాలు</string>
     <string name="search">వెతుకు</string>
-    <string name="filter_liked">నచ్చినవి</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_songs">పాటలు</string>
     <string name="filter_videos">వీడియో</string>
     <string name="filter_albums">చిత్రాలు</string>
     <string name="filter_artists">కళాకారులు</string>
-    <string name="liked_songs">నచ్చిన పాటలు</string>
+    <string name="liked_songs">Starred</string>
     <string name="retry">మళ్ళీ ప్రయత్నించండి</string>
     <string name="home">ఇల్లు</string>
     <string name="details">వివరాలు</string>
@@ -54,10 +54,10 @@
         <item quantity="one">%d పాట</item>
         <item quantity="other">%dపాటలు</item>
     </plurals>
-    <string name="action_like">ఇష్టం</string>
-    <string name="action_like_all">అన్ని ఇష్టం</string>
-    <string name="action_remove_like">ఇష్ట పడిన వాటిని తోలగించు</string>
-    <string name="action_remove_like_all">ఇష్ట పడినవి అన్ని తోలగించు</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="queue_all_songs">అన్ని పాటలు</string>
     <string name="queue_searched_songs">వెతికిన పాటలు</string>
     <string name="left">ఎడమ</string>

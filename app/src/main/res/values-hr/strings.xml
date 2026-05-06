@@ -8,10 +8,10 @@
         <item quantity="few">%d minute</item>
         <item quantity="other">%d minuta</item>
     </plurals>
-    <string name="action_like">Sviđa mi se</string>
-    <string name="action_like_all">Sviđa mi se sve</string>
-    <string name="action_remove_like">Ukloni sviđanje</string>
-    <string name="action_remove_like_all">Ukloni sva sviđanja</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="center">Centar</string>
     <string name="sided">Na strani</string>
     <string name="left">Lijevo</string>
@@ -59,7 +59,7 @@
     <string name="new_release_albums">Nova izdanja albuma</string>
     <string name="search_yt_music">Pretraži YouTube Music …</string>
     <string name="filter_library">Zbirka</string>
-    <string name="filter_liked">Sviđa mi se</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Preuzeto</string>
     <string name="filter_videos">Videa</string>
     <string name="no_results_found">Nema rezultata</string>
@@ -69,7 +69,7 @@
     <string name="library_playlist_empty">Vaše playliste će se ovdje pojaviti</string>
     <string name="from_your_library">Iz vaše zbirke</string>
     <string name="other_versions">Druge verzije</string>
-    <string name="liked_songs">Pjesme koje mi se sviđaju</string>
+    <string name="liked_songs">Starred</string>
     <string name="delete_playlist_confirm">Zaista želite izbrisati playlistu „%s“?</string>
     <string name="retry">Pokušaj ponovo</string>
     <string name="reset">Resetiraj</string>

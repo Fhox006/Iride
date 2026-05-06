@@ -43,7 +43,7 @@
     <string name="filter_artists">Изпълнители</string>
     <string name="most_played_artists">Най-пускани изпълнители</string>
     <string name="search_yt_music">Търсене в YouTube Music…</string>
-    <string name="filter_liked">Харесвани</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Изтеглени</string>
     <string name="filter_all">Всички</string>
     <string name="filter_songs">Песни</string>
@@ -55,7 +55,7 @@
     <string name="filter_featured_playlists">Представени плейлисти</string>
     <string name="library_artist_empty">Изпълнителите от библиотеката ще се показват тук</string>
     <string name="library_album_empty">Албумите от библиотеката ще се показват тук</string>
-    <string name="liked_songs">Харесвани песни</string>
+    <string name="liked_songs">Starred</string>
     <string name="library_playlist_empty">Вашите плейлисти ще се показват тук</string>
     <string name="delete_playlist_confirm">Наистина ли искате да изтриете плейлиста \"%s\"?</string>
     <string name="add_to_library">Добави към библиотеката</string>
@@ -127,7 +127,7 @@
     <string name="error_timeout">Време за изчакване</string>
     <string name="choose_playlist">Избери плейлист</string>
     <string name="create_playlist">Създаване на плейлист</string>
-    <string name="action_like_all">Всички харесвания</string>
+    <string name="action_like_all">Star all</string>
     <string name="duplicates_description_single">Песента вече е във вашия плейлист</string>
     <string name="error_no_internet">Няма мрежова връзка</string>
     <string name="playlist_synced">Плейлистът е синхронизиран</string>
@@ -169,9 +169,9 @@
     <string name="end_of_song">Край на песента</string>
     <string name="error_no_stream">Няма наличен поток</string>
     <string name="error_unknown">Неизвестна грешка</string>
-    <string name="action_remove_like">Премахни харесвания</string>
-    <string name="action_like">Харесвания</string>
-    <string name="action_remove_like_all">Премахни всички харесвания</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_off">Разбъркване изключено</string>
     <string name="repeat_mode_off">Режим на повторение е изключен</string>
     <string name="repeat_mode_one">Повтори текущата песен</string>

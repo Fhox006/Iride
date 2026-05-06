@@ -26,7 +26,7 @@
     <string name="search_yt_music">Tìm kiếm trên YouTube Music…</string>
     <string name="search_library">Tìm kiếm trong thư viện…</string>
     <string name="filter_library">Thư viện</string>
-    <string name="filter_liked">Đã thích</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Đã tải xuống</string>
     <string name="filter_all">Tất cả</string>
     <string name="filter_songs">Bài hát</string>
@@ -39,7 +39,7 @@
     <string name="filter_bookmarked">Đã đánh dấu</string>
     <string name="no_results_found">Không tìm thấy kết quả nào</string>
     <string name="from_your_library">Từ thư viện của bạn</string>
-    <string name="liked_songs">Bài hát được yêu thích</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Bài hát được tải xuống</string>
     <string name="playlist_is_empty">Danh sách phát đang trống</string>
     <string name="retry">Thử lại</string>
@@ -137,8 +137,8 @@
     <string name="error_no_internet">Không có kết nối mạng</string>
     <string name="error_timeout">Hết giờ</string>
     <string name="error_unknown">Lỗi không xác định</string>
-    <string name="action_like">Thích</string>
-    <string name="action_remove_like">Bỏ thích</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">Bật trộn bài</string>
     <string name="action_shuffle_off">Tắt trộn bài</string>
     <string name="repeat_mode_off">Tắt lặp lại</string>
@@ -259,8 +259,8 @@
     <string name="add_all_to_library">Thêm tất cả vào thư viện</string>
     <string name="remove_all_from_library">Xóa tất cả khỏi thư viện</string>
     <string name="remove_from_queue">Xóa khỏi hàng đợi</string>
-    <string name="action_remove_like_all">Xóa tất cả lượt thích</string>
-    <string name="action_like_all">Thích tất cả</string>
+    <string name="action_remove_like_all">Remove all stars</string>
+    <string name="action_like_all">Star all</string>
     <string name="listen_history">Lịch sử nghe</string>
     <string name="theme">Chủ đề</string>
     <string name="auto_skip_next_on_error_desc">Đảm bảo trải nghiệm phát lại liên tục của bạn</string>

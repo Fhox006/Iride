@@ -26,7 +26,7 @@
     <string name="search">खोजें</string>
     <string name="search_library">संग्रह में खोजें…</string>
     <string name="filter_library">संग्रह</string>
-    <string name="filter_liked">पसंद किए गए</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">डाउनलोड किए गए</string>
     <string name="filter_all">सब</string>
     <string name="filter_songs">गाने</string>
@@ -39,7 +39,7 @@
     <string name="library_artist_empty">संग्रह के कलाकार यहाँ दिखेंगे</string>
     <string name="from_your_library">आपके संग्रह से</string>
     <string name="other_versions">अन्य संस्करण</string>
-    <string name="liked_songs">पसंद किए गए गाने</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">डाउनलोड किए गए गाने</string>
     <string name="playlist_is_empty">चाल सूची खाली है</string>
     <string name="delete_playlist_confirm">क्या आप वाकई “%s” चाल सूची को हटाना चाहते हैं ?</string>
@@ -173,10 +173,10 @@
     </plurals>
     <string name="error_timeout">समय सीमा</string>
     <string name="error_unknown">अज्ञात त्रुटि</string>
-    <string name="action_like">पसंद</string>
-    <string name="action_like_all">सभी को पसंद करे</string>
-    <string name="action_remove_like">पसंदीदा से हटाएं</string>
-    <string name="action_remove_like_all">पसंदीदा से सभी को हटाएं</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">सफल चालू</string>
     <string name="action_shuffle_off">सफल बंद</string>
     <string name="repeat_mode_off">दोहराएं मोड बंद</string>

@@ -28,7 +28,7 @@
     <string name="search_yt_music">Pesquisar no YouTube Music…</string>
     <string name="search_library">Pesquisar na biblioteca…</string>
     <string name="filter_library">Biblioteca</string>
-    <string name="filter_liked">Favoritos</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Baixados</string>
     <string name="filter_all">Tudo</string>
     <string name="filter_songs">Músicas</string>
@@ -41,7 +41,7 @@
     <string name="filter_bookmarked">Salvos</string>
     <string name="no_results_found">Nenhum resultado encontrado</string>
     <string name="from_your_library">Da sua biblioteca</string>
-    <string name="liked_songs">Músicas favoritas</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Músicas baixadas</string>
     <string name="playlist_is_empty">Esta playlist está vazia</string>
     <string name="retry">Tentar novamente</string>
@@ -155,8 +155,8 @@
     <string name="error_no_internet">Sem conexão à internet</string>
     <string name="error_timeout">Tempo esgotado</string>
     <string name="error_unknown">Erro desconhecido</string>
-    <string name="action_like">Favoritar</string>
-    <string name="action_remove_like">Remover dos favoritos</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">Modo aleatório ativado</string>
     <string name="action_shuffle_off">Modo aleatório desativado</string>
     <string name="repeat_mode_off">Modo de repetição desativado</string>
@@ -254,8 +254,8 @@
     <string name="default_">Padrão</string>
     <string name="squiggly">Cobrinha</string>
     <string name="your_youtube_playlists">Suas playlists do YouTube</string>
-    <string name="action_like_all">Favoritar tudo</string>
-    <string name="action_remove_like_all">Remover todos os favoritos</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="grid_cell_size">Tamanho da célula da grade</string>
     <string name="auto_load_more_desc">Adicionar mais músicas automaticamente quando o fim da fila é atingido, se possível</string>
     <string name="listen_history">Histórico de reprodução</string>

@@ -27,7 +27,7 @@
     <string name="search_yt_music">Hae YouTube Musicista…</string>
     <string name="search_library">Hae kirjastosta…</string>
     <string name="filter_library">Kirjasto</string>
-    <string name="filter_liked">Tykätty</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Ladattu</string>
     <string name="filter_all">Kaikki</string>
     <string name="filter_songs">Kappaleet</string>
@@ -40,7 +40,7 @@
     <string name="filter_bookmarked">Kirjanmerkkeihin lisätty</string>
     <string name="no_results_found">Tuloksia ei löytynyt</string>
     <string name="from_your_library">Kirjastostasi</string>
-    <string name="liked_songs">Tykkätyt kappaleet</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Ladatut kappaleet</string>
     <string name="playlist_is_empty">Soittolista on tyhjä</string>
     <string name="retry">Toisto</string>
@@ -145,8 +145,8 @@
     <string name="error_no_internet">Ei verkkoyhteyttä</string>
     <string name="error_timeout">Aikakatkaisu</string>
     <string name="error_unknown">Tuntematon virhe</string>
-    <string name="action_like">Tykkää</string>
-    <string name="action_remove_like">Poista \"tykkää\"</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">Sekoitus päällä</string>
     <string name="action_shuffle_off">Sekoitus pois päältä</string>
     <string name="repeat_mode_off">Toistotila pois päältä</string>
@@ -175,8 +175,8 @@
     <string name="not_logged_in">Ei kirjautunut sisään</string>
     <string name="similar_to">Samanlaisia kuin</string>
     <string name="tempo_and_pitch">Tempo ja sävelkorkeus</string>
-    <string name="action_like_all">Tykkää kaikista</string>
-    <string name="action_remove_like_all">Poista kaikki tykkäykset</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="theme">Teema</string>
     <string name="player">Soitin</string>
     <string name="sided">Sivulla</string>

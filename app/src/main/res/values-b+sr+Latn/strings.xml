@@ -140,9 +140,9 @@
     <string name="playlist_imported">Plejlista uvezena</string>
     <string name="removed_song_from_playlist">Ukloni \"%s\" iz plejliste</string>
     <string name="undo">Vrati</string>
-    <string name="action_like_all">Sviđa mi se sve</string>
-    <string name="action_remove_like">Ukloni sviđanje</string>
-    <string name="action_remove_like_all">Ukloni sva sviđanja</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">Mešanje uključeno</string>
     <string name="action_shuffle_off">Mešanje isključeno</string>
     <string name="repeat_mode_off">Režim ponavljanja je isključen</string>
@@ -232,9 +232,9 @@
     <string name="library_artist_empty">Izvođači biblioteke će se pojaviti ovde</string>
     <string name="library_album_empty">Albumi biblioteke će se pojaviti ovde</string>
     <string name="search_library">Pretraži biblioteku…</string>
-    <string name="liked_songs">Pesme koje vam se sviđaju</string>
+    <string name="liked_songs">Starred</string>
     <string name="filter_library">Biblioteka</string>
-    <string name="filter_liked">Sviđa mi se</string>
+    <string name="filter_liked">Starred</string>
     <string name="remove_download_playlist_confirm">Da li zaista želite da obrišete sve \"%s\" pesme sa plejliste iz skladišta Preuzetih Pesama?</string>
     <string name="play">Pusti</string>
     <string name="add_to_queue">Dodaj u red</string>
@@ -264,7 +264,7 @@
     </plurals>
     <string name="error_no_stream">Prenos nije dostupan</string>
     <string name="error_timeout">Istek vremena</string>
-    <string name="action_like">Sviđa mi se</string>
+    <string name="action_like">Star</string>
     <string name="error_unknown">Nepoznata greška</string>
     <string name="misc">Razno</string>
     <string name="default_open_tab">Podrazumevana otvorena kartica</string>

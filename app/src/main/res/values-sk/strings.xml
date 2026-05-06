@@ -33,7 +33,7 @@
     <string name="search_yt_music">Vyhľadávať YouTube Music…</string>
     <string name="search_library">Hľadať v knižnici…</string>
     <string name="filter_library">Knižnica</string>
-    <string name="filter_liked">Obľúbené</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Stiahnuté</string>
     <string name="filter_all">Všetko</string>
     <string name="filter_songs">Skladby</string>
@@ -51,7 +51,7 @@
     <string name="library_playlist_empty">Tu uvidíš svoje playlisty</string>
     <string name="from_your_library">Z tvojej zbierky</string>
     <string name="other_versions">Ďalšie verzie</string>
-    <string name="liked_songs">Obľúbené skladby</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Stiahnuté skladby</string>
     <string name="playlist_is_empty">Playlist je prázdny</string>
     <string name="remove_download_playlist_confirm">Naozaj chcete odstrániť všetky skladby z playlistu \"%s\" zo stiahnutých skladieb?</string>
@@ -185,10 +185,10 @@
     <string name="error_no_internet">Bez pripojenia na internet</string>
     <string name="error_timeout">Vypršal čas</string>
     <string name="error_unknown">Neznáma chyba</string>
-    <string name="action_like">Páči sa mi</string>
-    <string name="action_like_all">Páči sa mi všetko</string>
-    <string name="action_remove_like">Zrušiť „Páči sa mi“</string>
-    <string name="action_remove_like_all">Zrušiť všetky „Páči sa mi“</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">Náhodné prehrávanie zapnuté</string>
     <string name="action_shuffle_off">Náhodné prehrávanie vypnuté</string>
     <string name="repeat_mode_off">Režim opakovania vypnutý</string>

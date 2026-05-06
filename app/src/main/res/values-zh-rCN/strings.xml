@@ -26,7 +26,7 @@
     <string name="search_yt_music">搜索 YouTube Music…</string>
     <string name="search_library">搜索媒体库…</string>
     <string name="filter_library">媒体库</string>
-    <string name="filter_liked">喜欢</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">已下载</string>
     <string name="filter_all">全部</string>
     <string name="filter_songs">歌曲</string>
@@ -39,7 +39,7 @@
     <string name="filter_bookmarked">收藏</string>
     <string name="no_results_found">未找到结果</string>
     <string name="from_your_library">来自您的媒体库</string>
-    <string name="liked_songs">喜欢的歌曲</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">已下载的歌曲</string>
     <string name="playlist_is_empty">播放列表为空</string>
     <string name="retry">重试</string>
@@ -137,8 +137,8 @@
     <string name="error_no_internet">没有网络连接</string>
     <string name="error_timeout">连接超时</string>
     <string name="error_unknown">未知错误</string>
-    <string name="action_like">喜欢</string>
-    <string name="action_remove_like">取消喜欢</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">随机播放打开</string>
     <string name="action_shuffle_off">随机播放关闭</string>
     <string name="repeat_mode_off">循环播放关闭</string>
@@ -220,7 +220,7 @@
     <string name="library_playlist_empty">您的播放列表将显示在此处</string>
     <string name="add_anyway">仍要添加</string>
     <string name="duplicates_description_multiple">%d 首歌曲已在您的播放列表中</string>
-    <string name="action_remove_like_all">移除全部喜欢</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="theme">主题</string>
     <string name="player">播放器</string>
     <string name="player_text_alignment">播放器文本对齐</string>
@@ -239,7 +239,7 @@
     <string name="action_logout">登出</string>
     <string name="discord_integration">Discord 集成</string>
     <string name="enable_discord_rpc">启用 Rich Presence</string>
-    <string name="action_like_all">喜欢全部</string>
+    <string name="action_like_all">Star all</string>
     <string name="library_song_empty">媒体库歌曲将显示在此处</string>
     <string name="duplicates_description_single">这首歌曲已在您的播放列表中</string>
     <string name="dismiss">关闭</string>

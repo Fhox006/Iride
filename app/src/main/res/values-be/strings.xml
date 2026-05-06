@@ -37,7 +37,7 @@
     <string name="filter_featured_playlists">Вартыя ўвагі плэй-лісты</string>
     <string name="no_results_found">Вынікі не знойдзены</string>
     <string name="from_your_library">З вашай бібліятэкі</string>
-    <string name="liked_songs">Упадабаныя кампазіцыi</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Спампаваныя кампазіцыі</string>
     <string name="playlist_is_empty">Плай-ліст пусты</string>
     <string name="retry">Паўтарыць</string>
@@ -157,8 +157,8 @@
     <string name="error_no_internet">Няма падлучэння да сеткі</string>
     <string name="error_timeout">Час чакання</string>
     <string name="error_unknown">Невядомая памылка</string>
-    <string name="action_like">Упадабаць</string>
-    <string name="action_remove_like">Выдаліць з упадабаных</string>
+    <string name="action_like">Star</string>
+    <string name="action_remove_like">Remove star</string>
     <string name="action_shuffle_on">Уключыць перамешванне</string>
     <string name="action_shuffle_off">Выключыць перамешванне</string>
     <string name="repeat_mode_off">Рэжым паўтору выключаны</string>

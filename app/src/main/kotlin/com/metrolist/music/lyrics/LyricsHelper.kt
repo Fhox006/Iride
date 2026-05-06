@@ -8,17 +8,24 @@ package com.metrolist.music.lyrics
 import android.content.Context
 import android.util.LruCache
 import com.metrolist.music.constants.LyricsProviderOrderKey
+import com.metrolist.music.constants.PLAYER_THUMBNAIL_SIZE
 import com.metrolist.music.constants.PreferredLyricsProvider
 import com.metrolist.music.constants.PreferredLyricsProviderKey
 import com.metrolist.music.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.reportException
+import coil3.imageLoader
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
+import coil3.size.Size
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
@@ -109,6 +116,21 @@ constructor(
     private var currentLyricsJob: Job? = null
 
     suspend fun getLyrics(mediaMetadata: MediaMetadata): LyricsWithProvider {
+        mediaMetadata.thumbnailUrl?.let { rawUrl ->
+            val hdUrl = rawUrl.resize(PLAYER_THUMBNAIL_SIZE, PLAYER_THUMBNAIL_SIZE)
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val request = ImageRequest.Builder(context)
+                        .data(hdUrl)
+                        .size(Size.ORIGINAL)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .build()
+                    context.imageLoader.execute(request)
+                } catch (_: Exception) {}
+            }
+        }
+
         currentLyricsJob?.cancel()
 
         val cached = cache.get(mediaMetadata.id)?.firstOrNull()

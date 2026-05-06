@@ -647,6 +647,7 @@ fun LocalPlaylistScreen(
                                                     playlistBrowseId = playlist?.playlist?.browseId,
                                                     navController = navController,
                                                     onDismiss = menuState::dismiss,
+                                                    showStarButton = false,
                                                 )
                                             }
                                         },

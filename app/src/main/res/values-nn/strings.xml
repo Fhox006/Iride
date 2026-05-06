@@ -31,7 +31,7 @@
     <string name="search_yt_music">Søk i gjenom YouTube Music…</string>
     <string name="search_library">Søk i gjenom biblioteket…</string>
     <string name="filter_library">Bibliotek</string>
-    <string name="filter_liked">Lika</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">Nedlasta</string>
     <string name="filter_all">Alle</string>
     <string name="filter_songs">Songar</string>
@@ -49,7 +49,7 @@
     <string name="library_playlist_empty">Spelelistene dine dukkar opp her</string>
     <string name="from_your_library">Frå biblioteket ditt</string>
     <string name="other_versions">Andre utgåver</string>
-    <string name="liked_songs">Lika songar</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">Nedladde songar</string>
     <string name="playlist_is_empty">Spelelista er tom</string>
     <string name="remove_download_playlist_confirm">Ynskjer du verkeleg å taka alle songar frå «%s» bort frå lagringa med nedladde songar?</string>
@@ -167,10 +167,10 @@
     <string name="error_no_internet">Inga nettilkopling</string>
     <string name="error_timeout">Tidaravbrot</string>
     <string name="error_unknown">Ukjent lyte</string>
-    <string name="action_like">Lika</string>
-    <string name="action_like_all">Lika alle</string>
-    <string name="action_remove_like">Avlika</string>
-    <string name="action_remove_like_all">Avlika alle</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">Blanding er påslegen</string>
     <string name="action_shuffle_off">Blanding er avslegen</string>
     <string name="repeat_mode_off">Tvitaking er avslegen</string>

@@ -30,7 +30,7 @@
     <string name="search_yt_music">搜尋 YouTube Music…</string>
     <string name="search_library">搜尋媒體庫…</string>
     <string name="filter_library">媒體庫</string>
-    <string name="filter_liked">已按讚</string>
+    <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">已下載</string>
     <string name="filter_all">全部</string>
     <string name="filter_songs">歌曲</string>
@@ -48,7 +48,7 @@
     <string name="library_playlist_empty">你的播放清單會顯示在這裡</string>
     <string name="from_your_library">來自你的媒體庫</string>
     <string name="other_versions">其他版本</string>
-    <string name="liked_songs">喜歡的歌曲</string>
+    <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">已下載的歌曲</string>
     <string name="playlist_is_empty">播放清單為空</string>
     <string name="remove_download_playlist_confirm">確定要刪除「%s」的下載嗎？</string>
@@ -158,10 +158,10 @@
     <string name="error_no_internet">沒有網路連線</string>
     <string name="error_timeout">連線逾時</string>
     <string name="error_unknown">未知的錯誤</string>
-    <string name="action_like">喜歡</string>
-    <string name="action_like_all">全部喜歡</string>
-    <string name="action_remove_like">取消喜歡</string>
-    <string name="action_remove_like_all">全部取消喜歡</string>
+    <string name="action_like">Star</string>
+    <string name="action_like_all">Star all</string>
+    <string name="action_remove_like">Remove star</string>
+    <string name="action_remove_like_all">Remove all stars</string>
     <string name="action_shuffle_on">隨機播放開啟</string>
     <string name="action_shuffle_off">隨機播放關閉</string>
     <string name="repeat_mode_off">重複播放關閉</string>

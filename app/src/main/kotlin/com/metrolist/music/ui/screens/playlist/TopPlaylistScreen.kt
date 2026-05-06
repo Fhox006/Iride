@@ -335,6 +335,7 @@ fun TopPlaylistScreen(
                                                     originalSong = song,
                                                     navController = navController,
                                                     onDismiss = menuState::dismiss,
+                                                    showStarButton = false,
                                                 )
                                             }
                                         },

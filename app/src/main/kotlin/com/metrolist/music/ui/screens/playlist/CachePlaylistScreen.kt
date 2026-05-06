@@ -281,6 +281,7 @@ fun CachePlaylistScreen(
                                             navController = navController,
                                             onDismiss = menuState::dismiss,
                                             isFromCache = true,
+                                            showStarButton = false,
                                         )
                                     }
                                 }) {
