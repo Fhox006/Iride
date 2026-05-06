@@ -105,7 +105,7 @@ class LyricsViewModel @Inject constructor(
     ) {
         progressiveJob?.cancel()
         processJob?.cancel()
-        lyricsSearchStatus.value = LyricsSearchStatus.SearchingSynced
+        lyricsSearchStatus.value = LyricsSearchStatus.Idle
 
         progressiveJob = viewModelScope.launch {
             var bestTierSaved = LyricsTier.PLAIN

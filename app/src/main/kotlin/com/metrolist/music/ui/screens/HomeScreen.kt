@@ -7,6 +7,7 @@ package com.metrolist.music.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -45,7 +46,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -97,7 +97,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.ImageLoader
+import coil3.request.allowHardware
 import coil3.request.crossfade
+import coil3.toBitmap
+import androidx.palette.graphics.Palette
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.ArtistItem
@@ -178,7 +182,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.min
 import kotlin.random.Random
 
@@ -709,21 +712,6 @@ fun HomeScreen(
         }
     val url = if (isLoggedIn) accountImageUrl else null
 
-    var isReadyToShow by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        if (!isReadyToShow) {
-            // If loading hasn't started yet, wait up to 5s for it to begin
-            if (!viewModel.isLoading.value) {
-                withTimeoutOrNull(5000L) { viewModel.isLoading.first { it } }
-            }
-            // Wait for loading to finish if currently in progress
-            if (viewModel.isLoading.value) {
-                viewModel.isLoading.first { !it }
-            }
-            isReadyToShow = true
-        }
-    }
-
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -1201,14 +1189,6 @@ fun HomeScreen(
             )
         },
     ) {
-        if (!isReadyToShow) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator(modifier = Modifier.size(48.dp))
-            }
-        } else {
         BoxWithConstraints(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.TopStart,
@@ -1469,18 +1449,53 @@ fun HomeScreen(
                             }
                             item(key = "your_mood_section") {
                                 val isDark = isSystemInDarkTheme()
-                                val backgroundColor = if (isDark) {
+                                val defaultBgColor = if (isDark) {
                                     MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
                                 } else {
                                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                                 }
+                                val moodPaletteContext = LocalContext.current
+                                var moodDominantColor by remember(selectedMoodCategory) { mutableStateOf<Color?>(null) }
+                                val firstTrackThumbnail = remember(moodPage) {
+                                    moodPage?.sections
+                                        ?.firstOrNull { s -> s.items.any { it is SongItem } }
+                                        ?.items?.filterIsInstance<SongItem>()?.firstOrNull()?.thumbnail
+                                }
+                                LaunchedEffect(firstTrackThumbnail) {
+                                    if (firstTrackThumbnail != null) {
+                                        withContext(Dispatchers.IO) {
+                                            try {
+                                                val loader = ImageLoader(moodPaletteContext)
+                                                val req = ImageRequest.Builder(moodPaletteContext)
+                                                    .data(firstTrackThumbnail)
+                                                    .allowHardware(false)
+                                                    .build()
+                                                val result = loader.execute(req)
+                                                val bmp = result.image?.toBitmap()
+                                                if (bmp != null) {
+                                                    val palette = Palette.from(bmp).generate()
+                                                    val rgb = palette.getDominantColor(0)
+                                                    if (rgb != 0) {
+                                                        moodDominantColor = Color(rgb).copy(alpha = if (isDark) 0.25f else 0.15f)
+                                                    }
+                                                }
+                                            } catch (_: Exception) {}
+                                        }
+                                    } else {
+                                        moodDominantColor = null
+                                    }
+                                }
+                                val animatedBgColor by animateColorAsState(
+                                    targetValue = moodDominantColor ?: defaultBgColor,
+                                    label = "moodBgColor",
+                                )
 
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 12.dp, vertical = 8.dp)
                                         .clip(RoundedCornerShape(24.dp))
-                                        .background(backgroundColor)
+                                        .background(animatedBgColor)
                                         .padding(vertical = 16.dp)
                                 ) {
                                     ChipsRow(
@@ -1523,6 +1538,7 @@ fun HomeScreen(
                                                             item = track,
                                                             isActive = track.id == mediaMetadata?.id,
                                                             isPlaying = isPlaying,
+                                                            isSwipeable = false,
                                                             trailingContent = {
                                                                 IconButton(
                                                                     onClick = {
@@ -1981,6 +1997,7 @@ fun HomeScreen(
                                                 song = originalSong,
                                                 isActive = originalSong.id == mediaMetadata?.id,
                                                 isPlaying = isPlaying,
+                                                isSwipeable = false,
                                                 trailingContent = {
                                                     IconButton(
                                                         onClick = {
@@ -2293,6 +2310,7 @@ fun HomeScreen(
                                                 song = originalSong,
                                                 isActive = originalSong.id == mediaMetadata?.id,
                                                 isPlaying = isPlaying,
+                                                isSwipeable = false,
                                                 trailingContent = {
                                                     IconButton(
                                                         onClick = {
@@ -2520,6 +2538,7 @@ fun HomeScreen(
                                                     item = song,
                                                     isActive = song.id == mediaMetadata?.id,
                                                     isPlaying = isPlaying,
+                                                    isSwipeable = false,
                                                     trailingContent = {
                                                         IconButton(
                                                             onClick = {
@@ -2640,7 +2659,6 @@ fun HomeScreen(
                     // navController.navigate("recognition")
                 },
             )
-        }
         }
     }
 }

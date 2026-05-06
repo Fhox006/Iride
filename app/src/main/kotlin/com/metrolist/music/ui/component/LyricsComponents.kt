@@ -60,6 +60,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -673,9 +674,13 @@ internal fun GeminiSetupDialog(
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
     onLanguageSelected: (String) -> Unit,
+    onSetupCompleted: () -> Unit,
 ) {
     var keyInput by remember { mutableStateOf(currentApiKey) }
     var selectedLanguage by remember { mutableStateOf(currentLanguage) }
+    var isValidating by remember { mutableStateOf(false) }
+    var validationError by remember { mutableStateOf<String?>(null) }
+    var isApiKeyValid by remember { mutableStateOf(false) }
     val deviceLanguage = java.util.Locale.getDefault().language
     val languages = com.metrolist.music.constants.LanguageCodeToName.entries.toList()
     val sortedLanguages = remember {
@@ -683,7 +688,7 @@ internal fun GeminiSetupDialog(
         if (deviceEntry != null) listOf(deviceEntry) + (languages - deviceEntry) else languages
     }
     val primaryColor = MaterialTheme.colorScheme.primary
-    val url = "https://aistudio.google.com/apikey"
+    val geminiKeyRegex = Regex("^AIzaSy[A-Za-z0-9_-]{33}$")
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
         Card(
@@ -706,36 +711,43 @@ internal fun GeminiSetupDialog(
                         modifier = Modifier.size(24.dp),
                         tint = primaryColor,
                     )
-                    Text("Set up Gemini", style = MaterialTheme.typography.headlineSmall)
+                    Text("AI Translation", style = MaterialTheme.typography.headlineSmall)
                 }
 
-                Text(
-                    "An API key is required for AI lyrics translation with Gemini.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-
+                val linkUrl = "https://aistudio.google.com/"
                 val annotatedString = buildAnnotatedString {
-                    append("Get your free API key at ")
+                    append("Translating lyrics is super easy! Just go to ")
                     val start = length
-                    append(url)
+                    append("aistudio.google.com")
                     addLink(
                         LinkAnnotation.Url(
-                            url = url,
+                            url = linkUrl,
                             styles = TextLinkStyles(SpanStyle(color = primaryColor, textDecoration = TextDecoration.Underline)),
                         ),
                         start = start,
                         end = length,
                     )
+                    append(", sign in with Google, click \"Create API key\" then \"Create key\", and paste your API key below!")
                 }
                 Text(annotatedString, style = MaterialTheme.typography.bodyMedium)
 
                 OutlinedTextField(
                     value = keyInput,
-                    onValueChange = { keyInput = it },
+                    onValueChange = { value ->
+                        keyInput = value
+                        isApiKeyValid = geminiKeyRegex.matches(value.trim())
+                    },
                     label = { Text("Gemini API Key") },
+                    placeholder = { Text("AIzaSyA0q.....") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     leadingIcon = { Icon(painterResource(R.drawable.key), contentDescription = null) },
+                )
+
+                Text(
+                    "If something doesn't work, you can explore more in Settings",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
                 Text(
@@ -750,7 +762,8 @@ internal fun GeminiSetupDialog(
                         .height(160.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
-                        .verticalScroll(rememberScrollState()),
+                        .verticalScroll(rememberScrollState())
+                        .alpha(if (isApiKeyValid) 1f else 0.38f),
                 ) {
                     sortedLanguages.forEach { entry ->
                         val code = entry.key
@@ -758,7 +771,7 @@ internal fun GeminiSetupDialog(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
+                                .clickable(enabled = isApiKeyValid) {
                                     selectedLanguage = code
                                     onLanguageSelected(code)
                                 }
@@ -794,10 +807,13 @@ internal fun GeminiSetupDialog(
                     }
                     Spacer(Modifier.width(8.dp))
                     Button(
-                        onClick = { onSave(keyInput.trim()) },
-                        enabled = keyInput.trim().isNotBlank(),
+                        onClick = {
+                            onSave(keyInput.trim())
+                            onSetupCompleted()
+                        },
+                        enabled = isApiKeyValid && selectedLanguage.isNotBlank(),
                     ) {
-                        Text(stringResource(android.R.string.ok))
+                        Text("Next")
                     }
                 }
             }

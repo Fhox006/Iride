@@ -141,7 +141,6 @@ import com.metrolist.music.ui.utils.fadingEdge
 import com.metrolist.music.utils.ComposeToImage
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
-import com.metrolist.music.viewmodels.LyricsSearchStatus
 import com.metrolist.music.viewmodels.LyricsViewModel
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -286,14 +285,6 @@ fun ExperimentalLyrics(
 
     val lines by lyricsViewModel.lines.collectAsState()
     val mergedLyricsList by lyricsViewModel.mergedLyricsList.collectAsState()
-    val searchStatus by lyricsViewModel.lyricsSearchStatus.collectAsState()
-
-    LaunchedEffect(currentLyricsEntity, mediaMetadata) {
-        val meta = mediaMetadata
-        if (currentLyricsEntity?.lyrics == null && meta != null) {
-            lyricsViewModel.loadProgressiveLyrics(meta, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
-        }
-    }
 
     LaunchedEffect(lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator) {
         lyricsViewModel.processLyrics(lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
@@ -810,33 +801,6 @@ fun ExperimentalLyrics(
                         )
                     }
                 } // end if(showPills)
-
-                AnimatedVisibility(
-                    visible = searchStatus is LyricsSearchStatus.SearchingSynced,
-                    enter = slideInVertically { -it } + fadeIn(),
-                    exit = slideOutVertically { -it } + fadeOut(),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .height(42.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(Color.Transparent)
-                                .border(1.dp, expressiveAccent.copy(alpha = 0.35f), RoundedCornerShape(50))
-                                .padding(horizontal = 20.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.searching_synced_lyrics),
-                                color = expressiveAccent.copy(alpha = 0.8f),
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                        }
-                    }
-                }
 
                 // Action buttons below pills
                 val anySelected = selectedIndices.isNotEmpty()

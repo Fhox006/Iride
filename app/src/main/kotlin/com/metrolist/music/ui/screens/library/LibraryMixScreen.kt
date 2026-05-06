@@ -450,7 +450,6 @@ fun LibraryMixScreen(
                 Triple(R.string.downloads, R.drawable.download, "auto_playlist/downloaded"),
                 Triple(R.string.cache, R.drawable.cached, "cache_playlist/cached"),
                 Triple(R.string.filter_uploaded, R.drawable.upload, "auto_playlist/uploaded"),
-                Triple(R.string.stats, R.drawable.stats, "stats"),
             )
 
             categories.chunked(2).forEach { row ->

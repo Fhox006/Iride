@@ -15,7 +15,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -33,9 +32,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -51,14 +48,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.edit
 import androidx.navigation.NavController
 import com.metrolist.music.R
@@ -170,34 +164,20 @@ private fun WelcomePage(onNext: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(horizontal = 40.dp)
-            .padding(bottom = 80.dp)
+            .padding(bottom = 48.dp)
     ) {
         AnimatedVisibility(
             visible = visible,
             enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { it / 3 }
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
-                            )
-                        )
-                    )
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.eye),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(64.dp)
-                )
-            }
+            Icon(
+                painter = painterResource(R.drawable.eye),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(72.dp)
+            )
         }
 
         Spacer(Modifier.height(40.dp))
@@ -208,9 +188,8 @@ private fun WelcomePage(onNext: () -> Unit) {
         ) {
             Text(
                 text = "Iride",
-                style = MaterialTheme.typography.displayLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 56.sp
+                style = MaterialTheme.typography.displayMedium.copy(
+                    fontWeight = FontWeight.Bold
                 ),
                 color = MaterialTheme.colorScheme.onBackground
             )
@@ -226,8 +205,7 @@ private fun WelcomePage(onNext: () -> Unit) {
                 text = "Musica che puoi sentire e vedere.\nUn'esperienza sensoriale completa — non solo suono, ma emozione visiva.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                textAlign = TextAlign.Center,
-                lineHeight = 26.sp
+                textAlign = TextAlign.Center
             )
         }
 
@@ -239,10 +217,7 @@ private fun WelcomePage(onNext: () -> Unit) {
         ) {
             Button(
                 onClick = onNext,
-                shape = RoundedCornerShape(50),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = "Inizia",
@@ -271,34 +246,20 @@ private fun NotificationsPage(onEnable: () -> Unit, onSkip: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(horizontal = 40.dp)
-            .padding(bottom = 80.dp)
+            .padding(bottom = 48.dp)
     ) {
         AnimatedVisibility(
             visible = visible,
             enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { it / 3 }
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
-                                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.05f)
-                            )
-                        )
-                    )
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.notification),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.size(56.dp)
-                )
-            }
+            Icon(
+                painter = painterResource(R.drawable.notification),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.size(72.dp)
+            )
         }
 
         Spacer(Modifier.height(40.dp))
@@ -325,8 +286,7 @@ private fun NotificationsPage(onEnable: () -> Unit, onSkip: () -> Unit) {
                 text = "Le notifiche ti permettono di sapere quando la musica è in riproduzione e di controllare il player direttamente dalla schermata di blocco.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                textAlign = TextAlign.Center,
-                lineHeight = 26.sp
+                textAlign = TextAlign.Center
             )
         }
 
@@ -342,10 +302,7 @@ private fun NotificationsPage(onEnable: () -> Unit, onSkip: () -> Unit) {
             ) {
                 Button(
                     onClick = onEnable,
-                    shape = RoundedCornerShape(50),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = "Attiva notifiche",
@@ -356,10 +313,7 @@ private fun NotificationsPage(onEnable: () -> Unit, onSkip: () -> Unit) {
 
                 OutlinedButton(
                     onClick = onSkip,
-                    shape = RoundedCornerShape(50),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = "No grazie",
@@ -382,34 +336,20 @@ private fun LoginPage(onLogin: () -> Unit, onSkip: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(horizontal = 40.dp)
-            .padding(bottom = 80.dp)
+            .padding(bottom = 48.dp)
     ) {
         AnimatedVisibility(
             visible = visible,
             enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { it / 3 }
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f),
-                                MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f)
-                            )
-                        )
-                    )
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.login),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(56.dp)
-                )
-            }
+            Icon(
+                painter = painterResource(R.drawable.login),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(72.dp)
+            )
         }
 
         Spacer(Modifier.height(40.dp))
@@ -436,8 +376,7 @@ private fun LoginPage(onLogin: () -> Unit, onSkip: () -> Unit) {
                 text = "Accedi con il tuo account YouTube per sincronizzare le playlist, i brani preferiti e la cronologia di ascolto.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                textAlign = TextAlign.Center,
-                lineHeight = 26.sp
+                textAlign = TextAlign.Center
             )
         }
 
@@ -453,10 +392,7 @@ private fun LoginPage(onLogin: () -> Unit, onSkip: () -> Unit) {
             ) {
                 Button(
                     onClick = onLogin,
-                    shape = RoundedCornerShape(50),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = "Accedi con YouTube",
@@ -467,10 +403,7 @@ private fun LoginPage(onLogin: () -> Unit, onSkip: () -> Unit) {
 
                 OutlinedButton(
                     onClick = onSkip,
-                    shape = RoundedCornerShape(50),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = "Continua senza account",
