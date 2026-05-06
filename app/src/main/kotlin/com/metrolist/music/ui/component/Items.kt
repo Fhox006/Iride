@@ -375,11 +375,10 @@ fun SongListItem(
     modifier: Modifier = Modifier,
     albumIndex: Int? = null,
     showLikedIcon: Boolean = true,
-    showInLibraryIcon: Boolean = false,
     showDownloadIcon: Boolean = true,
     subtitleOverride: String? = null,
     badges: @Composable RowScope.() -> Unit = {
-        if (showLikedIcon && (song.song.liked || (showInLibraryIcon && song.song.inLibrary != null))) {
+        if (showLikedIcon && song.song.liked) {
             Icon.Starred()
         }
         if (song.song.explicit) {
@@ -442,10 +441,9 @@ fun SongGridItem(
     song: Song,
     modifier: Modifier = Modifier,
     showLikedIcon: Boolean = true,
-    showInLibraryIcon: Boolean = false,
     showDownloadIcon: Boolean = true,
     badges: @Composable RowScope.() -> Unit = {
-        if (showLikedIcon && (song.song.liked || (showInLibraryIcon && song.song.inLibrary != null))) {
+        if (showLikedIcon && song.song.liked) {
             Icon.Starred()
         }
         if (showDownloadIcon) {
@@ -988,7 +986,7 @@ fun YouTubeListItem(
             if (item is AlbumItem) value = database.album(item.id).firstOrNull()
         }
 
-        if ((item is SongItem && (song?.song?.liked == true || song?.song?.inLibrary != null)) ||
+        if ((item is SongItem && song?.song?.liked == true) ||
             (item is AlbumItem && album?.album?.bookmarkedAt != null)
         ) {
             Icon.Starred()
@@ -1057,8 +1055,8 @@ fun YouTubeGridItem(
             if (item is AlbumItem) value = database.album(item.id).firstOrNull()
         }
 
-        if (item is SongItem && (song?.song?.liked == true || song?.song?.inLibrary != null) ||
-            item is AlbumItem && album?.album?.bookmarkedAt != null
+        if ((item is SongItem && song?.song?.liked == true) ||
+            (item is AlbumItem && album?.album?.bookmarkedAt != null)
         ) {
             Icon.Starred()
         }

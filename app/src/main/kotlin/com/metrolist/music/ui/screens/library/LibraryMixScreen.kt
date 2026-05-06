@@ -667,7 +667,6 @@ fun LibraryMixScreen(
                             is Song -> {
                                 SongGridItem(
                                     song = item,
-                                    showInLibraryIcon = false,
                                     isActive = item.id == mediaMetadata?.id,
                                     isPlaying = isPlaying,
                                     showLikedIcon = false,

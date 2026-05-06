@@ -318,9 +318,8 @@ fun TopPlaylistScreen(
                         SongListItem(
                             song = song,
                             albumIndex = index + 1,
-                            isActive = song.song.id == mediaMetadata?.id,
+                            isActive = song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
-                            showInLibraryIcon = true,
                             trailingContent = {
                                 if (inSelectMode) {
                                     Checkbox(

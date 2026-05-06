@@ -650,7 +650,6 @@ fun LibraryDownloadsScreen(
                             is Song -> {
                                 SongListItem(
                                     song = item,
-                                    showInLibraryIcon = false,
                                     isActive = item.id == mediaMetadata?.id,
                                     isPlaying = isPlaying,
                                     showLikedIcon = false,
@@ -983,7 +982,6 @@ fun LibraryDownloadsScreen(
                             is Song -> {
                                 SongGridItem(
                                     song = item,
-                                    showInLibraryIcon = false,
                                     isActive = item.id == mediaMetadata?.id,
                                     isPlaying = isPlaying,
                                     showLikedIcon = false,

@@ -34,6 +34,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -115,7 +118,66 @@ constructor(
     private val cache = LruCache<String, List<LyricsResult>>(MAX_CACHE_SIZE)
     private var currentLyricsJob: Job? = null
 
+    suspend fun getLyricsProgressive(
+        mediaMetadata: MediaMetadata,
+        onTierAvailable: suspend (LyricsWithProvider, LyricsTier) -> Unit
+    ) {
+        val isNetworkAvailable = try { networkConnectivity.isCurrentlyConnected() } catch (_: Exception) { true }
+        if (!isNetworkAvailable) return
+
+        val cleanedTitle = LyricsUtils.cleanTitleForSearch(mediaMetadata.title)
+        val artists = mediaMetadata.artists.joinToString { it.name }
+        val enabledProviders = lyricsProviders.filter { it.isEnabled(context) }
+
+        val fastSet = setOf(
+            LrcLibLyricsProvider,
+            KuGouLyricsProvider,
+            YouTubeSubtitleLyricsProvider,
+            YouTubeLyricsProvider
+        )
+
+        var bestTier = LyricsTier.PLAIN
+        val tierMutex = Mutex()
+
+        coroutineScope {
+            val jobs = enabledProviders.map { provider ->
+                val timeout = if (provider in fastSet) 4000L else 15000L
+                async(Dispatchers.IO) {
+                    try {
+                        val result = withTimeoutOrNull(timeout) {
+                            provider.getLyrics(
+                                context,
+                                mediaMetadata.id,
+                                cleanedTitle,
+                                artists,
+                                mediaMetadata.duration,
+                                mediaMetadata.album?.title,
+                            )
+                        }
+                        if (result?.isSuccess == true) {
+                            val raw = result.getOrNull()!!
+                            val filtered = LyricsUtils.filterLyricsCreditLines(raw)
+                            val tier = LyricsUtils.detectTier(filtered)
+                            val shouldEmit = tierMutex.withLock {
+                                if (tier.ordinal > bestTier.ordinal) { bestTier = tier; true } else false
+                            }
+                            if (shouldEmit) {
+                                onTierAvailable(LyricsWithProvider(filtered, provider.name), tier)
+                            }
+                        }
+                    } catch (_: CancellationException) {
+                        // expected
+                    } catch (e: Exception) {
+                        Timber.tag("LyricsHelper").w("Progressive provider ${provider.name} failed: ${e.message}")
+                    }
+                }
+            }
+            jobs.forEach { it.await() }
+        }
+    }
+
     suspend fun getLyrics(mediaMetadata: MediaMetadata): LyricsWithProvider {
+
         mediaMetadata.thumbnailUrl?.let { rawUrl ->
             val hdUrl = rawUrl.resize(PLAYER_THUMBNAIL_SIZE, PLAYER_THUMBNAIL_SIZE)
             CoroutineScope(Dispatchers.IO).launch {

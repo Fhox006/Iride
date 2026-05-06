@@ -266,7 +266,6 @@ fun CachePlaylistScreen(
                         song = song,
                         isActive = song.id == mediaMetadata?.id,
                         isPlaying = isPlaying,
-                        showInLibraryIcon = true,
                         trailingContent = {
                             if (inSelectMode) {
                                 Checkbox(

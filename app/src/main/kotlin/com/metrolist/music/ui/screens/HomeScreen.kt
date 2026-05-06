@@ -1523,7 +1523,6 @@ fun HomeScreen(
                                                             item = track,
                                                             isActive = track.id == mediaMetadata?.id,
                                                             isPlaying = isPlaying,
-                                                            isSwipeable = false,
                                                             trailingContent = {
                                                                 IconButton(
                                                                     onClick = {
@@ -1980,10 +1979,8 @@ fun HomeScreen(
                                         ) { originalSong ->
                                             SongListItem(
                                                 song = originalSong,
-                                                showInLibraryIcon = true,
                                                 isActive = originalSong.id == mediaMetadata?.id,
                                                 isPlaying = isPlaying,
-                                                isSwipeable = false,
                                                 trailingContent = {
                                                     IconButton(
                                                         onClick = {
@@ -2294,10 +2291,8 @@ fun HomeScreen(
                                         ) { originalSong ->
                                             SongListItem(
                                                 song = originalSong,
-                                                showInLibraryIcon = true,
                                                 isActive = originalSong.id == mediaMetadata?.id,
                                                 isPlaying = isPlaying,
-                                                isSwipeable = false,
                                                 trailingContent = {
                                                     IconButton(
                                                         onClick = {
@@ -2525,7 +2520,6 @@ fun HomeScreen(
                                                     item = song,
                                                     isActive = song.id == mediaMetadata?.id,
                                                     isPlaying = isPlaying,
-                                                    isSwipeable = false,
                                                     trailingContent = {
                                                         IconButton(
                                                             onClick = {

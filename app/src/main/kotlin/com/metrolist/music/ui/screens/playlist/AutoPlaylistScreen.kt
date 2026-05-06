@@ -580,7 +580,6 @@ fun AutoPlaylistScreen(
                             song = song,
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
-                            showInLibraryIcon = true,
                             trailingContent = {
                                 if (inSelectMode) {
                                     Checkbox(

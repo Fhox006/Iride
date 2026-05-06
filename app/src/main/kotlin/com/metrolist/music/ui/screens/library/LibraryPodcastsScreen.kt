@@ -402,7 +402,6 @@ fun LibraryPodcastsScreen(
                             )
                         SongListItem(
                             song = episode,
-                            showInLibraryIcon = false,
                             isActive = episode.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
                             showLikedIcon = false,

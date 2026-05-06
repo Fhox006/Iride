@@ -29,8 +29,16 @@ private val PAXSENIX_BG_LINE_REGEX = "^\\[bg:\\s*(.*)\\]$".toRegex()
 private val AGENT_REGEX = "\\{agent:([^}]+)\\}".toRegex()
 private val BACKGROUND_REGEX = "^\\{bg\\}".toRegex()
 
+enum class LyricsTier { PLAIN, SYNCED_LINE, SYNCED_WORD }
+
 @Suppress("RegExpRedundantEscape")
 object LyricsUtils {
+    fun detectTier(lyrics: String): LyricsTier {
+        val hasTimestamp = Regex("\\[\\d{1,2}:\\d{2}").containsMatchIn(lyrics)
+        if (!hasTimestamp) return LyricsTier.PLAIN
+        return if (RICH_SYNC_WORD_REGEX.containsMatchIn(lyrics)) LyricsTier.SYNCED_WORD else LyricsTier.SYNCED_LINE
+    }
+
     fun cleanTitleForSearch(title: String): String {
         return title.replace(Regex("\\s*[(\\[].*?[)\\]]"), "").trim()
     }

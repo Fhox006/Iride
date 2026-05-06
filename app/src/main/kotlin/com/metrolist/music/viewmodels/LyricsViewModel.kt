@@ -7,9 +7,14 @@ package com.metrolist.music.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.metrolist.music.db.MusicDatabase
+import com.metrolist.music.db.entities.LyricsEntity
 import com.metrolist.music.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.metrolist.music.lyrics.LyricsEntry
+import com.metrolist.music.lyrics.LyricsHelper
+import com.metrolist.music.lyrics.LyricsTier
 import com.metrolist.music.lyrics.LyricsUtils
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.LyricsListItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -20,9 +25,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+sealed class LyricsSearchStatus {
+    object Idle : LyricsSearchStatus()
+    object SearchingSynced : LyricsSearchStatus()
+    object Found : LyricsSearchStatus()
+}
+
 @HiltViewModel
-class LyricsViewModel @Inject constructor() : ViewModel() {
+class LyricsViewModel @Inject constructor(
+    private val lyricsHelper: LyricsHelper,
+    private val database: MusicDatabase,
+) : ViewModel() {
     private var processJob: kotlinx.coroutines.Job? = null
+    private var progressiveJob: kotlinx.coroutines.Job? = null
+
+    val lyricsSearchStatus = MutableStateFlow<LyricsSearchStatus>(LyricsSearchStatus.Idle)
 
     private val _lines = MutableStateFlow<List<LyricsEntry>>(emptyList())
     val lines: StateFlow<List<LyricsEntry>> = _lines.asStateFlow()
@@ -45,7 +62,7 @@ class LyricsViewModel @Inject constructor() : ViewModel() {
                     val timestampRegex = Regex("\\[\\d{1,2}:\\d{2}")
                     val isLrc = timestampRegex.containsMatchIn(lyrics)
                     val parsedLines = if (isLrc) LyricsUtils.parseLyrics(lyrics) else emptyList()
-                    
+
                     if (parsedLines.isNotEmpty()) {
                         listOf(LyricsEntry.HEAD_LYRICS_ENTRY) + parsedLines
                     } else {
@@ -59,7 +76,7 @@ class LyricsViewModel @Inject constructor() : ViewModel() {
                     }
                 }
             }
-            
+
             _lines.value = processedLines
             updateMergedList(processedLines, showIntervalIndicator)
 
@@ -76,6 +93,40 @@ class LyricsViewModel @Inject constructor() : ViewModel() {
                         )
                     }
                 }
+            }
+        }
+    }
+
+    fun loadProgressiveLyrics(
+        mediaMetadata: MediaMetadata,
+        enabledLanguages: List<String>,
+        romanizeCyrillicByLine: Boolean,
+        showIntervalIndicator: Boolean,
+    ) {
+        progressiveJob?.cancel()
+        processJob?.cancel()
+        lyricsSearchStatus.value = LyricsSearchStatus.SearchingSynced
+
+        progressiveJob = viewModelScope.launch {
+            var bestTierSaved = LyricsTier.PLAIN
+
+            lyricsHelper.getLyricsProgressive(mediaMetadata) { result, tier ->
+                processLyrics(result.lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
+
+                if (tier.ordinal > bestTierSaved.ordinal) {
+                    bestTierSaved = tier
+                    database.query {
+                        upsert(LyricsEntity(mediaMetadata.id, result.lyrics, result.provider))
+                    }
+                }
+
+                if (tier != LyricsTier.PLAIN) {
+                    lyricsSearchStatus.value = LyricsSearchStatus.Found
+                }
+            }
+
+            if (lyricsSearchStatus.value == LyricsSearchStatus.SearchingSynced) {
+                lyricsSearchStatus.value = LyricsSearchStatus.Idle
             }
         }
     }
