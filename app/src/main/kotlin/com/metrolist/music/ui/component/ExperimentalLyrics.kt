@@ -747,115 +747,115 @@ fun ExperimentalLyrics(
                 Spacer(Modifier.fillMaxHeight(0.10f))
 
                 if (showPills) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp, horizontal = 12.dp)
-                ) {
-                    LyricsPill(
-                        icon = R.drawable.more_vert,
-                        isActive = false,
-                        textButtonColor = expressiveAccent,
-                        iconButtonColor = iconButtonColor,
-                        modifier = Modifier.weight(1f),
-                        onClick = onShowOptionsMenu,
-                    )
-                    LyricsPill(
-                        icon = R.drawable.translate,
-                        isActive = hasTranslations,
-                        textButtonColor = expressiveAccent,
-                        iconButtonColor = iconButtonColor,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (hasTranslations) {
-                                lyricsEntity?.let { entity ->
-                                    val clearedLyrics = LyricsTranslationHelper.clearTranslations(entity)
-                                    database.query { upsert(clearedLyrics) }
-                                    LyricsTranslationHelper.triggerClearTranslations()
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp, horizontal = 12.dp)
+                    ) {
+                        LyricsPill(
+                            icon = R.drawable.more_vert,
+                            isActive = false,
+                            textButtonColor = expressiveAccent,
+                            iconButtonColor = iconButtonColor,
+                            modifier = Modifier.weight(1f),
+                            onClick = onShowOptionsMenu,
+                        )
+                        LyricsPill(
+                            icon = R.drawable.translate,
+                            isActive = hasTranslations,
+                            textButtonColor = expressiveAccent,
+                            iconButtonColor = iconButtonColor,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                if (hasTranslations) {
+                                    lyricsEntity?.let { entity ->
+                                        val clearedLyrics = LyricsTranslationHelper.clearTranslations(entity)
+                                        database.query { upsert(clearedLyrics) }
+                                        LyricsTranslationHelper.triggerClearTranslations()
+                                    }
+                                } else {
+                                    showLanguagePickerDialog = true
                                 }
-                            } else {
-                                showLanguagePickerDialog = true
-                            }
-                        },
-                    )
-                    LyricsPill(
-                        icon = R.drawable.lyrics,
-                        isActive = isSelectionModeActive,
-                        textButtonColor = expressiveAccent,
-                        iconButtonColor = iconButtonColor,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (isSelectionModeActive) {
-                                isSelectionModeActive = false
-                                selectedIndices.clear()
-                            } else if (lines.isNotEmpty()) {
-                                isSelectionModeActive = true
-                                selectedIndices.clear()
-                                val currentLine = deferredCurrentLineIndex
-                                if (currentLine >= 0 && currentLine < lines.size) {
-                                    selectedIndices.add(currentLine)
+                            },
+                        )
+                        LyricsPill(
+                            icon = R.drawable.lyrics,
+                            isActive = isSelectionModeActive,
+                            textButtonColor = expressiveAccent,
+                            iconButtonColor = iconButtonColor,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                if (isSelectionModeActive) {
+                                    isSelectionModeActive = false
+                                    selectedIndices.clear()
+                                } else if (lines.isNotEmpty()) {
+                                    isSelectionModeActive = true
+                                    selectedIndices.clear()
+                                    val currentLine = deferredCurrentLineIndex
+                                    if (currentLine >= 0 && currentLine < lines.size) {
+                                        selectedIndices.add(currentLine)
+                                    }
                                 }
-                            }
-                        },
-                    )
-                }
+                            },
+                        )
+                    }
                 } // end if(showPills)
 
                 // Action buttons below pills
                 val anySelected = selectedIndices.isNotEmpty()
                 if (showPills) {
-                AnimatedVisibility(
-                    visible = !isAutoScrollEnabled && isSynced && !isSelectionModeActive,
-                    enter = slideInVertically { -it } + fadeIn(),
-                    exit = slideOutVertically { -it } + fadeOut(),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.Center
+                    AnimatedVisibility(
+                        visible = !isAutoScrollEnabled && isSynced && !isSelectionModeActive,
+                        enter = slideInVertically { -it } + fadeIn(),
+                        exit = slideOutVertically { -it } + fadeOut(),
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .height(42.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(Color.Transparent)
-                                .border(1.dp, expressiveAccent.copy(alpha = 0.35f), RoundedCornerShape(50))
-                                .clickable {
-                                    flingJob?.cancel()
-                                    var target = scrollTargetIndex
-                                    if (target == -1) {
-                                        target = findActiveLineIndices(lines, currentPositionState + (currentSong?.song?.lyricsOffset ?: 0)).maxOrNull() ?: -1
-                                    }
-                                    if (target != -1) {
-                                        val listIdx = mergedLyricsList.indexOfFirst { it is LyricsListItem.Line && it.index == target }.coerceAtLeast(0)
-                                        userManualOffset = positions[listIdx] ?: 0f
-                                        deferredCurrentLineIndex = target
-                                        scrollTargetIndex = target
-                                        isAutoScrollEnabled = true
-                                    }
-                                }
-                                .padding(horizontal = 20.dp),
-                            contentAlignment = Alignment.Center,
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.Center
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            Box(
+                                modifier = Modifier
+                                    .height(42.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(Color.Transparent)
+                                    .border(1.dp, expressiveAccent.copy(alpha = 0.35f), RoundedCornerShape(50))
+                                    .clickable {
+                                        flingJob?.cancel()
+                                        var target = scrollTargetIndex
+                                        if (target == -1) {
+                                            target = findActiveLineIndices(lines, currentPositionState + (currentSong?.song?.lyricsOffset ?: 0)).maxOrNull() ?: -1
+                                        }
+                                        if (target != -1) {
+                                            val listIdx = mergedLyricsList.indexOfFirst { it is LyricsListItem.Line && it.index == target }.coerceAtLeast(0)
+                                            userManualOffset = positions[listIdx] ?: 0f
+                                            deferredCurrentLineIndex = target
+                                            scrollTargetIndex = target
+                                            isAutoScrollEnabled = true
+                                        }
+                                    }
+                                    .padding(horizontal = 20.dp),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.sync),
-                                    contentDescription = null,
-                                    tint = expressiveAccent.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(17.dp),
-                                )
-                                Text(
-                                    text = stringResource(R.string.auto_scroll),
-                                    color = expressiveAccent.copy(alpha = 0.8f),
-                                    style = MaterialTheme.typography.labelMedium,
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.sync),
+                                        contentDescription = null,
+                                        tint = expressiveAccent.copy(alpha = 0.8f),
+                                        modifier = Modifier.size(17.dp),
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.auto_scroll),
+                                        color = expressiveAccent.copy(alpha = 0.8f),
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                }
                             }
                         }
                     }
-                }
                 } // end if(showPills)
 
                 AnimatedVisibility(

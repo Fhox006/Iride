@@ -293,8 +293,7 @@ class MainActivity : ComponentActivity() {
             isServiceBound = false
             listenTogetherManager.setPlayerConnection(null)
             playerConnection?.dispose()
-            // DO NOT null out playerConnection here - keep it for reconnection
-            // DO NOT update playerConnectionSnapshot - this prevents UI recomposition
+            playerConnectionSnapshot = null
         }
     }
 
@@ -334,6 +333,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        safeUnbindService("onStop()")
+        // Also null out the snapshot so the UI shows a loading state
+        // instead of stale data while the service is unbound
+        playerConnectionSnapshot = null
     }
 
     override fun onDestroy() {
@@ -348,7 +351,9 @@ class MainActivity : ComponentActivity() {
         playerConnection?.dispose()
         playerConnection = null
         playerConnectionSnapshot = null
-        safeUnbindService("onDestroy()")
+        if (isServiceBound) {
+            safeUnbindService("onDestroy()")
+        }
         if (stopServiceOnClear) {
             stopService(Intent(this, MusicService::class.java))
         }
@@ -525,6 +530,7 @@ class MainActivity : ComponentActivity() {
         var themeColor by rememberSaveable(stateSaver = ColorSaver) {
             mutableStateOf(selectedThemeColor)
         }
+        val themeColorCache = remember { LinkedHashMap<String, Color>(21, 0.75f, true) }
 
         LaunchedEffect(selectedThemeColor) {
             if (!enableDynamicTheme) {
@@ -540,14 +546,21 @@ class MainActivity : ComponentActivity() {
             }
 
             playerConnection.service.currentMediaMetadata.collectLatest { song ->
-                if (song?.thumbnailUrl != null) {
+                val thumbnailUrl = song?.thumbnailUrl
+                if (thumbnailUrl != null) {
+                    val cached = themeColorCache[thumbnailUrl]
+                    if (cached != null) {
+                        themeColor = cached
+                        return@collectLatest
+                    }
+
                     withContext(Dispatchers.IO) {
                         try {
                             val result =
                                 imageLoader.execute(
                                     ImageRequest
                                         .Builder(this@MainActivity)
-                                        .data(song.thumbnailUrl)
+                                        .data(thumbnailUrl)
                                         .allowHardware(false)
                                         .memoryCachePolicy(CachePolicy.ENABLED)
                                         .diskCachePolicy(CachePolicy.ENABLED)
@@ -555,7 +568,15 @@ class MainActivity : ComponentActivity() {
                                         .crossfade(false)
                                         .build(),
                                 )
-                            themeColor = result.image?.toBitmap()?.extractThemeColor() ?: selectedThemeColor
+                            val extractedColor = result.image?.toBitmap()?.extractThemeColor() ?: selectedThemeColor
+                            themeColor = extractedColor
+                            themeColorCache[thumbnailUrl] = extractedColor
+                            if (themeColorCache.size > 20) {
+                                themeColorCache.entries.iterator().also {
+                                    it.next()
+                                    it.remove()
+                                }
+                            }
                         } catch (e: Exception) {
                             // Fallback to default on error
                             themeColor = selectedThemeColor

@@ -814,27 +814,18 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             context.dataStore.data
                 .map { it[InnerTubeCookieKey] }
+                .distinctUntilChanged()
                 .collect { cookie ->
-                    // Avoid processing if already processing
                     if (isProcessingAccountData) return@collect
-
-                    // Always process cookie changes, even if same value (for logout/login scenarios)
                     lastProcessedCookie = cookie
                     isProcessingAccountData = true
-
                     try {
-                        if (cookie != null && cookie.isNotEmpty()) {
-
-                            // Update YouTube.cookie manually to ensure it's set
+                        if (!cookie.isNullOrEmpty()) {
                             YouTube.cookie = cookie
-
-                            // Fetch new account data
                             YouTube.accountInfo().onSuccess { info ->
                                 accountName.value = info.name
                                 accountImageUrl.value = info.thumbnailUrl
-                            }.onFailure {
-                                reportException(it)
-                            }
+                            }.onFailure { reportException(it) }
                         } else {
                             accountName.value = "Guest"
                             accountImageUrl.value = null
@@ -844,6 +835,18 @@ class HomeViewModel @Inject constructor(
                         isProcessingAccountData = false
                     }
                 }
+        }
+
+        // Load account data immediately on init without waiting for a cookie change event
+        viewModelScope.launch(Dispatchers.IO) {
+            val cookie = context.dataStore.data.map { it[InnerTubeCookieKey] }.first()
+            if (!cookie.isNullOrEmpty() && accountImageUrl.value == null) {
+                YouTube.cookie = cookie
+                YouTube.accountInfo().onSuccess { info ->
+                    accountName.value = info.name
+                    accountImageUrl.value = info.thumbnailUrl
+                }.onFailure { reportException(it) }
+            }
         }
 
         // Listen for HideYoutubeShorts preference changes and reload account playlists instantly
