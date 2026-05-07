@@ -375,6 +375,8 @@
     <string name="settings_section_privacy">Privacy &amp; Security</string>
     <string name="settings_section_player_content">Player &amp; Content</string>
     <string name="settings_section_storage">Storage &amp; Data</string>
+    <string name="app_data_storage">App Data &amp; Storage</string>
+    <string name="app_management_backup">App Management &amp; Backup</string>
     <string name="settings_section_system">System &amp; About</string>
     <string name="settings_section_player">Playback</string>
     <string name="settings_section_content">Content</string>

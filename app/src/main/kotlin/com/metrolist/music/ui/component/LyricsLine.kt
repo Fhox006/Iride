@@ -127,7 +127,10 @@ internal fun LyricsLine(
     val density = LocalDensity.current
     val animatedScale by animateFloatAsState(
         targetValue = if (isActiveLine || item.isBackground) 1f else 0.93f,
-        animationSpec = tween(durationMillis = 350, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        animationSpec = tween(
+            durationMillis = 500,
+            easing = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)  // slight overshoot spring
+        ),
         label = "lyricsLineScale"
     )
 
@@ -226,7 +229,7 @@ internal fun LyricsLine(
 
                 val animatedAlpha by animateFloatAsState(
                     targetValue = targetAlpha,
-                    animationSpec = tween(durationMillis = 400),
+                    animationSpec = tween(durationMillis = 550, easing = CubicBezierEasing(0.25f, 1f, 0.5f, 1f)),
                     label = "lyricsLineAlpha"
                 )
                 val lineColor = expressiveAccent.copy(alpha = if (item.isBackground) focusedAlpha else animatedAlpha)
@@ -377,16 +380,21 @@ private fun WordLevelLyrics(
         if (isActiveLine) {
             var lastPlayerPos = playerConnection.player.currentPosition
             var lastUpdateTime = System.currentTimeMillis()
+            var displayPos = lastPlayerPos + lyricsOffset
             while (isActive) {
                 withFrameMillis {
                     val now = System.currentTimeMillis()
                     val playerPos = playerConnection.player.currentPosition
+                    val elapsed = now - lastUpdateTime
                     if (playerPos != lastPlayerPos) {
                         lastPlayerPos = playerPos
                         lastUpdateTime = now
                     }
-                    val elapsed = now - lastUpdateTime
-                    smoothPosition = lastPlayerPos + lyricsOffset + (if (playerConnection.player.isPlaying) elapsed else 0)
+                    val rawPos = lastPlayerPos + lyricsOffset + (if (playerConnection.player.isPlaying) elapsed else 0)
+                    // lerp toward rawPos for smoothness — ~80ms lag max, but removes jitter
+                    val lerpFactor = (elapsed / 80f).coerceIn(0f, 1f)
+                    displayPos = (displayPos + (rawPos - displayPos) * lerpFactor).toLong()
+                    smoothPosition = displayPos
                 }
             }
         }
@@ -709,8 +717,8 @@ private fun WordLevelLyrics(
                             )
                         }
                     }) {
-                        if (shouldGlow) {
-                            val sMs = wordItem.startTime * 1000
+                        if (false && shouldGlow) {
+                            val sMs = wordItem!!.startTime * 1000
                             val eMs = wordItem.endTime * 1000
                             val dur = eMs - sMs
                             val wordLenText = wordItem.text.length.coerceAtLeast(1)
@@ -733,16 +741,30 @@ private fun WordLevelLyrics(
                         drawText(letterLayouts[i], color = expressiveAccent.copy(alpha = if (wordIdx == -1) focusedAlpha else baseAlpha))
                         if (!isWordSung && charLp > 0f && charLp < 1f) {
                             val fXL = charBounds.width * charLp
-                            val eW = (charBounds.width * 0.45f).coerceAtLeast(1f)
-                            val sWL = (fXL - eW).coerceAtLeast(0f)
-                            if (sWL > 0f) {
-                                clipRect(left = 0f, top = 0f, right = sWL, bottom = charBounds.height) { drawText(letterLayouts[i], color = expressiveAccent) }
+                            val dissolveWidth = (charBounds.width * 0.30f).coerceAtLeast(2f)
+                            val hardLeft = (fXL - dissolveWidth).coerceAtLeast(0f)
+                            // fully sung portion
+                            if (hardLeft > 0f) {
+                                clipRect(left = 0f, top = 0f, right = hardLeft, bottom = charBounds.height) {
+                                    drawText(letterLayouts[i], color = expressiveAccent)
+                                }
                             }
-                            for (j in 0 until 12) {
-                                val start = sWL + (j * eW / 12f)
-                                val end = (sWL + ((j + 1) * eW / 12f) + 0.5f).coerceAtMost(fXL)
-                                if (end > start) {
-                                    clipRect(left = start, top = 0f, right = end, bottom = charBounds.height) { drawText(letterLayouts[i], color = expressiveAccent.copy(alpha = 1f - (j + 0.5f) / 12f)) }
+                            // dissolve zone: 20 sub-steps with smooth alpha using easing
+                            val steps = 20
+                            for (j in 0 until steps) {
+                                val t = (j + 0.5f) / steps.toFloat()
+                                val stepStart = hardLeft + t * dissolveWidth - dissolveWidth / steps
+                                val stepEnd = hardLeft + (t + 1f / steps) * dissolveWidth
+                                val easedAlpha = 1f - (t * t)  // quadratic ease-out from sung to unsung
+                                if (stepEnd > stepStart && stepStart < fXL) {
+                                    clipRect(
+                                        left = stepStart.coerceAtLeast(0f),
+                                        top = 0f,
+                                        right = stepEnd.coerceAtMost(charBounds.width),
+                                        bottom = charBounds.height
+                                    ) {
+                                        drawText(letterLayouts[i], color = expressiveAccent.copy(alpha = easedAlpha))
+                                    }
                                 }
                             }
                         }

@@ -54,6 +54,7 @@ import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.Song
+import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
@@ -63,6 +64,7 @@ import com.metrolist.music.ui.menu.CsvColumnMappingDialog
 import com.metrolist.music.ui.menu.CsvImportProgressDialog
 import com.metrolist.music.ui.menu.LoadingScreen
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.BackupPreviewInfo
 import com.metrolist.music.viewmodels.BackupRestoreViewModel
 import com.metrolist.music.viewmodels.ConvertedSongLog
@@ -78,6 +80,7 @@ fun BackupAndRestore(
     navController: NavController,
     viewModel: BackupRestoreViewModel = hiltViewModel(),
 ) {
+    val (advancedMode, _) = rememberPreference(AdvancedModeKey, false)
     var importedTitle by remember { mutableStateOf("") }
     val importedSongs = remember { mutableStateListOf<Song>() }
     var showChoosePlaylistDialogOnline by rememberSaveable {
@@ -176,6 +179,8 @@ fun BackupAndRestore(
         )
 
         val appName = stringResource(R.string.app_name)
+        val arrowIcon = painterResource(R.drawable.arrow_forward)
+
         Material3SettingsGroup(
             items =
                 listOfNotNull(
@@ -198,14 +203,14 @@ fun BackupAndRestore(
                             restoreLauncher.launch(arrayOf("application/octet-stream"))
                         },
                     ),
-                    Material3SettingsItem(
+                    if (advancedMode) Material3SettingsItem(
                         title = { Text(stringResource(R.string.import_online)) },
                         icon = painterResource(R.drawable.playlist_add),
                         onClick = {
                             importM3uLauncherOnline.launch(arrayOf("audio/*"))
                         },
-                    ),
-                    Material3SettingsItem(
+                    ) else null,
+                    if (advancedMode) Material3SettingsItem(
                         title = { Text(stringResource(R.string.import_csv)) },
                         icon = painterResource(R.drawable.playlist_add),
                         onClick = {
@@ -213,14 +218,14 @@ fun BackupAndRestore(
                                 arrayOf("text/csv", "text/comma-separated-values", "application/csv", "text/plain"),
                             )
                         },
-                    ),
+                    ) else null,
                     if (BuildConfig.UPDATER_AVAILABLE) {
                         Material3SettingsItem(
                             icon = painterResource(R.drawable.update),
                             title = { Text(stringResource(R.string.updater)) },
                             trailingContent = {
                                 Icon(
-                                    painter = painterResource(R.drawable.arrow_forward),
+                                    painter = arrowIcon,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
@@ -228,13 +233,27 @@ fun BackupAndRestore(
                             },
                             onClick = { navController.navigate("settings/updater") }
                         )
-                    } else null
+                    } else null,
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.storage),
+                        title = { Text(stringResource(R.string.storage)) },
+                        description = { Text(stringResource(R.string.settings_storage_desc), style = MaterialTheme.typography.bodySmall) },
+                        trailingContent = {
+                            Icon(
+                                painter = arrowIcon,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = { navController.navigate("settings/storage") }
+                    )
                 ),
         )
     }
 
     TopAppBar(
-        title = { Text(stringResource(R.string.backup_restore)) },
+        title = { Text(stringResource(R.string.app_management_backup)) },
         navigationIcon = {
             IconButton(
                 onClick = navController::navigateUp,
