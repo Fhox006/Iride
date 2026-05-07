@@ -420,14 +420,8 @@ private fun PillContent(
                 // ── BOTTOM ROW: nav buttons, visible only on top-level routes ──
                 AnimatedVisibility(
                     visible = isTopLevelRoute,
-                    enter = fadeIn(tween(200)) + slideInVertically(
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
-                        initialOffsetY = { it },
-                    ),
-                    exit = fadeOut(tween(200)) + slideOutVertically(
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
-                        targetOffsetY = { it },
-                    ),
+                    enter = fadeIn(tween(300)) + slideInVertically(tween(320), initialOffsetY = { it }),
+                    exit = fadeOut(tween(250)) + slideOutVertically(tween(280), targetOffsetY = { it }),
                 ) {
                     Row(
                         modifier = Modifier
