@@ -58,9 +58,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -508,29 +512,24 @@ private fun NewMiniPlayerPlayButton(
                     drawContent()
                     val progress = progressState.progress
                     val stroke = Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Round)
-                    val startAngle = -90f
-                    val sweepAngle = 360f * progress
                     val diameter = size.minDimension
                     val topLeft = Offset((size.width - diameter) / 2, (size.height - diameter) / 2)
 
-                    drawArc(
-                        color = trackColor,
-                        startAngle = 0f,
-                        sweepAngle = 360f,
-                        useCenter = false,
-                        topLeft = topLeft,
-                        size = Size(diameter, diameter),
-                        style = stroke,
+                    val path = Path()
+                    val rrect = RoundRect(
+                        left = topLeft.x,
+                        top = topLeft.y,
+                        right = topLeft.x + diameter,
+                        bottom = topLeft.y + diameter,
+                        cornerRadius = CornerRadius(diameter * 0.208f),
                     )
-                    drawArc(
-                        color = primaryColor,
-                        startAngle = startAngle,
-                        sweepAngle = sweepAngle,
-                        useCenter = false,
-                        topLeft = topLeft,
-                        size = Size(diameter, diameter),
-                        style = stroke,
-                    )
+                    path.addRoundRect(rrect)
+                    drawPath(path, color = trackColor, style = stroke)
+                    val measure = PathMeasure()
+                    measure.setPath(path, false)
+                    val progressPath = Path()
+                    measure.getSegment(0f, measure.length * progress, progressPath, true)
+                    drawPath(progressPath, color = primaryColor, style = stroke)
                 },
     ) {
         Box(
@@ -538,8 +537,8 @@ private fun NewMiniPlayerPlayButton(
             modifier =
                 Modifier
                     .size(40.dp)
-                    .clip(CircleShape)
-                    .border(1.dp, outlineColor.copy(alpha = 0.3f), CircleShape)
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
                     .clickable {
                         playerBottomSheetState.expandSoft()
                     },
@@ -553,7 +552,7 @@ private fun NewMiniPlayerPlayButton(
                     model = thumbnailUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
                 )
             }
         }

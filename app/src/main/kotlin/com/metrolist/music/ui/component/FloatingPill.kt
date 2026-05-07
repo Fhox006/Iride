@@ -154,8 +154,8 @@ fun FloatingPill(
             .padding(horizontal = 12.dp)
             .graphicsLayer {
                 val p = playerBottomSheetState.progress.coerceIn(0f, 1f)
-                translationY = size.height * p
-                alpha = (1f - p * 2f).coerceIn(0f, 1f)
+                translationY = size.height * p * 0.25f
+                alpha = (1f - p * 1.5f).coerceIn(0f, 1f)
             },
     ) {
         if (playerConnection == null || mediaMetadata == null) {

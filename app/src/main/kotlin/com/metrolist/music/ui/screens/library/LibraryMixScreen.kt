@@ -803,8 +803,8 @@ private fun LibraryCategoryCard(
     Box(
         contentAlignment = Alignment.CenterStart,
         modifier = modifier
-            .height(48.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .height(52.dp)
+            .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),
