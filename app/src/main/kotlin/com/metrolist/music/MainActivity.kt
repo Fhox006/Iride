@@ -293,6 +293,7 @@ class MainActivity : ComponentActivity() {
             isServiceBound = false
             listenTogetherManager.setPlayerConnection(null)
             playerConnection?.dispose()
+            playerConnection = null
             playerConnectionSnapshot = null
         }
     }
@@ -344,9 +345,6 @@ class MainActivity : ComponentActivity() {
             dataStore.get(StopMusicOnTaskClearKey, false) &&
                 playerConnection?.isPlaying?.value == true &&
                 isFinishing
-        playerConnection?.dispose()
-        playerConnection = null
-        playerConnectionSnapshot = null
         if (isServiceBound) {
             safeUnbindService("onDestroy()")
         }

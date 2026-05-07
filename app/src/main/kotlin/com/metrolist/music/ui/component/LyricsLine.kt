@@ -8,8 +8,9 @@ package com.metrolist.music.ui.component
 import android.graphics.BlurMaskFilter
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -127,9 +128,9 @@ internal fun LyricsLine(
     val density = LocalDensity.current
     val animatedScale by animateFloatAsState(
         targetValue = if (isActiveLine || item.isBackground) 1f else 0.93f,
-        animationSpec = tween(
-            durationMillis = 500,
-            easing = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)  // slight overshoot spring
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = 500f
         ),
         label = "lyricsLineScale"
     )
@@ -170,7 +171,10 @@ internal fun LyricsLine(
                 else -> 4f
             }
         },
-        animationSpec = tween(durationMillis = 300),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = 400f
+        ),
         label = "lyricsBlurRadius"
     )
 
@@ -229,7 +233,10 @@ internal fun LyricsLine(
 
                 val animatedAlpha by animateFloatAsState(
                     targetValue = targetAlpha,
-                    animationSpec = tween(durationMillis = 550, easing = CubicBezierEasing(0.25f, 1f, 0.5f, 1f)),
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = 380f
+                    ),
                     label = "lyricsLineAlpha"
                 )
                 val lineColor = expressiveAccent.copy(alpha = if (item.isBackground) focusedAlpha else animatedAlpha)
@@ -496,10 +503,18 @@ private fun WordLevelLyrics(
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val maxWidthPx = constraints.maxWidth
         val layoutResult = remember(mainText, maxWidthPx, lyricStyle) {
+            val unconstrained = textMeasurer.measure(
+                text = mainText,
+                style = lyricStyle,
+                constraints = Constraints(maxWidth = Int.MAX_VALUE),
+                softWrap = false
+            )
+            val naturalWidth = unconstrained.size.width
+            val cappedWidth = minOf(naturalWidth, (maxWidthPx * 0.9f).toInt())
             textMeasurer.measure(
                 text = mainText,
                 style = lyricStyle,
-                constraints = Constraints(minWidth = maxWidthPx, maxWidth = maxWidthPx),
+                constraints = Constraints(minWidth = cappedWidth, maxWidth = cappedWidth),
                 softWrap = true
             )
         }
@@ -509,6 +524,8 @@ private fun WordLevelLyrics(
         }
 
         val isRtlText = remember(mainText) { mainText.containsRtl() }
+
+
 
         Canvas(modifier = Modifier
             .fillMaxWidth()
@@ -585,35 +602,51 @@ private fun WordLevelLyrics(
                 val lineTotalPushes = FloatArray(layoutResult.lineCount)
 
                 val charLiftPx = FloatArray(mainText.length) { 0f }
-                val activeWordIdx = wordFactors.indexOfFirst { (sf, _, isSung) -> !isSung && sf > 0f }
-                if (activeWordIdx != -1) {
-                    val (activeSungFactor, activeWord, _) = wordFactors[activeWordIdx]
-                    val durMsL = ((activeWord.endTime - activeWord.startTime) * 1000.0).coerceAtLeast(1.0)
-                    val dStrL = (Math.log(1.0 + durMsL / 350.0) / Math.log(1.0 + 1000.0 / 350.0)).coerceIn(0.0, 1.0).toFloat()
-                    if (dStrL > 0.05f) {
-                        val wordCharIndices = mainText.indices.filter { wordIdxMap[it] == activeWordIdx }
-                        var focalCharIdx = wordCharIndices.firstOrNull() ?: -1
-                        var minDist = Float.MAX_VALUE
-                        for (ci in wordCharIndices) {
-                            val sMs = activeWord.startTime * 1000
-                            val dur = (activeWord.endTime * 1000 - activeWord.startTime * 1000).coerceAtLeast(100.0)
-                            val wProg = (smoothPosition.toDouble() - sMs) / dur
-                            val cInW = charInWordMap[ci].toDouble()
-                            val wLen = wordLenMap[ci].toDouble()
-                            val cLp = ((wProg - cInW / wLen) * wLen).coerceIn(0.0, 1.0).toFloat()
-                            val d = abs(cLp - 0.5f)
-                            if (d < minDist) { minDist = d; focalCharIdx = ci }
-                        }
-                        if (focalCharIdx != -1) {
-                            val activePulse = sin(activeSungFactor * PI.toFloat()).coerceIn(0f, 1f)
-                            for (ci in wordCharIndices) {
-                                val dist = abs(ci - focalCharIdx).toFloat()
-                                charLiftPx[ci] = dStrL * activePulse * exp(-0.7f * dist)
-                            }
-                        }
+                var activeDStrL = 0f
+                var bestLiftScore = 0f
+
+                val nowMs = smoothPosition.toDouble()
+                for (wIdx in effectiveWords.indices) {
+                    val word = effectiveWords[wIdx]
+                    val wStartMs = word.startTime * 1000.0
+                    val wEndMs = word.endTime * 1000.0
+                    val durMs = (wEndMs - wStartMs).coerceAtLeast(1.0)
+
+                    val timeUntilStart = wStartMs - nowMs
+                    if (timeUntilStart > 600.0) continue
+                    if (nowMs > wEndMs + 400.0) continue
+
+                    val dStrL = (Math.log(1.0 + durMs / 350.0) / Math.log(1.0 + 1000.0 / 350.0)).coerceIn(0.0, 1.0).toFloat()
+                    if (dStrL < 0.05f) continue
+
+                    val sigmaMs = (durMs * 0.38 + 120.0).coerceAtLeast(120.0)
+
+                    val wordCharIndices = mainText.indices.filter { wordIdxMap[it] == wIdx }
+                    if (wordCharIndices.isEmpty()) continue
+
+                    var peakGaussian = 0f
+                    for (ci in wordCharIndices) {
+                        val cInW = charInWordMap[ci].toDouble()
+                        val wLen = wordLenMap[ci].toDouble().coerceAtLeast(1.0)
+                        val charFraction = (cInW + 0.5) / wLen
+                        val charPeakMs = wStartMs + charFraction * durMs
+                        val deltaMs = nowMs - charPeakMs
+                        val gaussian = Math.pow(Math.exp(-(deltaMs * deltaMs) / (2.0 * sigmaMs * sigmaMs)), 1.5).toFloat()
+                        charLiftPx[ci] += dStrL * gaussian
+                        if (gaussian > peakGaussian) peakGaussian = gaussian
+                    }
+                    val score = peakGaussian * dStrL
+                    if (score > bestLiftScore) { bestLiftScore = score; activeDStrL = dStrL }
+                }
+
+                val liftMaxPx = 5.5f * activeDStrL
+                val maxRaw = charLiftPx.maxOrNull() ?: 0f
+                if (maxRaw > 0.001f) {
+                    val normFactor = 1f / maxRaw
+                    for (i in mainText.indices) {
+                        charLiftPx[i] = charLiftPx[i] * normFactor
                     }
                 }
-                val liftMaxPx = 5.5f
 
                 for (i in mainText.indices) {
                     val lineIdx = layoutResult.getLineForOffset(i)
@@ -656,7 +689,7 @@ private fun WordLevelLyrics(
                     val nudgeScale = if (wordItem != null && !isWordSung && sungFactor > 0f) {
                         val durMsN = ((wordItem.endTime - wordItem.startTime) * 1000.0).coerceAtLeast(1.0)
                         val dStrN = (Math.log(1.0 + durMsN / 350.0) / Math.log(1.0 + 1000.0 / 350.0)).coerceIn(0.0, 1.0).toFloat()
-                        0.018f * dStrN * sin(charLp * PI.toFloat()) * exp(-2.5f * charLp)
+                        0.012f * dStrN * sin(charLp * PI.toFloat()) * exp(-2.5f * charLp)
                     } else 0f
 
                     val charScaleX = 1f + crescendoDeltaX + (nudgeScale * 0.3f)
@@ -720,11 +753,11 @@ private fun WordLevelLyrics(
                     val nudgeScale = if (wordItem != null && !isWordSung && sungFactor > 0f) {
                         val durMsN = ((wordItem.endTime - wordItem.startTime) * 1000.0).coerceAtLeast(1.0)
                         val dStrN = (Math.log(1.0 + durMsN / 350.0) / Math.log(1.0 + 1000.0 / 350.0)).coerceIn(0.0, 1.0).toFloat()
-                        0.018f * dStrN * sin(charLp * PI.toFloat()) * exp(-2.5f * charLp)
+                        0.012f * dStrN * sin(charLp * PI.toFloat()) * exp(-2.5f * charLp)
                     } else 0f
 
                     val charScaleX = 1f + crescendoDeltaX + nudgeScale * 0.25f
-                    val charScaleY = 1f + crescendoDeltaY + nudgeScale * 0.8f
+                    val charScaleY = 1f + crescendoDeltaY
 
                     withTransform({
                         var waveOffset = 0f
