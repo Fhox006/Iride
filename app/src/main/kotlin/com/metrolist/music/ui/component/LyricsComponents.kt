@@ -453,13 +453,15 @@ internal fun LyricsColorPickerDialog(
 internal fun LyricsApiSetupDialog(
     provider: String,
     currentApiKey: String,
+    currentLanguage: String,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
+    onLanguageSelected: (String) -> Unit,
+    onSetupCompleted: () -> Unit,
 ) {
     val providerUrls = mapOf(
         "OpenRouter" to "https://openrouter.ai",
         "OpenAI" to "https://platform.openai.com/api-keys",
-        "Gemini" to "https://aistudio.google.com/apikey",
         "Claude" to "https://console.anthropic.com/settings/keys",
         "XAi" to "https://console.x.ai",
         "Mistral" to "https://console.mistral.ai/api-keys",
@@ -467,6 +469,13 @@ internal fun LyricsApiSetupDialog(
         "DeepL" to "https://deepl.com/pro-api",
     )
     var keyInput by remember { mutableStateOf(currentApiKey) }
+    var selectedLanguage by remember { mutableStateOf(currentLanguage) }
+    val deviceLanguage = java.util.Locale.getDefault().language
+    val languages = com.metrolist.music.constants.LanguageCodeToName.entries.toList()
+    val sortedLanguages = remember {
+        val deviceEntry = languages.find { it.key == deviceLanguage }
+        if (deviceEntry != null) listOf(deviceEntry) + (languages - deviceEntry) else languages
+    }
     val url = providerUrls[provider] ?: ""
     val primaryColor = MaterialTheme.colorScheme.primary
 
@@ -536,6 +545,52 @@ internal fun LyricsApiSetupDialog(
                     leadingIcon = { Icon(painterResource(R.drawable.key), contentDescription = null) },
                 )
 
+                Text(
+                    "Translation language",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    sortedLanguages.forEach { entry ->
+                        val code = entry.key
+                        val name = entry.value
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedLanguage = code
+                                    onLanguageSelected(code)
+                                }
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                                color = if (selectedLanguage == code) primaryColor
+                                        else MaterialTheme.colorScheme.onSurface,
+                            )
+                            if (selectedLanguage == code) {
+                                Icon(
+                                    painterResource(R.drawable.check),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = primaryColor,
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
@@ -546,7 +601,10 @@ internal fun LyricsApiSetupDialog(
                     }
                     Spacer(Modifier.width(8.dp))
                     Button(
-                        onClick = { onSave(keyInput.trim()) },
+                        onClick = {
+                            onSave(keyInput.trim())
+                            onSetupCompleted()
+                        },
                         enabled = keyInput.trim().isNotBlank(),
                     ) {
                         Text(stringResource(android.R.string.ok))

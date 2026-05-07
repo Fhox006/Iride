@@ -128,6 +128,7 @@ import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.RespectAgentPositioningKey
 import com.metrolist.music.constants.ShowIntervalIndicatorKey
+import com.metrolist.music.constants.GeminiSetupCompletedKey
 import com.metrolist.music.constants.TranslateLanguageKey
 import com.metrolist.music.constants.TranslateModeKey
 import com.metrolist.music.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
@@ -314,6 +315,7 @@ fun ExperimentalLyrics(
 
     var showApiSetupDialog by remember { mutableStateOf(false) }
     var showLanguagePickerDialog by remember { mutableStateOf(false) }
+    var geminiSetupCompleted by rememberPreference(GeminiSetupCompletedKey, false)
 
     LaunchedEffect(
         showLyrics,
@@ -359,13 +361,6 @@ fun ExperimentalLyrics(
     LaunchedEffect(lines) {
         LyricsTranslationHelper.clearTranslationsTrigger.collectLatest {
             lines.forEach { it.translatedTextFlow.value = null }
-        }
-    }
-
-    LaunchedEffect(translationStatus) {
-        if (translationStatus is LyricsTranslationHelper.TranslationStatus.Error) {
-            delay(600)
-            showApiSetupDialog = true
         }
     }
 
@@ -421,7 +416,12 @@ fun ExperimentalLyrics(
                         LyricsTranslationHelper.triggerClearTranslations()
                     }
                 } else {
-                    showLanguagePickerDialog = true
+                    val effectiveApiKey = if (aiProvider == "DeepL") deeplApiKey else openRouterApiKey
+                    if (effectiveApiKey.isBlank()) {
+                        showApiSetupDialog = true
+                    } else {
+                        LyricsTranslationHelper.triggerManualTranslation()
+                    }
                 }
             }
             pillsController.selectionAction = {
@@ -720,7 +720,7 @@ fun ExperimentalLyrics(
 
         LyricsTranslationHeader(
             status = translationStatus,
-            modifier = Modifier.zIndex(1f).padding(top = 56.dp)
+            modifier = Modifier.align(Alignment.TopCenter).zIndex(5f).padding(top = 56.dp)
         )
 
         val iconButtonColor = when (playerBackground) {
@@ -775,7 +775,12 @@ fun ExperimentalLyrics(
                                         LyricsTranslationHelper.triggerClearTranslations()
                                     }
                                 } else {
-                                    showLanguagePickerDialog = true
+                                    val effectiveApiKey = if (aiProvider == "DeepL") deeplApiKey else openRouterApiKey
+                                    if (effectiveApiKey.isBlank()) {
+                                        showApiSetupDialog = true
+                                    } else {
+                                        LyricsTranslationHelper.triggerManualTranslation()
+                                    }
                                 }
                             },
                         )
@@ -1201,7 +1206,7 @@ fun ExperimentalLyrics(
         }
 
         if (showApiSetupDialog) {
-            if (aiProvider == "Gemini" && openRouterApiKey.isBlank()) {
+            if (aiProvider == "Gemini") {
                 GeminiSetupDialog(
                     currentApiKey = openRouterApiKey,
                     currentLanguage = translateLanguage,
@@ -1211,25 +1216,36 @@ fun ExperimentalLyrics(
                     },
                     onSave = { key: String ->
                         openRouterApiKey = key
-                        showApiSetupDialog = false
-                        LyricsTranslationHelper.clearErrorStatus()
                     },
                     onLanguageSelected = { lang: String ->
                         translateLanguage = lang
-                    }
+                    },
+                    onSetupCompleted = {
+                        geminiSetupCompleted = true
+                        showApiSetupDialog = false
+                        LyricsTranslationHelper.clearErrorStatus()
+                        LyricsTranslationHelper.triggerManualTranslation()
+                    },
                 )
             } else {
                 LyricsApiSetupDialog(
                     provider = aiProvider,
                     currentApiKey = openRouterApiKey,
+                    currentLanguage = translateLanguage,
                     onDismiss = {
                         showApiSetupDialog = false
                         LyricsTranslationHelper.clearErrorStatus()
                     },
                     onSave = { key ->
                         openRouterApiKey = key
+                    },
+                    onLanguageSelected = { lang ->
+                        translateLanguage = lang
+                    },
+                    onSetupCompleted = {
                         showApiSetupDialog = false
                         LyricsTranslationHelper.clearErrorStatus()
+                        LyricsTranslationHelper.triggerManualTranslation()
                     },
                 )
             }
