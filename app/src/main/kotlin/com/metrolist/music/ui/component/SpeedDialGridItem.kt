@@ -37,18 +37,20 @@ fun SpeedDialGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
 ) {
+    val speedDialCornerRadius = ThumbnailCornerRadius + 6.dp
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f) // Square aspect ratio
-            .clip(RoundedCornerShape(ThumbnailCornerRadius))
+            .clip(RoundedCornerShape(speedDialCornerRadius))
     ) {
         // Thumbnail
         ItemThumbnail(
             thumbnailUrl = item.thumbnail,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(ThumbnailCornerRadius),
+            shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(speedDialCornerRadius),
             modifier = Modifier.fillMaxSize()
         )
 
