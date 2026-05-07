@@ -577,7 +577,7 @@ fun ContentSettings(
         val currentOrder = LyricsProviderRegistry.deserializeProviderOrder(lyricsProviderOrder)
         val defaultOrder = LyricsProviderRegistry.getDefaultProviderOrder()
         val normalizedOrder = currentOrder.filter { it in defaultOrder } +
-            defaultOrder.filter { it !in currentOrder }
+                defaultOrder.filter { it !in currentOrder }
 
         val enabledProviders = setOf(
             "LrcLib".takeIf { enableLrclib },

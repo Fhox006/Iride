@@ -280,7 +280,7 @@ fun AndroidAutoSettings(
                 }
             )
         }
-        
+
         Material3SettingsGroup(
             title = stringResource(R.string.android_auto_target_playlist),
             items = listOf(

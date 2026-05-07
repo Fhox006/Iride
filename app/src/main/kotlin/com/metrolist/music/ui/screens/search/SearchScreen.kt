@@ -58,7 +58,6 @@ import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.innertube.utils.YouTubeUrlParser
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalIsPlayerExpanded
-import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.PauseSearchHistoryKey
@@ -266,41 +265,32 @@ fun SearchScreen(
         },
         containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
     ) { paddingValues ->
-        val bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()
-
         Box(
             modifier =
                 Modifier
                     .padding(paddingValues)
                     .fillMaxSize(),
         ) {
-            Box(
-                modifier =
-                    Modifier
-                        .padding(bottom = bottomPadding)
-                        .fillMaxSize(),
-            ) {
-                when (searchSource) {
-                    SearchSource.LOCAL -> {
-                        LocalSearchScreen(
-                            query = query.text,
-                            navController = navController,
-                            onDismiss = { navController.navigateUp() },
-                            pureBlack = pureBlack,
-                        )
-                    }
+            when (searchSource) {
+                SearchSource.LOCAL -> {
+                    LocalSearchScreen(
+                        query = query.text,
+                        navController = navController,
+                        onDismiss = { navController.navigateUp() },
+                        pureBlack = pureBlack,
+                    )
+                }
 
-                    SearchSource.ONLINE -> {
-                        OnlineSearchScreen(
-                            query = query.text,
-                            onQueryChange = { query = it },
-                            navController = navController,
-                            onSearch = onSearchFromSuggestion,
-                            onDismiss = { /* Don't dismiss when searching from suggestions */ },
-                            pureBlack = pureBlack,
-                            isFocused = isFocused,
-                        )
-                    }
+                SearchSource.ONLINE -> {
+                    OnlineSearchScreen(
+                        query = query.text,
+                        onQueryChange = { query = it },
+                        navController = navController,
+                        onSearch = onSearchFromSuggestion,
+                        onDismiss = { /* Don't dismiss when searching from suggestions */ },
+                        pureBlack = pureBlack,
+                        isFocused = isFocused,
+                    )
                 }
             }
 

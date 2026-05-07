@@ -311,7 +311,7 @@ fun StorageSettings(
         Modifier
             .windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                    WindowInsetsSides.Horizontal,
                 ),
             ).verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),

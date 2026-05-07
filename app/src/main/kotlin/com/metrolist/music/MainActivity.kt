@@ -997,7 +997,7 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         bottomBar = {
-                            if (currentRoute != "wrapped") {
+                            if (currentRoute != "wrapped" && !playerBottomSheetState.isDismissed) {
                                 BottomSheetPlayer(
                                     state = playerBottomSheetState,
                                     navController = navController,
@@ -1173,6 +1173,7 @@ class MainActivity : ComponentActivity() {
                             accountImageUrl = accountImageUrl,
                             pureBlack = pureBlack,
                             slimNav = slimNav,
+                            navController = navController,
                             modifier = Modifier.align(Alignment.BottomCenter),
                         )
                     }
