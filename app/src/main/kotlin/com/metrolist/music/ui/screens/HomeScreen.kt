@@ -6,8 +6,20 @@
 package com.metrolist.music.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -1774,6 +1786,7 @@ fun HomeScreen(
                         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                     }
                     val moodPaletteContext = LocalContext.current
+                    var lastStableColor by remember { mutableStateOf<Color?>(null) }
                     var moodDominantColor by remember(selectedMoodCategory) { mutableStateOf<Color?>(null) }
                     val firstTrackThumbnail = remember(moodPage) {
                         moodPage?.sections
@@ -1795,27 +1808,29 @@ fun HomeScreen(
                                         val palette = Palette.from(bmp).generate()
                                         val rgb = palette.getDominantColor(0)
                                         if (rgb != 0) {
-                                            moodDominantColor = Color(rgb).copy(alpha = if (isDark) 0.25f else 0.15f)
+                                            val newColor = Color(rgb).copy(alpha = if (isDark) 0.25f else 0.15f)
+                                            moodDominantColor = newColor
+                                            lastStableColor = newColor
                                         }
                                     }
                                 } catch (_: Exception) {}
                             }
-                        } else {
-                            moodDominantColor = null
                         }
                     }
                     val animatedBgColor by animateColorAsState(
-                        targetValue = moodDominantColor ?: defaultBgColor,
+                        targetValue = moodDominantColor ?: lastStableColor ?: defaultBgColor,
+                        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
                         label = "moodBgColor",
                     )
 
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                            .clip(RoundedCornerShape(24.dp))
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .clip(RoundedCornerShape(28.dp))
                             .background(animatedBgColor)
-                            .padding(vertical = 16.dp)
+                            .animateContentSize()
+                            .padding(top = 14.dp, bottom = 12.dp)
                     ) {
                         ChipsRow(
                             chips = moodChips,
@@ -1829,122 +1844,156 @@ fun HomeScreen(
                         )
 
                         if (selectedMoodCategory != null) {
-                            val sections = moodPage?.sections.orEmpty()
-                            
-                            // Find tracks section (usually the first one with songs)
-                            val tracksSection = sections.firstOrNull { it.items.any { item -> item is SongItem } }
-                            
-                            if (tracksSection != null) {
-                                val audioTracks = tracksSection.items
-                                    .filterIsInstance<SongItem>()
-                                    .filterVideoSongs(true) // Always hide videos in Your Mood mixtape as requested
-                                if (audioTracks.isNotEmpty()) {
-                                    LazyHorizontalGrid(
-                                        state = moodTracksState,
-                                        rows = GridCells.Fixed(4),
-                                        contentPadding = WindowInsets.systemBars
-                                            .only(WindowInsetsSides.Horizontal)
-                                            .asPaddingValues(),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(ListItemHeight * 4),
-                                    ) {
-                                        items(
-                                            items = audioTracks,
-                                            key = { "mood_track_${it.id}" },
-                                        ) { track ->
-                                            YouTubeListItem(
-                                                item = track,
-                                                isActive = track.id == mediaMetadata?.id,
-                                                isPlaying = isPlaying,
-                                                isSwipeable = false,
-                                                trailingContent = {
-                                                    IconButton(
-                                                        onClick = {
-                                                            menuState.show {
-                                                                YouTubeSongMenu(
-                                                                    song = track,
-                                                                    navController = navController,
-                                                                    onDismiss = menuState::dismiss,
-                                                                )
-                                                            }
-                                                        },
-                                                    ) {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.more_vert),
-                                                            contentDescription = null,
-                                                        )
-                                                    }
-                                                },
-                                                modifier = Modifier
-                                                    .width(horizontalLazyGridItemWidth)
-                                                    .combinedClickable(
-                                                        onClick = {
-                                                            if (!isListenTogetherGuest) {
-                                                                playerConnection.playQueue(
-                                                                    YouTubeQueue(
-                                                                        track.endpoint ?: WatchEndpoint(videoId = track.id),
-                                                                        track.toMediaMetadata(),
-                                                                    )
-                                                                )
-                                                            }
-                                                        },
-                                                        onLongClick = {
-                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                            menuState.show {
-                                                                YouTubeSongMenu(
-                                                                    song = track,
-                                                                    navController = navController,
-                                                                    onDismiss = menuState::dismiss,
-                                                                )
-                                                            }
-                                                        },
-                                                    ),
-                                            )
+                            AnimatedContent(
+                                targetState = moodPage,
+                                transitionSpec = {
+                                    fadeIn(tween(350)) togetherWith fadeOut(tween(200))
+                                },
+                                label = "moodContent"
+                            ) { page ->
+                                if (page == null) {
+                                    // Shimmer skeleton for tracks
+                                    val shimmerTransition = rememberInfiniteTransition(label = "shimmer")
+                                    val shimmerAlpha by shimmerTransition.animateFloat(
+                                        initialValue = 0.3f, targetValue = 0.7f,
+                                        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Reverse),
+                                        label = "shimmerAlpha"
+                                    )
+                                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                                        repeat(4) {
+                                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                                Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmerAlpha)))
+                                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                    Box(modifier = Modifier.fillMaxWidth(0.6f).height(14.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmerAlpha)))
+                                                    Box(modifier = Modifier.fillMaxWidth(0.4f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmerAlpha * 0.7f)))
+                                                }
+                                            }
                                         }
                                     }
-                                }
-                            }
-
-                            // Find mixes section
-                            val mixesSection = sections.firstOrNull { 
-                                it.title.contains("Mix", ignoreCase = true) 
-                            } ?: sections.firstOrNull { it.items.any { item -> item is PlaylistItem && item.title.contains("Mix", ignoreCase = true) } }
-
-                            if (mixesSection != null) {
-                                LazyRow(
-                                    state = moodMixesState,
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    items(mixesSection.items) { mix ->
-                                        YouTubeGridItem(
-                                            item = mix,
-                                            isActive = mix.id == mediaMetadata?.album?.id,
-                                            isPlaying = isPlaying,
-                                            coroutineScope = scope,
-                                            size = 135.dp,
-                                            showTitle = false,
-                                            modifier = Modifier.combinedClickable(
-                                                onClick = {
-                                                    if (mix is PlaylistItem) {
-                                                        navController.navigate("online_playlist/${mix.id}")
-                                                    }
-                                                },
-                                                onLongClick = {
-                                                    if (mix is PlaylistItem) {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        menuState.show {
-                                                            YouTubePlaylistMenu(
-                                                                playlist = mix,
-                                                                coroutineScope = scope,
-                                                                onDismiss = menuState::dismiss
-                                                            )
-                                                        }
+                                } else {
+                                    Column {
+                                        val sections = page.sections.orEmpty()
+                                        
+                                        // Find tracks section (usually the first one with songs)
+                                        val tracksSection = sections.firstOrNull { it.items.any { item -> item is SongItem } }
+                                        
+                                        if (tracksSection != null) {
+                                            val audioTracks = tracksSection.items
+                                                .filterIsInstance<SongItem>()
+                                                .filterVideoSongs(true) // Always hide videos in Your Mood mixtape as requested
+                                            if (audioTracks.isNotEmpty()) {
+                                                LazyHorizontalGrid(
+                                                    state = moodTracksState,
+                                                    rows = GridCells.Fixed(4),
+                                                    contentPadding = WindowInsets.systemBars
+                                                        .only(WindowInsetsSides.Horizontal)
+                                                        .asPaddingValues(),
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(ListItemHeight * 4),
+                                                ) {
+                                                    items(
+                                                        items = audioTracks,
+                                                        key = { "mood_track_${it.id}" },
+                                                    ) { track ->
+                                                        YouTubeListItem(
+                                                            item = track,
+                                                            isActive = track.id == mediaMetadata?.id,
+                                                            isPlaying = isPlaying,
+                                                            isSwipeable = false,
+                                                            trailingContent = {
+                                                                IconButton(
+                                                                    onClick = {
+                                                                        menuState.show {
+                                                                            YouTubeSongMenu(
+                                                                                song = track,
+                                                                                navController = navController,
+                                                                                onDismiss = menuState::dismiss,
+                                                                            )
+                                                                        }
+                                                                    },
+                                                                ) {
+                                                                    Icon(
+                                                                        painter = painterResource(R.drawable.more_vert),
+                                                                        contentDescription = null,
+                                                                    )
+                                                                }
+                                                            },
+                                                            modifier = Modifier
+                                                                .width(horizontalLazyGridItemWidth)
+                                                                .combinedClickable(
+                                                                    onClick = {
+                                                                        if (!isListenTogetherGuest) {
+                                                                            playerConnection.playQueue(
+                                                                                YouTubeQueue(
+                                                                                    track.endpoint ?: WatchEndpoint(videoId = track.id),
+                                                                                    track.toMediaMetadata(),
+                                                                                )
+                                                                            )
+                                                                        }
+                                                                    },
+                                                                    onLongClick = {
+                                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                                        menuState.show {
+                                                                            YouTubeSongMenu(
+                                                                                song = track,
+                                                                                navController = navController,
+                                                                                onDismiss = menuState::dismiss,
+                                                                            )
+                                                                        }
+                                                                    },
+                                                                ),
+                                                        )
                                                     }
                                                 }
-                                            )
-                                        )
+                                            }
+                                        }
+
+                                        // Find mixes section
+                                        val mixesSection = sections.firstOrNull { 
+                                            it.title.contains("Mix", ignoreCase = true) 
+                                        } ?: sections.firstOrNull { it.items.any { item -> item is PlaylistItem && item.title.contains("Mix", ignoreCase = true) } }
+
+                                        if (mixesSection != null) {
+                                            LazyRow(
+                                                state = moodMixesState,
+                                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                                modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)
+                                            ) {
+                                                items(mixesSection.items) { mix ->
+                                                    YouTubeGridItem(
+                                                        item = mix,
+                                                        isActive = mix.id == mediaMetadata?.album?.id,
+                                                        isPlaying = isPlaying,
+                                                        coroutineScope = scope,
+                                                        size = 135.dp,
+                                                        showTitle = true,
+                                                        modifier = Modifier
+                                                            .animateItem()
+                                                            .combinedClickable(
+                                                            onClick = {
+                                                                if (mix is PlaylistItem) {
+                                                                    navController.navigate("online_playlist/${mix.id}")
+                                                                }
+                                                            },
+                                                            onLongClick = {
+                                                                if (mix is PlaylistItem) {
+                                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                                    menuState.show {
+                                                                        YouTubePlaylistMenu(
+                                                                            playlist = mix,
+                                                                            coroutineScope = scope,
+                                                                            onDismiss = menuState::dismiss
+                                                                        )
+                                                                    }
+                                                                }
+                                                            }
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }

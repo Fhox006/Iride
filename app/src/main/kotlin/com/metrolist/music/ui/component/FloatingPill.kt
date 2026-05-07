@@ -87,8 +87,6 @@ import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.navigation.NavController
 import com.metrolist.music.utils.makeTimeString
-import com.metrolist.music.constants.PlayerSliderStyle
-import com.metrolist.music.constants.SliderStyleKey
 import androidx.media3.common.Player as Media3Player
 import androidx.palette.graphics.Palette
 import coil3.compose.AsyncImage
@@ -783,8 +781,8 @@ private fun PillPlayerControls(
 
     LaunchedEffect(isPlaying) {
         if (isPlaying) {
-            while (kotlinx.coroutines.isActive) {
-                kotlinx.coroutines.delay(100)
+            while (isActive) {
+                delay(100)
                 position = playerConnection.player.currentPosition
                 duration = playerConnection.player.duration
             }
