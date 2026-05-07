@@ -46,7 +46,7 @@ private data class NavItemState(
 )
 
 @Stable
-private fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {
+internal fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {
     if (currentRoute == null) return false
     if (currentRoute == screenRoute) return true
     if (navigationItems.any { it.route == screenRoute } &&

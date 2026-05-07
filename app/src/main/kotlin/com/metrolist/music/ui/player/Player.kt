@@ -213,6 +213,7 @@ fun BottomSheetPlayer(
     navController: NavController,
     modifier: Modifier = Modifier,
     pureBlack: Boolean,
+    showPeekContent: Boolean = true,
 ) {
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -964,11 +965,13 @@ fun BottomSheetPlayer(
                 null
             },
         collapsedContent = {
-            MiniPlayer(
-                positionState = positionState,
-                durationState = durationState,
-                playerBottomSheetState = state,
-            )
+            if (showPeekContent) {
+                MiniPlayer(
+                    positionState = positionState,
+                    durationState = durationState,
+                    playerBottomSheetState = state,
+                )
+            }
         },
     ) {
         val controlsContent: @Composable ColumnScope.(MediaMetadata) -> Unit = { mediaMetadata ->

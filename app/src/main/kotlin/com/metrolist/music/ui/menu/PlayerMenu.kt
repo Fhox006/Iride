@@ -350,18 +350,6 @@ fun PlayerMenu(
                                 onDismiss()
                             },
                         ),
-                        NewAction(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.playlist_add),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            text = stringResource(R.string.add_to_playlist),
-                            onClick = { showChoosePlaylistDialog = true },
-                        ),
                         when (download?.state) {
                             Download.STATE_COMPLETED -> NewAction(
                                 icon = {
@@ -545,6 +533,27 @@ fun PlayerMenu(
                             )
                         }
                     },
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(12.dp)) }
+
+        item {
+            Material3MenuGroup(
+                items =
+                    listOf(
+                        Material3MenuItemData(
+                            title = { Text(text = stringResource(R.string.add_to_playlist)) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.playlist_add),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                )
+                            },
+                            onClick = { showChoosePlaylistDialog = true },
+                        ),
+                    ),
             )
         }
 

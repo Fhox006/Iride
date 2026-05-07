@@ -20,7 +20,6 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -136,9 +135,7 @@ import com.metrolist.music.constants.OnboardingCompletedKey
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.ListenTogetherUsernameKey
 import com.metrolist.music.constants.LyricsProviderOrderKey
-import com.metrolist.music.constants.MiniPlayerBottomSpacing
 import com.metrolist.music.constants.MiniPlayerHeight
-import com.metrolist.music.constants.NavigationBarAnimationSpec
 import com.metrolist.music.constants.NavigationBarHeight
 import com.metrolist.music.constants.PauseListenHistoryKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
@@ -148,7 +145,6 @@ import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.SYSTEM_DEFAULT
 import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.constants.SimpMusicMigrationDoneKey
-import com.metrolist.music.constants.SlimNavBarHeight
 import com.metrolist.music.constants.SlimNavBarKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
 import com.metrolist.music.constants.UpdateNotificationsEnabledKey
@@ -163,8 +159,10 @@ import com.metrolist.music.playback.MusicService
 import com.metrolist.music.playback.MusicService.MusicBinder
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.YouTubeQueue
-import com.metrolist.music.ui.component.AppNavigationBar
 import com.metrolist.music.ui.component.AppNavigationRail
+import com.metrolist.music.ui.component.FloatingPill
+import com.metrolist.music.ui.component.FloatingPillBottomSpacing
+import com.metrolist.music.ui.component.FloatingPillHeight
 import com.metrolist.music.ui.component.BottomSheetMenu
 import com.metrolist.music.ui.component.BottomSheetPage
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -700,58 +698,30 @@ class MainActivity : ComponentActivity() {
                 val inSearchScreen by remember {
                     derivedStateOf { currentRoute?.startsWith("search/") == true }
                 }
-                val navigationItemRoutes =
-                    remember(navigationItems) {
-                        navigationItems.map { it.route }.toSet()
-                    }
-
-                val shouldShowNavigationBar =
-                    remember(currentRoute, navigationItemRoutes) {
-                        currentRoute == null ||
-                            navigationItemRoutes.contains(currentRoute) ||
-                            currentRoute!!.startsWith("search/")
-                    }
-
                 val isLandscape = configuration.containerDpSize.width > configuration.containerDpSize.height
 
                 val showRail = isLandscape && !inSearchScreen
 
-                val navPadding =
-                    if (shouldShowNavigationBar && !showRail) {
-                        if (slimNav) SlimNavBarHeight else NavigationBarHeight
-                    } else {
-                        0.dp
-                    }
-
-                val navigationBarHeight by animateDpAsState(
-                    targetValue = if (shouldShowNavigationBar && !showRail) NavigationBarHeight else 0.dp,
-                    animationSpec = NavigationBarAnimationSpec,
-                    label = "navBarHeight",
-                )
-
                 val playerBottomSheetState =
                     rememberBottomSheetState(
                         dismissedBound = 0.dp,
-                        collapsedBound =
-                            bottomInset +
-                                (if (!showRail && shouldShowNavigationBar) navPadding else 0.dp) +
-                                (if (useNewMiniPlayerDesign) MiniPlayerBottomSpacing else 0.dp) +
-                                MiniPlayerHeight,
+                        collapsedBound = if (!showRail) {
+                            bottomInset + FloatingPillHeight + FloatingPillBottomSpacing
+                        } else {
+                            bottomInset + MiniPlayerHeight
+                        },
                         expandedBound = maxHeight,
                     )
 
                 val playerAwareWindowInsets =
-                    remember(
-                        bottomInset,
-                        shouldShowNavigationBar,
-                        playerBottomSheetState.isDismissed,
-                        showRail,
-                    ) {
+                    remember(bottomInset, showRail, playerBottomSheetState.isDismissed) {
                         var bottom = bottomInset
-                        if (shouldShowNavigationBar && !showRail) {
-                            bottom += NavigationBarHeight
+                        if (!showRail) {
+                            // FloatingPill always occupies space at the bottom
+                            bottom += FloatingPillHeight + FloatingPillBottomSpacing
+                        } else {
+                            if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight
                         }
-                        if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight
                         windowsInsets
                             .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
                             .add(WindowInsets(top = AppBarHeight, bottom = bottom))
@@ -903,6 +873,55 @@ class MainActivity : ComponentActivity() {
 
                 val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
 
+                val onNavItemClick: (Screens, Boolean) -> Unit =
+                    remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState, navBackStackEntry) {
+                        { screen: Screens, isSelected: Boolean ->
+                            if (playerBottomSheetState.isExpanded) {
+                                playerBottomSheetState.collapseSoft()
+                            }
+                            if (isSelected) {
+                                val targetEntry = try {
+                                    val route = navController.currentBackStackEntry?.destination?.route
+                                    if (route == "search/{query}" || route == "search_input") {
+                                        navController.getBackStackEntry("search_input")
+                                    } else {
+                                        navController.currentBackStackEntry
+                                    }
+                                } catch (e: Exception) {
+                                    null
+                                }
+
+                                if (screen == Screens.Search) {
+                                    val current = targetEntry?.savedStateHandle?.get<Int>("scrollToTopCount") ?: 0
+                                    targetEntry?.savedStateHandle?.set("scrollToTopCount", current + 1)
+                                } else {
+                                    targetEntry?.savedStateHandle?.set("scrollToTop", true)
+                                }
+
+                                coroutineScope.launch {
+                                    topAppBarScrollBehavior.state.resetHeightOffset()
+                                }
+                            } else {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        }
+                    }
+
+                val onSearchLongClick: () -> Unit =
+                    remember(navController) {
+                        {
+                            navController.navigate("recognition") {
+                                launchSingleTop = true
+                            }
+                        }
+                    }
+
                 CompositionLocalProvider(
                     LocalDatabase provides database,
                     LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
@@ -978,144 +997,12 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         bottomBar = {
-                            val currentBackStackEntry = navController.currentBackStackEntry // reads reactively outside remember
-
-                            val onNavItemClick: (Screens, Boolean) -> Unit =
-                                remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState, currentBackStackEntry) {
-                                    { screen: Screens, isSelected: Boolean ->
-                                        if (playerBottomSheetState.isExpanded) {
-                                            playerBottomSheetState.collapseSoft()
-                                        }
-                                        if (isSelected) {
-                                            val targetEntry = try {
-                                                val route = navController.currentBackStackEntry?.destination?.route
-                                                if (route == "search/{query}" || route == "search_input") {
-                                                    // For search screens, use search_input entry
-                                                    navController.getBackStackEntry("search_input")
-                                                } else {
-                                                    // For other screens, use current entry
-                                                    navController.currentBackStackEntry
-                                                }
-                                            } catch (e: Exception) {
-                                                null
-                                            }
-
-                                            // Use appropriate key based on screen type
-                                            if (screen == Screens.Search) {
-                                                val current = targetEntry?.savedStateHandle?.get<Int>("scrollToTopCount") ?: 0
-                                                targetEntry?.savedStateHandle?.set("scrollToTopCount", current + 1)
-                                            } else {
-                                                targetEntry?.savedStateHandle?.set("scrollToTop", true)
-                                            }
-
-                                            coroutineScope.launch {
-                                                topAppBarScrollBehavior.state.resetHeightOffset()
-                                            }
-                                        } else {
-                                            navController.navigate(screen.route) {
-                                                popUpTo(navController.graph.startDestinationId) {
-                                                    saveState = true
-                                                }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                        }
-                                    }
-                                }
-
-                            val onSearchLongClick: () -> Unit =
-                                remember(navController) {
-                                    {
-                                        navController.navigate("recognition") {
-                                            launchSingleTop = true
-                                        }
-                                    }
-                                }
-
-                            // Pre-calculate values for graphicsLayer to avoid reading state during composition
-                            val navBarTotalHeight = bottomInset + NavigationBarHeight
-
-                            if (!showRail && currentRoute != "wrapped") {
-                                Box {
-                                    BottomSheetPlayer(
-                                        state = playerBottomSheetState,
-                                        navController = navController,
-                                        pureBlack = pureBlack,
-                                    )
-
-                                    AppNavigationBar(
-                                        navigationItems = navigationItems,
-                                        currentRoute = currentRoute,
-                                        onItemClick = onNavItemClick,
-                                        pureBlack = pureBlack,
-                                        slimNav = slimNav,
-                                        onSearchLongClick = onSearchLongClick,
-                                        accountImageUrl = accountImageUrl,
-                                        modifier =
-                                            Modifier
-                                                .align(Alignment.BottomCenter)
-                                                .height(bottomInset + navPadding)
-                                                // Use graphicsLayer instead of offset to avoid recomposition
-                                                // graphicsLayer runs during draw phase, not composition phase
-                                                .graphicsLayer {
-                                                    val navBarHeightPx = navigationBarHeight.toPx()
-                                                    val totalHeightPx = navBarTotalHeight.toPx()
-
-                                                    translationY =
-                                                        if (navBarHeightPx == 0f) {
-                                                            totalHeightPx
-                                                        } else {
-                                                            // Read progress only during draw phase
-                                                            val progress = playerBottomSheetState.progress.coerceIn(0f, 1f)
-                                                            val slideOffset = totalHeightPx * progress
-                                                            val hideOffset =
-                                                                totalHeightPx * (1 - navBarHeightPx / NavigationBarHeight.toPx())
-                                                            slideOffset + hideOffset
-                                                        }
-                                                },
-                                    )
-
-                                    Box(
-                                        modifier =
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .align(Alignment.BottomCenter)
-                                                .height(bottomInsetDp)
-                                                // Use graphicsLayer for background color changes
-                                                .graphicsLayer {
-                                                    val progress = playerBottomSheetState.progress
-                                                    alpha =
-                                                        if (progress > 0f ||
-                                                            (useNewMiniPlayerDesign && !shouldShowNavigationBar)
-                                                        ) {
-                                                            0f
-                                                        } else {
-                                                            1f
-                                                        }
-                                                }.background(baseBg),
-                                    )
-                                }
-                            } else {
-                                if (currentRoute != "wrapped") {
-                                    BottomSheetPlayer(
-                                        state = playerBottomSheetState,
-                                        navController = navController,
-                                        pureBlack = pureBlack,
-                                    )
-                                }
-
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .align(Alignment.BottomCenter)
-                                            .height(bottomInsetDp)
-                                            // Use graphicsLayer for background color changes
-                                            .graphicsLayer {
-                                                val progress = playerBottomSheetState.progress
-                                                alpha =
-                                                    if (progress > 0f || (useNewMiniPlayerDesign && !shouldShowNavigationBar)) 0f else 1f
-                                            }.background(baseBg),
+                            if (currentRoute != "wrapped") {
+                                BottomSheetPlayer(
+                                    state = playerBottomSheetState,
+                                    navController = navController,
+                                    pureBlack = pureBlack,
+                                    showPeekContent = showRail,
                                 )
                             }
                         },
@@ -1275,6 +1162,20 @@ class MainActivity : ComponentActivity() {
                         state = LocalBottomSheetPageState.current,
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
+
+                    if (!showRail && currentRoute != "wrapped" && currentRoute != "onboarding") {
+                        FloatingPill(
+                            navigationItems = navigationItems,
+                            currentRoute = currentRoute,
+                            onNavItemClick = onNavItemClick,
+                            playerBottomSheetState = playerBottomSheetState,
+                            onSearchLongClick = onSearchLongClick,
+                            accountImageUrl = accountImageUrl,
+                            pureBlack = pureBlack,
+                            slimNav = slimNav,
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                        )
+                    }
 
                     sharedSong?.let { song ->
                         playerConnection?.let {
