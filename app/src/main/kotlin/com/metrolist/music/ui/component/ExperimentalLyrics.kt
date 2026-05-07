@@ -565,6 +565,24 @@ fun ExperimentalLyrics(
     }
 
     var userManualOffset by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(isAutoScrollEnabled) {
+        if (!isAutoScrollEnabled) {
+            snapshotFlow { activeLineIndices }
+                .collectLatest { newActiveIndices ->
+                    if (newActiveIndices != previousScrollActiveIndices && newActiveIndices.isNotEmpty()) {
+                        val elapsed = System.currentTimeMillis() - lastPreviewTime
+                        if (elapsed >= 1500L) {
+                            userManualOffset = 0f
+                            isAutoScrollEnabled = true
+                            lastPreviewTime = 0L
+                        }
+                        previousScrollActiveIndices = newActiveIndices
+                    }
+                }
+        }
+    }
+
     LaunchedEffect(lyrics) {
         isAutoScrollEnabled = true
         userManualOffset = 0f
@@ -1079,6 +1097,7 @@ fun ExperimentalLyrics(
                                                     scrollTargetIndex = index
                                                     deferredCurrentLineIndex = index
                                                     isAutoScrollEnabled = true
+                                                    userManualOffset = 0f
                                                     lastPreviewTime = 0L
                                                 }
                                             }

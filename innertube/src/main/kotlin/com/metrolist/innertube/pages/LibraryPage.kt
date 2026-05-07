@@ -30,7 +30,7 @@ data class LibraryPage(
                     title = renderer.title.runs?.firstOrNull()?.text ?: return null,
                     artists = parseArtists(renderer.subtitle?.runs),
                     year = renderer.subtitle?.runs?.lastOrNull()?.text?.toIntOrNull(),
-                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl()
+                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl(512)
                         ?: return null,
                     explicit = renderer.subtitleBadges?.find {
                         it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
@@ -47,7 +47,7 @@ data class LibraryPage(
                         )
                     },
                     songCountText = renderer.subtitle?.runs?.lastOrNull()?.text,
-                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                     playEndpoint = renderer.thumbnailOverlay
                         ?.musicItemThumbnailOverlayRenderer?.content
                         ?.musicPlayButtonRenderer?.playNavigationEndpoint
@@ -66,7 +66,7 @@ data class LibraryPage(
                 renderer.isArtist -> ArtistItem(
                     id = renderer.navigationEndpoint.browseEndpoint?.browseId ?: return null,
                     title = renderer.title.runs?.lastOrNull()?.text ?: return null,
-                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getArtistThumbnailUrl() ?: return null,
                     shuffleEndpoint = renderer.menu?.menuRenderer?.items?.find {
                         it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE"
                     }?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint ?: return null,
@@ -79,7 +79,7 @@ data class LibraryPage(
                 renderer.isUserChannel -> ArtistItem(
                     id = renderer.navigationEndpoint.browseEndpoint?.browseId ?: return null,
                     title = renderer.title.runs?.firstOrNull()?.text ?: return null,
-                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl(),
+                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getArtistThumbnailUrl(),
                     shuffleEndpoint = renderer.menu?.menuRenderer?.items?.find {
                         it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE"
                     }?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint,
@@ -100,7 +100,7 @@ data class LibraryPage(
                             )
                         },
                         episodeCountText = renderer.subtitle?.runs?.lastOrNull()?.text,
-                        thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl(),
+                        thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl(512),
                         playEndpoint = renderer.thumbnailOverlay
                             ?.musicItemThumbnailOverlayRenderer?.content
                             ?.musicPlayButtonRenderer?.playNavigationEndpoint
@@ -136,7 +136,7 @@ data class LibraryPage(
                             )
                         },
                         duration = subtitleRuns?.lastOrNull()?.firstOrNull()?.text?.parseTime(),
-                        thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                         explicit = renderer.subtitleBadges?.any {
                             it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                         } == true,
@@ -182,7 +182,7 @@ data class LibraryPage(
                         Album(name = it.text, id = albumBrowseId ?: "")
                     }
 
-                    val thumbnailUrl = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null
+                    val thumbnailUrl = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null
 
                     // Extract uploadEntityId from delete menu item (for uploaded songs)
                     // The entityId is nested in confirmDialogEndpoint -> content -> confirmDialogRenderer ->
@@ -217,7 +217,7 @@ data class LibraryPage(
                     id = renderer.navigationEndpoint?.browseEndpoint?.browseId ?: return null,
                     title = renderer.flexColumns.firstOrNull()?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.firstOrNull()?.text
                         ?: return null,
-                    thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl()
+                    thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getArtistThumbnailUrl()
                         ?: return null,
                     shuffleEndpoint = renderer.menu?.menuRenderer?.items
                         ?.find { it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE" }
@@ -232,7 +232,7 @@ data class LibraryPage(
                     id = renderer.navigationEndpoint?.browseEndpoint?.browseId ?: return null,
                     title = renderer.flexColumns.firstOrNull()?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.firstOrNull()?.text
                         ?: return null,
-                    thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(),
+                    thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getArtistThumbnailUrl(),
                     shuffleEndpoint = renderer.menu?.menuRenderer?.items
                         ?.find { it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE" }
                         ?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint,
@@ -254,7 +254,7 @@ data class LibraryPage(
                             )
                         },
                         episodeCountText = renderer.flexColumns.getOrNull(1)?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.lastOrNull()?.text,
-                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(),
+                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(512),
                         playEndpoint = renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchPlaylistEndpoint,
                         shuffleEndpoint = renderer.menu?.menuRenderer?.items
                             ?.find { it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE" }

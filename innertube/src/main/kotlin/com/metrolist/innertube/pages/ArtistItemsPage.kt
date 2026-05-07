@@ -62,7 +62,7 @@ data class ArtistItemsPage(
                     ?.runs?.firstOrNull()
                     ?.text?.parseTime(),
                 musicVideoType = renderer.musicVideoType,
-                thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                 explicit = renderer.badges?.find {
                     it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                 } != null,
@@ -83,7 +83,7 @@ data class ArtistItemsPage(
                     title = renderer.title.runs?.firstOrNull()?.text ?: return null,
                     artists = null,
                     year = renderer.subtitle?.runs?.lastOrNull()?.text?.toIntOrNull(),
-                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                     explicit = renderer.subtitleBadges?.find {
                         it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                     } != null
@@ -101,7 +101,7 @@ data class ArtistItemsPage(
                     album = null,
                     duration = null,
                     musicVideoType = renderer.musicVideoType,
-                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                     endpoint = renderer.navigationEndpoint.watchEndpoint
                 )
                 renderer.isPlaylist -> PlaylistItem(
@@ -114,7 +114,7 @@ data class ArtistItemsPage(
                         )
                     },
                     songCountText = renderer.subtitle?.runs?.getOrNull(4)?.text,
-                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                    thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                     playEndpoint = renderer.thumbnailOverlay
                         ?.musicItemThumbnailOverlayRenderer?.content
                         ?.musicPlayButtonRenderer?.playNavigationEndpoint

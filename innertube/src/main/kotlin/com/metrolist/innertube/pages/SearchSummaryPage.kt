@@ -113,7 +113,7 @@ data class SearchSummaryPage(
                                 ?.text
                                 ?.parseTime(),
                         musicVideoType = renderer.onTap.musicVideoType,
-                        thumbnail = renderer.thumbnail.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        thumbnail = renderer.thumbnail.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                         explicit =
                             renderer.subtitleBadges?.find {
                                 it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
@@ -128,7 +128,7 @@ data class SearchSummaryPage(
                             renderer.title.runs
                                 ?.firstOrNull()
                                 ?.text ?: return null,
-                        thumbnail = renderer.thumbnail.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        thumbnail = renderer.thumbnail.musicThumbnailRenderer?.getArtistThumbnailUrl() ?: return null,
                         shuffleEndpoint =
                             renderer.buttons
                                 .find { it.buttonRenderer.icon?.iconType == "MUSIC_SHUFFLE" }
@@ -166,7 +166,7 @@ data class SearchSummaryPage(
                                 )
                             } ?: return null,
                         year = null,
-                        thumbnail = renderer.thumbnail.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        thumbnail = renderer.thumbnail.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                         explicit =
                             renderer.subtitleBadges?.find {
                                 it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
@@ -189,7 +189,7 @@ data class SearchSummaryPage(
                                 name = renderer.subtitle.runs?.joinToString { it.text } ?: return null,
                             ),
                         songCountText = null,
-                        thumbnail = renderer.thumbnail.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        thumbnail = renderer.thumbnail.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                         playEndpoint =
                             renderer.buttons
                                 .find { it.buttonRenderer.icon?.iconType == "PLAY_ARROW" }
@@ -221,7 +221,7 @@ data class SearchSummaryPage(
                                 name = renderer.subtitle.runs?.joinToString { it.text } ?: return null,
                             ),
                         episodeCountText = null,
-                        thumbnail = renderer.thumbnail.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        thumbnail = renderer.thumbnail.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                         playEndpoint =
                             renderer.buttons
                                 .find { it.buttonRenderer.icon?.iconType == "PLAY_ARROW" }
@@ -295,7 +295,7 @@ data class SearchSummaryPage(
                                 .getOrNull(dateIndex)
                                 ?.firstOrNull()
                                 ?.text,
-                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                         explicit =
                             renderer.badges?.find {
                                 it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
@@ -353,7 +353,7 @@ data class SearchSummaryPage(
                                 ?.text
                                 ?.parseTime(),
                         musicVideoType = renderer.musicVideoType,
-                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                         explicit =
                             renderer.badges?.find {
                                 it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
@@ -376,7 +376,7 @@ data class SearchSummaryPage(
                                 ?.firstOrNull()
                                 ?.text
                                 ?: return null,
-                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getArtistThumbnailUrl() ?: return null,
                         shuffleEndpoint =
                             renderer.menu
                                 ?.menuRenderer
@@ -406,7 +406,7 @@ data class SearchSummaryPage(
                                 ?.firstOrNull()
                                 ?.text
                                 ?: return null,
-                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getArtistThumbnailUrl() ?: return null,
                         shuffleEndpoint = renderer.menu
                             ?.menuRenderer
                             ?.items
@@ -458,7 +458,7 @@ data class SearchSummaryPage(
                                 ?.firstOrNull()
                                 ?.text
                                 ?.toIntOrNull(),
-                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                         explicit =
                             renderer.badges?.find {
                                 it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
@@ -496,7 +496,7 @@ data class SearchSummaryPage(
                                 ?.runs
                                 ?.lastOrNull()
                                 ?.text ?: return null,
-                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                         playEndpoint =
                             renderer.overlay
                                 ?.musicItemThumbnailOverlayRenderer
@@ -551,7 +551,7 @@ data class SearchSummaryPage(
                                 ?.runs
                                 ?.lastOrNull()
                                 ?.text,
-                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                         playEndpoint =
                             renderer.overlay
                                 ?.musicItemThumbnailOverlayRenderer

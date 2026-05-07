@@ -111,7 +111,7 @@ data class ArtistPage(
                 album = album,
                 duration = null,
                 musicVideoType = renderer.musicVideoType,
-                thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null,
                 explicit = renderer.badges?.find {
                     it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                 } != null,
@@ -196,7 +196,7 @@ data class ArtistPage(
                     ArtistItem(
                         id = renderer.navigationEndpoint.browseEndpoint?.browseId ?: return null,
                         title = renderer.title.runs?.lastOrNull()?.text ?: return null,
-                        thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
+                        thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getArtistThumbnailUrl() ?: return null,
                         channelId = renderer.menu?.menuRenderer?.items?.find {
                             it.toggleMenuServiceItemRenderer?.defaultIcon?.iconType == "SUBSCRIBE"
                         }?.toggleMenuServiceItemRenderer?.defaultServiceEndpoint?.subscribeEndpoint?.channelIds?.firstOrNull(),
