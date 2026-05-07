@@ -126,12 +126,19 @@ internal fun LyricsLine(
     lyricsBlurEnabled: Boolean = true
 ) {
     val density = LocalDensity.current
+    val isNextLine = !isActiveLine && !item.isBackground && index == displayedCurrentLineIndex + 1
+    val scaleTarget = when {
+        isActiveLine || item.isBackground -> 1f
+        isNextLine -> 0.985f
+        else -> 0.93f
+    }
     val animatedScale by animateFloatAsState(
-        targetValue = if (isActiveLine || item.isBackground) 1f else 0.93f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = 500f
-        ),
+        targetValue = scaleTarget,
+        animationSpec = when {
+            isActiveLine -> spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 220f)
+            isNextLine -> spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 160f)
+            else -> spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 480f)
+        },
         label = "lyricsLineScale"
     )
 
@@ -227,7 +234,7 @@ internal fun LyricsLine(
                 } else if (isAutoScrollEnabled && displayedCurrentLineIndex >= 0) {
                     when (abs(index - displayedCurrentLineIndex)) {
                         0 -> focusedAlpha
-                        1 -> 0.2f; 2 -> 0.2f; 3 -> 0.15f; 4 -> 0.1f; else -> 0.08f
+                        1 -> if (index == displayedCurrentLineIndex + 1) 0.55f else 0.2f; 2 -> 0.2f; 3 -> 0.15f; 4 -> 0.1f; else -> 0.08f
                     }
                 } else inactiveAlpha
 
@@ -235,7 +242,7 @@ internal fun LyricsLine(
                     targetValue = targetAlpha,
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = 380f
+                        stiffness = 220f
                     ),
                     label = "lyricsLineAlpha"
                 )
@@ -398,9 +405,10 @@ private fun WordLevelLyrics(
                         lastUpdateTime = now
                     }
                     val rawPos = lastPlayerPos + lyricsOffset + (if (playerConnection.player.isPlaying) elapsed else 0)
-                    // lerp toward rawPos for smoothness — ~80ms lag max, but removes jitter
-                    val lerpFactor = (elapsed / 80f).coerceIn(0f, 1f)
-                    displayPos = (displayPos + (rawPos - displayPos) * lerpFactor).toLong()
+                    val dtSec = elapsed.coerceIn(0L, 50L) / 1000f
+                    val smoothingHalfLife = 0.04f
+                    val alpha = (1f - Math.pow(0.5, (dtSec / smoothingHalfLife).toDouble()).toFloat())
+                    displayPos = (displayPos + (rawPos - displayPos) * alpha).toLong()
                     smoothPosition = displayPos
                 }
             }
