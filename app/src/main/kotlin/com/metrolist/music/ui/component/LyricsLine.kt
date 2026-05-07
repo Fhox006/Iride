@@ -131,7 +131,7 @@ internal fun LyricsLine(
         && isSynced
         && isAutoScrollEnabled
         && displayedCurrentLineIndex >= 0
-        && index == displayedCurrentLineIndex + 1
+        && index == displayedCurrentLineIndex
     val scaleTarget = when {
         isActiveLine || item.isBackground -> 1f
         isNextLine -> 0.985f
@@ -234,14 +234,15 @@ internal fun LyricsLine(
                 val activeAlpha = 1f
                 val focusedAlpha = if (item.isBackground) 0.5f else 0.3f
 
-                val targetAlpha = if (item.isBackground || isActiveLine) {
-                    activeAlpha
-                } else if (isAutoScrollEnabled && displayedCurrentLineIndex >= 0) {
-                    when (abs(index - displayedCurrentLineIndex)) {
+                val targetAlpha = when {
+                    item.isBackground || isActiveLine -> activeAlpha
+                    isNextLine -> 0.55f
+                    isAutoScrollEnabled && displayedCurrentLineIndex >= 0 -> when (abs(index - displayedCurrentLineIndex)) {
                         0 -> focusedAlpha
-                        1 -> if (index == displayedCurrentLineIndex + 1) 0.55f else 0.2f; 2 -> 0.2f; 3 -> 0.15f; 4 -> 0.1f; else -> 0.08f
+                        1 -> 0.2f; 2 -> 0.2f; 3 -> 0.15f; 4 -> 0.1f; else -> 0.08f
                     }
-                } else inactiveAlpha
+                    else -> inactiveAlpha
+                }
 
                 val animatedAlpha by animateFloatAsState(
                     targetValue = targetAlpha,
