@@ -22,7 +22,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationState
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDecay
 import androidx.compose.animation.core.animateFloatAsState
@@ -850,11 +849,11 @@ fun ExperimentalLyrics(
                                             target = findActiveLineIndices(lines, currentPositionState + (currentSong?.song?.lyricsOffset ?: 0)).maxOrNull() ?: -1
                                         }
                                         if (target != -1) {
-                                            val listIdx = mergedLyricsList.indexOfFirst { it is LyricsListItem.Line && it.index == target }.coerceAtLeast(0)
-                                            userManualOffset = positions[listIdx] ?: 0f
+                                            userManualOffset = 0f
                                             deferredCurrentLineIndex = target
                                             scrollTargetIndex = target
                                             isAutoScrollEnabled = true
+                                            lastPreviewTime = 0L
                                         }
                                     }
                                     .padding(horizontal = 20.dp),
@@ -1021,7 +1020,7 @@ fun ExperimentalLyrics(
                         val animatedOffset by animateFloatAsState(
                             targetValue = if (isAutoScrollEnabled) targetOffset else frozenOffset.floatValue,
                             animationSpec = if (isInitialLayout || !isAutoScrollEnabled) snap()
-                            else tween(680, (distance * LYRICS_STAGGER_DELAY_PER_DISTANCE).coerceAtMost(LYRICS_STAGGER_DELAY_MAX_MS), CubicBezierEasing(0.16f, 1f, 0.3f, 1f)),
+                            else tween(750, (distance * LYRICS_STAGGER_DELAY_PER_DISTANCE).coerceAtMost(LYRICS_STAGGER_DELAY_MAX_MS), FastOutSlowInEasing),
                             label = "lyricStaggeredOffset_$listIndex"
                         )
                         Box(
@@ -1127,7 +1126,7 @@ fun ExperimentalLyrics(
                     val animatedProviderBase by animateFloatAsState(
                         targetValue = if (isAutoScrollEnabled) targetProviderBase else frozenProviderBase.floatValue,
                         animationSpec = if (isInitialLayout || !isAutoScrollEnabled) snap()
-                        else tween(680, 0, CubicBezierEasing(0.16f, 1f, 0.3f, 1f)),
+                        else tween(750, 0, FastOutSlowInEasing),
                         label = "lyricsProviderOffset"
                     )
                     Text(

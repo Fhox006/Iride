@@ -1190,20 +1190,25 @@ fun BottomSheetPlayer(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        AnimatedContent(targetState = showInlineLyrics, label = "ShareButton") { showLyrics ->
+                        AnimatedContent(targetState = showInlineLyrics, label = "MoreButton") { showLyrics ->
                             if (!showLyrics) {
                                 FilledIconButton(
                                     onClick = {
-                                        val intent =
-                                            Intent().apply {
-                                                action = Intent.ACTION_SEND
-                                                type = "text/plain"
-                                                putExtra(
-                                                    Intent.EXTRA_TEXT,
-                                                    "https://music.youtube.com/watch?v=${mediaMetadata.id}",
-                                                )
-                                            }
-                                        context.startActivity(Intent.createChooser(intent, null))
+                                        menuState.show {
+                                            PlayerMenu(
+                                                mediaMetadata = mediaMetadata,
+                                                navController = navController,
+                                                playerBottomSheetState = state,
+                                                onShowDetailsDialog = {
+                                                    mediaMetadata.id.let {
+                                                        bottomSheetPageState.show {
+                                                            ShowMediaInfo(it)
+                                                        }
+                                                    }
+                                                },
+                                                onDismiss = menuState::dismiss,
+                                            )
+                                        }
                                     },
                                     shape = shareShape,
                                     colors =
@@ -1214,7 +1219,7 @@ fun BottomSheetPlayer(
                                     modifier = Modifier.size(42.dp),
                                 ) {
                                     Icon(
-                                        painter = painterResource(R.drawable.share),
+                                        painter = painterResource(R.drawable.more_horiz),
                                         contentDescription = null,
                                         modifier = Modifier.size(24.dp),
                                     )
@@ -1270,29 +1275,35 @@ fun BottomSheetPlayer(
                         }
                     }
                 } else {
-                    AnimatedContent(targetState = showInlineLyrics, label = "ShareButton") { showLyrics ->
+                    AnimatedContent(targetState = showInlineLyrics, label = "MoreButton") { showLyrics ->
                         if (!showLyrics) {
                             Box(
+                                contentAlignment = Alignment.Center,
                                 modifier =
                                     Modifier
                                         .size(40.dp)
                                         .clip(RoundedCornerShape(24.dp))
                                         .background(textButtonColor)
                                         .clickable {
-                                            val intent =
-                                                Intent().apply {
-                                                    action = Intent.ACTION_SEND
-                                                    type = "text/plain"
-                                                    putExtra(
-                                                        Intent.EXTRA_TEXT,
-                                                        "https://music.youtube.com/watch?v=${mediaMetadata.id}",
-                                                    )
-                                                }
-                                            context.startActivity(Intent.createChooser(intent, null))
+                                            menuState.show {
+                                                PlayerMenu(
+                                                    mediaMetadata = mediaMetadata,
+                                                    navController = navController,
+                                                    playerBottomSheetState = state,
+                                                    onShowDetailsDialog = {
+                                                        mediaMetadata.id.let {
+                                                            bottomSheetPageState.show {
+                                                                ShowMediaInfo(it)
+                                                            }
+                                                        }
+                                                    },
+                                                    onDismiss = menuState::dismiss,
+                                                )
+                                            }
                                         },
                             ) {
                                 Icon(
-                                    painter = painterResource(R.drawable.share),
+                                    painter = painterResource(R.drawable.more_horiz),
                                     contentDescription = null,
                                     tint = iconButtonColor,
                                     modifier =
@@ -1304,10 +1315,9 @@ fun BottomSheetPlayer(
                         }
                     }
 
-                    Spacer(modifier = Modifier.size(12.dp))
-
                     AnimatedContent(targetState = showInlineLyrics, label = "LikeButton") { showLyrics ->
                         if (showLyrics) {
+                            Spacer(modifier = Modifier.size(12.dp))
                             val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
                             Box(
                                 modifier =
@@ -1343,14 +1353,6 @@ fun BottomSheetPlayer(
                                             .size(24.dp),
                                 )
                             }
-                        } else {
-                            PlayerMoreMenuButton(
-                                mediaMetadata = mediaMetadata,
-                                navController = navController,
-                                state = state,
-                                textButtonColor = textButtonColor,
-                                iconButtonColor = iconButtonColor,
-                            )
                         }
                     }
                 }
