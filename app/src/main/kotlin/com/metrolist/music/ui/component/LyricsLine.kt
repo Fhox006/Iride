@@ -126,7 +126,12 @@ internal fun LyricsLine(
     lyricsBlurEnabled: Boolean = true
 ) {
     val density = LocalDensity.current
-    val isNextLine = !isActiveLine && !item.isBackground && index == displayedCurrentLineIndex + 1
+    val isNextLine = !isActiveLine
+        && !item.isBackground
+        && isSynced
+        && isAutoScrollEnabled
+        && displayedCurrentLineIndex >= 0
+        && index == displayedCurrentLineIndex + 1
     val scaleTarget = when {
         isActiveLine || item.isBackground -> 1f
         isNextLine -> 0.985f
