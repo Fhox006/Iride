@@ -8,6 +8,7 @@ package com.metrolist.music.ui.component
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -42,7 +43,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableLongState
@@ -185,7 +185,7 @@ private fun PillShimmerSkeleton(isTopLevelRoute: Boolean) {
             .fillMaxWidth()
             .height(pillHeight)
             .shimmer()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(28.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f)),
     )
 }
@@ -294,15 +294,24 @@ private fun PillContent(
     val onSurfaceColor = if (forceLightColors) Color.White else MaterialTheme.colorScheme.onSurface
     val errorColor     = if (forceLightColors) Color(0xFFFF6B6B) else MaterialTheme.colorScheme.error
 
+    val animatedHeight by animateDpAsState(
+        targetValue = if (isTopLevelRoute) FloatingPillHeight else MiniPlayerHeight,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "pillHeight",
+    )
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .height(animatedHeight)
+            .clip(RoundedCornerShape(28.dp))
             .background(backgroundColor)
-            .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(18.dp)),
+            .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(28.dp)),
     ) {
-        // Background overlays (inside clip so they don't bleed outside)
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.fillMaxSize()) {
             // Blur/gradient overlays
             when (effectiveBackground) {
                 MiniPlayerBackgroundStyle.BLUR -> {
@@ -313,14 +322,12 @@ private fun PillContent(
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(FloatingPillHeight)
+                                    .fillMaxSize()
                                     .blur(60.dp),
                             )
                             Box(
                                 Modifier
-                                    .fillMaxWidth()
-                                    .height(FloatingPillHeight)
+                                    .fillMaxSize()
                                     .background(Color.Black.copy(alpha = 0.45f)),
                             )
                         }
@@ -331,8 +338,7 @@ private fun PillContent(
                     else listOf(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.colorScheme.surfaceContainer)
                     Box(
                         Modifier
-                            .fillMaxWidth()
-                            .height(FloatingPillHeight)
+                            .fillMaxSize()
                             .background(Brush.horizontalGradient(colors))
                             .background(Color.Black.copy(alpha = 0.15f)),
                     )
@@ -504,7 +510,7 @@ private fun PillNavItem(
         modifier = Modifier
             .clickable(
                 interactionSource = interactionSource,
-                indication = ripple(bounded = false, radius = 24.dp),
+                indication = null,
                 onClick = { if (!isSearchItem) onNavItemClick(screen, currentIsSelected) },
             )
             .padding(horizontal = 12.dp, vertical = 4.dp),
