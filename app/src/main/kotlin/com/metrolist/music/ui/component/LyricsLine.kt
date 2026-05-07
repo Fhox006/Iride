@@ -584,6 +584,37 @@ private fun WordLevelLyrics(
                 val lineCurrentPushes = FloatArray(layoutResult.lineCount)
                 val lineTotalPushes = FloatArray(layoutResult.lineCount)
 
+                val charLiftPx = FloatArray(mainText.length) { 0f }
+                val activeWordIdx = wordFactors.indexOfFirst { (sf, _, isSung) -> !isSung && sf > 0f }
+                if (activeWordIdx != -1) {
+                    val (activeSungFactor, activeWord, _) = wordFactors[activeWordIdx]
+                    val durMsL = ((activeWord.endTime - activeWord.startTime) * 1000.0).coerceAtLeast(1.0)
+                    val dStrL = (Math.log(1.0 + durMsL / 350.0) / Math.log(1.0 + 1000.0 / 350.0)).coerceIn(0.0, 1.0).toFloat()
+                    if (dStrL > 0.05f) {
+                        val wordCharIndices = mainText.indices.filter { wordIdxMap[it] == activeWordIdx }
+                        var focalCharIdx = wordCharIndices.firstOrNull() ?: -1
+                        var minDist = Float.MAX_VALUE
+                        for (ci in wordCharIndices) {
+                            val sMs = activeWord.startTime * 1000
+                            val dur = (activeWord.endTime * 1000 - activeWord.startTime * 1000).coerceAtLeast(100.0)
+                            val wProg = (smoothPosition.toDouble() - sMs) / dur
+                            val cInW = charInWordMap[ci].toDouble()
+                            val wLen = wordLenMap[ci].toDouble()
+                            val cLp = ((wProg - cInW / wLen) * wLen).coerceIn(0.0, 1.0).toFloat()
+                            val d = abs(cLp - 0.5f)
+                            if (d < minDist) { minDist = d; focalCharIdx = ci }
+                        }
+                        if (focalCharIdx != -1) {
+                            val activePulse = sin(activeSungFactor * PI.toFloat()).coerceIn(0f, 1f)
+                            for (ci in wordCharIndices) {
+                                val dist = abs(ci - focalCharIdx).toFloat()
+                                charLiftPx[ci] = dStrL * activePulse * exp(-0.7f * dist)
+                            }
+                        }
+                    }
+                }
+                val liftMaxPx = 5.5f
+
                 for (i in mainText.indices) {
                     val lineIdx = layoutResult.getLineForOffset(i)
                     val wordIdx = wordIdxMap[i]
@@ -623,7 +654,9 @@ private fun WordLevelLyrics(
                     } else 0f
 
                     val nudgeScale = if (wordItem != null && !isWordSung && sungFactor > 0f) {
-                        0.038f * sin(charLp * PI.toFloat()) * exp(-3f * charLp)
+                        val durMsN = ((wordItem.endTime - wordItem.startTime) * 1000.0).coerceAtLeast(1.0)
+                        val dStrN = (Math.log(1.0 + durMsN / 350.0) / Math.log(1.0 + 1000.0 / 350.0)).coerceIn(0.0, 1.0).toFloat()
+                        0.018f * dStrN * sin(charLp * PI.toFloat()) * exp(-2.5f * charLp)
                     } else 0f
 
                     val charScaleX = 1f + crescendoDeltaX + (nudgeScale * 0.3f)
@@ -684,9 +717,10 @@ private fun WordLevelLyrics(
                         }
                     }
 
-                    val nudgeStrength = 0.038f
                     val nudgeScale = if (wordItem != null && !isWordSung && sungFactor > 0f) {
-                        nudgeStrength * sin(charLp * PI.toFloat()) * exp(-3f * charLp)
+                        val durMsN = ((wordItem.endTime - wordItem.startTime) * 1000.0).coerceAtLeast(1.0)
+                        val dStrN = (Math.log(1.0 + durMsN / 350.0) / Math.log(1.0 + 1000.0 / 350.0)).coerceIn(0.0, 1.0).toFloat()
+                        0.018f * dStrN * sin(charLp * PI.toFloat()) * exp(-2.5f * charLp)
                     } else 0f
 
                     val charScaleX = 1f + crescendoDeltaX + nudgeScale * 0.25f
@@ -708,7 +742,8 @@ private fun WordLevelLyrics(
                             }
                         }
 
-                        translate(left = alignShift + lineCurrentPushes[lineIdx] + charBounds.left, top = charBounds.top + waveOffset)
+                        val liftOffset = -(charLiftPx[i] * liftMaxPx)
+                        translate(left = alignShift + lineCurrentPushes[lineIdx] + charBounds.left, top = charBounds.top + waveOffset + liftOffset)
                         if (wordIdx != -1) {
                             scale(
                                 charScaleX,
@@ -717,53 +752,55 @@ private fun WordLevelLyrics(
                             )
                         }
                     }) {
-                        if (false && shouldGlow) {
-                            val sMs = wordItem!!.startTime * 1000
-                            val eMs = wordItem.endTime * 1000
-                            val dur = eMs - sMs
-                            val wordLenText = wordItem.text.length.coerceAtLeast(1)
-                            val impactRatio = dur.toFloat() / wordLenText
-                            val fadeFactor = (sungFactor * 5f).coerceIn(0f, 1f) * ((1f - sungFactor) * 8f).coerceIn(0f, 1f)
-                            val impactFactor = (((impactRatio - 100f) / 250f).coerceIn(0f, 1f) * 0.6f + ((dur.toFloat() - 300f) / 1500f).coerceIn(0f, 1f) * 0.4f).coerceIn(0f, 1f) * fadeFactor
-                            if (impactFactor > 0.01f) {
-                                val glowAlpha = (0.35f * impactFactor).coerceIn(0f, 0.4f)
-                                val baseGlowRadius = 12.dp.toPx() * impactFactor
-                                drawIntoCanvas { canvas ->
-                                    glowPaint.maskFilter = BlurMaskFilter(baseGlowRadius, BlurMaskFilter.Blur.NORMAL)
-                                    glowPaint.color = expressiveAccent.copy(alpha = glowAlpha).toArgb()
-                                    glowPaint.textSize = lyricStyle.fontSize.toPx()
-                                    glowPaint.typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-                                    canvas.nativeCanvas.drawText(letterLayouts[i].layoutInput.text.text, 0f, letterLayouts[i].firstBaseline, glowPaint)
+                        if (shouldGlow && wordItem != null) {
+                            val durMsB = ((wordItem.endTime - wordItem.startTime) * 1000.0).coerceAtLeast(1.0)
+                            val dStrB = (Math.log(1.0 + durMsB / 350.0) / Math.log(1.0 + 1000.0 / 350.0)).coerceIn(0.0, 1.0).toFloat()
+                            if (dStrB > 0.08f) {
+                                val envelope = sin(sungFactor * PI.toFloat()).coerceIn(0f, 1f)
+                                val bloomStrength = dStrB * envelope
+                                if (bloomStrength > 0.04f) {
+                                    val glowAlpha = (0.18f * bloomStrength).coerceIn(0f, 0.18f)
+                                    val glowRadius = 8.dp.toPx() * bloomStrength
+                                    drawIntoCanvas { canvas ->
+                                        glowPaint.maskFilter = BlurMaskFilter(glowRadius, BlurMaskFilter.Blur.NORMAL)
+                                        glowPaint.color = expressiveAccent.copy(alpha = glowAlpha).toArgb()
+                                        glowPaint.textSize = lyricStyle.fontSize.toPx()
+                                        glowPaint.typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+                                        canvas.nativeCanvas.drawText(letterLayouts[i].layoutInput.text.text, 0f, letterLayouts[i].firstBaseline, glowPaint)
+                                    }
                                 }
                             }
                         }
                         val baseAlpha = if (isWordSung || charLp > 0.99f) 1f else focusedAlpha
                         drawText(letterLayouts[i], color = expressiveAccent.copy(alpha = if (wordIdx == -1) focusedAlpha else baseAlpha))
                         if (!isWordSung && charLp > 0f && charLp < 1f) {
-                            val fXL = charBounds.width * charLp
-                            val dissolveWidth = (charBounds.width * 0.30f).coerceAtLeast(2f)
+                            val charW = charBounds.width
+                            val durMsK = ((wordItem!!.endTime - wordItem.startTime) * 1000.0).coerceAtLeast(1.0)
+                            val dStrK = (Math.log(1.0 + durMsK / 350.0) / Math.log(1.0 + 1000.0 / 350.0)).coerceIn(0.0, 1.0).toFloat()
+                            val dissolveWidthFraction = 0.90f - dStrK * 0.45f
+                            val dissolveWidth = (charW * dissolveWidthFraction).coerceAtLeast(2f)
+                            val fXL = charW * charLp
                             val hardLeft = (fXL - dissolveWidth).coerceAtLeast(0f)
-                            // fully sung portion
                             if (hardLeft > 0f) {
                                 clipRect(left = 0f, top = 0f, right = hardLeft, bottom = charBounds.height) {
                                     drawText(letterLayouts[i], color = expressiveAccent)
                                 }
                             }
-                            // dissolve zone: 20 sub-steps with smooth alpha using easing
-                            val steps = 20
+                            val steps = 32
                             for (j in 0 until steps) {
                                 val t = (j + 0.5f) / steps.toFloat()
-                                val stepStart = hardLeft + t * dissolveWidth - dissolveWidth / steps
-                                val stepEnd = hardLeft + (t + 1f / steps) * dissolveWidth
-                                val easedAlpha = 1f - (t * t)  // quadratic ease-out from sung to unsung
-                                if (stepEnd > stepStart && stepStart < fXL) {
+                                val stepLeft = hardLeft + t * dissolveWidth - dissolveWidth / steps
+                                val stepRight = hardLeft + (t + 1f / steps) * dissolveWidth
+                                val smoothT = t * t * (3f - 2f * t)
+                                val stepAlpha = 1f - smoothT
+                                if (stepRight > stepLeft && stepLeft < charW) {
                                     clipRect(
-                                        left = stepStart.coerceAtLeast(0f),
+                                        left = stepLeft.coerceAtLeast(0f),
                                         top = 0f,
-                                        right = stepEnd.coerceAtMost(charBounds.width),
+                                        right = stepRight.coerceAtMost(charW),
                                         bottom = charBounds.height
                                     ) {
-                                        drawText(letterLayouts[i], color = expressiveAccent.copy(alpha = easedAlpha))
+                                        drawText(letterLayouts[i], color = expressiveAccent.copy(alpha = stepAlpha))
                                     }
                                 }
                             }

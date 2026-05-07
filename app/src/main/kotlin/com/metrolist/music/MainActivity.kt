@@ -333,10 +333,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        safeUnbindService("onStop()")
-        // Also null out the snapshot so the UI shows a loading state
-        // instead of stale data while the service is unbound
-        playerConnectionSnapshot = null
     }
 
     override fun onDestroy() {
