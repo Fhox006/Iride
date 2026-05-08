@@ -148,28 +148,37 @@ inline fun ListItem(
     isActive: Boolean = false,
     isAvailable: Boolean = true,
 ) {
+    val highlightShape = RoundedCornerShape(24.dp)
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = if (isActive) {
-            modifier // playing highlight
-                .height(ListItemHeight)
-                .padding(horizontal = 8.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(
-                    color = // selected active
-                        if (isSelected == true) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                        else Color.White.copy(alpha = 0.1f)
-                )
-        } else if (isSelected == true) {
-            modifier // inactive selected
-                .height(ListItemHeight)
-                .padding(horizontal = 8.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(color = MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.4f))
-        } else {
-            modifier // default
-                .height(ListItemHeight)
-                .padding(horizontal = 8.dp)
+        modifier = when {
+            isActive && isSelected == true -> {
+                modifier
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .clip(highlightShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.26f))
+                    .height(ListItemHeight)
+            }
+            isActive -> {
+                modifier
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .clip(highlightShape)
+                    .background(Color.White.copy(alpha = 0.10f))
+                    .height(ListItemHeight)
+            }
+            isSelected == true -> {
+                modifier
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .clip(highlightShape)
+                    .background(MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.22f))
+                    .height(ListItemHeight)
+            }
+            else -> {
+                modifier
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .height(ListItemHeight)
+            }
         }
     ) {
         Box(

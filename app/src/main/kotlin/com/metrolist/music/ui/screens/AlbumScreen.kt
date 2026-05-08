@@ -7,10 +7,12 @@ package com.metrolist.music.ui.screens
 
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +32,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -42,11 +45,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableIntStateOf
@@ -109,6 +114,10 @@ import com.metrolist.music.ui.menu.AlbumMenu
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
+import com.materialkolor.rememberDynamicColorScheme
+import com.metrolist.music.ui.theme.extractThemeColor
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberPreference
@@ -225,6 +234,35 @@ fun AlbumScreen(
         gradientReady = true
     }
 
+    val albumSeedColor by remember(albumThumbnailBitmap) {
+        derivedStateOf {
+            albumThumbnailBitmap?.extractThemeColor()
+        }
+    }
+    val useDarkTheme = isSystemInDarkTheme()
+    val albumColorScheme = albumSeedColor?.let { seed ->
+        rememberDynamicColorScheme(
+            seedColor = seed,
+            isDark = useDarkTheme,
+            specVersion = ColorSpec.SpecVersion.SPEC_2025,
+            style = PaletteStyle.TonalSpot
+        )
+    }
+    val currentScheme = MaterialTheme.colorScheme
+    val targetScheme = albumColorScheme ?: currentScheme
+    val animatedScheme = animateColorScheme(targetScheme, durationMs = 700)
+
+    val listState = rememberLazyListState()
+    val showCollapsedAppBar = remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 140
+        }
+    }
+
+    MaterialTheme(
+        colorScheme = animatedScheme,
+        typography = MaterialTheme.typography,
+    ) {
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedAlbumGradientBackground(
             thumbnail = albumThumbnailBitmap,
@@ -232,6 +270,7 @@ fun AlbumScreen(
         )
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
+            state = listState,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
         ) {
         val albumWithSongs = albumWithSongs
@@ -387,7 +426,7 @@ fun AlbumScreen(
                                 }
                             },
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f),
                             modifier = Modifier.size(48.dp),
                         ) {
                             Box(
@@ -460,7 +499,7 @@ fun AlbumScreen(
                                 }
                             },
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f),
                             modifier = Modifier.size(48.dp),
                         ) {
                             Box(
@@ -485,14 +524,14 @@ fun AlbumScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         shape = RoundedCornerShape(32.dp),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.22f),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.34f),
                         tonalElevation = 0.dp,
                         shadowElevation = 0.dp,
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 10.dp)
+                                .padding(vertical = 12.dp)
                         ) {
                             filteredSongs.fastForEachIndexed { index, song ->
                                 val onCheckedChange: (Boolean) -> Unit = {
@@ -645,8 +684,8 @@ fun AlbumScreen(
 
     TopAppBar(
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Transparent,
-            scrolledContainerColor = Color.Transparent,
+            containerColor = if (showCollapsedAppBar.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.9f) else Color.Transparent,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
             navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
             actionIconContentColor = MaterialTheme.colorScheme.onBackground,
             titleContentColor = MaterialTheme.colorScheme.onBackground,
@@ -711,5 +750,42 @@ fun AlbumScreen(
                 }
             }
         },
+    )
+    } // end MaterialTheme
+}
+
+@Composable
+private fun animateColorScheme(target: ColorScheme, durationMs: Int = 700): ColorScheme {
+    @Composable fun a(c: Color) = animateColorAsState(c, tween(durationMs)).value
+    return target.copy(
+        primary              = a(target.primary),
+        onPrimary            = a(target.onPrimary),
+        primaryContainer     = a(target.primaryContainer),
+        onPrimaryContainer   = a(target.onPrimaryContainer),
+        secondary            = a(target.secondary),
+        onSecondary          = a(target.onSecondary),
+        secondaryContainer   = a(target.secondaryContainer),
+        onSecondaryContainer = a(target.onSecondaryContainer),
+        tertiary             = a(target.tertiary),
+        onTertiary           = a(target.onTertiary),
+        tertiaryContainer    = a(target.tertiaryContainer),
+        onTertiaryContainer  = a(target.onTertiaryContainer),
+        background           = a(target.background),
+        onBackground         = a(target.onBackground),
+        surface              = a(target.surface),
+        onSurface            = a(target.onSurface),
+        surfaceVariant       = a(target.surfaceVariant),
+        onSurfaceVariant     = a(target.onSurfaceVariant),
+        surfaceTint          = a(target.surfaceTint),
+        inverseSurface       = a(target.inverseSurface),
+        inverseOnSurface     = a(target.inverseOnSurface),
+        inversePrimary       = a(target.inversePrimary),
+        error                = a(target.error),
+        onError              = a(target.onError),
+        errorContainer       = a(target.errorContainer),
+        onErrorContainer     = a(target.onErrorContainer),
+        outline              = a(target.outline),
+        outlineVariant       = a(target.outlineVariant),
+        scrim                = a(target.scrim),
     )
 }
