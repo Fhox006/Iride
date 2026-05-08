@@ -1173,6 +1173,7 @@ class MainActivity : ComponentActivity() {
                             accountImageUrl = accountImageUrl,
                             pureBlack = pureBlack,
                             slimNav = slimNav,
+                            navController = navController,
                             modifier = Modifier.align(Alignment.BottomCenter),
                         )
                     }
