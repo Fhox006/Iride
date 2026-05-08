@@ -130,7 +130,7 @@ import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.DisableScreenshotKey
 import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
-import com.metrolist.music.constants.ExperimentalLyricsKey
+import com.metrolist.music.constants.KaraokeLyricsKey
 import com.metrolist.music.constants.OnboardingCompletedKey
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.ListenTogetherUsernameKey
@@ -698,6 +698,13 @@ class MainActivity : ComponentActivity() {
                 val inSearchScreen by remember {
                     derivedStateOf { currentRoute?.startsWith("search/") == true }
                 }
+                val isTopLevelRoute by remember {
+                    derivedStateOf {
+                        currentRoute == null ||
+                            navigationItems.any { it.route == currentRoute } ||
+                            currentRoute?.startsWith("search/") == true
+                    }
+                }
                 val isLandscape = configuration.containerDpSize.width > configuration.containerDpSize.height
 
                 val showRail = isLandscape && !inSearchScreen
@@ -706,7 +713,7 @@ class MainActivity : ComponentActivity() {
                     rememberBottomSheetState(
                         dismissedBound = 0.dp,
                         collapsedBound = if (!showRail) {
-                            bottomInset + FloatingPillHeight + FloatingPillBottomSpacing
+                            bottomInset + (if (isTopLevelRoute) FloatingPillHeight else MiniPlayerHeight) + FloatingPillBottomSpacing
                         } else {
                             bottomInset + MiniPlayerHeight
                         },
@@ -714,11 +721,11 @@ class MainActivity : ComponentActivity() {
                     )
 
                 val playerAwareWindowInsets =
-                    remember(bottomInset, showRail, playerBottomSheetState.isDismissed) {
+                    remember(bottomInset, showRail, isTopLevelRoute, playerBottomSheetState.isDismissed) {
                         var bottom = bottomInset
                         if (!showRail) {
                             // FloatingPill always occupies space at the bottom
-                            bottom += FloatingPillHeight + FloatingPillBottomSpacing
+                            bottom += (if (isTopLevelRoute) FloatingPillHeight else MiniPlayerHeight) + FloatingPillBottomSpacing
                         } else {
                             if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight
                         }

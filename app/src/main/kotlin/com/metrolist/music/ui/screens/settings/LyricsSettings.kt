@@ -40,7 +40,7 @@ import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
-import com.metrolist.music.constants.ExperimentalLyricsKey
+import com.metrolist.music.constants.KaraokeLyricsKey
 import com.metrolist.music.constants.HideStatusBarOnFullscreenKey
 import com.metrolist.music.constants.LyricsAnimationStyle
 import com.metrolist.music.constants.LyricsAnimationStyleKey
@@ -66,8 +66,8 @@ import kotlin.math.roundToInt
 @Composable
 fun LyricsSettings(navController: NavController) {
     val (advancedMode, _) = rememberPreference(AdvancedModeKey, defaultValue = false)
-    val (experimentalLyrics, onExperimentalLyricsChange) =
-        rememberPreference(ExperimentalLyricsKey, defaultValue = true)
+    val (karaokeLyrics, onKaraokeLyricsChange) =
+        rememberPreference(KaraokeLyricsKey, defaultValue = true)
     val (lyricsGlowEffect, onLyricsGlowEffectChange) =
         rememberPreference(LyricsGlowEffectKey, defaultValue = false)
     val (lyricsAnimationStyle, onLyricsAnimationStyleChange) =
@@ -87,33 +87,12 @@ fun LyricsSettings(navController: NavController) {
     val (hideStatusBarOnFullscreen, onHideStatusBarOnFullscreenChange) =
         rememberPreference(HideStatusBarOnFullscreenKey, defaultValue = false)
 
-    var showExperimentalLyricsBetaDialog by remember { mutableStateOf(false) }
     var showLyricsAnimationStyleDialog by remember { mutableStateOf(false) }
     var showLyricsTextSizeDialog by remember { mutableStateOf(false) }
     var showLyricsLineSpacingDialog by remember { mutableStateOf(false) }
     var showLyricsPositionDialog by remember { mutableStateOf(false) }
 
     // ── Dialogs ────────────────────────────────────────────────────────────
-
-    if (showExperimentalLyricsBetaDialog) {
-        DefaultDialog(
-            onDismiss = { showExperimentalLyricsBetaDialog = false },
-            title = { Text(stringResource(R.string.experimental_lyrics_beta_title)) },
-            buttons = {
-                TextButton(onClick = { showExperimentalLyricsBetaDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-                TextButton(onClick = {
-                    showExperimentalLyricsBetaDialog = false
-                    onExperimentalLyricsChange(true)
-                }) {
-                    Text(stringResource(R.string.enable))
-                }
-            }
-        ) {
-            Text(stringResource(R.string.experimental_lyrics_beta_message))
-        }
-    }
 
     if (showLyricsAnimationStyleDialog) {
         EnumDialog(

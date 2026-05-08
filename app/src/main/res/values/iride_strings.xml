@@ -189,10 +189,8 @@
     <string name="app_language">App language</string>
     <string name="lyrics_provider_priority">Lyrics provider priority</string>
     <string name="lyrics_provider_priority_desc">Drag to reorder providers by preference. Higher position means higher priority</string>
-    <string name="experimental_lyrics">Experimental lyrics</string>
-    <string name="experimental_lyrics_desc">Enable the new experimental lyrics component with enhanced animations and performance</string>
-    <string name="experimental_lyrics_beta_title">Experimental feature</string>
-    <string name="experimental_lyrics_beta_message">The new lyrics component is currently in development and may contain bugs. Are you sure you want to enable it?</string>
+    <string name="karaoke_lyrics">Karaoke Lyrics</string>
+    <string name="karaoke_lyrics_desc">Enhanced lyrics renderer with word-by-word animations and synchronized highlighting</string>
     <string name="config_proxy">Configure proxy</string>
     <string name="proxy_username">Proxy username</string>
     <string name="proxy_password">Proxy password</string>
@@ -843,6 +841,7 @@
 
     <!-- Credits / About Screen -->
     <string name="credits_lead_developer">Lead developer</string>
+    <string name="credits_special_thanks">Special thanks</string>
     <string name="credits_collaborator">Collaborator</string>
     <string name="credits_collaborators_section">Collaborators</string>
     <string name="credits_license_name">GNU General Public License v3.0</string>
