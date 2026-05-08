@@ -674,7 +674,10 @@ fun HomeScreen(
 
     val context = LocalContext.current
     var albumThumbnailBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var bitmapGeneration by remember { mutableStateOf(0) }
     LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl) {
+        bitmapGeneration++
+        val myGen = bitmapGeneration
         if (mediaMetadata?.thumbnailUrl != null) {
             val request = ImageRequest.Builder(context)
                 .data(mediaMetadata?.thumbnailUrl)
@@ -683,8 +686,10 @@ fun HomeScreen(
                 .build()
             val newBitmap = runCatching { context.imageLoader.execute(request) }
                 .getOrNull()?.image?.toBitmap()
-            if (newBitmap != null) albumThumbnailBitmap = newBitmap
-            // if load failed, keep old bitmap — no flash
+            // only write if no newer song was queued while we were loading
+            if (newBitmap != null && bitmapGeneration == myGen) {
+                albumThumbnailBitmap = newBitmap
+            }
         } else if (mediaMetadata == null) {
             albumThumbnailBitmap = null
         }

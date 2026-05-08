@@ -508,6 +508,7 @@ fun AlbumScreen(
                                     albumIndex = index + 1,
                                     isActive = song.id == mediaMetadata?.id,
                                     isPlaying = isPlaying,
+                                    isSwipeable = false,
                                     trailingContent = {
                                         if (inSelectMode) {
                                             Checkbox(

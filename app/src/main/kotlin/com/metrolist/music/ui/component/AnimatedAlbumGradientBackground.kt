@@ -336,7 +336,7 @@ fun HomeAnimatedAlbumGradient(
     modifier: Modifier = Modifier,
     isDark: Boolean = isSystemInDarkTheme(),
 ) {
-    var extractedColors by remember(thumbnail) { mutableStateOf<List<Color>>(emptyList()) }
+    var extractedColors by remember { mutableStateOf<List<Color>>(emptyList()) }
 
     LaunchedEffect(thumbnail) {
         if (thumbnail == null) {
@@ -346,7 +346,8 @@ fun HomeAnimatedAlbumGradient(
         val colors = withContext(Dispatchers.IO) {
             runCatching { extractColors(thumbnail).take(3).map { it.color } }.getOrNull() ?: emptyList()
         }
-        extractedColors = colors
+        // only overwrite if extraction succeeded — keep old colors until new ones are ready
+        if (colors.isNotEmpty()) extractedColors = colors
     }
 
     val primaryFallback = MaterialTheme.colorScheme.primary
