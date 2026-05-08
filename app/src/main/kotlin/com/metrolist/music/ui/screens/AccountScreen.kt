@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -55,6 +57,8 @@ import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.db.entities.PodcastEntity
 import com.metrolist.music.ui.component.ChipsRow
+import com.metrolist.music.ui.component.FloatingPillBottomSpacing
+import com.metrolist.music.ui.component.FloatingPillHeight
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.YouTubeGridItem
@@ -99,7 +103,9 @@ fun AccountScreen(
 
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
-        contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+        contentPadding = LocalPlayerAwareWindowInsets.current
+            .add(WindowInsets(bottom = FloatingPillHeight + FloatingPillBottomSpacing))
+            .asPaddingValues(),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
             ChipsRow(

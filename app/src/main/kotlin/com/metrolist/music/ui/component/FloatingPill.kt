@@ -77,6 +77,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
@@ -147,12 +148,20 @@ fun FloatingPill(
             currentRoute.startsWith("search/")
     }
 
+    val targetPillHeight = if (isTopLevelRoute) FloatingPillHeight else MiniPlayerHeight
+    val animatedPillHeight by animateDpAsState(
+        targetValue = targetPillHeight,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+        label = "pillHeight",
+    )
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))
             .padding(bottom = FloatingPillBottomSpacing)
             .padding(horizontal = 12.dp)
+            .height(animatedPillHeight)
             .graphicsLayer {
                 // Lift the pill upward as it expands so bottom stays anchored
                 // Expand Delta is now 0 as it doesn't expand
@@ -170,6 +179,7 @@ fun FloatingPill(
                 onSearchLongClick = onSearchLongClick,
                 accountImageUrl = accountImageUrl,
                 isTopLevelRoute = isTopLevelRoute,
+                animatedHeight = animatedPillHeight,
                 pureBlack = pureBlack,
                 slimNav = slimNav,
                 playerConnection = playerConnection,
@@ -200,6 +210,7 @@ private fun PillContent(
     onSearchLongClick: () -> Unit,
     accountImageUrl: String?,
     isTopLevelRoute: Boolean,
+    animatedHeight: Dp,
     pureBlack: Boolean,
     slimNav: Boolean,
     playerConnection: PlayerConnection,
@@ -294,14 +305,6 @@ private fun PillContent(
     val outlineColor   = if (forceLightColors) Color.White else MaterialTheme.colorScheme.outline
     val onSurfaceColor = if (forceLightColors) Color.White else MaterialTheme.colorScheme.onSurface
     val errorColor     = if (forceLightColors) Color(0xFFFF6B6B) else MaterialTheme.colorScheme.error
-
-    // Pill height is fixed — never expands into player controls
-    val targetPillHeight = if (isTopLevelRoute) FloatingPillHeight else MiniPlayerHeight
-    val animatedHeight by animateDpAsState(
-        targetValue = targetPillHeight,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
-        label = "pillHeight",
-    )
 
     Column(
         modifier = Modifier

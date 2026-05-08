@@ -342,7 +342,13 @@ fun SettingsScreen(
             )
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
+
+        Spacer(
+            Modifier.windowInsetsPadding(
+                LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom)
+            )
+        )
     }
 
     TopAppBar(

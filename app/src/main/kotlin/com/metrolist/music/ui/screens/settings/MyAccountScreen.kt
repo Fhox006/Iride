@@ -288,36 +288,6 @@ fun MyAccountScreen(
                     )
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { navController.navigate("stats") }
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.stats),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(16.dp))
-                    Text(
-                        text = stringResource(R.string.stats),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_forward),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
                 // Show token (advanced only, expands inline)
                 if (advancedMode) {
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
@@ -408,6 +378,41 @@ fun MyAccountScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        Material3SettingsGroup(
+            items = listOf(
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.stats),
+                    title = { Text(stringResource(R.string.stats)) },
+                    trailingContent = {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_forward),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    onClick = { navController.navigate("stats") }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.integration),
+                    title = { Text(stringResource(R.string.integrations)) },
+                    description = { Text(stringResource(R.string.settings_integrations_desc), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_forward),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    onClick = { navController.navigate("settings/integrations") }
+                )
+            ),
+            useLowContrast = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         // Login / Logout button
         if (isLoggedIn) {
             Material3SettingsGroup(
@@ -452,27 +457,6 @@ fun MyAccountScreen(
                 useLowContrast = true
             )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Material3SettingsGroup(
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.integration),
-                    title = { Text(stringResource(R.string.integrations)) },
-                    description = { Text(stringResource(R.string.settings_integrations_desc), style = MaterialTheme.typography.bodySmall) },
-                    trailingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_forward),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    onClick = { navController.navigate("settings/integrations") }
-                )
-            )
-        )
 
         Spacer(modifier = Modifier.height(32.dp))
     }
