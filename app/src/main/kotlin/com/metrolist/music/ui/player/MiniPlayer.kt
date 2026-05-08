@@ -333,7 +333,7 @@ private fun NewMiniPlayer(
 
                                     val canReturnToCenter =
                                         (tryingToSwipeRight && !canSkipPrevious && offsetXAnimatable.value < 0) ||
-                                            (tryingToSwipeLeft && !canSkipNext && offsetXAnimatable.value > 0)
+                                                (tryingToSwipeLeft && !canSkipNext && offsetXAnimatable.value > 0)
 
                                     if (allowLeft || allowRight || canReturnToCenter) {
                                         totalDragDistance += kotlin.math.abs(adjustedDragAmount)
@@ -351,7 +351,7 @@ private fun NewMiniPlayer(
 
                                     val shouldChangeSong =
                                         (kotlin.math.abs(currentOffset) > minDistanceThreshold && velocity > velocityThreshold) ||
-                                            (kotlin.math.abs(currentOffset) > autoSwipeThreshold)
+                                                (kotlin.math.abs(currentOffset) > autoSwipeThreshold)
 
                                     if (shouldChangeSong) {
                                         if (currentOffset > 0 && canSkipPrevious) {
@@ -714,7 +714,7 @@ private fun LegacyMiniPlayer(
 
                                     val canReturnToCenter =
                                         (tryingToSwipeRight && !canSkipPrevious && offsetXAnimatable.value < 0) ||
-                                            (tryingToSwipeLeft && !canSkipNext && offsetXAnimatable.value > 0)
+                                                (tryingToSwipeLeft && !canSkipNext && offsetXAnimatable.value > 0)
 
                                     if (allowLeft || allowRight || canReturnToCenter) {
                                         totalDragDistance += kotlin.math.abs(adjustedDragAmount)
@@ -732,7 +732,7 @@ private fun LegacyMiniPlayer(
 
                                     val shouldChangeSong =
                                         (kotlin.math.abs(currentOffset) > minDistanceThreshold && velocity > velocityThreshold) ||
-                                            (kotlin.math.abs(currentOffset) > autoSwipeThreshold)
+                                                (kotlin.math.abs(currentOffset) > autoSwipeThreshold)
 
                                     if (shouldChangeSong) {
                                         if (currentOffset > 0 && canSkipPrevious) {
