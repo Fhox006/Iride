@@ -291,9 +291,9 @@ fun SettingsScreen(
         Material3SettingsGroup(
             items = listOf(
                 Material3SettingsItem(
-                    icon = painterResource(R.drawable.palette),
-                    title = { Text(stringResource(R.string.appearance)) },
-                    description = { Text(stringResource(R.string.settings_appearance_desc), style = MaterialTheme.typography.bodySmall) },
+                    icon = painterResource(R.drawable.music_note),
+                    title = { Text(stringResource(R.string.music_settings)) },
+                    description = { Text(stringResource(R.string.music_settings_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = {
                         Icon(
                             painter = painterResource(R.drawable.arrow_forward),
@@ -302,35 +302,7 @@ fun SettingsScreen(
                             modifier = Modifier.size(18.dp)
                         )
                     },
-                    onClick = { navController.navigate("settings/appearance") }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.play),
-                    title = { Text(stringResource(R.string.playback)) },
-                    description = { Text(stringResource(R.string.settings_playback_desc), style = MaterialTheme.typography.bodySmall) },
-                    trailingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_forward),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    onClick = { navController.navigate("settings/player") }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.language),
-                    title = { Text(stringResource(R.string.content)) },
-                    description = { Text(stringResource(R.string.settings_content_desc), style = MaterialTheme.typography.bodySmall) },
-                    trailingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_forward),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    onClick = { navController.navigate("settings/content") }
+                    onClick = { navController.navigate("settings/music") }
                 ),
             )
         )

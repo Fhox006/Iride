@@ -947,6 +947,8 @@
     <string name="more_options">More options</string>
 
     <!-- Settings hub descriptions -->
+    <string name="music_settings">Music Settings</string>
+    <string name="music_settings_desc">Appearance, playback and content</string>
     <string name="settings_appearance_desc">Theme, interface, player and lyrics</string>
     <string name="settings_appearance_theme_desc">Colors, dark mode and accents</string>
     <string name="settings_appearance_interface_desc">Navigation, layout and playlists</string>

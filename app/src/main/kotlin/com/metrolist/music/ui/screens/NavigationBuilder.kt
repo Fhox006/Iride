@@ -56,6 +56,7 @@ import com.metrolist.music.ui.screens.settings.InterfaceSettings
 import com.metrolist.music.ui.screens.settings.LyricsSettings
 import com.metrolist.music.ui.screens.settings.PlayerAppearanceSettings
 import com.metrolist.music.ui.screens.settings.PlayerSettings
+import com.metrolist.music.ui.screens.settings.MusicSettingsScreen
 import com.metrolist.music.ui.screens.settings.MyAccountScreen
 import com.metrolist.music.ui.screens.settings.PrivacySettings
 import com.metrolist.music.ui.screens.settings.RomanizationSettings
@@ -268,6 +269,10 @@ fun NavGraphBuilder.NavigationBuilder(
 
     composable("settings/my_account") {
         MyAccountScreen(navController)
+    }
+
+    composable("settings/music") {
+        MusicSettingsScreen(navController)
     }
 
     composable("settings/appearance") {
