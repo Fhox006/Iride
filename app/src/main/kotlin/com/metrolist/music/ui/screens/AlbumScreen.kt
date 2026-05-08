@@ -7,6 +7,7 @@ package com.metrolist.music.ui.screens
 
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -63,6 +64,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
@@ -110,6 +112,7 @@ import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.theme.extractThemeColor
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.AlbumViewModel
@@ -225,6 +228,14 @@ fun AlbumScreen(
         gradientReady = true
     }
 
+    val albumAccentTarget = albumThumbnailBitmap?.extractThemeColor() ?: MaterialTheme.colorScheme.primary
+    val albumAccent by animateColorAsState(
+        targetValue = albumAccentTarget,
+        animationSpec = tween(durationMillis = 650),
+        label = "albumAccent"
+    )
+    val albumOnAccent = if (albumAccent.luminance() > 0.5f) Color.Black else Color.White
+
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedAlbumGradientBackground(
             thumbnail = albumThumbnailBitmap,
@@ -252,7 +263,7 @@ fun AlbumScreen(
                                     .shadow(
                                         elevation = 24.dp,
                                         shape = RoundedCornerShape(3.dp),
-                                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                        spotColor = albumAccent.copy(alpha = 0.3f),
                                     ),
                             shape = RoundedCornerShape(3.dp),
                         ) {
@@ -387,7 +398,7 @@ fun AlbumScreen(
                                     }
                                 },
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                color = albumAccent.copy(alpha = 0.20f),
                                 modifier = Modifier.size(48.dp),
                             ) {
                                 Box(
@@ -410,7 +421,7 @@ fun AlbumScreen(
                                             if (albumWithSongs.album.bookmarkedAt != null) {
                                                 MaterialTheme.colorScheme.error
                                             } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                                albumAccent
                                             },
                                         modifier = Modifier.size(24.dp),
                                     )
@@ -427,7 +438,7 @@ fun AlbumScreen(
                                         )
                                     }
                                 },
-                                color = MaterialTheme.colorScheme.primary,
+                                color = albumAccent,
                                 shape = CircleShape,
                                 modifier = Modifier.size(72.dp),
                             ) {
@@ -438,7 +449,7 @@ fun AlbumScreen(
                                     Icon(
                                         painter = painterResource(R.drawable.play),
                                         contentDescription = stringResource(R.string.play),
-                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        tint = albumOnAccent,
                                         modifier = Modifier.size(32.dp),
                                     )
                                 }
@@ -460,7 +471,7 @@ fun AlbumScreen(
                                     }
                                 },
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                color = albumAccent.copy(alpha = 0.20f),
                                 modifier = Modifier.size(48.dp),
                             ) {
                                 Box(
@@ -509,6 +520,8 @@ fun AlbumScreen(
                                         isActive = song.id == mediaMetadata?.id,
                                         isPlaying = isPlaying,
                                         isSwipeable = false,
+                                        activeBackgroundColor = albumAccent.copy(alpha = 0.22f),
+                                        selectedBackgroundColor = albumAccent.copy(alpha = 0.16f),
                                         trailingContent = {
                                             if (inSelectMode) {
                                                 Checkbox(
