@@ -681,9 +681,11 @@ fun HomeScreen(
                 .size(100, 100)
                 .allowHardware(false)
                 .build()
-            val result = runCatching { context.imageLoader.execute(request) }.getOrNull()
-            albumThumbnailBitmap = result?.image?.toBitmap()
-        } else {
+            val newBitmap = runCatching { context.imageLoader.execute(request) }
+                .getOrNull()?.image?.toBitmap()
+            if (newBitmap != null) albumThumbnailBitmap = newBitmap
+            // if load failed, keep old bitmap — no flash
+        } else if (mediaMetadata == null) {
             albumThumbnailBitmap = null
         }
     }
@@ -1244,10 +1246,16 @@ fun HomeScreen(
                     )
                 }
 
-            HomeAnimatedAlbumGradient(
-                thumbnail = albumThumbnailBitmap,
-                modifier = Modifier.align(Alignment.TopCenter),
-            )
+            AnimatedVisibility(
+                visible = albumThumbnailBitmap != null,
+                enter = fadeIn(animationSpec = tween(700)),
+                exit = fadeOut(animationSpec = tween(400)),
+            ) {
+                HomeAnimatedAlbumGradient(
+                    thumbnail = albumThumbnailBitmap,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
+            }
 
             LazyColumn(
                 state = lazylistState,

@@ -984,8 +984,22 @@ class MainActivity : ComponentActivity() {
                                         scrollBehavior = topAppBarScrollBehavior,
                                         colors =
                                             TopAppBarDefaults.topAppBarColors(
-                                                containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
-                                                scrolledContainerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
+                                                containerColor = when {
+                                                    currentRoute == Screens.Home.route && pureBlack ->
+                                                        Color.Black.copy(alpha = 0.50f)
+                                                    currentRoute == Screens.Home.route ->
+                                                        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.50f)
+                                                    pureBlack -> Color.Black
+                                                    else -> MaterialTheme.colorScheme.surfaceContainer
+                                                },
+                                                scrolledContainerColor = when {
+                                                    currentRoute == Screens.Home.route && pureBlack ->
+                                                        Color.Black.copy(alpha = 0.82f)
+                                                    currentRoute == Screens.Home.route ->
+                                                        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.82f)
+                                                    pureBlack -> Color.Black
+                                                    else -> MaterialTheme.colorScheme.surfaceContainer
+                                                },
                                                 titleContentColor = MaterialTheme.colorScheme.onSurface,
                                                 actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
