@@ -146,6 +146,8 @@ inline fun ListItem(
     trailingContent: @Composable RowScope.() -> Unit = {},
     isSelected: Boolean? = false,
     isActive: Boolean = false,
+    activeBackgroundColor: Color? = null,
+    selectedBackgroundColor: Color? = null,
     isAvailable: Boolean = true,
 ) {
     val highlightShape = RoundedCornerShape(24.dp)
@@ -157,21 +159,21 @@ inline fun ListItem(
                 modifier
                     .padding(horizontal = 10.dp, vertical = 4.dp)
                     .clip(highlightShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.26f))
+                    .background(activeBackgroundColor ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.26f))
                     .height(ListItemHeight)
             }
             isActive -> {
                 modifier
                     .padding(horizontal = 10.dp, vertical = 4.dp)
                     .clip(highlightShape)
-                    .background(Color.White.copy(alpha = 0.10f))
+                    .background(activeBackgroundColor ?: Color.White.copy(alpha = 0.10f))
                     .height(ListItemHeight)
             }
             isSelected == true -> {
                 modifier
                     .padding(horizontal = 10.dp, vertical = 4.dp)
                     .clip(highlightShape)
-                    .background(MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.22f))
+                    .background(selectedBackgroundColor ?: MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.22f))
                     .height(ListItemHeight)
             }
             else -> {
@@ -242,6 +244,8 @@ fun ListItem(
     trailingContent: @Composable RowScope.() -> Unit = {},
     isSelected: Boolean? = false,
     isActive: Boolean = false,
+    activeBackgroundColor: Color? = null,
+    selectedBackgroundColor: Color? = null,
 ) = ListItem(
     title = title,
     subtitle = {
@@ -260,7 +264,9 @@ fun ListItem(
     trailingContent = trailingContent,
     modifier = modifier,
     isSelected = isSelected,
-    isActive = isActive
+    isActive = isActive,
+    activeBackgroundColor = activeBackgroundColor,
+    selectedBackgroundColor = selectedBackgroundColor,
 )
 
 // merge badges and subtitle text and pass to basic list item
@@ -274,6 +280,8 @@ fun ListItem(
     trailingContent: @Composable RowScope.() -> Unit = {},
     isSelected: Boolean? = false,
     isActive: Boolean = false,
+    activeBackgroundColor: Color? = null,
+    selectedBackgroundColor: Color? = null,
 ) = ListItem(
     title = title,
     subtitle = {
@@ -293,7 +301,9 @@ fun ListItem(
     trailingContent = trailingContent,
     modifier = modifier,
     isSelected = isSelected,
-    isActive = isActive
+    isActive = isActive,
+    activeBackgroundColor = activeBackgroundColor,
+    selectedBackgroundColor = selectedBackgroundColor,
 )
 
 @Composable
@@ -403,6 +413,8 @@ fun SongListItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     isSwipeable: Boolean = true,
+    activeBackgroundColor: Color? = null,
+    selectedBackgroundColor: Color? = null,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
@@ -429,7 +441,9 @@ fun SongListItem(
             trailingContent = trailingContent,
             modifier = modifier,
             isSelected = isSelected,
-            isActive = isActive
+            isActive = isActive,
+            activeBackgroundColor = activeBackgroundColor,
+            selectedBackgroundColor = selectedBackgroundColor,
         )
     }
 
