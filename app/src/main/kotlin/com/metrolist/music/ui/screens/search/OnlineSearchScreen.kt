@@ -694,7 +694,7 @@ private fun SearchMoodCard(
         contentAlignment = Alignment.BottomStart,
         modifier = modifier
             .height(80.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.secondaryContainer)
             .clickable(onClick = onClick)
             .padding(12.dp),

@@ -1173,7 +1173,15 @@ class MainActivity : ComponentActivity() {
                             accountImageUrl = accountImageUrl,
                             pureBlack = pureBlack,
                             slimNav = slimNav,
-                            modifier = Modifier.align(Alignment.BottomCenter),
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .graphicsLayer {
+                                    // Slide the pill down as the player opens, mirroring Metrolist's nav behavior
+                                    val progress = playerBottomSheetState.progress.coerceIn(0f, 1f)
+                                    // Use a larger offset to ensure the pill fully exits the screen as the player opens
+                                    val pillHeightPx = (FloatingPillHeight + FloatingPillBottomSpacing + bottomInset).toPx()
+                                    translationY = pillHeightPx * progress
+                                },
                         )
                     }
 
