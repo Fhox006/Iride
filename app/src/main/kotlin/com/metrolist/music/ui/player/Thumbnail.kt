@@ -299,13 +299,6 @@ fun Thumbnail(
         }
     }
 
-    LaunchedEffect(playerConnection.player.currentMediaItemIndex) {
-        val index = mediaItemsData.currentIndex
-        if (index >= 0 && index != currentItem) {
-            thumbnailLazyGridState.scrollToItem(index)
-        }
-    }
-
     // Seek effect state
     var showSeekEffect by remember { mutableStateOf(false) }
     var seekDirection by remember { mutableStateOf("") }
@@ -384,8 +377,9 @@ fun Thumbnail(
                     }
                     
                     // Derive scroll enabled state to prevent unnecessary recomposition
-                    val isScrollEnabled by remember(swipeThumbnail) {
-                        derivedStateOf { swipeThumbnail && isPlayerExpanded() }
+                    val playerExpanded = isPlayerExpanded()
+                    val isScrollEnabled by remember(swipeThumbnail, playerExpanded) {
+                        derivedStateOf { swipeThumbnail && playerExpanded }
                     }
                     
                     LazyHorizontalGrid(

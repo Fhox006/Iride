@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens
 
+import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -57,6 +58,7 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -78,6 +80,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.exoplayer.offline.Download
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import coil3.imageLoader
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.toBitmap
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
@@ -88,6 +94,7 @@ import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.playback.queues.LocalAlbumRadio
+import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
@@ -191,9 +198,31 @@ fun AlbumScreen(
         }
     }
 
-    LazyColumn(
-        contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
-    ) {
+    var albumThumbnailBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(albumWithSongs?.album?.thumbnailUrl) {
+        val url = albumWithSongs?.album?.thumbnailUrl
+        if (url != null) {
+            val request = ImageRequest.Builder(context)
+                .data(url)
+                .size(100, 100)
+                .allowHardware(false)
+                .build()
+            val result = context.imageLoader.execute(request)
+            albumThumbnailBitmap = result.image?.toBitmap()
+        } else {
+            albumThumbnailBitmap = null
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AnimatedAlbumGradientBackground(
+            thumbnail = albumThumbnailBitmap,
+            modifier = Modifier.fillMaxSize()
+        )
+        LazyColumn(
+            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+        ) {
         val albumWithSongs = albumWithSongs
         if (albumWithSongs != null && albumWithSongs.songs.isNotEmpty()) {
             item(key = "album_header") {
@@ -585,6 +614,7 @@ fun AlbumScreen(
                     }
                 }
             }
+        }
         }
     }
 

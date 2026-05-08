@@ -130,7 +130,7 @@ import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.DisableScreenshotKey
 import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
-import com.metrolist.music.constants.KaraokeLyricsKey
+import com.metrolist.music.constants.ExperimentalLyricsKey
 import com.metrolist.music.constants.OnboardingCompletedKey
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.ListenTogetherUsernameKey

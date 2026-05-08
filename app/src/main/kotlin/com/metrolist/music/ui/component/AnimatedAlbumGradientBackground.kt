@@ -3,10 +3,12 @@ package com.metrolist.music.ui.component
 import android.graphics.Bitmap
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -326,6 +329,100 @@ private fun buildBackgroundSpec(bitmap: Bitmap): BackgroundSpec {
 }
 
 // ======================= COMPOSABLE PRINCIPALE =======================
+
+@Composable
+fun HomeAnimatedAlbumGradient(
+    thumbnail: Bitmap?,
+    modifier: Modifier = Modifier,
+    isDark: Boolean = isSystemInDarkTheme(),
+) {
+    var extractedColors by remember(thumbnail) { mutableStateOf<List<Color>>(emptyList()) }
+
+    LaunchedEffect(thumbnail) {
+        if (thumbnail == null) {
+            extractedColors = emptyList()
+            return@LaunchedEffect
+        }
+        val colors = withContext(Dispatchers.IO) {
+            runCatching { extractColors(thumbnail).take(3).map { it.color } }.getOrNull() ?: emptyList()
+        }
+        extractedColors = colors
+    }
+
+    val primaryFallback = MaterialTheme.colorScheme.primary
+    val secondaryFallback = MaterialTheme.colorScheme.secondary
+    val bgColor = MaterialTheme.colorScheme.background
+
+    val safeColors = extractedColors.ifEmpty { listOf(primaryFallback, secondaryFallback, bgColor) }.take(3)
+
+    val c0 by animateColorAsState(safeColors[0], tween(1600), label = "hc0")
+    val c1 by animateColorAsState(safeColors.getOrElse(1) { safeColors[0] }, tween(1600), label = "hc1")
+
+    val infinite = rememberInfiniteTransition(label = "home_album_grad")
+    val shift by infinite.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(12000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "home_grad_shift",
+    )
+
+    val overlayAlpha = if (isDark) 0.20f else 0.13f
+
+    // Soften album colors slightly toward background before drawing
+    val color0 = blend(c0, bgColor, 0.28f)
+    val color1 = blend(c1, bgColor, 0.28f)
+
+    // Capture outside Canvas lambda (MaterialTheme inaccessible inside DrawScope)
+    val canvasBg = bgColor
+
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(280.dp),
+    ) {
+        val w = size.width
+        val h = size.height
+
+        // Left blob — drifts gently right with shift
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(color0.copy(alpha = overlayAlpha), Color.Transparent),
+                center = Offset(w * (0.20f + 0.12f * shift), h * 0.28f),
+                radius = w * 0.55f,
+            ),
+            radius = w * 0.55f,
+            center = Offset(w * (0.20f + 0.12f * shift), h * 0.28f),
+        )
+
+        // Right blob — drifts gently left with shift
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(color1.copy(alpha = overlayAlpha * 0.82f), Color.Transparent),
+                center = Offset(w * (0.78f - 0.10f * shift), h * 0.18f),
+                radius = w * 0.48f,
+            ),
+            radius = w * 0.48f,
+            center = Offset(w * (0.78f - 0.10f * shift), h * 0.18f),
+        )
+
+        // Vertical fade: transparent at top → background at bottom
+        drawRect(
+            brush = Brush.verticalGradient(
+                colorStops = arrayOf(
+                    0.00f to Color.Transparent,
+                    0.45f to Color.Transparent,
+                    0.80f to canvasBg.copy(alpha = 0.75f),
+                    1.00f to canvasBg,
+                ),
+                startY = 0f,
+                endY = h,
+            ),
+        )
+    }
+}
 
 @Composable
 fun AnimatedAlbumGradientBackground(

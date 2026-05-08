@@ -202,6 +202,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import androidx.media3.common.Player.STATE_ENDED
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.max
 import kotlin.math.roundToInt
 import com.metrolist.music.ui.component.Icon as MIcon
@@ -486,11 +487,15 @@ fun BottomSheetPlayer(
     LaunchedEffect(mediaMetadata?.id) {
         isFullScreen = false
         if (showInlineLyrics && mediaMetadata != null) {
-            // Give Room a moment to emit the cached value for the new song
-            delay(200)
-            if (currentLyrics == null) {
+            // Wait up to 3 seconds for lyrics to arrive from DB/network before deciding to close
+            val arrived = withTimeoutOrNull(3000L) {
+                playerConnection.currentLyrics.first { it != null }
+            }
+            if (arrived == null) {
+                // No lyrics found within timeout: close the view
                 showInlineLyrics = false
             }
+            // If arrived != null, lyrics loaded successfully: keep showInlineLyrics = true as-is
         }
     }
 

@@ -205,7 +205,7 @@ private const val LYRICS_PREVIEW_TIME = 8000L
 )
 @SuppressLint("UnusedBoxWithConstraintsScope", "StringFormatInvalid")
 @Composable
-fun KaraokeLyrics(
+fun ExperimentalLyrics(
     sliderPositionProvider: () -> Long?,
     modifier: Modifier = Modifier,
     showLyrics: Boolean,

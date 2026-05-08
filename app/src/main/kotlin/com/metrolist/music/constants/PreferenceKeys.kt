@@ -487,7 +487,7 @@ val LyricsTextSizeKey = floatPreferencesKey("lyricsTextSize")
 val LyricsLineSpacingKey = floatPreferencesKey("lyricsLineSpacing")
 val RespectAgentPositioningKey = booleanPreferencesKey("respectAgentPositioning")
 val ShowIntervalIndicatorKey = booleanPreferencesKey("showIntervalIndicator")
-val KaraokeLyricsKey = booleanPreferencesKey("experimentalLyrics")
+val ExperimentalLyricsKey = booleanPreferencesKey("experimentalLyrics")
 val GeminiSetupCompletedKey = booleanPreferencesKey("geminiSetupCompleted")
 val TranslateLanguageSetKey = booleanPreferencesKey("translate_language_set")
 

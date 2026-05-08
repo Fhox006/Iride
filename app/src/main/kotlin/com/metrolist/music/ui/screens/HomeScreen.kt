@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -107,6 +108,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
+import coil3.imageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.ImageLoader
@@ -154,6 +156,7 @@ import com.metrolist.music.playback.queues.LocalAlbumRadio
 import com.metrolist.music.playback.queues.YouTubeAlbumRadio
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AlbumGridItem
+import com.metrolist.music.ui.component.HomeAnimatedAlbumGradient
 import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.HideOnScrollFAB
@@ -668,6 +671,22 @@ fun HomeScreen(
 
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
+
+    val context = LocalContext.current
+    var albumThumbnailBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl) {
+        if (mediaMetadata?.thumbnailUrl != null) {
+            val request = ImageRequest.Builder(context)
+                .data(mediaMetadata?.thumbnailUrl)
+                .size(100, 100)
+                .allowHardware(false)
+                .build()
+            val result = runCatching { context.imageLoader.execute(request) }.getOrNull()
+            albumThumbnailBitmap = result?.image?.toBitmap()
+        } else {
+            albumThumbnailBitmap = null
+        }
+    }
 
     val quickPicks by viewModel.quickPicks.collectAsStateWithLifecycle()
     val forgottenFavorites by viewModel.forgottenFavorites.collectAsStateWithLifecycle()
@@ -1225,6 +1244,11 @@ fun HomeScreen(
                     )
                 }
 
+            HomeAnimatedAlbumGradient(
+                thumbnail = albumThumbnailBitmap,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+
             LazyColumn(
                 state = lazylistState,
                 contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
@@ -1462,8 +1486,45 @@ fun HomeScreen(
 
                 if (speedDialItems.isEmpty()) {
                     item(key = "speed_dial_skeleton") {
-                        ShimmerHost {
-                            repeat(9) { GridItemPlaceHolder(Modifier.animateItem()) }
+                        ShimmerHost(showGradient = false) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                            ) {
+                                repeat(3) { rowIndex ->
+                                    Row(modifier = Modifier.fillMaxWidth()) {
+                                        repeat(3) { colIndex ->
+                                            val isCenter = rowIndex == 1 && colIndex == 1
+                                            Spacer(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .aspectRatio(1f)
+                                                    .padding(4.dp)
+                                                    .clip(if (isCenter) CircleShape else RoundedCornerShape(12.dp))
+                                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+                                            )
+                                        }
+                                    }
+                                }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(24.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    repeat(3) {
+                                        Box(
+                                            modifier = Modifier
+                                                .padding(4.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+                                                .size(6.dp),
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 } else {
@@ -1776,9 +1837,43 @@ fun HomeScreen(
                 }
 
                 item(key = "your_mood_title") {
-                    NavigationTitle(title = "Your Mood")
+                    if (moodChips.isEmpty()) {
+                        ShimmerHost(showGradient = false) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    .width(100.dp)
+                                    .height(20.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+                            )
+                        }
+                    } else {
+                        NavigationTitle(title = "Your Mood")
+                    }
                 }
                 item(key = "your_mood_section") {
+                    if (moodChips.isEmpty()) {
+                        ShimmerHost(showGradient = false) {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                            ) {
+                                items(5) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(72.dp)
+                                            .height(32.dp)
+                                            .clip(RoundedCornerShape(50))
+                                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+                                    )
+                                }
+                            }
+                        }
+                    } else {
                     val isDark = isSystemInDarkTheme()
                     val defaultBgColor = if (isDark) {
                         MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
@@ -1999,6 +2094,7 @@ fun HomeScreen(
                             }
                         }
                     }
+                    } // end else
                 }
 
                 homeSections
