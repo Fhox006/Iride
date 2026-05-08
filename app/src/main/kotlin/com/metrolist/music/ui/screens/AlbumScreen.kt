@@ -7,7 +7,10 @@ package com.metrolist.music.ui.screens
 
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +44,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,7 +61,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
@@ -199,28 +205,34 @@ fun AlbumScreen(
     }
 
     var albumThumbnailBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var gradientReady by remember { mutableStateOf(false) }
+    val gradientAlpha by animateFloatAsState(
+        targetValue = if (gradientReady) 1f else 0f,
+        animationSpec = tween(durationMillis = 800),
+        label = "gradientAlpha"
+    )
 
     LaunchedEffect(albumWithSongs?.album?.thumbnailUrl) {
-        val url = albumWithSongs?.album?.thumbnailUrl
-        if (url != null) {
-            val request = ImageRequest.Builder(context)
-                .data(url)
-                .size(100, 100)
-                .allowHardware(false)
-                .build()
-            val result = context.imageLoader.execute(request)
-            albumThumbnailBitmap = result.image?.toBitmap()
-        } else {
-            albumThumbnailBitmap = null
-        }
+        gradientReady = false
+        albumThumbnailBitmap = null
+        val url = albumWithSongs?.album?.thumbnailUrl ?: return@LaunchedEffect
+        val request = ImageRequest.Builder(context)
+            .data(url)
+            .size(100, 100)
+            .allowHardware(false)
+            .build()
+        val result = context.imageLoader.execute(request)
+        albumThumbnailBitmap = result.image?.toBitmap()
+        gradientReady = true
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedAlbumGradientBackground(
             thumbnail = albumThumbnailBitmap,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize().alpha(gradientAlpha)
         )
         LazyColumn(
+            modifier = Modifier.fillMaxSize(),
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
         ) {
         val albumWithSongs = albumWithSongs
@@ -619,6 +631,10 @@ fun AlbumScreen(
     }
 
     TopAppBar(
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+        ),
         title = {
             if (inSelectMode) {
                 Text(pluralStringResource(R.plurals.n_selected, selection.size, selection.size))

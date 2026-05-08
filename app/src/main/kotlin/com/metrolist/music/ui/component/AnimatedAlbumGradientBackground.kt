@@ -369,11 +369,11 @@ fun HomeAnimatedAlbumGradient(
         label = "home_grad_shift",
     )
 
-    val overlayAlpha = if (isDark) 0.20f else 0.13f
+    val overlayAlpha = if (isDark) 0.55f else 0.40f
 
     // Soften album colors slightly toward background before drawing
-    val color0 = blend(c0, bgColor, 0.28f)
-    val color1 = blend(c1, bgColor, 0.28f)
+    val color0 = blend(c0, bgColor, 0.15f)
+    val color1 = blend(c1, bgColor, 0.15f)
 
     // Capture outside Canvas lambda (MaterialTheme inaccessible inside DrawScope)
     val canvasBg = bgColor
@@ -381,7 +381,7 @@ fun HomeAnimatedAlbumGradient(
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(280.dp),
+            .height(340.dp),
     ) {
         val w = size.width
         val h = size.height
@@ -391,20 +391,20 @@ fun HomeAnimatedAlbumGradient(
             brush = Brush.radialGradient(
                 colors = listOf(color0.copy(alpha = overlayAlpha), Color.Transparent),
                 center = Offset(w * (0.20f + 0.12f * shift), h * 0.28f),
-                radius = w * 0.55f,
+                radius = w * 0.68f,
             ),
-            radius = w * 0.55f,
+            radius = w * 0.68f,
             center = Offset(w * (0.20f + 0.12f * shift), h * 0.28f),
         )
 
         // Right blob — drifts gently left with shift
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(color1.copy(alpha = overlayAlpha * 0.82f), Color.Transparent),
+                colors = listOf(color1.copy(alpha = overlayAlpha * 0.88f), Color.Transparent),
                 center = Offset(w * (0.78f - 0.10f * shift), h * 0.18f),
-                radius = w * 0.48f,
+                radius = w * 0.62f,
             ),
-            radius = w * 0.48f,
+            radius = w * 0.62f,
             center = Offset(w * (0.78f - 0.10f * shift), h * 0.18f),
         )
 
@@ -413,8 +413,8 @@ fun HomeAnimatedAlbumGradient(
             brush = Brush.verticalGradient(
                 colorStops = arrayOf(
                     0.00f to Color.Transparent,
-                    0.45f to Color.Transparent,
-                    0.80f to canvasBg.copy(alpha = 0.75f),
+                    0.55f to Color.Transparent,
+                    0.88f to canvasBg.copy(alpha = 0.82f),
                     1.00f to canvasBg,
                 ),
                 startY = 0f,
