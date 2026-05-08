@@ -168,7 +168,7 @@ fun UpdaterScreen(
         Material3SettingsGroup(
             title = stringResource(R.string.check_for_updates_title),
             items =
-                listOfNotNull(
+                listOf(
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.refresh),
                         title = {
@@ -196,35 +196,6 @@ fun UpdaterScreen(
                         },
                         onClick = { if (!isChecking) performManualCheck() },
                     ),
-                    if (downloadUrl != null) Material3SettingsItem(
-                        leadingContent = {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.12f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.update),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-                        },
-                        title = { Text(stringResource(R.string.new_version_available)) },
-                        description = { Text(latestVersion ?: "", style = MaterialTheme.typography.bodySmall) },
-                        trailingContent = {
-                            Icon(
-                                painter = painterResource(R.drawable.arrow_forward),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        },
-                        onClick = { uriHandler.openUri(downloadUrl!!) }
-                    ) else null,
                 ),
         )
 
