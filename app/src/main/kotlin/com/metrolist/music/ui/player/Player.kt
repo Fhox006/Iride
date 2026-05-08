@@ -152,6 +152,7 @@ import com.metrolist.music.constants.SliderStyleKey
 import com.metrolist.music.constants.SquigglySliderKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.constants.UseNewPlayerDesignKey
+import com.metrolist.music.db.entities.Song
 import com.metrolist.music.db.entities.LyricsEntity
 import com.metrolist.music.di.LyricsHelperEntryPoint
 import com.metrolist.music.extensions.togglePlayPause
@@ -160,7 +161,6 @@ import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.CastConnectionHandler
 import com.metrolist.music.playback.PlayerConnection
-import com.metrolist.music.playback.SongWithArtists
 import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground
 import com.metrolist.music.ui.component.BottomSheet
 import com.metrolist.music.ui.component.BottomSheetState
@@ -219,7 +219,7 @@ internal fun PlayerControlsPanel(
     iconButtonColor: Color,
     sideButtonContainerColor: Color,
     sideButtonContentColor: Color,
-    currentSong: SongWithArtists?,
+    currentSong: Song?,
     isCasting: Boolean,
     castHandler: CastConnectionHandler?,
     castIsPlaying: Boolean,
@@ -239,6 +239,7 @@ internal fun PlayerControlsPanel(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
     val clipboardManager = remember { context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager }
     val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
@@ -299,7 +300,34 @@ internal fun PlayerControlsPanel(
                 }
             } else {
                 AnimatedContent(targetState = showInlineLyrics, label = "MoreButton") { showLyrics -> if (!showLyrics) { Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(24.dp)).background(textButtonColor).clickable { menuState.show { PlayerMenu(mediaMetadata = mediaMetadata, navController = navController, playerBottomSheetState = state, onShowDetailsDialog = { mediaMetadata.id.let { bottomSheetPageState.show { ShowMediaInfo(it) } } }, onDismiss = menuState::dismiss) } }) { Icon(painter = painterResource(R.drawable.more_horiz), contentDescription = null, tint = iconButtonColor, modifier = Modifier.align(Alignment.Center).size(24.dp)) } } }
-                AnimatedContent(targetState = showInlineLyrics, label = "LikeButton") { showLyrics -> if (showLyrics) { Spacer(modifier = Modifier.size(12.dp)); val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null); Box(modifier = Modifier.size(40.dp).clip(RoundedCornerShape(24.dp)).background(textButtonColor).clickable { menuState.show { com.metrolist.music.ui.menu.LyricsMenu(lyricsProvider = { currentLyrics }, songProvider = { currentSong?.song }, mediaMetadataProvider = { mediaMetadata }, onDismiss = menuState::dismiss, onShowOffsetDialog = { bottomSheetPageState.show { ShowOffsetDialog(songProvider = { currentSong?.song }) } }) } }) { Icon(painter = painterResource(R.drawable.more_horiz), contentDescription = null, tint = iconButtonColor, modifier = Modifier.align(Alignment.Center).size(24.dp)) } } }
+                AnimatedContent(targetState = showInlineLyrics, label = "LikeButton") { showLyrics ->
+                    if (showLyrics) {
+                        Spacer(modifier = Modifier.size(12.dp))
+                        Box(
+                            modifier = Modifier.size(40.dp).clip(RoundedCornerShape(24.dp)).background(textButtonColor).clickable {
+                                menuState.show {
+                                    com.metrolist.music.ui.menu.LyricsMenu(
+                                        lyricsProvider = { currentLyrics },
+                                        songProvider = { currentSong?.song },
+                                        mediaMetadataProvider = { mediaMetadata },
+                                        onDismiss = menuState::dismiss,
+                                        onShowOffsetDialog = {
+                                            bottomSheetPageState.show {
+                                                ShowOffsetDialog(songProvider = { currentSong?.song })
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.more_horiz),
+                                contentDescription = null,
+                                tint = iconButtonColor,
+                                modifier = Modifier.align(Alignment.Center).size(24.dp)
+                            )
+                        }
+                    } else {
             }
         }
         Spacer(Modifier.height(24.dp))
@@ -380,7 +408,27 @@ fun BottomSheetPlayer(
     if (!canSkipNext && automix.isNotEmpty()) playerConnection.service.addToQueueAutomix(automix[0], 0)
     val fallbackColor = MaterialTheme.colorScheme.surface.toArgb()
     LaunchedEffect(mediaMetadata?.id, playerBackground) { if (playerBackground == PlayerBackgroundStyle.GRADIENT) { val currentMetadata = mediaMetadata; if (currentMetadata != null && currentMetadata.thumbnailUrl != null) { val cachedColors = gradientColorsCache[currentMetadata.id]; if (cachedColors != null) { gradientColors = cachedColors; return@LaunchedEffect }; withContext(Dispatchers.IO) { val request = ImageRequest.Builder(context).data(currentMetadata.thumbnailUrl).size(100, 100).allowHardware(false).memoryCacheKey("gradient_${currentMetadata.id}").build(); val result = runCatching { context.imageLoader.execute(request) }.getOrNull(); if (result != null) { val bitmap = result.image?.toBitmap(); if (bitmap != null) { val palette = withContext(Dispatchers.Default) { Palette.from(bitmap).maximumColorCount(8).resizeBitmapArea(100 * 100).generate() }; val extractedColors = PlayerColorExtractor.extractGradientColors(palette = palette, fallbackColor = fallbackColor); gradientColorsCache[currentMetadata.id] = extractedColors; withContext(Dispatchers.Main) { gradientColors = extractedColors } } } } } } else gradientColors = emptyList() }
-    LaunchedEffect(state.isExpanded, mediaMetadata?.id) { if (state.isExpanded && mediaMetadata != null) { val capturedMetadata = mediaMetadata ?: return@LaunchedEffect; withContext(Dispatchers.IO) { try { val currentLyricsValue = playerConnection.currentLyrics.first(); if (currentLyricsValue == null) { val entryPoint = EntryPointAccessors.fromApplication(context.applicationContext, com.metrolist.music.di.LyricsHelperEntryPoint::class.java); val lyricsHelper = entryPoint.lyricsHelper().getLyrics(capturedMetadata); database.query { upsert(LyricsEntity(capturedMetadata.id, fetchedLyricsWithProvider.lyrics, fetchedLyricsWithProvider.provider)) } } } catch (_: Exception) {} } } }
+    LaunchedEffect(state.isExpanded, mediaMetadata?.id) {
+        if (state.isExpanded && mediaMetadata != null) {
+            val capturedMetadata = mediaMetadata ?: return@LaunchedEffect
+            withContext(Dispatchers.IO) {
+                try {
+                    val currentLyricsValue = playerConnection.currentLyrics.first()
+                    if (currentLyricsValue == null) {
+                        val entryPoint = EntryPointAccessors.fromApplication(
+                            context.applicationContext,
+                            com.metrolist.music.di.LyricsHelperEntryPoint::class.java
+                        )
+                        val lyricsHelper = entryPoint.lyricsHelper()
+                        val fetched = lyricsHelper.getLyrics(capturedMetadata)
+                        database.query {
+                            upsert(LyricsEntity(capturedMetadata.id, fetched.lyrics, fetched.provider))
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+    }
     LaunchedEffect(mediaMetadata?.id) { isFullScreen = false; if (showInlineLyrics && mediaMetadata != null) { delay(200); if (currentLyrics == null) showInlineLyrics = false } }
     val TextBackgroundColor by animateColorAsState(targetValue = when (playerBackground) { PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.onBackground; else -> Color.White }, label = "TextBackgroundColor")
     val (textButtonColor, iconButtonColor) = when { playerBackground == PlayerBackgroundStyle.BLUR || playerBackground == PlayerBackgroundStyle.GRADIENT || playerBackground == PlayerBackgroundStyle.ANIMATED_GRADIENT -> { when (playerButtonsStyle) { PlayerButtonsStyle.PRIMARY -> Pair(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary); PlayerButtonsStyle.TERTIARY -> Pair(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary); else -> Pair(Color.White, Color.Black) } } else -> { when (playerButtonsStyle) { PlayerButtonsStyle.PRIMARY -> Pair(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary); PlayerButtonsStyle.TERTIARY -> Pair(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary); else -> if (useDarkTheme) Pair(Color.White, Color.Black) else Pair(Color.Black, Color.White) } } }
