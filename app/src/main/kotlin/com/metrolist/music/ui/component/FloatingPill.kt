@@ -152,9 +152,10 @@ fun FloatingPill(
         visible = !playerBottomSheetState.isExpanded,
         enter = fadeIn(animationSpec = tween(200)) + slideInVertically(animationSpec = tween(220), initialOffsetY = { it }),
         exit = fadeOut(animationSpec = tween(150)) + slideOutVertically(animationSpec = tween(180), targetOffsetY = { it }),
+        modifier = modifier,
     ) {
         Box(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))
                 .padding(bottom = FloatingPillBottomSpacing)
