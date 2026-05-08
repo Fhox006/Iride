@@ -118,10 +118,24 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.withContext
 
+import com.metrolist.music.playback.SongWithArtists
+import com.metrolist.music.ui.player.PlayerControlsPanel
+import com.metrolist.music.constants.UseNewPlayerDesignKey
+import com.metrolist.music.constants.PlayerButtonsStyleKey
+import com.metrolist.music.constants.PlayerButtonsStyle
+import com.metrolist.music.constants.HidePlayerThumbnailKey
+import com.metrolist.music.constants.CropAlbumArtKey
+import com.metrolist.music.constants.PureBlackKey
+import com.metrolist.music.constants.SliderStyle
+import com.metrolist.music.constants.SliderStyleKey
+import com.metrolist.music.constants.SquigglySliderKey
+import com.metrolist.music.listentogether.RoomRole
+import androidx.compose.runtime.saveable.rememberSaveable
+
 private val NavRowHeight = 56.dp
 val FloatingPillHeight = MiniPlayerHeight + NavRowHeight  // 64 + 56 = 120dp
 val FloatingPillBottomSpacing = 12.dp
-val FloatingPillExpandedHeight = 172.dp
+val FloatingPillExpandedHeight = 280.dp
 
 @Stable
 private class PillProgressState(
