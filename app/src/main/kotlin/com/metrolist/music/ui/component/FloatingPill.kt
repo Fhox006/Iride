@@ -162,6 +162,7 @@ fun FloatingPill(
             .padding(bottom = FloatingPillBottomSpacing)
             .padding(horizontal = 12.dp)
             .height(animatedPillHeight)
+            .clip(RoundedCornerShape(28.dp))
             .graphicsLayer {
                 // Lift the pill upward as it expands so bottom stays anchored
                 // Expand Delta is now 0 as it doesn't expand
