@@ -312,6 +312,12 @@ fun SettingsScreen(
 
         Material3SettingsGroup(
             items = listOfNotNull(
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.restore),
+                    title = { Text(stringResource(R.string.app_management_backup)) },
+                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
+                    onClick = { navController.navigate("settings/backup_restore") }
+                ),
                 if (hasAndroidAuto && advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.ic_android_auto),
                     title = { Text(stringResource(R.string.android_auto)) },
@@ -324,27 +330,7 @@ fun SettingsScreen(
                     description = { Text(stringResource(R.string.settings_privacy_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
                     onClick = { navController.navigate("settings/privacy") }
-                )
-            )
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Material3SettingsGroup(
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.restore),
-                    title = { Text(stringResource(R.string.app_management_backup)) },
-                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
-                    onClick = { navController.navigate("settings/backup_restore") }
-                )
-            )
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Material3SettingsGroup(
-            items = listOf(
+                ),
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.info),
                     title = { Text(stringResource(R.string.about)) },
