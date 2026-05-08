@@ -257,6 +257,7 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.kuromoji.ipadic)
     implementation(libs.tinypinyin)
+    implementation("com.github.promeg:tinypinyin:2.0.3")
     ksp(libs.room.compiler)
     implementation(libs.room.ktx)
 

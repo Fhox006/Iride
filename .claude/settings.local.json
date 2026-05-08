@@ -37,7 +37,8 @@
       "Bash(unzip -l tinypinyin-2.0.3.jar)",
       "PowerShell(Add-Type -Assembly 'System.IO.Compression.FileSystem'; $jar = 'C:\\\\Users\\\\mrffh\\\\.gradle\\\\caches\\\\modules-2\\\\files-2.1\\\\com.github.promeG\\\\tinypinyin\\\\2.0.3\\\\4ef87c89c648329992a01f6069ddb06300bae05a\\\\tinypinyin-2.0.3.jar'; [System.IO.Compression.ZipFile]::OpenRead\\($jar\\).Entries | Where-Object { $_.FullName -match 'Pinyin|pinyin' } | Select-Object FullName)",
       "PowerShell(Test-Path *)",
-      "PowerShell(Get-ChildItem 'C:\\\\Users\\\\mrffh\\\\.gradle\\\\caches\\\\modules-2\\\\files-2.1\\\\' | Where-Object { $_.Name -match 'promeG|promeg|tinypinyin|pinyin' } | Select-Object Name)"
+      "PowerShell(Get-ChildItem 'C:\\\\Users\\\\mrffh\\\\.gradle\\\\caches\\\\modules-2\\\\files-2.1\\\\' | Where-Object { $_.Name -match 'promeG|promeg|tinypinyin|pinyin' } | Select-Object Name)",
+      "Bash(find ~/.gradle/caches/modules-2/files-2.1/com.github.promeG* -type f)"
     ]
   }
 }
