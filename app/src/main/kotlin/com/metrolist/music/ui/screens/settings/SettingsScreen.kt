@@ -53,7 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
+
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -157,7 +157,6 @@ fun SettingsScreen(
     snackbarHostState: SnackbarHostState,
 ) {
     val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
     val isAndroid12OrLater = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val hasAndroidAuto = remember {
         try {
@@ -310,19 +309,9 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         val arrowIcon = painterResource(R.drawable.arrow_forward)
-        val updateIcon = painterResource(R.drawable.update)
-        val releaseInfo = if (BuildConfig.UPDATER_AVAILABLE && latestVersionName != BuildConfig.VERSION_NAME) Updater.getCachedLatestRelease() else null
-        val downloadUrl = releaseInfo?.let { Updater.getDownloadUrlForCurrentVariant(it) }
 
         Material3SettingsGroup(
             items = listOfNotNull(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.integration),
-                    title = { Text(stringResource(R.string.integrations)) },
-                    description = { Text(stringResource(R.string.settings_integrations_desc), style = MaterialTheme.typography.bodySmall) },
-                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
-                    onClick = { navController.navigate("settings/integrations") }
-                ),
                 if (hasAndroidAuto && advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.ic_android_auto),
                     title = { Text(stringResource(R.string.android_auto)) },
@@ -355,7 +344,7 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Material3SettingsGroup(
-            items = listOfNotNull(
+            items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.info),
                     title = { Text(stringResource(R.string.about)) },
@@ -363,29 +352,7 @@ fun SettingsScreen(
                     showBadge = BuildConfig.UPDATER_AVAILABLE && latestVersionName != BuildConfig.VERSION_NAME,
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
                     onClick = { navController.navigate("settings/about") }
-                ),
-                if (downloadUrl != null) Material3SettingsItem(
-                    leadingContent = {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.12f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = updateIcon,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    },
-                    title = { Text(stringResource(R.string.new_version_available)) },
-                    description = { Text(latestVersionName, style = MaterialTheme.typography.bodySmall) },
-                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
-                    onClick = { uriHandler.openUri(downloadUrl) }
-                ) else null
+                )
             )
         )
 
@@ -393,7 +360,7 @@ fun SettingsScreen(
     }
 
     TopAppBar(
-        title = { Text(stringResource(R.string.settings)) },
+        title = { Text(stringResource(R.string.account)) },
         actions = {
             Box {
                 IconButton(

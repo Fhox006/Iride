@@ -453,6 +453,27 @@ fun MyAccountScreen(
             )
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Material3SettingsGroup(
+            items = listOf(
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.integration),
+                    title = { Text(stringResource(R.string.integrations)) },
+                    description = { Text(stringResource(R.string.settings_integrations_desc), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_forward),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    onClick = { navController.navigate("settings/integrations") }
+                )
+            )
+        )
+
         Spacer(modifier = Modifier.height(32.dp))
     }
 

@@ -56,7 +56,7 @@ sealed class Screens(
         titleId = R.string.account,
         iconIdInactive = R.drawable.account,
         iconIdActive = R.drawable.account,
-        route = "account"
+        route = "settings"
     )
 
     companion object {

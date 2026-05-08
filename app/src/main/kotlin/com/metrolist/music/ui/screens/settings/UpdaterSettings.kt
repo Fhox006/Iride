@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -12,7 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -31,7 +35,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -60,9 +66,11 @@ fun UpdaterScreen(
     val (updateNotifications, onUpdateNotificationsChange) = rememberPreference(UpdateNotificationsEnabledKey, true)
 
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     var isChecking by remember { mutableStateOf(false) }
     var updateAvailable by remember { mutableStateOf(false) }
     var latestVersion by remember { mutableStateOf<String?>(null) }
+    var downloadUrl by remember { mutableStateOf<String?>(null) }
     var showChangelog by remember { mutableStateOf(false) }
     var changelogContent by remember { mutableStateOf<String?>(null) }
     var checkError by remember { mutableStateOf<String?>(null) }
@@ -82,6 +90,7 @@ fun UpdaterScreen(
                             latestVersion = releaseInfo.versionName
                             updateAvailable = hasUpdate
                             changelogContent = releaseInfo.description
+                            downloadUrl = if (hasUpdate) Updater.getDownloadUrlForCurrentVariant(releaseInfo) else null
                         }
                     }.onFailure {
                         checkError = String.format(failedToCheckUpdatesTemplate, it.message ?: "Unknown error")
@@ -136,20 +145,6 @@ fun UpdaterScreen(
             title = stringResource(R.string.update_settings),
             items =
                 buildList {
-                    add(
-                        Material3SettingsItem(
-                            title = { Text(stringResource(R.string.check_for_updates)) },
-                            icon = painterResource(R.drawable.update),
-                            trailingContent = {
-                                Switch(
-                                    checked = checkForUpdates,
-                                    onCheckedChange = onCheckForUpdatesChange,
-                                )
-                            },
-                            onClick = { onCheckForUpdatesChange(!checkForUpdates) },
-                        ),
-                    )
-
                     if (checkForUpdates) {
                         add(
                             Material3SettingsItem(
@@ -173,7 +168,7 @@ fun UpdaterScreen(
         Material3SettingsGroup(
             title = stringResource(R.string.check_for_updates_title),
             items =
-                listOf(
+                listOfNotNull(
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.refresh),
                         title = {
@@ -201,6 +196,35 @@ fun UpdaterScreen(
                         },
                         onClick = { if (!isChecking) performManualCheck() },
                     ),
+                    if (downloadUrl != null) Material3SettingsItem(
+                        leadingContent = {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.update),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        },
+                        title = { Text(stringResource(R.string.new_version_available)) },
+                        description = { Text(latestVersion ?: "", style = MaterialTheme.typography.bodySmall) },
+                        trailingContent = {
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_forward),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = { uriHandler.openUri(downloadUrl!!) }
+                    ) else null,
                 ),
         )
 
