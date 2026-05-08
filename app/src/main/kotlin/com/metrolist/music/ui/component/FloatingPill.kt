@@ -147,34 +147,40 @@ fun FloatingPill(
             currentRoute.startsWith("search/")
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))
-            .padding(bottom = FloatingPillBottomSpacing)
-            .padding(horizontal = 12.dp)
-            .graphicsLayer {
-                val p = playerBottomSheetState.progress.coerceIn(0f, 1f)
-                // Lift the pill upward as it expands so bottom stays anchored
-                // Expand Delta is now 0 as it doesn't expand
-                translationY = 0f
-            },
+    // Hide the floating pill while the full-screen player is open
+    AnimatedVisibility(
+        visible = !playerBottomSheetState.isExpanded,
+        enter = fadeIn(animationSpec = tween(200)) + slideInVertically(animationSpec = tween(220), initialOffsetY = { it }),
+        exit = fadeOut(animationSpec = tween(150)) + slideOutVertically(animationSpec = tween(180), targetOffsetY = { it }),
     ) {
-        if (playerConnection == null || mediaMetadata == null) {
-            PillShimmerSkeleton(isTopLevelRoute = isTopLevelRoute)
-        } else {
-            PillContent(
-                navigationItems = navigationItems,
-                currentRoute = currentRoute,
-                onNavItemClick = onNavItemClick,
-                playerBottomSheetState = playerBottomSheetState,
-                onSearchLongClick = onSearchLongClick,
-                accountImageUrl = accountImageUrl,
-                isTopLevelRoute = isTopLevelRoute,
-                pureBlack = pureBlack,
-                slimNav = slimNav,
-                playerConnection = playerConnection,
-            )
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))
+                .padding(bottom = FloatingPillBottomSpacing)
+                .padding(horizontal = 12.dp)
+                .graphicsLayer {
+                    // Lift the pill upward as it expands so bottom stays anchored
+                    // Expand Delta is now 0 as it doesn't expand
+                    translationY = 0f
+                },
+        ) {
+            if (playerConnection == null || mediaMetadata == null) {
+                PillShimmerSkeleton(isTopLevelRoute = isTopLevelRoute)
+            } else {
+                PillContent(
+                    navigationItems = navigationItems,
+                    currentRoute = currentRoute,
+                    onNavItemClick = onNavItemClick,
+                    playerBottomSheetState = playerBottomSheetState,
+                    onSearchLongClick = onSearchLongClick,
+                    accountImageUrl = accountImageUrl,
+                    isTopLevelRoute = isTopLevelRoute,
+                    pureBlack = pureBlack,
+                    slimNav = slimNav,
+                    playerConnection = playerConnection,
+                )
+            }
         }
     }
 }
