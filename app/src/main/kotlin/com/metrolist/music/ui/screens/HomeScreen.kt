@@ -1506,7 +1506,7 @@ fun HomeScreen(
                                                     .weight(1f)
                                                     .aspectRatio(1f)
                                                     .padding(4.dp)
-                                                    .clip(if (isCenter) CircleShape else RoundedCornerShape(12.dp))
+                                                    .clip(if (isCenter) CircleShape else RoundedCornerShape(9.dp))
                                                     .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
                                             )
                                         }
@@ -1854,7 +1854,6 @@ fun HomeScreen(
                     if (moodChips.isEmpty()) {
                         val isDark = isSystemInDarkTheme()
                         val bgColor = if (isDark) MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                        val message = if (isLoggedIn) "We're getting your mixes ready..." else "Sign in to get personalized mixtapes"
 
                         Column(
                             modifier = Modifier
@@ -1863,25 +1862,36 @@ fun HomeScreen(
                                 .clip(RoundedCornerShape(28.dp))
                                 .background(bgColor)
                                 .padding(top = 14.dp, bottom = 12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                            horizontalAlignment = Alignment.Start,
                         ) {
-                            Text(
-                                text = message,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                repeat(5) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(80.dp)
+                                            .height(36.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(18.dp))
+
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
                                 repeat(4) {
-                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Box(modifier = Modifier.size(135.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)))
-                                        Box(modifier = Modifier.width(100.dp).height(12.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f)))
-                                        Box(modifier = Modifier.width(70.dp).height(10.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)))
-                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(135.dp)
+                                            .clip(RoundedCornerShape(9.dp))
+                                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+                                    )
                                 }
                             }
                         }
@@ -1970,28 +1980,12 @@ fun HomeScreen(
                                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     ) {
                                         repeat(4) {
-                                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(135.dp)
-                                                        .clip(RoundedCornerShape(12.dp))
-                                                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmerAlpha))
-                                                )
-                                                Box(
-                                                    modifier = Modifier
-                                                        .width(100.dp)
-                                                        .height(12.dp)
-                                                        .clip(RoundedCornerShape(4.dp))
-                                                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmerAlpha * 0.7f))
-                                                )
-                                                Box(
-                                                    modifier = Modifier
-                                                        .width(70.dp)
-                                                        .height(10.dp)
-                                                        .clip(RoundedCornerShape(4.dp))
-                                                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmerAlpha * 0.5f))
-                                                )
-                                            }
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(135.dp)
+                                                    .clip(RoundedCornerShape(9.dp))
+                                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmerAlpha))
+                                            )
                                         }
                                     }
                                 } else {

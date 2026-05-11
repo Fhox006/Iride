@@ -62,6 +62,7 @@ fun BottomSheet(
     onDismiss: (() -> Unit)? = null,
     collapsedContent: @Composable BoxScope.() -> Unit,
     isExpandable: Boolean = true,
+    clickableHeight: Dp = state.collapsedBound,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
@@ -131,19 +132,26 @@ fun BottomSheet(
             val isSettled = remember { derivedStateOf { state.value == state.collapsedBound } }
 
             Box(
-                modifier =
-                Modifier
-                    .graphicsLayer {
-                        alpha = 1f - (state.progress * 4).coerceAtMost(1f)
-                    }.clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        enabled = isSettled.value,
-                        onClick = { if (isExpandable) state.expandSoft() },
-                    ).fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .height(state.collapsedBound),
-                content = collapsedContent,
-            )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .graphicsLayer {
+                            alpha = 1f - (state.progress * 4).coerceAtMost(1f)
+                        }
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            enabled = isSettled.value,
+                            onClick = { if (isExpandable) state.expandSoft() },
+                        )
+                        .fillMaxWidth()
+                        .height(clickableHeight),
+                    content = collapsedContent,
+                )
+            }
         }
     }
 }
@@ -351,7 +359,9 @@ fun rememberBottomSheetState(
 
         animatable.updateBounds(dismissedBound.coerceAtMost(expandedBound), expandedBound)
         coroutineScope.launch {
-            if (animatable.value != targetValue) {
+            if (animatable.value <= dismissedBound) {
+                animatable.snapTo(dismissedBound)
+            } else if (animatable.value != targetValue) {
                 animatable.snapTo(targetValue)
             }
         }

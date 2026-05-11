@@ -96,6 +96,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -721,6 +722,8 @@ class MainActivity : ComponentActivity() {
                         expandedBound = maxHeight,
                     )
 
+                val userDismissedPlayer = remember { mutableStateOf(false) }
+
                 val playerAwareWindowInsets =
                     remember(bottomInset, showRail, isTopLevelRoute, playerBottomSheetState.isDismissed) {
                         var bottom = bottomInset
@@ -792,8 +795,9 @@ class MainActivity : ComponentActivity() {
                         if (!playerBottomSheetState.isDismissed) {
                             playerBottomSheetState.dismiss()
                         }
+                        userDismissedPlayer.value = true
                     } else {
-                        if (playerBottomSheetState.isDismissed) {
+                        if (playerBottomSheetState.isDismissed && !userDismissedPlayer.value) {
                             playerBottomSheetState.collapseSoft()
                         }
                     }
@@ -809,7 +813,8 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED &&
                                     mediaItem != null &&
-                                    playerBottomSheetState.isDismissed
+                                    playerBottomSheetState.isDismissed &&
+                                    !userDismissedPlayer.value
                                 ) {
                                     playerBottomSheetState.collapseSoft()
                                 }
@@ -940,6 +945,16 @@ class MainActivity : ComponentActivity() {
                     LocalSyncUtils provides syncUtils,
                     LocalListenTogetherManager provides listenTogetherManager,
                 ) {
+                    val contentBlurRadius by remember(playerBottomSheetState) {
+                        derivedStateOf {
+                            if (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed) {
+                                0f
+                            } else {
+                                playerBottomSheetState.progress.coerceIn(0f, 1f) * 20f
+                            }
+                        }
+                    }
+
                     Scaffold(
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
@@ -1077,7 +1092,20 @@ class MainActivity : ComponentActivity() {
                                     accountImageUrl = accountImageUrl,
                                 )
                             }
-                            Box(Modifier.weight(1f)) {
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .graphicsLayer {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                            val blurPx = contentBlurRadius * density.density
+                                            renderEffect = if (blurPx > 0.5f) {
+                                                android.graphics.RenderEffect
+                                                    .createBlurEffect(blurPx, blurPx, android.graphics.Shader.TileMode.CLAMP)
+                                                    .asComposeRenderEffect()
+                                            } else null
+                                        }
+                                    },
+                            ) {
                                 val onboardingCompleted = remember { dataStore[OnboardingCompletedKey] ?: false }
 
                                 // NavHost with animations (Material 3 Expressive style)
@@ -1195,12 +1223,12 @@ class MainActivity : ComponentActivity() {
                             accountImageUrl = accountImageUrl,
                             pureBlack = pureBlack,
                             slimNav = slimNav,
+                            onPlayerExpand = { userDismissedPlayer.value = false },
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
+                                .zIndex(1f)
                                 .graphicsLayer {
-                                    // Slide the pill down as the player opens, mirroring Metrolist's nav behavior
                                     val progress = playerBottomSheetState.progress.coerceIn(0f, 1f)
-                                    // Use a larger offset to ensure the pill fully exits the screen as the player opens
                                     val pillHeightPx = (FloatingPillHeight + FloatingPillBottomSpacing + bottomInset).toPx()
                                     translationY = pillHeightPx * progress
                                 },

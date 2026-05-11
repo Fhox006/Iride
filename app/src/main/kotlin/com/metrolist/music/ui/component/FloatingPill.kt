@@ -139,6 +139,7 @@ fun FloatingPill(
     accountImageUrl: String?,
     pureBlack: Boolean = false,
     slimNav: Boolean = false,
+    onPlayerExpand: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val playerConnection = LocalPlayerConnection.current
@@ -186,6 +187,7 @@ fun FloatingPill(
                 pureBlack = pureBlack,
                 slimNav = slimNav,
                 playerConnection = playerConnection,
+                onPlayerExpand = onPlayerExpand,
             )
         }
     }
@@ -217,6 +219,7 @@ private fun PillContent(
     pureBlack: Boolean,
     slimNav: Boolean,
     playerConnection: PlayerConnection,
+    onPlayerExpand: (() -> Unit)? = null,
 ) {
     val miniPlayerBackground by rememberEnumPreference(
         MiniPlayerBackgroundStyleKey,
@@ -358,7 +361,10 @@ private fun PillContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(MiniPlayerHeight)
-                        .clickable { playerBottomSheetState.expandSoft() },
+                        .clickable {
+                            playerBottomSheetState.expandSoft()
+                            onPlayerExpand?.invoke()
+                        },
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(
