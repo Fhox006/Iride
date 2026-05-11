@@ -571,12 +571,13 @@ private fun PillPlayButton(
                 )
             },
     ) {
+        val imageShape = RoundedCornerShape(16.dp)
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(40.dp)
-                .clip(CircleShape)
-                .border(1.dp, outlineColor.copy(alpha = 0.3f), CircleShape),
+                .clip(imageShape)
+                .border(1.dp, outlineColor.copy(alpha = 0.3f), imageShape),
         ) {
             mediaMetadata?.let { metadata ->
                 val thumbnailUrl = remember(metadata.thumbnailUrl) { metadata.thumbnailUrl?.resize(120, 120) }
@@ -584,7 +585,7 @@ private fun PillPlayButton(
                     model = thumbnailUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    modifier = Modifier.fillMaxSize().clip(imageShape),
                 )
             }
         }

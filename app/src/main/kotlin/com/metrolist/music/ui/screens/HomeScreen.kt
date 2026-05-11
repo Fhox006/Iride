@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -1560,7 +1562,13 @@ fun HomeScreen(
                         val itemsPerPage = columns * rows
                         val itemWidth = availableWidth / columns
 
-                        val pagerState = rememberPagerState(pageCount = { (items.size + 1 + itemsPerPage - 1) / itemsPerPage })
+                        val realPageCount = (items.size + 1 + itemsPerPage - 1) / itemsPerPage
+                        val virtualPageCount = if (realPageCount > 1) realPageCount * 1000 else 1
+                        val initialPage = if (realPageCount > 1) realPageCount * 500 else 0
+                        val pagerState = rememberPagerState(
+                            initialPage = initialPage,
+                            pageCount = { virtualPageCount }
+                        )
 
                         Column(
                             modifier =
@@ -1577,10 +1585,11 @@ fun HomeScreen(
                                         .fillMaxWidth()
                                         .height(itemWidth * rows),
                             ) { page ->
-                                val isFirstPage = page == 0
+                                val realPage = if (realPageCount > 1) page % realPageCount else 0
+                                val isFirstPage = realPage == 0
                                 val centerIndex = if (rows >= 2 && columns >= 2) columns + 1 else itemsPerPage - 1
 
-                                val pageStartIndex = if (isFirstPage) 0 else page * itemsPerPage - 1
+                                val pageStartIndex = if (isFirstPage) 0 else realPage * itemsPerPage - 1
                                 val pageItems = items.drop(pageStartIndex).take(if (isFirstPage) itemsPerPage - 1 else itemsPerPage)
 
                                 Column(modifier = Modifier.fillMaxSize()) {
@@ -1821,29 +1830,38 @@ fun HomeScreen(
                                     }
                                 }
                             }
-                            if (pagerState.pageCount > 1) {
-                                Row(
-                                    modifier =
-                                        Modifier
-                                            .height(24.dp)
-                                            .fillMaxWidth(),
-                                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically,
+                            if (realPageCount > 1) {
+                                val scrollFraction by remember {
+                                    derivedStateOf {
+                                        val pg = pagerState.currentPage % realPageCount
+                                        val offset = pagerState.currentPageOffsetFraction
+                                        (pg + offset) / realPageCount.toFloat()
+                                    }
+                                }
+                                BoxWithConstraints(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp)
+                                        .padding(top = 8.dp)
                                 ) {
-                                    repeat(pagerState.pageCount) { iteration ->
-                                        val color =
-                                            if (pagerState.currentPage == iteration) {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                            }
+                                    val totalWidthPx = constraints.maxWidth.toFloat()
+                                    val thumbWidthPx = totalWidthPx / realPageCount
+                                    val thumbOffsetPx = scrollFraction * (totalWidthPx - thumbWidthPx)
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(2.dp)
+                                            .clip(RoundedCornerShape(1.dp))
+                                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f))
+                                    ) {
                                         Box(
-                                            modifier =
-                                                Modifier
-                                                    .padding(4.dp)
-                                                    .clip(CircleShape)
-                                                    .background(color)
-                                                    .size(8.dp),
+                                            modifier = Modifier
+                                                .width(with(LocalDensity.current) { thumbWidthPx.toDp() })
+                                                .fillMaxHeight()
+                                                .offset(x = with(LocalDensity.current) { thumbOffsetPx.toDp() })
+                                                .clip(RoundedCornerShape(1.dp))
+                                                .background(MaterialTheme.colorScheme.primary)
                                         )
                                     }
                                 }
