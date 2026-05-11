@@ -1549,7 +1549,7 @@ fun HomeScreen(
                     item(key = "speed_dial_list") {
                         val items = speedDialItems
                         val targetItemSize = 160.dp
-                        val availableWidth = maxWidth - 32.dp
+                        val availableWidth = maxWidth
                         val columns = (availableWidth / targetItemSize).toInt().coerceAtLeast(3)
                         val rows =
                             if (columns >= 6) {
@@ -1578,8 +1578,8 @@ fun HomeScreen(
                         ) {
                             HorizontalPager(
                                 state = pagerState,
-                                contentPadding = PaddingValues(horizontal = 16.dp),
-                                pageSpacing = 16.dp,
+                                contentPadding = PaddingValues(0.dp),
+                                pageSpacing = 0.dp,
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
@@ -1833,16 +1833,17 @@ fun HomeScreen(
                             if (realPageCount > 1) {
                                 val scrollFraction by remember {
                                     derivedStateOf {
-                                        val pg = pagerState.currentPage % realPageCount
-                                        val offset = pagerState.currentPageOffsetFraction
-                                        (pg + offset) / realPageCount.toFloat()
+                                        val virtualPage = pagerState.currentPage.toFloat() + pagerState.currentPageOffsetFraction
+                                        val realPageF = realPageCount.toFloat()
+                                        val wrapped = ((virtualPage % realPageF) + realPageF) % realPageF
+                                        wrapped / realPageF
                                     }
                                 }
                                 BoxWithConstraints(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 16.dp)
-                                        .padding(top = 8.dp)
+                                        .padding(horizontal = 32.dp)
+                                        .padding(top = 10.dp)
                                 ) {
                                     val totalWidthPx = constraints.maxWidth.toFloat()
                                     val thumbWidthPx = totalWidthPx / realPageCount
@@ -1851,8 +1852,8 @@ fun HomeScreen(
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(2.dp)
-                                            .clip(RoundedCornerShape(1.dp))
+                                            .height(3.dp)
+                                            .clip(RoundedCornerShape(1.5.dp))
                                             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f))
                                     ) {
                                         Box(
@@ -1860,7 +1861,7 @@ fun HomeScreen(
                                                 .width(with(LocalDensity.current) { thumbWidthPx.toDp() })
                                                 .fillMaxHeight()
                                                 .offset(x = with(LocalDensity.current) { thumbOffsetPx.toDp() })
-                                                .clip(RoundedCornerShape(1.dp))
+                                                .clip(RoundedCornerShape(1.5.dp))
                                                 .background(MaterialTheme.colorScheme.primary)
                                         )
                                     }

@@ -65,6 +65,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -557,18 +559,31 @@ private fun PillPlayButton(
                 drawContent()
                 val progress = progressState.progress
                 val stroke = Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Round)
-                val diameter = size.minDimension
-                val topLeft = Offset((size.width - diameter) / 2, (size.height - diameter) / 2)
-                drawArc(
-                    color = trackColor,
-                    startAngle = 0f, sweepAngle = 360f, useCenter = false,
-                    topLeft = topLeft, size = Size(diameter, diameter), style = stroke,
-                )
-                drawArc(
-                    color = primaryColor,
-                    startAngle = -90f, sweepAngle = 360f * progress, useCenter = false,
-                    topLeft = topLeft, size = Size(diameter, diameter), style = stroke,
-                )
+                val r = 18.dp.toPx()  // concentric radius: outer box 48dp, image 40dp with 16dp radius, gap=4dp each side, so 16+4=20, use 18 to stay centered on the gap
+                val inset = strokeWidth.toPx() / 2f
+                val trackPath = Path().apply {
+                    addRoundRect(
+                        androidx.compose.ui.geometry.RoundRect(
+                            left = inset,
+                            top = inset,
+                            right = size.width - inset,
+                            bottom = size.height - inset,
+                            radiusX = r,
+                            radiusY = r,
+                        )
+                    )
+                }
+                // Draw full track (background)
+                drawPath(trackPath, color = trackColor, style = stroke)
+                // Draw progress segment
+                if (progress > 0f) {
+                    val pm = PathMeasure()
+                    pm.setPath(trackPath, false)
+                    val totalLength = pm.length
+                    val progressPath = Path()
+                    pm.getSegment(0f, totalLength * progress, progressPath, true)
+                    drawPath(progressPath, color = primaryColor, style = stroke)
+                }
             },
     ) {
         val imageShape = RoundedCornerShape(16.dp)
