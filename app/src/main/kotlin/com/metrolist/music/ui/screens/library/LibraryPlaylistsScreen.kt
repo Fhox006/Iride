@@ -83,10 +83,6 @@ import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LibraryPlaylistsViewModel
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -122,10 +118,10 @@ fun LibraryPlaylistsScreen(
     )
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
 
-    val playlists by viewModel.allPlaylists.collectAsStateWithLifecycle()
+    val playlists by viewModel.allPlaylists.collectAsState()
 
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
-    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsState()
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForSearch() }
     val filteredPlaylists = remember(playlists, normalizedQuery) {
         if (normalizedQuery.isBlank()) {
@@ -161,13 +157,10 @@ fun LibraryPlaylistsScreen(
 
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
 
-    val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(lifecycleOwner) {
-        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            if (ytmSync) {
-                withContext(Dispatchers.IO) {
-                    viewModel.sync()
-                }
+    LaunchedEffect(Unit) {
+        if (ytmSync) {
+            withContext(Dispatchers.IO) {
+                viewModel.sync()
             }
         }
     }
@@ -253,12 +246,12 @@ fun LibraryPlaylistsScreen(
             ) {
                 Icon(
                     painter =
-                    painterResource(
-                        when (viewType) {
-                            LibraryViewType.LIST -> R.drawable.list
-                            LibraryViewType.GRID -> R.drawable.grid_view
-                        },
-                    ),
+                        painterResource(
+                            when (viewType) {
+                                LibraryViewType.LIST -> R.drawable.list
+                                LibraryViewType.GRID -> R.drawable.grid_view
+                            },
+                        ),
                     contentDescription = stringResource(
                         when (viewType) {
                             LibraryViewType.LIST -> R.string.switch_to_grid_view
@@ -273,7 +266,6 @@ fun LibraryPlaylistsScreen(
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
-        key(viewType) {
         when (viewType) {
             LibraryViewType.LIST -> {
                 LazyColumn(
@@ -343,9 +335,9 @@ fun LibraryPlaylistsScreen(
                 LazyVerticalGrid(
                     state = lazyGridState,
                     columns =
-                    GridCells.Adaptive(
-                        minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
-                    ),
+                        GridCells.Adaptive(
+                            minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
+                        ),
                     contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
                 ) {
                     item(
@@ -410,7 +402,6 @@ fun LibraryPlaylistsScreen(
                     },
                 )
             }
-        }
         }
 
         TopAppBar(

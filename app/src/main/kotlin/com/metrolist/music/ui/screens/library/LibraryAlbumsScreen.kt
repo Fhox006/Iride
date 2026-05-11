@@ -204,12 +204,12 @@ fun LibraryAlbumsScreen(
             ) {
                 Icon(
                     painter =
-                    painterResource(
-                        when (viewType) {
-                            LibraryViewType.LIST -> R.drawable.list
-                            LibraryViewType.GRID -> R.drawable.grid_view
-                        },
-                    ),
+                        painterResource(
+                            when (viewType) {
+                                LibraryViewType.LIST -> R.drawable.list
+                                LibraryViewType.GRID -> R.drawable.grid_view
+                            },
+                        ),
                     contentDescription = stringResource(
                         when (viewType) {
                             LibraryViewType.LIST -> R.string.switch_to_grid_view
@@ -224,7 +224,6 @@ fun LibraryAlbumsScreen(
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
-        key(viewType) {
         when (viewType) {
             LibraryViewType.LIST -> {
                 LazyColumn(
@@ -362,7 +361,6 @@ fun LibraryAlbumsScreen(
                     }
                 }
             }
-        }
         }
 
         TopAppBar(
