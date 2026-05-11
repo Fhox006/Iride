@@ -29,8 +29,13 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
@@ -59,6 +64,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -992,11 +998,16 @@ fun BottomSheetPlayer(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = PlayerHorizontalPadding),
+                        .padding(horizontal = PlayerHorizontalPadding)
+                        .heightIn(min = 56.dp),
             ) {
                 AnimatedContent(
                     targetState = showInlineLyrics || showQueue,
                     label = "ThumbnailAnimation",
+                    transitionSpec = {
+                        fadeIn(spring(stiffness = Spring.StiffnessMediumLow)) togetherWith
+                            fadeOut(spring(stiffness = Spring.StiffnessMediumLow))
+                    },
                 ) { show ->
                     if (show) {
                         Row {
@@ -1198,8 +1209,20 @@ fun BottomSheetPlayer(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        AnimatedContent(targetState = showInlineLyrics, label = "MoreButton") { showLyrics ->
-                            if (!showLyrics) {
+                        AnimatedContent(
+                            targetState = showInlineLyrics || showQueue,
+                            label = "MoreButton",
+                            transitionSpec = {
+                                if (targetState) {
+                                    fadeIn(tween(0)) togetherWith
+                                        (fadeOut(tween(150)) + scaleOut(tween(150, easing = androidx.compose.animation.core.FastOutLinearInEasing), targetScale = 0.6f) +
+                                            slideOutHorizontally(tween(160, easing = androidx.compose.animation.core.FastOutLinearInEasing)) { it / 2 })
+                                } else {
+                                    (fadeIn(tween(200)) + scaleIn(tween(200), initialScale = 0.7f)) togetherWith fadeOut(tween(0))
+                                }
+                            },
+                        ) { show ->
+                            if (!show) {
                                 FilledIconButton(
                                     onClick = {
                                         menuState.show {
@@ -1235,8 +1258,15 @@ fun BottomSheetPlayer(
                             }
                         }
 
-                        AnimatedContent(targetState = showInlineLyrics, label = "LikeButton") { showLyrics ->
-                            if (showLyrics) {
+                        AnimatedContent(
+                            targetState = showInlineLyrics || showQueue,
+                            label = "LikeButton",
+                            transitionSpec = {
+                                fadeIn(spring(stiffness = Spring.StiffnessMedium)) togetherWith
+                                    fadeOut(spring(stiffness = Spring.StiffnessMedium))
+                            },
+                        ) { show ->
+                            if (show) {
                                 Box(
                                     modifier = Modifier
                                         .size(42.dp)
@@ -1245,11 +1275,16 @@ fun BottomSheetPlayer(
                                         .clickable { isFullScreen = !isFullScreen },
                                     contentAlignment = Alignment.Center,
                                 ) {
+                                    val scale by animateFloatAsState(
+                                        targetValue = 1f,
+                                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                                        label = "fullscreenScale",
+                                    )
                                     Icon(
                                         painter = painterResource(if (isFullScreen) R.drawable.expand_less else R.drawable.fullscreen),
                                         contentDescription = null,
                                         tint = iconButtonColor,
-                                        modifier = Modifier.size(24.dp),
+                                        modifier = Modifier.size(24.dp).graphicsLayer { scaleX = scale; scaleY = scale },
                                     )
                                 }
                             } else {
@@ -1283,8 +1318,20 @@ fun BottomSheetPlayer(
                         }
                     }
                 } else {
-                    AnimatedContent(targetState = showInlineLyrics, label = "MoreButton") { showLyrics ->
-                        if (!showLyrics) {
+                    AnimatedContent(
+                        targetState = showInlineLyrics || showQueue,
+                        label = "MoreButton",
+                        transitionSpec = {
+                            if (targetState) {
+                                fadeIn(tween(0)) togetherWith
+                                    (fadeOut(tween(150)) + scaleOut(tween(150, easing = androidx.compose.animation.core.FastOutLinearInEasing), targetScale = 0.6f) +
+                                        slideOutHorizontally(tween(160, easing = androidx.compose.animation.core.FastOutLinearInEasing)) { it / 2 })
+                            } else {
+                                (fadeIn(tween(200)) + scaleIn(tween(200), initialScale = 0.7f)) togetherWith fadeOut(tween(0))
+                            }
+                        },
+                    ) { show ->
+                        if (!show) {
                             Box(
                                 contentAlignment = Alignment.Center,
                                 modifier =
@@ -1323,8 +1370,15 @@ fun BottomSheetPlayer(
                         }
                     }
 
-                    AnimatedContent(targetState = showInlineLyrics, label = "LikeButton") { showLyrics ->
-                        if (showLyrics) {
+                    AnimatedContent(
+                        targetState = showInlineLyrics || showQueue,
+                        label = "LikeButton",
+                        transitionSpec = {
+                            fadeIn(spring(stiffness = Spring.StiffnessMedium)) togetherWith
+                                fadeOut(spring(stiffness = Spring.StiffnessMedium))
+                        },
+                    ) { show ->
+                        if (show) {
                             Spacer(modifier = Modifier.size(12.dp))
                             val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
                             Box(

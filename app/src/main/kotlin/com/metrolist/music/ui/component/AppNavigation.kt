@@ -28,6 +28,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -45,6 +46,7 @@ import coil3.compose.AsyncImage
 import com.metrolist.music.ui.screens.Screens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 @Immutable
 private data class NavItemState(
@@ -97,6 +99,7 @@ fun AppNavigationRail(
 
             val isSearchItem = screen == Screens.Search && onSearchLongClick != null
             val interactionSource = remember { MutableInteractionSource() }
+            val scope = rememberCoroutineScope()
 
             var pressed by remember { mutableStateOf(false) }
             val iconScale by animateFloatAsState(
@@ -123,6 +126,11 @@ fun AppNavigationRail(
                             }
                             is PressInteraction.Release -> {
                                 if (!isLongClick) {
+                                    scope.launch {
+                                        pressed = true
+                                        delay(50)
+                                        pressed = false
+                                    }
                                     onItemClick(screen, currentIsSelected)
                                 }
                             }
@@ -137,8 +145,11 @@ fun AppNavigationRail(
             NavigationRailItem(
                 selected = isSelected,
                 onClick = {
-                    pressed = true
-                    pressed = false
+                    scope.launch {
+                        pressed = true
+                        delay(50)
+                        pressed = false
+                    }
                     if (!isSearchItem) {
                         onItemClick(screen, currentIsSelected)
                     }
@@ -207,6 +218,7 @@ fun AppNavigationBar(
 
             val isSearchItem = screen == Screens.Search && onSearchLongClick != null
             val interactionSource = remember { MutableInteractionSource() }
+            val scope = rememberCoroutineScope()
 
             var pressed by remember { mutableStateOf(false) }
             val iconScale by animateFloatAsState(
@@ -233,6 +245,11 @@ fun AppNavigationBar(
                             }
                             is PressInteraction.Release -> {
                                 if (!isLongClick) {
+                                    scope.launch {
+                                        pressed = true
+                                        delay(50)
+                                        pressed = false
+                                    }
                                     onItemClick(screen, currentIsSelected)
                                 }
                             }
@@ -247,8 +264,11 @@ fun AppNavigationBar(
             NavigationBarItem(
                 selected = isSelected,
                 onClick = {
-                    pressed = true
-                    pressed = false
+                    scope.launch {
+                        pressed = true
+                        delay(50)
+                        pressed = false
+                    }
                     if (!isSearchItem) {
                         onItemClick(screen, currentIsSelected)
                     }

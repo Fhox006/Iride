@@ -1286,10 +1286,7 @@ fun HomeScreen(
 
                         item(key = "00_your_shows_list") {
                             LazyRow(
-                                contentPadding =
-                                    WindowInsets.systemBars
-                                        .only(WindowInsetsSides.Horizontal)
-                                        .asPaddingValues(),
+                                contentPadding = PaddingValues(horizontal = 12.dp),
                             ) {
                                 items(savedPodcastShows) { podcast ->
                                     ytGridItem(podcast, null)
@@ -1311,10 +1308,7 @@ fun HomeScreen(
 
                         item(key = "00_episodes_for_later_list") {
                             LazyRow(
-                                contentPadding =
-                                    WindowInsets.systemBars
-                                        .only(WindowInsetsSides.Horizontal)
-                                        .asPaddingValues(),
+                                contentPadding = PaddingValues(horizontal = 12.dp),
                             ) {
                                 items(episodesForLater) { episode ->
                                     ytGridItem(episode, null)
@@ -1334,10 +1328,7 @@ fun HomeScreen(
 
                         item(key = "0_podcast_channels_list") {
                             LazyRow(
-                                contentPadding =
-                                    WindowInsets.systemBars
-                                        .only(WindowInsetsSides.Horizontal)
-                                        .asPaddingValues(),
+                                contentPadding = PaddingValues(horizontal = 12.dp),
                             ) {
                                 items(featuredPodcasts) { podcast ->
                                     ytGridItem(podcast, null)
@@ -1417,11 +1408,7 @@ fun HomeScreen(
 
                             item(key = "1_chip_section_list_${section.index}") {
                                 LazyRow(
-                                    contentPadding =
-                                        WindowInsets.systemBars
-                                            .only(WindowInsetsSides.Horizontal)
-                                            .asPaddingValues(),
-                                ) {
+                                    contentPadding = PaddingValues(horizontal = 12.dp),                                ) {
                                     items(sectionData.items) { item ->
                                         ytGridItem(item, null)
                                     }
@@ -1508,7 +1495,7 @@ fun HomeScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
                             ) {
                                 repeat(3) { rowIndex ->
                                     Row(modifier = Modifier.fillMaxWidth()) {
@@ -1883,10 +1870,10 @@ fun HomeScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                 textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                             )
                             Row(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
                                 repeat(4) {
@@ -1959,7 +1946,7 @@ fun HomeScreen(
                                 if (it != null) selectedMoodCategory = it
                             },
                             chipHeight = 40.dp,
-                            horizontalPadding = 16.dp,
+                            horizontalPadding = 12.dp,
                             labelStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp)
                         )
 
@@ -1979,7 +1966,7 @@ fun HomeScreen(
                                         label = "shimmerAlpha"
                                     )
                                     Row(
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     ) {
                                         repeat(4) {
@@ -2024,7 +2011,7 @@ fun HomeScreen(
                                         if (mixItems.isNotEmpty()) {
                                             LazyRow(
                                                 state = moodMixesState,
-                                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                                contentPadding = PaddingValues(horizontal = 12.dp),
                                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                                 modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)
                                             ) {
@@ -2101,11 +2088,7 @@ fun HomeScreen(
                                         state = quickPicksLazyGridState,
                                         rows = GridCells.Fixed(4),
                                         flingBehavior = rememberSnapFlingBehavior(quickPicksSnapLayoutInfoProvider),
-                                        contentPadding =
-                                            WindowInsets.systemBars
-                                                .only(WindowInsetsSides.Horizontal)
-                                                .asPaddingValues(),
-                                        modifier =
+                                        contentPadding = PaddingValues(horizontal = 12.dp),                                        modifier =
                                             Modifier
                                                 .fillMaxWidth()
                                                 .height(ListItemHeight * 4)
@@ -2184,8 +2167,8 @@ fun HomeScreen(
 
                                 item(key = "community_playlists_content") {
                                     LazyRow(
-                                        contentPadding = PaddingValues(horizontal = 16.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                                         modifier = Modifier.animateItem(),
                                     ) {
                                         items(playlists) { item ->
@@ -2241,7 +2224,7 @@ fun HomeScreen(
                                             Modifier
                                                 .fillMaxWidth()
                                                 .height(340.dp)
-                                                .padding(horizontal = 16.dp),
+                                                .padding(horizontal = 12.dp),
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         val carouselState = rememberCarouselState { discoverList.size }
@@ -2294,11 +2277,7 @@ fun HomeScreen(
                                     LazyHorizontalGrid(
                                         state = rememberLazyGridState(),
                                         rows = GridCells.Fixed(rows),
-                                        contentPadding =
-                                            WindowInsets.systemBars
-                                                .only(WindowInsetsSides.Horizontal)
-                                                .asPaddingValues(),
-                                        modifier =
+                                        contentPadding = PaddingValues(horizontal = 12.dp),                                        modifier =
                                             Modifier
                                                 .fillMaxWidth()
                                                 .height(
@@ -2364,11 +2343,7 @@ fun HomeScreen(
 
                                 item(key = "account_playlists_list") {
                                     LazyRow(
-                                        contentPadding =
-                                            WindowInsets.systemBars
-                                                .only(WindowInsetsSides.Horizontal)
-                                                .asPaddingValues(),
-                                        modifier = Modifier.animateItem(),
+                                        contentPadding = PaddingValues(horizontal = 12.dp),                                        modifier = Modifier.animateItem(),
                                     ) {
                                         items(
                                             items = accountPlaylists.distinctBy { it.id },
@@ -2410,11 +2385,7 @@ fun HomeScreen(
                                     LazyHorizontalGrid(
                                         state = forgottenFavoritesLazyGridState,
                                         rows = GridCells.Fixed(rows),
-                                        contentPadding =
-                                            WindowInsets.systemBars
-                                                .only(WindowInsetsSides.Horizontal)
-                                                .asPaddingValues(),
-                                        flingBehavior =
+                                        contentPadding = PaddingValues(horizontal = 12.dp),                                        flingBehavior =
                                             rememberSnapFlingBehavior(
                                                 forgottenFavoritesSnapLayoutInfoProvider,
                                             ),
@@ -2538,11 +2509,7 @@ fun HomeScreen(
 
                                 item(key = "similar_to_list_${section.index}") {
                                     LazyRow(
-                                        contentPadding =
-                                            WindowInsets.systemBars
-                                                .only(WindowInsetsSides.Horizontal)
-                                                .asPaddingValues(),
-                                        modifier = Modifier.animateItem(),
+                                        contentPadding = PaddingValues(horizontal = 12.dp),                                        modifier = Modifier.animateItem(),
                                     ) {
                                         items(recommendation.items) { item ->
                                             ytGridItem(item, null)
@@ -2642,11 +2609,7 @@ fun HomeScreen(
                                         LazyHorizontalGrid(
                                             state = rememberLazyGridState(),
                                             rows = GridCells.Fixed(4),
-                                            contentPadding =
-                                                WindowInsets.systemBars
-                                                    .only(WindowInsetsSides.Horizontal)
-                                                    .asPaddingValues(),
-                                            modifier =
+                                            contentPadding = PaddingValues(horizontal = 12.dp),                                            modifier =
                                                 Modifier
                                                     .fillMaxWidth()
                                                     .height(ListItemHeight * 4)
@@ -2712,11 +2675,7 @@ fun HomeScreen(
                                     // Render mixed content as horizontal grid items (albums, playlists, artists, etc.)
                                     item(key = "home_section_list_${section.index}") {
                                         LazyRow(
-                                            contentPadding =
-                                                WindowInsets.systemBars
-                                                    .only(WindowInsetsSides.Horizontal)
-                                                    .asPaddingValues(),
-                                            modifier = Modifier.animateItem(),
+                                            contentPadding = PaddingValues(horizontal = 12.dp),                                            modifier = Modifier.animateItem(),
                                         ) {
                                             items(
                                                 items = sectionData.items.distinctBy { it.id },
