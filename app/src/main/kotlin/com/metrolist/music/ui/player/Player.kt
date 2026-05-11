@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.LinearEasing
@@ -33,6 +34,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
@@ -103,6 +106,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Alignment as UiAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
@@ -1007,23 +1011,13 @@ fun BottomSheetPlayer(
                     targetState = showInlineLyrics || showQueue,
                     label = "ThumbnailAnimation",
                     transitionSpec = {
-                        if (targetState) {
-                            slideInHorizontally(
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                                initialOffsetX = { -it },
-                            ) togetherWith slideOutHorizontally(
-                                animationSpec = tween(200, easing = FastOutSlowInEasing),
-                                targetOffsetX = { -it },
-                            )
-                        } else {
-                            slideInHorizontally(
-                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                                initialOffsetX = { -it },
-                            ) togetherWith slideOutHorizontally(
-                                animationSpec = tween(180, easing = FastOutSlowInEasing),
-                                targetOffsetX = { -it },
-                            )
-                        }
+                        expandHorizontally(
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                            expandFrom = UiAlignment.Start,
+                        ) togetherWith shrinkHorizontally(
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                            shrinkTowards = UiAlignment.Start,
+                        )
                     },
                 ) { show ->
                     if (show) {
@@ -1231,18 +1225,16 @@ fun BottomSheetPlayer(
                             label = "MoreButton",
                             transitionSpec = {
                                 if (targetState) {
-                                    scaleIn(tween(0)) togetherWith
-                                        scaleOut(
-                                            animationSpec = tween(180, easing = FastOutSlowInEasing),
-                                            targetScale = 0f,
-                                            transformOrigin = TransformOrigin(0f, 0.5f),
+                                    expandHorizontally(tween(0), expandFrom = UiAlignment.Start) togetherWith
+                                        shrinkHorizontally(
+                                            animationSpec = tween(160, easing = FastOutSlowInEasing),
+                                            shrinkTowards = UiAlignment.Start,
                                         )
                                 } else {
-                                    scaleIn(
+                                    expandHorizontally(
                                         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                                        initialScale = 0f,
-                                        transformOrigin = TransformOrigin(0f, 0.5f),
-                                    ) togetherWith scaleOut(tween(0))
+                                        expandFrom = UiAlignment.Start,
+                                    ) togetherWith shrinkHorizontally(tween(0), shrinkTowards = UiAlignment.Start)
                                 }
                             },
                         ) { show ->
@@ -1312,20 +1304,12 @@ fun BottomSheetPlayer(
                                 },
                             contentAlignment = Alignment.Center,
                         ) {
-                            AnimatedContent(
+                            Crossfade(
                                 targetState = isLyricsOrQueue,
-                                label = "LikeButtonIcon",
-                                transitionSpec = {
-                                    if (targetState) {
-                                        slideInHorizontally(tween(120, easing = FastOutSlowInEasing)) { it } togetherWith
-                                            slideOutHorizontally(tween(120, easing = FastOutSlowInEasing)) { -it }
-                                    } else {
-                                        slideInHorizontally(tween(120, easing = FastOutSlowInEasing)) { -it } togetherWith
-                                            slideOutHorizontally(tween(120, easing = FastOutSlowInEasing)) { it }
-                                    }
-                                },
-                            ) { showLyrics ->
-                                if (showLyrics) {
+                                animationSpec = tween(durationMillis = 100, easing = FastOutSlowInEasing),
+                                label = "LikeButtonIconCrossfade",
+                            ) { showLyricsOrQueue ->
+                                if (showLyricsOrQueue) {
                                     Icon(
                                         painter = painterResource(if (isFullScreen) R.drawable.expand_less else R.drawable.fullscreen),
                                         contentDescription = null,
@@ -1333,7 +1317,6 @@ fun BottomSheetPlayer(
                                         modifier = Modifier.size(24.dp),
                                     )
                                 } else {
-                                    // For episodes, show saved state (inLibrary); for songs, show liked state
                                     val isEpisode = currentSong?.song?.isEpisode == true
                                     val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
                                     Icon(
@@ -1352,18 +1335,16 @@ fun BottomSheetPlayer(
                         label = "MoreButton",
                         transitionSpec = {
                             if (targetState) {
-                                scaleIn(tween(0)) togetherWith
-                                    scaleOut(
-                                        animationSpec = tween(180, easing = FastOutSlowInEasing),
-                                        targetScale = 0f,
-                                        transformOrigin = TransformOrigin(0f, 0.5f),
+                                expandHorizontally(tween(0), expandFrom = UiAlignment.Start) togetherWith
+                                    shrinkHorizontally(
+                                        animationSpec = tween(160, easing = FastOutSlowInEasing),
+                                        shrinkTowards = UiAlignment.Start,
                                     )
                             } else {
-                                scaleIn(
+                                expandHorizontally(
                                     animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                                    initialScale = 0f,
-                                    transformOrigin = TransformOrigin(0f, 0.5f),
-                                ) togetherWith scaleOut(tween(0))
+                                    expandFrom = UiAlignment.Start,
+                                ) togetherWith shrinkHorizontally(tween(0), shrinkTowards = UiAlignment.Start)
                             }
                         },
                     ) { show ->
