@@ -25,6 +25,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -110,6 +111,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -1005,8 +1007,23 @@ fun BottomSheetPlayer(
                     targetState = showInlineLyrics || showQueue,
                     label = "ThumbnailAnimation",
                     transitionSpec = {
-                        fadeIn(spring(stiffness = Spring.StiffnessMediumLow)) togetherWith
-                            fadeOut(spring(stiffness = Spring.StiffnessMediumLow))
+                        if (targetState) {
+                            slideInHorizontally(
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                                initialOffsetX = { -it },
+                            ) togetherWith slideOutHorizontally(
+                                animationSpec = tween(200, easing = FastOutSlowInEasing),
+                                targetOffsetX = { -it },
+                            )
+                        } else {
+                            slideInHorizontally(
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                                initialOffsetX = { -it },
+                            ) togetherWith slideOutHorizontally(
+                                animationSpec = tween(180, easing = FastOutSlowInEasing),
+                                targetOffsetX = { -it },
+                            )
+                        }
                     },
                 ) { show ->
                     if (show) {
@@ -1214,11 +1231,18 @@ fun BottomSheetPlayer(
                             label = "MoreButton",
                             transitionSpec = {
                                 if (targetState) {
-                                    fadeIn(tween(0)) togetherWith
-                                        (fadeOut(tween(150)) + scaleOut(tween(150, easing = androidx.compose.animation.core.FastOutLinearInEasing), targetScale = 0.6f) +
-                                            slideOutHorizontally(tween(160, easing = androidx.compose.animation.core.FastOutLinearInEasing)) { it / 2 })
+                                    scaleIn(tween(0)) togetherWith
+                                        scaleOut(
+                                            animationSpec = tween(180, easing = FastOutSlowInEasing),
+                                            targetScale = 0f,
+                                            transformOrigin = TransformOrigin(0f, 0.5f),
+                                        )
                                 } else {
-                                    (fadeIn(tween(200)) + scaleIn(tween(200), initialScale = 0.7f)) togetherWith fadeOut(tween(0))
+                                    scaleIn(
+                                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                                        initialScale = 0f,
+                                        transformOrigin = TransformOrigin(0f, 0.5f),
+                                    ) togetherWith scaleOut(tween(0))
                                 }
                             },
                         ) { show ->
@@ -1258,59 +1282,64 @@ fun BottomSheetPlayer(
                             }
                         }
 
-                        AnimatedContent(
-                            targetState = showInlineLyrics || showQueue,
-                            label = "LikeButton",
-                            transitionSpec = {
-                                fadeIn(spring(stiffness = Spring.StiffnessMedium)) togetherWith
-                                    fadeOut(spring(stiffness = Spring.StiffnessMedium))
-                            },
-                        ) { show ->
-                            if (show) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(RoundedCornerShape(24.dp))
-                                        .background(textButtonColor)
-                                        .clickable { isFullScreen = !isFullScreen },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    val scale by animateFloatAsState(
-                                        targetValue = 1f,
-                                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                                        label = "fullscreenScale",
-                                    )
+                        val isLyricsOrQueue = showInlineLyrics || showQueue
+                        val btnCornerTopStart by animateDpAsState(
+                            targetValue = if (isLyricsOrQueue) 21.dp else 3.dp,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+                            label = "btnCornerTopStart",
+                        )
+                        val btnCornerBottomStart by animateDpAsState(
+                            targetValue = if (isLyricsOrQueue) 21.dp else 3.dp,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+                            label = "btnCornerBottomStart",
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(RoundedCornerShape(
+                                    topStart = btnCornerTopStart,
+                                    topEnd = 21.dp,
+                                    bottomStart = btnCornerBottomStart,
+                                    bottomEnd = 21.dp,
+                                ))
+                                .background(textButtonColor)
+                                .clickable {
+                                    if (isLyricsOrQueue) {
+                                        isFullScreen = !isFullScreen
+                                    } else {
+                                        playerConnection.toggleLike()
+                                    }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            AnimatedContent(
+                                targetState = isLyricsOrQueue,
+                                label = "LikeButtonIcon",
+                                transitionSpec = {
+                                    if (targetState) {
+                                        slideInHorizontally(tween(120, easing = FastOutSlowInEasing)) { it } togetherWith
+                                            slideOutHorizontally(tween(120, easing = FastOutSlowInEasing)) { -it }
+                                    } else {
+                                        slideInHorizontally(tween(120, easing = FastOutSlowInEasing)) { -it } togetherWith
+                                            slideOutHorizontally(tween(120, easing = FastOutSlowInEasing)) { it }
+                                    }
+                                },
+                            ) { showLyrics ->
+                                if (showLyrics) {
                                     Icon(
                                         painter = painterResource(if (isFullScreen) R.drawable.expand_less else R.drawable.fullscreen),
                                         contentDescription = null,
                                         tint = iconButtonColor,
-                                        modifier = Modifier.size(24.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+                                        modifier = Modifier.size(24.dp),
                                     )
-                                }
-                            } else {
-                                // For episodes, show saved state (inLibrary); for songs, show liked state
-                                val isEpisode = currentSong?.song?.isEpisode == true
-                                val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
-                                FilledIconButton(
-                                    onClick = playerConnection::toggleLike,
-                                    shape = favShape,
-                                    colors =
-                                        IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = textButtonColor,
-                                            contentColor = iconButtonColor,
-                                        ),
-                                    modifier = Modifier.size(42.dp),
-                                ) {
+                                } else {
+                                    // For episodes, show saved state (inLibrary); for songs, show liked state
+                                    val isEpisode = currentSong?.song?.isEpisode == true
+                                    val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
                                     Icon(
-                                        painter =
-                                            painterResource(
-                                                if (isFavorite) {
-                                                    R.drawable.favorite
-                                                } else {
-                                                    R.drawable.favorite_border
-                                                },
-                                            ),
+                                        painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
                                         contentDescription = null,
+                                        tint = iconButtonColor,
                                         modifier = Modifier.size(24.dp),
                                     )
                                 }
@@ -1323,11 +1352,18 @@ fun BottomSheetPlayer(
                         label = "MoreButton",
                         transitionSpec = {
                             if (targetState) {
-                                fadeIn(tween(0)) togetherWith
-                                    (fadeOut(tween(150)) + scaleOut(tween(150, easing = androidx.compose.animation.core.FastOutLinearInEasing), targetScale = 0.6f) +
-                                        slideOutHorizontally(tween(160, easing = androidx.compose.animation.core.FastOutLinearInEasing)) { it / 2 })
+                                scaleIn(tween(0)) togetherWith
+                                    scaleOut(
+                                        animationSpec = tween(180, easing = FastOutSlowInEasing),
+                                        targetScale = 0f,
+                                        transformOrigin = TransformOrigin(0f, 0.5f),
+                                    )
                             } else {
-                                (fadeIn(tween(200)) + scaleIn(tween(200), initialScale = 0.7f)) togetherWith fadeOut(tween(0))
+                                scaleIn(
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                                    initialScale = 0f,
+                                    transformOrigin = TransformOrigin(0f, 0.5f),
+                                ) togetherWith scaleOut(tween(0))
                             }
                         },
                     ) { show ->
@@ -1370,22 +1406,37 @@ fun BottomSheetPlayer(
                         }
                     }
 
+                    val isLyricsOrQueueLs = showInlineLyrics || showQueue
+                    val lsBtnCornerStart by animateDpAsState(
+                        targetValue = if (isLyricsOrQueueLs) 20.dp else 3.dp,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+                        label = "lsBtnCornerStart",
+                    )
                     AnimatedContent(
-                        targetState = showInlineLyrics || showQueue,
+                        targetState = isLyricsOrQueueLs,
                         label = "LikeButton",
                         transitionSpec = {
-                            fadeIn(spring(stiffness = Spring.StiffnessMedium)) togetherWith
-                                fadeOut(spring(stiffness = Spring.StiffnessMedium))
+                            if (targetState) {
+                                slideInHorizontally(tween(120, easing = FastOutSlowInEasing)) { it } togetherWith
+                                    slideOutHorizontally(tween(120, easing = FastOutSlowInEasing)) { it }
+                            } else {
+                                slideInHorizontally(tween(120, easing = FastOutSlowInEasing)) { -it } togetherWith
+                                    slideOutHorizontally(tween(120, easing = FastOutSlowInEasing)) { -it }
+                            }
                         },
                     ) { show ->
                         if (show) {
-                            Spacer(modifier = Modifier.size(12.dp))
                             val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
                             Box(
                                 modifier =
                                     Modifier
                                         .size(40.dp)
-                                        .clip(RoundedCornerShape(24.dp))
+                                        .clip(RoundedCornerShape(
+                                            topStart = lsBtnCornerStart,
+                                            topEnd = 20.dp,
+                                            bottomStart = lsBtnCornerStart,
+                                            bottomEnd = 20.dp,
+                                        ))
                                         .background(textButtonColor)
                                         .clickable {
                                             menuState.show {
@@ -1404,15 +1455,13 @@ fun BottomSheetPlayer(
                                                 )
                                             }
                                         },
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.more_horiz),
                                     contentDescription = null,
                                     tint = iconButtonColor,
-                                    modifier =
-                                        Modifier
-                                            .align(Alignment.Center)
-                                            .size(24.dp),
+                                    modifier = Modifier.size(24.dp),
                                 )
                             }
                         }
