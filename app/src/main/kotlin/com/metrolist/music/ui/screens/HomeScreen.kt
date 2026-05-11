@@ -1832,7 +1832,7 @@ fun HomeScreen(
                                 }
                             }
                             if (realPageCount > 1) {
-                                val currentRealPage by remember {
+                                val currentRealPage by remember(realPageCount) {
                                     derivedStateOf { pagerState.currentPage % realPageCount }
                                 }
                                 Row(

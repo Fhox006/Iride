@@ -559,9 +559,8 @@ private fun PillPlayButton(
                 drawContent()
                 val progress = progressState.progress
                 val stroke = Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Round)
-                val r = 18.dp.toPx()  // concentric radius: outer box 48dp, image 40dp with 16dp radius, gap=4dp each side, so 16+4=20, use 18 to stay centered on the gap
-                // Center the track stroke at exactly 2dp from the box edge (midpoint of the 4dp gap)
-                val trackInset = 2.dp.toPx()
+                val r = 19.dp.toPx()
+                val trackInset = 3.dp.toPx()
                 val trackPath = Path().apply {
                     addRoundRect(
                         androidx.compose.ui.geometry.RoundRect(
@@ -574,15 +573,33 @@ private fun PillPlayButton(
                         )
                     )
                 }
-                // Draw full track (background)
-                drawPath(trackPath, color = trackColor, style = stroke)
-                // Draw progress segment
+                val pm = PathMeasure()
+                pm.setPath(trackPath, false)
+                val totalLength = pm.length
+
+                // Rotate start point to top-left corner (clockwise from default right-center start: top-left is at ~87.5% of perimeter)
+                val startOffset = totalLength * 0.875f
+
+                // Draw full track (background) — always visible, even when stopped
+                val fullRotatedTrack = Path()
+                pm.getSegment(startOffset, totalLength, fullRotatedTrack, true)
+                val secondPart = Path()
+                pm.getSegment(0f, startOffset, secondPart, true)
+                fullRotatedTrack.addPath(secondPart)
+                drawPath(fullRotatedTrack, color = trackColor, style = stroke)
+
+                // Draw progress arc from same start point
                 if (progress > 0f) {
-                    val pm = PathMeasure()
-                    pm.setPath(trackPath, false)
-                    val totalLength = pm.length
+                    val progressLength = totalLength * progress
                     val progressPath = Path()
-                    pm.getSegment(0f, totalLength * progress, progressPath, true)
+                    if (startOffset + progressLength <= totalLength) {
+                        pm.getSegment(startOffset, startOffset + progressLength, progressPath, true)
+                    } else {
+                        pm.getSegment(startOffset, totalLength, progressPath, true)
+                        val overflow = Path()
+                        pm.getSegment(0f, (startOffset + progressLength) - totalLength, overflow, true)
+                        progressPath.addPath(overflow)
+                    }
                     drawPath(progressPath, color = primaryColor, style = stroke)
                 }
             },
