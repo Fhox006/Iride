@@ -1560,7 +1560,8 @@ fun HomeScreen(
                                 3
                             }
                         val itemsPerPage = columns * rows
-                        val itemWidth = availableWidth / columns
+                        val peekPadding = 20.dp
+                        val itemWidth = (availableWidth - peekPadding * 2) / columns
 
                         val realPageCount = (items.size + 1 + itemsPerPage - 1) / itemsPerPage
                         val virtualPageCount = if (realPageCount > 1) realPageCount * 1000 else 1
@@ -1578,7 +1579,7 @@ fun HomeScreen(
                         ) {
                             HorizontalPager(
                                 state = pagerState,
-                                contentPadding = PaddingValues(0.dp),
+                                contentPadding = PaddingValues(horizontal = peekPadding),
                                 pageSpacing = 0.dp,
                                 modifier =
                                     Modifier
@@ -1831,38 +1832,26 @@ fun HomeScreen(
                                 }
                             }
                             if (realPageCount > 1) {
-                                val scrollFraction by remember {
-                                    derivedStateOf {
-                                        val virtualPage = pagerState.currentPage.toFloat() + pagerState.currentPageOffsetFraction
-                                        val realPageF = realPageCount.toFloat()
-                                        val wrapped = ((virtualPage % realPageF) + realPageF) % realPageF
-                                        wrapped / realPageF
-                                    }
+                                val currentRealPage by remember {
+                                    derivedStateOf { pagerState.currentPage % realPageCount }
                                 }
-                                BoxWithConstraints(
+                                Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 32.dp)
-                                        .padding(top = 10.dp)
+                                        .padding(top = 8.dp),
+                                    horizontalArrangement = Arrangement.Center,
                                 ) {
-                                    val totalWidthPx = constraints.maxWidth.toFloat()
-                                    val thumbWidthPx = totalWidthPx / realPageCount
-                                    val thumbOffsetPx = scrollFraction * (totalWidthPx - thumbWidthPx)
-
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(3.dp)
-                                            .clip(RoundedCornerShape(1.5.dp))
-                                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f))
-                                    ) {
+                                    repeat(realPageCount) { index ->
+                                        val isSelected = currentRealPage == index
                                         Box(
                                             modifier = Modifier
-                                                .width(with(LocalDensity.current) { thumbWidthPx.toDp() })
-                                                .fillMaxHeight()
-                                                .offset(x = with(LocalDensity.current) { thumbOffsetPx.toDp() })
-                                                .clip(RoundedCornerShape(1.5.dp))
-                                                .background(MaterialTheme.colorScheme.primary)
+                                                .padding(horizontal = 3.dp)
+                                                .size(if (isSelected) 5.dp else 4.dp)
+                                                .clip(CircleShape)
+                                                .background(
+                                                    if (isSelected) MaterialTheme.colorScheme.primary
+                                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                                ),
                                         )
                                     }
                                 }

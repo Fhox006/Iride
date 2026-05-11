@@ -549,7 +549,7 @@ private fun PillPlayButton(
     outlineColor: Color,
 ) {
     val trackColor = outlineColor.copy(alpha = 0.2f)
-    val strokeWidth = 3.dp
+    val strokeWidth = 2.dp
 
     Box(
         contentAlignment = Alignment.Center,
@@ -560,14 +560,15 @@ private fun PillPlayButton(
                 val progress = progressState.progress
                 val stroke = Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Round)
                 val r = 18.dp.toPx()  // concentric radius: outer box 48dp, image 40dp with 16dp radius, gap=4dp each side, so 16+4=20, use 18 to stay centered on the gap
-                val inset = strokeWidth.toPx() / 2f
+                // Center the track stroke at exactly 2dp from the box edge (midpoint of the 4dp gap)
+                val trackInset = 2.dp.toPx()
                 val trackPath = Path().apply {
                     addRoundRect(
                         androidx.compose.ui.geometry.RoundRect(
-                            left = inset,
-                            top = inset,
-                            right = size.width - inset,
-                            bottom = size.height - inset,
+                            left = trackInset,
+                            top = trackInset,
+                            right = size.width - trackInset,
+                            bottom = size.height - trackInset,
                             radiusX = r,
                             radiusY = r,
                         )
