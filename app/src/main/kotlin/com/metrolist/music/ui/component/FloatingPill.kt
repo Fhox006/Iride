@@ -549,7 +549,6 @@ private fun PillPlayButton(
     outlineColor: Color,
 ) {
     val trackColor = outlineColor.copy(alpha = 0.2f)
-    val strokeWidth = 3.dp
 
     Box(
         contentAlignment = Alignment.Center,
@@ -558,9 +557,11 @@ private fun PillPlayButton(
             .drawWithContent {
                 drawContent()
                 val progress = progressState.progress
-                val stroke = Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Round)
-                val inset = 5.5.dp.toPx()
+                val swPx = 4.dp.toPx()
+                val stroke = Stroke(width = swPx, cap = StrokeCap.Round)
+                val inset = 3.dp.toPx()
                 val r = 16.dp.toPx()
+
                 val trackPath = Path().apply {
                     addRoundRect(
                         androidx.compose.ui.geometry.RoundRect(
@@ -573,30 +574,35 @@ private fun PillPlayButton(
                         )
                     )
                 }
+
                 val pm = PathMeasure()
                 pm.setPath(trackPath, false)
-                val totalLength = pm.length
+                val total = pm.length
 
-                // PathMeasure on addRoundRect starts at right-center going clockwise.
-                // top-center is at 3/4 of total perimeter (right=0, bottom=0.25, left=0.5, top=0.75, top-center=0.75).
-                // We start at top-center and go clockwise (right direction), matching original Metrolist -90 startAngle.
-                val startOffset = totalLength * 0.75f
+                // Compose canvas: Y axis down. addRoundRect path goes clockwise mathematically
+                // which appears COUNTER-CLOCKWISE visually. Sequence on screen:
+                // 0.0 = right-center, 0.25 = top-center, 0.5 = left-center, 0.75 = bottom-center
+                // To go RIGHT from top-center (clockwise visually = backwards on path):
+                // read from startOffset=0.25 DOWNWARD toward 0, wrapping through total.
+                val startFraction = 0.25f
+                val startOffset = total * startFraction
 
-                // Always draw full track (visible even when stopped)
+                // Always draw full track
                 drawPath(trackPath, color = trackColor, style = stroke)
 
-                // Draw progress arc starting from top-center going clockwise (right)
                 if (progress > 0f) {
-                    val progressLength = totalLength * progress
+                    val progressLength = total * progress
                     val progressPath = Path()
-                    val end = startOffset + progressLength
-                    if (end <= totalLength) {
-                        pm.getSegment(startOffset, end, progressPath, true)
+                    // Read backwards: from startOffset toward 0, then wrap from total
+                    val segStart = startOffset - progressLength
+                    if (segStart >= 0f) {
+                        pm.getSegment(segStart, startOffset, progressPath, true)
                     } else {
-                        pm.getSegment(startOffset, totalLength, progressPath, true)
-                        val overflow = Path()
-                        pm.getSegment(0f, end - totalLength, overflow, true)
-                        progressPath.addPath(overflow)
+                        // wrap: first chunk from (total + segStart) to total, then 0 to startOffset
+                        pm.getSegment(total + segStart, total, progressPath, true)
+                        val second = Path()
+                        pm.getSegment(0f, startOffset, second, true)
+                        progressPath.addPath(second)
                     }
                     drawPath(progressPath, color = primaryColor, style = stroke)
                 }

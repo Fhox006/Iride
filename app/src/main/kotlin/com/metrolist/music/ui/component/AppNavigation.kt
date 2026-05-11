@@ -5,8 +5,12 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -22,11 +26,14 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
@@ -91,6 +98,16 @@ fun AppNavigationRail(
             val isSearchItem = screen == Screens.Search && onSearchLongClick != null
             val interactionSource = remember { MutableInteractionSource() }
 
+            var pressed by remember { mutableStateOf(false) }
+            val iconScale by animateFloatAsState(
+                targetValue = if (pressed) 0.75f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                ),
+                label = "iconScale"
+            )
+
             // Long press detection using InteractionSource
             if (isSearchItem) {
                 LaunchedEffect(interactionSource) {
@@ -120,6 +137,8 @@ fun AppNavigationRail(
             NavigationRailItem(
                 selected = isSelected,
                 onClick = {
+                    pressed = true
+                    pressed = false
                     if (!isSearchItem) {
                         onItemClick(screen, currentIsSelected)
                     }
@@ -127,19 +146,26 @@ fun AppNavigationRail(
                 },
                 interactionSource = interactionSource,
                 icon = {
-                    if (screen == Screens.Account && accountImageUrl != null) {
-                        AsyncImage(
-                            model = accountImageUrl,
-                            contentDescription = stringResource(screen.titleId),
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(id = iconRes),
-                            contentDescription = stringResource(screen.titleId)
-                        )
+                    Box(
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        }
+                    ) {
+                        if (screen == Screens.Account && accountImageUrl != null) {
+                            AsyncImage(
+                                model = accountImageUrl,
+                                contentDescription = stringResource(screen.titleId),
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                            )
+                        } else {
+                            Icon(
+                                painter = painterResource(id = iconRes),
+                                contentDescription = stringResource(screen.titleId)
+                            )
+                        }
                     }
                 }
             )
@@ -182,6 +208,16 @@ fun AppNavigationBar(
             val isSearchItem = screen == Screens.Search && onSearchLongClick != null
             val interactionSource = remember { MutableInteractionSource() }
 
+            var pressed by remember { mutableStateOf(false) }
+            val iconScale by animateFloatAsState(
+                targetValue = if (pressed) 0.75f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                ),
+                label = "iconScale"
+            )
+
             // Long press detection using InteractionSource
             if (isSearchItem) {
                 LaunchedEffect(interactionSource) {
@@ -211,6 +247,8 @@ fun AppNavigationBar(
             NavigationBarItem(
                 selected = isSelected,
                 onClick = {
+                    pressed = true
+                    pressed = false
                     if (!isSearchItem) {
                         onItemClick(screen, currentIsSelected)
                     }
@@ -218,19 +256,26 @@ fun AppNavigationBar(
                 },
                 interactionSource = interactionSource,
                 icon = {
-                    if (screen == Screens.Account && accountImageUrl != null) {
-                        AsyncImage(
-                            model = accountImageUrl,
-                            contentDescription = stringResource(screen.titleId),
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(id = iconRes),
-                            contentDescription = stringResource(screen.titleId)
-                        )
+                    Box(
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        }
+                    ) {
+                        if (screen == Screens.Account && accountImageUrl != null) {
+                            AsyncImage(
+                                model = accountImageUrl,
+                                contentDescription = stringResource(screen.titleId),
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                            )
+                        } else {
+                            Icon(
+                                painter = painterResource(id = iconRes),
+                                contentDescription = stringResource(screen.titleId)
+                            )
+                        }
                     }
                 },
                 label = if (!slimNav) {
