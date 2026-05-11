@@ -1011,13 +1011,7 @@ fun BottomSheetPlayer(
                     targetState = showInlineLyrics || showQueue,
                     label = "ThumbnailAnimation",
                     transitionSpec = {
-                        expandHorizontally(
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                            expandFrom = UiAlignment.Start,
-                        ) togetherWith shrinkHorizontally(
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                            shrinkTowards = UiAlignment.Start,
-                        )
+                        fadeIn(tween(100)) togetherWith fadeOut(tween(100))
                     },
                 ) { show ->
                     if (show) {
@@ -1224,18 +1218,7 @@ fun BottomSheetPlayer(
                             targetState = showInlineLyrics || showQueue,
                             label = "MoreButton",
                             transitionSpec = {
-                                if (targetState) {
-                                    expandHorizontally(tween(0), expandFrom = UiAlignment.Start) togetherWith
-                                        shrinkHorizontally(
-                                            animationSpec = tween(160, easing = FastOutSlowInEasing),
-                                            shrinkTowards = UiAlignment.Start,
-                                        )
-                                } else {
-                                    expandHorizontally(
-                                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                                        expandFrom = UiAlignment.Start,
-                                    ) togetherWith shrinkHorizontally(tween(0), shrinkTowards = UiAlignment.Start)
-                                }
+                                fadeIn(tween(100)) togetherWith fadeOut(tween(100))
                             },
                         ) { show ->
                             if (!show) {
@@ -1334,18 +1317,7 @@ fun BottomSheetPlayer(
                         targetState = showInlineLyrics || showQueue,
                         label = "MoreButton",
                         transitionSpec = {
-                            if (targetState) {
-                                expandHorizontally(tween(0), expandFrom = UiAlignment.Start) togetherWith
-                                    shrinkHorizontally(
-                                        animationSpec = tween(160, easing = FastOutSlowInEasing),
-                                        shrinkTowards = UiAlignment.Start,
-                                    )
-                            } else {
-                                expandHorizontally(
-                                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                                    expandFrom = UiAlignment.Start,
-                                ) togetherWith shrinkHorizontally(tween(0), shrinkTowards = UiAlignment.Start)
-                            }
+                            fadeIn(tween(100)) togetherWith fadeOut(tween(100))
                         },
                     ) { show ->
                         if (!show) {
