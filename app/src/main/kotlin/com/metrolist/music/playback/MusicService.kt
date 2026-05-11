@@ -22,10 +22,10 @@ import android.database.SQLException
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioFocusRequest
-import android.media.AudioFormat
 import android.media.AudioManager
-import android.media.AudioTrack
-import android.media.AudioAttributes as AndroidAudioAttributes
+import android.media.audiofx.AudioEffect
+import android.media.audiofx.LoudnessEnhancer
+import android.net.ConnectivityManager
 import android.os.Binder
 import android.os.Build
 import android.os.Handler
@@ -3545,46 +3545,6 @@ class MusicService :
         }
     }
 
-    private fun playSkipTick() {
-        scope.launch(Dispatchers.IO) {
-            try {
-                val sampleRate =
-                    audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toIntOrNull() ?: 44100
-                val durationMs = 10
-                val numSamples = (sampleRate * durationMs / 1000)
-                val samples = ShortArray(numSamples)
-                val amplitude = (Short.MAX_VALUE * 0.8).toInt().toShort()
-                for (i in 0 until numSamples) {
-                    samples[i] = amplitude
-                }
-
-                val audioTrack =
-                    AudioTrack.Builder()
-                        .setAudioAttributes(
-                            AndroidAudioAttributes.Builder()
-                                .setUsage(AndroidAudioAttributes.USAGE_MEDIA)
-                                .setContentType(AndroidAudioAttributes.CONTENT_TYPE_MUSIC)
-                                .build(),
-                        ).setAudioFormat(
-                            AudioFormat.Builder()
-                                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                .setSampleRate(sampleRate)
-                                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                                .build(),
-                        ).setBufferSizeInBytes(numSamples * 2)
-                        .setTransferMode(AudioTrack.MODE_STATIC)
-                        .build()
-
-                audioTrack.write(samples, 0, numSamples)
-                audioTrack.play()
-                delay(durationMs.toLong() + 100)
-                audioTrack.release()
-            } catch (e: Exception) {
-                Timber.tag(TAG).e(e, "Failed to play skip tick")
-            }
-        }
-    }
-
     // Skips to next/previous/current track using the crossfade swap mechanism.
     // Old track fades out, new track fades in — no stop, no gap, even if buffering.
     // Safe for rapid repeated calls: each call cancels the previous crossfade and swaps again.
@@ -3595,9 +3555,6 @@ class MusicService :
     ): Boolean {
         if (!skipFadeEnabled) return false
         if (!::player.isInitialized) return false
-
-        // Play audible tick for the skip transition
-        playSkipTick()
 
         // New skip always wins over any active crossfade
         crossfadeTriggerJob?.cancel()

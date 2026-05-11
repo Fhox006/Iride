@@ -231,9 +231,6 @@ fun Thumbnail(
     // Pre-calculate text color based on background style
     val textBackgroundColor = getTextColor(playerBackground)
     
-    // Grid state
-    val thumbnailLazyGridState = rememberLazyGridState(initialFirstVisibleItemIndex = mediaItemsData.currentIndex.coerceAtLeast(0))
-    
     // Calculate media items data - memoized
     val mediaItemsData by remember(
         playerConnection.player.currentMediaItemIndex,
@@ -245,6 +242,9 @@ fun Thumbnail(
             getMediaItems(playerConnection.player, swipeThumbnail)
         }
     }
+
+    // Grid state
+    val thumbnailLazyGridState = rememberLazyGridState(initialFirstVisibleItemIndex = mediaItemsData.currentIndex.coerceAtLeast(0))
     
     val mediaItems = mediaItemsData.items
     val currentMediaIndex = mediaItemsData.currentIndex
