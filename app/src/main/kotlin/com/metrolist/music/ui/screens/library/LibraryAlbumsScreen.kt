@@ -158,7 +158,7 @@ fun LibraryAlbumsScreen(
                 viewModel.updateSearchQuery("")
             },
             keyboardController = keyboardController,
-            modifier = Modifier.padding(start = 16.dp),
+            modifier = Modifier.padding(start = 12.dp),
         ) {
             SortHeader(
                 sortType = sortType,
@@ -234,8 +234,10 @@ fun LibraryAlbumsScreen(
                         key = "filter",
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Spacer(Modifier.width(12.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                        ) {
                             ChipsRow(
                                 chips = listOf(
                                     AlbumFilter.LIKED to stringResource(R.string.filter_liked),
@@ -304,8 +306,10 @@ fun LibraryAlbumsScreen(
                         span = { GridItemSpan(maxLineSpan) },
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Spacer(Modifier.width(12.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                        ) {
                             ChipsRow(
                                 chips = listOf(
                                     AlbumFilter.LIKED to stringResource(R.string.filter_liked),

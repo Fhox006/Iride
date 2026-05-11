@@ -6,12 +6,6 @@
 package com.metrolist.music.ui.screens
 
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -35,8 +29,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -70,7 +62,7 @@ fun MoodAndGenresScreen(
                 Column(
                     modifier = Modifier
                         .animateItem()
-                        .padding(horizontal = 6.dp)
+                        .padding(horizontal = 12.dp)
                         .padding(top = 12.dp)
                 ) {
                     repeat(8) {
@@ -93,7 +85,7 @@ fun MoodAndGenresScreen(
                 Column(
                     modifier = Modifier
                         .animateItem()
-                        .padding(horizontal = 6.dp),
+                        .padding(horizontal = 12.dp),
                 ) {
                     NavigationTitle(
                         title = moodAndGenres.title,
@@ -168,33 +160,10 @@ val MoodAndGenresButtonHeight = 48.dp
 
 @Composable
 fun MoodAndGenresPlaceholder(modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition(label = "shimmer")
-    val translateAnim by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmerTranslate"
-    )
-
-    val shimmerColors = listOf(
-        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f),
-        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.2f),
-        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f),
-    )
-
-    val brush = Brush.linearGradient(
-        colors = shimmerColors,
-        start = Offset.Zero,
-        end = Offset(x = translateAnim, y = translateAnim)
-    )
-
     Box(
         modifier = modifier
             .height(MoodAndGenresButtonHeight)
             .clip(RoundedCornerShape(6.dp))
-            .background(brush)
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
     )
 }

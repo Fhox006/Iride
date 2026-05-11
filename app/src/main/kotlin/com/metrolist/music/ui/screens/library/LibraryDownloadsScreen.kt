@@ -384,7 +384,7 @@ fun LibraryDownloadsScreen(
                 viewModel.updateSearchQuery("")
             },
             keyboardController = keyboardController,
-            modifier = Modifier.padding(start = 16.dp),
+            modifier = Modifier.padding(start = 12.dp),
         ) {
             SortHeader(
                 sortType = sortType,
