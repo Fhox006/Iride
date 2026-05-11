@@ -325,13 +325,6 @@ fun SettingsScreen(
                     onClick = { navController.navigate("settings/android_auto") }
                 ) else null,
                 Material3SettingsItem(
-                    icon = painterResource(R.drawable.security),
-                    title = { Text(stringResource(R.string.privacy)) },
-                    description = { Text(stringResource(R.string.settings_privacy_desc), style = MaterialTheme.typography.bodySmall) },
-                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
-                    onClick = { navController.navigate("settings/privacy") }
-                ),
-                Material3SettingsItem(
                     icon = painterResource(R.drawable.info),
                     title = { Text(stringResource(R.string.about)) },
                     description = { Text(stringResource(R.string.settings_system_desc), style = MaterialTheme.typography.bodySmall) },

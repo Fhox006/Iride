@@ -406,6 +406,20 @@ fun MyAccountScreen(
                         )
                     },
                     onClick = { navController.navigate("settings/integrations") }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.security),
+                    title = { Text(stringResource(R.string.privacy)) },
+                    description = { Text(stringResource(R.string.settings_privacy_desc), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_forward),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    onClick = { navController.navigate("settings/privacy") }
                 )
             ),
             useLowContrast = true

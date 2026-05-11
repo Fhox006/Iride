@@ -405,6 +405,9 @@ constructor(
                     .filterVideoSongs(hideVideoSongs)
             }
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    var uploadedSongs = database
+        .uploadedSongs(SongSortType.CREATE_DATE, true)
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     var playlists = context.dataStore.data
         .map { it[HideYoutubeShortsKey] ?: false }
         .distinctUntilChanged()

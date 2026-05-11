@@ -231,6 +231,7 @@ fun LibraryMixScreen(
     val artist = viewModel.artists.collectAsState()
     val songs = viewModel.songs.collectAsState()
     val playlist = viewModel.playlists.collectAsState()
+    val uploadedSongs by viewModel.uploadedSongs.collectAsState()
 
     var allItems = albums.value + artist.value + playlist.value
     val locale = LocalLocale.current.platformLocale
@@ -452,7 +453,7 @@ fun LibraryMixScreen(
             val starredItems = listOf(
                 CategoryItem(stringResource(R.string.albums), R.drawable.album, "library_albums"),
                 CategoryItem(stringResource(R.string.artists), R.drawable.artist, "library_artists"),
-                CategoryItem("Songs", R.drawable.star, "auto_playlist/liked"),
+                CategoryItem("Songs", R.drawable.music_note, "auto_playlist/liked"),
             )
 
             starredItems.chunked(2).forEach { row ->
@@ -475,13 +476,15 @@ fun LibraryMixScreen(
                 modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 4.dp)
             )
 
-            val collectionItems = listOf(
-                CategoryItem("All Tracks", R.drawable.music_note, "library_songs"),
-                CategoryItem(stringResource(R.string.playlists), R.drawable.queue_music, "library_playlists"),
-                CategoryItem(stringResource(R.string.downloads), R.drawable.download, "auto_playlist/downloaded"),
-                CategoryItem(stringResource(R.string.cache), R.drawable.cached, "cache_playlist/cached"),
-                CategoryItem(stringResource(R.string.filter_uploaded), R.drawable.upload, "auto_playlist/uploaded"),
-            )
+            val collectionItems = buildList {
+                add(CategoryItem("All Tracks", R.drawable.library_music, "library_songs"))
+                add(CategoryItem(stringResource(R.string.playlists), R.drawable.queue_music, "library_playlists"))
+                add(CategoryItem(stringResource(R.string.downloads), R.drawable.download, "auto_playlist/downloaded"))
+                add(CategoryItem(stringResource(R.string.cache), R.drawable.cached, "cache_playlist/cached"))
+                if (uploadedSongs.isNotEmpty()) {
+                    add(CategoryItem(stringResource(R.string.filter_uploaded), R.drawable.upload, "auto_playlist/uploaded"))
+                }
+            }
 
             collectionItems.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

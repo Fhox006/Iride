@@ -1854,40 +1854,56 @@ fun HomeScreen(
                 }
 
                 item(key = "your_mood_title") {
-                    if (moodChips.isEmpty()) {
-                        ShimmerHost(showGradient = false) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                                    .width(100.dp)
-                                    .height(20.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
-                            )
-                        }
-                    } else {
-                        NavigationTitle(title = "Your Mood")
-                    }
+                    NavigationTitle(title = "Your Mood")
                 }
                 item(key = "your_mood_section") {
                     if (moodChips.isEmpty()) {
-                        ShimmerHost(showGradient = false) {
-                            LazyRow(
-                                contentPadding = PaddingValues(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        val message = if (isLoggedIn) {
+                            "We're getting your mixes ready..."
+                        } else {
+                            "Sign in with YouTube Music for the complete experience"
+                        }
+                        val isDark = isSystemInDarkTheme()
+                        val bgColor = if (isDark) MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                                .clip(RoundedCornerShape(28.dp))
+                                .background(bgColor)
+                                .padding(top = 14.dp, bottom = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
+                                    .padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                items(5) {
+                                repeat(4) {
                                     Box(
                                         modifier = Modifier
                                             .width(72.dp)
-                                            .height(32.dp)
+                                            .height(36.dp)
                                             .clip(RoundedCornerShape(50))
-                                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+                                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
                                     )
                                 }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(ListItemHeight * 4 + 24.dp)
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = message,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                    textAlign = TextAlign.Center,
+                                )
                             }
                         }
                     } else {
@@ -2778,42 +2794,6 @@ fun HomeScreen(
                         else -> {}
                         }
                         }
-                // Only show shimmer during initial loading, not for pagination
-                if (isLoading && homePage?.sections.isNullOrEmpty()) {
-                    item(key = "loading_shimmer") {
-                        ShimmerHost(
-                            modifier = Modifier.animateItem(),
-                        ) {
-                            repeat(2) {
-                                TextPlaceholder(
-                                    height = 36.dp,
-                                    modifier =
-                                        Modifier
-                                            .padding(12.dp)
-                                            .width(250.dp),
-                                )
-                                LazyRow(
-                                    contentPadding =
-                                        WindowInsets.systemBars
-                                            .only(WindowInsetsSides.Horizontal)
-                                            .asPaddingValues(),
-                                ) {
-                                    items(4) {
-                                        GridItemPlaceHolder()
-                                    }
-                                }
-                            }
-
-                            TextPlaceholder(
-                                height = 36.dp,
-                                modifier =
-                                    Modifier
-                                        .padding(vertical = 12.dp, horizontal = 12.dp)
-                                        .width(250.dp),
-                            )
-                        }
-                    }
-                }
             }
 
             HideOnScrollFAB(
