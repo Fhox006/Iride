@@ -224,6 +224,7 @@ fun LibraryAlbumsScreen(
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
+        key(viewType) {
         when (viewType) {
             LibraryViewType.LIST -> {
                 LazyColumn(
@@ -361,6 +362,7 @@ fun LibraryAlbumsScreen(
                     }
                 }
             }
+        }
         }
 
         TopAppBar(

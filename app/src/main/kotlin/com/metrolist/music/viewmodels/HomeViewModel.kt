@@ -135,9 +135,34 @@ class HomeViewModel @Inject constructor(
     val allLocalItems = MutableStateFlow<List<LocalItem>>(emptyList())
     val allYtItems = MutableStateFlow<List<YTItem>>(emptyList())
 
+    val moodPage = MutableStateFlow<HomePage?>(null)
+    private var lastMoodChipParams: String? = null
+
+    fun loadMoodPage(params: String?, hideExplicit: Boolean, hideVideoSongs: Boolean, hideYoutubeShorts: Boolean) {
+        if (params == lastMoodChipParams && moodPage.value != null) return
+        lastMoodChipParams = params
+        viewModelScope.launch(Dispatchers.IO) {
+            if (params != null) {
+                YouTube.home(params = params).onSuccess { nextSections ->
+                    moodPage.value = nextSections.copy(
+                        sections = nextSections.sections.mapNotNull { section ->
+                            val filteredItems = section.items
+                                .filterExplicit(hideExplicit)
+                                .filterVideoSongs(hideVideoSongs)
+                                .filterYoutubeShorts(hideYoutubeShorts)
+                            if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
+                        }
+                    )
+                }
+            } else {
+                moodPage.value = null
+            }
+        }
+    }
+
     val pinnedSpeedDialItems: StateFlow<List<SpeedDialItem>> =
         database.speedDialDao.getAll()
-            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val speedDialItems: StateFlow<List<YTItem>> =
         combine(
@@ -199,7 +224,7 @@ class HomeViewModel @Inject constructor(
             }
             
             filled.take(targetSize)
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     suspend fun getRandomItem(): YTItem? {
         try {
@@ -825,6 +850,8 @@ class HomeViewModel @Inject constructor(
                             YouTube.accountInfo().onSuccess { info ->
                                 accountName.value = info.name
                                 accountImageUrl.value = info.thumbnailUrl
+                                    ?.replace(Regex("w\\d+-h\\d+(-[a-zA-Z0-9]+)?"), "w256-h256-c")
+                                    ?: info.thumbnailUrl
                             }.onFailure { reportException(it) }
                         } else {
                             accountName.value = "Guest"
@@ -845,6 +872,8 @@ class HomeViewModel @Inject constructor(
                 YouTube.accountInfo().onSuccess { info ->
                     accountName.value = info.name
                     accountImageUrl.value = info.thumbnailUrl
+                        ?.replace(Regex("w\\d+-h\\d+(-[a-zA-Z0-9]+)?"), "w256-h256-c")
+                        ?: info.thumbnailUrl
                 }.onFailure { reportException(it) }
             }
         }

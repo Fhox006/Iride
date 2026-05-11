@@ -15,7 +15,7 @@
     <string name="years">Years</string>
     <string name="continuous">Continuous</string>
 
-    <string name="liked">Liked</string>
+    <string name="liked">Songs</string>
     <string name="offline">Downloaded</string>
     <string name="downloads">Downloads</string>
     <string name="my_top">My Top</string>
@@ -144,7 +144,7 @@
     <string name="slim">Slim</string>
     <string name="slim_navbar">Slim bottom navigation bar</string>
     <string name="auto_playlists">Auto playlists</string>
-    <string name="show_liked_playlist">Show Liked playlist</string>
+    <string name="show_liked_playlist">Show Songs playlist</string>
     <string name="show_downloaded_playlist">Show Downloaded playlist</string>
     <string name="show_top_playlist">Show Top playlist</string>
     <string name="show_cached_playlist">Show Cached playlist</string>

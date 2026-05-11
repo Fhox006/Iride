@@ -714,6 +714,7 @@ fun HomeScreen(
     val allYtItems by viewModel.allYtItems.collectAsStateWithLifecycle()
     val speedDialItems by viewModel.speedDialItems.collectAsStateWithLifecycle()
     val pinnedSpeedDialItems by viewModel.pinnedSpeedDialItems.collectAsStateWithLifecycle()
+    val moodPage by viewModel.moodPage.collectAsStateWithLifecycle()
     val pinnedIds: Set<String> by remember(pinnedSpeedDialItems) { derivedStateOf<Set<String>> { pinnedSpeedDialItems.map { it.id }.toSet() } }
     val selectedChip by viewModel.selectedChip.collectAsStateWithLifecycle()
 
@@ -817,9 +818,9 @@ fun HomeScreen(
         ?.collectAsState() ?: remember { mutableStateOf(false) }
 
     var randomSeed by rememberSaveable { mutableLongStateOf(System.currentTimeMillis()) }
+    var visibleSectionCount by rememberSaveable { mutableStateOf(2) }
 
     var selectedMoodCategory by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage.Chip?>(null) }
-    var moodPage by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage?>(null) }
 
     val moodChips = remember(homePage?.chips) {
         homePage?.chips?.map { it to it.title } ?: emptyList()
@@ -828,21 +829,7 @@ fun HomeScreen(
         if (selectedMoodCategory == null && moodChips.isNotEmpty()) selectedMoodCategory = moodChips.first().first
     }
     LaunchedEffect(selectedMoodCategory, hideExplicit, hideVideoSongs, hideYoutubeShorts) {
-        if (selectedMoodCategory != null) {
-            YouTube.home(params = selectedMoodCategory!!.endpoint?.params).onSuccess { nextSections ->
-                moodPage = nextSections.copy(
-                    sections = nextSections.sections.mapNotNull { section ->
-                        val filteredItems = section.items
-                            .filterExplicit(hideExplicit)
-                            .filterVideoSongs(hideVideoSongs)
-                            .filterYoutubeShorts(hideYoutubeShorts)
-                        if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
-                    }
-                )
-            }
-        } else {
-            moodPage = null
-        }
+        viewModel.loadMoodPage(selectedMoodCategory?.endpoint?.params, hideExplicit, hideVideoSongs, hideYoutubeShorts)
     }
 
     LaunchedEffect(isRefreshing) {
@@ -1205,6 +1192,17 @@ fun HomeScreen(
             finalItems.addAll(sortedList.filter { it != HomeSection.SpeedDial && it != HomeSection.YourMood })
             finalItems
         }
+
+    LaunchedEffect(homeSections.size) {
+        if (homeSections.size > 2 && visibleSectionCount <= 2) {
+            for (i in 3..homeSections.size) {
+                kotlinx.coroutines.delay(150L)
+                visibleSectionCount = i
+            }
+        } else if (homeSections.size > visibleSectionCount) {
+            visibleSectionCount = homeSections.size
+        }
+    }
 
     LaunchedEffect(quickPicks) {
         quickPicksLazyGridState.scrollToItem(0)
@@ -2051,6 +2049,7 @@ fun HomeScreen(
                 }
 
                 homeSections
+                    .take(visibleSectionCount)
                     .filter { it != HomeSection.SpeedDial && it != HomeSection.YourMood }
                     .forEach { section ->
                         when (section) {

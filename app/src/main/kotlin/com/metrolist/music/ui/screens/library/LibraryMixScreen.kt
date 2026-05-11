@@ -512,6 +512,7 @@ fun LibraryMixScreen(
                     onRefresh = viewModel::refresh,
                 ),
     ) {
+        key(viewType) {
         when (viewType) {
             LibraryViewType.LIST -> {
                 LazyColumn(
@@ -812,6 +813,7 @@ fun LibraryMixScreen(
                     }
                 }
             }
+        }
         }
 
         Indicator(
