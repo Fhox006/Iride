@@ -82,7 +82,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -96,6 +95,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -142,7 +142,6 @@ import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
-import com.metrolist.music.constants.RandomizeHomeOrderKey
 import com.metrolist.music.constants.SmallGridThumbnailHeight
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.db.entities.Album
@@ -201,36 +200,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.min
-import kotlin.random.Random
 
-sealed class HomeSection(
-    val id: String,
-    val baseWeight: Int,
-) {
-    data object SpeedDial : HomeSection("speed_dial", 100)
-
-    data object QuickPicks : HomeSection("quick_picks", 90)
-
-    data object DailyDiscover : HomeSection("daily_discover", 80)
-
-    data object KeepListening : HomeSection("keep_listening", 50)
-
-    data object AccountPlaylists : HomeSection("account_playlists", 40)
-
-    data object ForgottenFavorites : HomeSection("forgotten_favorites", 30)
-
-    data object FromTheCommunity : HomeSection("from_the_community", 20)
-
-    data class SimilarRecommendation(
-        val index: Int,
-    ) : HomeSection("similar_recommendation_$index", 10)
-
-    data class HomePageSection(
-        val index: Int,
-    ) : HomeSection("home_page_section_$index", 10)
-
-    data object YourMood : HomeSection("your_mood", 1000)
-}
 
 @Composable
 fun CommunityPlaylistCard(
@@ -739,7 +709,6 @@ fun HomeScreen(
     val accountName by viewModel.accountName.collectAsStateWithLifecycle()
     val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
     val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
-    val (randomizeHomeOrder) = rememberPreference(RandomizeHomeOrderKey, true)
     val hideExplicit by rememberPreference(HideExplicitKey, false)
     val hideVideoSongs by rememberPreference(HideVideoSongsKey, false)
     val hideYoutubeShorts by rememberPreference(HideYoutubeShortsKey, false)
@@ -817,7 +786,6 @@ fun HomeScreen(
         ?.getStateFlow("wrapped_seen", false)
         ?.collectAsState() ?: remember { mutableStateOf(false) }
 
-    var randomSeed by rememberSaveable { mutableLongStateOf(System.currentTimeMillis()) }
     var visibleSectionCount by rememberSaveable { mutableStateOf(2) }
 
     var selectedMoodCategory by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage.Chip?>(null) }
@@ -832,11 +800,7 @@ fun HomeScreen(
         viewModel.loadMoodPage(selectedMoodCategory?.endpoint?.params, hideExplicit, hideVideoSongs, hideYoutubeShorts)
     }
 
-    LaunchedEffect(isRefreshing) {
-        if (isRefreshing) {
-            randomSeed = System.currentTimeMillis()
-        }
-    }
+
 
     val foundInSettings = stringResource(R.string.found_in_settings_content)
     LaunchedEffect(wrappedDismissed) {
@@ -1083,115 +1047,7 @@ fun HomeScreen(
         )
     }
 
-    val homeSections =
-        remember(
-            randomizeHomeOrder,
-            randomSeed,
-            selectedChip,
-            quickPicks,
-            dailyDiscover,
-            keepListening,
-            accountPlaylists,
-            forgottenFavorites,
-            communityPlaylists,
-            similarRecommendations,
-            homePage?.sections,
-        ) {
-            val list = mutableListOf<HomeSection>()
-            val chipActive = selectedChip != null
-
-            list.add(HomeSection.SpeedDial)
-            list.add(HomeSection.YourMood)
-
-            if (quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
-            if (communityPlaylists?.isNotEmpty() == true) list.add(HomeSection.FromTheCommunity)
-            if (dailyDiscover?.isNotEmpty() == true) list.add(HomeSection.DailyDiscover)
-            if (keepListening?.isNotEmpty() == true) list.add(HomeSection.KeepListening)
-            if (accountPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
-            if (forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
-
-            similarRecommendations?.indices?.forEach { i ->
-                list.add(HomeSection.SimilarRecommendation(i))
-            }
-
-            val homePageSections = homePage?.sections.orEmpty()
-            homePageSections.indices.filter { i ->
-                !homePageSections[i].items.any { it.isMixtape }
-            }.forEach { i ->
-                list.add(HomeSection.HomePageSection(i))
-            }
-
-            val sortedList =
-                if (randomizeHomeOrder) {
-                    list.sortedByDescending { section ->
-                        val sectionRandom = Random(randomSeed + section.id.hashCode())
-                        val base =
-                            when (section) {
-                                HomeSection.SpeedDial,
-                                HomeSection.QuickPicks,
-                                HomeSection.DailyDiscover,
-                                -> 500
-                                HomeSection.KeepListening,
-                                HomeSection.AccountPlaylists,
-                                HomeSection.ForgottenFavorites,
-                                HomeSection.FromTheCommunity,
-                                -> 300
-                                is HomeSection.HomePageSection -> {
-                                    if (chipActive && homePageSections.getOrNull(section.index)?.items?.any { it.isMixtape } == true) 1000 else 100
-                                }
-                                else -> 100
-                            }
-
-                        val modifier =
-                            when (section) {
-                                HomeSection.SpeedDial,
-                                HomeSection.QuickPicks,
-                                HomeSection.DailyDiscover,
-                                -> sectionRandom.nextInt(-200, 400)
-                                HomeSection.KeepListening,
-                                HomeSection.AccountPlaylists,
-                                HomeSection.ForgottenFavorites,
-                                HomeSection.FromTheCommunity,
-                                -> sectionRandom.nextInt(-100, 400)
-                                is HomeSection.HomePageSection -> {
-                                    if (chipActive && homePageSections.getOrNull(section.index)?.items?.any { it.isMixtape } == true) sectionRandom.nextInt(-50, 50) else sectionRandom.nextInt(-50, 50)
-                                }
-                                else -> sectionRandom.nextInt(-50, 50)
-                            }
-                        base + modifier
-                    }
-                } else {
-                    val defaultOrder =
-                        mapOf(
-                            HomeSection.SpeedDial to 100,
-                            HomeSection.QuickPicks to 90,
-                            HomeSection.FromTheCommunity to 80,
-                            HomeSection.DailyDiscover to 70,
-                            HomeSection.KeepListening to 60,
-                            HomeSection.AccountPlaylists to 50,
-                            HomeSection.ForgottenFavorites to 40,
-                        )
-
-                    list.sortedByDescending { section ->
-                        when (section) {
-                            is HomeSection.SimilarRecommendation -> 30 - section.index
-                            is HomeSection.HomePageSection -> {
-                                if (chipActive && homePageSections.getOrNull(section.index)?.items?.any { it.isMixtape } == true)
-                                    1000 - section.index
-                                else
-                                    20 - section.index
-                            }
-                            else -> defaultOrder[section] ?: 0
-                        }
-                    }
-                }
-
-            val finalItems = mutableListOf<HomeSection>()
-            if (list.contains(HomeSection.SpeedDial)) finalItems.add(HomeSection.SpeedDial)
-            if (list.contains(HomeSection.YourMood)) finalItems.add(HomeSection.YourMood)
-            finalItems.addAll(sortedList.filter { it != HomeSection.SpeedDial && it != HomeSection.YourMood })
-            finalItems
-        }
+    val homeSections by viewModel.homeSections.collectAsStateWithLifecycle()
 
     LaunchedEffect(homeSections.size) {
         if (homeSections.size > 2 && visibleSectionCount <= 2) {
@@ -1227,12 +1083,17 @@ fun HomeScreen(
             )
         },
     ) {
-        BoxWithConstraints(
-            modifier = Modifier.fillMaxSize(),
+        var containerWidthPx by remember { mutableStateOf(0) }
+        val density = LocalDensity.current
+        val containerWidthDp = with(density) { containerWidthPx.toDp() }
+        val horizontalLazyGridItemWidthFactor = if (containerWidthDp * 0.475f >= 320.dp) 0.475f else 0.9f
+        val horizontalLazyGridItemWidth = containerWidthDp * horizontalLazyGridItemWidthFactor
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { containerWidthPx = it.width },
             contentAlignment = Alignment.TopStart,
         ) {
-            val horizontalLazyGridItemWidthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
-            val horizontalLazyGridItemWidth = maxWidth * horizontalLazyGridItemWidthFactor
             val quickPicksSnapLayoutInfoProvider =
                 remember(quickPicksLazyGridState) {
                     SnapLayoutInfoProvider(
@@ -1534,7 +1395,7 @@ fun HomeScreen(
                     item(key = "speed_dial_list") {
                         val items = speedDialItems
                         val targetItemSize = 160.dp
-                        val availableWidth = maxWidth
+                        val availableWidth = containerWidthDp
                         val columns = (availableWidth / targetItemSize).toInt().coerceAtLeast(3)
                         val rows =
                             if (columns >= 6) {
@@ -1850,8 +1711,7 @@ fun HomeScreen(
                 }
                 item(key = "your_mood_section") {
                     if (moodChips.isEmpty()) {
-                        val isDark = isSystemInDarkTheme()
-                        val bgColor = if (isDark) MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                        val bgColor = Color(0xFF141518)
 
                         Column(
                             modifier = Modifier
@@ -1872,7 +1732,7 @@ fun HomeScreen(
                                             .width(80.dp)
                                             .height(36.dp)
                                             .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+                                            .background(Color.White.copy(alpha = 0.06f))
                                     )
                                 }
                             }
@@ -1888,7 +1748,7 @@ fun HomeScreen(
                                         modifier = Modifier
                                             .size(135.dp)
                                             .clip(RoundedCornerShape(9.dp))
-                                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+                                            .background(Color.White.copy(alpha = 0.06f))
                                     )
                                 }
                             }
@@ -1909,27 +1769,26 @@ fun HomeScreen(
                             ?.items?.filterIsInstance<SongItem>()?.firstOrNull()?.thumbnail
                     }
                     LaunchedEffect(firstTrackThumbnail) {
-                        if (firstTrackThumbnail != null) {
-                            withContext(Dispatchers.IO) {
-                                try {
-                                    val loader = ImageLoader(moodPaletteContext)
-                                    val req = ImageRequest.Builder(moodPaletteContext)
-                                        .data(firstTrackThumbnail)
-                                        .allowHardware(false)
-                                        .build()
-                                    val result = loader.execute(req)
-                                    val bmp = result.image?.toBitmap()
-                                    if (bmp != null) {
-                                        val palette = Palette.from(bmp).generate()
-                                        val rgb = palette.getDominantColor(0)
-                                        if (rgb != 0) {
-                                            val newColor = Color(rgb).copy(alpha = if (isDark) 0.25f else 0.15f)
-                                            moodDominantColor = newColor
-                                            lastStableColor = newColor
-                                        }
+                        if (firstTrackThumbnail == null) return@LaunchedEffect
+                        withContext(Dispatchers.Default) {
+                            try {
+                                val loader = ImageLoader(moodPaletteContext)
+                                val req = ImageRequest.Builder(moodPaletteContext)
+                                    .data(firstTrackThumbnail)
+                                    .allowHardware(false)
+                                    .build()
+                                val result = loader.execute(req)
+                                val bmp = result.image?.toBitmap() ?: return@withContext
+                                val palette = Palette.from(bmp).generate()
+                                val rgb = palette.getDominantColor(0)
+                                if (rgb != 0) {
+                                    val newColor = Color(rgb).copy(alpha = if (isDark) 0.25f else 0.15f)
+                                    withContext(Dispatchers.Main) {
+                                        moodDominantColor = newColor
+                                        lastStableColor = newColor
                                     }
-                                } catch (_: Exception) {}
-                            }
+                                }
+                            } catch (_: Exception) {}
                         }
                     }
                     val animatedBgColor by animateColorAsState(

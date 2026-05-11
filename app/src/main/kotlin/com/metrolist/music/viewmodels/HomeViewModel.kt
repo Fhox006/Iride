@@ -32,8 +32,10 @@ import com.metrolist.music.constants.HomeCacheLastLoadedKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.QuickPicks
 import com.metrolist.music.constants.QuickPicksKey
+import com.metrolist.music.constants.RandomizeHomeOrderKey
 import com.metrolist.music.constants.ShowWrappedCardKey
 import com.metrolist.music.constants.WrappedSeenKey
+import com.metrolist.music.ui.screens.HomeSection
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.LocalItem
@@ -135,6 +137,13 @@ class HomeViewModel @Inject constructor(
     val allLocalItems = MutableStateFlow<List<LocalItem>>(emptyList())
     val allYtItems = MutableStateFlow<List<YTItem>>(emptyList())
 
+    val randomSeed = MutableStateFlow(System.currentTimeMillis())
+
+    private val randomizeHomeOrder: StateFlow<Boolean> = context.dataStore.data
+        .map { it[RandomizeHomeOrderKey] ?: true }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     val moodPage = MutableStateFlow<HomePage?>(null)
     private var lastMoodChipParams: String? = null
 
@@ -225,6 +234,116 @@ class HomeViewModel @Inject constructor(
             
             filled.take(targetSize)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    @Suppress("UNCHECKED_CAST")
+    val homeSections: StateFlow<List<HomeSection>> = combine(
+        quickPicks, keepListening, forgottenFavorites, similarRecommendations,
+        homePage, communityPlaylists, dailyDiscover, accountPlaylists,
+        selectedChip, randomizeHomeOrder, randomSeed
+    ) { args ->
+        val quickPicks = args[0] as List<Song>?
+        val keepListening = args[1] as List<LocalItem>?
+        val forgottenFavorites = args[2] as List<Song>?
+        val similarRecommendations = args[3] as List<SimilarRecommendation>?
+        val homePage = args[4] as HomePage?
+        val communityPlaylists = args[5] as List<CommunityPlaylistItem>?
+        val dailyDiscover = args[6] as List<DailyDiscoverItem>?
+        val accountPlaylists = args[7] as List<PlaylistItem>?
+        val selectedChip = args[8] as HomePage.Chip?
+        val randomizeHomeOrder = args[9] as Boolean
+        val randomSeed = args[10] as Long
+
+        val list = mutableListOf<HomeSection>()
+        val chipActive = selectedChip != null
+
+        list.add(HomeSection.SpeedDial)
+        list.add(HomeSection.YourMood)
+
+        if (quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
+        if (communityPlaylists?.isNotEmpty() == true) list.add(HomeSection.FromTheCommunity)
+        if (dailyDiscover?.isNotEmpty() == true) list.add(HomeSection.DailyDiscover)
+        if (keepListening?.isNotEmpty() == true) list.add(HomeSection.KeepListening)
+        if (accountPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
+        if (forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
+
+        similarRecommendations?.indices?.forEach { i ->
+            list.add(HomeSection.SimilarRecommendation(i))
+        }
+
+        val homePageSections = homePage?.sections.orEmpty()
+        homePageSections.indices.filter { i ->
+            !homePageSections[i].items.any { it.isMixtape }
+        }.forEach { i ->
+            list.add(HomeSection.HomePageSection(i))
+        }
+
+        val sortedList =
+            if (randomizeHomeOrder) {
+                list.sortedByDescending { section ->
+                    val sectionRandom = Random(randomSeed + section.id.hashCode())
+                    val base =
+                        when (section) {
+                            HomeSection.SpeedDial,
+                            HomeSection.QuickPicks,
+                            HomeSection.DailyDiscover,
+                            -> 500
+                            HomeSection.KeepListening,
+                            HomeSection.AccountPlaylists,
+                            HomeSection.ForgottenFavorites,
+                            HomeSection.FromTheCommunity,
+                            -> 300
+                            is HomeSection.HomePageSection -> {
+                                if (chipActive && homePageSections.getOrNull(section.index)?.items?.any { it.isMixtape } == true) 1000 else 100
+                            }
+                            else -> 100
+                        }
+                    val modifier =
+                        when (section) {
+                            HomeSection.SpeedDial,
+                            HomeSection.QuickPicks,
+                            HomeSection.DailyDiscover,
+                            -> sectionRandom.nextInt(-200, 400)
+                            HomeSection.KeepListening,
+                            HomeSection.AccountPlaylists,
+                            HomeSection.ForgottenFavorites,
+                            HomeSection.FromTheCommunity,
+                            -> sectionRandom.nextInt(-100, 400)
+                            is HomeSection.HomePageSection -> sectionRandom.nextInt(-50, 50)
+                            else -> sectionRandom.nextInt(-50, 50)
+                        }
+                    base + modifier
+                }
+            } else {
+                val defaultOrder =
+                    mapOf(
+                        HomeSection.SpeedDial to 100,
+                        HomeSection.QuickPicks to 90,
+                        HomeSection.FromTheCommunity to 80,
+                        HomeSection.DailyDiscover to 70,
+                        HomeSection.KeepListening to 60,
+                        HomeSection.AccountPlaylists to 50,
+                        HomeSection.ForgottenFavorites to 40,
+                    )
+                list.sortedByDescending { section ->
+                    when (section) {
+                        is HomeSection.SimilarRecommendation -> 30 - section.index
+                        is HomeSection.HomePageSection -> {
+                            if (chipActive && homePageSections.getOrNull(section.index)?.items?.any { it.isMixtape } == true)
+                                1000 - section.index
+                            else
+                                20 - section.index
+                        }
+                        else -> defaultOrder[section] ?: 0
+                    }
+                }
+            }
+
+        val finalItems = mutableListOf<HomeSection>()
+        if (list.contains(HomeSection.SpeedDial)) finalItems.add(HomeSection.SpeedDial)
+        if (list.contains(HomeSection.YourMood)) finalItems.add(HomeSection.YourMood)
+        finalItems.addAll(sortedList.filter { it != HomeSection.SpeedDial && it != HomeSection.YourMood })
+        finalItems
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     suspend fun getRandomItem(): YTItem? {
         try {
@@ -751,6 +870,7 @@ class HomeViewModel @Inject constructor(
     fun refresh() {
         if (isRefreshing.value) return
         isRefreshing.value = true
+        randomSeed.value = System.currentTimeMillis()
         viewModelScope.launch(Dispatchers.IO) {
             // If a chip is selected, reload the chip's content instead of the default home
             val currentChip = selectedChip.value
