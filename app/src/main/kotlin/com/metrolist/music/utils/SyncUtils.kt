@@ -17,10 +17,12 @@ import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.utils.completed
 import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.lastfm.LastFM
+import com.metrolist.music.constants.DataSyncIdKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.LastFMUseSendLikes
 import com.metrolist.music.constants.LastFullSyncKey
 import com.metrolist.music.constants.SYNC_COOLDOWN
+import com.metrolist.music.constants.VisitorDataKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.PlaylistEntity
@@ -195,10 +197,24 @@ class SyncUtils @Inject constructor(
 
     private suspend fun isLoggedIn(): Boolean {
         return try {
-            val cookie = context.dataStore.data
-                .map { it[InnerTubeCookieKey] }
-                .first()
-            cookie?.let { "SAPISID" in parseCookieString(it) } ?: false
+            val prefs = context.dataStore.data.first()
+            val cookie = prefs[InnerTubeCookieKey]
+            if (cookie != null && "SAPISID" in parseCookieString(cookie)) {
+                // Re-inject into singleton — guards against distinctUntilChanged suppressing
+                // re-emission after YouTube.cookie is nulled without a DataStore change.
+                YouTube.cookie = cookie
+                prefs[DataSyncIdKey]?.let { raw ->
+                    YouTube.dataSyncId = raw.takeIf { !it.contains("||") }
+                        ?: raw.takeIf { it.endsWith("||") }?.substringBefore("||")
+                        ?: raw.substringAfter("||")
+                }
+                prefs[VisitorDataKey]?.takeIf { it != "null" }?.let {
+                    YouTube.visitorData = it
+                }
+                true
+            } else {
+                false
+            }
         } catch (e: Exception) {
             Timber.e(e, "Error checking login status")
             false

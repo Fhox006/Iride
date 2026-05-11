@@ -128,6 +128,8 @@ fun BottomSheet(
         }
 
         if (!state.isExpanded && (onDismiss == null || !state.isDismissed)) {
+            val isSettled = remember { derivedStateOf { state.value == state.collapsedBound } }
+
             Box(
                 modifier =
                 Modifier
@@ -136,6 +138,7 @@ fun BottomSheet(
                     }.clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
+                        enabled = isSettled.value,
                         onClick = { if (isExpandable) state.expandSoft() },
                     ).fillMaxWidth()
                     .height(state.collapsedBound),

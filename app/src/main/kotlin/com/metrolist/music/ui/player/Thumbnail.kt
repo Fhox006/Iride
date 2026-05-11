@@ -232,7 +232,7 @@ fun Thumbnail(
     val textBackgroundColor = getTextColor(playerBackground)
     
     // Grid state
-    val thumbnailLazyGridState = rememberLazyGridState()
+    val thumbnailLazyGridState = rememberLazyGridState(initialFirstVisibleItemIndex = mediaItemsData.currentIndex.coerceAtLeast(0))
     
     // Calculate media items data - memoized
     val mediaItemsData by remember(
@@ -288,8 +288,13 @@ fun Thumbnail(
     }
 
     // Update position when song changes
-    LaunchedEffect(mediaMetadata, canSkipPrevious, canSkipNext) {
-        val index = maxOf(0, currentMediaIndex)
+    var isFirstComposition by remember { mutableStateOf(true) }
+    LaunchedEffect(mediaItemsData.currentIndex) {
+        if (isFirstComposition) {
+            isFirstComposition = false
+            return@LaunchedEffect
+        }
+        val index = mediaItemsData.currentIndex.coerceAtLeast(0)
         if (index >= 0 && index < mediaItems.size) {
             try {
                 thumbnailLazyGridState.animateScrollToItem(index)

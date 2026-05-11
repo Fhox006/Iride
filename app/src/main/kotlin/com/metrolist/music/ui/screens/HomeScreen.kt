@@ -156,7 +156,7 @@ import com.metrolist.music.playback.queues.LocalAlbumRadio
 import com.metrolist.music.playback.queues.YouTubeAlbumRadio
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AlbumGridItem
-import com.metrolist.music.ui.component.HomeAnimatedAlbumGradient
+/*import com.metrolist.music.ui.component.HomeAnimatedAlbumGradient*/
 import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.HideOnScrollFAB
@@ -673,6 +673,7 @@ fun HomeScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
+    /*
     var albumThumbnailBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var bitmapGeneration by remember { mutableStateOf(0) }
     LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl) {
@@ -694,6 +695,7 @@ fun HomeScreen(
             albumThumbnailBitmap = null
         }
     }
+    */
 
     val quickPicks by viewModel.quickPicks.collectAsStateWithLifecycle()
     val forgottenFavorites by viewModel.forgottenFavorites.collectAsStateWithLifecycle()
@@ -1251,6 +1253,7 @@ fun HomeScreen(
                     )
                 }
 
+            /*
             AnimatedVisibility(
                 visible = albumThumbnailBitmap != null,
                 enter = fadeIn(animationSpec = tween(700)),
@@ -1261,6 +1264,7 @@ fun HomeScreen(
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
             }
+            */
 
             LazyColumn(
                 state = lazylistState,

@@ -5,9 +5,9 @@
 
 package com.metrolist.music.ui.screens
 
-import android.graphics.Bitmap
+/*import android.graphics.Bitmap*/
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.animateFloatAsState
+/*import androidx.compose.animation.core.animateFloatAsState*/
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -60,7 +60,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+/*import androidx.compose.ui.draw.alpha*/
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -99,7 +99,7 @@ import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.playback.queues.LocalAlbumRadio
-import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground
+/*import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground*/
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
@@ -203,6 +203,7 @@ fun AlbumScreen(
         }
     }
 
+    /*
     var albumThumbnailBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var gradientReady by remember { mutableStateOf(false) }
     val gradientAlpha by animateFloatAsState(
@@ -224,16 +225,12 @@ fun AlbumScreen(
         albumThumbnailBitmap = result.image?.toBitmap()
         gradientReady = true
     }
+    */
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        AnimatedAlbumGradientBackground(
-            thumbnail = albumThumbnailBitmap,
-            modifier = Modifier.fillMaxSize().alpha(gradientAlpha)
-        )
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
-        ) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+    ) {
             val albumWithSongs = albumWithSongs
             if (albumWithSongs != null && albumWithSongs.songs.isNotEmpty()) {
                 item(key = "album_header") {
@@ -641,7 +638,6 @@ fun AlbumScreen(
                 }
             }
         }
-    }
 
     TopAppBar(
         colors = TopAppBarDefaults.topAppBarColors(

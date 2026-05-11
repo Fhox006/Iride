@@ -33,6 +33,6 @@ fun TextPlaceholder(
             .height(height)
             .fillMaxWidth(remember { 0.25f + Random.nextFloat() * 0.5f })
             .clip(shape)
-            .background(MaterialTheme.colorScheme.onSurface)
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
     )
 }

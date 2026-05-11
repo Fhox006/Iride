@@ -373,6 +373,8 @@ fun LibraryMixScreen(
         }
     }
 
+    data class CategoryItem(val label: String, val icon: Int, val route: String)
+
     val headerContent = @Composable {
         LibrarySearchHeader(
             isSearchActive = isSearchActive,
@@ -441,30 +443,57 @@ fun LibraryMixScreen(
 
     val categoriesContent = @Composable {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            val categories = listOf(
-                Triple(R.string.playlists, R.drawable.queue_music, "library_playlists"),
-                Triple(R.string.songs, R.drawable.music_note, "library_songs"),
-                Triple(R.string.albums, R.drawable.album, "library_albums"),
-                Triple(R.string.artists, R.drawable.artist, "library_artists"),
-                Triple(R.string.filter_liked, R.drawable.favorite, "auto_playlist/liked"),
-                Triple(R.string.downloads, R.drawable.download, "auto_playlist/downloaded"),
-                Triple(R.string.cache, R.drawable.cached, "cache_playlist/cached"),
-                Triple(R.string.filter_uploaded, R.drawable.upload, "auto_playlist/uploaded"),
+            Text(
+                text = "Starred",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
             )
 
-            categories.chunked(2).forEach { row ->
+            val starredItems = listOf(
+                CategoryItem(stringResource(R.string.albums), R.drawable.album, "library_albums"),
+                CategoryItem(stringResource(R.string.artists), R.drawable.artist, "library_artists"),
+                CategoryItem("Songs", R.drawable.star, "auto_playlist/liked"),
+            )
+
+            starredItems.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { (labelRes, iconRes, route) ->
+                    row.forEach { item ->
                         LibraryCategoryCard(
-                            label = stringResource(labelRes),
-                            icon = iconRes,
-                            onClick = { navController.navigate(route) },
+                            label = item.label,
+                            icon = item.icon,
+                            onClick = { navController.navigate(item.route) },
                             modifier = Modifier.weight(1f).padding(vertical = 4.dp),
                         )
                     }
-                    if (row.size < 2) {
-                        Spacer(Modifier.weight(1f))
+                    if (row.size < 2) Spacer(Modifier.weight(1f))
+                }
+            }
+
+            Text(
+                text = "Collection",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 4.dp)
+            )
+
+            val collectionItems = listOf(
+                CategoryItem("All Tracks", R.drawable.music_note, "library_songs"),
+                CategoryItem(stringResource(R.string.playlists), R.drawable.queue_music, "library_playlists"),
+                CategoryItem(stringResource(R.string.downloads), R.drawable.download, "auto_playlist/downloaded"),
+                CategoryItem(stringResource(R.string.cache), R.drawable.cached, "cache_playlist/cached"),
+                CategoryItem(stringResource(R.string.filter_uploaded), R.drawable.upload, "auto_playlist/uploaded"),
+            )
+
+            collectionItems.chunked(2).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { item ->
+                        LibraryCategoryCard(
+                            label = item.label,
+                            icon = item.icon,
+                            onClick = { navController.navigate(item.route) },
+                            modifier = Modifier.weight(1f).padding(vertical = 4.dp),
+                        )
                     }
+                    if (row.size < 2) Spacer(Modifier.weight(1f))
                 }
             }
         }

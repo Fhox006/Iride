@@ -21,6 +21,6 @@ fun ButtonPlaceholder(modifier: Modifier = Modifier) {
         modifier
             .height(ButtonDefaults.MinHeight)
             .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.onSurface),
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
     )
 }
