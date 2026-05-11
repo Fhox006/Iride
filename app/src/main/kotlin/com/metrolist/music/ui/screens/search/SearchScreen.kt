@@ -5,7 +5,9 @@
 
 package com.metrolist.music.ui.screens.search
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -263,13 +265,15 @@ fun SearchScreen(
                     ),
             )
         },
-        containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Box(
             modifier =
                 Modifier
                     .padding(paddingValues)
-                    .fillMaxSize(),
+                    .fillMaxSize()
+                    .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
         ) {
             when (searchSource) {
                 SearchSource.LOCAL -> {

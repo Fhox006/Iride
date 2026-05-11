@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -726,11 +727,9 @@ fun HomeScreen(
     val quickPicksLazyGridState = rememberLazyGridState()
     val forgottenFavoritesLazyGridState = rememberLazyGridState()
 
-    val moodTracksState = rememberLazyGridState()
     val moodMixesState = rememberLazyListState()
 
     LaunchedEffect(selectedChip) {
-        moodTracksState.scrollToItem(0)
         moodMixesState.scrollToItem(0)
     }
 
@@ -1858,13 +1857,9 @@ fun HomeScreen(
                 }
                 item(key = "your_mood_section") {
                     if (moodChips.isEmpty()) {
-                        val message = if (isLoggedIn) {
-                            "We're getting your mixes ready..."
-                        } else {
-                            "Sign in with YouTube Music for the complete experience"
-                        }
                         val isDark = isSystemInDarkTheme()
                         val bgColor = if (isDark) MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                        val message = if (isLoggedIn) "We're getting your mixes ready..." else "Sign in to get personalized mixtapes"
 
                         Column(
                             modifier = Modifier
@@ -1875,35 +1870,24 @@ fun HomeScreen(
                                 .padding(top = 14.dp, bottom = 12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
+                            Text(
+                                text = message,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            )
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
                                 repeat(4) {
-                                    Box(
-                                        modifier = Modifier
-                                            .width(72.dp)
-                                            .height(36.dp)
-                                            .clip(RoundedCornerShape(50))
-                                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
-                                    )
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Box(modifier = Modifier.size(135.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)))
+                                        Box(modifier = Modifier.width(100.dp).height(12.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f)))
+                                        Box(modifier = Modifier.width(70.dp).height(10.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)))
+                                    }
                                 }
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(ListItemHeight * 4 + 24.dp)
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = message,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                    textAlign = TextAlign.Center,
-                                )
                             }
                         }
                     } else {
@@ -1957,7 +1941,7 @@ fun HomeScreen(
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                             .clip(RoundedCornerShape(28.dp))
                             .background(animatedBgColor)
-                            .animateContentSize()
+                            .heightIn(min = ListItemHeight + 40.dp + 24.dp + 26.dp)
                             .padding(top = 14.dp, bottom = 12.dp)
                     ) {
                         ChipsRow(
@@ -1980,116 +1964,63 @@ fun HomeScreen(
                                 label = "moodContent"
                             ) { page ->
                                 if (page == null) {
-                                    // Shimmer skeleton for tracks
                                     val shimmerTransition = rememberInfiniteTransition(label = "shimmer")
                                     val shimmerAlpha by shimmerTransition.animateFloat(
-                                        initialValue = 0.3f, targetValue = 0.7f,
+                                        initialValue = 0.08f, targetValue = 0.20f,
                                         animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Reverse),
                                         label = "shimmerAlpha"
                                     )
-                                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
                                         repeat(4) {
-                                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                                Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmerAlpha)))
-                                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                    Box(modifier = Modifier.fillMaxWidth(0.6f).height(14.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmerAlpha)))
-                                                    Box(modifier = Modifier.fillMaxWidth(0.4f).height(11.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmerAlpha * 0.7f)))
-                                                }
+                                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(135.dp)
+                                                        .clip(RoundedCornerShape(12.dp))
+                                                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmerAlpha))
+                                                )
+                                                Box(
+                                                    modifier = Modifier
+                                                        .width(100.dp)
+                                                        .height(12.dp)
+                                                        .clip(RoundedCornerShape(4.dp))
+                                                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmerAlpha * 0.7f))
+                                                )
+                                                Box(
+                                                    modifier = Modifier
+                                                        .width(70.dp)
+                                                        .height(10.dp)
+                                                        .clip(RoundedCornerShape(4.dp))
+                                                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = shimmerAlpha * 0.5f))
+                                                )
                                             }
                                         }
                                     }
                                 } else {
                                     Column {
                                         val sections = page.sections.orEmpty()
-                                        
-                                        // Find tracks section (usually the first one with songs)
-                                        val tracksSection = sections.firstOrNull { it.items.any { item -> item is SongItem } }
-                                        
-                                        if (tracksSection != null) {
-                                            val audioTracks = tracksSection.items
-                                                .filterIsInstance<SongItem>()
-                                                .filterVideoSongs(true) // Always hide videos in Your Mood mixtape as requested
-                                            if (audioTracks.isNotEmpty()) {
-                                                LazyHorizontalGrid(
-                                                    state = moodTracksState,
-                                                    rows = GridCells.Fixed(4),
-                                                    contentPadding = WindowInsets.systemBars
-                                                        .only(WindowInsetsSides.Horizontal)
-                                                        .asPaddingValues(),
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .height(ListItemHeight * 4),
-                                                ) {
-                                                    items(
-                                                        items = audioTracks,
-                                                        key = { "mood_track_${it.id}" },
-                                                    ) { track ->
-                                                        YouTubeListItem(
-                                                            item = track,
-                                                            isActive = track.id == mediaMetadata?.id,
-                                                            isPlaying = isPlaying,
-                                                            isSwipeable = false,
-                                                            trailingContent = {
-                                                                IconButton(
-                                                                    onClick = {
-                                                                        menuState.show {
-                                                                            YouTubeSongMenu(
-                                                                                song = track,
-                                                                                navController = navController,
-                                                                                onDismiss = menuState::dismiss,
-                                                                            )
-                                                                        }
-                                                                    },
-                                                                ) {
-                                                                    Icon(
-                                                                        painter = painterResource(R.drawable.more_vert),
-                                                                        contentDescription = null,
-                                                                    )
-                                                                }
-                                                            },
-                                                            modifier = Modifier
-                                                                .width(horizontalLazyGridItemWidth)
-                                                                .combinedClickable(
-                                                                    onClick = {
-                                                                        if (!isListenTogetherGuest) {
-                                                                            playerConnection.playQueue(
-                                                                                YouTubeQueue(
-                                                                                    track.endpoint ?: WatchEndpoint(videoId = track.id),
-                                                                                    track.toMediaMetadata(),
-                                                                                )
-                                                                            )
-                                                                        }
-                                                                    },
-                                                                    onLongClick = {
-                                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                                        menuState.show {
-                                                                            YouTubeSongMenu(
-                                                                                song = track,
-                                                                                navController = navController,
-                                                                                onDismiss = menuState::dismiss,
-                                                                            )
-                                                                        }
-                                                                    },
-                                                                ),
-                                                        )
-                                                    }
-                                                }
+
+                                        val mixItems: List<PlaylistItem> = run {
+                                            val mixSection = sections.firstOrNull { it.title.contains("Mix", ignoreCase = true) }
+                                                ?: sections.firstOrNull { it.items.any { item -> item is PlaylistItem && item.title.contains("Mix", ignoreCase = true) } }
+                                            if (mixSection != null) {
+                                                mixSection.items.filterIsInstance<PlaylistItem>()
+                                            } else {
+                                                sections.flatMap { it.items }.filterIsInstance<PlaylistItem>().take(10)
                                             }
                                         }
 
-                                        // Find mixes section
-                                        val mixesSection = sections.firstOrNull { 
-                                            it.title.contains("Mix", ignoreCase = true) 
-                                        } ?: sections.firstOrNull { it.items.any { item -> item is PlaylistItem && item.title.contains("Mix", ignoreCase = true) } }
-
-                                        if (mixesSection != null) {
+                                        if (mixItems.isNotEmpty()) {
                                             LazyRow(
                                                 state = moodMixesState,
                                                 contentPadding = PaddingValues(horizontal = 16.dp),
                                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                                 modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)
                                             ) {
-                                                items(mixesSection.items) { mix ->
+                                                items(mixItems) { mix ->
                                                     YouTubeGridItem(
                                                         item = mix,
                                                         isActive = mix.id == mediaMetadata?.album?.id,
