@@ -233,7 +233,7 @@ class HomeViewModel @Inject constructor(
             }
             
             filled.take(targetSize)
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     @Suppress("UNCHECKED_CAST")
     val homeSections: StateFlow<List<HomeSection>> = combine(

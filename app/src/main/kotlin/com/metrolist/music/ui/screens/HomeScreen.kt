@@ -730,45 +730,32 @@ fun HomeScreen(
         }
     }
 
-    // Extract unique podcasts from episodes for "Podcast Channels" row
-    // Cache the podcasts to prevent them from disappearing during refresh
-    var cachedPodcasts by remember { mutableStateOf<List<PodcastItem>>(emptyList()) }
-
-    val featuredPodcasts =
-        remember(homePage, selectedChip) {
-            if (selectedChip == null) {
-                cachedPodcasts = emptyList()
-                emptyList()
-            } else {
-                val newPodcasts =
-                    homePage
-                        ?.sections
-                        ?.flatMap { it.items }
-                        ?.filterIsInstance<EpisodeItem>()
-                        ?.mapNotNull { episode ->
-                            episode.podcast?.let { podcast ->
-                                PodcastItem(
-                                    id = podcast.id,
-                                    title = podcast.name,
-                                    author = episode.author,
-                                    episodeCountText = null,
-                                    thumbnail = episode.thumbnail,
-                                    playEndpoint = null,
-                                    shuffleEndpoint = null,
-                                )
-                            }
-                        }?.distinctBy { it.id }
-                        ?.shuffled()
-                        ?.take(10)
-                        ?: emptyList()
-
-                // Only update cache if we got valid data; keep old data during refresh
-                if (newPodcasts.isNotEmpty()) {
-                    cachedPodcasts = newPodcasts
-                }
-                cachedPodcasts
-            }
+    var featuredPodcasts by remember { mutableStateOf<List<PodcastItem>>(emptyList()) }
+    LaunchedEffect(homePage, selectedChip) {
+        if (selectedChip == null) {
+            featuredPodcasts = emptyList()
+            return@LaunchedEffect
         }
+        val newPodcasts = withContext(Dispatchers.Default) {
+            homePage?.sections
+                ?.flatMap { it.items }
+                ?.filterIsInstance<EpisodeItem>()
+                ?.mapNotNull { episode ->
+                    episode.podcast?.let { podcast ->
+                        PodcastItem(
+                            id = podcast.id,
+                            title = podcast.name,
+                            author = episode.author,
+                            episodeCountText = null,
+                            thumbnail = episode.thumbnail,
+                            playEndpoint = null,
+                            shuffleEndpoint = null,
+                        )
+                    }
+                }?.distinctBy { it.id }?.shuffled()?.take(10) ?: emptyList()
+        }
+        if (newPodcasts.isNotEmpty()) featuredPodcasts = newPodcasts
+    }
 
     val scope = rememberCoroutineScope()
     // Track randomization job
@@ -793,8 +780,8 @@ fun HomeScreen(
     val moodChips = remember(homePage?.chips) {
         homePage?.chips?.map { it to it.title } ?: emptyList()
     }
-    LaunchedEffect(moodChips) {
-        if (selectedMoodCategory == null && moodChips.isNotEmpty()) selectedMoodCategory = moodChips.first().first
+    LaunchedEffect(moodChips, isLoading) {
+        if (!isLoading && selectedMoodCategory == null && moodChips.isNotEmpty()) selectedMoodCategory = moodChips.first().first
     }
     LaunchedEffect(selectedMoodCategory, hideExplicit, hideVideoSongs, hideYoutubeShorts) {
         viewModel.loadMoodPage(selectedMoodCategory?.endpoint?.params, hideExplicit, hideVideoSongs, hideYoutubeShorts)
@@ -1772,7 +1759,7 @@ fun HomeScreen(
                         if (firstTrackThumbnail == null) return@LaunchedEffect
                         withContext(Dispatchers.Default) {
                             try {
-                                val loader = ImageLoader(moodPaletteContext)
+                                val loader = moodPaletteContext.imageLoader
                                 val req = ImageRequest.Builder(moodPaletteContext)
                                     .data(firstTrackThumbnail)
                                     .allowHardware(false)
