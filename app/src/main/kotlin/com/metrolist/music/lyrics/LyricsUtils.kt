@@ -717,6 +717,7 @@ object LyricsUtils {
                     val wordTimestamps = if (i + 1 < lines.size) {
                         val nextLine = lines[i + 1]
                         if (nextLine.trim().startsWith("<") && nextLine.trim().endsWith(">")) {
+                            i++ // consume the word line
                             parseWordTimestamps(nextLine.trim().removeSurrounding("<", ">"))
                         } else null
                     } else null

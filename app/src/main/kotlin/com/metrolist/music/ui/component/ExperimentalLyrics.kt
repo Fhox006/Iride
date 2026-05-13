@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -152,6 +153,10 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import androidx.compose.runtime.SideEffect
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.metrolist.music.lyrics.LyricsDebugLog
 
 class LyricsPillController {
     var hasTranslations by mutableStateOf(false)
@@ -296,9 +301,7 @@ fun ExperimentalLyrics(
         )
     }
 
-    LaunchedEffect(lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator) {
-        lyricsViewModel.processLyrics(lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
-    }
+
 
     val isSynced = remember(lyrics) { !lyrics.isNullOrEmpty() && lyrics.startsWith("[") }
     val hasWordTimings = remember(lines) { lines.any { it.words?.isNotEmpty() == true } }
@@ -1301,6 +1304,48 @@ fun ExperimentalLyrics(
                     LyricsTranslationHelper.triggerManualTranslation()
                 }
             )
+        }
+
+        if (LyricsDebugLog.ENABLED) {
+            val debugEntries by LyricsDebugLog.entries.collectAsStateWithLifecycle()
+            if (debugEntries.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .heightIn(max = 220.dp)
+                        .background(Color.Black.copy(alpha = 0.82f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .zIndex(100f)
+                ) {
+                    LazyColumn(
+                        reverseLayout = true,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(debugEntries.asReversed()) { entry ->
+                            val relTime = if (debugEntries.isNotEmpty())
+                                "+${entry.timeMs - debugEntries.first().timeMs}ms"
+                            else ""
+                            Text(
+                                text = "$relTime  ${entry.message}",
+                                fontSize = 9.sp,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                color = when {
+                                    entry.message.startsWith("SUCCESS") -> Color(0xFF66FF66)
+                                    entry.message.startsWith("FAIL") || entry.message.startsWith("EXCEPTION") -> Color(0xFFFF6666)
+                                    entry.message.startsWith("TIMEOUT") -> Color(0xFFFFAA00)
+                                    entry.message.startsWith("EMIT") -> Color(0xFF66CCFF)
+                                    entry.message.startsWith("SKIP") -> Color(0xFFAAAAAA)
+                                    entry.message.startsWith("START") -> Color(0xFFFFFFFF)
+                                    else -> Color(0xFFCCCCCC)
+                                },
+                                lineHeight = 11.sp,
+                                modifier = Modifier.padding(vertical = 1.dp)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

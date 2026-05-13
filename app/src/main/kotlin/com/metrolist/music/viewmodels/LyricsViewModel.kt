@@ -127,6 +127,10 @@ class LyricsViewModel @Inject constructor(
 
             var bestTierSaved = cachedTier
 
+            if (cachedTier < LyricsTier.SYNCED_WORD) {
+                lyricsSearchStatus.value = LyricsSearchStatus.SearchingSynced
+            }
+
             lyricsHelper.getLyricsProgressive(mediaMetadata) { result, tier ->
                 if (tier.ordinal > bestTierSaved.ordinal) {
                     bestTierSaved = tier
@@ -140,9 +144,7 @@ class LyricsViewModel @Inject constructor(
                 }
             }
 
-            if (lyricsSearchStatus.value == LyricsSearchStatus.SearchingSynced) {
-                lyricsSearchStatus.value = LyricsSearchStatus.Idle
-            }
+            lyricsSearchStatus.value = if (bestTierSaved > LyricsTier.PLAIN) LyricsSearchStatus.Found else LyricsSearchStatus.Idle
         }
     }
 

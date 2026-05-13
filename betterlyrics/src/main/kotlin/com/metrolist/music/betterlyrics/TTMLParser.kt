@@ -253,38 +253,27 @@ object TTMLParser {
 
     fun toLRC(lines: List<ParsedLine>): String {
         val agentMap = mutableMapOf<String, String>()
-        
-        // Phase 1: Preserve explicit v1, v2, v1000
         lines.forEach { line ->
             line.agent?.lowercase()?.let { raw ->
-                if (raw == "v1" || raw == "v2" || raw == "v1000") {
-                    agentMap[raw] = raw
-                }
+                if (raw == "v1" || raw == "v2" || raw == "v1000") agentMap[raw] = raw
             }
         }
-        
-        // Phase 2: Map other agents to v1/v2 if available
         var nextNum = 1
         lines.forEach { line ->
             line.agent?.lowercase()?.let { raw ->
                 if (!agentMap.containsKey(raw)) {
-                    while (nextNum <= 2 && (agentMap.containsKey("v$nextNum") || agentMap.values.contains("v$nextNum"))) {
-                        nextNum++
-                    }
+                    while (nextNum <= 2 && (agentMap.containsKey("v$nextNum") || agentMap.values.contains("v$nextNum"))) nextNum++
                     agentMap[raw] = if (nextNum <= 2) "v$nextNum" else "v1"
                 }
             }
         }
-
         val multi = agentMap.size > 1 || (agentMap.size == 1 && !agentMap.containsKey("v1"))
-        
         val sb = StringBuilder(lines.size * 128)
         var lastBg = false
+
         lines.forEach { line ->
-            val time = formatLrcTime(line.startTime)
             val isBg = line.isBackground
             if (!isBg) lastBg = false
-            
             val agentId = agentMap[line.agent?.lowercase()]
             val tag = when {
                 isBg -> if (lastBg) "" else "{bg}"
@@ -292,7 +281,7 @@ object TTMLParser {
                 else -> ""
             }
             if (isBg) lastBg = true
-
+            val time = formatLrcTime(line.startTime)
             sb.append(time).append(tag).append(line.text).append('\n')
             if (line.words.isNotEmpty()) {
                 sb.append('<')
@@ -304,8 +293,9 @@ object TTMLParser {
             }
             line.backgroundLines.forEach { bg ->
                 val bTag = if (lastBg) "" else "{bg}"
-                sb.append(formatLrcTime(bg.startTime)).append(bTag).append(bg.text).append('\n')
                 lastBg = true
+                val bgTime = formatLrcTime(bg.startTime)
+                sb.append(bgTime).append(bTag).append(bg.text).append('\n')
                 if (bg.words.isNotEmpty()) {
                     sb.append('<')
                     bg.words.forEachIndexed { i, w ->
