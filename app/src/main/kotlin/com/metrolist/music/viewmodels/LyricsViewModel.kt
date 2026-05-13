@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -108,20 +109,34 @@ class LyricsViewModel @Inject constructor(
         lyricsSearchStatus.value = LyricsSearchStatus.Idle
 
         progressiveJob = viewModelScope.launch {
-            var bestTierSaved = LyricsTier.PLAIN
+            val cached = withContext(Dispatchers.IO) {
+                database.lyrics(mediaMetadata.id).first()
+            }
+            val cachedTier = if (cached != null && cached.lyrics != LYRICS_NOT_FOUND) {
+                LyricsUtils.detectTier(cached.lyrics)
+            } else LyricsTier.PLAIN
+
+            if (cached != null && cached.lyrics != LYRICS_NOT_FOUND) {
+                processLyrics(cached.lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
+            }
+
+            if (cachedTier == LyricsTier.SYNCED_WORD) {
+                lyricsSearchStatus.value = LyricsSearchStatus.Found
+                return@launch
+            }
+
+            var bestTierSaved = cachedTier
 
             lyricsHelper.getLyricsProgressive(mediaMetadata) { result, tier ->
-                processLyrics(result.lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
-
                 if (tier.ordinal > bestTierSaved.ordinal) {
                     bestTierSaved = tier
+                    processLyrics(result.lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
                     database.query {
                         upsert(LyricsEntity(mediaMetadata.id, result.lyrics, result.provider))
                     }
-                }
-
-                if (tier != LyricsTier.PLAIN) {
-                    lyricsSearchStatus.value = LyricsSearchStatus.Found
+                    if (tier != LyricsTier.PLAIN) {
+                        lyricsSearchStatus.value = LyricsSearchStatus.Found
+                    }
                 }
             }
 

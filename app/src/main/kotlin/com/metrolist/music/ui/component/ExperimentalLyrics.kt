@@ -286,6 +286,16 @@ fun ExperimentalLyrics(
     val lines by lyricsViewModel.lines.collectAsState()
     val mergedLyricsList by lyricsViewModel.mergedLyricsList.collectAsState()
 
+    LaunchedEffect(mediaMetadata?.id) {
+        val metadata = mediaMetadata ?: return@LaunchedEffect
+        lyricsViewModel.loadProgressiveLyrics(
+            metadata,
+            enabledLanguages,
+            romanizeCyrillicByLine,
+            showIntervalIndicator,
+        )
+    }
+
     LaunchedEffect(lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator) {
         lyricsViewModel.processLyrics(lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
     }

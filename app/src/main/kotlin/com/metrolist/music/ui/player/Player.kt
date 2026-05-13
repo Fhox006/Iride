@@ -484,9 +484,10 @@ fun BottomSheetPlayer(
                             com.metrolist.music.di.LyricsHelperEntryPoint::class.java,
                         )
                         val lyricsHelper = entryPoint.lyricsHelper()
-                        val fetchedLyricsWithProvider = lyricsHelper.getLyrics(capturedMetadata)
-                        database.query {
-                            upsert(LyricsEntity(capturedMetadata.id, fetchedLyricsWithProvider.lyrics, fetchedLyricsWithProvider.provider))
+                        lyricsHelper.getLyricsProgressive(capturedMetadata) { result, _ ->
+                            database.query {
+                                upsert(LyricsEntity(capturedMetadata.id, result.lyrics, result.provider))
+                            }
                         }
                     }
                 } catch (_: Exception) {
@@ -2156,9 +2157,10 @@ fun InlineLyricsView(
                             com.metrolist.music.di.LyricsHelperEntryPoint::class.java,
                         )
                     val lyricsHelper = entryPoint.lyricsHelper()
-                    val fetchedLyricsWithProvider = lyricsHelper.getLyrics(mediaMetadata)
-                    database.query {
-                        upsert(LyricsEntity(mediaMetadata.id, fetchedLyricsWithProvider.lyrics, fetchedLyricsWithProvider.provider))
+                    lyricsHelper.getLyricsProgressive(mediaMetadata) { result, _ ->
+                        database.query {
+                            upsert(LyricsEntity(mediaMetadata.id, result.lyrics, result.provider))
+                        }
                     }
                 } catch (e: Exception) {
                     // silently ignored

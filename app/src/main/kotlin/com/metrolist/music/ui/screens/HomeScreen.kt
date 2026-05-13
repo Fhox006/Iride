@@ -773,7 +773,7 @@ fun HomeScreen(
         ?.getStateFlow("wrapped_seen", false)
         ?.collectAsState() ?: remember { mutableStateOf(false) }
 
-    var visibleSectionCount by rememberSaveable { mutableStateOf(2) }
+    var visibleSectionCount by rememberSaveable { mutableStateOf(0) }
 
     var selectedMoodCategory by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage.Chip?>(null) }
 
@@ -1036,14 +1036,16 @@ fun HomeScreen(
 
     val homeSections by viewModel.homeSections.collectAsStateWithLifecycle()
 
-    LaunchedEffect(homeSections.size) {
-        if (homeSections.size > 2 && visibleSectionCount <= 2) {
-            for (i in 3..homeSections.size) {
+    val otherSections = remember(homeSections) {
+        homeSections.filter { it != HomeSection.SpeedDial && it != HomeSection.YourMood }
+    }
+
+    LaunchedEffect(otherSections.size) {
+        if (otherSections.size > visibleSectionCount) {
+            for (i in (visibleSectionCount + 1)..otherSections.size) {
                 kotlinx.coroutines.delay(150L)
                 visibleSectionCount = i
             }
-        } else if (homeSections.size > visibleSectionCount) {
-            visibleSectionCount = homeSections.size
         }
     }
 
@@ -1894,9 +1896,8 @@ fun HomeScreen(
                     } // end else
                 }
 
-                homeSections
+                otherSections
                     .take(visibleSectionCount)
-                    .filter { it != HomeSection.SpeedDial && it != HomeSection.YourMood }
                     .forEach { section ->
                         when (section) {
                             HomeSection.QuickPicks -> {

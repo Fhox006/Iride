@@ -520,7 +520,6 @@ fun AlbumScreen(
                                                                 originalSong = song,
                                                                 navController = navController,
                                                                 onDismiss = menuState::dismiss,
-                                                                showStarButton = false,
                                                             )
                                                         }
                                                     },

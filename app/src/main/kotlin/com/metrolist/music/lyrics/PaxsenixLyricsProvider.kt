@@ -14,7 +14,19 @@ import timber.log.Timber
 
 object PaxsenixLyricsProvider : LyricsProvider {
     private const val TAG = "PaxsenixProvider"
-    
+
+    @Volatile private var initialized = false
+    private val initLock = Any()
+
+    private fun ensureInit(context: Context) {
+        if (!initialized) synchronized(initLock) {
+            if (!initialized) {
+                Paxsenix.init(context.applicationContext)
+                initialized = true
+            }
+        }
+    }
+
     override val name = "Paxsenix"
 
     override fun isEnabled(context: Context): Boolean = context.dataStore[EnablePaxsenixKey] ?: true
@@ -28,9 +40,9 @@ object PaxsenixLyricsProvider : LyricsProvider {
         album: String?,
     ): Result<String> {
         Timber.tag(TAG).d("getLyrics called: title='$title', artist='$artist', duration=$duration")
-        
+
         try {
-            Paxsenix.init(context)
+            ensureInit(context)
             val result = Paxsenix.getLyrics(title, artist, duration, album)
             
             result.onSuccess { lyrics ->
@@ -57,7 +69,7 @@ object PaxsenixLyricsProvider : LyricsProvider {
     ) {
         Timber.tag(TAG).d("getAllLyrics called")
         try {
-            Paxsenix.init(context)
+            ensureInit(context)
             Paxsenix.getAllLyrics(title, artist, duration, album, callback)
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error fetching lyrics from Paxsenix")

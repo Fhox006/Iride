@@ -25,6 +25,36 @@ object OpenRouterService {
             .build()
     private val JSON = "application/json; charset=utf-8".toMediaType()
 
+    private suspend fun validateAndRefreshKey(
+        apiKey: String,
+        readKeyFromPrefs: suspend () -> String,
+    ): String {
+        if (apiKey.isNotBlank()) return apiKey
+        val fresh = readKeyFromPrefs()
+        if (fresh.isBlank()) throw IllegalStateException("API key not configured")
+        return fresh
+    }
+
+    suspend fun isKeyValid(apiKey: String, baseUrl: String = "https://openrouter.ai/api/v1/chat/completions"): Boolean =
+        withContext(Dispatchers.IO) {
+            if (apiKey.isBlank()) return@withContext false
+            try {
+                val modelsUrl = baseUrl.replace("/chat/completions", "/models")
+                val request =
+                    Request
+                        .Builder()
+                        .url(modelsUrl)
+                        .addHeader("Authorization", "Bearer ${apiKey.trim()}")
+                        .build()
+                val response = client.newCall(request).execute()
+                val code = response.code
+                response.close()
+                code in 200..299
+            } catch (e: Exception) {
+                false
+            }
+        }
+
     suspend fun translate(
         text: String,
         targetLanguage: String,
@@ -35,6 +65,7 @@ object OpenRouterService {
         maxRetries: Int = 3,
         sourceLanguage: String? = null,
         customSystemPrompt: String = "",
+        readKeyFromPrefs: (suspend () -> String)? = null,
     ): Result<List<String>> =
         withContext(Dispatchers.IO) {
             var currentAttempt = 0
@@ -44,12 +75,20 @@ object OpenRouterService {
                 return@withContext Result.failure(Exception("Input text is empty"))
             }
 
+            val effectiveKey =
+                try {
+                    validateAndRefreshKey(apiKey, readKeyFromPrefs ?: { apiKey })
+                } catch (e: IllegalStateException) {
+                    return@withContext Result.failure(e)
+                }
+            var activeKey = effectiveKey
+            var keyRefreshed = false
+
             val lines = text.lines()
             val lineCount = lines.size
 
             while (currentAttempt < maxRetries) {
                 try {
-                    // Use custom system prompt if provided, otherwise use the default
                     val systemPrompt =
                         if (customSystemPrompt.isNotBlank()) {
                             customSystemPrompt.replace("{lineCount}", lineCount.toString())
@@ -153,8 +192,8 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                                 put("model", model)
                             }
                             put("messages", messages)
-                            put("temperature", 0.3) // Lower temperature for more consistent output
-                            put("max_tokens", lineCount * 100) // Adequate tokens for translation
+                            put("temperature", 0.3)
+                            put("max_tokens", lineCount * 100)
                         }
 
                     val request =
@@ -162,8 +201,8 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                             .Builder()
                             .url(baseUrl.ifBlank { "https://openrouter.ai/api/v1/chat/completions" })
                             .apply {
-                                if (apiKey.isNotBlank()) {
-                                    addHeader("Authorization", "Bearer ${apiKey.trim()}")
+                                if (activeKey.isNotBlank()) {
+                                    addHeader("Authorization", "Bearer ${activeKey.trim()}")
                                 }
                             }.addHeader("Content-Type", "application/json")
                             .addHeader("HTTP-Referer", "https://github.com/MetrolistGroup/Metrolist")
@@ -175,6 +214,20 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                     val responseBody = response.body?.string()
 
                     if (!response.isSuccessful) {
+                        // On 401/403, attempt a one-shot key refresh before failing
+                        if ((response.code == 401 || response.code == 403) && !keyRefreshed && readKeyFromPrefs != null) {
+                            val freshKey = readKeyFromPrefs()
+                            if (freshKey.isNotBlank() && freshKey != activeKey) {
+                                activeKey = freshKey
+                                keyRefreshed = true
+                                continue
+                            }
+                            return@withContext Result.failure(Exception("API key invalid or expired"))
+                        }
+                        if (response.code == 401 || response.code == 403) {
+                            return@withContext Result.failure(Exception("API key invalid or expired"))
+                        }
+
                         // Retry on server errors (5xx)
                         if (response.code >= 500) {
                             currentAttempt++
@@ -204,22 +257,18 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                         var content = message?.optString("content")?.trim()
 
                         if (!content.isNullOrBlank()) {
-                            // Enhanced JSON extraction with multiple fallback strategies
                             var translatedLines: List<String>? = null
 
-                            // Strategy 1: Try direct JSON parsing
                             try {
                                 val jsonArray = JSONArray(content)
                                 translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
                             } catch (e: Exception) {
-                                // Strategy 2: Extract JSON from markdown code blocks
                                 content = content.replace("```json", "").replace("```", "").trim()
 
                                 try {
                                     val jsonArray = JSONArray(content)
                                     translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
                                 } catch (e2: Exception) {
-                                    // Strategy 3: Find first [ and last ]
                                     val startIdx = content.indexOf('[')
                                     val endIdx = content.lastIndexOf(']')
 
@@ -229,7 +278,6 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                                             val jsonArray = JSONArray(jsonString)
                                             translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
                                         } catch (e3: Exception) {
-                                            // Strategy 4: Manual line-by-line parsing as last resort
                                             translatedLines =
                                                 content
                                                     .lines()
@@ -241,14 +289,11 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                             }
 
                             if (translatedLines != null) {
-                                // Validate line count matches
                                 if (translatedLines.size == lineCount) {
                                     return@withContext Result.success(translatedLines)
                                 } else if (translatedLines.size > lineCount) {
-                                    // If we got more lines, take first N
                                     return@withContext Result.success(translatedLines.take(lineCount))
                                 } else {
-                                    // If we got fewer lines, pad with empty strings
                                     val paddedLines = translatedLines.toMutableList()
                                     while (paddedLines.size < lineCount) {
                                         paddedLines.add("")

@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -32,9 +33,36 @@ object OpenRouterStreamingService {
     private val JSON = "application/json; charset=utf-8".toMediaType()
     private val json = Json { ignoreUnknownKeys = true }
 
-    /**
-     * Stream translation from OpenRouter with real-time updates
-     */
+    private suspend fun validateAndRefreshKey(
+        apiKey: String,
+        readKeyFromPrefs: suspend () -> String,
+    ): String {
+        if (apiKey.isNotBlank()) return apiKey
+        val fresh = readKeyFromPrefs()
+        if (fresh.isBlank()) throw IllegalStateException("API key not configured")
+        return fresh
+    }
+
+    suspend fun isKeyValid(apiKey: String, baseUrl: String = "https://openrouter.ai/api/v1/chat/completions"): Boolean =
+        withContext(Dispatchers.IO) {
+            if (apiKey.isBlank()) return@withContext false
+            try {
+                val modelsUrl = baseUrl.replace("/chat/completions", "/models")
+                val request =
+                    Request
+                        .Builder()
+                        .url(modelsUrl)
+                        .addHeader("Authorization", "Bearer ${apiKey.trim()}")
+                        .build()
+                val response = client.newCall(request).execute()
+                val code = response.code
+                response.close()
+                code in 200..299
+            } catch (e: Exception) {
+                false
+            }
+        }
+
     fun streamTranslation(
         text: String,
         targetLanguage: String,
@@ -43,6 +71,7 @@ object OpenRouterStreamingService {
         model: String,
         mode: String,
         customSystemPrompt: String = "",
+        readKeyFromPrefs: (suspend () -> String)? = null,
     ): Flow<StreamChunk> =
         flow {
             if (text.isBlank()) {
@@ -50,13 +79,22 @@ object OpenRouterStreamingService {
                 return@flow
             }
 
+            val effectiveKey =
+                try {
+                    validateAndRefreshKey(apiKey, readKeyFromPrefs ?: { apiKey })
+                } catch (e: IllegalStateException) {
+                    emit(StreamChunk.Error(e.message ?: "API key not configured"))
+                    return@flow
+                }
+            var activeKey = effectiveKey
+            var keyRefreshed = false
+
             val lines = text.lines()
             val lineCount = lines.size
 
             Timber.d("Starting streaming translation for $lineCount lines")
 
             try {
-                // Use custom system prompt if provided, otherwise use the default
                 val systemPrompt =
                     if (customSystemPrompt.isNotBlank()) {
                         customSystemPrompt.replace("{lineCount}", lineCount.toString())
@@ -133,13 +171,13 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                         put("max_tokens", lineCount * 100)
                     }
 
-                val request =
+                fun buildRequest(key: String): Request =
                     Request
                         .Builder()
                         .url(baseUrl.ifBlank { "https://openrouter.ai/api/v1/chat/completions" })
                         .apply {
-                            if (apiKey.isNotBlank()) {
-                                addHeader("Authorization", "Bearer ${apiKey.trim()}")
+                            if (key.isNotBlank()) {
+                                addHeader("Authorization", "Bearer ${key.trim()}")
                             }
                         }.addHeader("Content-Type", "application/json")
                         .addHeader("HTTP-Referer", "https://github.com/MetrolistGroup/Metrolist")
@@ -147,13 +185,32 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                         .post(jsonBody.toString().toRequestBody(JSON))
                         .build()
 
-                client.newCall(request).execute().use { response ->
+                // Execute first request; retry once with fresh key on 401/403
+                var firstResponse = client.newCall(buildRequest(activeKey)).execute()
+                if ((firstResponse.code == 401 || firstResponse.code == 403) && !keyRefreshed && readKeyFromPrefs != null) {
+                    firstResponse.close()
+                    val freshKey = readKeyFromPrefs()
+                    if (freshKey.isNotBlank() && freshKey != activeKey) {
+                        activeKey = freshKey
+                        keyRefreshed = true
+                        firstResponse = client.newCall(buildRequest(activeKey)).execute()
+                    } else {
+                        emit(StreamChunk.Error("API key invalid or expired"))
+                        return@flow
+                    }
+                }
+
+                firstResponse.use { response ->
                     Timber.d("Got streaming response: ${response.code}")
 
                     if (!response.isSuccessful) {
                         val rawBody = response.body?.string() ?: "(empty body)"
                         Timber.e("API error [${response.code}] raw body: $rawBody")
-                        emit(StreamChunk.Error("HTTP ${response.code}: $rawBody"))
+                        if (response.code == 401 || response.code == 403) {
+                            emit(StreamChunk.Error("API key invalid or expired"))
+                        } else {
+                            emit(StreamChunk.Error("HTTP ${response.code}: $rawBody"))
+                        }
                         return@flow
                     }
 
@@ -168,7 +225,6 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                                 val data = currentLine.substring(6)
                                 if (data == "[DONE]") {
                                     Timber.d("Streaming complete, received $chunkCount chunks")
-                                    // Processing complete, parse the full content
                                     val fullContent = contentBuilder.toString()
                                     Timber.d("Full content length: ${fullContent.length}")
                                     val result = parseTranslationContent(fullContent, lineCount)
@@ -200,14 +256,12 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                                         emit(StreamChunk.Content(chunk))
                                     }
                                 } catch (e: Exception) {
-                                    // Ignore malformed JSON chunks
                                     Timber.v("Ignored malformed chunk: ${e.message}")
                                 }
                             }
                         }
                     }
 
-                    // If we got here without seeing [DONE], try to parse what we have
                     if (contentBuilder.isNotEmpty()) {
                         Timber.w("Stream ended without [DONE] marker, attempting to parse content")
                         val fullContent = contentBuilder.toString()
@@ -232,19 +286,16 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
     ): Result<List<String>> {
         var translatedLines: List<String>? = null
 
-        // Strategy 1: Try direct JSON parsing
         try {
             val jsonArray = JSONArray(content.trim())
             translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
         } catch (e: Exception) {
-            // Strategy 2: Extract JSON from markdown code blocks
             var cleanedContent = content.replace("```json", "").replace("```", "").trim()
 
             try {
                 val jsonArray = JSONArray(cleanedContent)
                 translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
             } catch (e2: Exception) {
-                // Strategy 3: Find first [ and last ]
                 val startIdx = cleanedContent.indexOf('[')
                 val endIdx = cleanedContent.lastIndexOf(']')
 
@@ -254,7 +305,6 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                         val jsonArray = JSONArray(jsonString)
                         translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
                     } catch (e3: Exception) {
-                        // Strategy 4: Manual line-by-line parsing as last resort
                         translatedLines =
                             cleanedContent
                                 .lines()
@@ -269,7 +319,6 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
             return Result.failure(Exception("Failed to parse translation"))
         }
 
-        // Adjust line count
         return when {
             translatedLines.size == expectedLineCount -> {
                 Result.success(translatedLines)
