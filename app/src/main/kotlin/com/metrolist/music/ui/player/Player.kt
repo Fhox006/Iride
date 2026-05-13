@@ -1906,19 +1906,30 @@ fun BottomSheetPlayer(
                         val currentSliderPosition by rememberUpdatedState(sliderPosition)
                         val sliderPositionProvider = remember { { currentSliderPosition } }
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
-                        AnimatedContent(
-                            targetState = when {
-                                showInlineLyrics -> "lyrics"
-                                showQueue -> "queue"
-                                else -> "thumbnail"
-                            },
-                            label = "PlayerView",
-                            transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        ) { view ->
-                            when (view) {
-                                "lyrics" -> InlineLyricsView(
+                        Box {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .alpha(if (!showInlineLyrics && !showQueue) 1f else 0f)
+                                    .then(if (showInlineLyrics || showQueue) Modifier.pointerInput(Unit) {} else Modifier)
+                            ) {
+                                Thumbnail(
+                                    sliderPositionProvider = sliderPositionProvider,
+                                    modifier = Modifier.animateContentSize(),
+                                    isPlayerExpanded = isExpandedProvider,
+                                    isLandscape = true,
+                                    isListenTogetherGuest = isListenTogetherGuest,
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .alpha(if (showInlineLyrics) 1f else 0f)
+                                    .then(if (!showInlineLyrics) Modifier.pointerInput(Unit) {} else Modifier)
+                            ) {
+                                InlineLyricsView(
                                     mediaMetadata = mediaMetadata,
-                                    showLyrics = true,
+                                    showLyrics = showInlineLyrics,
                                     positionProvider = { effectivePosition },
                                     isFullScreen = isFullScreen,
                                     onExitFullScreen = { isFullScreen = false },
@@ -1942,19 +1953,19 @@ fun BottomSheetPlayer(
                                     textButtonColor = textButtonColor,
                                     iconButtonColor = iconButtonColor,
                                 )
-                                "queue" -> InlineQueuePanel(
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .alpha(if (showQueue) 1f else 0f)
+                                    .then(if (!showQueue) Modifier.pointerInput(Unit) {} else Modifier)
+                            ) {
+                                InlineQueuePanel(
                                     navController = navController,
                                     playerBottomSheetState = state,
                                     textButtonColor = textButtonColor,
                                     iconButtonColor = iconButtonColor,
                                     onClose = { showQueue = false },
-                                )
-                                else -> Thumbnail(
-                                    sliderPositionProvider = sliderPositionProvider,
-                                    modifier = Modifier.animateContentSize(),
-                                    isPlayerExpanded = isExpandedProvider,
-                                    isLandscape = true,
-                                    isListenTogetherGuest = isListenTogetherGuest,
                                 )
                             }
                         }
@@ -2000,19 +2011,29 @@ fun BottomSheetPlayer(
                         val currentSliderPosition by rememberUpdatedState(sliderPosition)
                         val sliderPositionProvider = remember { { currentSliderPosition } }
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
-                        AnimatedContent(
-                            targetState = when {
-                                showInlineLyrics -> "lyrics"
-                                showQueue -> "queue"
-                                else -> "thumbnail"
-                            },
-                            label = "PlayerView",
-                            transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        ) { view ->
-                            when (view) {
-                                "lyrics" -> InlineLyricsView(
+                        Box {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .alpha(if (!showInlineLyrics && !showQueue) 1f else 0f)
+                                    .then(if (showInlineLyrics || showQueue) Modifier.pointerInput(Unit) {} else Modifier)
+                            ) {
+                                Thumbnail(
+                                    sliderPositionProvider = sliderPositionProvider,
+                                    modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
+                                    isPlayerExpanded = isExpandedProvider,
+                                    isListenTogetherGuest = isListenTogetherGuest,
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .alpha(if (showInlineLyrics) 1f else 0f)
+                                    .then(if (!showInlineLyrics) Modifier.pointerInput(Unit) {} else Modifier)
+                            ) {
+                                InlineLyricsView(
                                     mediaMetadata = mediaMetadata,
-                                    showLyrics = true,
+                                    showLyrics = showInlineLyrics,
                                     positionProvider = { effectivePosition },
                                     isFullScreen = isFullScreen,
                                     onExitFullScreen = { isFullScreen = false },
@@ -2036,18 +2057,19 @@ fun BottomSheetPlayer(
                                     textButtonColor = textButtonColor,
                                     iconButtonColor = iconButtonColor,
                                 )
-                                "queue" -> InlineQueuePanel(
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .alpha(if (showQueue) 1f else 0f)
+                                    .then(if (!showQueue) Modifier.pointerInput(Unit) {} else Modifier)
+                            ) {
+                                InlineQueuePanel(
                                     navController = navController,
                                     playerBottomSheetState = state,
                                     textButtonColor = textButtonColor,
                                     iconButtonColor = iconButtonColor,
                                     onClose = { showQueue = false },
-                                )
-                                else -> Thumbnail(
-                                    sliderPositionProvider = sliderPositionProvider,
-                                    modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
-                                    isPlayerExpanded = isExpandedProvider,
-                                    isListenTogetherGuest = isListenTogetherGuest,
                                 )
                             }
                         }

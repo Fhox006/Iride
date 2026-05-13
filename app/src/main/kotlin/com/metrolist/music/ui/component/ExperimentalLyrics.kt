@@ -613,7 +613,11 @@ fun ExperimentalLyrics(
     var flingJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val velocityTracker = remember { VelocityTracker() }
     val decayAnimSpec = remember { exponentialDecay<Float>(frictionMultiplier = 1.8f) }
-    val itemHeights = remember(lyrics, mergedLyricsList) { mutableStateMapOf<Int, Int>() }
+    val itemHeights = remember(mediaMetadata?.id) { mutableStateMapOf<Int, Int>() }
+    LaunchedEffect(mergedLyricsList.size) {
+        val currentSize = mergedLyricsList.size
+        itemHeights.keys.toList().forEach { key -> if (key >= currentSize) itemHeights.remove(key) }
+    }
     var isInitialLayout by remember(mediaMetadata?.id) { mutableStateOf(true) }
 
     val activeListIndex by remember(mergedLyricsList, deferredCurrentLineIndex) {
