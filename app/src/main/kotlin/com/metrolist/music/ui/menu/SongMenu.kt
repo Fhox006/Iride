@@ -114,6 +114,7 @@ fun SongMenu(
     onDismiss: () -> Unit,
     isFromCache: Boolean = false,
     showStarButton: Boolean = true,
+    onHistoryRemoved: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -811,6 +812,20 @@ fun SongMenu(
                                             delete(event)
                                         }
                                     },
+                                ),
+                            )
+                        }
+                        if (onHistoryRemoved != null) {
+                            add(
+                                Material3MenuItemData(
+                                    title = { Text(text = stringResource(R.string.remove_from_history)) },
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.delete),
+                                            contentDescription = null,
+                                        )
+                                    },
+                                    onClick = { onHistoryRemoved() },
                                 ),
                             )
                         }

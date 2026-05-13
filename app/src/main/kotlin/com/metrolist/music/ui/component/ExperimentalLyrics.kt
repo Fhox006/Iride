@@ -595,7 +595,6 @@ fun ExperimentalLyrics(
         isAutoScrollEnabled = true
         userManualOffset = 0f
         scrollTargetIndex = -1
-        deferredCurrentLineIndex = 0
         isSelectionModeActive = false
         selectedIndices.clear()
         previousScrollActiveIndices = emptySet()
@@ -615,7 +614,7 @@ fun ExperimentalLyrics(
     val velocityTracker = remember { VelocityTracker() }
     val decayAnimSpec = remember { exponentialDecay<Float>(frictionMultiplier = 1.8f) }
     val itemHeights = remember(lyrics, mergedLyricsList) { mutableStateMapOf<Int, Int>() }
-    var isInitialLayout by remember(lyrics, mergedLyricsList) { mutableStateOf(true) }
+    var isInitialLayout by remember(mediaMetadata?.id) { mutableStateOf(true) }
 
     val activeListIndex by remember(mergedLyricsList, deferredCurrentLineIndex) {
         derivedStateOf {

@@ -205,6 +205,8 @@ import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.viewmodels.LyricsViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -353,6 +355,17 @@ fun BottomSheetPlayer(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val currentSong by playerConnection.currentSong.collectAsState(initial = null)
     val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
+
+    val lyricsViewModel: LyricsViewModel = hiltViewModel()
+    LaunchedEffect(mediaMetadata?.id) {
+        val metadata = mediaMetadata ?: return@LaunchedEffect
+        lyricsViewModel.loadProgressiveLyrics(
+            mediaMetadata = metadata,
+            enabledLanguages = emptyList(),
+            romanizeCyrillicByLine = false,
+            showIntervalIndicator = false,
+        )
+    }
     val automix by playerConnection.service.automixItems.collectAsState()
     val repeatMode by playerConnection.repeatMode.collectAsState()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()
