@@ -187,7 +187,10 @@ constructor(
                             val tier = LyricsUtils.detectTier(filtered)
                             LyricsDebugLog.log("SUCCESS ${provider.name} | ${elapsed}ms | tier=$tier | lines=${filtered.lines().size}")
                             val shouldEmit = tierMutex.withLock {
-                                if (tier.ordinal > bestTier.ordinal) { bestTier = tier; true } else false
+                                if (tier == LyricsTier.SYNCED_WORD || tier.ordinal > bestTier.ordinal) {
+                                    if (tier.ordinal > bestTier.ordinal) bestTier = tier
+                                    true
+                                } else false
                             }
                             if (shouldEmit) {
                                 LyricsDebugLog.log("EMIT ${provider.name} | tier=$tier (new best)")

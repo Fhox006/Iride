@@ -37,6 +37,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.verticalDrag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -327,6 +328,7 @@ fun ExperimentalLyrics(
 
     var showApiSetupDialog by remember { mutableStateOf(false) }
     var showLanguagePickerDialog by remember { mutableStateOf(false) }
+    var showDebugOverlay by remember { mutableStateOf(false) }
     var geminiSetupCompleted by rememberPreference(GeminiSetupCompletedKey, false)
 
     LaunchedEffect(
@@ -641,7 +643,12 @@ fun ExperimentalLyrics(
 
     BoxWithConstraints(
         contentAlignment = Alignment.TopCenter,
-        modifier = modifier.fillMaxSize().padding(bottom = 12.dp)
+        modifier = modifier
+            .fillMaxSize()
+            .padding(bottom = 12.dp)
+            .pointerInput("debugToggle") {
+                detectTapGestures(onLongPress = { showDebugOverlay = !showDebugOverlay })
+            }
     ) {
         val maxHeightPx = constraints.maxHeight.toFloat()
         val anchorY = if (isFullScreen) with(density) { 192.dp.toPx() } else maxHeightPx * LYRICS_ANCHOR_RATIO
@@ -1306,7 +1313,7 @@ fun ExperimentalLyrics(
             )
         }
 
-        if (LyricsDebugLog.ENABLED) {
+        if (LyricsDebugLog.ENABLED && showDebugOverlay) {
             val debugEntries by LyricsDebugLog.entries.collectAsStateWithLifecycle()
             if (debugEntries.isNotEmpty()) {
                 Box(

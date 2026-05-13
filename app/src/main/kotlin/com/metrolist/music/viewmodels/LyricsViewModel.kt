@@ -118,21 +118,29 @@ class LyricsViewModel @Inject constructor(
 
             if (cached != null && cached.lyrics != LYRICS_NOT_FOUND) {
                 processLyrics(cached.lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
+                if (cachedTier == LyricsTier.SYNCED_WORD) {
+                    lyricsSearchStatus.value = LyricsSearchStatus.Found
+                    return@launch
+                }
+                // Non-word cache blocks providers from upgrading — delete so fresh fetch can upsert freely
+                database.query { delete(cached) }
             }
 
-            if (cachedTier == LyricsTier.SYNCED_WORD) {
-                lyricsSearchStatus.value = LyricsSearchStatus.Found
-                return@launch
-            }
-
-            var bestTierSaved = cachedTier
+            var bestTierSaved = LyricsTier.PLAIN
 
             if (cachedTier < LyricsTier.SYNCED_WORD) {
                 lyricsSearchStatus.value = LyricsSearchStatus.SearchingSynced
             }
 
+            var wordTierLocked = false
             lyricsHelper.getLyricsProgressive(mediaMetadata) { result, tier ->
-                if (tier.ordinal > bestTierSaved.ordinal) {
+                if (wordTierLocked) return@getLyricsProgressive
+                val shouldUpdate = when {
+                    tier == LyricsTier.SYNCED_WORD -> true
+                    tier.ordinal > bestTierSaved.ordinal && !wordTierLocked -> true
+                    else -> false
+                }
+                if (shouldUpdate) {
                     bestTierSaved = tier
                     processLyrics(result.lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
                     database.query {
@@ -140,6 +148,9 @@ class LyricsViewModel @Inject constructor(
                     }
                     if (tier != LyricsTier.PLAIN) {
                         lyricsSearchStatus.value = LyricsSearchStatus.Found
+                    }
+                    if (tier == LyricsTier.SYNCED_WORD) {
+                        wordTierLocked = true
                     }
                 }
             }
