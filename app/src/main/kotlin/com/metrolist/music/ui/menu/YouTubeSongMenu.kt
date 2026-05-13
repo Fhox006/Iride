@@ -294,24 +294,7 @@ fun YouTubeSongMenu(
     ) {
         item {
             NewActionGrid(
-                actions = listOfNotNull(
-                    if (!isGuest) {
-                        NewAction(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.playlist_play),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            text = stringResource(R.string.play_next),
-                            onClick = {
-                                playerConnection.playNext(song.copy(thumbnail = song.thumbnail.resize(544,544)).toMediaItem())
-                                onDismiss()
-                            }
-                        )
-                    } else null,
+                actions = listOf(
                     NewAction(
                         icon = {
                             Icon(
@@ -322,9 +305,7 @@ fun YouTubeSongMenu(
                             )
                         },
                         text = stringResource(R.string.add_to_playlist),
-                        onClick = {
-                            showChoosePlaylistDialog = true
-                        }
+                        onClick = { showChoosePlaylistDialog = true }
                     ),
                     NewAction(
                         icon = {
@@ -347,7 +328,6 @@ fun YouTubeSongMenu(
                         }
                     )
                 ),
-                columns = if (isGuest) 2 else 3,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp)
             )
         }
@@ -393,6 +373,22 @@ fun YouTubeSongMenu(
                                 playerConnection.playQueue(YouTubeQueue.radio(song.toMediaMetadata()))
                                 onDismiss()
                             }
+                        )
+                    } else null,
+                    if (!isGuest) {
+                        Material3MenuItemData(
+                            title = { Text(text = stringResource(R.string.play_next)) },
+                            description = { Text(text = stringResource(R.string.play_next_desc)) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.playlist_play),
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = {
+                                onDismiss()
+                                playerConnection.playNext(song.copy(thumbnail = song.thumbnail.resize(544, 544)).toMediaItem())
+                            },
                         )
                     } else null,
                     if (!isGuest) {

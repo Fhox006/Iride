@@ -182,58 +182,54 @@ class HomeViewModel @Inject constructor(
             val pinnedItems = pinned.map { it.toYTItem() }
             val filled = pinnedItems.toMutableList()
             val targetSize = 27
+            val kl = keepListening ?: emptyList()
+            val qp = quick ?: emptyList()
 
             if (filled.size < targetSize) {
-                // Keep Listening (History/Heavy Rotation)
-                keepListening?.let { k ->
-                    val needed = targetSize - filled.size
-                    val available = k.filter { item ->
-                        filled.none { p -> p.id == item.id }
-                    }.mapNotNull { item ->
-                        when (item) {
-                            is Song -> SongItem(
-                                id = item.id,
-                                title = item.title,
-                                artists = item.artists.map { Artist(name = it.name, id = it.id) },
-                                thumbnail = item.thumbnailUrl ?: "",
-                                explicit = false
-                            )
-                            is Album -> AlbumItem(
-                                browseId = item.id,
-                                playlistId = item.album.playlistId ?: "",
-                                title = item.title,
-                                artists = item.artists.map { Artist(name = it.name, id = it.id) },
-                                year = item.album.year,
-                                thumbnail = item.thumbnailUrl ?: ""
-                            )
-                            else -> null
-                        }
-                    }
-                    filled.addAll(available.take(needed))
-                }
-            }
-
-            if (filled.size < targetSize) {
-                // Quick Picks
-                quick?.let { q ->
-                    val needed = targetSize - filled.size
-                    val available = q.filter { song ->
-                        filled.none { p -> p.id == song.id }
-                    }.map { song ->
-                        SongItem(
-                            id = song.id,
-                            title = song.title,
-                            artists = song.artists.map { Artist(name = it.name, id = it.id) },
-                            thumbnail = song.thumbnailUrl ?: "",
+                val needed = targetSize - filled.size
+                val available = kl.filter { item ->
+                    filled.none { p -> p.id == item.id }
+                }.mapNotNull { item ->
+                    when (item) {
+                        is Song -> SongItem(
+                            id = item.id,
+                            title = item.title,
+                            artists = item.artists.map { Artist(name = it.name, id = it.id) },
+                            thumbnail = item.thumbnailUrl ?: "",
                             explicit = false
                         )
+                        is Album -> AlbumItem(
+                            browseId = item.id,
+                            playlistId = item.album.playlistId ?: "",
+                            title = item.title,
+                            artists = item.artists.map { Artist(name = it.name, id = it.id) },
+                            year = item.album.year,
+                            thumbnail = item.thumbnailUrl ?: ""
+                        )
+                        else -> null
                     }
-                    filled.addAll(available.take(needed))
                 }
+                filled.addAll(available.take(needed))
             }
-            
+
+            if (filled.size < targetSize) {
+                val needed = targetSize - filled.size
+                val available = qp.filter { song ->
+                    filled.none { p -> p.id == song.id }
+                }.map { song ->
+                    SongItem(
+                        id = song.id,
+                        title = song.title,
+                        artists = song.artists.map { Artist(name = it.name, id = it.id) },
+                        thumbnail = song.thumbnailUrl ?: "",
+                        explicit = false
+                    )
+                }
+                filled.addAll(available.take(needed))
+            }
+
             filled.take(targetSize)
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     @Suppress("UNCHECKED_CAST")
     val homeSections: StateFlow<List<HomeSection>> = combine(
@@ -667,6 +663,10 @@ class HomeViewModel @Inject constructor(
                             transformedChips?.firstOrNull()?.let { randomChip ->
                                 toggleChip(randomChip)
                             }
+                        }
+                        // Kick off mood page load immediately, parallel with Phase 1
+                        transformedChips?.firstOrNull()?.let { firstChip ->
+                            loadMoodPage(firstChip.endpoint?.params, hideExplicit, hideVideoSongs, hideYoutubeShorts)
                         }
                     }.onFailure { reportException(it) }
                 }
