@@ -715,6 +715,16 @@ fun ExperimentalLyrics(
 
         LaunchedEffect(showLyrics, lyrics, mergedLyricsList.size) {
             if (showLyrics && mergedLyricsList.isNotEmpty()) {
+                val alreadyMeasured = run {
+                    val h = itemHeights.toMap()
+                    val windowStart = (activeListIndex - 2).coerceAtLeast(0)
+                    val windowEnd = (activeListIndex + 4).coerceAtMost(mergedLyricsList.size - 1)
+                    (windowStart..windowEnd).all { h.containsKey(it) }
+                }
+                if (alreadyMeasured) {
+                    isInitialLayout = false
+                    return@LaunchedEffect
+                }
                 isInitialLayout = true
                 snapshotFlow {
                     val h = itemHeights.toMap()
