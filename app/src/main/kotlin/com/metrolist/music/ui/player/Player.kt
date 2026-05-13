@@ -176,8 +176,6 @@ import com.metrolist.music.constants.SliderStyleKey
 import com.metrolist.music.constants.SquigglySliderKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.constants.UseNewPlayerDesignKey
-import com.metrolist.music.db.entities.LyricsEntity
-import com.metrolist.music.di.LyricsHelperEntryPoint
 import com.metrolist.music.extensions.togglePlayPause
 import com.metrolist.music.extensions.toggleRepeatMode
 import com.metrolist.music.listentogether.RoomRole
@@ -207,7 +205,6 @@ import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
-import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -468,32 +465,6 @@ fun BottomSheetPlayer(
             }
         } else {
             gradientColors = emptyList()
-        }
-    }
-
-    // Prefetch lyrics as soon as the player expands, so they are ready when the user opens the lyrics view
-    LaunchedEffect(state.isExpanded, mediaMetadata?.id) {
-        if (state.isExpanded && mediaMetadata != null) {
-            val capturedMetadata = mediaMetadata ?: return@LaunchedEffect
-            withContext(Dispatchers.IO) {
-                try {
-                    val currentLyricsValue = playerConnection.currentLyrics.first()
-                    if (currentLyricsValue == null) {
-                        val entryPoint = EntryPointAccessors.fromApplication(
-                            context.applicationContext,
-                            com.metrolist.music.di.LyricsHelperEntryPoint::class.java,
-                        )
-                        val lyricsHelper = entryPoint.lyricsHelper()
-                        lyricsHelper.getLyricsProgressive(capturedMetadata) { result, _ ->
-                            database.query {
-                                upsert(LyricsEntity(capturedMetadata.id, result.lyrics, result.provider))
-                            }
-                        }
-                    }
-                } catch (_: Exception) {
-                    // Prefetch fallito silenziosamente; le lyrics verranno caricate quando l'utente apre la vista lyrics
-                }
-            }
         }
     }
 
@@ -2139,35 +2110,7 @@ fun InlineLyricsView(
     textButtonColor: Color,
     iconButtonColor: Color,
 ) {
-    val playerConnection = LocalPlayerConnection.current ?: return
-    val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
-    val context = LocalContext.current
-    val database = LocalDatabase.current
-    val coroutineScope = rememberCoroutineScope()
     val pillsController = remember { LyricsPillController() }
-
-    LaunchedEffect(mediaMetadata?.id, currentLyrics) {
-        if (mediaMetadata != null && currentLyrics == null) {
-            delay(500)
-            coroutineScope.launch(Dispatchers.IO) {
-                try {
-                    val entryPoint =
-                        EntryPointAccessors.fromApplication(
-                            context.applicationContext,
-                            com.metrolist.music.di.LyricsHelperEntryPoint::class.java,
-                        )
-                    val lyricsHelper = entryPoint.lyricsHelper()
-                    lyricsHelper.getLyricsProgressive(mediaMetadata) { result, _ ->
-                        database.query {
-                            upsert(LyricsEntity(mediaMetadata.id, result.lyrics, result.provider))
-                        }
-                    }
-                } catch (e: Exception) {
-                    // silently ignored
-                }
-            }
-        }
-    }
 
     InlinePlayerPageFrame(
         pills = {

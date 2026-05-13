@@ -327,7 +327,6 @@ fun ExperimentalLyrics(
     var geminiSetupCompleted by rememberPreference(GeminiSetupCompletedKey, false)
 
     LaunchedEffect(
-        showLyrics,
         lines,
         aiProvider,
         openRouterApiKey,
@@ -720,8 +719,8 @@ fun ExperimentalLyrics(
                 isInitialLayout = true
                 snapshotFlow {
                     val h = itemHeights.toMap()
-                    val windowStart = (activeListIndex - 8).coerceAtLeast(0)
-                    val windowEnd = (activeListIndex + 12).coerceAtMost(mergedLyricsList.size - 1)
+                    val windowStart = (activeListIndex - 2).coerceAtLeast(0)
+                    val windowEnd = (activeListIndex + 4).coerceAtMost(mergedLyricsList.size - 1)
                     (windowStart..windowEnd).all { h.containsKey(it) }
                 }.first { it }
                 isInitialLayout = false
