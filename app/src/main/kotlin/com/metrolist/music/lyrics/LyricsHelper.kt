@@ -140,12 +140,20 @@ constructor(
     private val cache = LruCache<String, List<LyricsResult>>(MAX_CACHE_SIZE)
     private var currentLyricsJob: Job? = null
 
+    private fun resolveWordLyricsDuration(mediaMetadata: MediaMetadata): Int {
+        if (mediaMetadata.duration > 0) return mediaMetadata.duration
+        // MediaMetadata has no textual duration field; no other source to parse from
+        return -1
+    }
+
     suspend fun getLyricsProgressive(
         mediaMetadata: MediaMetadata,
         onTierAvailable: suspend (LyricsWithProvider, LyricsTier) -> Unit
     ) {
         val cleanedTitle = LyricsUtils.cleanTitleForSearch(mediaMetadata.title)
         val artists = mediaMetadata.artists.joinToString { it.name }
+        val wordDuration = resolveWordLyricsDuration(mediaMetadata)
+        LyricsDebugLog.log("INPUT title=${mediaMetadata.title} | cleanedTitle=$cleanedTitle | artists=$artists | duration=${mediaMetadata.duration} | wordDuration=$wordDuration | album=${mediaMetadata.album?.title}")
         val enabledProviders = lyricsProviders.filter { it.isEnabled(context) }
 
         val fastSet = setOf(
@@ -154,66 +162,135 @@ constructor(
             YouTubeSubtitleLyricsProvider,
             YouTubeLyricsProvider
         )
+        val wordProviderSet = setOf(BetterLyricsProvider, PaxsenixLyricsProvider)
 
         var bestTier = LyricsTier.PLAIN
         val tierMutex = Mutex()
+        var wordFound = false
 
         LyricsDebugLog.clear()
         LyricsDebugLog.log("START song=${mediaMetadata.title} | providers=${enabledProviders.map { it.name }}")
 
-        coroutineScope {
-            val jobs = enabledProviders.map { provider ->
-                val timeout = if (provider in fastSet) 4000L else 15000L
-                async(Dispatchers.IO) {
-                    val startTime = System.currentTimeMillis()
-                    LyricsDebugLog.log("FETCH ${provider.name} | timeout=${timeout}ms")
-                    try {
-                        val result = withTimeoutOrNull(timeout) {
-                            provider.getLyrics(
-                                context,
-                                mediaMetadata.id,
-                                cleanedTitle,
-                                artists,
-                                mediaMetadata.duration,
-                                mediaMetadata.album?.title,
-                            )
-                        }
-                        val elapsed = System.currentTimeMillis() - startTime
-                        if (result == null) {
-                            LyricsDebugLog.log("TIMEOUT ${provider.name} | after ${elapsed}ms")
-                        } else if (result.isSuccess) {
-                            val raw = result.getOrNull()!!
-                            val filtered = LyricsUtils.filterLyricsCreditLines(raw)
-                            val tier = LyricsUtils.detectTier(filtered)
-                            LyricsDebugLog.log("SUCCESS ${provider.name} | ${elapsed}ms | tier=$tier | lines=${filtered.lines().size}")
-                            val shouldEmit = tierMutex.withLock {
-                                if (tier == LyricsTier.SYNCED_WORD || tier.ordinal > bestTier.ordinal) {
-                                    if (tier.ordinal > bestTier.ordinal) bestTier = tier
-                                    true
-                                } else false
+        val wordProviders = enabledProviders.filter { it in wordProviderSet }
+        if (wordProviders.isNotEmpty()) {
+            LyricsDebugLog.log("PHASE1 word-sync search | providers=${wordProviders.map { it.name }}")
+            coroutineScope {
+                val jobs = wordProviders.map { provider ->
+                    async(Dispatchers.IO) {
+                        val startTime = System.currentTimeMillis()
+                        LyricsDebugLog.log("REQUEST ${provider.name} | title=$cleanedTitle | artist=$artists | duration=$wordDuration | album=${mediaMetadata.album?.title} | timeout=15000ms")
+                        try {
+                            val result = withTimeoutOrNull(15_000L) {
+                                provider.getLyrics(
+                                    context,
+                                    mediaMetadata.id,
+                                    cleanedTitle,
+                                    artists,
+                                    wordDuration,
+                                    mediaMetadata.album?.title,
+                                )
                             }
-                            if (shouldEmit) {
-                                LyricsDebugLog.log("EMIT ${provider.name} | tier=$tier (new best)")
-                                onTierAvailable(LyricsWithProvider(filtered, provider.name), tier)
+                            val elapsed = System.currentTimeMillis() - startTime
+                            if (result == null) {
+                                LyricsDebugLog.log("TIMEOUT ${provider.name} | after ${elapsed}ms")
+                            } else if (result.isSuccess) {
+                                val raw = result.getOrNull()!!
+                                val filtered = LyricsUtils.filterLyricsCreditLines(raw)
+                                val tier = LyricsUtils.detectTier(filtered)
+                                LyricsDebugLog.log("SUCCESS ${provider.name} | ${elapsed}ms | tier=$tier")
+                                if (tier == LyricsTier.SYNCED_WORD) {
+                                    val shouldEmit = tierMutex.withLock {
+                                        if (!wordFound) {
+                                            wordFound = true
+                                            bestTier = LyricsTier.SYNCED_WORD
+                                            true
+                                        } else false
+                                    }
+                                    if (shouldEmit) {
+                                        LyricsDebugLog.log("EMIT ${provider.name} | tier=SYNCED_WORD (word phase)")
+                                        onTierAvailable(LyricsWithProvider(filtered, provider.name), tier)
+                                    } else {
+                                        LyricsDebugLog.log("SKIP ${provider.name} | SYNCED_WORD already found")
+                                    }
+                                } else {
+                                    LyricsDebugLog.log("SKIP ${provider.name} | tier=$tier not SYNCED_WORD in word phase")
+                                }
                             } else {
-                                LyricsDebugLog.log("SKIP ${provider.name} | tier=$tier not better than bestTier=$bestTier")
+                                val err = result.exceptionOrNull()?.message ?: "unknown error"
+                                LyricsDebugLog.log("FAIL ${provider.name} | ${elapsed}ms | $err")
                             }
-                        } else {
-                            val err = result.exceptionOrNull()?.message ?: "unknown error"
-                            LyricsDebugLog.log("FAIL ${provider.name} | ${elapsed}ms | $err")
+                        } catch (_: CancellationException) {
+                            LyricsDebugLog.log("CANCEL ${provider.name}")
+                        } catch (e: Exception) {
+                            val elapsed = System.currentTimeMillis() - startTime
+                            LyricsDebugLog.log("EXCEPTION ${provider.name} | ${elapsed}ms | ${e.message}")
                         }
-                    } catch (_: CancellationException) {
-                        LyricsDebugLog.log("CANCEL ${provider.name}")
-                    } catch (e: Exception) {
-                        val elapsed = System.currentTimeMillis() - startTime
-                        LyricsDebugLog.log("EXCEPTION ${provider.name} | ${elapsed}ms | ${e.message}")
-                        Timber.tag("LyricsHelper").w("Progressive provider ${provider.name} failed: ${e.message}")
                     }
                 }
+                jobs.forEach { it.await() }
             }
-            jobs.forEach { it.await() }
         }
-        LyricsDebugLog.log("DONE | bestTier=$bestTier")
+
+        LyricsDebugLog.log("PHASE1 done | wordFound=$wordFound")
+
+        if (!wordFound) {
+            LyricsDebugLog.log("PHASE2 fallback to all other providers")
+            val fallbackProviders = enabledProviders.filter { it !in wordProviderSet }
+            coroutineScope {
+                val jobs = fallbackProviders.map { provider ->
+                    val timeout = if (provider in fastSet) 4000L else 15000L
+                    async(Dispatchers.IO) {
+                        val startTime = System.currentTimeMillis()
+                        LyricsDebugLog.log("FETCH ${provider.name} | timeout=${timeout}ms")
+                        try {
+                            val result = withTimeoutOrNull(timeout) {
+                                provider.getLyrics(
+                                    context,
+                                    mediaMetadata.id,
+                                    cleanedTitle,
+                                    artists,
+                                    mediaMetadata.duration,
+                                    mediaMetadata.album?.title,
+                                )
+                            }
+                            val elapsed = System.currentTimeMillis() - startTime
+                            if (result == null) {
+                                LyricsDebugLog.log("TIMEOUT ${provider.name} | after ${elapsed}ms")
+                            } else if (result.isSuccess) {
+                                val raw = result.getOrNull()!!
+                                val filtered = LyricsUtils.filterLyricsCreditLines(raw)
+                                val tier = LyricsUtils.detectTier(filtered)
+                                LyricsDebugLog.log("SUCCESS ${provider.name} | ${elapsed}ms | tier=$tier | lines=${filtered.lines().size}")
+                                val shouldEmit = tierMutex.withLock {
+                                    if (tier.ordinal > bestTier.ordinal) {
+                                        bestTier = tier
+                                        true
+                                    } else false
+                                }
+                                if (shouldEmit) {
+                                    LyricsDebugLog.log("EMIT ${provider.name} | tier=$tier (new best)")
+                                    onTierAvailable(LyricsWithProvider(filtered, provider.name), tier)
+                                } else {
+                                    LyricsDebugLog.log("SKIP ${provider.name} | tier=$tier not better than bestTier=$bestTier")
+                                }
+                            } else {
+                                val err = result.exceptionOrNull()?.message ?: "unknown error"
+                                LyricsDebugLog.log("FAIL ${provider.name} | ${elapsed}ms | $err")
+                            }
+                        } catch (_: CancellationException) {
+                            LyricsDebugLog.log("CANCEL ${provider.name}")
+                        } catch (e: Exception) {
+                            val elapsed = System.currentTimeMillis() - startTime
+                            LyricsDebugLog.log("EXCEPTION ${provider.name} | ${elapsed}ms | ${e.message}")
+                            Timber.tag("LyricsHelper").w("Fallback provider ${provider.name} failed: ${e.message}")
+                        }
+                    }
+                }
+                jobs.forEach { it.await() }
+            }
+        }
+
+        LyricsDebugLog.log("DONE | bestTier=$bestTier | wordFound=$wordFound")
     }
 
     suspend fun getLyrics(mediaMetadata: MediaMetadata): LyricsWithProvider {

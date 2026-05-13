@@ -40,6 +40,9 @@ object PaxsenixLyricsProvider : LyricsProvider {
         album: String?,
     ): Result<String> {
         Timber.tag(TAG).d("getLyrics called: title='$title', artist='$artist', duration=$duration")
+        if (duration <= 0) {
+            Timber.tag(TAG).w("Skipping ideal match quality because invalid duration=$duration for title=$title artist=$artist")
+        }
 
         try {
             ensureInit(context)

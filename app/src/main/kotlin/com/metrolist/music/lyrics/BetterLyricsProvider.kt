@@ -10,8 +10,11 @@ import com.metrolist.music.betterlyrics.BetterLyrics
 import com.metrolist.music.constants.EnableBetterLyricsKey
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
+import timber.log.Timber
 
 object BetterLyricsProvider : LyricsProvider {
+    private const val TAG = "BetterLyricsProvider"
+
     override val name = "BetterLyrics"
 
     override fun isEnabled(context: Context): Boolean = context.dataStore[EnableBetterLyricsKey] ?: true
@@ -23,7 +26,12 @@ object BetterLyricsProvider : LyricsProvider {
         artist: String,
         duration: Int,
         album: String?,
-    ): Result<String> = BetterLyrics.getLyrics(title, artist, duration, album)
+    ): Result<String> {
+        if (duration <= 0) {
+            Timber.tag(TAG).w("Skipping ideal match quality because invalid duration=$duration for title=$title artist=$artist")
+        }
+        return BetterLyrics.getLyrics(title, artist, duration, album, videoId = id)
+    }
 
     override suspend fun getAllLyrics(
         context: Context,
@@ -34,6 +42,6 @@ object BetterLyricsProvider : LyricsProvider {
         album: String?,
         callback: (String) -> Unit,
     ) {
-        BetterLyrics.getAllLyrics(title, artist, duration, album, callback)
+        BetterLyrics.getAllLyrics(title, artist, duration, album, videoId = id, callback = callback)
     }
 }

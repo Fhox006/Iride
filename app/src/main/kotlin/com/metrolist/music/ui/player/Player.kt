@@ -179,6 +179,7 @@ import com.metrolist.music.constants.UseNewPlayerDesignKey
 import com.metrolist.music.extensions.togglePlayPause
 import com.metrolist.music.extensions.toggleRepeatMode
 import com.metrolist.music.listentogether.RoomRole
+import com.metrolist.music.lyrics.LyricsDebugLog
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground
@@ -2144,6 +2145,8 @@ fun InlineLyricsView(
     iconButtonColor: Color,
 ) {
     val pillsController = remember { LyricsPillController() }
+    val context = LocalContext.current
+    val debugEntries by LyricsDebugLog.entries.collectAsState()
 
     InlinePlayerPageFrame(
         pills = {
@@ -2170,6 +2173,25 @@ fun InlineLyricsView(
                 iconButtonColor = iconButtonColor,
                 modifier = Modifier.weight(1f),
                 onClick = { pillsController.selectionAction() },
+            )
+            PlayerPill(
+                icon = R.drawable.content_copy,
+                isActive = false,
+                textButtonColor = textButtonColor,
+                iconButtonColor = iconButtonColor,
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    val header = buildString {
+                        appendLine("title=${mediaMetadata?.title}")
+                        appendLine("artists=${mediaMetadata?.artists?.joinToString { it.name }}")
+                        appendLine("duration=${mediaMetadata?.duration}")
+                        appendLine("album=${mediaMetadata?.album?.title}")
+                        appendLine("---")
+                    }
+                    val log = debugEntries.joinToString("\n") { "[${it.timeMs}] ${it.message}" }
+                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    cm.setPrimaryClip(ClipData.newPlainText("LyricsDebug", header + log))
+                },
             )
         },
         content = {
