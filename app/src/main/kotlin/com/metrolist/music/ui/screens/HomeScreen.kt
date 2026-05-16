@@ -179,7 +179,6 @@ import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
-import com.metrolist.music.ui.component.shimmer.TextPlaceholder
 import com.metrolist.music.ui.menu.AlbumMenu
 import com.metrolist.music.ui.menu.ArtistMenu
 import com.metrolist.music.ui.menu.SongMenu
@@ -1337,22 +1336,28 @@ fun HomeScreen(
                     )
                 }
 
-                if (speedDialItems.isEmpty()) {
+                if (speedDialItems.isEmpty() && isLoading) {
                     item(key = "speed_dial_skeleton") {
+                        val targetItemSize = 160.dp
+                        val availableWidth = containerWidthDp
+                        val shimColumns = (availableWidth / targetItemSize).toInt().coerceAtLeast(3)
+                        val shimRows = if (shimColumns >= 6) 1 else if (shimColumns >= 4) 2 else 3
+                        val peekPadding = 20.dp
+                        val itemWidth = (availableWidth - peekPadding * 2) / shimColumns
                         ShimmerHost(showGradient = false) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    .padding(horizontal = peekPadding, vertical = 8.dp),
                             ) {
-                                repeat(3) { rowIndex ->
+                                repeat(shimRows) { rowIndex ->
                                     Row(modifier = Modifier.fillMaxWidth()) {
-                                        repeat(3) { colIndex ->
+                                        repeat(shimColumns) { colIndex ->
                                             val isCenter = rowIndex == 1 && colIndex == 1
                                             Spacer(
                                                 modifier = Modifier
-                                                    .weight(1f)
-                                                    .aspectRatio(1f)
+                                                    .width(itemWidth)
+                                                    .height(itemWidth)
                                                     .padding(4.dp)
                                                     .clip(if (isCenter) CircleShape else RoundedCornerShape(9.dp))
                                                     .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
@@ -1380,7 +1385,7 @@ fun HomeScreen(
                             }
                         }
                     }
-                } else {
+                } else if (speedDialItems.isNotEmpty()) {
                     item(key = "speed_dial_list") {
                         val items = speedDialItems
                         val targetItemSize = 160.dp
@@ -1700,45 +1705,42 @@ fun HomeScreen(
                 }
                 item(key = "your_mood_section") {
                     if (moodChips.isEmpty()) {
-                        val bgColor = Color(0xFF141518)
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                                .clip(RoundedCornerShape(28.dp))
-                                .background(bgColor)
-                                .padding(top = 14.dp, bottom = 12.dp),
-                            horizontalAlignment = Alignment.Start,
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ShimmerHost(showGradient = false) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    .clip(RoundedCornerShape(28.dp))
+                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+                                    .padding(top = 14.dp, bottom = 12.dp),
+                                horizontalAlignment = Alignment.Start,
                             ) {
-                                repeat(5) {
-                                    Box(
-                                        modifier = Modifier
-                                            .width(80.dp)
-                                            .height(36.dp)
-                                            .clip(CircleShape)
-                                            .background(Color.White.copy(alpha = 0.06f))
-                                    )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    repeat(5) {
+                                        Spacer(
+                                            modifier = Modifier
+                                                .width(80.dp)
+                                                .height(36.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+                                        )
+                                    }
                                 }
-                            }
 
-                            Spacer(modifier = Modifier.height(18.dp))
+                                Spacer(modifier = Modifier.height(10.dp))
 
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                repeat(4) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(135.dp)
-                                            .clip(RoundedCornerShape(9.dp))
-                                            .background(Color.White.copy(alpha = 0.06f))
-                                    )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 0.dp, vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(0.dp),
+                                ) {
+                                    repeat(4) {
+                                        GridItemPlaceHolder(
+                                            thumbnailShape = RoundedCornerShape(9.dp),
+                                        )
+                                    }
                                 }
                             }
                         }

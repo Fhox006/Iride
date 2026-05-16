@@ -640,8 +640,8 @@ fun AlbumScreen(
 
     TopAppBar(
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Transparent,
-            scrolledContainerColor = Color.Transparent,
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface,
             navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
             actionIconContentColor = MaterialTheme.colorScheme.onBackground,
             titleContentColor = MaterialTheme.colorScheme.onBackground,
@@ -703,6 +703,27 @@ fun AlbumScreen(
                         painter = painterResource(R.drawable.more_vert),
                         contentDescription = null,
                     )
+                }
+            } else {
+                val currentAlbumWithSongs = albumWithSongs
+                if (currentAlbumWithSongs != null) {
+                    val albumForMenu = Album(currentAlbumWithSongs.album, currentAlbumWithSongs.artists)
+                    IconButton(
+                        onClick = {
+                            menuState.show {
+                                AlbumMenu(
+                                    originalAlbum = albumForMenu,
+                                    navController = navController,
+                                    onDismiss = menuState::dismiss,
+                                )
+                            }
+                        },
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.more_vert),
+                            contentDescription = null,
+                        )
+                    }
                 }
             }
         },
