@@ -144,6 +144,7 @@
     <string name="playlist_synced">Playlist sincronizzata</string>
     <string name="undo">Annulla</string>
     <string name="lyrics_not_found">Testo non trovato</string>
+    <string name="lyrics_searching">…</string>
     <string name="sleep_timer">Timer per il sonno</string>
     <string name="end_of_song">Fine del brano</string>
     <plurals name="minute">

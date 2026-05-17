@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import com.metrolist.music.viewmodels.LyricsSearchStatus
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -291,6 +293,7 @@ fun ExperimentalLyrics(
 
     val lines by lyricsViewModel.lines.collectAsState()
     val mergedLyricsList by lyricsViewModel.mergedLyricsList.collectAsState()
+    val lyricsSearchStatus by lyricsViewModel.lyricsSearchStatus.collectAsState()
 
     LaunchedEffect(mediaMetadata?.id) {
         val metadata = mediaMetadata ?: return@LaunchedEffect
@@ -961,31 +964,58 @@ fun ExperimentalLyrics(
             }
         }
 
-        if (lyrics == LYRICS_NOT_FOUND) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    text = stringResource(R.string.lyrics_not_found),
-                    fontSize = 20.sp,
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.alpha(0.5f)
-                )
-            }
-        } else if (lyrics == null && (translationStatus is LyricsTranslationHelper.TranslationStatus.Idle || translationStatus is LyricsTranslationHelper.TranslationStatus.Error)) {
-            Column(modifier = Modifier.padding(top = 160.dp)) {
-                ShimmerHost {
-                    repeat(10) {
-                        Box(
-                            contentAlignment = when (lyricsTextPosition) {
-                                LyricsPosition.LEFT -> Alignment.CenterStart
-                                LyricsPosition.CENTER -> Alignment.Center
-                                else -> Alignment.CenterEnd
-                            },
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)
-                        ) { TextPlaceholder() }
+        Crossfade(
+            targetState = lyricsSearchStatus,
+            animationSpec = tween(durationMillis = 400),
+            modifier = Modifier.fillMaxSize()
+        ) { status ->
+            when {
+                status == LyricsSearchStatus.NotFoundFinal || lyrics == LYRICS_NOT_FOUND -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = stringResource(R.string.lyrics_not_found),
+                            fontSize = 20.sp,
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.alpha(0.5f)
+                        )
                     }
                 }
-            }
-        } else {
+                status == LyricsSearchStatus.NotFoundTemporary -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = stringResource(R.string.lyrics_not_found),
+                                fontSize = 20.sp,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.alpha(0.35f)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.lyrics_searching),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.alpha(0.25f)
+                            )
+                        }
+                    }
+                }
+                lyrics == null || status == LyricsSearchStatus.Loading -> {
+                    Column(modifier = Modifier.padding(top = 160.dp)) {
+                        ShimmerHost {
+                            repeat(10) {
+                                Box(
+                                    contentAlignment = when (lyricsTextPosition) {
+                                        LyricsPosition.LEFT -> Alignment.CenterStart
+                                        LyricsPosition.CENTER -> Alignment.Center
+                                        else -> Alignment.CenterEnd
+                                    },
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)
+                                ) { TextPlaceholder() }
+                            }
+                        }
+                    }
+                }
+                else -> {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1172,6 +1202,8 @@ fun ExperimentalLyrics(
                     )
                 }
 
+            }
+                }
             }
         }
 

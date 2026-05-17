@@ -23,13 +23,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 sealed class LyricsSearchStatus {
     object Idle : LyricsSearchStatus()
-    object SearchingSynced : LyricsSearchStatus()
-    object Found : LyricsSearchStatus()
+    object Loading : LyricsSearchStatus()            // shimmer — no results yet
+    object FoundPlain : LyricsSearchStatus()         // plain text found, still searching
+    object FoundLine : LyricsSearchStatus()          // synced line found, still waiting for WORD
+    object FoundWord : LyricsSearchStatus()          // word-level found, done
+    object NotFoundTemporary : LyricsSearchStatus()  // 3s elapsed, no results yet — still searching in bg
+    object NotFoundFinal : LyricsSearchStatus()      // search fully ended with no results
 }
 
 @HiltViewModel
@@ -106,9 +111,10 @@ class LyricsViewModel @Inject constructor(
     ) {
         progressiveJob?.cancel()
         processJob?.cancel()
-        lyricsSearchStatus.value = LyricsSearchStatus.Idle
+        lyricsSearchStatus.value = LyricsSearchStatus.Loading
 
         progressiveJob = viewModelScope.launch {
+            // --- Cache check ---
             val cached = withContext(Dispatchers.IO) {
                 database.lyrics(mediaMetadata.id).first()
             }
@@ -118,36 +124,55 @@ class LyricsViewModel @Inject constructor(
 
             if (cached != null && cached.lyrics != LYRICS_NOT_FOUND) {
                 processLyrics(cached.lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
-                if (cachedTier == LyricsTier.SYNCED_WORD) {
-                    lyricsSearchStatus.value = LyricsSearchStatus.Found
-                    return@launch
+                lyricsSearchStatus.value = when (cachedTier) {
+                    LyricsTier.SYNCED_WORD -> LyricsSearchStatus.FoundWord
+                    LyricsTier.SYNCED_LINE -> LyricsSearchStatus.FoundLine
+                    else -> LyricsSearchStatus.FoundPlain
                 }
-                // Non-word cache blocks providers from upgrading — delete so fresh fetch can upsert freely
+                if (cachedTier == LyricsTier.SYNCED_WORD) return@launch
                 database.query { delete(cached) }
             }
 
-            var bestTierSaved = LyricsTier.PLAIN
-
-            if (cachedTier < LyricsTier.SYNCED_WORD) {
-                lyricsSearchStatus.value = LyricsSearchStatus.SearchingSynced
+            // --- "Not found" timer: after 3s with no result, show temporary message ---
+            // Keep searching in background for up to MAX_LYRICS_FETCH_MS
+            val notFoundJob = launch {
+                delay(3000L)
+                // Only show if we still have no lyrics displayed at all
+                if (lyricsSearchStatus.value == LyricsSearchStatus.Loading) {
+                    lyricsSearchStatus.value = LyricsSearchStatus.NotFoundTemporary
+                }
             }
 
+            var bestTierSaved = cachedTier
             var wordTierLocked = false
+
             lyricsHelper.getLyricsProgressive(mediaMetadata) { result, tier ->
                 if (wordTierLocked) return@getLyricsProgressive
+
+                val isUpgrade = tier.ordinal > bestTierSaved.ordinal
+                val isFirstResult = bestTierSaved == LyricsTier.PLAIN && lyricsSearchStatus.value == LyricsSearchStatus.Loading
+                    || lyricsSearchStatus.value == LyricsSearchStatus.NotFoundTemporary
+
                 val shouldUpdate = when {
                     tier == LyricsTier.SYNCED_WORD -> true
-                    tier.ordinal > bestTierSaved.ordinal && !wordTierLocked -> true
+                    // If we already have LINE, only accept WORD (block other LINE results)
+                    bestTierSaved == LyricsTier.SYNCED_LINE && tier == LyricsTier.SYNCED_LINE -> false
+                    isUpgrade -> true
+                    isFirstResult -> true
                     else -> false
                 }
+
                 if (shouldUpdate) {
+                    notFoundJob.cancel()
                     bestTierSaved = tier
                     processLyrics(result.lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
                     database.query {
                         upsert(LyricsEntity(mediaMetadata.id, result.lyrics, result.provider))
                     }
-                    if (tier != LyricsTier.PLAIN) {
-                        lyricsSearchStatus.value = LyricsSearchStatus.Found
+                    lyricsSearchStatus.value = when (tier) {
+                        LyricsTier.SYNCED_WORD -> LyricsSearchStatus.FoundWord
+                        LyricsTier.SYNCED_LINE -> LyricsSearchStatus.FoundLine
+                        else -> LyricsSearchStatus.FoundPlain
                     }
                     if (tier == LyricsTier.SYNCED_WORD) {
                         wordTierLocked = true
@@ -155,7 +180,13 @@ class LyricsViewModel @Inject constructor(
                 }
             }
 
-            lyricsSearchStatus.value = if (bestTierSaved > LyricsTier.PLAIN) LyricsSearchStatus.Found else LyricsSearchStatus.Idle
+            // Search ended — finalize status
+            notFoundJob.cancel()
+            if (lyricsSearchStatus.value == LyricsSearchStatus.Loading ||
+                lyricsSearchStatus.value == LyricsSearchStatus.NotFoundTemporary) {
+                lyricsSearchStatus.value = LyricsSearchStatus.NotFoundFinal
+            }
+            // If we ended on FoundLine with no WORD upgrade, keep FoundLine (don't downgrade)
         }
     }
 
