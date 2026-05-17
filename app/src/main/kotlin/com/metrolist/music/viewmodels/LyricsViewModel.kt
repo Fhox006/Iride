@@ -118,6 +118,11 @@ class LyricsViewModel @Inject constructor(
             val cached = withContext(Dispatchers.IO) {
                 database.lyrics(mediaMetadata.id).first()
             }
+            // If DB has LYRICS_NOT_FOUND from a previous failed search, delete it and search fresh
+            if (cached != null && cached.lyrics == LYRICS_NOT_FOUND) {
+                database.query { delete(cached) }
+            }
+
             val cachedTier = if (cached != null && cached.lyrics != LYRICS_NOT_FOUND) {
                 LyricsUtils.detectTier(cached.lyrics)
             } else LyricsTier.PLAIN
@@ -130,8 +135,10 @@ class LyricsViewModel @Inject constructor(
                     else -> LyricsSearchStatus.FoundPlain
                 }
                 if (cachedTier == LyricsTier.SYNCED_WORD) return@launch
+                // Non-WORD cache: delete so providers can upsert freely with fresher/better result
                 database.query { delete(cached) }
             }
+            // getLyricsProgressive always runs unless we returned early on SYNCED_WORD above
 
             // --- "Not found" timer: after 3s with no result, show temporary message ---
             // Keep searching in background for up to MAX_LYRICS_FETCH_MS
