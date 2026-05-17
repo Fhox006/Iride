@@ -113,6 +113,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.withContext
 
+private val PlaceholderMediaMetadata = MediaMetadata(
+    id = "",
+    title = "Tap a track to start listening",
+    artists = emptyList(),
+    duration = 0,
+)
+
 private val NavRowHeight = 56.dp
 val FloatingPillHeight = MiniPlayerHeight + NavRowHeight  // 64 + 56 = 120dp
 val FloatingPillBottomSpacing = 12.dp
@@ -143,12 +150,11 @@ fun FloatingPill(
     modifier: Modifier = Modifier,
 ) {
     val playerConnection = LocalPlayerConnection.current
-    val mediaMetadata by (playerConnection?.mediaMetadata?.collectAsState() ?: remember { mutableStateOf(null) })
 
     val isTopLevelRoute = remember(currentRoute, navigationItems) {
         currentRoute == null ||
-            navigationItems.any { it.route == currentRoute } ||
-            currentRoute.startsWith("search/")
+                navigationItems.any { it.route == currentRoute } ||
+                currentRoute.startsWith("search/")
     }
 
     val targetPillHeight = if (isTopLevelRoute) FloatingPillHeight else MiniPlayerHeight
@@ -172,7 +178,7 @@ fun FloatingPill(
                 translationY = 0f
             },
     ) {
-        if (playerConnection == null || mediaMetadata == null) {
+        if (playerConnection == null) {
             PillShimmerSkeleton(isTopLevelRoute = isTopLevelRoute)
         } else {
             PillContent(
@@ -234,6 +240,7 @@ private fun PillContent(
     }
 
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val effectiveMetadata = mediaMetadata ?: PlaceholderMediaMetadata
     val playbackState by playerConnection.playbackState.collectAsState()
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
 
@@ -303,10 +310,10 @@ private fun PillContent(
         MiniPlayerBackgroundStyle.PURE_BLACK  -> Color.Black
     }
     val forceLightColors = !useDarkTheme && (
-        effectiveBackground == MiniPlayerBackgroundStyle.PURE_BLACK ||
-        effectiveBackground == MiniPlayerBackgroundStyle.BLUR ||
-        effectiveBackground == MiniPlayerBackgroundStyle.GRADIENT
-    )
+            effectiveBackground == MiniPlayerBackgroundStyle.PURE_BLACK ||
+                    effectiveBackground == MiniPlayerBackgroundStyle.BLUR ||
+                    effectiveBackground == MiniPlayerBackgroundStyle.GRADIENT
+            )
     val primaryColor   = if (forceLightColors) Color.White else MaterialTheme.colorScheme.primary
     val outlineColor   = if (forceLightColors) Color.White else MaterialTheme.colorScheme.outline
     val onSurfaceColor = if (forceLightColors) Color.White else MaterialTheme.colorScheme.onSurface
@@ -375,7 +382,7 @@ private fun PillContent(
                     ) {
                         PillPlayButton(
                             progressState = progressState,
-                            mediaMetadata = mediaMetadata,
+                            mediaMetadata = effectiveMetadata,
                             primaryColor = primaryColor,
                             outlineColor = outlineColor,
                         )
@@ -383,7 +390,7 @@ private fun PillContent(
                         Spacer(Modifier.width(16.dp))
 
                         PillSongInfo(
-                            mediaMetadata = mediaMetadata,
+                            mediaMetadata = effectiveMetadata,
                             onSurfaceColor = onSurfaceColor,
                             errorColor = errorColor,
                             modifier = Modifier.weight(1f),
@@ -550,7 +557,7 @@ private fun PillNavItem(
 @Composable
 private fun PillPlayButton(
     progressState: PillProgressState,
-    mediaMetadata: MediaMetadata?,
+    mediaMetadata: MediaMetadata,
     primaryColor: Color,
     outlineColor: Color,
 ) {
@@ -618,22 +625,20 @@ private fun PillPlayButton(
                 .clip(imageShape)
                 .border(1.dp, outlineColor.copy(alpha = 0.3f), imageShape),
         ) {
-            mediaMetadata?.let { metadata ->
-                val thumbnailUrl = remember(metadata.thumbnailUrl) { metadata.thumbnailUrl?.resize(120, 120) }
-                AsyncImage(
-                    model = thumbnailUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(imageShape),
-                )
-            }
+            val thumbnailUrl = remember(mediaMetadata.thumbnailUrl) { mediaMetadata.thumbnailUrl?.resize(120, 120) }
+            AsyncImage(
+                model = thumbnailUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().clip(imageShape),
+            )
         }
     }
 }
 
 @Composable
 private fun PillSongInfo(
-    mediaMetadata: MediaMetadata?,
+    mediaMetadata: MediaMetadata,
     onSurfaceColor: Color,
     errorColor: Color,
     modifier: Modifier = Modifier,
@@ -641,35 +646,33 @@ private fun PillSongInfo(
     val error by LocalPlayerConnection.current?.error?.collectAsState() ?: remember { mutableStateOf(null) }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.Center) {
-        mediaMetadata?.let { metadata ->
+        Text(
+            text = mediaMetadata.title,
+            color = onSurfaceColor,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+            modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
+        )
+        if (mediaMetadata.artists.any { it.name.isNotBlank() }) {
             Text(
-                text = metadata.title,
-                color = onSurfaceColor,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
+                text = mediaMetadata.artists.joinToString { it.name },
+                color = onSurfaceColor.copy(alpha = 0.7f),
+                fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
                 modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
             )
-            if (metadata.artists.any { it.name.isNotBlank() }) {
-                Text(
-                    text = metadata.artists.joinToString { it.name },
-                    color = onSurfaceColor.copy(alpha = 0.7f),
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Clip,
-                    modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
-                )
-            }
-            AnimatedVisibility(visible = error != null, enter = fadeIn(), exit = fadeOut()) {
-                Text(
-                    text = stringResource(R.string.error_playing),
-                    color = errorColor,
-                    fontSize = 10.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+        }
+        AnimatedVisibility(visible = error != null, enter = fadeIn(), exit = fadeOut()) {
+            Text(
+                text = stringResource(R.string.error_playing),
+                color = errorColor,
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -762,5 +765,4 @@ private fun PillSkipNextButton(
         )
     }
 }
-
 

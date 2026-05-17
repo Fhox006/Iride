@@ -133,6 +133,7 @@ import com.metrolist.music.constants.DisableScreenshotKey
 import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.ExperimentalLyricsKey
+import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.OnboardingCompletedKey
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.ListenTogetherUsernameKey
@@ -151,6 +152,7 @@ import com.metrolist.music.constants.SlimNavBarKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
 import com.metrolist.music.constants.UpdateNotificationsEnabledKey
 import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
+import com.metrolist.music.constants.VisitorDataKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.extensions.toEnum
@@ -336,6 +338,18 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
 
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch {
+            val cookie = dataStore.data.map { it[InnerTubeCookieKey] }.first()
+            val visitorData = dataStore.data.map { it[VisitorDataKey] }.first()
+            if ((cookie != null && YouTube.cookie == null) ||
+                (visitorData != null && YouTube.visitorData == null)) {
+                (application as App).initializeSettings()
+            }
+        }
+    }
+
     override fun onDestroy() {
         if (isFinishing) {
             listenTogetherManager.disconnect()
@@ -512,7 +526,7 @@ class MainActivity : ComponentActivity() {
             setSystemBarAppearance(useDarkTheme)
         }
 
-        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = true)
+        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
         val pureBlack =
             remember(pureBlackEnabled, useDarkTheme) {
                 pureBlackEnabled && useDarkTheme

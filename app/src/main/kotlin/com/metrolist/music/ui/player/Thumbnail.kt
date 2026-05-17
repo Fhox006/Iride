@@ -231,16 +231,9 @@ fun Thumbnail(
     // Pre-calculate text color based on background style
     val textBackgroundColor = getTextColor(playerBackground)
     
-    // Calculate media items data - memoized
-    val mediaItemsData by remember(
-        playerConnection.player.currentMediaItemIndex,
-        playerConnection.player.shuffleModeEnabled,
-        swipeThumbnail,
-        mediaMetadata
-    ) {
-        derivedStateOf {
-            getMediaItems(playerConnection.player, swipeThumbnail)
-        }
+    // Calculate media items data - recomputed on every track change
+    val mediaItemsData = remember(mediaMetadata, swipeThumbnail) {
+        getMediaItems(playerConnection.player, swipeThumbnail)
     }
 
     // Grid state
@@ -281,21 +274,23 @@ fun Thumbnail(
         if (!thumbnailLazyGridState.isScrollInProgress || !swipeThumbnail || itemScrollOffset != 0 || currentMediaIndex < 0) return@LaunchedEffect
 
         if (currentItem > currentMediaIndex && canSkipNext) {
-            playerConnection.player.seekToNext()
+            playerConnection.seekToNext()
         } else if (currentItem < currentMediaIndex && canSkipPrevious) {
-            playerConnection.player.seekToPreviousMediaItem()
+            playerConnection.seekToPrevious()
         }
     }
 
     // Update position when song changes
     var isFirstComposition by remember { mutableStateOf(true) }
-    LaunchedEffect(mediaItemsData.currentIndex) {
-        if (isFirstComposition) {
-            isFirstComposition = false
-            return@LaunchedEffect
-        }
+    val currentTrackId = mediaMetadata?.id
+    LaunchedEffect(currentTrackId) {
         val index = mediaItemsData.currentIndex.coerceAtLeast(0)
         if (index >= 0 && index < mediaItems.size) {
+            if (isFirstComposition) {
+                isFirstComposition = false
+                thumbnailLazyGridState.scrollToItem(index)
+                return@LaunchedEffect
+            }
             try {
                 thumbnailLazyGridState.animateScrollToItem(index)
             } catch (e: Exception) {

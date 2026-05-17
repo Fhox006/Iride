@@ -77,7 +77,7 @@ class App :
         }
     }
 
-    private suspend fun initializeSettings() {
+    internal suspend fun initializeSettings() {
         val settings = dataStore.data.first()
         val locale = Locale.getDefault()
         val languageTag = locale.language

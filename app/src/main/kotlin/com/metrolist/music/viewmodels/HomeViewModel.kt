@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.Artist
+import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import kotlinx.coroutines.flow.combine
@@ -30,11 +31,21 @@ import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.HomeCacheLastLoadedKey
 import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.constants.LastMoodChipParamsKey
+import com.metrolist.music.constants.LastMoodChipTitleKey
+import com.metrolist.music.constants.MoodSnapshotKey
 import com.metrolist.music.constants.QuickPicks
 import com.metrolist.music.constants.QuickPicksKey
 import com.metrolist.music.constants.RandomizeHomeOrderKey
 import com.metrolist.music.constants.ShowWrappedCardKey
+import com.metrolist.music.constants.SpeedDialSnapshotKey
 import com.metrolist.music.constants.WrappedSeenKey
+import com.metrolist.music.models.HomeSnapshotItem
+import com.metrolist.music.models.MoodSnapshot
+import com.metrolist.music.models.SpeedDialSnapshot
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import com.metrolist.music.ui.screens.HomeSection
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Album
@@ -60,6 +71,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -147,13 +159,69 @@ class HomeViewModel @Inject constructor(
     val moodPage = MutableStateFlow<HomePage?>(null)
     private var lastMoodChipParams: String? = null
 
-    fun loadMoodPage(params: String?, hideExplicit: Boolean, hideVideoSongs: Boolean, hideYoutubeShorts: Boolean) {
+    val cachedSpeedDialSnapshot = MutableStateFlow<SpeedDialSnapshot?>(null)
+    val cachedMoodSnapshot = MutableStateFlow<MoodSnapshot?>(null)
+
+    private val snapshotJson = Json { ignoreUnknownKeys = true }
+    private var lastSavedSpeedDialIds: List<String> = emptyList()
+
+    private fun mapYTItemToSnapshot(item: YTItem): HomeSnapshotItem? = when (item) {
+        is SongItem -> HomeSnapshotItem(
+            id = item.id,
+            title = item.title,
+            subtitle = item.artists.joinToString(", ") { it.name }.takeIf { it.isNotEmpty() },
+            thumbnailUrl = item.thumbnail.takeIf { it.isNotEmpty() },
+            type = "song",
+        )
+        is AlbumItem -> HomeSnapshotItem(
+            id = item.browseId,
+            title = item.title,
+            subtitle = item.artists?.joinToString(", ") { it.name }?.takeIf { it.isNotEmpty() },
+            thumbnailUrl = item.thumbnail.takeIf { it.isNotEmpty() },
+            type = "album",
+            browseId = item.browseId,
+            playlistId = item.playlistId,
+        )
+        is ArtistItem -> HomeSnapshotItem(
+            id = item.id,
+            title = item.title,
+            thumbnailUrl = item.thumbnail?.takeIf { it.isNotEmpty() },
+            type = "artist",
+        )
+        is PlaylistItem -> HomeSnapshotItem(
+            id = item.id,
+            title = item.title,
+            subtitle = item.author?.name,
+            thumbnailUrl = item.thumbnail?.takeIf { it.isNotEmpty() },
+            type = "playlist",
+        )
+        else -> null
+    }
+
+    private suspend fun saveMoodSnapshotAfterLoad(chipTitle: String, chipParams: String?, page: HomePage) {
+        val mixItems = page.sections
+            .flatMap { it.items }
+            .filterIsInstance<PlaylistItem>()
+            .take(10)
+        if (mixItems.isEmpty()) return
+        val snapshotItems = mixItems.mapNotNull { mapYTItemToSnapshot(it) }
+        val existingIds = cachedMoodSnapshot.value
+            ?.takeIf { it.chipParams == chipParams }
+            ?.items?.map { it.id }
+        if (existingIds == snapshotItems.map { it.id }) return
+        val snapshot = MoodSnapshot(System.currentTimeMillis(), chipTitle, chipParams, snapshotItems)
+        cachedMoodSnapshot.value = snapshot
+        val json = runCatching { snapshotJson.encodeToString(snapshot) }.getOrNull() ?: return
+        context.dataStore.edit { it[MoodSnapshotKey] = json }
+    }
+
+    fun loadMoodPage(params: String?, chipTitle: String? = null, hideExplicit: Boolean, hideVideoSongs: Boolean, hideYoutubeShorts: Boolean) {
         if (params == lastMoodChipParams && moodPage.value != null) return
         lastMoodChipParams = params
         viewModelScope.launch(Dispatchers.IO) {
             if (params != null) {
                 YouTube.home(params = params).onSuccess { nextSections ->
-                    moodPage.value = nextSections.copy(
+                    val filteredPage = nextSections.copy(
                         sections = nextSections.sections.mapNotNull { section ->
                             val filteredItems = section.items
                                 .filterExplicit(hideExplicit)
@@ -162,6 +230,14 @@ class HomeViewModel @Inject constructor(
                             if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
                         }
                     )
+                    moodPage.value = filteredPage
+                    if (chipTitle != null) {
+                        context.dataStore.edit { prefs ->
+                            prefs[LastMoodChipTitleKey] = chipTitle
+                            prefs[LastMoodChipParamsKey] = params
+                        }
+                        saveMoodSnapshotAfterLoad(chipTitle, params, filteredPage)
+                    }
                 }
             } else {
                 moodPage.value = null
@@ -235,7 +311,7 @@ class HomeViewModel @Inject constructor(
     val homeSections: StateFlow<List<HomeSection>> = combine(
         quickPicks, keepListening, forgottenFavorites, similarRecommendations,
         homePage, communityPlaylists, dailyDiscover, accountPlaylists,
-        selectedChip, randomizeHomeOrder, randomSeed
+        selectedChip, randomizeHomeOrder, randomSeed, cachedSpeedDialSnapshot
     ) { args ->
         val quickPicks = args[0] as List<Song>?
         val keepListening = args[1] as List<LocalItem>?
@@ -248,6 +324,8 @@ class HomeViewModel @Inject constructor(
         val selectedChip = args[8] as HomePage.Chip?
         val randomizeHomeOrder = args[9] as Boolean
         val randomSeed = args[10] as Long
+        val cachedSpeedDialSnap = args[11] as SpeedDialSnapshot?
+        val hasCachedSpeedDial = cachedSpeedDialSnap?.items?.isNotEmpty() == true
 
         val list = mutableListOf<HomeSection>()
         val chipActive = selectedChip != null
@@ -335,9 +413,12 @@ class HomeViewModel @Inject constructor(
             }
 
         val finalItems = mutableListOf<HomeSection>()
-        if (list.contains(HomeSection.SpeedDial)) finalItems.add(HomeSection.SpeedDial)
-        if (list.contains(HomeSection.YourMood)) finalItems.add(HomeSection.YourMood)
-        finalItems.addAll(sortedList.filter { it != HomeSection.SpeedDial && it != HomeSection.YourMood })
+        // Pin SpeedDial only when a cached snapshot gives immediate content
+        if (hasCachedSpeedDial && list.contains(HomeSection.SpeedDial)) finalItems.add(HomeSection.SpeedDial)
+        // YourMood is no longer force-pinned; it participates in sorted order
+        finalItems.addAll(sortedList.filter { section ->
+            !(hasCachedSpeedDial && section == HomeSection.SpeedDial)
+        })
         finalItems
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -658,15 +739,26 @@ class HomeViewModel @Inject constructor(
                         )
                         homePage.value = transformedPage
 
-                        // Preselect the first chip (which is random because we shuffled them)
+                        // Preselect a chip: prefer the last saved mood chip, else random
                         if (selectedChip.value == null) {
-                            transformedChips?.firstOrNull()?.let { randomChip ->
-                                toggleChip(randomChip)
+                            val savedParams = cachedMoodSnapshot.value?.chipParams
+                            val preferredChip = if (!savedParams.isNullOrEmpty()) {
+                                transformedChips?.firstOrNull { it.endpoint?.params == savedParams }
+                            } else null
+                            (preferredChip ?: transformedChips?.firstOrNull())?.let { chip ->
+                                toggleChip(chip)
                             }
                         }
                         // Kick off mood page load immediately, parallel with Phase 1
-                        transformedChips?.firstOrNull()?.let { firstChip ->
-                            loadMoodPage(firstChip.endpoint?.params, hideExplicit, hideVideoSongs, hideYoutubeShorts)
+                        val savedParams = cachedMoodSnapshot.value?.chipParams
+                        val moodChip = if (!savedParams.isNullOrEmpty()) {
+                            transformedChips?.firstOrNull { it.endpoint?.params == savedParams }
+                                ?: transformedChips?.firstOrNull()
+                        } else {
+                            transformedChips?.firstOrNull()
+                        }
+                        moodChip?.let { chip ->
+                            loadMoodPage(chip.endpoint?.params, chip.title, hideExplicit, hideVideoSongs, hideYoutubeShorts)
                         }
                     }.onFailure { reportException(it) }
                 }
@@ -911,6 +1003,36 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
+        // Read snapshots once from DataStore for fast first paint
+        viewModelScope.launch(Dispatchers.IO) {
+            val prefs = context.dataStore.data.first()
+            prefs[SpeedDialSnapshotKey]?.let { json ->
+                runCatching { snapshotJson.decodeFromString<SpeedDialSnapshot>(json) }
+                    .getOrNull()?.let { cachedSpeedDialSnapshot.value = it }
+            }
+            prefs[MoodSnapshotKey]?.let { json ->
+                runCatching { snapshotJson.decodeFromString<MoodSnapshot>(json) }
+                    .getOrNull()?.let { cachedMoodSnapshot.value = it }
+            }
+        }
+
+        // Save speed dial snapshot when live items change
+        viewModelScope.launch(Dispatchers.IO) {
+            speedDialItems
+                .filter { it.isNotEmpty() }
+                .collect { items ->
+                    val snapshot18 = items.take(18)
+                    val newIds = snapshot18.map { it.id }
+                    if (newIds == lastSavedSpeedDialIds) return@collect
+                    lastSavedSpeedDialIds = newIds
+                    val snapshotItems = snapshot18.mapNotNull { mapYTItemToSnapshot(it) }
+                    val snapshot = SpeedDialSnapshot(System.currentTimeMillis(), snapshotItems)
+                    cachedSpeedDialSnapshot.value = snapshot
+                    val json = runCatching { snapshotJson.encodeToString(snapshot) }.getOrNull() ?: return@collect
+                    context.dataStore.edit { it[SpeedDialSnapshotKey] = json }
+                }
+        }
+
         // Load home data
         viewModelScope.launch(Dispatchers.IO) {
             if (HomeCache.lastLoadedAt == 0L) {

@@ -161,9 +161,19 @@ constructor(
         val cleanedTitle = LyricsUtils.cleanTitleForSearch(mediaMetadata.title)
         val artists = mediaMetadata.artists.joinToString { it.name }
         val wordDuration = resolveWordLyricsDuration(mediaMetadata)
-        val enabledProviders = lyricsProviders.filter { it.isEnabled(context) }
+        // STAT MODE: query ALL providers regardless of user settings or isEnabled()
+        val enabledProviders = listOf(
+            BetterLyricsProvider,
+            PaxsenixLyricsProvider,
+            LrcLibLyricsProvider,
+            KuGouLyricsProvider,
+            LyricsPlusProvider,
+            YouTubeSubtitleLyricsProvider,
+            YouTubeLyricsProvider
+        )
 
-        val fastSet = setOf(LrcLibLyricsProvider, KuGouLyricsProvider, YouTubeSubtitleLyricsProvider, YouTubeLyricsProvider)
+        val fastSet = setOf(YouTubeSubtitleLyricsProvider, YouTubeLyricsProvider)
+        // LrcLib and KuGou do multiple sequential HTTP calls internally; they need more time
         val wordProviderSet = setOf(BetterLyricsProvider, PaxsenixLyricsProvider)
 
         val tierMutex = Mutex()
@@ -183,7 +193,8 @@ constructor(
                 }
                 async(Dispatchers.IO) {
                     val startTime = System.currentTimeMillis()
-                    LyricsDebugLog.log("REQUEST ${provider.name} | timeout=${timeout}ms")
+                    val effectiveDuration = if (isWordProvider) wordDuration else mediaMetadata.duration
+                    LyricsDebugLog.log("REQUEST ${provider.name} | timeout=${timeout}ms | duration=${effectiveDuration}")
                     try {
                         val result = withTimeoutOrNull(timeout) {
                             provider.getLyrics(
@@ -191,7 +202,7 @@ constructor(
                                 mediaMetadata.id,
                                 cleanedTitle,
                                 artists,
-                                if (isWordProvider) wordDuration else mediaMetadata.duration,
+                                effectiveDuration,
                                 mediaMetadata.album?.title,
                             )
                         }
