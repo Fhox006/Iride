@@ -375,7 +375,7 @@ fun LibraryMixScreen(
         }
     }
 
-    data class CategoryItem(val label: String, val icon: Int, val route: String)
+    data class CategoryItem(val label: String, val icon: Int, val route: String, val showStar: Boolean = false)
 
     val headerContent = @Composable {
         LibrarySearchHeader(
@@ -444,41 +444,12 @@ fun LibraryMixScreen(
     val pullRefreshState = rememberPullToRefreshState()
 
     val categoriesContent = @Composable {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Text(
-                text = "Starred",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
-            )
-
-            val starredItems = listOf(
-                CategoryItem(stringResource(R.string.albums), R.drawable.album, "library_albums"),
-                CategoryItem(stringResource(R.string.artists), R.drawable.artist, "library_artists"),
-                CategoryItem("Songs", R.drawable.music_note, "auto_playlist/liked"),
-            )
-
-            starredItems.chunked(2).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { item ->
-                        LibraryCategoryCard(
-                            label = item.label,
-                            icon = item.icon,
-                            onClick = { navController.navigate(item.route) },
-                            modifier = Modifier.weight(1f).padding(vertical = 4.dp),
-                        )
-                    }
-                    if (row.size < 2) Spacer(Modifier.weight(1f))
-                }
-            }
-
-            Text(
-                text = "Collection",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 4.dp)
-            )
-
-            val collectionItems = buildList {
-                add(CategoryItem("All Tracks", R.drawable.library_music, "library_songs"))
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+            val allCategoryItems = buildList {
+                add(CategoryItem(stringResource(R.string.albums), R.drawable.library_music, "library_albums", showStar = true))
+                add(CategoryItem(stringResource(R.string.artists), R.drawable.artist, "library_artists", showStar = true))
+                add(CategoryItem("Songs", R.drawable.music_note, "auto_playlist/liked", showStar = true))
+                add(CategoryItem("All Tracks", R.drawable.queue_music, "library_songs", showStar = true))
                 add(CategoryItem(stringResource(R.string.playlists), R.drawable.queue_music, "library_playlists"))
                 add(CategoryItem(stringResource(R.string.downloads), R.drawable.download, "auto_playlist/downloaded"))
                 add(CategoryItem(stringResource(R.string.cache), R.drawable.cached, "cache_playlist/cached"))
@@ -487,14 +458,15 @@ fun LibraryMixScreen(
                 }
             }
 
-            collectionItems.chunked(2).forEach { row ->
+            allCategoryItems.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     row.forEach { item ->
                         LibraryCategoryCard(
                             label = item.label,
                             icon = item.icon,
+                            showStar = item.showStar,
                             onClick = { navController.navigate(item.route) },
-                            modifier = Modifier.weight(1f).padding(vertical = 4.dp),
+                            modifier = Modifier.weight(1f),
                         )
                     }
                     if (row.size < 2) Spacer(Modifier.weight(1f))
@@ -834,6 +806,7 @@ private fun LibraryCategoryCard(
     icon: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showStar: Boolean = false,
 ) {
     Box(
         contentAlignment = Alignment.CenterStart,
@@ -856,7 +829,17 @@ private fun LibraryCategoryCard(
                 style = MaterialTheme.typography.labelLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
             )
+            if (showStar) {
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    painter = painterResource(R.drawable.star),
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }

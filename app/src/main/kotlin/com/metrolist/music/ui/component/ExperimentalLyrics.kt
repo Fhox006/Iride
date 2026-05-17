@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
 import com.metrolist.music.viewmodels.LyricsSearchStatus
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationState
@@ -255,25 +254,12 @@ fun ExperimentalLyrics(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val translationStatus by LyricsTranslationHelper.status.collectAsState()
     val currentLyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
-    var lastValidLyricsEntity by remember { mutableStateOf<com.metrolist.music.db.entities.LyricsEntity?>(null) }
-
-    LaunchedEffect(currentLyricsEntity) {
-        if (currentLyricsEntity != null) {
-            lastValidLyricsEntity = currentLyricsEntity
-        }
-    }
-
-    val lyricsEntity = remember(currentLyricsEntity, translationStatus) {
-        if (currentLyricsEntity != null) {
-            currentLyricsEntity
-        } else if (translationStatus is LyricsTranslationHelper.TranslationStatus.Translating || translationStatus is LyricsTranslationHelper.TranslationStatus.Success) {
-            lastValidLyricsEntity
-        } else {
-            null
-        }
-    }
     val currentSong by playerConnection.currentSong.collectAsState(initial = null)
-    val lyrics = remember(lyricsEntity) { lyricsEntity?.lyrics?.trim() }
+    val displayedLyrics by lyricsViewModel.displayedLyrics.collectAsState()
+    val lyrics = remember(displayedLyrics) { displayedLyrics?.trim() }
+
+    // DB entity kept only for provider label and translation persistence
+    val lyricsEntity = currentLyricsEntity
 
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
@@ -400,7 +386,7 @@ fun ExperimentalLyrics(
     var isSelectionModeActive by rememberSaveable { mutableStateOf(false) }
     val selectedIndices = remember { mutableStateListOf<Int>() }
     var showMaxSelectionToast by remember { mutableStateOf(false) }
-    val isLyricsProviderShown = lyricsEntity != null && lyricsEntity.provider != "Unknown" && lyricsEntity.provider != "Manual" && !isSelectionModeActive
+    val isLyricsProviderShown = lyricsEntity != null && mergedLyricsList.isNotEmpty() && lyricsEntity.provider != "Unknown" && lyricsEntity.provider != "Manual" && !isSelectionModeActive
     var isAutoScrollEnabled by rememberSaveable { mutableStateOf(true) }
     var pillsVisible by remember { mutableStateOf(true) }
     val effectivePillsVisible by remember {
@@ -964,58 +950,16 @@ fun ExperimentalLyrics(
             }
         }
 
-        Crossfade(
-            targetState = lyricsSearchStatus,
-            animationSpec = tween(durationMillis = 400),
-            modifier = Modifier.fillMaxSize()
-        ) { status ->
-            when {
-                status == LyricsSearchStatus.NotFoundFinal || lyrics == LYRICS_NOT_FOUND -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = stringResource(R.string.lyrics_not_found),
-                            fontSize = 20.sp,
-                            color = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.alpha(0.5f)
-                        )
-                    }
-                }
-                status == LyricsSearchStatus.NotFoundTemporary -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = stringResource(R.string.lyrics_not_found),
-                                fontSize = 20.sp,
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.alpha(0.35f)
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = stringResource(R.string.lyrics_searching),
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.alpha(0.25f)
-                            )
-                        }
-                    }
-                }
-                lyrics == null || status == LyricsSearchStatus.Loading -> {
-                    Column(modifier = Modifier.padding(top = 160.dp)) {
-                        ShimmerHost {
-                            repeat(10) {
-                                Box(
-                                    contentAlignment = when (lyricsTextPosition) {
-                                        LyricsPosition.LEFT -> Alignment.CenterStart
-                                        LyricsPosition.CENTER -> Alignment.Center
-                                        else -> Alignment.CenterEnd
-                                    },
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)
-                                ) { TextPlaceholder() }
-                            }
-                        }
-                    }
-                }
-                else -> {
+        val lyricsVisible = lyrics != null && lyrics != LYRICS_NOT_FOUND
+        val lyricsContentReady = lyricsVisible && mergedLyricsList.isNotEmpty()
+        val lyricsAlpha by animateFloatAsState(
+            targetValue = if (lyricsContentReady) 1f else 0f,
+            animationSpec = tween(durationMillis = 350),
+            label = "lyricsAlpha"
+        )
+
+        if (lyricsContentReady) {
+            Box(modifier = Modifier.fillMaxSize().alpha(lyricsAlpha)) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1203,6 +1147,69 @@ fun ExperimentalLyrics(
                 }
 
             }
+            }
+        } else if (lyricsVisible) {
+            // lyrics string arrived but async parse not yet done — show shimmer briefly
+            Column(modifier = Modifier.padding(top = 160.dp)) {
+                ShimmerHost {
+                    repeat(10) {
+                        Box(
+                            contentAlignment = when (lyricsTextPosition) {
+                                LyricsPosition.LEFT -> Alignment.CenterStart
+                                LyricsPosition.CENTER -> Alignment.Center
+                                else -> Alignment.CenterEnd
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)
+                        ) { TextPlaceholder() }
+                    }
+                }
+            }
+        } else {
+            when (lyricsSearchStatus) {
+                LyricsSearchStatus.NotFoundFinal -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = stringResource(R.string.lyrics_not_found),
+                            fontSize = 20.sp,
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.alpha(0.5f)
+                        )
+                    }
+                }
+                LyricsSearchStatus.NotFoundTemporary -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = stringResource(R.string.lyrics_not_found),
+                                fontSize = 20.sp,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.alpha(0.35f)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.lyrics_searching),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.alpha(0.25f)
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    Column(modifier = Modifier.padding(top = 160.dp)) {
+                        ShimmerHost {
+                            repeat(10) {
+                                Box(
+                                    contentAlignment = when (lyricsTextPosition) {
+                                        LyricsPosition.LEFT -> Alignment.CenterStart
+                                        LyricsPosition.CENTER -> Alignment.Center
+                                        else -> Alignment.CenterEnd
+                                    },
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)
+                                ) { TextPlaceholder() }
+                            }
+                        }
+                    }
                 }
             }
         }

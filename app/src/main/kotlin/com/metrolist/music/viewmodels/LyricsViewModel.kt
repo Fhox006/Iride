@@ -47,6 +47,9 @@ class LyricsViewModel @Inject constructor(
 
     val lyricsSearchStatus = MutableStateFlow<LyricsSearchStatus>(LyricsSearchStatus.Idle)
 
+    private val _displayedLyrics = MutableStateFlow<String?>(null)
+    val displayedLyrics: StateFlow<String?> = _displayedLyrics.asStateFlow()
+
     private val _lines = MutableStateFlow<List<LyricsEntry>>(emptyList())
     val lines: StateFlow<List<LyricsEntry>> = _lines.asStateFlow()
 
@@ -59,6 +62,7 @@ class LyricsViewModel @Inject constructor(
         romanizeCyrillicByLine: Boolean,
         showIntervalIndicator: Boolean
     ) {
+        _displayedLyrics.value = lyrics
         processJob?.cancel()
         processJob = viewModelScope.launch {
             val processedLines = withContext(Dispatchers.Default) {
@@ -112,6 +116,9 @@ class LyricsViewModel @Inject constructor(
         progressiveJob?.cancel()
         processJob?.cancel()
         lyricsSearchStatus.value = LyricsSearchStatus.Loading
+        _displayedLyrics.value = null
+        _lines.value = emptyList()
+        _mergedLyricsList.value = emptyList()
 
         progressiveJob = viewModelScope.launch {
             // --- Cache check ---

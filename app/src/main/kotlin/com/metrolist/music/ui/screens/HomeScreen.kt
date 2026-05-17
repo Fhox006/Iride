@@ -79,7 +79,9 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.produceState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -626,6 +628,26 @@ fun DailyDiscoverCard(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun rememberDominantColor(imageUrl: String?, isDark: Boolean): State<Color?> {
+    val context = LocalContext.current
+    return produceState<Color?>(initialValue = null, imageUrl, isDark) {
+        value = null
+        if (imageUrl == null) return@produceState
+        kotlinx.coroutines.delay(300)
+        value = withContext(Dispatchers.IO) {
+            try {
+                val bmp = context.imageLoader
+                    .execute(ImageRequest.Builder(context).data(imageUrl).allowHardware(false).build())
+                    .image?.toBitmap() ?: return@withContext null
+                val palette = Palette.from(bmp).generate()
+                val rgb = palette.getDominantColor(0)
+                if (rgb != 0) Color(rgb).copy(alpha = if (isDark) 0.25f else 0.15f) else null
+            } catch (_: Exception) { null }
         }
     }
 }
@@ -1845,41 +1867,18 @@ fun HomeScreen(
                         } else {
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                         }
-                        val moodPaletteContext = LocalContext.current
-                        var lastStableColor by remember { mutableStateOf<Color?>(null) }
-                        var moodDominantColor by remember(selectedMoodCategory) { mutableStateOf<Color?>(null) }
                         val firstTrackThumbnail = remember(moodPage) {
                             moodPage?.sections
                                 ?.firstOrNull { s -> s.items.any { it is SongItem } }
                                 ?.items?.filterIsInstance<SongItem>()?.firstOrNull()?.thumbnail
                         }
-                        LaunchedEffect(firstTrackThumbnail) {
-                            if (firstTrackThumbnail == null) return@LaunchedEffect
-                            if (!isScreenReady) return@LaunchedEffect
-                            kotlinx.coroutines.delay(300)
-                            withContext(Dispatchers.Default) {
-                                try {
-                                    val loader = moodPaletteContext.imageLoader
-                                    val req = ImageRequest.Builder(moodPaletteContext)
-                                        .data(firstTrackThumbnail)
-                                        .allowHardware(false)
-                                        .build()
-                                    val result = loader.execute(req)
-                                    val bmp = result.image?.toBitmap() ?: return@withContext
-                                    val palette = Palette.from(bmp).generate()
-                                    val rgb = palette.getDominantColor(0)
-                                    if (rgb != 0) {
-                                        val newColor = Color(rgb).copy(alpha = if (isDark) 0.25f else 0.15f)
-                                        withContext(Dispatchers.Main) {
-                                            moodDominantColor = newColor
-                                            lastStableColor = newColor
-                                        }
-                                    }
-                                } catch (_: Exception) {}
-                            }
+                        val dominantColor by rememberDominantColor(firstTrackThumbnail, isDark)
+                        var lastStableColor by remember { mutableStateOf<Color?>(null) }
+                        LaunchedEffect(dominantColor) {
+                            if (dominantColor != null) lastStableColor = dominantColor
                         }
                         val animatedBgColor by animateColorAsState(
-                            targetValue = moodDominantColor ?: lastStableColor ?: defaultBgColor,
+                            targetValue = dominantColor ?: lastStableColor ?: defaultBgColor,
                             animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
                             label = "moodBgColor",
                         )
@@ -1905,6 +1904,12 @@ fun HomeScreen(
                             )
 
                             if (selectedMoodCategory != null) {
+                                val shimmerTransition = rememberInfiniteTransition(label = "shimmer")
+                                val shimmerAlpha by shimmerTransition.animateFloat(
+                                    initialValue = 0.08f, targetValue = 0.20f,
+                                    animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Reverse),
+                                    label = "shimmerAlpha"
+                                )
                                 AnimatedContent(
                                     targetState = moodPage,
                                     transitionSpec = {
@@ -1946,12 +1951,6 @@ fun HomeScreen(
                                                 }
                                             }
                                         } else {
-                                            val shimmerTransition = rememberInfiniteTransition(label = "shimmer")
-                                            val shimmerAlpha by shimmerTransition.animateFloat(
-                                                initialValue = 0.08f, targetValue = 0.20f,
-                                                animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Reverse),
-                                                label = "shimmerAlpha"
-                                            )
                                             Row(
                                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -2023,7 +2022,6 @@ fun HomeScreen(
                         }
                     }
                 }
-                */ // YOUR_MOOD_DISABLED
 
                 otherSections
                     .take(visibleSectionCount)
