@@ -7,7 +7,6 @@ package com.metrolist.music
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
@@ -98,8 +97,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.core.util.Consumer
@@ -150,7 +147,6 @@ import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.constants.SimpMusicMigrationDoneKey
 import com.metrolist.music.constants.SlimNavBarKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
-import com.metrolist.music.constants.UpdateNotificationsEnabledKey
 import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
 import com.metrolist.music.constants.VisitorDataKey
 import com.metrolist.music.db.MusicDatabase
@@ -441,40 +437,11 @@ class MainActivity : ComponentActivity() {
                 if (checkForUpdates) {
                     withContext(Dispatchers.IO) {
                         val updatesEnabled = dataStore.get(CheckForUpdatesKey, true)
-                        val notifEnabled = dataStore.get(UpdateNotificationsEnabledKey, true)
                         if (!updatesEnabled) return@withContext
 
-                        Updater.checkForUpdate().onSuccess { (releaseInfo, hasUpdate) ->
+                        Updater.checkForUpdate().onSuccess { (releaseInfo, _) ->
                             if (releaseInfo != null) {
                                 onLatestVersionNameChange(releaseInfo.versionName)
-                                if (hasUpdate && notifEnabled) {
-                                    val downloadUrl = Updater.getDownloadUrlForCurrentVariant(releaseInfo)
-                                    if (downloadUrl != null) {
-                                        val intent = Intent(Intent.ACTION_VIEW, downloadUrl.toUri())
-
-                                        val flags =
-                                            PendingIntent.FLAG_UPDATE_CURRENT or
-                                                (PendingIntent.FLAG_IMMUTABLE)
-                                        val pending = PendingIntent.getActivity(this@MainActivity, 1001, intent, flags)
-
-                                        val notif =
-                                            NotificationCompat
-                                                .Builder(this@MainActivity, "updates")
-                                                .setSmallIcon(R.drawable.update)
-                                                .setContentTitle(getString(R.string.update_available_title))
-                                                .setContentText(releaseInfo.versionName)
-                                                .setContentIntent(pending)
-                                                .setAutoCancel(true)
-                                                .build()
-
-                                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                                            ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.POST_NOTIFICATIONS) ==
-                                            PackageManager.PERMISSION_GRANTED
-                                        ) {
-                                            NotificationManagerCompat.from(this@MainActivity).notify(1001, notif)
-                                        }
-                                    }
-                                }
                             }
                         }
                     }
@@ -1016,17 +983,17 @@ class MainActivity : ComponentActivity() {
                                             TopAppBarDefaults.topAppBarColors(
                                                 containerColor = when {
                                                     currentRoute == Screens.Home.route && pureBlack ->
-                                                        Color.Black.copy(alpha = 0.50f)
+                                                        Color.Black
                                                     currentRoute == Screens.Home.route ->
-                                                        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.50f)
+                                                        MaterialTheme.colorScheme.surfaceContainerLow
                                                     pureBlack -> Color.Black
                                                     else -> MaterialTheme.colorScheme.surfaceContainer
                                                 },
                                                 scrolledContainerColor = when {
                                                     currentRoute == Screens.Home.route && pureBlack ->
-                                                        Color.Black.copy(alpha = 0.82f)
+                                                        Color.Black
                                                     currentRoute == Screens.Home.route ->
-                                                        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.82f)
+                                                        MaterialTheme.colorScheme.surfaceContainerLow
                                                     pureBlack -> Color.Black
                                                     else -> MaterialTheme.colorScheme.surfaceContainer
                                                 },

@@ -31,13 +31,25 @@ object TTMLParser {
     )
 
     private fun getAttr(el: Element, localName: String): String {
-        val ttm = el.getAttribute("ttm:$localName")
-        if (ttm.isNotEmpty()) return ttm
+        val ns = el.getAttributeNS("http://www.w3.org/ns/ttml#metadata", localName)
+        if (ns.isNotEmpty()) return ns
+        val xml = el.getAttributeNS("http://www.w3.org/XML/1998/namespace", localName)
+        if (xml.isNotEmpty()) return xml
         val direct = el.getAttribute(localName)
         if (direct.isNotEmpty()) return direct
-        return el.getAttributeNS("http://www.w3.org/ns/ttml#metadata", localName)
+        val prefixed = el.getAttribute("ttm:$localName")
+        if (prefixed.isNotEmpty()) return prefixed
+        return ""
     }
-    
+
+    private fun nodeText(node: Node): String {
+        if (node.nodeType == Node.TEXT_NODE) return node.nodeValue ?: ""
+        val sb = StringBuilder()
+        var c = node.firstChild
+        while (c != null) { sb.append(nodeText(c)); c = c.nextSibling }
+        return sb.toString()
+    }
+
     fun parseTTML(ttml: String): List<ParsedLine> {
         val lines = mutableListOf<ParsedLine>()
         try {
@@ -165,11 +177,11 @@ object TTMLParser {
     private fun parseWordSpan(span: Element, offset: Double, spanInfos: MutableList<SpanInfo>, node: Node) {
         val begin = span.getAttribute("begin")
         val end = span.getAttribute("end")
-        val text = span.textContent ?: ""
+        val text = nodeText(span)
         if (begin.isNotEmpty() && end.isNotEmpty()) {
             val next = node.nextSibling
             val space = (text.isNotEmpty() && text.last().isWhitespace()) || 
-                        (next?.nodeType == Node.TEXT_NODE && next.textContent?.firstOrNull()?.isWhitespace() == true)
+                        (next?.nodeType == Node.TEXT_NODE && nodeText(next).firstOrNull()?.isWhitespace() == true)
             spanInfos.add(SpanInfo(text, parseTime(begin) + offset, parseTime(end) + offset, space))
         }
     }
@@ -194,7 +206,7 @@ object TTMLParser {
         }
         
         if (!hasSpans) {
-            val text = span.textContent?.trim() ?: ""
+            val text = nodeText(span).trim()
             return ParsedLine(text, start, emptyList(), isBackground = true)
         }
         
@@ -207,12 +219,12 @@ object TTMLParser {
         val sb = StringBuilder()
         var child = el.firstChild
         while (child != null) {
-            if (child.nodeType == Node.TEXT_NODE) sb.append(child.textContent)
+            if (child.nodeType == Node.TEXT_NODE) sb.append(child.nodeValue ?: "")
             else if (child is Element) {
                 val name = child.localName ?: child.nodeName.substringAfterLast(':')
                 val role = getAttr(child, "role")
                 if (name == "span" && role != "x-bg" && role != "x-translation" && role != "x-roman") {
-                    sb.append(child.textContent)
+                    sb.append(nodeText(child))
                 }
             }
             child = child.nextSibling

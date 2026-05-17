@@ -2007,20 +2007,16 @@ fun HomeScreen(
                                                                 .animateItem()
                                                                 .combinedClickable(
                                                                     onClick = {
-                                                                        if (mix is PlaylistItem) {
-                                                                            navController.navigate("online_playlist/${mix.id}")
-                                                                        }
+                                                                        navController.navigate("online_playlist/${mix.id}")
                                                                     },
                                                                     onLongClick = {
-                                                                        if (mix is PlaylistItem) {
-                                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                                            menuState.show {
-                                                                                YouTubePlaylistMenu(
-                                                                                    playlist = mix,
-                                                                                    coroutineScope = scope,
-                                                                                    onDismiss = menuState::dismiss
-                                                                                )
-                                                                            }
+                                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                                        menuState.show {
+                                                                            YouTubePlaylistMenu(
+                                                                                playlist = mix,
+                                                                                coroutineScope = scope,
+                                                                                onDismiss = menuState::dismiss
+                                                                            )
                                                                         }
                                                                     }
                                                                 )

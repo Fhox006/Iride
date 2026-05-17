@@ -158,9 +158,21 @@ object KuGou {
             .replace("<.*>".toRegex(), "").replace("《.*》".toRegex(), "")
             .replace("〈.*〉".toRegex(), "").replace("＜.*＞".toRegex(), "")
 
-    private fun normalizeArtist(artist: String) =
-        artist.replace(", ", "、").replace(" & ", "、").replace(".", "").replace("和", "、")
-            .replace("\\(.*\\)".toRegex(), "").replace("（.*）".toRegex(), "")
+    private fun normalizeArtist(artist: String): String {
+        val hasCjk = artist.any { it.code in 0x4E00..0x9FFF || it.code in 0x3040..0x30FF }
+        var cleaned = artist.replace("\\(.*\\)".toRegex(), "").replace("（.*）".toRegex(), "").trim()
+        return if (hasCjk) {
+            cleaned.replace(", ", "、").replace(" & ", "、").replace(".", "").replace("和", "、")
+        } else {
+            listOf(", ", " & ", " x ", " feat. ", " ft. ", " featuring ", " with ").forEach { sep ->
+                if (cleaned.contains(sep, ignoreCase = true)) {
+                    cleaned = cleaned.split(sep, ignoreCase = true, limit = 2)[0]
+                    return@forEach
+                }
+            }
+            cleaned.replace(".", "").trim()
+        }
+    }
 
     fun generateKeyword(title: String, artist: String, album: String? = null) =
         Keyword(normalizeTitle(title), normalizeArtist(artist), album)

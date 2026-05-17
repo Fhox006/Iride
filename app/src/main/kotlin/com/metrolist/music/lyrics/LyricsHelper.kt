@@ -172,7 +172,9 @@ constructor(
             YouTubeLyricsProvider
         )
 
-        val fastSet = setOf(YouTubeSubtitleLyricsProvider, YouTubeLyricsProvider)
+        val fastSet = setOf(YouTubeLyricsProvider)
+        val subtitleSet = setOf(YouTubeSubtitleLyricsProvider)
+        val lrcLibSet = setOf(LrcLibLyricsProvider)
         // LrcLib and KuGou do multiple sequential HTTP calls internally; they need more time
         val wordProviderSet = setOf(BetterLyricsProvider, PaxsenixLyricsProvider)
 
@@ -188,7 +190,9 @@ constructor(
                 val isWordProvider = provider in wordProviderSet
                 val timeout = when {
                     isWordProvider -> 12_000L
+                    provider in subtitleSet -> 2_000L
                     provider in fastSet -> 5_000L
+                    provider in lrcLibSet -> 15_000L
                     else -> 10_000L
                 }
                 async(Dispatchers.IO) {

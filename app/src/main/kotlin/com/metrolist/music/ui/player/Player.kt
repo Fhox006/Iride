@@ -2149,6 +2149,7 @@ fun InlineLyricsView(
     val debugEntries by LyricsDebugLog.entries.collectAsState()
 
     InlinePlayerPageFrame(
+        isFullScreen = isFullScreen,
         pills = {
             PlayerPill(
                 icon = R.drawable.more_vert,
@@ -2349,6 +2350,7 @@ internal fun PlayerPill(
 @Composable
 internal fun InlinePlayerPageFrame(
     modifier: Modifier = Modifier,
+    isFullScreen: Boolean = false,
     pills: @Composable RowScope.() -> Unit,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -2360,13 +2362,19 @@ internal fun InlinePlayerPageFrame(
             .padding(top = 8.dp, bottom = 16.dp),
     ) {
         Spacer(Modifier.fillMaxHeight(0.10f))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp, horizontal = 12.dp),
-            content = pills,
-        )
+        AnimatedVisibility(
+            visible = !isFullScreen,
+            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp, horizontal = 12.dp),
+                content = pills,
+            )
+        }
         Box(modifier = Modifier.weight(1f), content = content)
     }
 }

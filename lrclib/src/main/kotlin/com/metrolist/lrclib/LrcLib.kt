@@ -93,7 +93,26 @@ object LrcLib {
     ): List<Track> {
         val cleanedTitle = cleanTitle(title)
         val cleanedArtist = cleanArtist(artist)
-        
+
+        // Strategy 0: exact original title + original artist (fastest path for catalog tracks)
+        if (title.trim() != cleanedTitle || artist.trim() != cleanedArtist) {
+            val exactResults = queryLyricsWithParams(
+                trackName = title.trim(),
+                artistName = artist.trim(),
+                albumName = album
+            ).filter { it.syncedLyrics != null || it.plainLyrics != null }
+            if (exactResults.isNotEmpty()) return exactResults
+        }
+
+        // Strategy 0b: cleaned title + full original artist (before primary-artist extraction)
+        if (cleanedArtist != artist.trim()) {
+            val fullArtistResults = queryLyricsWithParams(
+                trackName = cleanedTitle,
+                artistName = artist.trim()
+            ).filter { it.syncedLyrics != null || it.plainLyrics != null }
+            if (fullArtistResults.isNotEmpty()) return fullArtistResults
+        }
+
         // Strategy 1: Search with cleaned title and artist
         var results = queryLyricsWithParams(
             trackName = cleanedTitle,

@@ -106,18 +106,18 @@ object Paxsenix {
 
     private suspend fun search(query: String): List<SearchResult> = runCatching {
         Timber.d("Searching for: $query")
-        val response = httpClient.get("/apple-music/search") {
+        val body = httpClient.get("/apple-music/search") {
             parameter("q", query)
         }.body<SearchResponse>()
-        
-        Timber.d("Search results count: ${response.size}")
-        response.forEach { result ->
+
+        Timber.d("Search results count: ${body.size}")
+        body.forEach { result ->
             Timber.v("  - ${result.displayName} by ${result.displayArtist} (ID: ${result.id}, Duration: ${result.duration})")
         }
-        
-        response
-    }.getOrElse { e ->
-        Timber.e(e, "Search error: ${e.message}")
+
+        body
+    }.getOrElse { e: Throwable ->
+        Timber.w("Paxsenix search error for query=$query: ${e.message}")
         emptyList()
     }
 
