@@ -74,11 +74,11 @@ constructor(
     private var lyricsProviders =
         listOf(
             BetterLyricsProvider,
-            PaxsenixLyricsProvider,
+            // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
             LrcLibLyricsProvider,
             KuGouLyricsProvider,
             LyricsPlusProvider,
-            YouTubeSubtitleLyricsProvider,
+            // YouTubeSubtitleLyricsProvider, // temporarily disabled for API benchmarking
             YouTubeLyricsProvider
         )
 
@@ -97,37 +97,37 @@ constructor(
                         PreferredLyricsProvider.LRCLIB -> listOf(
                             LrcLibLyricsProvider,
                             BetterLyricsProvider,
-                            PaxsenixLyricsProvider,
+                            // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
                             KuGouLyricsProvider,
                             LyricsPlusProvider,
-                            YouTubeSubtitleLyricsProvider,
+                            // YouTubeSubtitleLyricsProvider, // temporarily disabled for API benchmarking
                             YouTubeLyricsProvider
                         )
                         PreferredLyricsProvider.KUGOU -> listOf(
                             KuGouLyricsProvider,
                             BetterLyricsProvider,
-                            PaxsenixLyricsProvider,
+                            // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
                             LrcLibLyricsProvider,
                             LyricsPlusProvider,
-                            YouTubeSubtitleLyricsProvider,
+                            // YouTubeSubtitleLyricsProvider, // temporarily disabled for API benchmarking
                             YouTubeLyricsProvider
                         )
                         PreferredLyricsProvider.BETTER_LYRICS -> listOf(
                             BetterLyricsProvider,
-                            PaxsenixLyricsProvider,
+                            // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
                             LrcLibLyricsProvider,
                             KuGouLyricsProvider,
                             LyricsPlusProvider,
-                            YouTubeSubtitleLyricsProvider,
+                            // YouTubeSubtitleLyricsProvider, // temporarily disabled for API benchmarking
                             YouTubeLyricsProvider
                         )
                         PreferredLyricsProvider.PAXSENIX -> listOf(
-                            PaxsenixLyricsProvider,
+                            // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
                             BetterLyricsProvider,
                             LrcLibLyricsProvider,
                             KuGouLyricsProvider,
                             LyricsPlusProvider,
-                            YouTubeSubtitleLyricsProvider,
+                            // YouTubeSubtitleLyricsProvider, // temporarily disabled for API benchmarking
                             YouTubeLyricsProvider
                         )
                     }
@@ -164,19 +164,18 @@ constructor(
         // STAT MODE: query ALL providers regardless of user settings or isEnabled()
         val enabledProviders = listOf(
             BetterLyricsProvider,
-            PaxsenixLyricsProvider,
+            // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
             LrcLibLyricsProvider,
             KuGouLyricsProvider,
             LyricsPlusProvider,
-            YouTubeSubtitleLyricsProvider,
+            // YouTubeSubtitleLyricsProvider, // temporarily disabled for API benchmarking
             YouTubeLyricsProvider
         )
 
         val fastSet = setOf(YouTubeLyricsProvider)
         val subtitleSet = setOf(YouTubeSubtitleLyricsProvider)
         val lrcLibSet = setOf(LrcLibLyricsProvider)
-        // LrcLib and KuGou do multiple sequential HTTP calls internally; they need more time
-        val wordProviderSet = setOf(BetterLyricsProvider, PaxsenixLyricsProvider)
+        val wordProviderSet = setOf(BetterLyricsProvider) // Paxsenix has its own timeout below
 
         val tierMutex = Mutex()
         var bestTier = LyricsTier.PLAIN
@@ -189,11 +188,12 @@ constructor(
             val allJobs = enabledProviders.map { provider ->
                 val isWordProvider = provider in wordProviderSet
                 val timeout = when {
+                    provider == PaxsenixLyricsProvider -> 20_000L // server retries ~9s internally
                     isWordProvider -> 12_000L
                     provider in subtitleSet -> 2_000L
-                    provider in fastSet -> 5_000L
-                    provider in lrcLibSet -> 15_000L
-                    else -> 10_000L
+                    provider in fastSet -> 4_000L
+                    provider in lrcLibSet -> 10_000L
+                    else -> 7_000L
                 }
                 async(Dispatchers.IO) {
                     val startTime = System.currentTimeMillis()

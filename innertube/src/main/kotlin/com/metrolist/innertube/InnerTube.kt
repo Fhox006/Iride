@@ -386,6 +386,17 @@ class InnerTube {
         }
     }
 
+    suspend fun getTimedText(videoId: String, lang: String = "en") = withRetry {
+        httpClient.get("https://www.youtube.com/api/timedtext") {
+            parameter("v", videoId)
+            parameter("lang", lang)
+            parameter("fmt", "json3")
+            parameter("xorb", "2")
+            parameter("xobt", "3")
+            parameter("xovt", "3")
+        }
+    }
+
     suspend fun getSwJsData() = withRetry { httpClient.get("https://music.youtube.com/sw.js_data") }
 
     suspend fun accountMenu(client: YouTubeClient) = withRetry {

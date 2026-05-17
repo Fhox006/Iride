@@ -18,6 +18,8 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import timber.log.Timber
@@ -60,9 +62,9 @@ object LyricsPlusProvider : LyricsProvider {
             }
 
             install(HttpTimeout) {
-                requestTimeoutMillis = 15000
-                connectTimeoutMillis = 10000
-                socketTimeoutMillis = 15000
+                requestTimeoutMillis = 6000
+                connectTimeoutMillis = 4000
+                socketTimeoutMillis = 6000
             }
 
             expectSuccess = false
@@ -85,7 +87,8 @@ object LyricsPlusProvider : LyricsProvider {
             if (!album.isNullOrBlank()) {
                 parameter("album", album)
             }
-            parameter("source", "apple,lyricsplus,musixmatch,spotify,musixmatch-word")
+            parameter("source", "apple,musixmatch-word")
+            // Disabled sources: lyricsplus,musixmatch,spotify — re-enable for broader coverage if needed
         }
 
         if (response.status == HttpStatusCode.OK) {
@@ -100,19 +103,29 @@ object LyricsPlusProvider : LyricsProvider {
         artist: String,
         duration: Int,
         album: String?,
-    ): LyricsPlusResponse? {
-        for (baseUrl in baseUrls) {
-            try {
-                val result = fetchFromUrl(baseUrl, title, artist, duration, album)
-                if (result != null && !result.lyrics.isNullOrEmpty()) {
-                    return result
+    ): LyricsPlusResponse? = coroutineScope {
+        val jobs = baseUrls.map { url ->
+            async {
+                try {
+                    fetchFromUrl(url, title, artist, duration, album)
+                        ?.takeIf { !it.lyrics.isNullOrEmpty() }
+                } catch (e: Exception) {
+                    Timber.tag("LyricsPlus").d(e, "Failed to fetch from $url")
+                    null
                 }
-            } catch (e: Exception) {
-                Timber.tag("LyricsPlus").d(e, "Failed to fetch from $baseUrl")
-                continue
             }
         }
-        return null
+        // Return first non-null result, cancel remaining
+        var result: LyricsPlusResponse? = null
+        for (job in jobs) {
+            val res = job.await()
+            if (res != null) {
+                result = res
+                jobs.forEach { it.cancel() }
+                break
+            }
+        }
+        result
     }
 
     private fun convertToLrc(response: LyricsPlusResponse?): String? {

@@ -11,6 +11,9 @@ import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.json.Json
@@ -93,64 +96,36 @@ object LrcLib {
     ): List<Track> {
         val cleanedTitle = cleanTitle(title)
         val cleanedArtist = cleanArtist(artist)
+        val originalTitle = title.trim()
+        val originalArtist = artist.trim()
 
-        // Strategy 0: exact original title + original artist (fastest path for catalog tracks)
-        if (title.trim() != cleanedTitle || artist.trim() != cleanedArtist) {
-            val exactResults = queryLyricsWithParams(
-                trackName = title.trim(),
-                artistName = artist.trim(),
-                albumName = album
-            ).filter { it.syncedLyrics != null || it.plainLyrics != null }
-            if (exactResults.isNotEmpty()) return exactResults
+        // FAST PATH: fire the 3 most likely queries in parallel
+        val fastResults = coroutineScope {
+            listOf(
+                async { queryLyricsWithParams(trackName = originalTitle, artistName = originalArtist, albumName = album) },
+                async { queryLyricsWithParams(trackName = cleanedTitle, artistName = cleanedArtist, albumName = album) },
+                async { queryLyricsWithParams(trackName = cleanedTitle, artistName = originalArtist) },
+            ).awaitAll()
         }
+        val fastHit = fastResults.flatten()
+            .filter { it.syncedLyrics != null || it.plainLyrics != null }
+            .distinctBy { it.id }
+        if (fastHit.isNotEmpty()) return fastHit
 
-        // Strategy 0b: cleaned title + full original artist (before primary-artist extraction)
-        if (cleanedArtist != artist.trim()) {
-            val fullArtistResults = queryLyricsWithParams(
-                trackName = cleanedTitle,
-                artistName = artist.trim()
-            ).filter { it.syncedLyrics != null || it.plainLyrics != null }
-            if (fullArtistResults.isNotEmpty()) return fullArtistResults
-        }
+        // SLOW FALLBACK: remaining strategies sequentially (only reached on cache miss)
+        // Strategy 2: cleaned title only
+        var results = queryLyricsWithParams(trackName = cleanedTitle)
+            .filter { it.syncedLyrics != null || it.plainLyrics != null }
+        if (results.isNotEmpty()) return results
 
-        // Strategy 1: Search with cleaned title and artist
-        var results = queryLyricsWithParams(
-            trackName = cleanedTitle,
-            artistName = cleanedArtist,
-            albumName = album
-        ).filter { it.syncedLyrics != null || it.plainLyrics != null }
-        
+        // Strategy 3: full-text q
+        results = queryLyricsWithParams(query = "$cleanedArtist $cleanedTitle")
+            .filter { it.syncedLyrics != null || it.plainLyrics != null }
         if (results.isNotEmpty()) return results
-        
-        // Strategy 2: Search with cleaned title only (artist might be different)
-        results = queryLyricsWithParams(
-            trackName = cleanedTitle
-        ).filter { it.syncedLyrics != null || it.plainLyrics != null }
-        
-        if (results.isNotEmpty()) return results
-        
-        // Strategy 3: Use q parameter with combined search
-        results = queryLyricsWithParams(
-            query = "$cleanedArtist $cleanedTitle"
-        ).filter { it.syncedLyrics != null || it.plainLyrics != null }
-        
-        if (results.isNotEmpty()) return results
-        
-        // Strategy 4: Use q parameter with just title
-        results = queryLyricsWithParams(
-            query = cleanedTitle
-        ).filter { it.syncedLyrics != null || it.plainLyrics != null }
-        
-        if (results.isNotEmpty()) return results
-        
-        // Strategy 5: Try original title if different from cleaned
-        if (cleanedTitle != title.trim()) {
-            results = queryLyricsWithParams(
-                trackName = title.trim(),
-                artistName = artist.trim()
-            ).filter { it.syncedLyrics != null || it.plainLyrics != null }
-        }
-        
+
+        // Strategy 4: q title only
+        results = queryLyricsWithParams(query = cleanedTitle)
+            .filter { it.syncedLyrics != null || it.plainLyrics != null }
         return results
     }
 

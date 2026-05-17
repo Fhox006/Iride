@@ -55,10 +55,15 @@ object TTMLParser {
         try {
             val factory = DocumentBuilderFactory.newInstance()
             factory.isNamespaceAware = true
-            factory.setFeature("http://xml.org/sax/features/external-general-entities", false)
-            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-            factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
-            
+            val featuresToDisable = listOf(
+                "http://xml.org/sax/features/external-general-entities",
+                "http://xml.org/sax/features/external-parameter-entities",
+                "http://apache.org/xml/features/nonvalidating/load-external-dtd"
+            )
+            featuresToDisable.forEach { feature ->
+                try { factory.setFeature(feature, false) } catch (_: Exception) {}
+            }
+
             val builder = factory.newDocumentBuilder()
             val doc = builder.parse(ttml.byteInputStream())
             val root = doc.documentElement
@@ -81,7 +86,7 @@ object TTMLParser {
                 walk(body, lines, globalOffset, null)
             }
         } catch (e: Exception) {
-            Timber.e(e, "TTMLParser.parseTTML: Failed to parse TTML")
+            Timber.e(e, "TTMLParser.parseTTML: Failed to parse TTML: ${e.javaClass.simpleName}: ${e.message}")
             return emptyList()
         }
         return lines
@@ -283,42 +288,52 @@ object TTMLParser {
         val sb = StringBuilder(lines.size * 128)
         var lastBg = false
 
-        lines.forEach { line ->
-            val isBg = line.isBackground
-            if (!isBg) lastBg = false
-            val agentId = agentMap[line.agent?.lowercase()]
+        fun appendLrcLine(line: ParsedLine, isBgLine: Boolean) {
+            val agentId = if (!isBgLine) agentMap[line.agent?.lowercase()] else null
             val tag = when {
-                isBg -> if (lastBg) "" else "{bg}"
+                isBgLine -> if (lastBg) "" else "{bg}"
                 multi && agentId != null -> "{agent:$agentId}"
                 else -> ""
             }
-            if (isBg) lastBg = true
-            val time = formatLrcTime(line.startTime)
-            sb.append(time).append(tag).append(line.text).append('\n')
+            if (isBgLine) lastBg = true
+            sb.append(formatLrcTime(line.startTime)).append(tag)
             if (line.words.isNotEmpty()) {
-                sb.append('<')
+                // Rich-sync inline format: <MM:SS.mm>word <MM:SS.mm>word <endTime>
+                // detectTier() uses RICH_SYNC_WORD_REGEX = "<MM:SS.mm>([^<]+)" to identify SYNCED_WORD
                 line.words.forEachIndexed { i, w ->
-                    sb.append(w.text).append(':').append(w.startTime).append(':').append(w.endTime)
-                    if (i < line.words.lastIndex) sb.append('|')
+                    sb.append(formatWordTime(w.startTime)).append(w.text)
+                    if (i < line.words.lastIndex && w.hasTrailingSpace && !w.text.endsWith('-')) sb.append(' ')
                 }
-                sb.append(">\n")
+                sb.append(formatWordTime(line.words.last().endTime))
+            } else {
+                sb.append(line.text)
             }
-            line.backgroundLines.forEach { bg ->
-                val bTag = if (lastBg) "" else "{bg}"
-                lastBg = true
-                val bgTime = formatLrcTime(bg.startTime)
-                sb.append(bgTime).append(bTag).append(bg.text).append('\n')
-                if (bg.words.isNotEmpty()) {
-                    sb.append('<')
-                    bg.words.forEachIndexed { i, w ->
-                        sb.append(w.text).append(':').append(w.startTime).append(':').append(w.endTime)
-                        if (i < bg.words.lastIndex) sb.append('|')
-                    }
-                    sb.append(">\n")
-                }
-            }
+            sb.append('\n')
+        }
+
+        lines.forEach { line ->
+            val isBg = line.isBackground
+            if (!isBg) lastBg = false
+            appendLrcLine(line, isBg)
+            line.backgroundLines.forEach { bg -> appendLrcLine(bg, true) }
         }
         return sb.toString()
+    }
+
+    private fun formatWordTime(time: Double): String {
+        val ms = (time * 1000).toLong()
+        val m = ms / 60000
+        val s = (ms % 60000) / 1000
+        val c = (ms % 1000) / 10
+        return buildString(10) {
+            append('<')
+            if (m < 10) append('0')
+            append(m).append(':')
+            if (s < 10) append('0')
+            append(s).append('.')
+            if (c < 10) append('0')
+            append(c).append('>')
+        }
     }
 
     private fun formatLrcTime(time: Double): String {

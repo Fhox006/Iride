@@ -737,6 +737,7 @@ fun HomeScreen(
 
     var featuredPodcasts by remember { mutableStateOf<List<PodcastItem>>(emptyList()) }
     LaunchedEffect(homePage, selectedChip) {
+        if (homePage == null) return@LaunchedEffect
         if (selectedChip == null) {
             featuredPodcasts = emptyList()
             return@LaunchedEffect
@@ -759,6 +760,7 @@ fun HomeScreen(
                     }
                 }?.distinctBy { it.id }?.shuffled()?.take(10) ?: emptyList()
         }
+        if (newPodcasts == featuredPodcasts) return@LaunchedEffect
         if (newPodcasts.isNotEmpty()) featuredPodcasts = newPodcasts
     }
 
@@ -779,6 +781,11 @@ fun HomeScreen(
         ?.collectAsState() ?: remember { mutableStateOf(false) }
 
     var visibleSectionCount by rememberSaveable { mutableStateOf(0) }
+    var isScreenReady by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(500)
+        isScreenReady = true
+    }
 
     var selectedMoodCategory by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage.Chip?>(null) }
 
@@ -795,24 +802,9 @@ fun HomeScreen(
     var displayedSpeedDialItems by remember { mutableStateOf(cachedSpeedDialItems) }
     LaunchedEffect(speedDialItems, cachedSpeedDialItems) {
         val target = if (speedDialItems.isNotEmpty()) speedDialItems else cachedSpeedDialItems
-        val displayedIds = displayedSpeedDialItems.map { it.id }
-        val targetIds = target.map { it.id }
-        if (displayedIds == targetIds) return@LaunchedEffect
-        // Large size change: replace all at once
-        if (kotlin.math.abs(target.size - displayedSpeedDialItems.size) > 3 || displayedSpeedDialItems.isEmpty()) {
+        if (displayedSpeedDialItems.map { it.id } != target.map { it.id }) {
             displayedSpeedDialItems = target
-            return@LaunchedEffect
         }
-        // Stagger individual item replacements
-        val mutable = displayedSpeedDialItems.toMutableList()
-        target.forEachIndexed { i, item ->
-            if (i < mutable.size && mutable[i].id != item.id) {
-                kotlinx.coroutines.delay(65L)
-                mutable[i] = item
-                displayedSpeedDialItems = mutable.toList()
-            }
-        }
-        if (mutable.size != target.size) displayedSpeedDialItems = target
     }
 
     val moodChips = remember(homePage?.chips) {
@@ -1091,12 +1083,7 @@ fun HomeScreen(
     }
 
     LaunchedEffect(otherSections.size) {
-        if (otherSections.size > visibleSectionCount) {
-            for (i in (visibleSectionCount + 1)..otherSections.size) {
-                kotlinx.coroutines.delay(150L)
-                visibleSectionCount = i
-            }
-        }
+        visibleSectionCount = otherSections.size
     }
 
     LaunchedEffect(quickPicks) {
@@ -1379,6 +1366,7 @@ fun HomeScreen(
                     }
                 }
 
+                /* SPEED_DIAL_DISABLED
                 // Speed Dial: pinned at top only when we have content to show (cache or live)
                 if (displayedSpeedDialItems.isNotEmpty()) {
                     item(key = "speed_dial_title") {
@@ -1451,8 +1439,8 @@ fun HomeScreen(
                         val itemWidth = (availableWidth - peekPadding * 2) / columns
 
                         val realPageCount = (items.size + 1 + itemsPerPage - 1) / itemsPerPage
-                        val virtualPageCount = if (realPageCount > 1) realPageCount * 1000 else 1
-                        val initialPage = if (realPageCount > 1) realPageCount * 500 else 0
+                        val virtualPageCount = if (realPageCount > 1) realPageCount * 100 else 1
+                        val initialPage = if (realPageCount > 1) realPageCount * 50 else 0
                         val pagerState = rememberPagerState(
                             initialPage = initialPage,
                             pageCount = { virtualPageCount }
@@ -1749,7 +1737,9 @@ fun HomeScreen(
                         }
                     }
                 }
+                */ // SPEED_DIAL_DISABLED
 
+                /* YOUR_MOOD_DISABLED
                 // Your Mood: shown when chips available or cached content exists
                 val hasMoodContent = moodChips.isNotEmpty() || cachedMoodItems.isNotEmpty()
                 if (hasMoodContent) {
@@ -1865,6 +1855,8 @@ fun HomeScreen(
                         }
                         LaunchedEffect(firstTrackThumbnail) {
                             if (firstTrackThumbnail == null) return@LaunchedEffect
+                            if (!isScreenReady) return@LaunchedEffect
+                            kotlinx.coroutines.delay(300)
                             withContext(Dispatchers.Default) {
                                 try {
                                     val loader = moodPaletteContext.imageLoader
@@ -2031,6 +2023,7 @@ fun HomeScreen(
                         }
                     }
                 }
+                */ // YOUR_MOOD_DISABLED
 
                 otherSections
                     .take(visibleSectionCount)

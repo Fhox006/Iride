@@ -2,22 +2,6 @@ package com.metrolist.paxsenix.models
 
 import kotlinx.serialization.Serializable
 
-typealias SearchResponse = List<SearchResult>
-
-@Serializable
-data class SearchResult(
-    val id: String,
-    val songName: String? = null,
-    val trackName: String? = null,
-    val artistName: String? = null,
-    val albumName: String? = null,
-    val duration: Int? = null,
-    val artwork: String? = null
-) {
-    val displayName: String get() = trackName ?: songName ?: ""
-    val displayArtist: String get() = artistName ?: ""
-}
-
 @Serializable
 data class LyricsContent(
     val timestamp: Long,

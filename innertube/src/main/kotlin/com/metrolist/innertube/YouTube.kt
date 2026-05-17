@@ -1720,14 +1720,30 @@ object YouTube {
     }
 
     suspend fun transcript(videoId: String): Result<String> = runCatching {
+        // timedtext API works for music videos; get_transcript returns 400 FAILED_PRECONDITION on them
+        val timedTextResult = runCatching {
+            val response = innerTube.getTimedText(videoId).body<com.metrolist.innertube.models.TimedTextResponse>()
+            val events = response.events ?: throw IllegalStateException("no events in timedtext response")
+            events.filter { it.segs != null && it.tStartMs != null }
+                .joinToString("\n") { event ->
+                    val t = event.tStartMs!!
+                    val text = event.segs!!.joinToString("") { it.utf8 ?: "" }
+                        .trim().trimEnd('♪').trim()
+                    "[%02d:%02d.%03d]$text".format(t / 60000, (t / 1000) % 60, t % 1000)
+                }.ifBlank { throw IllegalStateException("empty timedtext") }
+        }
+        if (timedTextResult.isSuccess) return@runCatching timedTextResult.getOrThrow()
+
+        // Fallback: get_transcript works for non-music YT videos with captions enabled
         val response = innerTube.getTranscript(WEB, videoId).body<GetTranscriptResponse>()
-        response.actions?.firstOrNull()?.updateEngagementPanelAction?.content?.transcriptRenderer?.body?.transcriptBodyRenderer?.cueGroups?.joinToString(separator = "\n") { group ->
-            val time = group.transcriptCueGroupRenderer.cues[0].transcriptCueRenderer.startOffsetMs
-            val text = group.transcriptCueGroupRenderer.cues[0].transcriptCueRenderer.cue.simpleText
-                .trim('♪')
-                .trim(' ')
-            "[%02d:%02d.%03d]$text".format(time / 60000, (time / 1000) % 60, time % 1000)
-        }!!
+        response.actions?.firstOrNull()?.updateEngagementPanelAction?.content
+            ?.transcriptRenderer?.body?.transcriptBodyRenderer?.cueGroups
+            ?.joinToString(separator = "\n") { group ->
+                val time = group.transcriptCueGroupRenderer.cues[0].transcriptCueRenderer.startOffsetMs
+                val text = group.transcriptCueGroupRenderer.cues[0].transcriptCueRenderer.cue.simpleText
+                    .trim('♪').trim(' ')
+                "[%02d:%02d.%03d]$text".format(time / 60000, (time / 1000) % 60, time % 1000)
+            }!!
     }
 
     suspend fun visitorData(): Result<String> = runCatching {

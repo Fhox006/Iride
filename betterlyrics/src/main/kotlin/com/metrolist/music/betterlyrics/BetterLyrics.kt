@@ -80,7 +80,8 @@ object BetterLyrics {
         videoId: String? = null,
     ) = runCatching {
         val ttml = fetchTTML(artist, title, duration, album, videoId, "/getLyrics")
-            ?: fetchTTML(artist, title, duration, album, videoId, "/ttml/getLyrics")
+            // Fallback endpoint disabled temporarily — re-enable if hit rate drops:
+            // ?: fetchTTML(artist, title, duration, album, videoId, "/ttml/getLyrics")
             ?: throw IllegalStateException("Lyrics unavailable")
 
         val parsedLines = TTMLParser.parseTTML(ttml)
