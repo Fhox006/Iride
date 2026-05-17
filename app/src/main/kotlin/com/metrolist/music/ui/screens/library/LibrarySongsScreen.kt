@@ -54,6 +54,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -343,7 +344,7 @@ fun LibrarySongsScreen(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 12.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                 ) {
                     ChipsRow(
                         chips =
@@ -359,6 +360,13 @@ fun LibrarySongsScreen(
                         },
                         modifier = Modifier.weight(1f),
                     )
+                    IconButton(onClick = { /* TODO: star action */ }) {
+                        Icon(
+                            painter = painterResource(R.drawable.star),
+                            contentDescription = null,
+                            tint = Color.White,
+                        )
+                    }
                 }
             }
 

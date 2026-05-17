@@ -405,7 +405,7 @@ fun LyricsMenu(
                         },
                         onClick = {
                             onDismiss()
-                            viewModel.refetchLyrics(mediaMetadataProvider(), lyricsProvider())
+                            viewModel.refetchLyrics(lyricsProvider())
                         },
                     ),
                     Material3MenuItemData(

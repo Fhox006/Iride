@@ -58,7 +58,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -305,13 +304,11 @@ private fun PillContent(
     val backgroundColor = when (effectiveBackground) {
         MiniPlayerBackgroundStyle.DEFAULT     -> MaterialTheme.colorScheme.surfaceContainer
         MiniPlayerBackgroundStyle.TRANSPARENT -> Color.Black.copy(alpha = 0.25f)
-        MiniPlayerBackgroundStyle.BLUR        -> MaterialTheme.colorScheme.surfaceContainer
         MiniPlayerBackgroundStyle.GRADIENT    -> MaterialTheme.colorScheme.surfaceContainer
         MiniPlayerBackgroundStyle.PURE_BLACK  -> Color.Black
     }
     val forceLightColors = !useDarkTheme && (
             effectiveBackground == MiniPlayerBackgroundStyle.PURE_BLACK ||
-                    effectiveBackground == MiniPlayerBackgroundStyle.BLUR ||
                     effectiveBackground == MiniPlayerBackgroundStyle.GRADIENT
             )
     val primaryColor   = if (forceLightColors) Color.White else MaterialTheme.colorScheme.primary
@@ -328,27 +325,8 @@ private fun PillContent(
             .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(28.dp)),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Blur/gradient overlays
+            // Gradient overlay
             when (effectiveBackground) {
-                MiniPlayerBackgroundStyle.BLUR -> {
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        mediaMetadata?.thumbnailUrl?.let { url ->
-                            AsyncImage(
-                                model = url,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .blur(60.dp),
-                            )
-                            Box(
-                                Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.45f)),
-                            )
-                        }
-                    }
-                }
                 MiniPlayerBackgroundStyle.GRADIENT -> {
                     val colors = if (gradientColors.isNotEmpty()) gradientColors
                     else listOf(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.colorScheme.surfaceContainer)

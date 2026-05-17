@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import com.metrolist.music.viewmodels.LyricsMenuViewModel
 import com.metrolist.music.viewmodels.LyricsSearchStatus
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationState
@@ -255,11 +256,14 @@ fun ExperimentalLyrics(
     val translationStatus by LyricsTranslationHelper.status.collectAsState()
     val currentLyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
     val currentSong by playerConnection.currentSong.collectAsState(initial = null)
-    val displayedLyrics by lyricsViewModel.displayedLyrics.collectAsState()
-    val lyrics = remember(displayedLyrics) { displayedLyrics?.trim() }
+    val lyrics by lyricsViewModel.displayedLyrics.collectAsState()
+    val lyricsText = lyrics?.trim()
 
     // DB entity kept only for provider label and translation persistence
     val lyricsEntity = currentLyricsEntity
+
+    val lyricsMenuViewModel: LyricsMenuViewModel = hiltViewModel()
+    val refetchRequested by lyricsMenuViewModel.refetchRequested.collectAsState()
 
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
@@ -291,9 +295,20 @@ fun ExperimentalLyrics(
         )
     }
 
+    LaunchedEffect(refetchRequested) {
+        if (refetchRequested) {
+            lyricsMenuViewModel.clearRefetchRequest()
+            val metadata = mediaMetadata ?: return@LaunchedEffect
+            lyricsViewModel.loadProgressiveLyrics(
+                metadata,
+                enabledLanguages,
+                romanizeCyrillicByLine,
+                showIntervalIndicator,
+            )
+        }
+    }
 
-
-    val isSynced = remember(lyrics) { !lyrics.isNullOrEmpty() && lyrics.startsWith("[") }
+    val isSynced = remember(lyricsText) { !lyricsText.isNullOrEmpty() && lyricsText.startsWith("[") }
     val hasWordTimings = remember(lines) { lines.any { it.words?.isNotEmpty() == true } }
 
     DisposableEffect(Unit) {
@@ -450,11 +465,11 @@ fun ExperimentalLyrics(
         }
     }
 
-    var lastMainMaxSeen by remember(lyrics, lines) { mutableIntStateOf(-1) }
+    var lastMainMaxSeen by remember(lyricsText, lines) { mutableIntStateOf(-1) }
     var smoothPositionForSync by remember { mutableLongStateOf(0L) }
 
-    LaunchedEffect(lyrics, lines) {
-        if (lyrics.isNullOrEmpty() || lines.isEmpty()) {
+    LaunchedEffect(lyricsText, lines) {
+        if (lyricsText.isNullOrEmpty() || lines.isEmpty()) {
             activeLineIndices = emptySet()
             return@LaunchedEffect
         }
@@ -585,7 +600,7 @@ fun ExperimentalLyrics(
         }
     }
 
-    LaunchedEffect(lyrics) {
+    LaunchedEffect(lyricsText) {
         isAutoScrollEnabled = true
         userManualOffset = 0f
         scrollTargetIndex = -1
@@ -950,7 +965,7 @@ fun ExperimentalLyrics(
             }
         }
 
-        val lyricsVisible = lyrics != null && lyrics != LYRICS_NOT_FOUND
+        val lyricsVisible = lyricsText != null && lyricsText != LYRICS_NOT_FOUND
         val lyricsContentReady = lyricsVisible && mergedLyricsList.isNotEmpty()
         val lyricsAlpha by animateFloatAsState(
             targetValue = if (lyricsContentReady) 1f else 0f,

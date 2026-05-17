@@ -14,7 +14,6 @@ import com.metrolist.music.db.entities.LyricsEntity
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.lyrics.LyricsHelper
 import com.metrolist.music.lyrics.LyricsResult
-import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.utils.NetworkConnectivityObserver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +23,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 @HiltViewModel
@@ -41,6 +39,9 @@ constructor(
 
     private val _isNetworkAvailable = MutableStateFlow(false)
     val isNetworkAvailable: StateFlow<Boolean> = _isNetworkAvailable.asStateFlow()
+
+    private val _refetchRequested = MutableStateFlow(false)
+    val refetchRequested: StateFlow<Boolean> = _refetchRequested.asStateFlow()
 
     private val _currentSong = mutableStateOf<Song?>(null)
     val currentSong: State<Song?> = _currentSong
@@ -89,17 +90,14 @@ constructor(
         job = null
     }
 
-    fun refetchLyrics(
-        mediaMetadata: MediaMetadata,
-        lyricsEntity: LyricsEntity?,
-    ) {
-        database.query {
-            lyricsEntity?.let(::delete)
-            val lyricsWithProvider =
-                runBlocking {
-                    lyricsHelper.getLyrics(mediaMetadata)
-                }
-            upsert(LyricsEntity(mediaMetadata.id, lyricsWithProvider.lyrics, lyricsWithProvider.provider))
+    fun refetchLyrics(lyricsEntity: LyricsEntity?) {
+        viewModelScope.launch(Dispatchers.IO) {
+            lyricsEntity?.let { database.query { delete(it) } }
+            _refetchRequested.value = true
         }
+    }
+
+    fun clearRefetchRequest() {
+        _refetchRequested.value = false
     }
 }

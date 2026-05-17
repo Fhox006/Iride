@@ -13,6 +13,7 @@ import android.text.Layout
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -23,6 +24,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -493,6 +495,7 @@ fun OriginalLyrics(
     // Professional animation states for smooth Metrolist-style transitions
     var isAnimating by remember { mutableStateOf(false) }
     var isAutoScrollEnabled by rememberSaveable { mutableStateOf(true) }
+    var isLyricsLoading by remember { mutableStateOf(true) }
 
     // Handle back button press - close selection mode instead of exiting screen
     BackHandler(enabled = isSelectionModeActive) {
@@ -649,6 +652,15 @@ fun OriginalLyrics(
         previousLineIndex = currentLineIndex
     }
 
+    LaunchedEffect(mediaMetadata?.id) {
+        isLyricsLoading = true
+    }
+    LaunchedEffect(lyricsEntity) {
+        if (lyricsEntity != null) {
+            isLyricsLoading = false
+        }
+    }
+
     BoxWithConstraints(
         contentAlignment = Alignment.TopCenter,
         modifier =
@@ -758,27 +770,68 @@ fun OriginalLyrics(
             }
         }
 
-        if (lyrics == LYRICS_NOT_FOUND) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = stringResource(R.string.lyrics_not_found),
-                    fontSize = 20.sp,
-                    color = MaterialTheme.colorScheme.secondary,
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.alpha(0.5f),
-                )
-            }
-        } else {
+        val constrainedMaxHeight = maxHeight
+        AnimatedContent(
+            targetState = mediaMetadata?.id ?: "",
+            transitionSpec = {
+                fadeIn(animationSpec = tween(durationMillis = 350)) togetherWith
+                    fadeOut(animationSpec = tween(durationMillis = 350))
+            },
+            label = "lyrics_crossfade",
+        ) { _ ->
+            if (isLyricsLoading || lyrics == null) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    ShimmerHost {
+                        LazyColumn(
+                            contentPadding =
+                                WindowInsets.systemBars
+                                    .only(WindowInsetsSides.Top)
+                                    .add(WindowInsets(top = constrainedMaxHeight / 3, bottom = constrainedMaxHeight / 2))
+                                    .asPaddingValues(),
+                            modifier = Modifier.fadingEdge(vertical = 64.dp),
+                        ) {
+                            item {
+                                repeat(10) {
+                                    Box(
+                                        contentAlignment =
+                                            when (lyricsTextPosition) {
+                                                LyricsPosition.LEFT -> Alignment.CenterStart
+                                                LyricsPosition.CENTER -> Alignment.Center
+                                                LyricsPosition.RIGHT -> Alignment.CenterEnd
+                                            },
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 24.dp, vertical = 4.dp),
+                                    ) {
+                                        TextPlaceholder()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (lyrics == LYRICS_NOT_FOUND) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.lyrics_not_found),
+                        fontSize = 20.sp,
+                        color = MaterialTheme.colorScheme.secondary,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.alpha(0.5f),
+                    )
+                }
+            } else {
             LazyColumn(
                 state = lazyListState,
                 contentPadding =
                     WindowInsets.systemBars
                         .only(WindowInsetsSides.Top)
-                        .add(WindowInsets(top = maxHeight / 3, bottom = maxHeight / 2))
+                        .add(WindowInsets(top = constrainedMaxHeight / 3, bottom = constrainedMaxHeight / 2))
                         .asPaddingValues(),
                 modifier =
                     Modifier
@@ -1696,6 +1749,7 @@ fun OriginalLyrics(
             }
             // Action buttons are now in the bottom bar
             // Removed the more button from bottom - it's now in the top header
+            }
         }
 
         AnimatedVisibility(
