@@ -43,7 +43,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.widget.Toast
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -52,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.metrolist.lastfm.LastFM
+import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.EnableLastFMScrobblingKey
@@ -79,6 +82,7 @@ import kotlin.math.roundToInt
 fun LastFMSettings(
     navController: NavController
 ) {
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
     var lastfmUsername by rememberPreference(LastFMUsernameKey, "")
@@ -309,7 +313,17 @@ fun LastFMSettings(
                                 Text(stringResource(R.string.action_logout))
                             }
                         } else {
-                            OutlinedButton(onClick = { showLoginDialog = true }) {
+                            OutlinedButton(onClick = {
+                                if (BuildConfig.LASTFM_API_KEY.isBlank()) {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.lastfm_api_not_configured),
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                } else {
+                                    showLoginDialog = true
+                                }
+                            }) {
                                 Text(stringResource(R.string.action_login))
                             }
                         }

@@ -41,9 +41,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -861,12 +863,22 @@ class SyncUtils @Inject constructor(
                     updateState { copy(uploadedSongs = SyncStatus.Error(e.message ?: "Unknown error")) }
                 }
             }.onFailure { e ->
-                Timber.e(e, "Failed to fetch uploaded songs from YouTube")
-                updateState { copy(uploadedSongs = SyncStatus.Error(e.message ?: "Unknown error")) }
+                if (e.message?.contains("No content found", ignoreCase = true) == true) {
+                    Timber.d("No uploaded songs (expected for accounts without uploads)")
+                    updateState { copy(uploadedSongs = SyncStatus.Completed) }
+                } else {
+                    Timber.e(e, "Failed to fetch uploaded songs from YouTube")
+                    updateState { copy(uploadedSongs = SyncStatus.Error(e.message ?: "Unknown error")) }
+                }
             }
         }.onFailure { e ->
-            Timber.e(e, "Failed to sync uploaded songs after retries")
-            updateState { copy(uploadedSongs = SyncStatus.Error(e.message ?: "Unknown error")) }
+            if (e.message?.contains("No content found", ignoreCase = true) == true) {
+                Timber.d("No uploaded songs (expected for accounts without uploads)")
+                updateState { copy(uploadedSongs = SyncStatus.Completed) }
+            } else {
+                Timber.e(e, "Failed to sync uploaded songs after retries")
+                updateState { copy(uploadedSongs = SyncStatus.Error(e.message ?: "Unknown error")) }
+            }
         }
     }
 
@@ -1425,7 +1437,13 @@ class SyncUtils @Inject constructor(
                             }
 
                             if (!isPlaylistBeingModified(playlistEntity.id)) {
-                                executeSyncPlaylist(playlist.id, playlistEntity.id)
+                                try {
+                                    withTimeout(120_000L) {
+                                        executeSyncPlaylist(playlist.id, playlistEntity.id)
+                                    }
+                                } catch (e: TimeoutCancellationException) {
+                                    Timber.w("Playlist sync timed out (skipped): ${playlist.title}")
+                                }
                                 delay(DB_OPERATION_DELAY_MS)
                             } else {
                                 Timber.d("Skipping playlist ${playlist.title} — remove in progress")
@@ -1471,8 +1489,12 @@ class SyncUtils @Inject constructor(
                     return@forEach
                 }
                 try {
-                    executeSyncPlaylist(playlist.playlist.browseId!!, playlist.playlist.id)
+                    withTimeout(120_000L) {
+                        executeSyncPlaylist(playlist.playlist.browseId!!, playlist.playlist.id)
+                    }
                     delay(DB_OPERATION_DELAY_MS)
+                } catch (e: TimeoutCancellationException) {
+                    Timber.w("Auto-sync playlist timed out (skipped): ${playlist.playlist.name}")
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to sync playlist ${playlist.playlist.name}")
                 }

@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -227,7 +228,9 @@ constructor(
                             }
                             if (shouldEmit) {
                                 LyricsDebugLog.log("EMIT ${provider.name} | tier=$tier")
-                                onTierAvailable(LyricsWithProvider(filtered, provider.name), tier)
+                                withContext(Dispatchers.Main) {
+                                    onTierAvailable(LyricsWithProvider(filtered, provider.name), tier)
+                                }
                             } else {
                                 LyricsDebugLog.log("SKIP ${provider.name} | tier=$tier not better than bestTier=$bestTier")
                             }

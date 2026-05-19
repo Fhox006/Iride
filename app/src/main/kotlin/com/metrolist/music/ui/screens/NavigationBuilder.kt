@@ -14,8 +14,12 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -85,6 +89,10 @@ fun NavGraphBuilder.NavigationBuilder(
         OnboardingScreen(navController = navController)
     }
 
+    composable(Screens.NewHome.route) {
+        NewHomeScreen(navController = navController, snackbarHostState = snackbarHostState)
+    }
+
     composable(Screens.Home.route) {
         HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
     }
@@ -126,7 +134,11 @@ fun NavGraphBuilder.NavigationBuilder(
 
     composable("history") { HistoryScreen(navController) }
     composable("stats") { StatsScreen(navController) }
-    composable("iride") { IrideScreen(navController) }
+    composable("iride") {
+        var readyToAnimate by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { delay(320); readyToAnimate = true }
+        IrideScreen(navController, readyToAnimate = readyToAnimate)
+    }
     composable("mood_and_genres") { MoodAndGenresScreen(navController) }
     composable("account") { AccountScreen(navController) }
     composable("new_release") { NewReleaseScreen(navController) }

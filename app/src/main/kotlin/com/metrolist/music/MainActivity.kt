@@ -617,7 +617,7 @@ class MainActivity : ComponentActivity() {
                 val sharedContentViewModel: SharedContentViewModel = hiltViewModel()
                 val accountImageUrl by homeViewModel.accountImageUrl.collectAsState()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
+                val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("new_home") }
 
                 val (listenTogetherInTopBar) = rememberPreference(ListenTogetherInTopBarKey, defaultValue = true)
                 val navigationItems =
@@ -646,6 +646,7 @@ class MainActivity : ComponentActivity() {
                 val topLevelScreens =
                     remember {
                         listOf(
+                            Screens.NewHome.route,
                             Screens.Home.route,
                             Screens.Library.route,
                             Screens.ListenTogether.route,
@@ -851,7 +852,8 @@ class MainActivity : ComponentActivity() {
                 val currentTitleRes =
                     remember(navBackStackEntry) {
                         when (navBackStackEntry?.destination?.route) {
-                            Screens.Home.route -> R.string.home
+                            Screens.NewHome.route -> R.string.new_home
+                            Screens.Home.route -> R.string.old_home
                             Screens.Search.route -> R.string.search
                             Screens.Library.route -> R.string.filter_library
                             Screens.ListenTogether.route -> R.string.together
@@ -927,16 +929,6 @@ class MainActivity : ComponentActivity() {
                     LocalSyncUtils provides syncUtils,
                     LocalListenTogetherManager provides listenTogetherManager,
                 ) {
-                    val contentBlurRadius by remember(playerBottomSheetState) {
-                        derivedStateOf {
-                            if (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed) {
-                                0f
-                            } else {
-                                playerBottomSheetState.progress.coerceIn(0f, 1f) * 20f
-                            }
-                        }
-                    }
-
                     Scaffold(
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
@@ -983,17 +975,17 @@ class MainActivity : ComponentActivity() {
                                         colors =
                                             TopAppBarDefaults.topAppBarColors(
                                                 containerColor = when {
-                                                    currentRoute == Screens.Home.route && pureBlack ->
+                                                    (currentRoute == Screens.Home.route || currentRoute == Screens.NewHome.route) && pureBlack ->
                                                         Color.Black
-                                                    currentRoute == Screens.Home.route ->
+                                                    (currentRoute == Screens.Home.route || currentRoute == Screens.NewHome.route) ->
                                                         MaterialTheme.colorScheme.surfaceContainerLow
                                                     pureBlack -> Color.Black
                                                     else -> MaterialTheme.colorScheme.surfaceContainer
                                                 },
                                                 scrolledContainerColor = when {
-                                                    currentRoute == Screens.Home.route && pureBlack ->
+                                                    (currentRoute == Screens.Home.route || currentRoute == Screens.NewHome.route) && pureBlack ->
                                                         Color.Black
-                                                    currentRoute == Screens.Home.route ->
+                                                    (currentRoute == Screens.Home.route || currentRoute == Screens.NewHome.route) ->
                                                         MaterialTheme.colorScheme.surfaceContainerLow
                                                     pureBlack -> Color.Black
                                                     else -> MaterialTheme.colorScheme.surfaceContainer
@@ -1076,17 +1068,7 @@ class MainActivity : ComponentActivity() {
                             }
                             Box(
                                 Modifier
-                                    .weight(1f)
-                                    .graphicsLayer {
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                            val blurPx = contentBlurRadius * density.density
-                                            renderEffect = if (blurPx > 0.5f) {
-                                                android.graphics.RenderEffect
-                                                    .createBlurEffect(blurPx, blurPx, android.graphics.Shader.TileMode.CLAMP)
-                                                    .asComposeRenderEffect()
-                                            } else null
-                                        }
-                                    },
+                                    .weight(1f),
                             ) {
                                 val onboardingCompleted = remember { dataStore[OnboardingCompletedKey] ?: false }
 
@@ -1098,9 +1080,9 @@ class MainActivity : ComponentActivity() {
                                             "onboarding"
                                         } else {
                                             when (tabOpenedFromShortcut ?: defaultOpenTab) {
-                                                NavigationTab.HOME -> Screens.Home
+                                                NavigationTab.HOME -> Screens.NewHome
                                                 NavigationTab.LIBRARY -> Screens.Library
-                                                else -> Screens.Home
+                                                else -> Screens.NewHome
                                             }.route
                                         },
                                     // Enter Transition - smoother with smaller offset and longer duration

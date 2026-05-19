@@ -194,7 +194,11 @@ import com.metrolist.music.viewmodels.HomeViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import android.app.Activity
+import android.content.Intent
+import androidx.compose.material3.TextButton
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -693,8 +697,19 @@ fun HomeScreen(
 
     val isLoading: Boolean by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val phase2Complete by viewModel.phase2Complete.collectAsStateWithLifecycle()
     val isRandomizing by viewModel.isRandomizing.collectAsStateWithLifecycle()
     val pullRefreshState = rememberPullToRefreshState()
+
+    var showRefreshHint by remember { mutableStateOf(false) }
+    LaunchedEffect(isLoading) {
+        if (isLoading) {
+            delay(3000L)
+            if (isLoading) showRefreshHint = true
+        } else {
+            showRefreshHint = false
+        }
+    }
 
     val quickPicksLazyGridState = rememberLazyGridState()
     val forgottenFavoritesLazyGridState = rememberLazyGridState()
@@ -807,13 +822,32 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) {
+        snapshotFlow { lazylistState.layoutInfo.visibleItemsInfo }
+            .collect { visibleItems ->
+                visibleItems.forEach { itemInfo ->
+                    val key = itemInfo.key as? String ?: return@forEach
+                    when {
+                        key.startsWith("daily_discover") ->
+                            viewModel.onSectionBecameVisible("daily_discover")
+                        key.startsWith("community_playlists") ->
+                            viewModel.onSectionBecameVisible("from_the_community")
+                        key.startsWith("similar_to_title_") -> {
+                            val idx = key.removePrefix("similar_to_title_")
+                            viewModel.onSectionBecameVisible("similar_recommendation_$idx")
+                        }
+                    }
+                }
+            }
+    }
+
+    LaunchedEffect(Unit) {
         snapshotFlow {
             lazylistState.layoutInfo.visibleItemsInfo
                 .lastOrNull()
                 ?.index
         }.collect { lastVisibleIndex ->
             val len = lazylistState.layoutInfo.totalItemsCount
-            if (lastVisibleIndex != null && lastVisibleIndex >= len - 3) {
+            if (lastVisibleIndex != null && lastVisibleIndex >= len - 3 && viewModel.phase1Complete.value) {
                 viewModel.loadMoreYouTubeItems(homePage?.continuation)
             }
         }
@@ -1334,6 +1368,39 @@ fun HomeScreen(
                         title = stringResource(R.string.speed_dial),
                         modifier = Modifier.animateItem(),
                     )
+                }
+
+                if (speedDialItems.isEmpty() && isLoading) {
+                    item(key = "home_loading_hint") {
+                        AnimatedVisibility(
+                            visible = showRefreshHint,
+                            enter = fadeIn(animationSpec = tween(400)),
+                            exit = fadeOut(animationSpec = tween(200)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateItem(),
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                TextButton(
+                                    onClick = {
+                                        val intent = Intent(context, Class.forName("com.metrolist.music.MainActivity"))
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        context.startActivity(intent)
+                                        (context as Activity).finish()
+                                    }
+                                ) {
+                                    Text(
+                                        text = "Refresh page",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 if (speedDialItems.isEmpty() && isLoading) {

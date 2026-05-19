@@ -47,6 +47,9 @@ class LyricsViewModel @Inject constructor(
 
     val lyricsSearchStatus = MutableStateFlow<LyricsSearchStatus>(LyricsSearchStatus.Idle)
 
+    private val _lyricsRevision = MutableStateFlow(0)
+    val lyricsRevision: StateFlow<Int> = _lyricsRevision.asStateFlow()
+
     private val _displayedLyrics = MutableStateFlow<String?>(null)
     val displayedLyrics: StateFlow<String?> = _displayedLyrics.asStateFlow()
 

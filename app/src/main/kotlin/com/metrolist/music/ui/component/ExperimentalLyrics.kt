@@ -198,10 +198,10 @@ private fun LyricsPill(
     }
 }
 
-private const val LYRICS_ANCHOR_RATIO = 0.42f
+private const val LYRICS_ANCHOR_RATIO = 0.35f
 private val LYRICS_ITEM_FALLBACK_HEIGHT_DP = 68.dp
 private val LYRICS_ITEM_GAP_DP = 16.dp
-private val LYRICS_FADE_TOP_DP = 260.dp
+private val LYRICS_FADE_TOP_DP = 130.dp
 private val LYRICS_FADE_BOTTOM_DP = 160.dp
 private const val LYRICS_STAGGER_DELAY_PER_DISTANCE = 20
 private const val LYRICS_STAGGER_DELAY_MAX_MS = 200
@@ -533,16 +533,22 @@ fun ExperimentalLyrics(
                 .maxOrNull() ?: (scrollActiveIndices.maxOrNull() ?: -1)
 
             val isCurrentTargetStillActive = scrollTargetIndex in scrollActiveIndices
-            val anyStillActive = newActiveIndices.isNotEmpty()
-
-            val isInGap = !anyStillActive && previousScrollActiveIndices.isNotEmpty()
+            val anyStillActive = scrollActiveIndices.isNotEmpty()
 
             val shouldScroll = when {
                 isSeeking -> true
-                isInGap -> false  // silence gap: freeze everything, do not scroll ahead
+                // If current target just ended and there are other active lines, scroll to the new max
                 !isCurrentTargetStillActive && anyStillActive && scrollMax > scrollTargetIndex -> true
+
+                // If current target just ended and no other active lines
+                !isCurrentTargetStillActive && !anyStillActive && previousScrollActiveIndices.isNotEmpty() -> true
+
+                // If we don't have a target yet and lines became active
                 scrollTargetIndex == -1 && anyStillActive -> true
+
+                // New line started while nothing was active before
                 previousScrollActiveIndices.isEmpty() && anyStillActive && scrollMax > scrollTargetIndex -> true
+
                 else -> false
             }
 
@@ -550,6 +556,11 @@ fun ExperimentalLyrics(
                 val targetToScroll = when {
                     isSeeking -> scrollMax
                     !isCurrentTargetStillActive && anyStillActive -> scrollMax
+                    !isCurrentTargetStillActive && !anyStillActive -> {
+                        (lastMainMaxSeen + 1 until lines.size).firstOrNull {
+                            lines.getOrNull(it)?.isBackground == false
+                        } ?: scrollTargetIndex
+                    }
                     else -> scrollMax
                 }
                 if (targetToScroll != -1 && (isSeeking || targetToScroll > scrollTargetIndex)) {
@@ -561,8 +572,8 @@ fun ExperimentalLyrics(
                 lastMainMaxSeen = scrollMax
             }
 
-            activeLineIndices = if (isInGap) previousScrollActiveIndices else newActiveIndices
-            if (!isInGap) previousScrollActiveIndices = newActiveIndices
+            previousScrollActiveIndices = scrollActiveIndices
+            activeLineIndices = newActiveIndices
         }
     }
 
@@ -655,7 +666,7 @@ fun ExperimentalLyrics(
             }
     ) {
         val maxHeightPx = constraints.maxHeight.toFloat()
-        val anchorY = if (isFullScreen) with(density) { 192.dp.toPx() } else maxHeightPx * LYRICS_ANCHOR_RATIO
+        val anchorY = maxHeightPx * LYRICS_ANCHOR_RATIO
         val lineHeightPx = with(density) { LYRICS_ITEM_FALLBACK_HEIGHT_DP.toPx() }
         val indicatorHeightPx = with(density) { 72.dp.toPx() }
         val constraintLineHeightPx = with(density) { 120.dp.toPx() }
@@ -1088,8 +1099,8 @@ fun ExperimentalLyrics(
                                         currentPositionState = currentPositionState,
                                         lyricsOffset = (currentSong?.song?.lyricsOffset ?: 0).toLong(),
                                         playerConnection = playerConnection,
-                                        lyricsTextSize = 40f,
-                                        lyricsLineSpacing = 1.08f,
+                                        lyricsTextSize = 36f,
+                                        lyricsLineSpacing = 1.3f,
                                         expressiveAccent = expressiveAccent,
                                         lyricsTextPosition = lyricsTextPosition,
                                         respectAgentPositioning = respectAgentPositioning,

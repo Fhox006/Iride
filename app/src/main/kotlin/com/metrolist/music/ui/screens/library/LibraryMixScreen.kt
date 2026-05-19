@@ -444,7 +444,10 @@ fun LibraryMixScreen(
     val pullRefreshState = rememberPullToRefreshState()
 
     val categoriesContent = @Composable {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             val allCategoryItems = buildList {
                 add(CategoryItem(stringResource(R.string.albums), R.drawable.library_music, "library_albums", showStar = true))
                 add(CategoryItem(stringResource(R.string.artists), R.drawable.artist, "library_artists", showStar = true))
@@ -837,7 +840,7 @@ private fun LibraryCategoryCard(
                     painter = painterResource(R.drawable.star),
                     contentDescription = null,
                     modifier = Modifier.size(12.dp),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = Color.White,
                 )
             }
         }

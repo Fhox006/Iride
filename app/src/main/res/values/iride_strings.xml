@@ -325,8 +325,11 @@
     <string name="alarm_not_scheduled">Not scheduled</string>
     <string name="alarm_exact_permission_title">Allow exact alarms</string>
     <string name="alarm_exact_permission_desc">Grants permission for precise alarm timing, improving reliability when the app is in the background</string>
+    <string name="alarm_exact_permission_missing">Exact alarm permission missing: alarm may fire late</string>
     <string name="alarm_battery_optimization_title">Battery optimization</string>
     <string name="alarm_battery_optimization_desc">Disable battery optimization for more reliable alarm behavior in the background</string>
+    <string name="open_settings">Settings</string>
+    <string name="lastfm_api_not_configured">LastFM is not configured in this build</string>
 
     <!-- Player Settings -->
     <string name="disable_load_more_when_repeat_all">Disable auto-load in repeat all mode</string>

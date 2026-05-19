@@ -6,9 +6,8 @@
 package com.metrolist.music.ui.component
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -61,12 +60,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -135,6 +136,58 @@ private class PillProgressState(
         }
 }
 
+private class PillProgressDrawCache {
+    private var cachedSize = Size.Zero
+    private var cachedInset = 0f
+    private var cachedR = 0f
+    private val trackPath = Path()
+    private val progressPath = Path()
+    private val pm = PathMeasure()
+    private var total = 0f
+    private var startOffset = 0f
+
+    fun draw(scope: DrawScope, progress: Float, primaryColor: Color, trackColor: Color, strokeWidth: Float) {
+        val inset = with(scope) { 5.5.dp.toPx() }
+        val r = with(scope) { 16.dp.toPx() }
+
+        if (scope.size != cachedSize || inset != cachedInset || r != cachedR) {
+            cachedSize = scope.size
+            cachedInset = inset
+            cachedR = r
+            trackPath.reset()
+            trackPath.addRoundRect(
+                RoundRect(
+                    left = inset, top = inset,
+                    right = scope.size.width - inset, bottom = scope.size.height - inset,
+                    radiusX = r, radiusY = r,
+                )
+            )
+            pm.setPath(trackPath, false)
+            total = pm.length
+            val topStraightWidth = (scope.size.width - 2 * inset) - 2 * r
+            startOffset = topStraightWidth / 2f
+        }
+
+        val stroke = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+        scope.drawPath(trackPath, color = trackColor, style = stroke)
+
+        if (progress > 0f && total > 0f) {
+            val progressLength = total * progress
+            progressPath.reset()
+            val end = startOffset + progressLength
+            if (end <= total) {
+                pm.getSegment(startOffset, end, progressPath, true)
+            } else {
+                pm.getSegment(startOffset, total, progressPath, true)
+                val overflow = Path()
+                pm.getSegment(0f, end - total, overflow, true)
+                progressPath.addPath(overflow)
+            }
+            scope.drawPath(progressPath, color = primaryColor, style = stroke)
+        }
+    }
+}
+
 @Composable
 fun FloatingPill(
     navigationItems: List<Screens>,
@@ -159,7 +212,7 @@ fun FloatingPill(
     val targetPillHeight = if (isTopLevelRoute) FloatingPillHeight else MiniPlayerHeight
     val animatedPillHeight by animateDpAsState(
         targetValue = targetPillHeight,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
         label = "pillHeight",
     )
 
@@ -257,7 +310,7 @@ private fun PillContent(
     LaunchedEffect(isPlaying, isCasting) {
         if (!isCasting && isPlaying) {
             while (isActive) {
-                delay(100)
+                delay(200)
                 positionState.longValue = playerConnection.player.currentPosition
                 durationState.longValue = playerConnection.player.duration
             }
@@ -541,6 +594,7 @@ private fun PillPlayButton(
 ) {
     val trackColor = outlineColor.copy(alpha = 0.2f)
     val strokeWidth = 3.dp
+    val pillDrawCache = remember { PillProgressDrawCache() }
 
     Box(
         contentAlignment = Alignment.Center,
@@ -548,51 +602,7 @@ private fun PillPlayButton(
             .size(48.dp)
             .drawWithContent {
                 drawContent()
-                val progress = progressState.progress
-                val stroke = Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Round)
-                val inset = 5.5.dp.toPx()
-                val r = 16.dp.toPx()
-
-                val trackPath = Path().apply {
-                    addRoundRect(
-                        androidx.compose.ui.geometry.RoundRect(
-                            left = inset,
-                            top = inset,
-                            right = size.width - inset,
-                            bottom = size.height - inset,
-                            radiusX = r,
-                            radiusY = r,
-                        )
-                    )
-                }
-
-                val pm = PathMeasure()
-                pm.setPath(trackPath, false)
-                val total = pm.length
-
-                // Path.addRoundRect(..., Direction.CW) starts at (left + r, top) and moves RIGHT.
-                // 0.0 is the Top-Left of the straight segment.
-                // Top-Center is halfway through the top straight segment.
-                val topStraightWidth = (size.width - 2 * inset) - 2 * r
-                val startOffset = topStraightWidth / 2f
-
-                // Always draw full track
-                drawPath(trackPath, color = trackColor, style = stroke)
-
-                if (progress > 0f) {
-                    val progressLength = total * progress
-                    val progressPath = Path()
-                    val end = startOffset + progressLength
-                    if (end <= total) {
-                        pm.getSegment(startOffset, end, progressPath, true)
-                    } else {
-                        pm.getSegment(startOffset, total, progressPath, true)
-                        val overflow = Path()
-                        pm.getSegment(0f, end - total, overflow, true)
-                        progressPath.addPath(overflow)
-                    }
-                    drawPath(progressPath, color = primaryColor, style = stroke)
-                }
+                pillDrawCache.draw(this, progressState.progress, primaryColor, trackColor, strokeWidth.toPx())
             },
     ) {
         val imageShape = RoundedCornerShape(16.dp)

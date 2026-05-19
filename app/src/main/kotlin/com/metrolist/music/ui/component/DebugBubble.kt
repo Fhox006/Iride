@@ -63,6 +63,8 @@ fun DebugBubble(
     lyricsProvider: () -> LyricsEntity? = { null },
 ) {
     if (!BuildConfig.DEBUG) return
+    // TODO: remove when re-enabling debug bubble
+    return
 
     val context = LocalContext.current
     val syncUtils = LocalSyncUtils.current

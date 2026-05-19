@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavController
 import androidx.palette.graphics.Palette
@@ -132,7 +133,8 @@ private fun Color.irideIsDarkVibrant(): Boolean {
 @Composable
 fun IrideScreen(
     navController: NavController,
-    thumbnail: Bitmap? = null
+    thumbnail: Bitmap? = null,
+    readyToAnimate: Boolean = true,
 ) {
     var swatches by remember(thumbnail) { mutableStateOf<List<IrideExtractedSwatch>>(emptyList()) }
 
@@ -182,12 +184,13 @@ fun IrideScreen(
     val c5 by animateColorAsState(finalColors[4 % finalColors.size], tween(1200), label = "c5")
 
     val inf = rememberInfiniteTransition(label = "iride_gradient")
-    val o1 by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(8000, easing = LinearEasing), RepeatMode.Reverse), label = "o1")
-    val o2 by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(13000, easing = LinearEasing), RepeatMode.Reverse), label = "o2")
-    val o3 by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(17000, easing = LinearEasing), RepeatMode.Reverse), label = "o3")
+    val targetO = if (readyToAnimate) 1f else 0f
+    val o1 by inf.animateFloat(0f, targetO, infiniteRepeatable(tween(8000, easing = LinearEasing), RepeatMode.Reverse), label = "o1")
+    val o2 by inf.animateFloat(0f, targetO, infiniteRepeatable(tween(13000, easing = LinearEasing), RepeatMode.Reverse), label = "o2")
+    val o3 by inf.animateFloat(0f, targetO, infiniteRepeatable(tween(17000, easing = LinearEasing), RepeatMode.Reverse), label = "o3")
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
+        Canvas(modifier = Modifier.fillMaxSize().graphicsLayer {}) {
             val w = size.width; val h = size.height; val md = max(w, h)
             val totalPop = populations.sum().toFloat()
             fun getRadius(i: Int): Float {

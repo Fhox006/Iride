@@ -5,14 +5,11 @@
 
 package com.metrolist.music.ui.component
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.text.Layout
-import android.widget.Toast
 import timber.log.Timber
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -388,60 +385,12 @@ internal fun LyricsColorPickerDialog(
 
                 Spacer(Modifier.height(24.dp))
 
-                Row(
+                Button(
+                    onClick = { onShare(previewBackgroundColor, previewTextColor, previewSecondaryTextColor, bgStyle) },
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    FilledTonalButton(
-                        onClick = {
-                            scope.launch {
-                                try {
-                                    val configuration = context.resources.configuration
-                                    val density = context.resources.displayMetrics.density
-                                    val image = ComposeToImage.createLyricsImage(
-                                        context = context,
-                                        coverArtUrl = frozenThumbnailUrl,
-                                        songTitle = frozenTitle,
-                                        artistName = frozenArts,
-                                        lyrics = frozenTxt,
-                                        width = (configuration.screenWidthDp * density).toInt(),
-                                        height = (configuration.screenHeightDp * density).toInt(),
-                                        backgroundColor = previewBackgroundColor.toArgb(),
-                                        backgroundStyle = bgStyle,
-                                        textColor = previewTextColor.toArgb(),
-                                        secondaryTextColor = previewSecondaryTextColor.toArgb(),
-                                        lyricsAlignment = when (lyricsTextPosition) {
-                                            LyricsPosition.LEFT -> Layout.Alignment.ALIGN_NORMAL
-                                            LyricsPosition.CENTER -> Layout.Alignment.ALIGN_CENTER
-                                            else -> Layout.Alignment.ALIGN_OPPOSITE
-                                        }
-                                    )
-                                    val uri = ComposeToImage.saveBitmapAsFile(context, image, "lyrics_share_${System.currentTimeMillis()}")
-                                    val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                    val clipData = android.content.ClipData.newUri(context.contentResolver, "Lyrics Image", uri)
-                                    clipboardManager.setPrimaryClip(clipData)
-                                    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
-                                        Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
-                                    }
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Failed to copy image to clipboard")
-                                }
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(painterResource(R.drawable.content_copy), null, Modifier.size(20.dp))
-                    }
-
-                    Button(
-                        onClick = { onShare(previewBackgroundColor, previewTextColor, previewSecondaryTextColor, bgStyle) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(painterResource(R.drawable.upload), null, Modifier.size(24.dp))
-                    }
+                    Icon(painterResource(R.drawable.upload), null, Modifier.size(24.dp))
                 }
             }
         }

@@ -738,14 +738,17 @@ class MusicService :
             ) {
                 val lyricsWithProvider = lyricsHelper.getLyrics(mediaMetadata)
                 if (lyricsWithProvider.lyrics != LYRICS_NOT_FOUND) {
-                    database.query {
-                        upsert(
-                            LyricsEntity(
-                                id = mediaMetadata.id,
-                                lyrics = lyricsWithProvider.lyrics,
-                                provider = lyricsWithProvider.provider,
-                            ),
-                        )
+                    // Re-check: progressive may have saved better lyrics while this sequential search ran.
+                    if (database.lyrics(mediaMetadata.id).first() == null) {
+                        database.query {
+                            upsert(
+                                LyricsEntity(
+                                    id = mediaMetadata.id,
+                                    lyrics = lyricsWithProvider.lyrics,
+                                    provider = lyricsWithProvider.provider,
+                                ),
+                            )
+                        }
                     }
                 }
             }

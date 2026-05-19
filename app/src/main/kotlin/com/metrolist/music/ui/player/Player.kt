@@ -2139,25 +2139,6 @@ fun InlineLyricsView(
                 modifier = Modifier.weight(1f),
                 onClick = { pillsController.selectionAction() },
             )
-            PlayerPill(
-                icon = R.drawable.content_copy,
-                isActive = false,
-                textButtonColor = textButtonColor,
-                iconButtonColor = iconButtonColor,
-                modifier = Modifier.weight(1f),
-                onClick = {
-                    val header = buildString {
-                        appendLine("title=${mediaMetadata?.title}")
-                        appendLine("artists=${mediaMetadata?.artists?.joinToString { it.name }}")
-                        appendLine("duration=${mediaMetadata?.duration}")
-                        appendLine("album=${mediaMetadata?.album?.title}")
-                        appendLine("---")
-                    }
-                    val log = debugEntries.joinToString("\n") { "[${it.timeMs}] ${it.message}" }
-                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    cm.setPrimaryClip(ClipData.newPlainText("LyricsDebug", header + log))
-                },
-            )
         },
         content = {
             ProvideTextStyle(

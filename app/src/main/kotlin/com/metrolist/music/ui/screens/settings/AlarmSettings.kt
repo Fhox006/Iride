@@ -236,10 +236,17 @@ fun AlarmSettingsSection(showTitle: Boolean = true) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     AlarmSwitch(
                                         checked = alarm.enabled,
-                                        onCheckedChange = { enabled ->
+                                        onCheckedChange = { newEnabled ->
+                                            if (newEnabled && !canScheduleExact) {
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.alarm_exact_permission_missing),
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
                                             persistAndSchedule { current ->
                                                 current.map {
-                                                    if (it.id == alarm.id) it.copy(enabled = enabled) else it
+                                                    if (it.id == alarm.id) it.copy(enabled = newEnabled) else it
                                                 }
                                             }
                                         }
