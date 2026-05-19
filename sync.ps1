@@ -19,23 +19,22 @@ echo ==============================
 echo FATTO! Codice aggiornato.
 echo ==============================
 echo.
-
-echo Premi INVIO per sincronizzare di nuovo...
-echo Digita una lettera qualsiasi + INVIO per uscire.
+echo.
+echo Premi [R] per sincronizzare di nuovo
+echo Premi un altro tasto per uscire...
 echo.
 
-set "input="
-set /p "input=> "
+choice /c:RC /n /m ">"
+if errorlevel 2 goto end
+if errorlevel 1 goto loop
 
-if not defined input (
-    goto loop
-) else (
-    echo.
-    echo Uscita...
-)
+:end
+echo.
+echo Uscita...
+pause
 '''
 
 with open('/tmp/SyncOra.bat', 'w', encoding='ascii') as f:
     f.write(content)
 
-print("Creato! (Versione 2 - più affidabile)")
+print("Creato! (Versione con tasto R)")
