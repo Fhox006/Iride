@@ -1067,7 +1067,7 @@ interface DatabaseDao {
     fun playlist(playlistId: String): Flow<Playlist?>
 
     @Transaction
-    @Query("SELECT * FROM Playlist WHERE id = :id")
+    @Query("SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount FROM playlist WHERE id = :id")
     fun playlistBlocking(id: String): Playlist?
 
     @Transaction
