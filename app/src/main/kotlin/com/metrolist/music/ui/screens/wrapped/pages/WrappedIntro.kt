@@ -166,7 +166,7 @@ fun WrappedIntro(onNext: () -> Unit) {
                 Icon(
                     painter = painterResource(id = R.drawable.app_logo),
                     contentDescription = stringResource(id = R.string.wrapped_logo_content_description),
-                    modifier = Modifier.size(100.dp)
+                    modifier = Modifier.size(100.dp).padding(20.dp)
                 )
             }
 

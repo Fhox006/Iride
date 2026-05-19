@@ -302,7 +302,7 @@ fun LyricsImageCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.small_icon),
+                        painter = painterResource(id = R.drawable.ic_logo),
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                         colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(backgroundSolidColor)
