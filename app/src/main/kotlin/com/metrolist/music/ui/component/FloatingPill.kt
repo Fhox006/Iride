@@ -8,6 +8,7 @@ package com.metrolist.music.ui.component
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -210,11 +211,14 @@ fun FloatingPill(
     }
 
     val targetPillHeight = if (isTopLevelRoute) FloatingPillHeight else MiniPlayerHeight
+    var hasInitialized by remember { mutableStateOf(false) }
     val animatedPillHeight by animateDpAsState(
         targetValue = targetPillHeight,
-        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+        animationSpec = if (!hasInitialized) snap() else tween(durationMillis = 280, easing = FastOutSlowInEasing),
         label = "pillHeight",
+        finishedListener = { hasInitialized = true },
     )
+    LaunchedEffect(Unit) { hasInitialized = true }
 
     Box(
         modifier = modifier

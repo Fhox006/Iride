@@ -202,7 +202,7 @@ private fun WelcomePage(onNext: () -> Unit) {
             enter = fadeIn(tween(700, delayMillis = 200)) + slideInVertically(tween(700, delayMillis = 200)) { it / 4 }
         ) {
             Text(
-                text = "Musica che puoi sentire e vedere.\nUn'esperienza sensoriale completa — non solo suono, ma emozione visiva.",
+                text = "Music you can feel and see.\nA complete sensory experience — not just sound, but visual emotion.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                 textAlign = TextAlign.Center
@@ -220,7 +220,7 @@ private fun WelcomePage(onNext: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "Inizia",
+                    text = "Get Started",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -269,7 +269,7 @@ private fun NotificationsPage(onEnable: () -> Unit, onSkip: () -> Unit) {
             enter = fadeIn(tween(700, delayMillis = 100)) + slideInVertically(tween(700, delayMillis = 100)) { it / 4 }
         ) {
             Text(
-                text = "Resta aggiornato",
+                text = "Stay Updated",
                 style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
@@ -283,7 +283,7 @@ private fun NotificationsPage(onEnable: () -> Unit, onSkip: () -> Unit) {
             enter = fadeIn(tween(700, delayMillis = 200)) + slideInVertically(tween(700, delayMillis = 200)) { it / 4 }
         ) {
             Text(
-                text = "Le notifiche ti permettono di sapere quando la musica è in riproduzione e di controllare il player direttamente dalla schermata di blocco.",
+                text = "Notifications let you know when music is playing and control the player directly from the lock screen.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                 textAlign = TextAlign.Center
@@ -305,7 +305,7 @@ private fun NotificationsPage(onEnable: () -> Unit, onSkip: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Attiva notifiche",
+                        text = "Enable Notifications",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -316,7 +316,7 @@ private fun NotificationsPage(onEnable: () -> Unit, onSkip: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "No grazie",
+                        text = "No Thanks",
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
@@ -359,7 +359,7 @@ private fun LoginPage(onLogin: () -> Unit, onSkip: () -> Unit) {
             enter = fadeIn(tween(700, delayMillis = 100)) + slideInVertically(tween(700, delayMillis = 100)) { it / 4 }
         ) {
             Text(
-                text = "Connetti l'account",
+                text = "Connect Your Account",
                 style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
@@ -373,7 +373,7 @@ private fun LoginPage(onLogin: () -> Unit, onSkip: () -> Unit) {
             enter = fadeIn(tween(700, delayMillis = 200)) + slideInVertically(tween(700, delayMillis = 200)) { it / 4 }
         ) {
             Text(
-                text = "Accedi con il tuo account YouTube per sincronizzare le playlist, i brani preferiti e la cronologia di ascolto.",
+                text = "Sign in with your YouTube account to sync playlists, liked songs and listening history.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                 textAlign = TextAlign.Center
@@ -395,7 +395,7 @@ private fun LoginPage(onLogin: () -> Unit, onSkip: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Accedi con YouTube",
+                        text = "Sign in with YouTube",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -406,7 +406,7 @@ private fun LoginPage(onLogin: () -> Unit, onSkip: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Continua senza account",
+                        text = "Continue Without Account",
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
