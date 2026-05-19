@@ -1,3 +1,6 @@
+## 0.1.0-alpha01
+First public alpha release of Iride. Experimental — expect bugs and breaking changes.
+
 ---v13.4.0
 # MAINTENANCE MODE
 Metrolist is currently in maintenance mode. This means we will only be fixing bugs and making minor improvements. Please do not submit PRs for new features or major changes, as they will not be accepted.

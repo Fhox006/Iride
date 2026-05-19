@@ -28,10 +28,38 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Compute release title and version
+        id: release_meta
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          BASE="${VERSION%%-*}"
+          SUFFIX="${VERSION#*-}"
+          if [[ "$VERSION" == *-alpha* ]]; then
+            NUM=$((10#${SUFFIX#alpha}))
+            TITLE="Iride $BASE Alpha $NUM"
+          elif [[ "$VERSION" == *-beta* ]]; then
+            NUM=$((10#${SUFFIX#beta}))
+            TITLE="Iride $BASE Beta $NUM"
+          else
+            TITLE="Iride $BASE"
+          fi
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          VERSION="${{ steps.release_meta.outputs.version }}"
+          NOTES=$(awk "/^## $VERSION/{found=1; next} found && /^## /{exit} found{print}" changelog.md)
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Decode keystore
         run: |
           mkdir -p app/keystore
-          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > app/keystore/release.keystore
+          echo "${{ secrets.ANDROID_SIGNING_KEY }}" | base64 -d > app/keystore/release.keystore
 
       - name: Build FOSS release APK
         env:
@@ -42,37 +70,16 @@ jobs:
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
         run: ./gradlew assembleFossRelease
 
-      - name: Build GMS release APK
-        env:
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
-          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
-        run: ./gradlew assembleGmsRelease
-
-      - name: Rename APKs
+      - name: Rename APK
         run: |
-          mv app/build/outputs/apk/foss/release/app-foss-release.apk app/build/outputs/apk/foss/release/Iride.apk
-          mv app/build/outputs/apk/gms/release/app-gms-release.apk app/build/outputs/apk/gms/release/Iride-GMS.apk
-
-      - name: Extract changelog for this version
-        id: changelog
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-          VERSION="${TAG#v}"
-          NOTES=$(awk "/^## $VERSION/{found=1; next} found && /^## /{exit} found{print}" changelog.md)
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          mv app/build/outputs/apk/foss/release/app-foss-release.apk \
+             app/build/outputs/apk/foss/release/Iride.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "Iride ${{ github.ref_name }}"
+          name: ${{ steps.release_meta.outputs.title }}
           body: ${{ steps.changelog.outputs.notes }}
-          files: |
-            app/build/outputs/apk/foss/release/Iride.apk
-            app/build/outputs/apk/gms/release/Iride-GMS.apk
+          files: app/build/outputs/apk/foss/release/Iride.apk
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}

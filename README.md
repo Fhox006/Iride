@@ -14,6 +14,8 @@
 > 🚧 **This is a personal fork actively under development.**  
 > Built by a student at [Politecnico di Torino – Design Department](https://www.polito.it/en).
 
+> ⚠️ **Current releases are experimental alpha builds.** Expect bugs, missing features, and breaking changes. Not intended for daily use yet.
+
 </div>
 
 ---
