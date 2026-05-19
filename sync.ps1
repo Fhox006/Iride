@@ -1,6 +1,8 @@
 content = '''@echo off
 title Iride - Sync in corso...
-cd /d "C:\Users\mrffh\Desktop\Iride"
+
+:loop
+cd /d "C:\\Users\\mrffh\\Desktop\\Iride"
 echo.
 echo Sincronizzazione in corso...
 echo.
@@ -14,7 +16,8 @@ echo FATTO! Codice aggiornato.
 echo ==============================
 echo.
 pause
+goto loop
 '''
 with open('/tmp/SyncOra.bat', 'w', encoding='ascii') as f:
-    f.write(content)
+    f.write(content)
 print("Creato!")
