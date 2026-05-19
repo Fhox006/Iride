@@ -3,6 +3,7 @@ title Iride - Sync in corso...
 cd /d "C:\\Users\\mrffh\\Desktop\\Iride"
 
 :loop
+cls
 echo.
 echo ========================================
 echo        Sincronizzazione in corso...
@@ -21,20 +22,21 @@ echo ==============================
 echo.
 echo.
 echo Premi [R] per sincronizzare di nuovo
-echo Premi un altro tasto per uscire...
+echo Premi un altro tasto per uscire
 echo.
 
-choice /c:RC /n /m ">"
+choice /c:RC /n /m "Tasto: "
 if errorlevel 2 goto end
-if errorlevel 1 goto loop
+goto loop
 
 :end
+cls
 echo.
-echo Uscita...
-pause
+echo Uscita dal programma...
+echo.
 '''
 
 with open('/tmp/SyncOra.bat', 'w', encoding='ascii') as f:
     f.write(content)
 
-print("Creato! (Versione con tasto R)")
+print("Creato! Versione finale")
