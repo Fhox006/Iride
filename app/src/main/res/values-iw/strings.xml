@@ -1,8 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="songs">שירים</string>
     <string name="history">היסטוריה</string>
     <string name="home">בית</string>
+    <string name="new_home">Home</string>
+    <string name="old_home">Old Home</string>
     <string name="artists">אמנים</string>
     <string name="albums">אלבומים</string>
     <string name="playlists">פלייליסטים</string>

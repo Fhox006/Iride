@@ -1,7 +1,9 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="songs">गाने</string>
     <string name="home">मुख्य स्थान</string>
+    <string name="new_home">Home</string>
+    <string name="old_home">Old Home</string>
     <string name="artists">कलाकार</string>
     <string name="albums">एलबम</string>
     <plurals name="n_selected">

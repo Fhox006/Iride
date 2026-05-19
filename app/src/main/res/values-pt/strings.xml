@@ -1,6 +1,8 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home">Início</string>
+    <string name="new_home">Home</string>
+    <string name="old_home">Old Home</string>
     <string name="albums">Álbuns</string>
     <string name="playlists">Listas de reprodução</string>
     <string name="mixes">Mixes</string>

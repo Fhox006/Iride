@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="artists">Изпълнители</string>
     <string name="albums">Албуми</string>
@@ -16,6 +16,8 @@
     <string name="last_week">Миналата седмица</string>
     <string name="songs">Песни</string>
     <string name="home">Начало</string>
+    <string name="new_home">Home</string>
+    <string name="old_home">Old Home</string>
     <string name="history">История</string>
     <string name="mood_and_genres">Настроения и жанрове</string>
     <string name="stats">Статистика</string>

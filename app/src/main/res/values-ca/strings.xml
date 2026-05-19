@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="filter_library">Col·lecció</string>
     <string name="history">Historial</string>
@@ -49,6 +49,8 @@
     <string name="library_album_empty">Els àlbums de la col·lecció apareixeran aquí</string>
     <string name="filter_all">Tot</string>
     <string name="home">Inici</string>
+    <string name="new_home">Home</string>
+    <string name="old_home">Old Home</string>
     <string name="search">Cerca</string>
     <string name="delete_playlist_confirm">De debò voleu suprimir la llista de reproducció «%s»?</string>
     <string name="radio">Ràdio</string>

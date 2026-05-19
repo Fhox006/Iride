@@ -1,5 +1,7 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="new_home">Home</string>
+    <string name="old_home">Old Home</string>
     <string name="forgotten_favorites">Forgotten favourites</string>
     <string name="center">Centre</string>
 </resources>

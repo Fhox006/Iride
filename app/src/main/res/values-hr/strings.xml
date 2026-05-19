@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="playlist_synced">Playlista je sinkronizirana</string>
     <string name="undo">Poništi</string>
@@ -211,6 +211,8 @@
     <string name="app_version">Verzija aplikacije</string>
     <string name="clear_translation_models">Izbriši modele prevođenja</string>
     <string name="home">Početna</string>
+    <string name="new_home">Home</string>
+    <string name="old_home">Old Home</string>
     <string name="artists">Izvođači</string>
     <string name="songs">Pjesme</string>
     <string name="stats">Statistike</string>

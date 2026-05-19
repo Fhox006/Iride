@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
@@ -9,6 +9,8 @@
 <resources>
     <!-- Bottom navigation -->
     <string name="home">Home</string>
+    <string name="new_home">Home</string>
+    <string name="old_home">Old Home</string>
     <string name="what_new">What\'s New</string>
     <string name="songs">Songs</string>
     <string name="artists">Artists</string>

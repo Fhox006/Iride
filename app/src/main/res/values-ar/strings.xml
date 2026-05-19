@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="artists">فنانون</string>
     <string name="albums">ألبومات</string>
@@ -46,6 +46,8 @@
     <string name="library_song_empty">ستظهر أغاني المكتبة هنا</string>
     <string name="from_your_library">من مكتبتك</string>
     <string name="home">الرئيسية</string>
+    <string name="new_home">Home</string>
+    <string name="old_home">Old Home</string>
     <plurals name="n_selected">
         <item quantity="zero">%d تم اختياره</item>
         <item quantity="one">%d تم اختياره</item>

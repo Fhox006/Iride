@@ -1,6 +1,8 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="home">ഹോം</string>
+    <string name="new_home">Home</string>
+    <string name="old_home">Old Home</string>
     <string name="songs">പാട്ടുകൾ</string>
     <string name="artists">കലാകാരന്മാർ</string>
     <string name="albums">ആൽബങ്ങൾ</string>

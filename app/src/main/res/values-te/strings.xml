@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="reset">తిరిగి మొదటికి</string>
     <string name="artists">కళాకారులు</string>
@@ -25,6 +25,8 @@
     <string name="liked_songs">Starred</string>
     <string name="retry">మళ్ళీ ప్రయత్నించండి</string>
     <string name="home">ఇల్లు</string>
+    <string name="new_home">Home</string>
+    <string name="old_home">Old Home</string>
     <string name="details">వివరాలు</string>
     <string name="add_to_queue">వరుసలోకి జోడించు</string>
     <string name="view_artist">కళాకారుల వివరాలు చూడు</string>

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="albums">Albumi</string>
     <string name="songs">Pjesme</string>
@@ -82,6 +82,8 @@
     <string name="discord_integration">Integracija sa Discord-om</string>
     <string name="dismiss">Odbaci</string>
     <string name="home">Početna</string>
+    <string name="new_home">Home</string>
+    <string name="old_home">Old Home</string>
     <string name="undo">Vrati</string>
     <string name="artists">Umjetnici</string>
     <string name="playlists">Spisci za reprodukciju</string>
