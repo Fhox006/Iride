@@ -462,7 +462,7 @@ fun CommunityPlaylistCard(
                                         val songIds = songMetadata.map { it.id to it.setVideoId }
                                         val createdPlaylist = database.playlistBlocking(playlistEntity.id)
                                         if (createdPlaylist != null) {
-                                            addSongsToPlaylist(createdPlaylist, songIds)
+                                            addSongToPlaylist(createdPlaylist, songIds)
                                         }
                                     }
                                 }

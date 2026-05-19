@@ -6,6 +6,7 @@
     <string name="artists">אמנים</string>
     <string name="albums">אלבומים</string>
     <string name="playlists">פלייליסטים</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="one">%d נבחר</item>
         <item quantity="two">%d נבחרו</item>

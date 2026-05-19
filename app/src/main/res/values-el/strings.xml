@@ -5,6 +5,7 @@
     <string name="artists">Καλλιτέχνες</string>
     <string name="albums">Άλμπουμ</string>
     <string name="playlists">Λίστες</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="one">%d επιλεγμένο</item>
         <item quantity="other">%d επιλεγμένα</item>

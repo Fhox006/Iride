@@ -5,6 +5,7 @@
     <string name="artists">Виконавці</string>
     <string name="albums">Альбоми</string>
     <string name="playlists">Плейлисти</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="one">%d вибрано</item>
         <item quantity="few">%d вибране</item>

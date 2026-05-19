@@ -1067,6 +1067,10 @@ interface DatabaseDao {
     fun playlist(playlistId: String): Flow<Playlist?>
 
     @Transaction
+    @Query("SELECT * FROM Playlist WHERE id = :id")
+    fun playlistBlocking(id: String): Playlist?
+
+    @Transaction
     @Query("SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount FROM playlist WHERE isEditable AND bookmarkedAt IS NOT NULL ORDER BY rowId")
     fun editablePlaylistsByCreateDateAsc(): Flow<List<Playlist>>
 

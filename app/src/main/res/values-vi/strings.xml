@@ -5,6 +5,7 @@
     <string name="artists">Nghệ sĩ</string>
     <string name="albums">Album</string>
     <string name="playlists">Danh sách phát</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="other">Đã chọn %d</item>
     </plurals>

@@ -5,6 +5,7 @@
     <string name="artists">കലാകാരന്മാർ</string>
     <string name="albums">ആൽബങ്ങൾ</string>
     <string name="playlists">പ്ലേലിസ്റ്റുകൾ</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="one">%d തിരഞ്ഞെടുത്തു</item>
         <item quantity="other">%d തിരഞ്ഞെടുത്തു</item>

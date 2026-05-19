@@ -160,6 +160,7 @@ import com.metrolist.music.playback.MusicService.MusicBinder
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AppNavigationRail
+import com.metrolist.music.ui.component.DebugBubble
 import com.metrolist.music.ui.component.FloatingPill
 import com.metrolist.music.ui.component.FloatingPillBottomSpacing
 import com.metrolist.music.ui.component.FloatingPillHeight
@@ -1241,6 +1242,8 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+
+                    DebugBubble()
                 }
             }
         }

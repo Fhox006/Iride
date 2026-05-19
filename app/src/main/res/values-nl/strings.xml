@@ -5,6 +5,7 @@
     <string name="artists">Artiesten</string>
     <string name="albums">Albums</string>
     <string name="playlists">Afspeellijsten</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="one">%d geselecteerd</item>
         <item quantity="other">%d geselecteerd</item>

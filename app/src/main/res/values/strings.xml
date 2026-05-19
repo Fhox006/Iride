@@ -14,6 +14,7 @@
     <string name="artists">Artists</string>
     <string name="albums">Albums</string>
     <string name="playlists">Playlists</string>
+    <string name="mixes">Mixes</string>
 
     <!-- Top bar -->
     <plurals name="n_selected">

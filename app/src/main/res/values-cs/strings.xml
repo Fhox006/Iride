@@ -5,6 +5,7 @@
     <string name="artists">Umělci</string>
     <string name="albums">Alba</string>
     <string name="playlists">Playlisty</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="one">Vybrána %d</item>
         <item quantity="few">Vybrány %d</item>

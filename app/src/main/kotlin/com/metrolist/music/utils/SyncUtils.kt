@@ -159,13 +159,22 @@ class SyncUtils @Inject constructor(
 
     private fun startProcessingQueue() {
         processingJob = syncScope.launch {
-            for (operation in syncChannel) {
+            while (isActive) {
                 try {
-                    processOperation(operation)
+                    for (operation in syncChannel) {
+                        try {
+                            processOperation(operation)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error processing sync operation: $operation")
+                        }
+                    }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    Timber.e(e, "Error processing sync operation: $operation")
+                    Timber.e(e, "SyncUtils processing loop crashed, restarting in 1s")
+                    delay(1000L)
                 }
             }
         }

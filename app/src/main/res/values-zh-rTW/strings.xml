@@ -5,6 +5,7 @@
     <string name="artists">藝人</string>
     <string name="albums">專輯</string>
     <string name="playlists">播放清單</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="other">已選取 %d 個項目</item>
     </plurals>

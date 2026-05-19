@@ -5,12 +5,10 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,12 +19,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -47,7 +47,16 @@ import com.metrolist.music.R
 import com.metrolist.music.lyrics.LyricsDebugLog
 import com.metrolist.music.lyrics.LyricsUtils
 import com.metrolist.music.db.entities.LyricsEntity
+import com.metrolist.music.LocalSyncUtils
+import com.metrolist.music.utils.SyncStatus
 import kotlin.math.roundToInt
+
+private fun syncStatusLabel(s: SyncStatus) = when (s) {
+    SyncStatus.Idle -> "Idle"
+    SyncStatus.Syncing -> "Syncing..."
+    SyncStatus.Completed -> "Done"
+    is SyncStatus.Error -> "ERR: ${s.message.take(25)}"
+}
 
 @Composable
 fun DebugBubble(
@@ -56,6 +65,9 @@ fun DebugBubble(
     if (!BuildConfig.DEBUG) return
 
     val context = LocalContext.current
+    val syncUtils = LocalSyncUtils.current
+    val syncState by syncUtils.syncState.collectAsState()
+
     var offsetX by remember { mutableFloatStateOf(40f) }
     var offsetY by remember { mutableFloatStateOf(400f) }
     var expanded by remember { mutableStateOf(false) }
@@ -107,7 +119,7 @@ fun DebugBubble(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         shadowElevation = 8.dp,
                         modifier = Modifier
-                            .widthIn(min = 180.dp, max = 260.dp)
+                            .widthIn(min = 180.dp, max = 280.dp)
                             .padding(top = 4.dp)
                     ) {
                         Column(modifier = Modifier.padding(8.dp)) {
@@ -137,6 +149,44 @@ fun DebugBubble(
                             ) {
                                 Icon(painterResource(R.drawable.content_copy), null, Modifier.size(16.dp))
                                 Text(" Copy Lyrics+Debug", style = MaterialTheme.typography.labelMedium)
+                            }
+
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                            Text(
+                                text = "SINCRONIZZAZIONE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+
+                            val statusLines = buildList {
+                                add("Overall: ${syncStatusLabel(syncState.overallStatus)}")
+                                if (syncState.currentOperation.isNotEmpty())
+                                    add("Op: ${syncState.currentOperation}")
+                                add("Liked songs: ${syncStatusLabel(syncState.likedSongs)}")
+                                add("Library: ${syncStatusLabel(syncState.librarySongs)}")
+                                add("Uploaded: ${syncStatusLabel(syncState.uploadedSongs)}")
+                                add("Albums: ${syncStatusLabel(syncState.likedAlbums)}")
+                                add("Artists: ${syncStatusLabel(syncState.artists)}")
+                                add("Playlists: ${syncStatusLabel(syncState.playlists)}")
+                            }
+                            statusLines.forEach { line ->
+                                Text(
+                                    text = line,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 1.dp)
+                                )
+                            }
+
+                            TextButton(
+                                onClick = {
+                                    syncUtils.performFullSync()
+                                    expanded = false
+                                }
+                            ) {
+                                Icon(painterResource(R.drawable.sync), null, Modifier.size(16.dp))
+                                Text(" Force Full Sync", style = MaterialTheme.typography.labelMedium)
                             }
                         }
                     }

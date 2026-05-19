@@ -5,6 +5,7 @@
     <string name="artists">Előadók</string>
     <string name="albums">Albumok</string>
     <string name="playlists">Lejátszásilisták</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="one">%d kijelölve</item>
         <item quantity="other">%d kijelölve</item>

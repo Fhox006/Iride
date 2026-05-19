@@ -94,6 +94,7 @@
     <string name="listen_history">పాటలు వినిన చరిత్ర</string>
     <string name="albums">ఆల్బమ్‌లు</string>
     <string name="playlists">ప్లేలిస్ట్‌లు</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="one">%d ఎంచుకోబడింది</item>
         <item quantity="other">%d ఎంచుకోబడినవి</item>

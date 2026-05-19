@@ -5,6 +5,7 @@
     <string name="artists">هنرمندها</string>
     <string name="albums">مجموعه‌ها</string>
     <string name="playlists">فهرست‌پخش‌ها</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="one">%d انتخاب‌شده</item>
         <item quantity="other">%d انتخاب‌شده‌اند</item>

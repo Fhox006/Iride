@@ -5,6 +5,7 @@
     <string name="artists">Artistit</string>
     <string name="albums">Albumit</string>
     <string name="playlists">Soittolistat</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="one">%d valittu</item>
         <item quantity="other">%d kappaletta valittu</item>

@@ -3,6 +3,7 @@
     <string name="home">Início</string>
     <string name="albums">Álbuns</string>
     <string name="playlists">Listas de reprodução</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="one">%d selecionada</item>
         <item quantity="many">%d selecionadas</item>

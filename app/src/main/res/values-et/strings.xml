@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="playlists">Esitusloendid</string>
+    <string name="mixes">Mixes</string>
     <string name="history">Ajalugu</string>
     <string name="stats">Statistika</string>
     <string name="mood_and_genres">Meeleolu ja žanrid</string>

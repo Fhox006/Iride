@@ -5,6 +5,7 @@
     <string name="artists">Umetnici</string>
     <string name="albums">Albumi</string>
     <string name="playlists">Plejliste</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="one">%d izabran</item>
         <item quantity="few">%d izabrana</item>

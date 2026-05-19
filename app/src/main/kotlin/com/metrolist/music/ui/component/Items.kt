@@ -415,6 +415,7 @@ fun SongListItem(
     isSwipeable: Boolean = true,
     activeBackgroundColor: Color? = null,
     selectedBackgroundColor: Color? = null,
+    showInLibraryIcon: Boolean = false,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
@@ -438,7 +439,17 @@ fun SongListItem(
                     modifier = Modifier.size(ListThumbnailSize)
                 )
             },
-            trailingContent = trailingContent,
+            trailingContent = {
+                if (showInLibraryIcon) {
+                    Icon(
+                        painter = painterResource(R.drawable.library_add_check),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                trailingContent()
+            },
             modifier = modifier,
             isSelected = isSelected,
             isActive = isActive,

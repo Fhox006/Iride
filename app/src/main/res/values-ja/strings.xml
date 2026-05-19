@@ -5,6 +5,7 @@
     <string name="artists">アーティスト</string>
     <string name="albums">アルバム</string>
     <string name="playlists">プレイリスト</string>
+    <string name="mixes">Mixes</string>
     <plurals name="n_selected">
         <item quantity="other">%d個を選択中</item>
     </plurals>
