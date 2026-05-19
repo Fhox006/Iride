@@ -25,6 +25,8 @@ import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 val DefaultThemeColor = Color(0xFFED5564)
 
@@ -70,27 +72,25 @@ fun IrideTheme(
     )
 }
 
-fun Bitmap.extractThemeColor(): Color {
-    val colorsToPopulation = Palette.from(this)
+suspend fun Bitmap.extractThemeColor(): Color = withContext(Dispatchers.Default) {
+    val colorsToPopulation = Palette.from(this@extractThemeColor)
         .maximumColorCount(8)
         .generate()
         .swatches
         .associate { it.rgb to it.population }
     val rankedColors = Score.score(colorsToPopulation)
-    return Color(rankedColors.first())
+    Color(rankedColors.first())
 }
 
-fun Bitmap.extractGradientColors(): List<Color> {
-    val extractedColors = Palette.from(this)
+suspend fun Bitmap.extractGradientColors(): List<Color> = withContext(Dispatchers.Default) {
+    val extractedColors = Palette.from(this@extractGradientColors)
         .maximumColorCount(64)
         .generate()
         .swatches
         .associate { it.rgb to it.population }
-
     val orderedColors = Score.score(extractedColors, 2, 0xff4285f4.toInt(), true)
         .sortedByDescending { Color(it).luminance() }
-
-    return if (orderedColors.size >= 2)
+    if (orderedColors.size >= 2)
         listOf(Color(orderedColors[0]), Color(orderedColors[1]))
     else
         listOf(Color(0xFF595959), Color(0xFF0D0D0D))
