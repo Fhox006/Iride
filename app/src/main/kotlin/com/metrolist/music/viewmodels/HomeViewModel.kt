@@ -331,7 +331,6 @@ class HomeViewModel @Inject constructor(
         val chipActive = selectedChip != null
 
         list.add(HomeSection.SpeedDial)
-        list.add(HomeSection.YourMood)
 
         if (quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
         if (communityPlaylists?.isNotEmpty() == true) list.add(HomeSection.FromTheCommunity)
@@ -415,7 +414,7 @@ class HomeViewModel @Inject constructor(
         val finalItems = mutableListOf<HomeSection>()
         // Pin SpeedDial only when a cached snapshot gives immediate content
         if (hasCachedSpeedDial && list.contains(HomeSection.SpeedDial)) finalItems.add(HomeSection.SpeedDial)
-        // YourMood is no longer force-pinned; it participates in sorted order
+
         finalItems.addAll(sortedList.filter { section ->
             !(hasCachedSpeedDial && section == HomeSection.SpeedDial)
         })

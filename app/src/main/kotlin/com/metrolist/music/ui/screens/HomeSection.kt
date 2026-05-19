@@ -26,7 +26,5 @@ sealed class HomeSection(
         val index: Int,
     ) : HomeSection("home_page_section_$index", 10)
 
-    data object YourMood : HomeSection("your_mood", 1000)
-
     data object MoodAndGenres : HomeSection("mood_and_genres", 5)
 }

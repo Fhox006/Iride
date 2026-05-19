@@ -2447,10 +2447,6 @@ fun HomeScreen(
                                 }
                             }
                         }
-
-                        HomeSection.YourMood -> {
-                            // TODO: render YourMood section
-                        }
                     }
                 }
             }
