@@ -171,6 +171,7 @@ fun NewHomeScreen(
     val accountPlaylists by viewModel.accountPlaylists.collectAsStateWithLifecycle()
     val similarRecommendations by viewModel.similarRecommendations.collectAsStateWithLifecycle()
     val homePage by viewModel.homePage.collectAsStateWithLifecycle()
+    val phase1Complete by viewModel.phase1Complete.collectAsStateWithLifecycle()
 
     val accountName by viewModel.accountName.collectAsStateWithLifecycle()
     val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
