@@ -48,11 +48,9 @@ import androidx.palette.graphics.Palette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
-import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 private val WhiteMappedGray = Color(0xFF8A8C8E)
@@ -476,50 +474,12 @@ fun AnimatedAlbumGradientBackground(
 
             drawRect(animatedBaseBackground)
 
-            val ax = w * 0.07f
-            val ay = h * 0.06f
-
             val blobs = listOf(
-                GradientBlob(
-                    c1,
-                    Offset(
-                        w * 0.28f + ax * sin(t1.toDouble()).toFloat(),
-                        h * 0.25f + ay * cos(t1.toDouble() * 0.7).toFloat()
-                    ),
-                    maxDim * 0.58f, 0.75f
-                ),
-                GradientBlob(
-                    c2,
-                    Offset(
-                        w * 0.75f + ax * cos(t2.toDouble() + 1.0).toFloat(),
-                        h * 0.32f + ay * sin(t2.toDouble() * 0.8).toFloat()
-                    ),
-                    maxDim * 0.52f, 0.62f
-                ),
-                GradientBlob(
-                    c3,
-                    Offset(
-                        w * 0.68f + ax * sin(t3.toDouble() + 2.0).toFloat(),
-                        h * 0.74f + ay * cos(t3.toDouble() * 0.9).toFloat()
-                    ),
-                    maxDim * 0.47f, 0.48f
-                ),
-                GradientBlob(
-                    c4,
-                    Offset(
-                        w * 0.22f + ax * cos(t1.toDouble() + 0.5).toFloat(),
-                        h * 0.78f + ay * sin(t1.toDouble() * 1.1 + 1.5).toFloat()
-                    ),
-                    maxDim * 0.41f, 0.38f
-                ),
-                GradientBlob(
-                    c5,
-                    Offset(
-                        w * 0.52f + ax * sin(t2.toDouble() * 0.6 + 3.0).toFloat(),
-                        h * 0.48f + ay * cos(t2.toDouble() + 2.5).toFloat()
-                    ),
-                    maxDim * 0.35f, 0.28f
-                )
+                GradientBlob(c1, Offset(w * 0.28f, h * 0.25f), maxDim * 0.58f, 0.75f),
+                GradientBlob(c2, Offset(w * 0.75f, h * 0.32f), maxDim * 0.52f, 0.62f),
+                GradientBlob(c3, Offset(w * 0.68f, h * 0.74f), maxDim * 0.47f, 0.48f),
+                GradientBlob(c4, Offset(w * 0.22f, h * 0.78f), maxDim * 0.41f, 0.38f),
+                GradientBlob(c5, Offset(w * 0.52f, h * 0.48f), maxDim * 0.35f, 0.28f)
             )
 
             blobs.forEach { blob ->

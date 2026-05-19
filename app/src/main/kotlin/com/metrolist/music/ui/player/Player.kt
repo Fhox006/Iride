@@ -182,6 +182,7 @@ import com.metrolist.music.lyrics.LyricsDebugLog
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground
+import com.metrolist.music.ui.component.DebugBubble
 import com.metrolist.music.ui.component.BottomSheet
 import com.metrolist.music.ui.component.BottomSheetState
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -2093,6 +2094,10 @@ fun BottomSheetPlayer(
                 },
             )
         }
+
+        DebugBubble(
+            lyricsProvider = { currentLyrics }
+        )
     }
 }
 

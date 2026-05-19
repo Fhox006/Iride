@@ -420,34 +420,6 @@ fun LyricsMenu(
                         onClick = { showSearchDialog = true },
                     ),
                     Material3MenuItemData(
-                        title = { Text(stringResource(R.string.copy)) },
-                        description = { Text(stringResource(R.string.lyrics_copy_desc)) },
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.content_copy),
-                                contentDescription = null,
-                            )
-                        },
-                        onClick = {
-                            lyricsProvider()?.lyrics?.let { lyrics ->
-                                val plainLyrics = if (lyrics.startsWith("[")) {
-                                    LyricsUtils.parseLyrics(lyrics).joinToString("\n") { it.text }
-                                } else {
-                                    lyrics
-                                }
-                                val debugEntries = LyricsDebugLog.entries.value
-                                val debugBlock = if (debugEntries.isNotEmpty()) {
-                                    "\n\n--- LYRICS API DEBUG LOG ---\n" +
-                                    debugEntries.joinToString("\n") { "[${it.timeMs}ms] ${it.message}" }
-                                } else ""
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = ClipData.newPlainText("Lyrics", plainLyrics + debugBlock)
-                                clipboard.setPrimaryClip(clip)
-                                Toast.makeText(context, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                    ),
-                    Material3MenuItemData(
                         title = { Text(text = stringResource(R.string.romanize_current_track)) },
                         icon = {
                             Icon(

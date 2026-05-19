@@ -420,7 +420,7 @@ class HomeViewModel @Inject constructor(
             !(hasCachedSpeedDial && section == HomeSection.SpeedDial)
         })
         finalItems
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.distinctUntilChanged().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     suspend fun getRandomItem(): YTItem? {
         try {
