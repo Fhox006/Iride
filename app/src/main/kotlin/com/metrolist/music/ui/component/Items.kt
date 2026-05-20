@@ -106,6 +106,7 @@ import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.ShowExplicitBadgeKey
 import com.metrolist.music.constants.SmallGridThumbnailHeight
+import com.metrolist.music.constants.SquareVideoThumbnailKey
 import com.metrolist.music.constants.SwipeToSongKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.db.entities.Album
@@ -1109,7 +1110,15 @@ fun YouTubeGridItem(
     showPlayButton: Boolean = true,
     size: Dp = currentGridThumbnailHeight(),
     showTitle: Boolean = true,
-) = GridItem(
+) {
+    val squareVideoThumbnail by rememberPreference(SquareVideoThumbnailKey, defaultValue = true)
+    val defaultRatio = if (item is SongItem) 16f / 9 else 1f
+    val effectiveThumbnailRatio = when {
+        thumbnailRatio != defaultRatio -> thumbnailRatio
+        item is SongItem && squareVideoThumbnail -> 1f
+        else -> thumbnailRatio
+    }
+    GridItem(
     title = {
         if (showTitle) {
             Text(
@@ -1183,11 +1192,12 @@ fun YouTubeGridItem(
             )
         }
     },
-    thumbnailRatio = thumbnailRatio,
+    thumbnailRatio = effectiveThumbnailRatio,
     fillMaxWidth = fillMaxWidth,
     size = size,
     modifier = modifier
 )
+}
 
 @Composable
 fun LocalSongsGrid(

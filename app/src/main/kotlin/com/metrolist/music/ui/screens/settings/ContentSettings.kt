@@ -67,6 +67,7 @@ import com.metrolist.music.constants.EnableLyricsPlus
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoOnlyResultsKey
 import com.metrolist.music.constants.HideVideoSongsKey
+import com.metrolist.music.constants.SquareVideoThumbnailKey
 import com.metrolist.music.constants.HideVideosInLibraryKey
 import com.metrolist.music.constants.ResolveVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey

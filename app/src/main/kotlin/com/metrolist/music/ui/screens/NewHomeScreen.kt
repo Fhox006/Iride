@@ -43,6 +43,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -218,20 +219,6 @@ fun NewHomeScreen(
     val scope = rememberCoroutineScope()
     var randomizeJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val lazyListState = rememberLazyListState()
-
-    // Single full-screen spinner while phase 1 is loading
-    if (isLoading && speedDialItems.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(36.dp),
-                strokeWidth = 2.5.dp,
-            )
-        }
-        return
-    }
 
     LaunchedEffect(Unit) {
         snapshotFlow {
@@ -439,6 +426,12 @@ fun NewHomeScreen(
                 contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
                 modifier = Modifier.fillMaxSize(),
             ) {
+                if (isLoading) {
+                    item(key = "loading_indicator") {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+                }
+
                 // ── Speed Dial ──────────────────────────────────────────────
                 item(key = "speed_dial_title") {
                     NavigationTitle(

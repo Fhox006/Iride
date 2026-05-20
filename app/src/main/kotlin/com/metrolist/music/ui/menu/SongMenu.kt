@@ -432,11 +432,13 @@ fun SongMenu(
             if (showStarButton) {
                 val isEpisode = song.song.isEpisode
                 val isFavorite = if (isEpisode) song.song.inLibrary != null else song.song.liked
+                var optimisticFavorite by remember(isFavorite) { mutableStateOf(isFavorite) }
 
                 IconButton(
                     onClick = {
                         if (isEpisode) {
                             val isCurrentlySaved = song.song.inLibrary != null
+                            optimisticFavorite = !isCurrentlySaved
                             database.query {
                                 update(
                                     song.song.copy(
@@ -475,6 +477,7 @@ fun SongMenu(
                                 }
                             }
                         } else {
+                            optimisticFavorite = !optimisticFavorite
                             val s = song.song.toggleLike()
                             database.query {
                                 update(s)
@@ -484,8 +487,8 @@ fun SongMenu(
                     },
                 ) {
                     Icon(
-                        painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
-                        tint = if (isFavorite) MaterialTheme.colorScheme.error else LocalContentColor.current,
+                        painter = painterResource(if (optimisticFavorite) R.drawable.favorite else R.drawable.favorite_border),
+                        tint = if (optimisticFavorite) MaterialTheme.colorScheme.error else LocalContentColor.current,
                         contentDescription = null,
                     )
                 }
