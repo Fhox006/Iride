@@ -121,7 +121,7 @@ fun LibraryArtistsScreen(
         if (scrollToTop?.value == true) {
             when (viewType) {
                 LibraryViewType.LIST -> lazyListState.animateScrollToItem(0)
-                LibraryViewType.GRID -> lazyGridState.animateScrollToItem(0)
+                else -> lazyGridState.animateScrollToItem(0)
             }
             backStackEntry?.savedStateHandle?.set("scrollToTop", false)
         }
@@ -178,22 +178,21 @@ fun LibraryArtistsScreen(
 
             IconButton(
                 onClick = {
-                    viewType = viewType.toggle()
+                    viewType = if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else LibraryViewType.LIST
                 },
                 modifier = Modifier.padding(end = 8.dp).size(40.dp),
             ) {
                 Icon(
-                    painter =
-                        painterResource(
-                            when (viewType) {
-                                LibraryViewType.LIST -> R.drawable.list
-                                LibraryViewType.GRID -> R.drawable.grid_view
-                            },
-                        ),
+                    painter = painterResource(
+                        when (viewType) {
+                            LibraryViewType.LIST -> R.drawable.list
+                            else -> R.drawable.grid_view
+                        },
+                    ),
                     contentDescription = stringResource(
                         when (viewType) {
                             LibraryViewType.LIST -> R.string.switch_to_grid_view
-                            LibraryViewType.GRID -> R.string.switch_to_list_view
+                            else -> R.string.switch_to_list_view
                         },
                     ),
                 )
@@ -272,7 +271,7 @@ fun LibraryArtistsScreen(
                     }
                 }
 
-            LibraryViewType.GRID ->
+            LibraryViewType.GRID, LibraryViewType.GRID_WIDE ->
                 LazyVerticalGrid(
                     state = lazyGridState,
                     columns =

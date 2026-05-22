@@ -131,7 +131,7 @@ fun OnlineSearchScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
+                .background(MaterialTheme.colorScheme.background),
     ) {
         if (query.isEmpty() && !isFocused) {
             // === EXPLORE SECTION: moods first, no history ===

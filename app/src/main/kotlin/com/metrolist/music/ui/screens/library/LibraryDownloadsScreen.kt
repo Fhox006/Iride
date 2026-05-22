@@ -360,7 +360,7 @@ fun LibraryDownloadsScreen(
         if (scrollToTop?.value == true) {
             when (viewType) {
                 LibraryViewType.LIST -> lazyListState.animateScrollToItem(0)
-                LibraryViewType.GRID -> lazyGridState.animateScrollToItem(0)
+                else -> lazyGridState.animateScrollToItem(0)
             }
             backStackEntry?.savedStateHandle?.set("scrollToTop", false)
         }
@@ -414,22 +414,21 @@ fun LibraryDownloadsScreen(
 
             IconButton(
                 onClick = {
-                    viewType = viewType.toggle()
+                    viewType = if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else LibraryViewType.LIST
                 },
                 modifier = Modifier.padding(end = 8.dp).size(40.dp),
             ) {
                 Icon(
-                    painter =
-                    painterResource(
+                    painter = painterResource(
                         when (viewType) {
                             LibraryViewType.LIST -> R.drawable.list
-                            LibraryViewType.GRID -> R.drawable.grid_view
+                            else -> R.drawable.grid_view
                         },
                     ),
                     contentDescription = stringResource(
                         when (viewType) {
                             LibraryViewType.LIST -> R.string.switch_to_grid_view
-                            LibraryViewType.GRID -> R.string.switch_to_list_view
+                            else -> R.string.switch_to_list_view
                         },
                     ),
                 )
@@ -812,7 +811,7 @@ fun LibraryDownloadsScreen(
                 }
             }
 
-            LibraryViewType.GRID -> {
+            LibraryViewType.GRID, LibraryViewType.GRID_WIDE -> {
                 LazyVerticalGrid(
                     state = lazyGridState,
                     columns =

@@ -1017,12 +1017,9 @@ private fun FavoriteButton(
     val isEpisode = librarySong?.song?.isEpisode == true
     val isLiked = if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
 
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier =
-            Modifier
-                .size(40.dp)
-                .clickable { playerConnection.service.toggleLike() },
+    IconButton(
+        onClick = { playerConnection.service.toggleLike() },
+        modifier = Modifier.size(40.dp),
     ) {
         Icon(
             painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),

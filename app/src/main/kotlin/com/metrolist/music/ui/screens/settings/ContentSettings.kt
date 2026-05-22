@@ -112,6 +112,7 @@ fun ContentSettings(
     val (hideExplicit, onHideExplicitChange) = rememberPreference(key = HideExplicitKey, defaultValue = false)
     val (showExplicitBadge, onShowExplicitBadgeChange) = rememberPreference(key = ShowExplicitBadgeKey, defaultValue = false)
     val (hideVideoSongs, onHideVideoSongsChange) = rememberPreference(key = HideVideoSongsKey, defaultValue = false)
+    val (squareVideoThumbnail, onSquareVideoThumbnailChange) = rememberPreference(key = SquareVideoThumbnailKey, defaultValue = true)
     val (resolveVideoSongs, onResolveVideoSongsChange) = rememberPreference(key = ResolveVideoSongsKey, defaultValue = true)
     val (hideVideoOnlyResults, onHideVideoOnlyResultsChange) = rememberPreference(key = HideVideoOnlyResultsKey, defaultValue = false)
     val (hideVideosInLibrary, onHideVideosInLibraryChange) = rememberPreference(key = HideVideosInLibraryKey, defaultValue = false)
@@ -759,6 +760,27 @@ fun ContentSettings(
                         )
                     },
                     onClick = { onHideVideoSongsChange(!hideVideoSongs) }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.crop),
+                    title = { Text(stringResource(R.string.square_video_thumbnail)) },
+                    description = { Text(stringResource(R.string.square_video_thumbnail_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = squareVideoThumbnail,
+                            onCheckedChange = onSquareVideoThumbnailChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (squareVideoThumbnail) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onSquareVideoThumbnailChange(!squareVideoThumbnail) }
                 ),
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.cached),

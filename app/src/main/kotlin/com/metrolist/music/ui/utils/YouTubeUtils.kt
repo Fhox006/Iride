@@ -22,7 +22,8 @@ fun String.resize(
     if (this.contains("lh3.googleusercontent.com") && !this.contains("=w")) {
         val w = width ?: height!!
         val h = height ?: width!!
-        return "$this=w$w-h$h-p-l90-rj"
+        val base = if (contains("=s")) substringBefore("=s") else this
+        return "$base=w$w-h$h-p-l90-rj"
     }
     if (this.contains("yt3.ggpht.com")) {
         val size = width ?: height ?: return this

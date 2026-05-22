@@ -169,7 +169,7 @@ fun LibraryPlaylistsScreen(
         if (scrollToTop?.value == true) {
             when (viewType) {
                 LibraryViewType.LIST -> lazyListState.animateScrollToItem(0)
-                LibraryViewType.GRID -> lazyGridState.animateScrollToItem(0)
+                else -> lazyGridState.animateScrollToItem(0)
             }
             backStackEntry?.savedStateHandle?.set("scrollToTop", false)
         }
@@ -245,17 +245,18 @@ fun LibraryPlaylistsScreen(
                 modifier = Modifier.padding(end = 8.dp).size(40.dp),
             ) {
                 Icon(
-                    painter =
-                        painterResource(
-                            when (viewType) {
-                                LibraryViewType.LIST -> R.drawable.list
-                                LibraryViewType.GRID -> R.drawable.grid_view
-                            },
-                        ),
+                    painter = painterResource(
+                        when (viewType) {
+                            LibraryViewType.LIST -> R.drawable.list
+                            LibraryViewType.GRID -> R.drawable.grid_view
+                            LibraryViewType.GRID_WIDE -> R.drawable.grid_view_3
+                        },
+                    ),
                     contentDescription = stringResource(
                         when (viewType) {
                             LibraryViewType.LIST -> R.string.switch_to_grid_view
-                            LibraryViewType.GRID -> R.string.switch_to_list_view
+                            LibraryViewType.GRID -> R.string.switch_to_wide_grid_view
+                            LibraryViewType.GRID_WIDE -> R.string.switch_to_list_view
                         },
                     ),
                 )
@@ -331,13 +332,16 @@ fun LibraryPlaylistsScreen(
                 )
             }
 
-            LibraryViewType.GRID -> {
+            LibraryViewType.GRID, LibraryViewType.GRID_WIDE -> {
                 LazyVerticalGrid(
                     state = lazyGridState,
-                    columns =
+                    columns = if (viewType == LibraryViewType.GRID_WIDE) {
+                        GridCells.Fixed(3)
+                    } else {
                         GridCells.Adaptive(
                             minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
-                        ),
+                        )
+                    },
                     contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
                 ) {
                     item(

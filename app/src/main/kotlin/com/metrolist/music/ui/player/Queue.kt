@@ -146,6 +146,7 @@ import com.metrolist.music.constants.SleepTimerDefaultKey
 import com.metrolist.music.constants.SleepTimerFadeOutKey
 import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
 import com.metrolist.music.extensions.toMediaItem
+import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.models.toMediaMetadata
 import kotlinx.coroutines.flow.first
 import android.widget.Toast
@@ -756,6 +757,7 @@ fun Queue(
                                                                         }
                                                                     }
                                                                 },
+                                                                onShowSleepTimerDialog = { showSleepTimerDialog = true },
                                                                 onDismiss = menuState::dismiss,
                                                             )
                                                         }
@@ -911,6 +913,7 @@ fun Queue(
                                                                 }
                                                             }
                                                         },
+                                                        onShowSleepTimerDialog = { showSleepTimerDialog = true },
                                                         onDismiss = menuState::dismiss,
                                                     )
                                                 }
@@ -1410,18 +1413,17 @@ fun InlineQueuePanel(
         modifier = modifier,
         pills = {
             PlayerPill(
-                icon = R.drawable.bedtime,
-                isActive = sleepTimerEnabled,
+                icon = R.drawable.radio,
+                isActive = false,
                 enabled = !isListenTogetherGuest,
                 textButtonColor = textButtonColor,
                 iconButtonColor = iconButtonColor,
                 modifier = Modifier.weight(1f),
-                text = if (sleepTimerEnabled) makeTimeString(sleepTimerTimeLeft) else null,
                 onClick = {
-                    if (sleepTimerEnabled) {
-                        playerConnection.service.sleepTimer.clear()
-                    } else {
-                        showSleepTimerDialog = true
+                    val currentIndex = playerConnection.player.currentMediaItemIndex
+                    val currentMetadata = playerConnection.player.getMediaItemAt(currentIndex).metadata
+                    if (currentMetadata != null) {
+                        playerConnection.playQueue(YouTubeQueue.radio(currentMetadata))
                     }
                 },
             )
@@ -1587,6 +1589,7 @@ fun InlineQueuePanel(
                                             onShowDetailsDialog = {
                                                 bottomSheetPageState.show { ShowMediaInfo(historyItem.id) }
                                             },
+                                            onShowSleepTimerDialog = { showSleepTimerDialog = true },
                                             onDismiss = menuState::dismiss,
                                         )
                                     }
@@ -1600,6 +1603,7 @@ fun InlineQueuePanel(
                                             onShowDetailsDialog = {
                                                 bottomSheetPageState.show { ShowMediaInfo(historyItem.id) }
                                             },
+                                            onShowSleepTimerDialog = { showSleepTimerDialog = true },
                                             onDismiss = menuState::dismiss,
                                         )
                                     }
@@ -1706,6 +1710,7 @@ fun InlineQueuePanel(
                                                                 bottomSheetPageState.show { ShowMediaInfo(it) }
                                                             }
                                                         },
+                                                        onShowSleepTimerDialog = { showSleepTimerDialog = true },
                                                         onDismiss = menuState::dismiss,
                                                     )
                                                 }
@@ -1821,6 +1826,7 @@ fun InlineQueuePanel(
                                                             bottomSheetPageState.show { ShowMediaInfo(it) }
                                                         }
                                                     },
+                                                    onShowSleepTimerDialog = { showSleepTimerDialog = true },
                                                     onDismiss = menuState::dismiss,
                                                 )
                                             }

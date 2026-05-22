@@ -19,6 +19,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -130,6 +131,7 @@ import com.metrolist.music.constants.DisableScreenshotKey
 import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.ExperimentalLyricsKey
+import com.metrolist.music.constants.DataSyncIdKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.OnboardingCompletedKey
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
@@ -338,8 +340,26 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         lifecycleScope.launch {
-            val cookie = dataStore.data.map { it[InnerTubeCookieKey] }.first()
-            val visitorData = dataStore.data.map { it[VisitorDataKey] }.first()
+            val prefs = dataStore.data.first()
+            val cookie = prefs[InnerTubeCookieKey]
+            val visitorData = prefs[VisitorDataKey]
+
+            // Always re-inject auth state — guards against in-memory loss after Activity recreation
+            // without a DataStore change (distinctUntilChanged would suppress re-emission).
+            if (!cookie.isNullOrEmpty()) {
+                YouTube.cookie = cookie
+            }
+            if (!visitorData.isNullOrEmpty() && visitorData != "null") {
+                YouTube.visitorData = visitorData
+            }
+            prefs[DataSyncIdKey]?.takeIf { it.isNotEmpty() }?.let { raw ->
+                YouTube.dataSyncId = if (raw.contains("||")) {
+                    if (raw.endsWith("||")) raw.substringBefore("||") else raw.substringAfter("||")
+                } else {
+                    raw
+                }
+            }
+
             if ((cookie != null && YouTube.cookie == null) ||
                 (visitorData != null && YouTube.visitorData == null)) {
                 (application as App).initializeSettings()
@@ -452,7 +472,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = false)
+        val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = true)
         val enableHighRefreshRate by rememberPreference(EnableHighRefreshRateKey, defaultValue = true)
 
         LaunchedEffect(enableHighRefreshRate) {
@@ -500,24 +520,29 @@ class MainActivity : ComponentActivity() {
                 pureBlackEnabled && useDarkTheme
             }
 
-        val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = Color(0xFF1E88E5).toArgb())
+        val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = DefaultThemeColor.toArgb())
         val selectedThemeColor = Color(selectedThemeColorInt)
 
-        var themeColor by rememberSaveable(stateSaver = ColorSaver) {
+        var targetThemeColor by rememberSaveable(stateSaver = ColorSaver) {
             mutableStateOf(selectedThemeColor)
         }
+        val themeColor by animateColorAsState(
+            targetValue = targetThemeColor,
+            animationSpec = tween(durationMillis = 600),
+            label = "themeColor"
+        )
         val themeColorCache = remember { LinkedHashMap<String, Color>(21, 0.75f, true) }
 
         LaunchedEffect(selectedThemeColor) {
             if (!enableDynamicTheme) {
-                themeColor = selectedThemeColor
+                targetThemeColor = selectedThemeColor
             }
         }
 
         LaunchedEffect(playerConnection, enableDynamicTheme, selectedThemeColor) {
             val playerConnection = playerConnection
             if (!enableDynamicTheme || playerConnection == null) {
-                themeColor = selectedThemeColor
+                targetThemeColor = selectedThemeColor
                 return@LaunchedEffect
             }
 
@@ -526,7 +551,7 @@ class MainActivity : ComponentActivity() {
                 if (thumbnailUrl != null) {
                     val cached = themeColorCache[thumbnailUrl]
                     if (cached != null) {
-                        themeColor = cached
+                        targetThemeColor = cached
                         return@collectLatest
                     }
 
@@ -545,7 +570,7 @@ class MainActivity : ComponentActivity() {
                                         .build(),
                                 )
                             val extractedColor = result.image?.toBitmap()?.extractThemeColor() ?: selectedThemeColor
-                            themeColor = extractedColor
+                            targetThemeColor = extractedColor
                             themeColorCache[thumbnailUrl] = extractedColor
                             if (themeColorCache.size > 20) {
                                 themeColorCache.entries.iterator().also {
@@ -554,12 +579,11 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         } catch (e: Exception) {
-                            // Fallback to default on error
-                            themeColor = selectedThemeColor
+                            targetThemeColor = selectedThemeColor
                         }
                     }
                 } else {
-                    themeColor = selectedThemeColor
+                    targetThemeColor = selectedThemeColor
                 }
             }
         }

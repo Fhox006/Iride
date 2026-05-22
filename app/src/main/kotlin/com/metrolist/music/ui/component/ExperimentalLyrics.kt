@@ -156,6 +156,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -625,9 +626,15 @@ fun ExperimentalLyrics(
         if (isAutoScrollEnabled) pillsVisible = true
     }
 
+    var isSwitchingFullScreen by remember { mutableStateOf(false) }
+
     LaunchedEffect(isFullScreen) {
+        isSwitchingFullScreen = true
         if (isFullScreen) pillsVisible = false
         else pillsVisible = true
+        withFrameNanos {}
+        withFrameNanos {}
+        isSwitchingFullScreen = false
     }
 
     var flingJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
@@ -1046,11 +1053,14 @@ fun ExperimentalLyrics(
                         val distance = abs(listIndex - activeListIndex)
                         val targetOffset = anchorY + positions.getOrDefault(listIndex, (listIndex - activeListIndex) * lineHeightPx)
                         val frozenOffset = remember { mutableFloatStateOf(targetOffset) }
-                        LaunchedEffect(isAutoScrollEnabled, targetOffset, isInitialLayout) {
+                        LaunchedEffect(isAutoScrollEnabled, targetOffset, isInitialLayout, isSwitchingFullScreen) {
+                            if (isSwitchingFullScreen) return@LaunchedEffect
                             if (isAutoScrollEnabled || isInitialLayout) frozenOffset.floatValue = targetOffset
                         }
                         val animatedOffset by animateFloatAsState(
-                            targetValue = if (isAutoScrollEnabled) targetOffset else frozenOffset.floatValue,
+                            targetValue = if (isSwitchingFullScreen) frozenOffset.floatValue
+                                          else if (isAutoScrollEnabled) targetOffset
+                                          else frozenOffset.floatValue,
                             animationSpec = if (isInitialLayout || !isAutoScrollEnabled) snap()
                             else tween(750, (distance * LYRICS_STAGGER_DELAY_PER_DISTANCE).coerceAtMost(LYRICS_STAGGER_DELAY_MAX_MS), FastOutSlowInEasing),
                             label = "lyricStaggeredOffset_$listIndex"

@@ -141,7 +141,7 @@ fun ThemeScreen(
         PureBlackMiniPlayerKey,
         defaultValue = true
     )
-    val (dynamicTheme, onDynamicThemeChange) = rememberPreference(DynamicThemeKey, defaultValue = false)
+    val (dynamicTheme, onDynamicThemeChange) = rememberPreference(DynamicThemeKey, defaultValue = true)
     val (enableDynamicIcon, onEnableDynamicIconChange) =
         rememberPreference(EnableDynamicIconKey, defaultValue = true)
     val (enableHighRefreshRate, onEnableHighRefreshRateChange) =
@@ -155,7 +155,7 @@ fun ThemeScreen(
     }
     val (selectedThemeColorInt, onSelectedThemeColorChange) = rememberPreference(
         SelectedThemeColorKey,
-        Color(0xFF1E88E5).toArgb()
+        DefaultThemeColor.toArgb()
     )
 
     val selectedThemeColor = Color(selectedThemeColorInt)

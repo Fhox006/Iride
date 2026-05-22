@@ -184,6 +184,56 @@ interface DatabaseDao {
     fun likedSongsCount(): Flow<Int>
 
     @Transaction
+    @Query("SELECT * FROM song WHERE starred ORDER BY rowId")
+    fun starredSongsByRowIdAsc(): Flow<List<Song>>
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE starred ORDER BY rowId")
+    fun starredSongsByCreateDateAsc(): Flow<List<Song>>
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE starred ORDER BY title")
+    fun starredSongsByNameAsc(): Flow<List<Song>>
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE starred ORDER BY totalPlayTime")
+    fun starredSongsByPlayTimeAsc(): Flow<List<Song>>
+
+    fun starredSongs(
+        sortType: SongSortType,
+        descending: Boolean,
+    ) = when (sortType) {
+        SongSortType.CREATE_DATE -> starredSongsByCreateDateAsc()
+        SongSortType.NAME ->
+            starredSongsByNameAsc().map { songs ->
+                val collator = Collator.getInstance(Locale.getDefault())
+                collator.strength = Collator.PRIMARY
+                songs.sortedWith(compareBy(collator) { it.song.title })
+            }
+
+        SongSortType.ARTIST ->
+            starredSongsByRowIdAsc().map { songs ->
+                val collator = Collator.getInstance(Locale.getDefault())
+                collator.strength = Collator.PRIMARY
+                songs
+                    .sortedWith(
+                        compareBy(collator) { song ->
+                            song.orderedArtists.joinToString("") { it.name }
+                        },
+                    ).groupBy { it.album?.title }
+                    .flatMap { (_, songsByAlbum) ->
+                        songsByAlbum.sortedBy { album ->
+                            album.orderedArtists.joinToString(
+                                "",
+                            ) { it.name }
+                        }
+                    }
+            }
+
+        SongSortType.PLAY_TIME -> starredSongsByPlayTimeAsc()
+    }.map { it.reversed(descending) }
+
+    @Transaction
     @Query("SELECT song.* FROM song JOIN song_album_map ON song.id = song_album_map.songId WHERE song_album_map.albumId = :albumId")
     fun albumSongs(albumId: String): Flow<List<Song>>
 

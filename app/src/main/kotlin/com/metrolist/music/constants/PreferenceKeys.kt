@@ -240,6 +240,7 @@ const val SYNC_COOLDOWN = 30 * 60L
 val ArtistViewTypeKey = stringPreferencesKey("artistViewType")
 val AlbumViewTypeKey = stringPreferencesKey("albumViewType")
 val PlaylistViewTypeKey = stringPreferencesKey("playlistViewType")
+val MixViewTypeKey = stringPreferencesKey("mixViewType")
 
 val PlaylistEditLockKey = booleanPreferencesKey("playlistEditLock")
 val QuickPicksKey = stringPreferencesKey("discover")
@@ -269,12 +270,14 @@ val GlobalTop50LastUpdateKey = longPreferencesKey("global_top_50_last_update")
 enum class LibraryViewType {
     LIST,
     GRID,
+    GRID_WIDE,
     ;
 
     fun toggle() =
         when (this) {
             LIST -> GRID
-            GRID -> LIST
+            GRID -> GRID_WIDE
+            GRID_WIDE -> LIST
         }
 }
 

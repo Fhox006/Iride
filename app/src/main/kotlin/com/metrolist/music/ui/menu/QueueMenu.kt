@@ -87,6 +87,7 @@ fun QueueMenu(
     navController: NavController,
     playerBottomSheetState: BottomSheetState,
     onShowDetailsDialog: () -> Unit,
+    onShowSleepTimerDialog: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     mediaMetadata ?: return
@@ -275,25 +276,16 @@ fun QueueMenu(
                     NewAction(
                         icon = {
                             Icon(
-                                painter = painterResource(R.drawable.radio),
+                                painter = painterResource(R.drawable.bedtime),
                                 contentDescription = null,
                                 modifier = Modifier.size(28.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
-                        text = stringResource(R.string.start_radio),
+                        text = stringResource(R.string.sleep_timer),
                         onClick = {
                             onDismiss()
-                            val currentMediaId = playerConnection.player.currentMediaItemIndex.let {
-                                playerConnection.player.getMediaItemAt(it).mediaId
-                            }
-                            if (mediaMetadata.id == currentMediaId) {
-                                playerConnection.startRadioSeamlessly()
-                            } else {
-                                playerConnection.playQueue(
-                                    YouTubeQueue.radio(mediaMetadata)
-                                )
-                            }
+                            onShowSleepTimerDialog()
                         }
                     ),
                     NewAction(

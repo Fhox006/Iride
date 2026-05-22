@@ -231,6 +231,12 @@ fun NewHomeScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.onSectionBecameVisible("daily_discover")
+        viewModel.onSectionBecameVisible("from_the_community")
+        viewModel.onSectionBecameVisible("similar_recommendation_0")
+    }
+
     val pullRefreshState = rememberPullToRefreshState()
 
     PullToRefreshBox(
@@ -445,9 +451,9 @@ fun NewHomeScreen(
                         val items = speedDialItems
                         val targetItemSize = 160.dp
                         val columns = (containerWidthDp / targetItemSize).toInt().coerceAtLeast(3)
-                        val rows = if (columns >= 6) 1 else if (columns >= 4) 2 else 3
+                        val rows = if (columns >= 6) 1 else if (columns >= 4) 2 else 2
                         val itemsPerPage = columns * rows
-                        val peekPadding = 20.dp
+                        val peekPadding = 12.dp
                         val itemWidth = (containerWidthDp - peekPadding * 2) / columns
 
                         val realPageCount = (items.size + 1 + itemsPerPage - 1) / itemsPerPage
@@ -469,7 +475,7 @@ fun NewHomeScreen(
                             ) { page ->
                                 val realPage = if (realPageCount > 1) page % realPageCount else 0
                                 val isFirstPage = realPage == 0
-                                val centerIndex = if (rows >= 2 && columns >= 2) columns + 1 else itemsPerPage - 1
+                                val centerIndex = if (rows >= 2 && columns >= 2) columns - 1 else itemsPerPage - 1
 
                                 val pageStartIndex = if (isFirstPage) 0 else realPage * itemsPerPage - 1
                                 val pageItems = items.drop(pageStartIndex).take(if (isFirstPage) itemsPerPage - 1 else itemsPerPage)
@@ -652,97 +658,90 @@ fun NewHomeScreen(
                     }
                 }
 
-                // ── Your Mood ────────────────────────────────────────────────
-                item(key = "your_mood_title") {
-                    NavigationTitle(
-                        title = "Your Mood",
-                        modifier = Modifier.animateItem(),
-                    )
-                }
+                // ── Your Mood (only shown when logged in) ────────────────────
+                if (isLoggedIn) {
+                    item(key = "your_mood_title") {
+                        NavigationTitle(
+                            title = "Your Mood",
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
 
-                item(key = "your_mood_section") {
-                    val isDark = isSystemInDarkTheme()
-                    val bgColor = if (isDark)
-                        MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
-                    else
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    item(key = "your_mood_section") {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateItem(),
+                        ) {
+                            if (moodChips.isNotEmpty()) {
+                                ChipsRow(
+                                    chips = moodChips,
+                                    currentValue = selectedMoodCategory,
+                                    onValueUpdate = { if (it != null) selectedMoodCategory = it },
+                                    chipHeight = 40.dp,
+                                    horizontalPadding = 12.dp,
+                                    labelStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp),
+                                )
+                            }
 
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                            .clip(RoundedCornerShape(28.dp))
-                            .background(bgColor)
-                            .heightIn(min = 140.dp)
-                            .padding(top = 14.dp, bottom = 12.dp)
-                            .animateItem(),
-                    ) {
-                        if (moodChips.isNotEmpty()) {
-                            ChipsRow(
-                                chips = moodChips,
-                                currentValue = selectedMoodCategory,
-                                onValueUpdate = { if (it != null) selectedMoodCategory = it },
-                                chipHeight = 40.dp,
-                                horizontalPadding = 12.dp,
-                                labelStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp),
-                            )
-                        }
-
-                        AnimatedContent(
-                            targetState = moodPage,
-                            transitionSpec = { fadeIn(tween(350)) togetherWith fadeOut(tween(200)) },
-                            label = "moodContent",
-                        ) { page ->
-                            if (page == null) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(100.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        strokeWidth = 2.dp,
-                                    )
-                                }
-                            } else {
-                                val mixItems = page.sections
-                                    .flatMap { it.items }
-                                    .filterIsInstance<PlaylistItem>()
-                                    .take(10)
-                                if (mixItems.isNotEmpty()) {
-                                    LazyRow(
-                                        state = moodMixesState,
-                                        contentPadding = PaddingValues(horizontal = 12.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
+                            AnimatedContent(
+                                targetState = moodPage,
+                                transitionSpec = { fadeIn(tween(350)) togetherWith fadeOut(tween(200)) },
+                                label = "moodContent",
+                            ) { page ->
+                                if (page == null) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(100.dp),
+                                        contentAlignment = Alignment.Center,
                                     ) {
-                                        items(mixItems, key = { it.id }) { mix ->
-                                            YouTubeGridItem(
-                                                item = mix,
-                                                isActive = mix.id == mediaMetadata?.album?.id,
-                                                isPlaying = isPlaying,
-                                                coroutineScope = scope,
-                                                size = 135.dp,
-                                                showTitle = true,
-                                                modifier = Modifier
-                                                    .animateItem()
-                                                    .combinedClickable(
-                                                        onClick = {
-                                                            navController.navigate("online_playlist/${mix.id}")
-                                                        },
-                                                        onLongClick = {
-                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                            menuState.show {
-                                                                YouTubePlaylistMenu(
-                                                                    playlist = mix,
-                                                                    coroutineScope = scope,
-                                                                    onDismiss = menuState::dismiss,
-                                                                )
-                                                            }
-                                                        },
-                                                    ),
-                                            )
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp,
+                                        )
+                                    }
+                                } else {
+                                    val mixItems = page.sections
+                                        .flatMap { it.items }
+                                        .filterIsInstance<PlaylistItem>()
+                                        .take(10)
+                                    if (mixItems.isNotEmpty()) {
+                                        LazyRow(
+                                            state = moodMixesState,
+                                            contentPadding = PaddingValues(horizontal = 12.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                            modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
+                                        ) {
+                                            items(mixItems, key = { it.id }) { mix ->
+                                                YouTubeGridItem(
+                                                    item = mix,
+                                                    isActive = mix.id == mediaMetadata?.album?.id,
+                                                    isPlaying = isPlaying,
+                                                    coroutineScope = scope,
+                                                    thumbnailRatio = 1f,
+                                                    size = 135.dp,
+                                                    showTitle = true,
+                                                    modifier = Modifier
+                                                        .animateItem()
+                                                        .clip(RoundedCornerShape(ThumbnailCornerRadius + 6.dp))
+                                                        .combinedClickable(
+                                                            onClick = {
+                                                                navController.navigate("online_playlist/${mix.id}")
+                                                            },
+                                                            onLongClick = {
+                                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                                menuState.show {
+                                                                    YouTubePlaylistMenu(
+                                                                        playlist = mix,
+                                                                        coroutineScope = scope,
+                                                                        onDismiss = menuState::dismiss,
+                                                                    )
+                                                                }
+                                                            },
+                                                        ),
+                                                )
+                                            }
                                         }
                                     }
                                 }

@@ -146,6 +146,7 @@ fun LibraryAlbumGridItem(
     isPlaying = isPlaying,
     coroutineScope = coroutineScope,
     fillMaxWidth = true,
+    showPlayButton = false,
     modifier = modifier
         .fillMaxWidth()
         .combinedClickable(

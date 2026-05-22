@@ -693,55 +693,67 @@ class SyncUtils @Inject constructor(
         updateState { copy(likedSongs = SyncStatus.Syncing, currentOperation = "Syncing liked songs") }
 
         withRetry {
-            YouTube.playlist("LM").completed()
-        }.onSuccess { result ->
-            result.onSuccess { page ->
-                try {
-                    val remoteSongs = page.songs
-                    val remoteIds = remoteSongs.map { it.id }.toSet()
-                    val localSongs = database.likedSongsByNameAsc().first()
+            val firstPage = YouTube.playlist("LM").getOrThrow()
+            val allSongs = firstPage.songs.toMutableList()
+            val seenContinuations = mutableSetOf<String>()
+            var continuation = firstPage.songsContinuation
+            while (continuation != null) {
+                if (continuation in seenContinuations) break
+                seenContinuations.add(continuation)
+                val contPage = YouTube.playlistContinuation(continuation).getOrThrow()
+                allSongs += contPage.songs
+                continuation = contPage.continuation
+            }
+            allSongs
+        }.onSuccess { remoteSongs ->
+            try {
+                val remoteIds = remoteSongs.map { it.id }.toSet()
+                val localSongs = database.likedSongsByNameAsc().first()
 
-                    // Remove likes from songs not in remote
-                    localSongs.filterNot { it.id in remoteIds }.forEach { song ->
-                        try {
-                            database.update(song.song.localToggleLike())
-                            delay(DB_OPERATION_DELAY_MS)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to update song: ${song.id}")
-                        }
-                    }
-
-                    // Add/update songs from remote
-                    val now = LocalDateTime.now()
-                    remoteSongs.forEachIndexed { index, song ->
-                        try {
-                            val dbSong = database.song(song.id).firstOrNull()
-                            val timestamp = now.minusSeconds(index.toLong())
-                            val isVideoSong = song.isVideoSong
-
-                            database.transaction {
-                                if (dbSong == null) {
-                                    insert(song.toMediaMetadata()) {
-                                        it.copy(liked = true, likedDate = timestamp, isVideo = isVideoSong)
-                                    }
-                                } else if (!dbSong.song.liked || dbSong.song.likedDate != timestamp || dbSong.song.isVideo != isVideoSong) {
-                                    update(dbSong.song.copy(liked = true, likedDate = timestamp, isVideo = isVideoSong))
-                                }
-                            }
-                            delay(DB_OPERATION_DELAY_MS)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to process song: ${song.id}")
-                        }
-                    }
-
+                // Guard: empty remote with local data = likely unauthenticated response; skip removal.
+                if (remoteSongs.isEmpty() && localSongs.isNotEmpty()) {
+                    Timber.w("Liked songs sync: remote returned 0 items but local has ${localSongs.size} — skipping removal to prevent data loss")
                     updateState { copy(likedSongs = SyncStatus.Completed) }
-                    Timber.d("Synced ${remoteSongs.size} liked songs")
-                } catch (e: Exception) {
-                    Timber.e(e, "Error processing liked songs")
-                    updateState { copy(likedSongs = SyncStatus.Error(e.message ?: "Unknown error")) }
+                    return@withContext
                 }
-            }.onFailure { e ->
-                Timber.e(e, "Failed to fetch liked songs from YouTube")
+
+                // Remove likes from songs not in remote
+                localSongs.filterNot { it.id in remoteIds }.forEach { song ->
+                    try {
+                        database.update(song.song.localToggleLike())
+                        delay(DB_OPERATION_DELAY_MS)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to update song: ${song.id}")
+                    }
+                }
+
+                // Add/update songs from remote
+                val now = LocalDateTime.now()
+                remoteSongs.forEachIndexed { index, song ->
+                    try {
+                        val dbSong = database.song(song.id).firstOrNull()
+                        val timestamp = now.minusSeconds(index.toLong())
+                        val isVideoSong = song.isVideoSong
+
+                        database.transaction {
+                            if (dbSong == null) {
+                                insert(song.toMediaMetadata()) {
+                                    it.copy(liked = true, likedDate = timestamp, isVideo = isVideoSong)
+                                }
+                            } else if (!dbSong.song.liked || dbSong.song.likedDate != timestamp || dbSong.song.isVideo != isVideoSong) {
+                                update(dbSong.song.copy(liked = true, likedDate = timestamp, isVideo = isVideoSong))
+                            }
+                        }
+                        delay(DB_OPERATION_DELAY_MS)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to process song: ${song.id}")
+                    }
+                }
+
+                updateState { copy(likedSongs = SyncStatus.Completed) }
+                Timber.d("Synced ${remoteSongs.size} liked songs")
+            } catch (e: Exception) {
+                Timber.e(e, "Error processing liked songs")
                 updateState { copy(likedSongs = SyncStatus.Error(e.message ?: "Unknown error")) }
             }
         }.onFailure { e ->
@@ -766,6 +778,13 @@ class SyncUtils @Inject constructor(
                     val remoteSongs = page.items.filterIsInstance<SongItem>().reversed()
                     val remoteIds = remoteSongs.map { it.id }.toSet()
                     val localSongs = database.songsByNameAsc().first()
+
+                    // Guard: empty remote with local data = likely unauthenticated response; skip removal.
+                    if (remoteSongs.isEmpty() && localSongs.isNotEmpty()) {
+                        Timber.w("Library songs sync: remote returned 0 items but local has ${localSongs.size} — skipping removal to prevent data loss")
+                        updateState { copy(librarySongs = SyncStatus.Completed) }
+                        return@withContext
+                    }
 
                     localSongs.filterNot { it.id in remoteIds }.forEach { song ->
                         try {
@@ -825,6 +844,13 @@ class SyncUtils @Inject constructor(
                     val remoteSongs = page.items.filterIsInstance<SongItem>().reversed()
                     val remoteIds = remoteSongs.map { it.id }.toSet()
                     val localSongs = database.uploadedSongsByNameAsc().first()
+
+                    // Guard: empty remote with local data = likely unauthenticated response; skip removal.
+                    if (remoteSongs.isEmpty() && localSongs.isNotEmpty()) {
+                        Timber.w("Uploaded songs sync: remote returned 0 items but local has ${localSongs.size} — skipping removal to prevent data loss")
+                        updateState { copy(uploadedSongs = SyncStatus.Completed) }
+                        return@withContext
+                    }
 
                     // Remove uploaded flag from songs no longer in remote
                     localSongs.filterNot { it.id in remoteIds }.forEach { song ->
@@ -899,6 +925,13 @@ class SyncUtils @Inject constructor(
                     val remoteIds = remoteAlbums.map { it.id }.toSet()
                     val localAlbums = database.albumsLikedByNameAsc().first()
 
+                    // Guard: empty remote with local data = likely unauthenticated response; skip removal.
+                    if (remoteAlbums.isEmpty() && localAlbums.isNotEmpty()) {
+                        Timber.w("Liked albums sync: remote returned 0 items but local has ${localAlbums.size} — skipping removal to prevent data loss")
+                        updateState { copy(likedAlbums = SyncStatus.Completed) }
+                        return@withContext
+                    }
+
                     localAlbums.filterNot { it.id in remoteIds }.forEach { album ->
                         try {
                             database.update(album.album.localToggleLike())
@@ -960,6 +993,13 @@ class SyncUtils @Inject constructor(
                     val remoteIds = remoteAlbums.map { it.id }.toSet()
                     val localAlbums = database.albumsUploadedByNameAsc().first()
 
+                    // Guard: empty remote with local data = likely unauthenticated response; skip removal.
+                    if (remoteAlbums.isEmpty() && localAlbums.isNotEmpty()) {
+                        Timber.w("Uploaded albums sync: remote returned 0 items but local has ${localAlbums.size} — skipping removal to prevent data loss")
+                        updateState { copy(uploadedAlbums = SyncStatus.Completed) }
+                        return@withContext
+                    }
+
                     localAlbums.filterNot { it.id in remoteIds }.forEach { album ->
                         try {
                             database.update(album.album.toggleUploaded())
@@ -1020,6 +1060,13 @@ class SyncUtils @Inject constructor(
                     val remoteArtists = page.items.filterIsInstance<ArtistItem>()
                     val remoteIds = remoteArtists.map { it.id }.toSet()
                     val localArtists = database.artistsBookmarkedByNameAsc().first()
+
+                    // Guard: empty remote with local data = likely unauthenticated response; skip removal.
+                    if (remoteArtists.isEmpty() && localArtists.isNotEmpty()) {
+                        Timber.w("Artists sync: remote returned 0 items but local has ${localArtists.size} — skipping removal to prevent data loss")
+                        updateState { copy(artists = SyncStatus.Completed) }
+                        return@withContext
+                    }
 
                     localArtists.filterNot { it.id in remoteIds }.forEach { artist ->
                         try {

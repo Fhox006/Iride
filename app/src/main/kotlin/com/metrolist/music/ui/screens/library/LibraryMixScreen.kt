@@ -69,6 +69,7 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AlbumViewTypeKey
+import com.metrolist.music.constants.MixViewTypeKey
 import com.metrolist.music.constants.CONTENT_TYPE_HEADER
 import com.metrolist.music.constants.CONTENT_TYPE_PLAYLIST
 import com.metrolist.music.constants.GridItemSize
@@ -98,6 +99,8 @@ import com.metrolist.music.ui.component.AlbumGridItem
 import com.metrolist.music.ui.component.AlbumListItem
 import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ArtistListItem
+import com.metrolist.music.ui.component.LibraryAlbumListItem
+import com.metrolist.music.ui.component.LibraryPlaylistListItem
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LocalMenuState
@@ -136,7 +139,7 @@ fun LibraryMixScreen(
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
-    var viewType by rememberEnumPreference(AlbumViewTypeKey, LibraryViewType.GRID)
+    var viewType by rememberEnumPreference(MixViewTypeKey, LibraryViewType.GRID)
     val (sortType, onSortTypeChange) =
         rememberEnumPreference(
             MixSortTypeKey,
@@ -361,7 +364,7 @@ fun LibraryMixScreen(
         if (scrollToTop?.value == true) {
             when (viewType) {
                 LibraryViewType.LIST -> lazyListState.animateScrollToItem(0)
-                LibraryViewType.GRID -> lazyGridState.animateScrollToItem(0)
+                else -> lazyGridState.animateScrollToItem(0)
             }
             backStackEntry?.savedStateHandle?.set("scrollToTop", false)
         }
@@ -417,22 +420,21 @@ fun LibraryMixScreen(
 
             IconButton(
                 onClick = {
-                    viewType = viewType.toggle()
+                    viewType = if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else LibraryViewType.LIST
                 },
                 modifier = Modifier.padding(end = 8.dp).size(40.dp),
             ) {
                 Icon(
-                    painter =
-                    painterResource(
+                    painter = painterResource(
                         when (viewType) {
                             LibraryViewType.LIST -> R.drawable.list
-                            LibraryViewType.GRID -> R.drawable.grid_view
+                            else -> R.drawable.grid_view
                         },
                     ),
                     contentDescription = stringResource(
                         when (viewType) {
                             LibraryViewType.LIST -> R.string.switch_to_grid_view
-                            LibraryViewType.GRID -> R.string.switch_to_list_view
+                            else -> R.string.switch_to_list_view
                         },
                     ),
                 )
@@ -445,7 +447,7 @@ fun LibraryMixScreen(
 
     val categoriesContent = @Composable {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 12.dp).padding(top = 16.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             val allCategoryItems = buildList {
@@ -495,17 +497,155 @@ fun LibraryMixScreen(
                     state = lazyListState,
                     contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
                 ) {
-                    item(
-                        key = "categories",
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
+                    item(key = "categories", contentType = CONTENT_TYPE_HEADER) {
                         categoriesContent()
                     }
 
+                    item(key = "header", contentType = CONTENT_TYPE_HEADER) {
+                        headerContent()
+                    }
+
+                    if (showLikedPlaylist) {
+                        item(key = "likedPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
+                            PlaylistListItem(
+                                playlist = likedPlaylist,
+                                autoPlaylist = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { navController.navigate("auto_playlist/liked") }
+                                    .animateItem(),
+                            )
+                        }
+                    }
+
+                    if (showDownloadedPlaylist) {
+                        item(key = "downloadedPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
+                            PlaylistListItem(
+                                playlist = downloadPlaylist,
+                                autoPlaylist = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { navController.navigate("auto_playlist/downloaded") }
+                                    .animateItem(),
+                            )
+                        }
+                    }
+
+                    if (showCachedPlaylists) {
+                        item(key = "cachedPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
+                            PlaylistListItem(
+                                playlist = cachedPlaylist,
+                                autoPlaylist = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { navController.navigate("cache_playlist/cached") }
+                                    .animateItem(),
+                            )
+                        }
+                    }
+
+                    if (showTopPlaylists) {
+                        item(key = "TopPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
+                            PlaylistListItem(
+                                playlist = topPlaylist,
+                                autoPlaylist = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { navController.navigate("top_playlist/$topSize") }
+                                    .animateItem(),
+                            )
+                        }
+                    }
+
+                    if (showUploadedPlaylists) {
+                        item(key = "uploadedPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
+                            PlaylistListItem(
+                                playlist = uploadedPlaylist,
+                                autoPlaylist = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { navController.navigate("auto_playlist/uploaded") }
+                                    .animateItem(),
+                            )
+                        }
+                    }
+
+                    items(
+                        items = filteredItems,
+                        key = { it.id },
+                        contentType = { CONTENT_TYPE_PLAYLIST },
+                    ) { item ->
+                        when (item) {
+                            is Playlist -> {
+                                LibraryPlaylistListItem(
+                                    navController = navController,
+                                    menuState = menuState,
+                                    coroutineScope = coroutineScope,
+                                    playlist = item,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .animateItem(),
+                                )
+                            }
+
+                            is Song -> {
+                                SongListItem(
+                                    song = item,
+                                    isActive = item.id == mediaMetadata?.id,
+                                    isPlaying = isPlaying,
+                                    showLikedIcon = false,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .combinedClickable(
+                                            onClick = {
+                                                if (item.id == mediaMetadata?.id) {
+                                                    playerConnection.togglePlayPause()
+                                                } else {
+                                                    val filteredSongs = filteredItems.filterIsInstance<Song>()
+                                                    playerConnection.playQueue(
+                                                        ListQueue(
+                                                            title = queueSearchedSongsStr,
+                                                            items = filteredSongs.map { it.toMediaItem() },
+                                                            startIndex = filteredSongs.indexOfFirst { it.id == item.id },
+                                                        ),
+                                                    )
+                                                }
+                                            },
+                                            onLongClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                menuState.show {
+                                                    SongMenu(
+                                                        originalSong = item,
+                                                        navController = navController,
+                                                        onDismiss = menuState::dismiss,
+                                                    )
+                                                }
+                                            },
+                                        )
+                                        .animateItem(),
+                                )
+                            }
+
+                            is Album -> {
+                                LibraryAlbumListItem(
+                                    navController = navController,
+                                    menuState = menuState,
+                                    album = item,
+                                    isActive = item.id == mediaMetadata?.album?.id,
+                                    isPlaying = isPlaying,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .animateItem(),
+                                )
+                            }
+
+                            else -> {}
+                        }
+                    }
                 }
             }
 
-            LibraryViewType.GRID -> {
+            LibraryViewType.GRID, LibraryViewType.GRID_WIDE -> {
                 LazyVerticalGrid(
                     state = lazyGridState,
                     columns =

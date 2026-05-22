@@ -512,66 +512,18 @@ fun OnlineSearchResult(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     if (searchFilter == null) {
-                        val summaries = searchSummary?.summaries.orEmpty()
-
-                        // Top result section (typically 1 item card from YouTube)
-                        val topResultSummary = summaries.firstOrNull {
-                            it.title.contains("Top result", ignoreCase = true) ||
-                            it.title.contains("Risultato principale", ignoreCase = true)
-                        }
-
-                        val topResultIds = topResultSummary?.items?.map { it.id }?.toSet() ?: emptySet()
-                        val topResultFirstItem = topResultSummary?.items?.firstOrNull()
-
-                        val otherSections = summaries.filter { s ->
-                            s != topResultSummary &&
-                            !s.title.contains("Profile", ignoreCase = true) &&
-                            s.items.any { it.id !in topResultIds }
-                        }
-
-                        val orderedSections = buildList {
-                            topResultSummary?.takeIf { it.items.isNotEmpty() }?.let { add(it) }
-                            when (topResultFirstItem) {
-                                is ArtistItem -> {
-                                    val albums = otherSections.firstOrNull { s ->
-                                        s.items.firstOrNull() is AlbumItem &&
-                                        !s.title.contains("Single", ignoreCase = true) &&
-                                        !(s.title.contains("EP", ignoreCase = true) && !s.title.contains("Episode", ignoreCase = true))
-                                    }
-                                    val singles = otherSections.firstOrNull { s ->
-                                        s.items.firstOrNull() is AlbumItem &&
-                                        (s.title.contains("Single", ignoreCase = true) ||
-                                        (s.title.contains("EP", ignoreCase = true) && !s.title.contains("Episode", ignoreCase = true)))
-                                    }
-                                    albums?.let { add(it) }
-                                    singles?.let { add(it) }
-                                    otherSections.filter { it != albums && it != singles }.forEach { add(it) }
-                                }
-                                is SongItem -> {
-                                    val songs = otherSections.firstOrNull { s -> s.items.firstOrNull() is SongItem }
-                                    songs?.let { add(it) }
-                                    otherSections.filter { it != songs }.forEach { add(it) }
-                                }
-                                else -> otherSections.forEach { add(it) }
-                            }
-                        }
-
-                        orderedSections.forEach { summary ->
-                            val isTopResult = summary == topResultSummary
+                        searchSummary?.summaries?.forEach { summary ->
+                            val isTopResult = summary == searchSummary.summaries.firstOrNull()
                             val firstItem = summary.items.firstOrNull()
                             val isVideosSection = !isTopResult && firstItem is SongItem &&
-                                (summary.title.contains("Video", ignoreCase = true) ||
-                                summary.title.contains("Performance", ignoreCase = true))
+                                summary.title.contains("Video", ignoreCase = true)
                             val isSongsSection = !isTopResult && firstItem is SongItem && !isVideosSection
                             val isAlbumsSection = !isTopResult && firstItem is AlbumItem &&
                                 !summary.title.contains("Single", ignoreCase = true) &&
                                 !summary.title.contains("EP", ignoreCase = true)
                             val isSinglesSection = !isTopResult && firstItem is AlbumItem &&
                                 (summary.title.contains("Single", ignoreCase = true) ||
-                                (summary.title.contains("EP", ignoreCase = true) && !summary.title.contains("Episode", ignoreCase = true)))
-
-                            val displayItems = if (isTopResult) summary.items else summary.items.filter { it.id !in topResultIds }
-                            if (displayItems.isEmpty()) return@forEach
+                                summary.title.contains("EP", ignoreCase = true))
 
                             item(key = "title_${summary.title}") {
                                 NavigationTitle(summary.title)
@@ -580,8 +532,8 @@ fun OnlineSearchResult(
                             when {
                                 isTopResult -> {
                                     items(
-                                        items = displayItems,
-                                        key = { "${summary.title}/${it.id}/${displayItems.indexOf(it)}" },
+                                        items = summary.items,
+                                        key = { it.id },
                                         itemContent = ytItemContent,
                                     )
                                 }
@@ -597,42 +549,19 @@ fun OnlineSearchResult(
                                                     .height(ListItemHeight * 4),
                                             ) {
                                                 items(
-                                                    items = displayItems,
-                                                    key = { "${summary.title}/${it.id}/${displayItems.indexOf(it)}" },
+                                                    items = summary.items,
+                                                    key = { it.id },
                                                 ) { item ->
                                                     val longClick = {
                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                         menuState.show {
                                                             when (item) {
-                                                                is SongItem -> YouTubeSongMenu(
-                                                                    song = item,
-                                                                    navController = navController,
-                                                                    onDismiss = menuState::dismiss,
-                                                                )
-                                                                is AlbumItem -> YouTubeAlbumMenu(
-                                                                    albumItem = item,
-                                                                    navController = navController,
-                                                                    onDismiss = menuState::dismiss,
-                                                                )
-                                                                is ArtistItem -> YouTubeArtistMenu(
-                                                                    artist = item,
-                                                                    onDismiss = menuState::dismiss,
-                                                                )
-                                                                is PlaylistItem -> YouTubePlaylistMenu(
-                                                                    playlist = item,
-                                                                    coroutineScope = coroutineScope,
-                                                                    onDismiss = menuState::dismiss,
-                                                                )
-                                                                is PodcastItem -> YouTubePlaylistMenu(
-                                                                    playlist = item.asPlaylistItem(),
-                                                                    coroutineScope = coroutineScope,
-                                                                    onDismiss = menuState::dismiss,
-                                                                )
-                                                                is EpisodeItem -> YouTubeSongMenu(
-                                                                    song = item.asSongItem(),
-                                                                    navController = navController,
-                                                                    onDismiss = menuState::dismiss,
-                                                                )
+                                                                is SongItem -> YouTubeSongMenu(song = item, navController = navController, onDismiss = menuState::dismiss)
+                                                                is AlbumItem -> YouTubeAlbumMenu(albumItem = item, navController = navController, onDismiss = menuState::dismiss)
+                                                                is ArtistItem -> YouTubeArtistMenu(artist = item, onDismiss = menuState::dismiss)
+                                                                is PlaylistItem -> YouTubePlaylistMenu(playlist = item, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                                                                is PodcastItem -> YouTubePlaylistMenu(playlist = item.asPlaylistItem(), coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                                                                is EpisodeItem -> YouTubeSongMenu(song = item.asSongItem(), navController = navController, onDismiss = menuState::dismiss)
                                                             }
                                                         }
                                                     }
@@ -647,10 +576,7 @@ fun OnlineSearchResult(
                                                         isPlaying = isPlaying,
                                                         trailingContent = {
                                                             IconButton(onClick = longClick) {
-                                                                Icon(
-                                                                    painter = painterResource(R.drawable.more_vert),
-                                                                    contentDescription = null,
-                                                                )
+                                                                Icon(painter = painterResource(R.drawable.more_vert), contentDescription = null)
                                                             }
                                                         },
                                                         modifier = Modifier
@@ -659,32 +585,16 @@ fun OnlineSearchResult(
                                                                 onClick = {
                                                                     when (item) {
                                                                         is SongItem -> {
-                                                                            if (item.id == mediaMetadata?.id) {
-                                                                                playerConnection.togglePlayPause()
-                                                                            } else {
-                                                                                playerConnection.playQueue(
-                                                                                    YouTubeQueue(
-                                                                                        WatchEndpoint(videoId = item.id),
-                                                                                        item.toMediaMetadata(),
-                                                                                    ),
-                                                                                )
-                                                                            }
+                                                                            if (item.id == mediaMetadata?.id) playerConnection.togglePlayPause()
+                                                                            else playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = item.id), item.toMediaMetadata()))
                                                                         }
                                                                         is AlbumItem -> navController.navigate("album/${item.id}")
                                                                         is ArtistItem -> navController.navigate("artist/${item.id}")
                                                                         is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
                                                                         is PodcastItem -> navController.navigate("online_podcast/${item.id}")
                                                                         is EpisodeItem -> {
-                                                                            if (item.id == mediaMetadata?.id) {
-                                                                                playerConnection.togglePlayPause()
-                                                                            } else {
-                                                                                playerConnection.playQueue(
-                                                                                    YouTubeQueue(
-                                                                                        WatchEndpoint(videoId = item.id),
-                                                                                        item.toMediaMetadata(),
-                                                                                    ),
-                                                                                )
-                                                                            }
+                                                                            if (item.id == mediaMetadata?.id) playerConnection.togglePlayPause()
+                                                                            else playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = item.id), item.toMediaMetadata()))
                                                                         }
                                                                     }
                                                                 },
@@ -698,12 +608,10 @@ fun OnlineSearchResult(
                                 }
                                 else -> {
                                     item(key = "row_${summary.title}") {
-                                        LazyRow(
-                                            contentPadding = PaddingValues(start = 16.dp),
-                                        ) {
+                                        LazyRow(contentPadding = PaddingValues(start = 16.dp)) {
                                             items(
-                                                items = displayItems,
-                                                key = { "${summary.title}/${it.id}/${displayItems.indexOf(it)}" },
+                                                items = summary.items,
+                                                key = { it.id },
                                             ) { item ->
                                                 YouTubeGridItem(
                                                     item = item,
@@ -728,32 +636,16 @@ fun OnlineSearchResult(
                                                             onClick = {
                                                                 when (item) {
                                                                     is SongItem -> {
-                                                                        if (item.id == mediaMetadata?.id) {
-                                                                            playerConnection.togglePlayPause()
-                                                                        } else {
-                                                                            playerConnection.playQueue(
-                                                                                YouTubeQueue(
-                                                                                    WatchEndpoint(videoId = item.id),
-                                                                                    item.toMediaMetadata(),
-                                                                                ),
-                                                                            )
-                                                                        }
+                                                                        if (item.id == mediaMetadata?.id) playerConnection.togglePlayPause()
+                                                                        else playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = item.id), item.toMediaMetadata()))
                                                                     }
                                                                     is AlbumItem -> navController.navigate("album/${item.id}")
                                                                     is ArtistItem -> navController.navigate("artist/${item.id}")
                                                                     is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
                                                                     is PodcastItem -> navController.navigate("online_podcast/${item.id}")
                                                                     is EpisodeItem -> {
-                                                                        if (item.id == mediaMetadata?.id) {
-                                                                            playerConnection.togglePlayPause()
-                                                                        } else {
-                                                                            playerConnection.playQueue(
-                                                                                YouTubeQueue(
-                                                                                    WatchEndpoint(videoId = item.id),
-                                                                                    item.toMediaMetadata(),
-                                                                                ),
-                                                                            )
-                                                                        }
+                                                                        if (item.id == mediaMetadata?.id) playerConnection.togglePlayPause()
+                                                                        else playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = item.id), item.toMediaMetadata()))
                                                                     }
                                                                 }
                                                             },
@@ -761,35 +653,12 @@ fun OnlineSearchResult(
                                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                                 menuState.show {
                                                                     when (item) {
-                                                                        is SongItem -> YouTubeSongMenu(
-                                                                            song = item,
-                                                                            navController = navController,
-                                                                            onDismiss = menuState::dismiss,
-                                                                        )
-                                                                        is AlbumItem -> YouTubeAlbumMenu(
-                                                                            albumItem = item,
-                                                                            navController = navController,
-                                                                            onDismiss = menuState::dismiss,
-                                                                        )
-                                                                        is ArtistItem -> YouTubeArtistMenu(
-                                                                            artist = item,
-                                                                            onDismiss = menuState::dismiss,
-                                                                        )
-                                                                        is PlaylistItem -> YouTubePlaylistMenu(
-                                                                            playlist = item,
-                                                                            coroutineScope = coroutineScope,
-                                                                            onDismiss = menuState::dismiss,
-                                                                        )
-                                                                        is PodcastItem -> YouTubePlaylistMenu(
-                                                                            playlist = item.asPlaylistItem(),
-                                                                            coroutineScope = coroutineScope,
-                                                                            onDismiss = menuState::dismiss,
-                                                                        )
-                                                                        is EpisodeItem -> YouTubeSongMenu(
-                                                                            song = item.asSongItem(),
-                                                                            navController = navController,
-                                                                            onDismiss = menuState::dismiss,
-                                                                        )
+                                                                        is SongItem -> YouTubeSongMenu(song = item, navController = navController, onDismiss = menuState::dismiss)
+                                                                        is AlbumItem -> YouTubeAlbumMenu(albumItem = item, navController = navController, onDismiss = menuState::dismiss)
+                                                                        is ArtistItem -> YouTubeArtistMenu(artist = item, onDismiss = menuState::dismiss)
+                                                                        is PlaylistItem -> YouTubePlaylistMenu(playlist = item, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                                                                        is PodcastItem -> YouTubePlaylistMenu(playlist = item.asPlaylistItem(), coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                                                                        is EpisodeItem -> YouTubeSongMenu(song = item.asSongItem(), navController = navController, onDismiss = menuState::dismiss)
                                                                     }
                                                                 }
                                                             },
@@ -803,7 +672,7 @@ fun OnlineSearchResult(
                             }
                         }
 
-                        if (summaries.isEmpty() && searchSummary != null) {
+                        if (searchSummary?.summaries.isNullOrEmpty() && searchSummary != null) {
                             item {
                                 EmptyPlaceholder(
                                     icon = R.drawable.search,

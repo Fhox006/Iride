@@ -16,6 +16,7 @@
     <string name="continuous">Continuous</string>
 
     <string name="liked">Songs</string>
+    <string name="starred">Starred</string>
     <string name="offline">Downloaded</string>
     <string name="downloads">Downloads</string>
     <string name="my_top">My Top</string>
@@ -432,6 +433,8 @@
     <string name="scrobble_delay_percent">Scrobble delay (percentage)</string>
     <string name="scrobble_delay_minutes">Scrobble delay (minutes)</string>
     <string name="hide_video_songs">Hide video songs</string>
+    <string name="square_video_thumbnail">Square video thumbnails</string>
+    <string name="square_video_thumbnail_desc">Crop video thumbnails to square aspect ratio</string>
     <string name="hide_youtube_shorts">Hide YouTube Shorts</string>
 
     <string name="details_desc">View the song\'s details</string>
@@ -948,6 +951,7 @@
     <string name="close_chip">Close</string>
     <string name="switch_to_list_view">Switch to list view</string>
     <string name="switch_to_grid_view">Switch to grid view</string>
+    <string name="switch_to_wide_grid_view">Switch to wide grid view</string>
     <string name="more_options">More options</string>
 
     <!-- Settings hub descriptions -->

@@ -147,6 +147,7 @@ fun AutoPlaylistScreen(
         when (viewModel.playlist) {
             "liked" -> stringResource(R.string.liked)
             "uploaded" -> stringResource(R.string.uploaded_playlist)
+            "starred" -> stringResource(R.string.starred)
             else -> stringResource(R.string.offline)
         }
 
@@ -181,6 +182,7 @@ fun AutoPlaylistScreen(
             "liked" -> PlaylistType.LIKE
             "downloaded" -> PlaylistType.DOWNLOAD
             "uploaded" -> PlaylistType.UPLOADED
+            "starred" -> PlaylistType.STARRED
             else -> PlaylistType.OTHER
         }
 
@@ -337,20 +339,8 @@ fun AutoPlaylistScreen(
         }
 
     LaunchedEffect(Unit) {
-        println("[UPLOAD_DEBUG] AutoPlaylistScreen LaunchedEffect: playlistId=$playlistId, playlistType=$playlistType, ytmSync=$ytmSync")
         if (ytmSync) {
-            withContext(Dispatchers.IO) {
-                if (playlistType == PlaylistType.LIKE) {
-                    println("[UPLOAD_DEBUG] AutoPlaylistScreen: Calling syncLikedSongs()")
-                    viewModel.syncLikedSongs()
-                }
-                if (playlistType == PlaylistType.UPLOADED) {
-                    println("[UPLOAD_DEBUG] AutoPlaylistScreen: Calling syncUploadedSongs()")
-                    viewModel.syncUploadedSongs()
-                }
-            }
-        } else {
-            println("[UPLOAD_DEBUG] AutoPlaylistScreen: ytmSync is false, not syncing")
+            viewModel.refresh()
         }
     }
 
@@ -1053,5 +1043,6 @@ enum class PlaylistType {
     LIKE,
     DOWNLOAD,
     UPLOADED,
+    STARRED,
     OTHER,
 }

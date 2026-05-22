@@ -261,7 +261,7 @@ fun SearchScreen(
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
-                        containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     ),
             )
         },
@@ -273,7 +273,7 @@ fun SearchScreen(
                 Modifier
                     .padding(paddingValues)
                     .fillMaxSize()
-                    .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
+                    .background(MaterialTheme.colorScheme.background),
         ) {
             when (searchSource) {
                 SearchSource.LOCAL -> {
