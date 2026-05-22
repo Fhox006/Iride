@@ -310,7 +310,17 @@ class HomeViewModel @Inject constructor(
                 filled.addAll(available.take(needed))
             }
 
-            filled.take(targetSize)
+            val albumIdMap = mutableMapOf<String, String?>()
+            kl.forEach { item ->
+                when (item) {
+                    is Song -> albumIdMap[item.id] = item.album?.id
+                    is Album -> albumIdMap[item.id] = item.id
+                    else -> {}
+                }
+            }
+            qp.forEach { song -> albumIdMap[song.id] = song.album?.id }
+
+            diversifyByAlbum(filled.take(targetSize), albumIdMap, 6)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     @Suppress("UNCHECKED_CAST")
@@ -426,6 +436,32 @@ class HomeViewModel @Inject constructor(
         })
         finalItems
     }.distinctUntilChanged().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private fun diversifyByAlbum(items: List<YTItem>, albumIdMap: Map<String, String?>, pageSize: Int): List<YTItem> {
+        val result = mutableListOf<YTItem>()
+        val remaining = items.toMutableList()
+        while (remaining.isNotEmpty()) {
+            val page = mutableListOf<YTItem>()
+            val usedAlbumIds = mutableSetOf<String>()
+            val deferred = mutableListOf<YTItem>()
+            for (item in remaining) {
+                if (page.size >= pageSize) break
+                val albumId = albumIdMap[item.id]
+                if (albumId == null || albumId !in usedAlbumIds) {
+                    page.add(item)
+                    if (albumId != null) usedAlbumIds.add(albumId)
+                } else {
+                    deferred.add(item)
+                }
+            }
+            val needed = pageSize - page.size
+            page.addAll(deferred.take(needed))
+            val usedIds = page.map { it.id }.toSet()
+            remaining.removeAll { it.id in usedIds }
+            result.addAll(page)
+        }
+        return result
+    }
 
     suspend fun getRandomItem(): YTItem? {
         try {

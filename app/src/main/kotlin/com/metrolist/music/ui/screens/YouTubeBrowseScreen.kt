@@ -42,7 +42,6 @@ import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.models.toMediaMetadata
-import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
@@ -138,9 +137,7 @@ fun YouTubeBrowseScreen(
                                             if (item.id == mediaMetadata?.id) {
                                                 playerConnection.togglePlayPause()
                                             } else {
-                                                playerConnection.playQueue(
-                                                    YouTubeQueue.radio(item.toMediaMetadata()),
-                                                )
+                                                playerConnection.startRadioForSong(item.toMediaMetadata())
                                             }
                                         }
 
@@ -164,9 +161,7 @@ fun YouTubeBrowseScreen(
                                             if (item.id == mediaMetadata?.id) {
                                                 playerConnection.togglePlayPause()
                                             } else {
-                                                playerConnection.playQueue(
-                                                    YouTubeQueue.radio(item.toMediaMetadata()),
-                                                )
+                                                playerConnection.startRadioForSong(item.toMediaMetadata())
                                             }
                                         }
                                     }

@@ -696,7 +696,9 @@ class SyncUtils @Inject constructor(
             val firstPage = YouTube.playlist("LM").getOrThrow()
             val allSongs = firstPage.songs.toMutableList()
             val seenContinuations = mutableSetOf<String>()
-            var continuation = firstPage.songsContinuation
+            // For "LM" playlist, YouTube puts the continuation token in sectionListRenderer.continuations
+            // which maps to PlaylistPage.continuation, not PlaylistPage.songsContinuation
+            var continuation = firstPage.songsContinuation ?: firstPage.continuation
             while (continuation != null) {
                 if (continuation in seenContinuations) break
                 seenContinuations.add(continuation)

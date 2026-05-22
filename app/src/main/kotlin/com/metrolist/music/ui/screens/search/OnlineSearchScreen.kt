@@ -69,7 +69,6 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.SuggestionItemHeight
 import com.metrolist.music.models.toMediaMetadata
-import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
@@ -294,9 +293,7 @@ fun OnlineSearchScreen(
                                                 if (item.id == mediaMetadata?.id) {
                                                     playerConnection.togglePlayPause()
                                                 } else {
-                                                    playerConnection.playQueue(
-                                                        YouTubeQueue.radio(item.toMediaMetadata()),
-                                                    )
+                                                    playerConnection.startRadioForSong(item.toMediaMetadata())
                                                     onDismiss()
                                                 }
                                             }
@@ -325,9 +322,7 @@ fun OnlineSearchScreen(
                                                 if (item.id == mediaMetadata?.id) {
                                                     playerConnection.togglePlayPause()
                                                 } else {
-                                                    playerConnection.playQueue(
-                                                        YouTubeQueue.radio(item.toMediaMetadata()),
-                                                    )
+                                                    playerConnection.startRadioForSong(item.toMediaMetadata())
                                                     onDismiss()
                                                 }
                                             }
@@ -566,9 +561,7 @@ fun OnlineSearchScreen(
                                             if (item.id == mediaMetadata?.id) {
                                                 playerConnection.togglePlayPause()
                                             } else {
-                                                playerConnection.playQueue(
-                                                    YouTubeQueue.radio(item.toMediaMetadata()),
-                                                )
+                                                playerConnection.startRadioForSong(item.toMediaMetadata())
                                                 onDismiss()
                                             }
                                         }
@@ -597,9 +590,7 @@ fun OnlineSearchScreen(
                                             if (item.id == mediaMetadata?.id) {
                                                 playerConnection.togglePlayPause()
                                             } else {
-                                                playerConnection.playQueue(
-                                                    YouTubeQueue.radio(item.toMediaMetadata()),
-                                                )
+                                                playerConnection.startRadioForSong(item.toMediaMetadata())
                                                 onDismiss()
                                             }
                                         }

@@ -512,8 +512,30 @@ fun OnlineSearchResult(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     if (searchFilter == null) {
-                        searchSummary?.summaries?.forEach { summary ->
-                            val isTopResult = summary == searchSummary.summaries.firstOrNull()
+                        val summaries = searchSummary?.summaries ?: emptyList()
+                        val topResultSummary = summaries.firstOrNull()
+                        val topResultIsArtist = topResultSummary?.items?.firstOrNull() is ArtistItem
+
+                        val orderedSummaries = if (topResultIsArtist) {
+                            val albumSummary = summaries.firstOrNull { s ->
+                                s != topResultSummary && s.items.firstOrNull() is AlbumItem &&
+                                !s.title.contains("Single", ignoreCase = true) &&
+                                !s.title.contains("EP", ignoreCase = true)
+                            }
+                            val singlesSummary = summaries.firstOrNull { s ->
+                                s != topResultSummary && s.items.firstOrNull() is AlbumItem &&
+                                (s.title.contains("Single", ignoreCase = true) || s.title.contains("EP", ignoreCase = true))
+                            }
+                            val rest = summaries.filter { s ->
+                                s != topResultSummary && s != albumSummary && s != singlesSummary
+                            }
+                            listOfNotNull(topResultSummary, albumSummary, singlesSummary) + rest
+                        } else {
+                            summaries
+                        }
+
+                        orderedSummaries.forEach { summary ->
+                            val isTopResult = summary == topResultSummary
                             val firstItem = summary.items.firstOrNull()
                             val isVideosSection = !isTopResult && firstItem is SongItem &&
                                 summary.title.contains("Video", ignoreCase = true)
@@ -536,6 +558,55 @@ fun OnlineSearchResult(
                                         key = { it.id },
                                         itemContent = ytItemContent,
                                     )
+                                }
+                                (topResultIsArtist && isAlbumsSection) || (topResultIsArtist && isSinglesSection) -> {
+                                    item(key = "row_${summary.title}") {
+                                        LazyRow(
+                                            horizontalArrangement = Arrangement.spacedBy(0.dp),
+                                            contentPadding = PaddingValues(start = 16.dp),
+                                        ) {
+                                            items(
+                                                items = summary.items,
+                                                key = { it.id },
+                                            ) { item ->
+                                                val longClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    menuState.show {
+                                                        when (item) {
+                                                            is AlbumItem -> YouTubeAlbumMenu(albumItem = item, navController = navController, onDismiss = menuState::dismiss)
+                                                            is ArtistItem -> YouTubeArtistMenu(artist = item, onDismiss = menuState::dismiss)
+                                                            is PlaylistItem -> YouTubePlaylistMenu(playlist = item, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                                                            else -> {}
+                                                        }
+                                                    }
+                                                }
+                                                YouTubeGridItem(
+                                                    item = item,
+                                                    isActive = when (item) {
+                                                        is AlbumItem -> mediaMetadata?.album?.id == item.id
+                                                        else -> false
+                                                    },
+                                                    isPlaying = isPlaying,
+                                                    coroutineScope = coroutineScope,
+                                                    thumbnailRatio = 1f,
+                                                    thumbnailCornerRadius = 3.dp,
+                                                    showPlayButton = false,
+                                                    size = if (isAlbumsSection) 180.dp else 148.dp,
+                                                    modifier = Modifier.combinedClickable(
+                                                        onClick = {
+                                                            when (item) {
+                                                                is AlbumItem -> navController.navigate("album/${item.id}")
+                                                                is ArtistItem -> navController.navigate("artist/${item.id}")
+                                                                is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
+                                                                else -> {}
+                                                            }
+                                                        },
+                                                        onLongClick = longClick,
+                                                    ).animateItem(),
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                                 isSongsSection -> {
                                     item(key = "songs_grid_${summary.title}") {

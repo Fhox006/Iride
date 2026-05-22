@@ -83,6 +83,7 @@ class OnlineSearchSuggestionViewModel
                                     .searchHistory(query)
                                     .map { it.take(3) }
                                     .map { history ->
+                                        val remainingSlots = (3 - history.size).coerceAtLeast(0)
                                         SearchSuggestionViewState(
                                             history = history,
                                             suggestions =
@@ -90,7 +91,9 @@ class OnlineSearchSuggestionViewModel
                                                     ?.queries
                                                     ?.filter { suggestionQuery ->
                                                         history.none { it.query == suggestionQuery }
-                                                    }.orEmpty(),
+                                                    }
+                                                    ?.take(remainingSlots)
+                                                    .orEmpty(),
                                             items =
                                                 result
                                                     ?.recommendedItems

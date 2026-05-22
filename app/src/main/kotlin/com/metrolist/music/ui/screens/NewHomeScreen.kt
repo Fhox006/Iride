@@ -162,6 +162,9 @@ fun NewHomeScreen(
         derivedStateOf { pinnedSpeedDialItems.map { it.id }.toSet() }
     }
     val isRandomizing by viewModel.isRandomizing.collectAsStateWithLifecycle()
+    val speedDialSongIds: Set<String> by remember(speedDialItems) {
+        derivedStateOf { speedDialItems.filterIsInstance<SongItem>().map { it.id }.toSet() }
+    }
 
     val quickPicks by viewModel.quickPicks.collectAsStateWithLifecycle()
     val keepListening by viewModel.keepListening.collectAsStateWithLifecycle()
@@ -286,7 +289,7 @@ fun NewHomeScreen(
                                         if (item.id == mediaMetadata?.id) {
                                             playerConnection.togglePlayPause()
                                         } else {
-                                            playerConnection.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
+                                            playerConnection.startRadioForSong(item.toMediaMetadata())
                                         }
                                     }
                                 },
@@ -473,7 +476,7 @@ fun NewHomeScreen(
                             ) { page ->
                                 val realPage = if (realPageCount > 1) page % realPageCount else 0
                                 val isFirstPage = realPage == 0
-                                val centerIndex = if (rows >= 2 && columns >= 2) columns - 1 else itemsPerPage - 1
+                                val centerIndex = if (rows >= 2 && columns >= 2) columns * 2 - 1 else itemsPerPage - 1
 
                                 val pageStartIndex = if (isFirstPage) 0 else realPage * itemsPerPage - 1
                                 val pageItems = items.drop(pageStartIndex).take(if (isFirstPage) itemsPerPage - 1 else itemsPerPage)
@@ -656,6 +659,66 @@ fun NewHomeScreen(
                     }
                 }
 
+                quickPicks?.let { qp ->
+                    val filteredQp = qp.distinctBy { it.id }.filter { it.id !in speedDialSongIds }
+                    if (filteredQp.isNotEmpty()) {
+                        item(key = "quick_picks_title") {
+                            val title = stringResource(R.string.quick_picks)
+                            NavigationTitle(
+                                title = title,
+                                modifier = Modifier.animateItem(),
+                                onPlayAllClick = if (!isListenTogetherGuest) {
+                                    { playerConnection.playQueue(ListQueue(title = title, items = filteredQp.map { it.toMediaItem() })) }
+                                } else null,
+                            )
+                        }
+                        item(key = "quick_picks_list") {
+                            LazyHorizontalGrid(
+                                state = quickPicksLazyGridState,
+                                rows = GridCells.Fixed(4),
+                                flingBehavior = rememberSnapFlingBehavior(quickPicksSnapLayoutInfoProvider),
+                                contentPadding = PaddingValues(horizontal = 12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(ListItemHeight * 4)
+                                    .animateItem(),
+                            ) {
+                                items(items = filteredQp, key = { "home_quickpick_${it.id}" }) { song ->
+                                    SongListItem(
+                                        song = song,
+                                        isActive = song.id == mediaMetadata?.id,
+                                        isPlaying = isPlaying,
+                                        isSwipeable = false,
+                                        trailingContent = {
+                                            IconButton(onClick = {
+                                                menuState.show {
+                                                    SongMenu(originalSong = song, navController = navController, onDismiss = menuState::dismiss)
+                                                }
+                                            }) { Icon(painter = painterResource(R.drawable.more_vert), contentDescription = null) }
+                                        },
+                                        modifier = Modifier
+                                            .width(horizontalLazyGridItemWidth)
+                                            .combinedClickable(
+                                                onClick = {
+                                                    if (!isListenTogetherGuest) {
+                                                        if (song.id == mediaMetadata?.id) playerConnection.togglePlayPause()
+                                                        else playerConnection.startRadioForSong(song.toMediaMetadata())
+                                                    }
+                                                },
+                                                onLongClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    menuState.show {
+                                                        SongMenu(originalSong = song, navController = navController, onDismiss = menuState::dismiss)
+                                                    }
+                                                },
+                                            ),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // ── Your Mood (only shown when logged in) ────────────────────
                 if (isLoggedIn) {
                     item(key = "your_mood_title") {
@@ -722,7 +785,6 @@ fun NewHomeScreen(
                                                     showTitle = true,
                                                     modifier = Modifier
                                                         .animateItem()
-                                                        .clip(MaterialTheme.shapes.extraLarge)
                                                         .combinedClickable(
                                                             onClick = {
                                                                 navController.navigate("online_playlist/${mix.id}")
@@ -749,67 +811,6 @@ fun NewHomeScreen(
                 }
 
                 // ── Other sections (appear as data arrives, no stagger) ──────
-                quickPicks?.takeIf { it.isNotEmpty() }?.let { qp ->
-                    item(key = "quick_picks_title") {
-                        val title = stringResource(R.string.quick_picks)
-                        NavigationTitle(
-                            title = title,
-                            modifier = Modifier.animateItem(),
-                            onPlayAllClick = if (!isListenTogetherGuest) {
-                                {
-                                    playerConnection.playQueue(
-                                        ListQueue(title = title, items = qp.distinctBy { it.id }.map { it.toMediaItem() }),
-                                    )
-                                }
-                            } else null,
-                        )
-                    }
-                    item(key = "quick_picks_list") {
-                        LazyHorizontalGrid(
-                            state = quickPicksLazyGridState,
-                            rows = GridCells.Fixed(4),
-                            flingBehavior = rememberSnapFlingBehavior(quickPicksSnapLayoutInfoProvider),
-                            contentPadding = PaddingValues(horizontal = 12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(ListItemHeight * 4)
-                                .animateItem(),
-                        ) {
-                            items(items = qp.distinctBy { it.id }, key = { "home_quickpick_${it.id}" }) { song ->
-                                SongListItem(
-                                    song = song,
-                                    isActive = song.id == mediaMetadata?.id,
-                                    isPlaying = isPlaying,
-                                    isSwipeable = false,
-                                    trailingContent = {
-                                        IconButton(onClick = {
-                                            menuState.show {
-                                                SongMenu(originalSong = song, navController = navController, onDismiss = menuState::dismiss)
-                                            }
-                                        }) { Icon(painter = painterResource(R.drawable.more_vert), contentDescription = null) }
-                                    },
-                                    modifier = Modifier
-                                        .width(horizontalLazyGridItemWidth)
-                                        .combinedClickable(
-                                            onClick = {
-                                                if (!isListenTogetherGuest) {
-                                                    if (song.id == mediaMetadata?.id) playerConnection.togglePlayPause()
-                                                    else playerConnection.playQueue(YouTubeQueue.radio(song.toMediaMetadata()))
-                                                }
-                                            },
-                                            onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                menuState.show {
-                                                    SongMenu(originalSong = song, navController = navController, onDismiss = menuState::dismiss)
-                                                }
-                                            },
-                                        ),
-                                )
-                            }
-                        }
-                    }
-                }
-
                 keepListening?.takeIf { it.isNotEmpty() }?.let { kl ->
                     item(key = "keep_listening_title") {
                         NavigationTitle(title = stringResource(R.string.keep_listening), modifier = Modifier.animateItem())
@@ -873,7 +874,7 @@ fun NewHomeScreen(
                                             onClick = {
                                                 if (!isListenTogetherGuest) {
                                                     if (song.id == mediaMetadata?.id) playerConnection.togglePlayPause()
-                                                    else playerConnection.playQueue(YouTubeQueue.radio(song.toMediaMetadata()))
+                                                    else playerConnection.startRadioForSong(song.toMediaMetadata())
                                                 }
                                             },
                                             onLongClick = {

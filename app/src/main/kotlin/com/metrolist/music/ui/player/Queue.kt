@@ -49,6 +49,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -146,7 +147,6 @@ import com.metrolist.music.constants.SleepTimerDefaultKey
 import com.metrolist.music.constants.SleepTimerFadeOutKey
 import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
 import com.metrolist.music.extensions.toMediaItem
-import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.models.toMediaMetadata
 import kotlinx.coroutines.flow.first
 import android.widget.Toast
@@ -1356,7 +1356,7 @@ fun InlineQueuePanel(
     val reorderableState = rememberReorderableLazyListState(
         lazyListState = lazyListState,
         scrollThresholdPadding = WindowInsets.systemBars
-            .add(WindowInsets(top = ListItemHeight, bottom = ListItemHeight))
+            .add(WindowInsets(top = ListItemHeight * 3, bottom = ListItemHeight * 3))
             .asPaddingValues(),
     ) { from, to ->
         // spacer(1) + historyItems + divider(1) = queue starts here
@@ -1394,11 +1394,14 @@ fun InlineQueuePanel(
         mutableQueueWindows.apply { clear(); addAll(queueWindows) }
     }
 
-    // Scroll to current item once on open (2 = spacer + divider always present)
+    // Scroll to divider on open so "ascoltati di recente" is always visible at top
     LaunchedEffect(Unit) {
-        if (currentWindowIndex != -1) {
-            lazyListState.scrollToItem((2 + currentWindowIndex).coerceAtLeast(0))
-        }
+        triggerHistoryLoad()
+        kotlinx.coroutines.delay(80)
+        // Layout: index 0 = spacer, index 1..historyItems.size = history items, index historyItems.size+1 = divider.
+        // If no history loaded yet, divider is at index 1. Scroll to it so user always sees it.
+        val dividerIndex = (1 + historyItems.size).coerceAtLeast(1)
+        lazyListState.scrollToItem(dividerIndex)
     }
 
     // Load history when user scrolls near top of list
@@ -1423,7 +1426,7 @@ fun InlineQueuePanel(
                     val currentIndex = playerConnection.player.currentMediaItemIndex
                     val currentMetadata = playerConnection.player.getMediaItemAt(currentIndex).metadata
                     if (currentMetadata != null) {
-                        playerConnection.playQueue(YouTubeQueue.radio(currentMetadata))
+                        playerConnection.startRadioForSong(currentMetadata)
                     }
                 },
             )
@@ -1556,12 +1559,22 @@ fun InlineQueuePanel(
         }
 
         // Queue list
+        val defaultFling = ScrollableDefaults.flingBehavior()
             LazyColumn(
                 state = lazyListState,
                 contentPadding = WindowInsets.systemBars
                     .only(WindowInsetsSides.Bottom)
                     .add(WindowInsets(bottom = 72.dp))
                     .asPaddingValues(),
+                flingBehavior = remember(defaultFling) {
+                    object : androidx.compose.foundation.gestures.FlingBehavior {
+                        override suspend fun androidx.compose.foundation.gestures.ScrollScope.performFling(initialVelocity: Float): Float {
+                            return with(defaultFling) {
+                                performFling(initialVelocity * 0.38f)
+                            }
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxSize(),
             ) {
                 item(key = "inline_spacer_top") { Spacer(Modifier.height(4.dp)) }

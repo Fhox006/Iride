@@ -67,7 +67,6 @@ import com.metrolist.music.extensions.metadata
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.ListQueue
-import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
@@ -292,9 +291,7 @@ fun HistoryScreen(
                                             if (song.id == mediaMetadata?.id) {
                                                 playerConnection.togglePlayPause()
                                             } else {
-                                                playerConnection.playQueue(
-                                                    YouTubeQueue.radio(song.toMediaMetadata()),
-                                                )
+                                                playerConnection.startRadioForSong(song.toMediaMetadata())
                                             }
                                         },
                                         onLongClick = {

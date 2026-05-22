@@ -85,7 +85,6 @@ import com.metrolist.music.db.entities.SpeedDialItem
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
-import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.ListDialog
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -611,7 +610,7 @@ fun SongMenu(
                                 },
                                 onClick = {
                                     onDismiss()
-                                    playerConnection.playQueue(YouTubeQueue.radio(song.toMediaMetadata()))
+                                    playerConnection.startRadioForSong(song.toMediaMetadata())
                                 },
                             )
                         } else {

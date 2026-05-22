@@ -110,6 +110,43 @@ class MetrolistWidgetManager @Inject constructor(
         }
     }
 
+    /**
+     * Optimistically updates only the like button on all active widgets.
+     * This provides immediate visual feedback without waiting for full widget refresh
+     * or image loading.
+     */
+    fun updateLikeButtonOptimistic(isLiked: Boolean) {
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val componentName = ComponentName(context, MusicWidgetReceiver::class.java)
+        val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
+
+        if (widgetIds.isEmpty()) return
+
+        widgetIds.forEach { widgetId ->
+            val options = appWidgetManager.getAppWidgetOptions(widgetId)
+            val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
+            val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)
+
+            // Determine which layout and view ID to update
+            val layoutAndButton = when {
+                minWidth < 180 && minHeight < 100 -> null // No like button in compact square
+                minWidth >= 180 && minHeight < 100 -> {
+                    R.layout.widget_compact_wide to R.id.widget_wide_like_button
+                }
+                else -> {
+                    R.layout.widget_music_player to R.id.widget_like_button
+                }
+            }
+
+            layoutAndButton?.let { (layoutId, buttonId) ->
+                val views = RemoteViews(context.packageName, layoutId)
+                val likeIcon = if (isLiked) R.drawable.ic_widget_star_nav else R.drawable.ic_widget_star_outline_nav
+                views.setImageViewResource(buttonId, likeIcon)
+                appWidgetManager.partiallyUpdateAppWidget(widgetId, views)
+            }
+        }
+    }
+
     private fun createRemoteViewsForSize(
         options: Bundle,
         title: String,

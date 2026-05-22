@@ -874,9 +874,7 @@ fun HomeScreen(
                                         if (it.id == mediaMetadata?.id) {
                                             playerConnection.togglePlayPause()
                                         } else {
-                                            playerConnection.playQueue(
-                                                YouTubeQueue.radio(it.toMediaMetadata()),
-                                            )
+                                            playerConnection.startRadioForSong(it.toMediaMetadata())
                                         }
                                     }
                                 },
@@ -1409,7 +1407,7 @@ fun HomeScreen(
                         val availableWidth = containerWidthDp
                         val shimColumns = (availableWidth / targetItemSize).toInt().coerceAtLeast(3)
                         val shimRows = if (shimColumns >= 6) 1 else if (shimColumns >= 4) 2 else 3
-                        val peekPadding = 20.dp
+                        val peekPadding = 12.dp
                         val itemWidth = (availableWidth - peekPadding * 2) / shimColumns
                         ShimmerHost(showGradient = false) {
                             Column(
@@ -1467,7 +1465,7 @@ fun HomeScreen(
                                 3
                             }
                         val itemsPerPage = columns * rows
-                        val peekPadding = 20.dp
+                        val peekPadding = 12.dp
                         val itemWidth = (availableWidth - peekPadding * 2) / columns
 
                         val realPageCount = (items.size + 1 + itemsPerPage - 1) / itemsPerPage
@@ -1859,8 +1857,7 @@ fun HomeScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
-                                .clip(RoundedCornerShape(28.dp))
-                                .background(animatedBgColor)
+                                .background(animatedBgColor, RoundedCornerShape(28.dp))
                                 .heightIn(min = ListItemHeight + 40.dp + 24.dp + 26.dp)
                                 .padding(top = 14.dp, bottom = 12.dp)
                         ) {
@@ -2039,11 +2036,7 @@ fun HomeScreen(
                                                                         if (originalSong.id == mediaMetadata?.id) {
                                                                             playerConnection.togglePlayPause()
                                                                         } else {
-                                                                            playerConnection.playQueue(
-                                                                                YouTubeQueue.radio(
-                                                                                    originalSong.toMediaMetadata(),
-                                                                                ),
-                                                                            )
+                                                                            playerConnection.startRadioForSong(originalSong.toMediaMetadata())
                                                                         }
                                                                     }
                                                                 },
@@ -2341,11 +2334,7 @@ fun HomeScreen(
                                                                         if (originalSong.id == mediaMetadata?.id) {
                                                                             playerConnection.togglePlayPause()
                                                                         } else {
-                                                                            playerConnection.playQueue(
-                                                                                YouTubeQueue.radio(
-                                                                                    originalSong.toMediaMetadata(),
-                                                                                ),
-                                                                            )
+                                                                            playerConnection.startRadioForSong(originalSong.toMediaMetadata())
                                                                         }
                                                                     }
                                                                 },

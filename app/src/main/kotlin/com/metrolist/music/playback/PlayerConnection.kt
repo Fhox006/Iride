@@ -29,6 +29,7 @@ import com.metrolist.music.extensions.getCurrentQueueIndex
 import com.metrolist.music.extensions.getQueueWindows
 import com.metrolist.music.extensions.metadata
 import com.metrolist.music.extensions.togglePlayPause
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.MusicService.MusicBinder
 import com.metrolist.music.playback.queues.Queue
 import com.metrolist.music.utils.dataStore
@@ -259,6 +260,15 @@ class PlayerConnection(
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error in startRadioSeamlessly")
             throw e
+        }
+    }
+
+    fun startRadioForSong(mediaMetadata: MediaMetadata) {
+        if (!allowInternalSync && shouldBlockPlaybackChanges?.invoke() == true) return
+        try {
+            service.startRadioForSong(mediaMetadata)
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Error in startRadioForSong")
         }
     }
 

@@ -977,7 +977,7 @@ class MainActivity : ComponentActivity() {
                                                         modifier = Modifier
                                                             .size(28.dp)
                                                             .clip(CircleShape)
-                                                            .background(MaterialTheme.colorScheme.secondary),
+                                                            .background(MaterialTheme.colorScheme.secondaryContainer),
                                                         contentAlignment = Alignment.Center,
                                                     ) {
                                                         Image(

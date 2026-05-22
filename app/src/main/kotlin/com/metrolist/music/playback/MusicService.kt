@@ -166,6 +166,7 @@ import com.metrolist.music.extensions.toPersistQueue
 import com.metrolist.music.extensions.toQueue
 import com.metrolist.music.lyrics.LyricsHelper
 import com.metrolist.music.models.PersistPlayerState
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.PersistQueue
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.alarm.MusicAlarmScheduler
@@ -1538,6 +1539,103 @@ class MusicService :
                             val radioItems =
                                 songs
                                     .filter { it.id != currentMediaId }
+                                    .map { it.toMediaItem() }
+                                    .filterExplicit(dataStore.get(HideExplicitKey, false))
+                                    .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
+
+                            if (radioItems.isNotEmpty()) {
+                                val itemCount = player.mediaItemCount
+                                if (itemCount > currentIndex + 1) {
+                                    player.removeMediaItems(currentIndex + 1, itemCount)
+                                }
+                                player.addMediaItems(currentIndex + 1, radioItems)
+                                if (player.shuffleModeEnabled) {
+                                    val shufflePlaylistFirst = shufflePlaylistFirst
+                                    applyShuffleOrder(
+                                        player.currentMediaItemIndex,
+                                        player.mediaItemCount,
+                                        shufflePlaylistFirst,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {
+                    // Silent fail
+                }
+            }
+        }
+    }
+
+    fun startRadioForSong(mediaMetadata: MediaMetadata) {
+        if (!playerInitialized.value) {
+            Timber.tag(TAG).w("startRadioForSong called before player initialization")
+            return
+        }
+
+        if (player.mediaItemCount == 0 || player.playbackState == STATE_IDLE) {
+            playQueue(YouTubeQueue.radio(mediaMetadata))
+            return
+        }
+
+        val mediaId = mediaMetadata.id
+        val currentIndex = player.currentMediaItemIndex
+
+        scope.launch(SilentHandler) {
+            val radioQueue =
+                YouTubeQueue(
+                    endpoint =
+                        WatchEndpoint(
+                            videoId = mediaId,
+                        ),
+                )
+
+            try {
+                val initialStatus =
+                    withContext(Dispatchers.IO) {
+                        radioQueue
+                            .getInitialStatus()
+                            .filterExplicit(dataStore.get(HideExplicitKey, false))
+                            .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
+                    }
+
+                if (initialStatus.title != null) {
+                    queueTitle = initialStatus.title
+                }
+
+                val radioItems =
+                    initialStatus.items.filter { item ->
+                        item.mediaId != mediaId
+                    }
+
+                if (radioItems.isNotEmpty()) {
+                    val itemCount = player.mediaItemCount
+                    if (itemCount > currentIndex + 1) {
+                        player.removeMediaItems(currentIndex + 1, itemCount)
+                    }
+                    player.addMediaItems(currentIndex + 1, radioItems)
+                    if (player.shuffleModeEnabled) {
+                        val shufflePlaylistFirst = shufflePlaylistFirst
+                        applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+                    }
+                }
+
+                currentQueue = radioQueue
+            } catch (e: Exception) {
+                try {
+                    val nextResult =
+                        withContext(Dispatchers.IO) {
+                            YouTube.next(WatchEndpoint(videoId = mediaId)).getOrNull()
+                        }
+                    nextResult?.relatedEndpoint?.let { relatedEndpoint ->
+                        val relatedPage =
+                            withContext(Dispatchers.IO) {
+                                YouTube.related(relatedEndpoint).getOrNull()
+                            }
+                        relatedPage?.songs?.let { songs ->
+                            val radioItems =
+                                songs
+                                    .filter { it.id != mediaId }
                                     .map { it.toMediaItem() }
                                     .filterExplicit(dataStore.get(HideExplicitKey, false))
                                     .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
@@ -3329,6 +3427,9 @@ class MusicService :
 
             MusicWidgetReceiver.ACTION_LIKE -> {
                 val currentLiked = currentSong.value?.song?.liked == true
+                // Provide instant UI feedback
+                widgetManager.updateLikeButtonOptimistic(!currentLiked)
+
                 scope.launch {
                     val songData = currentSong.value
                     val song = songData?.song

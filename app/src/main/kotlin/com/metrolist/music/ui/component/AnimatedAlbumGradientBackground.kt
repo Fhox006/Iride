@@ -186,19 +186,19 @@ private fun normalizeColorForBackground(color: Color): Color {
         val targetL = when {
             hsl.l > 0.70f -> (hsl.l - 0.25f).coerceIn(0.28f, 0.50f)
             hsl.l > 0.50f -> (hsl.l - 0.12f).coerceIn(0.28f, 0.50f)
-            else           -> hsl.l.coerceIn(0.20f, 0.50f)
+            else           -> hsl.l.coerceIn(0.22f, 0.54f)
         }
         return hslToColor(HslColor(hsl.h, hsl.s, targetL))
     }
 
     // CASO 6: colore normale (0.09 <= s < 0.60)
     val targetL = when {
-        hsl.l > 0.72f -> (hsl.l - 0.28f).coerceIn(0.22f, 0.48f)
-        hsl.l > 0.55f -> (hsl.l - 0.18f).coerceIn(0.22f, 0.48f)
-        else           -> hsl.l.coerceIn(0.16f, 0.48f)
+        hsl.l > 0.72f -> (hsl.l - 0.28f).coerceIn(0.22f, 0.52f)
+        hsl.l > 0.55f -> (hsl.l - 0.18f).coerceIn(0.22f, 0.52f)
+        else           -> hsl.l.coerceIn(0.16f, 0.52f)
     }
     val compensation = (hsl.l - targetL).coerceAtLeast(0f)
-    val satBoost     = compensation * 0.20f
+    val satBoost     = compensation * 0.28f
     val targetS      = (hsl.s + satBoost).coerceAtMost(0.88f).coerceAtLeast(hsl.s)
     return hslToColor(HslColor(hsl.h, targetS, targetL))
 }
@@ -474,12 +474,21 @@ fun AnimatedAlbumGradientBackground(
 
             drawRect(animatedBaseBackground)
 
+            val dx1 = kotlin.math.sin(t1) * 0.07f
+            val dy1 = kotlin.math.cos(t2) * 0.06f
+            val dx2 = kotlin.math.sin(t2 + 1f) * 0.08f
+            val dy2 = kotlin.math.cos(t3) * 0.05f
+            val dx3 = kotlin.math.sin(t3 + 2f) * 0.06f
+            val dy3 = kotlin.math.cos(t1 + 1f) * 0.07f
+            val dx4 = kotlin.math.sin(t2 + 3f) * 0.07f
+            val dy4 = kotlin.math.cos(t2 + 2f) * 0.06f
+
             val blobs = listOf(
-                GradientBlob(c1, Offset(w * 0.28f, h * 0.25f), maxDim * 0.58f, 0.75f),
-                GradientBlob(c2, Offset(w * 0.75f, h * 0.32f), maxDim * 0.52f, 0.62f),
-                GradientBlob(c3, Offset(w * 0.68f, h * 0.74f), maxDim * 0.47f, 0.48f),
-                GradientBlob(c4, Offset(w * 0.22f, h * 0.78f), maxDim * 0.41f, 0.38f),
-                GradientBlob(c5, Offset(w * 0.52f, h * 0.48f), maxDim * 0.35f, 0.28f)
+                GradientBlob(c1, Offset(w * (0.28f + dx1), h * (0.25f + dy1)), maxDim * 0.58f, 0.75f),
+                GradientBlob(c2, Offset(w * (0.75f + dx2), h * (0.32f + dy2)), maxDim * 0.52f, 0.65f),
+                GradientBlob(c3, Offset(w * (0.68f + dx3), h * (0.74f + dy3)), maxDim * 0.52f, 0.62f),
+                GradientBlob(c1, Offset(w * (0.22f + dx4), h * (0.80f + dy4)), maxDim * 0.48f, 0.55f),
+                GradientBlob(c2, Offset(w * (0.52f + dx1 * 0.5f), h * (0.50f + dy3 * 0.5f)), maxDim * 0.38f, 0.35f)
             )
 
             blobs.forEach { blob ->
@@ -502,7 +511,11 @@ fun AnimatedAlbumGradientBackground(
 
             drawRect(
                 Brush.verticalGradient(
-                    listOf(Color.Black.copy(0.12f), Color.Transparent, Color.Black.copy(0.22f))
+                    colorStops = arrayOf(
+                        0.00f to Color.Black.copy(alpha = 0.10f),
+                        0.45f to Color.Transparent,
+                        1.00f to Color.Black.copy(alpha = 0.08f)
+                    )
                 )
             )
         }

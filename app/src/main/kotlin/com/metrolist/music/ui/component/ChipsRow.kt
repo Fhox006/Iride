@@ -31,7 +31,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.DropdownMenu
@@ -96,7 +96,7 @@ fun <E> ChipsRow(
                     selectedTrailingIconColor = onSelectedContainerColor,
                 ),
                 onClick = { onValueUpdate(value) },
-                shape = RoundedCornerShape(20.dp),
+                shape = CircleShape,
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
                     selected = currentValue == value,
@@ -160,7 +160,7 @@ fun <Int> ChoiceChipsRow(
                         modifier = Modifier.graphicsLayer(rotationZ = rotationAnimation),
                     )
                 },
-                shape = RoundedCornerShape(20.dp),
+                shape = CircleShape,
                 border = null,
                 colors = AssistChipDefaults.assistChipColors(
                     containerColor = containerColor,
@@ -217,7 +217,7 @@ fun <Int> ChoiceChipsRow(
                             containerColor = containerColor,
                         ),
                         onClick = { onValueUpdate(value) },
-                        shape = RoundedCornerShape(20.dp),
+                        shape = CircleShape,
                         border = null
                     )
                 }
