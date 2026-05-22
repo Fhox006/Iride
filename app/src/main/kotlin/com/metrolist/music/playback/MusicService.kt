@@ -1826,7 +1826,6 @@ class MusicService :
                 val song = songEntity.toggleLike()
                 database.query {
                     update(song)
-                    syncUtils.likeSong(song)
 
                     // Check if auto-download on like is enabled and the song is now liked
                     if (dataStore.get(AutoDownloadOnLikeKey, false) && song.liked) {
@@ -1845,6 +1844,8 @@ class MusicService :
                         )
                     }
                 }
+                updateWidgetUI(player.isPlaying)
+                syncUtils.likeSong(song)
                 currentMediaMetadata.value = player.currentMetadata
             }
         }
@@ -3327,6 +3328,22 @@ class MusicService :
             }
 
             MusicWidgetReceiver.ACTION_LIKE -> {
+                val currentLiked = currentSong.value?.song?.liked == true
+                scope.launch {
+                    val songData = currentSong.value
+                    val song = songData?.song
+                    val songTitle = song?.title ?: getString(R.string.no_song_playing)
+                    val artistName = songData?.artists?.joinToString(", ") { it.name } ?: getString(R.string.tap_to_open)
+                    widgetManager.updateWidgets(
+                        title = songTitle,
+                        artist = artistName,
+                        artworkUri = song?.thumbnailUrl?.resize(512, 512),
+                        isPlaying = player.isPlaying,
+                        isLiked = !currentLiked,
+                        duration = if (player.duration != C.TIME_UNSET) player.duration else 0,
+                        currentPosition = player.currentPosition,
+                    )
+                }
                 toggleLike()
             }
 

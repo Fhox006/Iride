@@ -41,7 +41,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -103,7 +102,6 @@ import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.SmallGridThumbnailHeight
-import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.LocalItem
@@ -724,7 +722,7 @@ fun NewHomeScreen(
                                                     showTitle = true,
                                                     modifier = Modifier
                                                         .animateItem()
-                                                        .clip(RoundedCornerShape(ThumbnailCornerRadius + 6.dp))
+                                                        .clip(MaterialTheme.shapes.extraLarge)
                                                         .combinedClickable(
                                                             onClick = {
                                                                 navController.navigate("online_playlist/${mix.id}")
@@ -1009,7 +1007,7 @@ fun NewHomeScreen(
                             title = rec.title.title,
                             thumbnail = rec.title.thumbnailUrl?.let { thumbUrl ->
                                 {
-                                    val shape = if (rec.title is Artist) CircleShape else RoundedCornerShape(ThumbnailCornerRadius)
+                                    val shape = if (rec.title is Artist) CircleShape else MaterialTheme.shapes.extraLarge
                                     AsyncImage(model = thumbUrl, contentDescription = null, modifier = Modifier.size(ListThumbnailSize).clip(shape))
                                 }
                             },
@@ -1044,7 +1042,7 @@ fun NewHomeScreen(
                                 thumbnail = sectionData.thumbnail?.let { thumbUrl ->
                                     {
                                         val shape = if (sectionData.endpoint?.isArtistEndpoint == true) CircleShape
-                                        else RoundedCornerShape(ThumbnailCornerRadius)
+                                        else MaterialTheme.shapes.extraLarge
                                         AsyncImage(model = thumbUrl, contentDescription = null, modifier = Modifier.size(ListThumbnailSize).clip(shape))
                                     }
                                 },

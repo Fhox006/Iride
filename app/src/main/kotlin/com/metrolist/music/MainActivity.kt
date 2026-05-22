@@ -20,13 +20,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -80,6 +83,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
@@ -958,40 +962,61 @@ class MainActivity : ComponentActivity() {
                         topBar = {
                             AnimatedVisibility(
                                 visible = shouldShowTopBar,
-                                enter = fadeIn(animationSpec = tween(durationMillis = 300)),
-                                exit = fadeOut(animationSpec = tween(durationMillis = 200)),
+                                enter = fadeIn(animationSpec = tween(durationMillis = 600, easing = EaseInOut)),
+                                exit = fadeOut(animationSpec = tween(durationMillis = 500, easing = EaseInOut)),
                             ) {
                                 Row {
                                     TopAppBar(
                                         title = {
-                                            Text(
-                                                text = currentTitleRes?.let { stringResource(it) } ?: "",
-                                                style = MaterialTheme.typography.titleLarge,
-                                            )
+                                            if (currentRoute == Screens.NewHome.route || currentRoute == Screens.Home.route) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(28.dp)
+                                                            .clip(CircleShape)
+                                                            .background(MaterialTheme.colorScheme.secondary),
+                                                        contentAlignment = Alignment.Center,
+                                                    ) {
+                                                        Image(
+                                                            painter = painterResource(R.drawable.ic_launcher_foreground),
+                                                            contentDescription = null,
+                                                            modifier = Modifier.fillMaxSize(),
+                                                            contentScale = ContentScale.Fit,
+                                                        )
+                                                    }
+                                                    Text(
+                                                        text = "Iride",
+                                                        style = MaterialTheme.typography.titleLarge,
+                                                    )
+                                                }
+                                            } else {
+                                                Text(
+                                                    text = currentTitleRes?.let { stringResource(it) } ?: "",
+                                                    style = MaterialTheme.typography.titleLarge,
+                                                )
+                                            }
                                         },
                                         actions = {
-                                            if (false) {
-                                                IconButton(onClick = { navController.navigate("history") }) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.history),
-                                                        contentDescription = stringResource(R.string.history),
-                                                    )
-                                                }
-                                            }
-                                            if (false) {
-                                                IconButton(onClick = { navController.navigate("stats") }) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.stats),
-                                                        contentDescription = stringResource(R.string.stats),
-                                                    )
-                                                }
-                                            }
-                                            if (false) {
-                                                IconButton(onClick = { navController.navigate("listen_together_from_topbar") }) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.group_outlined),
-                                                        contentDescription = stringResource(R.string.together),
-                                                    )
+                                            if (currentRoute == Screens.NewHome.route || currentRoute == Screens.Home.route) {
+                                                IconButton(onClick = { navController.navigate(Screens.Account.route) }) {
+                                                    if (accountImageUrl != null) {
+                                                        AsyncImage(
+                                                            model = accountImageUrl,
+                                                            contentDescription = stringResource(R.string.account),
+                                                            modifier = Modifier
+                                                                .size(28.dp)
+                                                                .clip(CircleShape),
+                                                            contentScale = ContentScale.Crop,
+                                                        )
+                                                    } else {
+                                                        Icon(
+                                                            painter = painterResource(R.drawable.person),
+                                                            contentDescription = stringResource(R.string.account),
+                                                        )
+                                                    }
                                                 }
                                             }
                                         },

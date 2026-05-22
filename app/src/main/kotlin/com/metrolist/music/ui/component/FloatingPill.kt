@@ -485,7 +485,7 @@ private fun PillContent(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        navigationItems.forEach { screen ->
+                        navigationItems.filter { it != Screens.Account }.forEach { screen ->
                             PillNavItem(
                                 screen = screen,
                                 currentRoute = currentRoute,
