@@ -6,8 +6,16 @@
 
 <br/>
 
-[![Latest release](https://img.shields.io/github/v/release/Fhox006/Iride?style=for-the-badge&labelColor=0d1117)](https://github.com/Fhox006/Iride/releases)
+[![Pre-release](https://img.shields.io/github/v/release/Fhox006/Iride?include_prereleases=true&style=for-the-badge&labelColor=0d1117&label=pre-release)](https://github.com/Fhox006/Iride/releases)
 [![License](https://img.shields.io/github/license/Fhox006/Iride?style=for-the-badge&labelColor=0d1117)](https://github.com/Fhox006/Iride/blob/main/LICENSE)
+
+<br/>
+
+### The first pre-release is out.
+
+Alpha build — rough edges expected, but it runs. If you want to try it early:
+
+[![Download](https://img.shields.io/badge/↓%20download-iride.apk-4f6ef7?style=for-the-badge)](https://github.com/Fhox006/Iride/releases/download/v0.1.0-alpha05/Iride.apk)
 
 <br/>
 
@@ -17,6 +25,23 @@
 > ⚠️ **Current releases are experimental alpha builds.** Expect bugs, missing features, and breaking changes. Not intended for daily use yet.
 
 </div>
+
+---
+
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="220"/></td>
+    <td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="220"/></td>
+    <td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="220"/></td>
+  </tr>
+  <tr>
+    <td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="220"/></td>
+    <td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="220"/></td>
+    <td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" width="220"/></td>
+  </tr>
+</table>
 
 ---
 
