@@ -6,7 +6,7 @@ A visually-focused YouTube Music client for Android
 
 <br/>
 
-<img src="https://github.com/user-attachments/assets/e112edc1-6c30-4628-a7e1-32113e4bc8fd" width="320"/>
+<img src="https://github.com/user-attachments/assets/1c4183a2-8edf-4390-b71a-fadbbfa75a72" width="320"/>
 
 <br/><br/>
 
