@@ -721,11 +721,11 @@ internal fun GeminiSetupDialog(
                     Text("AI Translation", style = MaterialTheme.typography.headlineSmall)
                 }
 
-                val linkUrl = "https://aistudio.google.com/"
+                val linkUrl = "https://ai.google.dev/gemini-api"
                 val annotatedString = buildAnnotatedString {
-                    append("Translating lyrics is super easy! Just go to ")
+                    append("To get started, visit ")
                     val start = length
-                    append("aistudio.google.com")
+                    append("ai.google.dev/gemini-api")
                     addLink(
                         LinkAnnotation.Url(
                             url = linkUrl,
@@ -734,7 +734,7 @@ internal fun GeminiSetupDialog(
                         start = start,
                         end = length,
                     )
-                    append(", sign in with Google, click \"Create API key\" then \"Create key\", and paste your API key below!")
+                    append(", configure a project, then start creating an API key and paste it below.")
                 }
                 Text(annotatedString, style = MaterialTheme.typography.bodyMedium)
 

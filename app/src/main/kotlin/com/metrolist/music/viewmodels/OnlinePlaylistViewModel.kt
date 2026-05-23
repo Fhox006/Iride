@@ -150,6 +150,11 @@ class OnlinePlaylistViewModel @Inject constructor(
                     startProactiveBackgroundLoading()
                 }
             }
+            .onFailure {
+                _error.value = it.message
+                _isLoading.value = false
+                reportException(it)
+            }
     }
 
     private suspend fun loadLocalSavedEpisodes() {

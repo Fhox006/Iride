@@ -9,7 +9,7 @@ import java.security.MessageDigest
 suspend fun Result<PlaylistPage>.completed(): Result<PlaylistPage> = runCatching {
     val page = getOrThrow()
     val songs = page.songs.toMutableList()
-    var continuation = page.songsContinuation
+    var continuation = page.songsContinuation ?: page.continuation
     val seenContinuations = mutableSetOf<String>()
     var requestCount = 0
     val maxRequests = 50

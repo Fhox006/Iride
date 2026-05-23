@@ -17,8 +17,10 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -62,7 +64,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -187,6 +191,8 @@ import com.metrolist.music.ui.menu.YouTubeArtistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.utils.SnapLayoutInfoProvider
+import com.metrolist.music.utils.SyncState
+import com.metrolist.music.utils.SyncStatus
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.CommunityPlaylistItem
@@ -194,9 +200,6 @@ import com.metrolist.music.viewmodels.HomeViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import android.app.Activity
-import android.content.Intent
-import androidx.compose.material3.TextButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -204,6 +207,69 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.min
 
+
+@Composable
+fun SyncBanner(syncState: SyncState) {
+    val ops = listOf(
+        syncState.likedSongs, syncState.librarySongs, syncState.uploadedSongs,
+        syncState.likedAlbums, syncState.uploadedAlbums, syncState.artists, syncState.playlists,
+    )
+    val completedCount = ops.count { it == SyncStatus.Completed }
+    val progress = completedCount / ops.size.toFloat()
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Syncing your library…",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                    Text(
+                        text = "Network features may not work until sync completes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp)),
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f),
+            )
+            if (syncState.currentOperation.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = syncState.currentOperation,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.55f),
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun CommunityPlaylistCard(
@@ -697,19 +763,10 @@ fun HomeScreen(
 
     val isLoading: Boolean by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val syncState by viewModel.syncState.collectAsStateWithLifecycle()
     val phase2Complete by viewModel.phase2Complete.collectAsStateWithLifecycle()
     val isRandomizing by viewModel.isRandomizing.collectAsStateWithLifecycle()
     val pullRefreshState = rememberPullToRefreshState()
-
-    var showRefreshHint by remember { mutableStateOf(false) }
-    LaunchedEffect(isLoading) {
-        if (isLoading) {
-            delay(3000L)
-            if (isLoading) showRefreshHint = true
-        } else {
-            showRefreshHint = false
-        }
-    }
 
     val quickPicksLazyGridState = rememberLazyGridState()
     val forgottenFavoritesLazyGridState = rememberLazyGridState()
@@ -1150,6 +1207,16 @@ fun HomeScreen(
                 state = lazylistState,
                 contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
             ) {
+                item(key = "sync_banner") {
+                    AnimatedVisibility(
+                        visible = isLoggedIn && syncState.overallStatus == SyncStatus.Syncing,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        SyncBanner(syncState = syncState)
+                    }
+                }
+
                 // Show podcast sections FIRST when podcast chip is selected (fixed at top)
                 if (selectedChip?.title?.contains("Podcast", ignoreCase = true) == true) {
                     // Show "Your Shows" section from official API
@@ -1360,97 +1427,13 @@ fun HomeScreen(
                     }
                 }
 
-                // --- PRIORITY SECTIONS: always render first, no forEach dependency ---
-                item(key = "speed_dial_title") {
-                    NavigationTitle(
-                        title = stringResource(R.string.speed_dial),
-                        modifier = Modifier.animateItem(),
-                    )
-                }
-
-                if (speedDialItems.isEmpty() && isLoading) {
-                    item(key = "home_loading_hint") {
-                        AnimatedVisibility(
-                            visible = showRefreshHint,
-                            enter = fadeIn(animationSpec = tween(400)),
-                            exit = fadeOut(animationSpec = tween(200)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .animateItem(),
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                TextButton(
-                                    onClick = {
-                                        val intent = Intent(context, Class.forName("com.metrolist.music.MainActivity"))
-                                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        context.startActivity(intent)
-                                        (context as Activity).finish()
-                                    }
-                                ) {
-                                    Text(
-                                        text = "Refresh page",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
-                                }
-                            }
-                        }
+                if (speedDialItems.isNotEmpty()) {
+                    item(key = "speed_dial_title") {
+                        NavigationTitle(
+                            title = stringResource(R.string.speed_dial),
+                            modifier = Modifier.animateItem(),
+                        )
                     }
-                }
-
-                if (speedDialItems.isEmpty() && isLoading) {
-                    item(key = "speed_dial_skeleton") {
-                        val targetItemSize = 160.dp
-                        val availableWidth = containerWidthDp
-                        val shimColumns = (availableWidth / targetItemSize).toInt().coerceAtLeast(3)
-                        val shimRows = if (shimColumns >= 6) 1 else if (shimColumns >= 4) 2 else 3
-                        val peekPadding = 12.dp
-                        val itemWidth = (availableWidth - peekPadding * 2) / shimColumns
-                        ShimmerHost(showGradient = false) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = peekPadding, vertical = 8.dp),
-                            ) {
-                                repeat(shimRows) { rowIndex ->
-                                    Row(modifier = Modifier.fillMaxWidth()) {
-                                        repeat(shimColumns) { colIndex ->
-                                            val isCenter = rowIndex == 1 && colIndex == 1
-                                            Spacer(
-                                                modifier = Modifier
-                                                    .width(itemWidth)
-                                                    .height(itemWidth)
-                                                    .padding(4.dp)
-                                                    .clip(if (isCenter) CircleShape else RoundedCornerShape(9.dp))
-                                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
-                                            )
-                                        }
-                                    }
-                                }
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(24.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    repeat(3) {
-                                        Box(
-                                            modifier = Modifier
-                                                .padding(4.dp)
-                                                .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
-                                                .size(6.dp),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else if (speedDialItems.isNotEmpty()) {
                     item(key = "speed_dial_list") {
                         val items = speedDialItems
                         val targetItemSize = 160.dp

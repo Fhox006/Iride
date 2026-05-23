@@ -101,7 +101,13 @@ fun NavGraphBuilder.NavigationBuilder(
         WhatNewScreen(navController = navController)
     }
 
-    composable(Screens.Search.route) { backStackEntry ->
+    composable(
+        route = Screens.Search.route,
+        enterTransition = { fadeIn(tween(250)) + slideInHorizontally { it / 4 } },
+        exitTransition = { fadeOut(tween(200)) + slideOutHorizontally { -it / 4 } },
+        popEnterTransition = { fadeIn(tween(250)) + slideInHorizontally { -it / 4 } },
+        popExitTransition = { fadeOut(tween(200)) + slideOutHorizontally { it / 4 } },
+    ) { backStackEntry ->
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = true)
         val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
         val isSystemInDarkTheme = isSystemInDarkTheme()

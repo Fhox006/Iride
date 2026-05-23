@@ -339,7 +339,10 @@ fun rememberBottomSheetState(
         mutableIntStateOf(initialAnchor)
     }
 
-    val initialValue = when (previousAnchor) {
+    // Never restore to full-screen expanded — nav bar must be visible at startup
+    val effectiveAnchor = if (previousAnchor == expandedAnchor) collapsedAnchor else previousAnchor
+
+    val initialValue = when (effectiveAnchor) {
         expandedAnchor -> expandedBound
         collapsedAnchor -> collapsedBound
         else -> dismissedBound
@@ -350,7 +353,7 @@ fun rememberBottomSheetState(
     }
 
     return remember(dismissedBound, expandedBound, collapsedBound, coroutineScope) {
-        val targetValue = when (previousAnchor) {
+        val targetValue = when (effectiveAnchor) {
             expandedAnchor -> expandedBound
             collapsedAnchor -> collapsedBound
             dismissedAnchor -> dismissedBound

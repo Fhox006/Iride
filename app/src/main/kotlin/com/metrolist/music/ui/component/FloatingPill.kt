@@ -206,7 +206,7 @@ fun FloatingPill(
 
     val isTopLevelRoute = remember(currentRoute, navigationItems) {
         currentRoute == null ||
-                navigationItems.any { it.route == currentRoute } ||
+                (navigationItems.any { it.route == currentRoute } && currentRoute != "settings") ||
                 currentRoute.startsWith("search/")
     }
 

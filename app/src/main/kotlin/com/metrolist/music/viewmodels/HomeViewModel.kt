@@ -49,8 +49,10 @@ import kotlinx.serialization.json.Json
 import com.metrolist.music.ui.screens.HomeSection
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Album
+import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.LocalItem
 import com.metrolist.music.db.entities.Song
+import com.metrolist.music.db.entities.SongEntity
 import com.metrolist.music.db.entities.SpeedDialItem
 import com.metrolist.music.extensions.filterVideoSongs
 import com.metrolist.music.extensions.toEnum
@@ -99,6 +101,8 @@ class HomeViewModel @Inject constructor(
     val wrappedManager: WrappedManager,
     private val wrappedAudioService: WrappedAudioService,
 ) : ViewModel() {
+    val syncState = syncUtils.syncState
+
     val isRefreshing = MutableStateFlow(false)
     val isLoading = MutableStateFlow(false)
     val isRandomizing = MutableStateFlow(false)
@@ -258,14 +262,15 @@ class HomeViewModel @Inject constructor(
             database.speedDialDao.getAll(),
             keepListening,
             quickPicks,
-            isPhase1Complete
-        ) { pinned, keepListening, quick, phase1Done ->
+            isPhase1Complete,
+            homePage
+        ) { pinned: List<SpeedDialItem>, keepListeningItems: List<LocalItem>?, quickPickItems: List<Song>?, phase1Done: Boolean, home: HomePage? ->
             val pinnedItems = pinned.map { it.toYTItem() }
             if (!phase1Done) return@combine pinnedItems
             val filled = pinnedItems.toMutableList()
             val targetSize = 27
-            val kl = keepListening ?: emptyList()
-            val qp = quick ?: emptyList()
+            val kl = keepListeningItems ?: emptyList()
+            val qp = quickPickItems ?: emptyList()
 
             if (filled.size < targetSize) {
                 val needed = targetSize - filled.size
@@ -308,6 +313,15 @@ class HomeViewModel @Inject constructor(
                     )
                 }
                 filled.addAll(available.take(needed))
+            }
+
+            // Fallback to YouTube home page songs when local DB has no data (e.g. fresh install)
+            if (filled.size < targetSize && home != null) {
+                val needed = targetSize - filled.size
+                val homeSongs = home.sections.flatMap { it.items }
+                    .filterIsInstance<SongItem>()
+                    .filter { item -> filled.none { p -> p.id == item.id } }
+                filled.addAll(homeSongs.take(needed))
             }
 
             val albumIdMap = mutableMapOf<String, String?>()
@@ -651,8 +665,29 @@ class HomeViewModel @Inject constructor(
         val ytSimilarSongs = mutableListOf<Song>()
         YouTube.related(endpoint).onSuccess { page ->
             page.songs.take(10).forEach { ytSong ->
-                database.song(ytSong.id).first()?.let { localSong ->
-                    if (!hideVideoSongs || !localSong.song.isVideo) ytSimilarSongs.add(localSong)
+                if (hideVideoSongs && ytSong.isVideoSong) return@forEach
+                val localSong = database.song(ytSong.id).first()
+                if (localSong != null) {
+                    ytSimilarSongs.add(localSong)
+                } else {
+                    ytSimilarSongs.add(
+                        Song(
+                            song = SongEntity(
+                                id = ytSong.id,
+                                title = ytSong.title,
+                                thumbnailUrl = ytSong.thumbnail,
+                                explicit = ytSong.explicit,
+                                isVideo = ytSong.isVideoSong,
+                                duration = ytSong.duration ?: -1
+                            ),
+                            artists = ytSong.artists.map { artist ->
+                                ArtistEntity(
+                                    id = artist.id ?: ArtistEntity.generateArtistId(),
+                                    name = artist.name
+                                )
+                            }
+                        )
+                    )
                 }
             }
         }
@@ -1195,6 +1230,7 @@ class HomeViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .collect { cookie ->
                     if (isProcessingAccountData) return@collect
+                    val previousCookie = lastProcessedCookie
                     lastProcessedCookie = cookie
                     isProcessingAccountData = true
                     try {
@@ -1206,6 +1242,9 @@ class HomeViewModel @Inject constructor(
                                     ?.replace(Regex("w\\d+-h\\d+(-[a-zA-Z0-9]+)?"), "w256-h256-c")
                                     ?: info.thumbnailUrl
                             }.onFailure { reportException(it) }
+                            if (previousCookie != null && previousCookie != cookie) {
+                                syncUtils.performFullSync()
+                            }
                         } else {
                             accountName.value = "Guest"
                             accountImageUrl.value = null

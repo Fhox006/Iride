@@ -714,7 +714,7 @@ class MainActivity : ComponentActivity() {
                 val isTopLevelRoute by remember {
                     derivedStateOf {
                         currentRoute == null ||
-                            navigationItems.any { it.route == currentRoute } ||
+                            (navigationItems.any { it.route == currentRoute } && currentRoute != "settings") ||
                             currentRoute?.startsWith("search/") == true
                     }
                 }

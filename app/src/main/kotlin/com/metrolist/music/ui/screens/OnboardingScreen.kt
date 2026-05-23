@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -57,6 +58,8 @@ import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.edit
 import androidx.navigation.NavController
 import com.metrolist.music.R
+import com.metrolist.music.constants.AppLanguageKey
+import com.metrolist.music.constants.ContentLanguageKey
 import com.metrolist.music.constants.OnboardingCompletedKey
 import com.metrolist.music.utils.dataStore
 import kotlinx.coroutines.launch
@@ -75,7 +78,11 @@ fun OnboardingScreen(navController: NavController) {
 
     fun completeOnboarding() {
         coroutineScope.launch {
-            context.dataStore.edit { it[OnboardingCompletedKey] = true }
+            context.dataStore.edit {
+                it[OnboardingCompletedKey] = true
+                it[AppLanguageKey] = "en"
+                it[ContentLanguageKey] = "en"
+            }
         }
     }
 
@@ -116,7 +123,7 @@ fun OnboardingScreen(navController: NavController) {
                     },
                     onSkip = {
                         completeOnboarding()
-                        navController.navigate(Screens.Home.route) {
+                        navController.navigate(Screens.NewHome.route) {
                             popUpTo("onboarding") { inclusive = true }
                         }
                     }
@@ -173,11 +180,10 @@ private fun WelcomePage(onNext: () -> Unit) {
             visible = visible,
             enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { it / 3 }
         ) {
-            Icon(
-                painter = painterResource(R.drawable.eye),
+            Image(
+                painter = painterResource(R.drawable.app_logo),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(72.dp)
+                modifier = Modifier.size(96.dp)
             )
         }
 
@@ -187,13 +193,31 @@ private fun WelcomePage(onNext: () -> Unit) {
             visible = visible,
             enter = fadeIn(tween(700, delayMillis = 100)) + slideInVertically(tween(700, delayMillis = 100)) { it / 4 }
         ) {
-            Text(
-                text = "Iride",
-                style = MaterialTheme.typography.displayMedium.copy(
-                    fontWeight = FontWeight.Bold
-                ),
-                color = MaterialTheme.colorScheme.onBackground
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Iride",
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .padding(horizontal = 12.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "BETA",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(20.dp))

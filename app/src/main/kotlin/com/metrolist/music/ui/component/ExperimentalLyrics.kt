@@ -243,7 +243,7 @@ fun ExperimentalLyrics(
 
     var openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
     val deeplApiKey by rememberPreference(DeeplApiKey, "")
-    val aiProvider by rememberPreference(AiProviderKey, "OpenRouter")
+    val aiProvider by rememberPreference(AiProviderKey, "Gemini")
     val openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, OpenRouterDefaultBaseUrl)
     val openRouterModel by rememberPreference(OpenRouterModelKey, OpenRouterDefaultModel)
     var translateLanguage by rememberPreference(TranslateLanguageKey, "en")
@@ -594,17 +594,25 @@ fun ExperimentalLyrics(
     }
 
     var userManualOffset by remember { mutableFloatStateOf(0f) }
+    var skippedLinesAfterScroll by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(isAutoScrollEnabled) {
         if (!isAutoScrollEnabled) {
+            skippedLinesAfterScroll = 0
             snapshotFlow { activeLineIndices }
                 .collectLatest { newActiveIndices ->
                     if (newActiveIndices != previousScrollActiveIndices && newActiveIndices.isNotEmpty()) {
-                        val elapsed = System.currentTimeMillis() - lastPreviewTime
-                        if (elapsed >= 1500L) {
-                            userManualOffset = 0f
-                            isAutoScrollEnabled = true
-                            lastPreviewTime = 0L
+                        val userJustScrolled = System.currentTimeMillis() - lastPreviewTime < 500L
+                        if (userJustScrolled) {
+                            skippedLinesAfterScroll = 0
+                        } else {
+                            skippedLinesAfterScroll++
+                            if (skippedLinesAfterScroll >= 2) {
+                                userManualOffset = 0f
+                                isAutoScrollEnabled = true
+                                lastPreviewTime = 0L
+                                skippedLinesAfterScroll = 0
+                            }
                         }
                         previousScrollActiveIndices = newActiveIndices
                     }
@@ -1134,6 +1142,9 @@ fun ExperimentalLyrics(
                                             } else if (changeLyrics && !isGuest) {
                                                 if (item.time < playerConnection.player.duration - 30000L) {
                                                     playerConnection.seekTo(item.time - (currentSong?.song?.lyricsOffset ?: 0).coerceAtLeast(0))
+                                                    isAutoScrollEnabled = true
+                                                    userManualOffset = 0f
+                                                    lastPreviewTime = 0L
                                                 } else {
                                                     scrollTargetIndex = index
                                                     deferredCurrentLineIndex = index
