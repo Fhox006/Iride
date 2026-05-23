@@ -1,23 +1,19 @@
-<table>
-<tr>
-<td valign="top" width="55%">
+<div align="center">
 
 # Iride
 
-A visually-focused YouTube Music client for Android — built around a single idea: a music app should feel as good as it sounds.
+A visually-focused YouTube Music client for Android
 
-This is a fork of [Metrolist](https://github.com/mostafaalagamy/metrolist), driven by a design-first vision. The work follows two phases:
+<br/>
 
-1. **UX first** — fix and align every structural issue inherited from Metrolist
-2. **UI second** — redesign the visual identity: typography, colour, motion, layout
+<img src="https://github.com/user-attachments/assets/efe7bf80-3d8f-4461-a06b-da4bccd07ee7" width="320"/>
 
-Right now: **Phase 1**, in progress.
+<br/><br/>
 
----
+**The first pre-release is out — v0.1.0-alpha05**
 
-**The first pre-release is out** — v0.1.0-alpha05
-
-Alpha build. Rough edges, missing pieces, breaking changes ahead. Worth trying if you're curious.
+Alpha build. Rough edges, missing pieces, breaking changes ahead.  
+Worth trying if you're curious.
 
 <br/>
 
@@ -32,14 +28,20 @@ Alpha build. Rough edges, missing pieces, breaking changes ahead. Worth trying i
 > 🚧 Personal fork, actively under development.  
 > Built by a student at [Politecnico di Torino – Design Dept.](https://www.polito.it/en)
 
-</td>
-<td valign="top" width="45%" align="center">
+</div>
 
-<img src="https://github.com/user-attachments/assets/efe7bf80-3d8f-4461-a06b-da4bccd07ee7" width="380"/>
+---
 
-</td>
-</tr>
-</table>
+## What is Iride?
+
+Iride is a fork of [Metrolist](https://github.com/mostafaalagamy/metrolist), a YouTube Music Android client. This fork is driven by a design-first vision: the goal is to deliver a music experience that feels as good as it sounds — prioritising the **visual and aesthetic dimension** of the app.
+
+The project follows a deliberate two-phase approach:
+
+1. **UX first** — fix, refine, and align all functional and structural aspects inherited from Metrolist before touching the visual layer.
+2. **UI second** — once the UX foundation is solid, redesign the visual identity: typography, colour, motion, and layout.
+
+Right now, the project is in **Phase 1**.
 
 ---
 
