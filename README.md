@@ -126,4 +126,12 @@ Iride is built on top of the excellent work done by the open-source community:
 
 *Personal fork maintained by a Design student at Politecnico di Torino.*
 
+<img width="1080" height="2424" alt="Screenshot_20260523-132401" src="https://github.com/user-attachments/assets/f34dcc82-4f86-44ff-be6b-c8b6e3fba7bc" />
+<img width="1080" height="2424" alt="Screenshot_20260523-132404" src="https://github.com/user-attachments/assets/07b8b0fa-ce03-4175-88d1-e69e5eb07da0" />
+<img width="1080" height="2424" alt="Screenshot_20260523-132407" src="https://github.com/user-attachments/assets/a192df0c-7ffe-4924-a0c2-7efae43e5529" />
+<img width="1080" height="2424" alt="Screenshot_20260523-132411" src="https://github.com/user-attachments/assets/93e8f6df-a78b-4f6c-ae88-099dd975683c" />
+<img width="1080" height="2424" alt="Screenshot_20260523-132436" src="https://github.com/user-attachments/assets/1ac753d9-d2e6-4ae6-909f-50714f49440b" />
+<img width="1080" height="2424" alt="Screenshot_20260523-132444" src="https://github.com/user-attachments/assets/21c3a87e-d5bd-4401-839d-2c2aba62fdac" />
+
+
 </div>
