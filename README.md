@@ -1,34 +1,45 @@
-<div align="center">
+<table>
+<tr>
+<td valign="top" width="55%">
 
 # Iride
 
-### A visually-focused YouTube Music client for Android
+A visually-focused YouTube Music client for Android — built around a single idea: a music app should feel as good as it sounds.
 
-<br/>
+This is a fork of [Metrolist](https://github.com/mostafaalagamy/metrolist), driven by a design-first vision. The work follows two phases:
 
-[![License](https://img.shields.io/github/license/Fhox006/Iride?style=flat-square&labelColor=0d1117&color=555)](https://github.com/Fhox006/Iride/blob/main/LICENSE)
+1. **UX first** — fix and align every structural issue inherited from Metrolist
+2. **UI second** — redesign the visual identity: typography, colour, motion, layout
 
-<br/>
+Right now: **Phase 1**, in progress.
 
 ---
 
 **The first pre-release is out** — v0.1.0-alpha05
 
-Alpha build. Rough edges, missing pieces, breaking changes ahead.  
-Worth trying if you're curious.
+Alpha build. Rough edges, missing pieces, breaking changes ahead. Worth trying if you're curious.
 
 <br/>
 
 <a href="https://github.com/Fhox006/Iride/releases/download/v0.1.0-alpha05/Iride.apk">
-  <img src="https://img.shields.io/badge/Download_APK-iride.apk_·_v0.1.0--alpha05-4361ee?style=for-the-badge&logoColor=white" alt="Download iride.apk"/>
+  <img src="https://img.shields.io/badge/↓_Download_APK-iride.apk_·_v0.1.0--alpha05-4361ee?style=for-the-badge" alt="Download iride.apk"/>
 </a>
 
 <br/><br/>
 
-> 🚧 **Personal fork, actively under development.**  
-> Built by a student at [Politecnico di Torino – Design Department](https://www.polito.it/en).
+[![License](https://img.shields.io/github/license/Fhox006/Iride?style=flat-square&labelColor=0d1117&color=555)](https://github.com/Fhox006/Iride/blob/main/LICENSE)
 
-</div>
+> 🚧 Personal fork, actively under development.  
+> Built by a student at [Politecnico di Torino – Design Dept.](https://www.polito.it/en)
+
+</td>
+<td valign="top" width="45%" align="center">
+
+<img src="https://github.com/user-attachments/assets/f34dcc82-4f86-44ff-be6b-c8b6e3fba7bc" width="260"/>
+
+</td>
+</tr>
+</table>
 
 ---
 
@@ -46,19 +57,6 @@ Worth trying if you're curious.
     <td align="center"><img src="https://github.com/user-attachments/assets/21c3a87e-d5bd-4401-839d-2c2aba62fdac" width="200"/></td>
   </tr>
 </table>
-
----
-
-## What is Iride?
-
-Iride is a fork of [Metrolist](https://github.com/mostafaalagamy/metrolist), a YouTube Music Android client. This fork is driven by a design-first vision: the goal is to deliver a music experience that feels as good as it sounds — prioritising the **visual and aesthetic dimension** of the app.
-
-The project follows a deliberate two-phase approach:
-
-1. **UX first** — fix, refine, and align all functional and structural aspects inherited from Metrolist before touching the visual layer.
-2. **UI second** — once the UX foundation is solid, redesign the visual identity: typography, colour, motion, and layout.
-
-Right now, the project is in **Phase 1**.
 
 ---
 
@@ -86,8 +84,6 @@ No cosmetic changes are being introduced at this stage. The goal is to make the 
 
 ## Features (inherited from Metrolist)
 
-These features are available from the upstream project and are being maintained and improved:
-
 - Stream songs and videos from YouTube Music
 - Background playback, offline download & caching
 - Live synced lyrics and AI-powered translation
@@ -112,8 +108,6 @@ Requires Android Studio (latest stable) and JDK 17+.
 
 ## Credits
 
-Iride is built on top of the excellent work done by the open-source community:
-
 | Project | Authors |
 |---------|---------|
 | [Metrolist](https://github.com/mostafaalagamy/metrolist) | [Mo Agamy](https://github.com/mostafaalagamy) |
@@ -125,8 +119,6 @@ Iride is built on top of the excellent work done by the open-source community:
 <div align="center">
 
 **Disclaimer:** This project is not affiliated with, funded, authorized, endorsed by, or in any way associated with YouTube, Google LLC, or any of their affiliates and subsidiaries. All trademarks belong to their respective owners.
-
-<br/>
 
 *Personal fork maintained by a Design student at Politecnico di Torino.*
 
