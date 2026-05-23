@@ -35,7 +35,7 @@ Alpha build. Rough edges, missing pieces, breaking changes ahead. Worth trying i
 </td>
 <td valign="top" width="45%" align="center">
 
-<img src="https://github.com/user-attachments/assets/efe7bf80-3d8f-4461-a06b-da4bccd07ee7" width="260"/>
+<img src="https://github.com/user-attachments/assets/efe7bf80-3d8f-4461-a06b-da4bccd07ee7" width="380"/>
 
 </td>
 </tr>
