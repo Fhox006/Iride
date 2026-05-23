@@ -6,23 +6,27 @@
 
 <br/>
 
-[![Pre-release](https://img.shields.io/github/v/release/Fhox006/Iride?include_prereleases&style=for-the-badge&labelColor=0d1117&label=pre-release)](https://github.com/Fhox006/Iride/releases)
-[![License](https://img.shields.io/github/license/Fhox006/Iride?style=for-the-badge&labelColor=0d1117)](https://github.com/Fhox006/Iride/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/Fhox006/Iride?style=flat-square&labelColor=0d1117&color=555)](https://github.com/Fhox006/Iride/blob/main/LICENSE)
 
 <br/>
 
-### The first pre-release is out.
+---
 
-Alpha build — rough edges expected, but it runs. If you want to try it early:
+**The first pre-release is out** — v0.1.0-alpha05
 
-[![Download](https://img.shields.io/badge/↓%20download-iride.apk-4f6ef7?style=for-the-badge)](https://github.com/Fhox006/Iride/releases/download/v0.1.0-alpha05/Iride.apk)
+Alpha build. Rough edges, missing pieces, breaking changes ahead.  
+Worth trying if you're curious.
 
 <br/>
 
-> 🚧 **This is a personal fork actively under development.**  
+<a href="https://github.com/Fhox006/Iride/releases/download/v0.1.0-alpha05/Iride.apk">
+  <img src="https://img.shields.io/badge/Download_APK-iride.apk_·_v0.1.0--alpha05-4361ee?style=for-the-badge&logoColor=white" alt="Download iride.apk"/>
+</a>
+
+<br/><br/>
+
+> 🚧 **Personal fork, actively under development.**  
 > Built by a student at [Politecnico di Torino – Design Department](https://www.polito.it/en).
-
-> ⚠️ **Current releases are experimental alpha builds.** Expect bugs, missing features, and breaking changes. Not intended for daily use yet.
 
 </div>
 
@@ -32,14 +36,14 @@ Alpha build — rough edges expected, but it runs. If you want to try it early:
 
 <table>
   <tr>
-    <td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="220"/></td>
-    <td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="220"/></td>
-    <td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="220"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/f34dcc82-4f86-44ff-be6b-c8b6e3fba7bc" width="200"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/07b8b0fa-ce03-4175-88d1-e69e5eb07da0" width="200"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/a192df0c-7ffe-4924-a0c2-7efae43e5529" width="200"/></td>
   </tr>
   <tr>
-    <td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="220"/></td>
-    <td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="220"/></td>
-    <td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" width="220"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/93e8f6df-a78b-4f6c-ae88-099dd975683c" width="200"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/1ac753d9-d2e6-4ae6-909f-50714f49440b" width="200"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/21c3a87e-d5bd-4401-839d-2c2aba62fdac" width="200"/></td>
   </tr>
 </table>
 
