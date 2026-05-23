@@ -6,7 +6,7 @@
 
 <br/>
 
-[![Pre-release](https://img.shields.io/github/v/release/Fhox006/Iride?include_prereleases=true&style=for-the-badge&labelColor=0d1117&label=pre-release)](https://github.com/Fhox006/Iride/releases)
+[![Pre-release](https://img.shields.io/github/v/release/Fhox006/Iride?include_prereleases&style=for-the-badge&labelColor=0d1117&label=pre-release)](https://github.com/Fhox006/Iride/releases)
 [![License](https://img.shields.io/github/license/Fhox006/Iride?style=for-the-badge&labelColor=0d1117)](https://github.com/Fhox006/Iride/blob/main/LICENSE)
 
 <br/>
