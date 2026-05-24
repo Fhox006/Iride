@@ -2,6 +2,7 @@ package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import sv.lib.squircleshape.SquircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,7 +29,6 @@ import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.YTItem
 import com.metrolist.music.R
-import com.metrolist.music.constants.ThumbnailCornerRadius
 
 @Composable
 fun SpeedDialGridItem(
@@ -37,80 +38,85 @@ fun SpeedDialGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
 ) {
-    val speedDialCornerRadius = ThumbnailCornerRadius + 6.dp
-
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(1f) // Square aspect ratio
-            .clip(RoundedCornerShape(speedDialCornerRadius))
+            .aspectRatio(1f)
     ) {
-        // Thumbnail
-        ItemThumbnail(
-            thumbnailUrl = item.thumbnail,
-            isActive = isActive,
-            isPlaying = isPlaying,
-            shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(speedDialCornerRadius),
-            modifier = Modifier.fillMaxSize()
-        )
-
-        // Gradient Overlay for Text Readability and Icon Contrast
+        val squircleRadius = maxWidth * 0.05f
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.4f), // Top scrim for icon visibility on bright covers
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.6f),
-                            Color.Black.copy(alpha = 0.9f)
+                .clip(SquircleShape(radius = squircleRadius, cornerSmoothing = 0.48f))
+        ) {
+            // Thumbnail
+            ItemThumbnail(
+                thumbnailUrl = item.thumbnail,
+                isActive = isActive,
+                isPlaying = isPlaying,
+                shape = if (item is ArtistItem) CircleShape else SquircleShape(
+                    radius = squircleRadius,
+                    cornerSmoothing = 0.48f
+                ),
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Gradient Overlay for Text Readability and Icon Contrast
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.4f), // Top scrim for icon visibility on bright covers
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.6f),
+                                Color.Black.copy(alpha = 0.9f)
+                            )
                         )
                     )
-                )
-        )
-
-        // Title and Chevron
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(8.dp) // Reduced padding for tighter layout
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.titleSmall, // Smaller, punchier font
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
             )
-            
-            // Navigation Chevron for browsable items (Album, Playlist, Artist)
-            if (item !is SongItem) {
+
+            // Title and Chevron
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(8.dp) // Reduced padding for tighter layout
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleSmall, // Smaller, punchier font
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Navigation Chevron for browsable items (Album, Playlist, Artist)
+                if (item !is SongItem) {
+                    Icon(
+                        painter = painterResource(R.drawable.navigate_next),
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            // Pinned Icon
+            if (isPinned) {
                 Icon(
-                    painter = painterResource(R.drawable.navigate_next),
+                    painter = painterResource(R.drawable.ic_push_pin),
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(16.dp)
                 )
+            }
         }
-    }
-        // Pinned Icon
-        if (isPinned) {
-            Icon(
-                painter = painterResource(R.drawable.ic_push_pin),
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-                    .size(16.dp)
-            )
-        }
-
-
     }
 }

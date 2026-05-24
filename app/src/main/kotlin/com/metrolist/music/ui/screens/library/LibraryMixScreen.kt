@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -236,7 +237,6 @@ fun LibraryMixScreen(
     val songs = viewModel.songs.collectAsState()
     val playlist = viewModel.playlists.collectAsState()
     val uploadedSongs by viewModel.uploadedSongs.collectAsState()
-
     var allItems = albums.value + artist.value + playlist.value
     val locale = LocalLocale.current.platformLocale
     val collator = remember(locale) {
@@ -390,7 +390,7 @@ fun LibraryMixScreen(
                 viewModel.updateSearchQuery("")
             },
             keyboardController = keyboardController,
-            modifier = Modifier.padding(start = 12.dp),
+            modifier = Modifier,
         ) {
             SortHeader(
                 sortType = sortType,
@@ -447,7 +447,7 @@ fun LibraryMixScreen(
 
     val categoriesContent = @Composable {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp).padding(top = 16.dp, bottom = 8.dp),
+            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             val allCategoryItems = buildList {
@@ -462,7 +462,6 @@ fun LibraryMixScreen(
                     add(CategoryItem(stringResource(R.string.filter_uploaded), R.drawable.upload, "auto_playlist/uploaded"))
                 }
             }
-
             allCategoryItems.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     row.forEach { item ->
@@ -480,6 +479,8 @@ fun LibraryMixScreen(
         }
     }
 
+    val insets = LocalPlayerAwareWindowInsets.current.asPaddingValues()
+
     Box(
         modifier =
             Modifier
@@ -495,7 +496,12 @@ fun LibraryMixScreen(
             LibraryViewType.LIST -> {
                 LazyColumn(
                     state = lazyListState,
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = insets.calculateTopPadding(),
+                        bottom = insets.calculateBottomPadding(),
+                    ),
                 ) {
                     item(key = "categories", contentType = CONTENT_TYPE_HEADER) {
                         categoriesContent()
@@ -652,7 +658,14 @@ fun LibraryMixScreen(
                         GridCells.Adaptive(
                             minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
                         ),
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = insets.calculateTopPadding(),
+                        bottom = insets.calculateBottomPadding(),
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     item(
                         key = "filter",

@@ -14,7 +14,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
-import com.metrolist.music.constants.LibraryFilter
 
 enum class LibraryView { LIBRARY, DOWNLOADS }
 

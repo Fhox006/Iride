@@ -161,28 +161,28 @@ inline fun ListItem(
         modifier = when {
             isActive && isSelected == true -> {
                 modifier
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
                     .clip(highlightShape)
                     .background(activeBackgroundColor ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.26f))
                     .height(ListItemHeight)
             }
             isActive -> {
                 modifier
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
                     .clip(highlightShape)
                     .background(activeBackgroundColor ?: Color.White.copy(alpha = 0.10f))
                     .height(ListItemHeight)
             }
             isSelected == true -> {
                 modifier
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
                     .clip(highlightShape)
                     .background(selectedBackgroundColor ?: MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.22f))
                     .height(ListItemHeight)
             }
             else -> {
                 modifier
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
                     .height(ListItemHeight)
             }
         }

@@ -8,6 +8,7 @@ package com.metrolist.music.ui.screens.library
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -199,7 +201,7 @@ fun LibraryPlaylistsScreen(
                 viewModel.updateSearchQuery("")
             },
             keyboardController = keyboardController,
-            modifier = Modifier.padding(start = 12.dp),
+            modifier = Modifier,
         ) {
             SortHeader(
                 sortType = sortType,
@@ -264,6 +266,8 @@ fun LibraryPlaylistsScreen(
         }
     }
 
+    val insets = LocalPlayerAwareWindowInsets.current.asPaddingValues()
+
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -271,7 +275,12 @@ fun LibraryPlaylistsScreen(
             LibraryViewType.LIST -> {
                 LazyColumn(
                     state = lazyListState,
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = insets.calculateTopPadding(),
+                        bottom = insets.calculateBottomPadding(),
+                    ),
                 ) {
                     item(
                         key = "header",
@@ -342,7 +351,14 @@ fun LibraryPlaylistsScreen(
                             minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
                         )
                     },
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = insets.calculateTopPadding(),
+                        bottom = insets.calculateBottomPadding(),
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     item(
                         key = "header",

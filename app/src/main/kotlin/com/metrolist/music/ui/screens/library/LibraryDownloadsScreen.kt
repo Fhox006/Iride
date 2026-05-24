@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -384,7 +385,7 @@ fun LibraryDownloadsScreen(
                 viewModel.updateSearchQuery("")
             },
             keyboardController = keyboardController,
-            modifier = Modifier.padding(start = 12.dp),
+            modifier = Modifier,
         ) {
             SortHeader(
                 sortType = sortType,
@@ -440,35 +441,32 @@ fun LibraryDownloadsScreen(
     val pullRefreshState = rememberPullToRefreshState()
 
     val categoriesContent = @Composable {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            val categories = listOf(
-                Triple(R.string.playlists, R.drawable.queue_music, "library_playlists"),
-                Triple(R.string.songs, R.drawable.music_note, "library_songs"),
-                Triple(R.string.albums, R.drawable.album, "library_albums"),
-                Triple(R.string.artists, R.drawable.artist, "library_artists"),
-                Triple(R.string.filter_liked, R.drawable.favorite, "library_liked"),
-                Triple(R.string.downloads, R.drawable.download, "library_downloads"),
-                Triple(R.string.cache, R.drawable.cached, "library_cache"),
-                Triple(R.string.filter_uploaded, R.drawable.upload, "library_upload"),
-            )
-
-            categories.chunked(2).forEach { row ->
+        Column(
+            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val allCategoryItems = buildList {
+                add(Triple(R.string.playlists, R.drawable.queue_music, "library_playlists"))
+                add(Triple(R.string.downloads, R.drawable.download, "auto_playlist/downloaded"))
+                add(Triple(R.string.cache, R.drawable.cached, "cache_playlist/cached"))
+            }
+            allCategoryItems.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     row.forEach { (labelRes, iconRes, route) ->
                         LibraryCategoryCard(
                             label = stringResource(labelRes),
                             icon = iconRes,
                             onClick = { navController.navigate(route) },
-                            modifier = Modifier.weight(1f).padding(vertical = 4.dp),
+                            modifier = Modifier.weight(1f),
                         )
                     }
-                    if (row.size < 2) {
-                        Spacer(Modifier.weight(1f))
-                    }
+                    if (row.size < 2) Spacer(Modifier.weight(1f))
                 }
             }
         }
     }
+
+    val insets = LocalPlayerAwareWindowInsets.current.asPaddingValues()
 
     Box(
         modifier =
@@ -484,7 +482,12 @@ fun LibraryDownloadsScreen(
             LibraryViewType.LIST -> {
                 LazyColumn(
                     state = lazyListState,
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = insets.calculateTopPadding(),
+                        bottom = insets.calculateBottomPadding(),
+                    ),
                 ) {
                     item(
                         key = "categories",
@@ -818,7 +821,14 @@ fun LibraryDownloadsScreen(
                         GridCells.Adaptive(
                             minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
                         ),
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = insets.calculateTopPadding(),
+                        bottom = insets.calculateBottomPadding(),
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     item(
                         key = "categories",
@@ -1118,8 +1128,8 @@ private fun LibraryCategoryCard(
     Box(
         contentAlignment = Alignment.CenterStart,
         modifier = modifier
-            .height(48.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .height(52.dp)
+            .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),
@@ -1136,6 +1146,7 @@ private fun LibraryCategoryCard(
                 style = MaterialTheme.typography.labelLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
             )
         }
     }

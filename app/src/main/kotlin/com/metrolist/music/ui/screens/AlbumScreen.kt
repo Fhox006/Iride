@@ -81,6 +81,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
 import androidx.compose.ui.util.fastForEachReversed
+import sv.lib.squircleshape.SquircleShape
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.exoplayer.offline.Download
 import androidx.navigation.NavController
@@ -248,10 +249,10 @@ fun AlbumScreen(
                                     .size(240.dp)
                                     .shadow(
                                         elevation = 24.dp,
-                                        shape = RoundedCornerShape(3.dp),
+                                        shape = SquircleShape(radius = 7.dp, cornerSmoothing = 0.48f),
                                         spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                                     ),
-                            shape = RoundedCornerShape(3.dp),
+                            shape = SquircleShape(radius = 7.dp, cornerSmoothing = 0.48f),
                         ) {
                             AsyncImage(
                                 model = albumWithSongs.album.thumbnailUrl,

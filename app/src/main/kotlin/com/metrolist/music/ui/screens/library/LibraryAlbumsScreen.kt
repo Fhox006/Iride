@@ -6,11 +6,13 @@
 package com.metrolist.music.ui.screens.library
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -158,7 +160,7 @@ fun LibraryAlbumsScreen(
                 viewModel.updateSearchQuery("")
             },
             keyboardController = keyboardController,
-            modifier = Modifier.padding(start = 12.dp),
+            modifier = Modifier,
         ) {
             SortHeader(
                 sortType = sortType,
@@ -222,6 +224,8 @@ fun LibraryAlbumsScreen(
         }
     }
 
+    val insets = LocalPlayerAwareWindowInsets.current.asPaddingValues()
+
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -229,7 +233,12 @@ fun LibraryAlbumsScreen(
             LibraryViewType.LIST -> {
                 LazyColumn(
                     state = lazyListState,
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = insets.calculateTopPadding(),
+                        bottom = insets.calculateBottomPadding(),
+                    ),
                 ) {
                     item(
                         key = "filter",
@@ -237,7 +246,7 @@ fun LibraryAlbumsScreen(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 12.dp),
+                            modifier = Modifier,
                         ) {
                             ChipsRow(
                                 chips = listOf(
@@ -303,7 +312,14 @@ fun LibraryAlbumsScreen(
                             minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
                         )
                     },
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = insets.calculateTopPadding(),
+                        bottom = insets.calculateBottomPadding(),
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     item(
                         key = "filter",
@@ -312,7 +328,7 @@ fun LibraryAlbumsScreen(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 12.dp),
+                            modifier = Modifier,
                         ) {
                             ChipsRow(
                                 chips = listOf(

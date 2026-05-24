@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -331,12 +332,19 @@ fun LibrarySongsScreen(
         }
     }
 
+    val insets = LocalPlayerAwareWindowInsets.current.asPaddingValues()
+
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
         LazyColumn(
             state = lazyListState,
-            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            contentPadding = PaddingValues(
+                start = 12.dp,
+                end = 12.dp,
+                top = insets.calculateTopPadding(),
+                bottom = insets.calculateBottomPadding(),
+            ),
         ) {
             item(
                 key = "filter",
@@ -385,7 +393,7 @@ fun LibrarySongsScreen(
                         viewModel.updateSearchQuery("")
                     },
                     keyboardController = keyboardController,
-                    modifier = Modifier.padding(start = 12.dp),
+                    modifier = Modifier,
                 ) {
                     SortHeader(
                         sortType = sortType,

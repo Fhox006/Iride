@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -156,6 +157,7 @@ fun LibraryPodcastsScreen(
     var isRefreshing by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val pullToRefreshState = rememberPullToRefreshState()
+    val insets = LocalPlayerAwareWindowInsets.current.asPaddingValues()
 
     Box(
         modifier =
@@ -179,7 +181,7 @@ fun LibraryPodcastsScreen(
         val chipsHeader = @Composable {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 12.dp),
+                modifier = Modifier,
             ) {
                 FilterChip(
                     label = { Text(stringResource(R.string.filter_podcasts)) },
@@ -217,7 +219,12 @@ fun LibraryPodcastsScreen(
             PodcastFilter.EPISODES -> {
                 LazyColumn(
                     state = lazyListState,
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = insets.calculateTopPadding(),
+                        bottom = insets.calculateBottomPadding(),
+                    ),
                 ) {
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
                         chipsHeader()
@@ -279,7 +286,12 @@ fun LibraryPodcastsScreen(
             PodcastFilter.CHANNELS -> {
                 LazyColumn(
                     state = lazyListState,
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = insets.calculateTopPadding(),
+                        bottom = insets.calculateBottomPadding(),
+                    ),
                 ) {
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
                         chipsHeader()
@@ -347,7 +359,12 @@ fun LibraryPodcastsScreen(
             PodcastFilter.DOWNLOADED -> {
                 LazyColumn(
                     state = lazyListState,
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = insets.calculateTopPadding(),
+                        bottom = insets.calculateBottomPadding(),
+                    ),
                 ) {
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
                         chipsHeader()
