@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import io.github.stoyan_vuchev.squircleshape.SquircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -99,6 +100,7 @@ import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.CropAlbumArtKey
+import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
@@ -390,6 +392,12 @@ fun GridItem(
     fillMaxWidth = fillMaxWidth
 )
 
+private fun shouldHideDuration(durationSeconds: Int, hideDurationForStandard: Boolean): Boolean {
+    if (!hideDurationForStandard) return false
+    val minutes = durationSeconds / 60
+    return minutes in 2..5
+}
+
 @Composable
 fun SongListItem(
     song: Song,
@@ -423,12 +431,17 @@ fun SongListItem(
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
 
     val content: @Composable () -> Unit = {
+        val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = false)
         ListItem(
             title = song.song.title,
-            subtitle = subtitleOverride ?: joinByBullet(
-                song.orderedArtists.joinToString { it.name },
-                makeTimeString(song.song.duration * 1000L)
-            ),
+            subtitle = subtitleOverride ?: if (shouldHideDuration(song.song.duration, hideDurationForStandard)) {
+                song.orderedArtists.joinToString { it.name }
+            } else {
+                joinByBullet(
+                    song.orderedArtists.joinToString { it.name },
+                    makeTimeString(song.song.duration * 1000L)
+                )
+            },
             badges = badges,
             thumbnailContent = {
                 ItemThumbnail(
@@ -437,7 +450,7 @@ fun SongListItem(
                     isSelected = isSelected,
                     isActive = isActive,
                     isPlaying = isPlaying,
-                    shape = RoundedCornerShape(ThumbnailCornerRadius),
+                    shape = SquircleShape(),
                     modifier = Modifier.size(ListThumbnailSize)
                 )
             },
@@ -502,11 +515,17 @@ fun SongGridItem(
         )
     },
     subtitle = {
-        Text(
-            text = joinByBullet(
+        val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = false)
+        val subtitleText = if (shouldHideDuration(song.song.duration, hideDurationForStandard)) {
+            song.orderedArtists.joinToString { it.name }
+        } else {
+            joinByBullet(
                 song.orderedArtists.joinToString { it.name },
                 makeTimeString(song.song.duration * 1000L)
-            ),
+            )
+        }
+        Text(
+            text = subtitleText,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 2,
@@ -520,7 +539,7 @@ fun SongGridItem(
             thumbnailUrl = song.song.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = RoundedCornerShape(ThumbnailCornerRadius),
+            shape = SquircleShape(),
             modifier = Modifier.size(gridHeight)
         )
         if (!isActive) {
@@ -662,7 +681,7 @@ fun AlbumListItem(
             thumbnailUrl = album.album.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = RoundedCornerShape(ThumbnailCornerRadius),
+            shape = SquircleShape(),
             modifier = Modifier.size(ListThumbnailSize)
         )
     },
@@ -745,7 +764,7 @@ fun AlbumGridItem(
             thumbnailUrl = album.album.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = RoundedCornerShape(ThumbnailCornerRadius),
+            shape = SquircleShape(),
         )
 
         if (showPlayButton) {
@@ -843,7 +862,7 @@ fun PlaylistListItem(
                     modifier = Modifier.size(ListThumbnailSize / 2)
                 )
             },
-            shape = RoundedCornerShape(ThumbnailCornerRadius)
+            shape = SquircleShape()
         )
     },
     trailingContent = trailingContent,
@@ -948,7 +967,7 @@ fun PlaylistGridItem(
                     )
                 }
             },
-            shape = RoundedCornerShape(ThumbnailCornerRadius)
+            shape = SquircleShape()
         )
     },
     fillMaxWidth = fillMaxWidth,
@@ -964,6 +983,7 @@ fun MediaMetadataListItem(
     isPlaying: Boolean = false,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
+    val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = false)
     ListItem(
         title = mediaMetadata.title,
         subtitle = if (mediaMetadata.suggestedBy != null) {
@@ -977,12 +997,16 @@ fun MediaMetadataListItem(
                 }
             }
         } else {
-            AnnotatedString(
-                joinByBullet(
-                    mediaMetadata.artists.joinToString { it.name },
-                    makeTimeString(mediaMetadata.duration * 1000L)
+            if (shouldHideDuration(mediaMetadata.duration, hideDurationForStandard)) {
+                AnnotatedString(mediaMetadata.artists.joinToString { it.name })
+            } else {
+                AnnotatedString(
+                    joinByBullet(
+                        mediaMetadata.artists.joinToString { it.name },
+                        makeTimeString(mediaMetadata.duration * 1000L)
+                    )
                 )
-            )
+            }
         },
         badges = { if (mediaMetadata.explicit) Icon.Explicit()},
         thumbnailContent = {
@@ -1037,10 +1061,18 @@ fun YouTubeListItem(
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
 
     val content: @Composable () -> Unit = {
+        val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = false)
         ListItem(
             title = item.title,
             subtitle = when (item) {
-                is SongItem -> joinByBullet(item.artists.joinToString { it.name }, makeTimeString(item.duration?.times(1000L)))
+                is SongItem -> {
+                    val durationSec = item.duration
+                    if (durationSec != null && shouldHideDuration(durationSec, hideDurationForStandard)) {
+                        item.artists.joinToString { it.name }
+                    } else {
+                        joinByBullet(item.artists.joinToString { it.name }, makeTimeString(durationSec?.times(1000L)))
+                    }
+                }
                 is AlbumItem -> joinByBullet(item.artists?.joinToString { it.name }, item.year?.toString())
                 is ArtistItem -> null
                 is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)
@@ -1133,8 +1165,16 @@ fun YouTubeGridItem(
         }
     },
     subtitle = {
+        val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = false)
         val subtitle = when (item) {
-            is SongItem -> joinByBullet(item.artists.joinToString { it.name }, makeTimeString(item.duration?.times(1000L)))
+            is SongItem -> {
+                val durationSec = item.duration
+                if (durationSec != null && shouldHideDuration(durationSec, hideDurationForStandard)) {
+                    item.artists.joinToString { it.name }
+                } else {
+                    joinByBullet(item.artists.joinToString { it.name }, makeTimeString(durationSec?.times(1000L)))
+                }
+            }
             is AlbumItem -> joinByBullet(item.artists?.joinToString { it.name }, item.year?.toString())
             is ArtistItem -> null
             is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)

@@ -45,6 +45,7 @@ import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
+import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.ChipSortTypeKey
 import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.DensityScale
@@ -101,6 +102,8 @@ fun InterfaceSettings(
         rememberPreference(ShowWrappedCardKey, defaultValue = false)
     val (randomizeHomeOrder, onRandomizeHomeOrderChange) =
         rememberPreference(RandomizeHomeOrderKey, defaultValue = true)
+    val (hideDurationForStandard, onHideDurationForStandardChange) =
+        rememberPreference(HideDurationForStandardSongsKey, defaultValue = false)
 
     val context = activity as Context
     val sharedPreferences = remember { context.getSharedPreferences("metrolist_settings", Context.MODE_PRIVATE) }
@@ -501,6 +504,24 @@ fun InterfaceSettings(
                         )
                     },
                     onClick = { onSwipeToRemoveSongChange(!swipeToRemoveSong) }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.timer),
+                    title = { Text(stringResource(R.string.hide_duration_standard_songs)) },
+                    description = { Text(stringResource(R.string.hide_duration_standard_songs_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = hideDurationForStandard, onCheckedChange = onHideDurationForStandardChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(if (hideDurationForStandard) R.drawable.check else R.drawable.close),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onHideDurationForStandardChange(!hideDurationForStandard) }
                 )
             )
         )

@@ -974,4 +974,6 @@
     <string name="settings_theme">Theme</string>
     <string name="player_appearance">Player</string>
     <string name="interface_settings">Interface</string>
+    <string name="hide_duration_standard_songs">Hide duration for standard songs</string>
+    <string name="hide_duration_standard_songs_desc">Hides the time indicator for songs between 2 and 5 minutes. Only the artist name is shown.</string>
 </resources>
