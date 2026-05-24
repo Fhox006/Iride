@@ -39,7 +39,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import io.github.stoyan_vuchev.squircleshape.SquircleShape
+import sv.lib.squircleshape.SquircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -394,8 +394,7 @@ fun GridItem(
 
 private fun shouldHideDuration(durationSeconds: Int, hideDurationForStandard: Boolean): Boolean {
     if (!hideDurationForStandard) return false
-    val minutes = durationSeconds / 60
-    return minutes in 2..5
+    return durationSeconds in (2 * 60)..(5 * 60)
 }
 
 @Composable
@@ -450,7 +449,7 @@ fun SongListItem(
                     isSelected = isSelected,
                     isActive = isActive,
                     isPlaying = isPlaying,
-                    shape = SquircleShape(),
+                    shape = SquircleShape(radius = 2.dp, cornerSmoothing = 0.48f),
                     modifier = Modifier.size(ListThumbnailSize)
                 )
             },
@@ -535,11 +534,12 @@ fun SongGridItem(
     badges = badges,
     thumbnailContent = {
         val gridHeight = currentGridThumbnailHeight()
+        val squircleRadius = maxWidth * 0.05f
         ItemThumbnail(
             thumbnailUrl = song.song.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = SquircleShape(),
+            shape = SquircleShape(radius = squircleRadius, cornerSmoothing = 0.48f),
             modifier = Modifier.size(gridHeight)
         )
         if (!isActive) {
@@ -681,7 +681,7 @@ fun AlbumListItem(
             thumbnailUrl = album.album.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = SquircleShape(),
+            shape = SquircleShape(radius = 2.dp, cornerSmoothing = 0.48f),
             modifier = Modifier.size(ListThumbnailSize)
         )
     },
@@ -759,12 +759,13 @@ fun AlbumGridItem(
         val database = LocalDatabase.current
         val playerConnection = LocalPlayerConnection.current ?: return@GridItem
         val scope = rememberCoroutineScope()
+        val squircleRadius = maxWidth * 0.05f
 
         ItemThumbnail(
             thumbnailUrl = album.album.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = SquircleShape(),
+            shape = SquircleShape(radius = squircleRadius, cornerSmoothing = 0.48f),
         )
 
         if (showPlayButton) {
@@ -862,7 +863,7 @@ fun PlaylistListItem(
                     modifier = Modifier.size(ListThumbnailSize / 2)
                 )
             },
-            shape = SquircleShape()
+            shape = SquircleShape(radius = 2.dp, cornerSmoothing = 0.48f)
         )
     },
     trailingContent = trailingContent,
@@ -943,6 +944,7 @@ fun PlaylistGridItem(
     badges = badges,
     thumbnailContent = {
         val width = maxWidth
+        val squircleRadius = maxWidth * 0.05f
         PlaylistThumbnail(
             thumbnails = playlist.thumbnails,
             size = width,
@@ -967,7 +969,7 @@ fun PlaylistGridItem(
                     )
                 }
             },
-            shape = SquircleShape()
+            shape = SquircleShape(radius = squircleRadius, cornerSmoothing = 0.48f)
         )
     },
     fillMaxWidth = fillMaxWidth,

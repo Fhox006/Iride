@@ -247,7 +247,7 @@ dependencies {
     implementation(libs.ucrop)
 
     implementation(libs.shimmer)
-    implementation("io.github.stoyan-vuchev:squircle-shape-android:2.0.0")
+    implementation("io.github.stoyan-vuchev:squircle-shape-android:2.1.0")
 
     implementation(libs.media3)
     implementation(libs.media3.session)
