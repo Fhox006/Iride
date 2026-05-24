@@ -235,6 +235,7 @@ fun AlbumScreen(
             val albumWithSongs = albumWithSongs
             if (albumWithSongs != null && albumWithSongs.songs.isNotEmpty()) {
                 item(key = "album_header") {
+                    val albumCoverSquircle = SquircleShape(radius = 10.dp, cornerSmoothing = 0.48f)
                     Column(
                         modifier =
                             Modifier
@@ -249,10 +250,10 @@ fun AlbumScreen(
                                     .size(240.dp)
                                     .shadow(
                                         elevation = 24.dp,
-                                        shape = SquircleShape(radius = 7.dp, cornerSmoothing = 0.48f),
+                                        shape = albumCoverSquircle,
                                         spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                                     ),
-                            shape = SquircleShape(radius = 7.dp, cornerSmoothing = 0.48f),
+                            shape = albumCoverSquircle,
                         ) {
                             AsyncImage(
                                 model = albumWithSongs.album.thumbnailUrl,

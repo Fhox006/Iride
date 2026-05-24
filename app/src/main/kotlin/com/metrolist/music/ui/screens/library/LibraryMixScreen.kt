@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import sv.lib.squircleshape.SquircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -664,8 +665,8 @@ fun LibraryMixScreen(
                         top = insets.calculateTopPadding(),
                         bottom = insets.calculateBottomPadding(),
                     ),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     item(
                         key = "filter",
@@ -968,7 +969,7 @@ private fun LibraryCategoryCard(
         contentAlignment = Alignment.CenterStart,
         modifier = modifier
             .height(52.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(SquircleShape(radius = 10.dp, cornerSmoothing = 0.48f))
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),

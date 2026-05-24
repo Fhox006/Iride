@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
+import sv.lib.squircleshape.SquircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -227,7 +228,7 @@ fun FloatingPill(
             .padding(bottom = FloatingPillBottomSpacing)
             .padding(horizontal = 12.dp)
             .height(animatedPillHeight)
-            .clip(RoundedCornerShape(28.dp))
+            .clip(SquircleShape(radius = 24.dp, cornerSmoothing = 0.48f))
             .graphicsLayer {
                 // Lift the pill upward as it expands so bottom stays anchored
                 // Expand Delta is now 0 as it doesn't expand
@@ -263,7 +264,7 @@ private fun PillShimmerSkeleton(isTopLevelRoute: Boolean) {
             .fillMaxWidth()
             .height(pillHeight)
             .shimmer()
-            .clip(RoundedCornerShape(28.dp))
+            .clip(SquircleShape(radius = 24.dp, cornerSmoothing = 0.48f))
             .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f)),
     )
 }
@@ -377,9 +378,9 @@ private fun PillContent(
         modifier = Modifier
             .fillMaxWidth()
             .height(animatedHeight)
-            .clip(RoundedCornerShape(28.dp))
+            .clip(SquircleShape(radius = 24.dp, cornerSmoothing = 0.48f))
             .background(backgroundColor)
-            .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(28.dp)),
+            .border(1.dp, outlineColor.copy(alpha = 0.3f), SquircleShape(radius = 24.dp, cornerSmoothing = 0.48f)),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Gradient overlay
@@ -609,11 +610,11 @@ private fun PillPlayButton(
                 pillDrawCache.draw(this, progressState.progress, primaryColor, trackColor, strokeWidth.toPx())
             },
     ) {
-        val imageShape = RoundedCornerShape(16.dp)
+        val imageShape = SquircleShape(radius = 14.dp, cornerSmoothing = 0.48f)
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(40.dp)
+                .size(44.dp)
                 .clip(imageShape)
                 .border(1.dp, outlineColor.copy(alpha = 0.3f), imageShape),
         ) {

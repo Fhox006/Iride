@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import sv.lib.squircleshape.SquircleShape
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -541,7 +542,7 @@ private fun ThumbnailItem(
         Box(
             modifier = Modifier
                 .size(dimensions.thumbnailSize)
-                .clip(RoundedCornerShape(dimensions.cornerRadius))
+                .clip(SquircleShape(radius = dimensions.thumbnailSize * 0.04f, cornerSmoothing = 0.48f))
         ) {
             if (hidePlayerThumbnail) {
                 HiddenThumbnailPlaceholder(textBackgroundColor = textBackgroundColor)

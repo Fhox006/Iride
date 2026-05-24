@@ -827,8 +827,8 @@ fun LibraryDownloadsScreen(
                         top = insets.calculateTopPadding(),
                         bottom = insets.calculateBottomPadding(),
                     ),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     item(
                         key = "categories",
