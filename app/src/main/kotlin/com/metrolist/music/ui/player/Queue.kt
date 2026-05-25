@@ -9,10 +9,12 @@ import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -1180,6 +1182,17 @@ private fun PlayerQueueButton(
 
     val borderAlpha = if (isLoading && !isActive) loadingBorderAlpha else 0.3f
 
+    val animatedBackgroundAlpha by animateFloatAsState(
+        targetValue = if (isActive) 1f else 0f,
+        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+        label = "btnBackgroundAlpha",
+    )
+    val animatedBorderAlpha by animateFloatAsState(
+        targetValue = if (isActive) 0f else borderAlpha,
+        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+        label = "btnBorderAlpha",
+    )
+
     val buttonModifier =
         Modifier
             .clip(shape)
@@ -1188,18 +1201,15 @@ private fun PlayerQueueButton(
     val alphaFactor = if (enabled) 1f else 0.35f
 
     val appliedModifier =
-        if (isActive) {
-            modifier.then(buttonModifier.background(textButtonColor)).alpha(alphaFactor)
-        } else {
-            modifier
-                .then(
-                    buttonModifier.border(
-                        width = 1.dp,
-                        color = textButtonColor.copy(alpha = borderAlpha),
-                        shape = shape,
-                    ),
-                ).alpha(alphaFactor)
-        }
+        modifier
+            .then(buttonModifier)
+            .background(textButtonColor.copy(alpha = animatedBackgroundAlpha * alphaFactor))
+            .border(
+                width = 1.dp,
+                color = textButtonColor.copy(alpha = animatedBorderAlpha * alphaFactor),
+                shape = shape,
+            )
+            .alpha(alphaFactor)
 
     Box(
         modifier = appliedModifier,
@@ -1219,20 +1229,20 @@ private fun PlayerQueueButton(
                         .basicMarquee(),
             )
         } else {
-            val baseTint =
-                if (isActive) {
-                    iconButtonColor
-                } else {
-                    when (playerBackground) {
-                        PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
-                            Color.White
+            val animatedIconTint by animateColorAsState(
+                targetValue =
+                    if (isActive) {
+                        iconButtonColor
+                    } else {
+                        when (playerBackground) {
+                            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT -> Color.White
+                            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         }
-
-                        else -> {
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        }
-                    }                }
-            val finalTint = if (enabled) baseTint else baseTint.copy(alpha = 0.5f)
+                    },
+                animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+                label = "btnIconTint",
+            )
+            val finalTint = if (enabled) animatedIconTint else animatedIconTint.copy(alpha = 0.5f)
             Icon(
                 painter = painterResource(id = icon),
                 contentDescription = null,
