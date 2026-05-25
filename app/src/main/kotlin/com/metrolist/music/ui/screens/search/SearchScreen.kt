@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,6 +56,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -62,8 +64,10 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.lerp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -87,9 +91,10 @@ import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
+import androidx.compose.ui.util.lerp as lerpFloat
 
-private val LargeTitleHeightDp = 72.dp
-private val SmallTitleBarHeightDp = 52.dp
+private val LargeTitleHeightDp = 80.dp
+private val SmallTitleBarHeightDp = 56.dp
 private val SearchBoxHeightDp = 52.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -271,54 +276,48 @@ private fun SearchCollapsingHeader(
     }
 
     val fraction = scrollBehavior.state.collapsedFraction
-    val largeTitleCurrentHeight = with(density) {
-        (largeTitleHeightPx + scrollBehavior.state.heightOffset).toDp().coerceAtLeast(0.dp)
-    }
+    val totalHeightDp = SmallTitleBarHeightDp + LargeTitleHeightDp + SearchBoxHeightDp + 12.dp
 
     Surface(
         color = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
         modifier = Modifier
             .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.statusBars),
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .height(totalHeightDp + with(density) { scrollBehavior.state.heightOffset.toDp() }),
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Small title — fixed height, fades in on scroll
+        Box {
+            // Single Title Transition
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(SmallTitleBarHeightDp)
-                    .alpha(fraction)
-                    .padding(horizontal = 20.dp),
-                contentAlignment = Alignment.CenterStart,
+                    .padding(horizontal = 12.dp)
+                    .graphicsLayer {
+                        // Move from Large position to Small position
+                        // Expanded: below SmallTitleBar. Collapsed: at 0.
+                        translationY = lerpFloat(with(density) { (LargeTitleHeightDp - 12.dp).toPx() }, 0f, fraction)
+                    },
+                contentAlignment = Alignment.CenterStart
             ) {
                 Text(
                     text = stringResource(R.string.search),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = lerp(
+                        MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                        MaterialTheme.typography.titleLarge,
+                        fraction
+                    )
                 )
             }
 
-            // Large title — collapses on scroll
-            if (largeTitleCurrentHeight > 0.dp) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(largeTitleCurrentHeight)
-                        .alpha(1f - fraction)
-                        .padding(horizontal = 20.dp),
-                    contentAlignment = Alignment.BottomStart,
-                ) {
-                    Text(
-                        text = stringResource(R.string.search),
-                        style = MaterialTheme.typography.displaySmall,
-                    )
-                }
-            }
-
-            // Rounded search box — always visible
+            // Search Box Layer
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, top = 8.dp, bottom = 12.dp)
+                    .graphicsLayer { 
+                        val startOffset = with(density) { (SmallTitleBarHeightDp + LargeTitleHeightDp).toPx() }
+                        translationY = startOffset + scrollBehavior.state.heightOffset
+                    }
+                    .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp)
                     .height(SearchBoxHeightDp)
                     .clip(RoundedCornerShape(26.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainer),
