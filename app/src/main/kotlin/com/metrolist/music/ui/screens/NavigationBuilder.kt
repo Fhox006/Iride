@@ -108,7 +108,7 @@ fun NavGraphBuilder.NavigationBuilder(
         popEnterTransition = { fadeIn(tween(250)) + slideInHorizontally { -it / 4 } },
         popExitTransition = { fadeOut(tween(200)) + slideOutHorizontally { it / 4 } },
     ) { backStackEntry ->
-        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = true)
+        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
         val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
         val isSystemInDarkTheme = isSystemInDarkTheme()
 

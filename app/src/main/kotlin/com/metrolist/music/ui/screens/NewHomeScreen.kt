@@ -189,6 +189,7 @@ fun NewHomeScreen(
     val accountName by viewModel.accountName.collectAsStateWithLifecycle()
     val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
     val syncState by viewModel.syncState.collectAsStateWithLifecycle()
+    val syncBannerLaunchCount by viewModel.syncBannerLaunchCount.collectAsStateWithLifecycle()
     val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     val isLoggedIn = remember(innerTubeCookie) { "SAPISID" in parseCookieString(innerTubeCookie) }
     val accountAvatarUrl = if (isLoggedIn) accountImageUrl else null
@@ -498,7 +499,7 @@ fun NewHomeScreen(
 
                 item(key = "sync_banner") {
                     AnimatedVisibility(
-                        visible = isLoggedIn && syncState.overallStatus == SyncStatus.Syncing,
+                        visible = isLoggedIn && syncState.overallStatus == SyncStatus.Syncing && syncBannerLaunchCount < 3,
                         enter = fadeIn() + expandVertically(),
                         exit = fadeOut() + shrinkVertically(),
                     ) {

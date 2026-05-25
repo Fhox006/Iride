@@ -75,6 +75,7 @@ import com.metrolist.music.ui.menu.YouTubeAlbumMenu
 import com.metrolist.music.ui.menu.YouTubeArtistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
+import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.viewmodels.HomeViewModel
 import com.metrolist.music.viewmodels.OnlineSearchSuggestionViewModel
 import kotlinx.coroutines.FlowPreview
@@ -293,7 +294,7 @@ fun OnlineSearchScreen(
                                                 if (item.id == mediaMetadata?.id) {
                                                     playerConnection.togglePlayPause()
                                                 } else {
-                                                    playerConnection.startRadioForSong(item.toMediaMetadata())
+                                                    playerConnection.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
                                                     onDismiss()
                                                 }
                                             }
@@ -322,7 +323,7 @@ fun OnlineSearchScreen(
                                                 if (item.id == mediaMetadata?.id) {
                                                     playerConnection.togglePlayPause()
                                                 } else {
-                                                    playerConnection.startRadioForSong(item.toMediaMetadata())
+                                                    playerConnection.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
                                                     onDismiss()
                                                 }
                                             }
@@ -561,7 +562,7 @@ fun OnlineSearchScreen(
                                             if (item.id == mediaMetadata?.id) {
                                                 playerConnection.togglePlayPause()
                                             } else {
-                                                playerConnection.startRadioForSong(item.toMediaMetadata())
+                                                playerConnection.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
                                                 onDismiss()
                                             }
                                         }
@@ -590,7 +591,7 @@ fun OnlineSearchScreen(
                                             if (item.id == mediaMetadata?.id) {
                                                 playerConnection.togglePlayPause()
                                             } else {
-                                                playerConnection.startRadioForSong(item.toMediaMetadata())
+                                                playerConnection.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
                                                 onDismiss()
                                             }
                                         }

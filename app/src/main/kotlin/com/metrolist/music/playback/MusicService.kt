@@ -272,7 +272,7 @@ class MusicService :
     private var crossfadeDuration = 5000f
     private var crossfadeGapless = true
     private var crossfadeTriggerJob: Job? = null
-    private var skipFadeEnabled = true
+    private var skipFadeEnabled = false
     private var skipFadeDuration = 3500f
     private var persistentQueueEnabled = true
     private var shufflePlaylistFirst = false
@@ -908,7 +908,7 @@ class MusicService :
             }
 
         dataStore.data
-            .map { prefs -> prefs[SkipFadeKey] ?: true }
+            .map { prefs -> prefs[SkipFadeKey] ?: false }
             .distinctUntilChanged()
             .collect(scope) { enabled ->
                 skipFadeEnabled = enabled
@@ -1608,16 +1608,19 @@ class MusicService :
                         item.mediaId != mediaId
                     }
 
+                val itemCount = player.mediaItemCount
+                if (itemCount > currentIndex + 1) {
+                    player.removeMediaItems(currentIndex + 1, itemCount)
+                }
+                player.addMediaItem(currentIndex + 1, mediaMetadata.toMediaItem())
                 if (radioItems.isNotEmpty()) {
-                    val itemCount = player.mediaItemCount
-                    if (itemCount > currentIndex + 1) {
-                        player.removeMediaItems(currentIndex + 1, itemCount)
-                    }
-                    player.addMediaItems(currentIndex + 1, radioItems)
-                    if (player.shuffleModeEnabled) {
-                        val shufflePlaylistFirst = shufflePlaylistFirst
-                        applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
-                    }
+                    player.addMediaItems(currentIndex + 2, radioItems)
+                }
+                player.seekTo(currentIndex + 1, 0)
+                player.play()
+                if (player.shuffleModeEnabled) {
+                    val shufflePlaylistFirst = shufflePlaylistFirst
+                    applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
                 }
 
                 currentQueue = radioQueue
@@ -1640,20 +1643,23 @@ class MusicService :
                                     .filterExplicit(dataStore.get(HideExplicitKey, false))
                                     .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
 
+                            val itemCount = player.mediaItemCount
+                            if (itemCount > currentIndex + 1) {
+                                player.removeMediaItems(currentIndex + 1, itemCount)
+                            }
+                            player.addMediaItem(currentIndex + 1, mediaMetadata.toMediaItem())
                             if (radioItems.isNotEmpty()) {
-                                val itemCount = player.mediaItemCount
-                                if (itemCount > currentIndex + 1) {
-                                    player.removeMediaItems(currentIndex + 1, itemCount)
-                                }
-                                player.addMediaItems(currentIndex + 1, radioItems)
-                                if (player.shuffleModeEnabled) {
-                                    val shufflePlaylistFirst = shufflePlaylistFirst
-                                    applyShuffleOrder(
-                                        player.currentMediaItemIndex,
-                                        player.mediaItemCount,
-                                        shufflePlaylistFirst,
-                                    )
-                                }
+                                player.addMediaItems(currentIndex + 2, radioItems)
+                            }
+                            player.seekTo(currentIndex + 1, 0)
+                            player.play()
+                            if (player.shuffleModeEnabled) {
+                                val shufflePlaylistFirst = shufflePlaylistFirst
+                                applyShuffleOrder(
+                                    player.currentMediaItemIndex,
+                                    player.mediaItemCount,
+                                    shufflePlaylistFirst,
+                                )
                             }
                         }
                     }
@@ -3912,7 +3918,7 @@ class MusicService :
         val nextItem = try { player.getMediaItemAt(nextIndex) } catch (_: Exception) { return }
 
         preloadJob = scope.launch {
-            delay(2_000L)
+            delay(500L)
             if (!isActive) return@launch
             try {
                 val ghost = createGhostExoPlayer()

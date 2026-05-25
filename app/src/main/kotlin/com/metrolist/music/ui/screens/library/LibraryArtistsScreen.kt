@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -70,6 +71,7 @@ import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.LibraryArtistGridItem
 import com.metrolist.music.ui.component.LibraryArtistListItem
+import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LocalMenuState
@@ -207,6 +209,7 @@ fun LibraryArtistsScreen(
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
+        CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
         when (viewType) {
             LibraryViewType.LIST ->
                 LazyColumn(
@@ -361,6 +364,7 @@ fun LibraryArtistsScreen(
                 }
         }
 
+        }
         TopAppBar(
             title = { Text(stringResource(R.string.artists)) },
             navigationIcon = {

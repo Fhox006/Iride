@@ -6,7 +6,6 @@
 package com.metrolist.music.ui.screens.library
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,16 +13,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -32,9 +29,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import sv.lib.squircleshape.SquircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +39,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,15 +51,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -70,7 +64,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
-import com.metrolist.music.constants.AlbumViewTypeKey
 import com.metrolist.music.constants.MixViewTypeKey
 import com.metrolist.music.constants.CONTENT_TYPE_HEADER
 import com.metrolist.music.constants.CONTENT_TYPE_PLAYLIST
@@ -105,6 +98,7 @@ import com.metrolist.music.ui.component.LibraryAlbumListItem
 import com.metrolist.music.ui.component.LibraryPlaylistListItem
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.LibrarySearchHeader
+import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
@@ -379,7 +373,7 @@ fun LibraryMixScreen(
         }
     }
 
-    data class CategoryItem(val label: String, val icon: Int, val route: String, val showStar: Boolean = false)
+    data class CategoryItem(val label: String, val icon: Int, val route: String)
 
     val headerContent = @Composable {
         LibrarySearchHeader(
@@ -447,15 +441,12 @@ fun LibraryMixScreen(
     val pullRefreshState = rememberPullToRefreshState()
 
     val categoriesContent = @Composable {
-        Column(
-            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Column {
             val allCategoryItems = buildList {
-                add(CategoryItem(stringResource(R.string.albums), R.drawable.library_music, "library_albums", showStar = true))
-                add(CategoryItem(stringResource(R.string.artists), R.drawable.artist, "library_artists", showStar = true))
-                add(CategoryItem("Songs", R.drawable.music_note, "auto_playlist/liked", showStar = true))
-                add(CategoryItem("All Tracks", R.drawable.queue_music, "library_songs", showStar = true))
+                add(CategoryItem(stringResource(R.string.albums), R.drawable.album, "library_albums"))
+                add(CategoryItem(stringResource(R.string.artists), R.drawable.artist, "library_artists"))
+                add(CategoryItem("Songs", R.drawable.music_note, "auto_playlist/liked"))
+                add(CategoryItem("All Tracks", R.drawable.library_music, "library_songs"))
                 add(CategoryItem(stringResource(R.string.playlists), R.drawable.queue_music, "library_playlists"))
                 add(CategoryItem(stringResource(R.string.downloads), R.drawable.download, "auto_playlist/downloaded"))
                 add(CategoryItem(stringResource(R.string.cache), R.drawable.cached, "cache_playlist/cached"))
@@ -463,19 +454,36 @@ fun LibraryMixScreen(
                     add(CategoryItem(stringResource(R.string.filter_uploaded), R.drawable.upload, "auto_playlist/uploaded"))
                 }
             }
-            allCategoryItems.chunked(2).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { item ->
-                        LibraryCategoryCard(
-                            label = item.label,
-                            icon = item.icon,
-                            showStar = item.showStar,
-                            onClick = { navController.navigate(item.route) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    if (row.size < 2) Spacer(Modifier.weight(1f))
+            allCategoryItems.forEach { item ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .clickable { navController.navigate(item.route) },
+                ) {
+                    Icon(
+                        painter = painterResource(item.icon),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    Text(
+                        text = item.label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        painter = painterResource(R.drawable.navigate_next),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                )
             }
         }
     }
@@ -492,6 +500,7 @@ fun LibraryMixScreen(
                     onRefresh = viewModel::refresh,
                 ),
     ) {
+        CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
         key(viewType) {
         when (viewType) {
             LibraryViewType.LIST -> {
@@ -506,6 +515,16 @@ fun LibraryMixScreen(
                 ) {
                     item(key = "categories", contentType = CONTENT_TYPE_HEADER) {
                         categoriesContent()
+                    }
+
+                    if (normalizedQuery.isBlank()) {
+                        item(key = "recently_added_label", contentType = CONTENT_TYPE_HEADER) {
+                            Text(
+                                text = "Recently Added",
+                                style = MaterialTheme.typography.headlineMedium,
+                                modifier = Modifier.padding(vertical = 12.dp),
+                            )
+                        }
                     }
 
                     item(key = "header", contentType = CONTENT_TYPE_HEADER) {
@@ -674,6 +693,20 @@ fun LibraryMixScreen(
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         categoriesContent()
+                    }
+
+                    if (normalizedQuery.isBlank()) {
+                        item(
+                            key = "recently_added_label",
+                            span = { GridItemSpan(maxLineSpan) },
+                            contentType = CONTENT_TYPE_HEADER,
+                        ) {
+                            Text(
+                                text = "Recently Added",
+                                style = MaterialTheme.typography.headlineMedium,
+                                modifier = Modifier.padding(vertical = 12.dp),
+                            )
+                        }
                     }
 
                     item(
@@ -900,6 +933,7 @@ fun LibraryMixScreen(
                                     isPlaying = isPlaying,
                                     coroutineScope = coroutineScope,
                                     fillMaxWidth = true,
+                                    showPlayButton = false,
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
@@ -945,6 +979,7 @@ fun LibraryMixScreen(
             }
         }
         }
+        }
 
         Indicator(
             isRefreshing = isRefreshing,
@@ -957,46 +992,3 @@ fun LibraryMixScreen(
     }
 }
 
-@Composable
-private fun LibraryCategoryCard(
-    label: String,
-    icon: Int,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    showStar: Boolean = false,
-) {
-    Box(
-        contentAlignment = Alignment.CenterStart,
-        modifier = modifier
-            .height(52.dp)
-            .clip(SquircleShape(radius = 10.dp, cornerSmoothing = 0.48f))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            if (showStar) {
-                Spacer(Modifier.width(4.dp))
-                Icon(
-                    painter = painterResource(R.drawable.star),
-                    contentDescription = null,
-                    modifier = Modifier.size(12.dp),
-                    tint = Color.White,
-                )
-            }
-        }
-    }
-}

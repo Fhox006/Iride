@@ -49,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -134,6 +135,8 @@ import kotlin.math.roundToInt
 
 const val ActiveBoxAlpha = 0.6f
 
+val LocalItemHorizontalPadding = compositionLocalOf { true }
+
 @Composable
 fun currentGridThumbnailHeight(): Dp {
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
@@ -154,6 +157,7 @@ inline fun ListItem(
     selectedBackgroundColor: Color? = null,
     isAvailable: Boolean = true,
 ) {
+    val applyHPad = LocalItemHorizontalPadding.current
     val highlightShape = RoundedCornerShape(24.dp)
 
     Row(
@@ -161,28 +165,28 @@ inline fun ListItem(
         modifier = when {
             isActive && isSelected == true -> {
                 modifier
-                    .padding(vertical = 4.dp)
+                    .padding(horizontal = if (applyHPad) 12.dp else 0.dp, vertical = 4.dp)
                     .clip(highlightShape)
                     .background(activeBackgroundColor ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.26f))
                     .height(ListItemHeight)
             }
             isActive -> {
                 modifier
-                    .padding(vertical = 4.dp)
+                    .padding(horizontal = if (applyHPad) 12.dp else 0.dp, vertical = 4.dp)
                     .clip(highlightShape)
                     .background(activeBackgroundColor ?: Color.White.copy(alpha = 0.10f))
                     .height(ListItemHeight)
             }
             isSelected == true -> {
                 modifier
-                    .padding(vertical = 4.dp)
+                    .padding(horizontal = if (applyHPad) 12.dp else 0.dp, vertical = 4.dp)
                     .clip(highlightShape)
                     .background(selectedBackgroundColor ?: MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.22f))
                     .height(ListItemHeight)
             }
             else -> {
                 modifier
-                    .padding(vertical = 4.dp)
+                    .padding(horizontal = if (applyHPad) 12.dp else 0.dp, vertical = 4.dp)
                     .height(ListItemHeight)
             }
         }
@@ -321,14 +325,15 @@ fun GridItem(
     fillMaxWidth: Boolean = false,
     size: Dp = currentGridThumbnailHeight(),
 ) {
+    val applyHPad = LocalItemHorizontalPadding.current
     Column(
         modifier = if (fillMaxWidth) {
             modifier
-                .padding(vertical = 4.dp)
+                .padding(horizontal = if (applyHPad) 8.dp else 0.dp, vertical = 4.dp)
                 .fillMaxWidth()
         } else {
             modifier
-                .padding(vertical = 4.dp)
+                .padding(horizontal = if (applyHPad) 8.dp else 0.dp, vertical = 4.dp)
                 .width(size * thumbnailRatio)
         }
     ) {

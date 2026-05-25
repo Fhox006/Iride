@@ -19,7 +19,7 @@ fun rememberAlbumCoverSharedModifier(albumId: String): Modifier {
     if (sharedTransitionScope == null || animatedVisibilityScope == null) return Modifier
     return with(sharedTransitionScope) {
         Modifier.sharedElement(
-            state = rememberSharedContentState(key = "album-cover-$albumId"),
+            sharedContentState = rememberSharedContentState(key = "album-cover-$albumId"),
             animatedVisibilityScope = animatedVisibilityScope,
             boundsTransform = { _, _ ->
                 spring(

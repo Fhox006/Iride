@@ -31,6 +31,8 @@ import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.HomeCacheLastLoadedKey
 import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.constants.SyncBannerLaunchCountKey
+import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.music.constants.LastMoodChipParamsKey
 import com.metrolist.music.constants.LastMoodChipTitleKey
 import com.metrolist.music.constants.MoodSnapshotKey
@@ -102,6 +104,10 @@ class HomeViewModel @Inject constructor(
     private val wrappedAudioService: WrappedAudioService,
 ) : ViewModel() {
     val syncState = syncUtils.syncState
+
+    val syncBannerLaunchCount: StateFlow<Int> = context.dataStore.data
+        .map { it[SyncBannerLaunchCountKey] ?: 0 }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     val isRefreshing = MutableStateFlow(false)
     val isLoading = MutableStateFlow(false)
@@ -444,9 +450,12 @@ class HomeViewModel @Inject constructor(
         val finalItems = mutableListOf<HomeSection>()
         // Pin SpeedDial only when a cached snapshot gives immediate content
         if (hasCachedSpeedDial && list.contains(HomeSection.SpeedDial)) finalItems.add(HomeSection.SpeedDial)
+        // Always pin QuickPicks second regardless of random order
+        if (list.contains(HomeSection.QuickPicks)) finalItems.add(HomeSection.QuickPicks)
 
         finalItems.addAll(sortedList.filter { section ->
-            !(hasCachedSpeedDial && section == HomeSection.SpeedDial)
+            !(hasCachedSpeedDial && section == HomeSection.SpeedDial) &&
+            section != HomeSection.QuickPicks
         })
         finalItems
     }.distinctUntilChanged().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -1196,6 +1205,16 @@ class HomeViewModel @Inject constructor(
                 isLoading.value = false
             } else {
                 load()
+            }
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val cookie = context.dataStore.get(InnerTubeCookieKey, "")
+            if ("SAPISID" in parseCookieString(cookie)) {
+                val current = context.dataStore.get(SyncBannerLaunchCountKey, 0)
+                if (current < 10) {
+                    context.dataStore.edit { it[SyncBannerLaunchCountKey] = current + 1 }
+                }
             }
         }
 

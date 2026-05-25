@@ -40,6 +40,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -97,6 +98,7 @@ import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ArtistListItem
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.LibrarySearchHeader
+import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
@@ -478,6 +480,7 @@ fun LibraryDownloadsScreen(
                     onRefresh = viewModel::refresh,
                 ),
     ) {
+        CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
         when (viewType) {
             LibraryViewType.LIST -> {
                 LazyColumn(
@@ -1105,6 +1108,7 @@ fun LibraryDownloadsScreen(
                     }
                 }
             }
+        }
         }
 
         Indicator(

@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -78,6 +79,7 @@ import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LibraryAlbumGridItem
 import com.metrolist.music.ui.component.LibraryAlbumListItem
+import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SortHeader
 import com.metrolist.music.utils.rememberEnumPreference
@@ -229,6 +231,7 @@ fun LibraryAlbumsScreen(
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
+        CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
         when (viewType) {
             LibraryViewType.LIST -> {
                 LazyColumn(
@@ -398,5 +401,6 @@ fun LibraryAlbumsScreen(
                 }
             },
         )
+        }
     }
 }
