@@ -7,6 +7,8 @@ package com.metrolist.music.ui.screens
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -25,6 +27,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,7 +35,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -53,14 +58,19 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,14 +82,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.lerp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp as lerpFloat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -144,6 +159,9 @@ import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.HomeViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.min
+
+private val HomeLargeTitleHeightDp = 80.dp
+private val HomeSmallTitleBarHeightDp = 56.dp
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class,
     androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
@@ -250,7 +268,20 @@ fun NewHomeScreen(
         viewModel.onSectionBecameVisible("similar_recommendation_0")
     }
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        snapAnimationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+    )
+
     val pullRefreshState = rememberPullToRefreshState()
+
+    Scaffold(
+        topBar = {
+            HomeCollapsingHeader(scrollBehavior = scrollBehavior)
+        },
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0),
+    ) { paddingValues ->
 
     PullToRefreshBox(
         state = pullRefreshState,
@@ -262,7 +293,7 @@ fun NewHomeScreen(
                 state = pullRefreshState,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(LocalPlayerAwareWindowInsets.current.asPaddingValues()),
+                    .padding(top = paddingValues.calculateTopPadding()),
             )
         },
     ) {
@@ -442,7 +473,10 @@ fun NewHomeScreen(
 
             LazyColumn(
                 state = lazyListState,
-                contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                contentPadding = PaddingValues(
+                    top = paddingValues.calculateTopPadding(),
+                    bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+                ),
                 modifier = Modifier.fillMaxSize(),
             ) {
                 item(key = "beta_banner") {
@@ -1187,6 +1221,57 @@ fun NewHomeScreen(
                     }
                 }
             }
+        }
+    }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeCollapsingHeader(
+    scrollBehavior: TopAppBarScrollBehavior,
+) {
+    val density = LocalDensity.current
+    val largeTitleHeightPx = with(density) { HomeLargeTitleHeightDp.toPx() }
+
+    SideEffect {
+        if (scrollBehavior.state.heightOffsetLimit != -largeTitleHeightPx) {
+            scrollBehavior.state.heightOffsetLimit = -largeTitleHeightPx
+        }
+    }
+
+    val fraction = scrollBehavior.state.collapsedFraction
+    val totalHeightDp = HomeSmallTitleBarHeightDp + HomeLargeTitleHeightDp
+
+    Surface(
+        color = MaterialTheme.colorScheme.background,
+        modifier = Modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .height(totalHeightDp + with(density) { scrollBehavior.state.heightOffset.toDp() }),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(HomeSmallTitleBarHeightDp)
+                .padding(horizontal = 12.dp)
+                .graphicsLayer {
+                    translationY = lerpFloat(
+                        with(density) { (HomeLargeTitleHeightDp - 12.dp).toPx() },
+                        0f,
+                        fraction,
+                    )
+                },
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Text(
+                text = stringResource(R.string.home),
+                style = lerp(
+                    MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                    MaterialTheme.typography.titleLarge,
+                    fraction,
+                ),
+            )
         }
     }
 }

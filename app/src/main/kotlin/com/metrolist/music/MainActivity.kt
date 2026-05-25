@@ -846,6 +846,7 @@ class MainActivity : ComponentActivity() {
                         currentRoute == Screens.ListenTogether.route ||
                             currentRoute == "listen_together_from_topbar"
                     shouldShowTopBar = currentRoute in topLevelScreens &&
+                        currentRoute != Screens.Library.route &&
                         currentRoute != "settings" &&
                         !(isListenTogetherScreen && listenTogetherInTopBar)
                 }
