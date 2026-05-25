@@ -988,14 +988,24 @@ private fun LibraryCollapsingHeader(
                     },
                 contentAlignment = Alignment.CenterStart
             ) {
-                Text(
-                    text = stringResource(R.string.filter_library),
-                    style = lerp(
-                        MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
-                        MaterialTheme.typography.titleLarge,
-                        fraction
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(R.string.filter_library),
+                        style = lerp(
+                            MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                            MaterialTheme.typography.titleLarge,
+                            fraction
+                        )
                     )
-                )
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp)
+                            .alpha(1f - fraction),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                    )
+                }
             }
 
             // Action icons pinned to top-right, always visible
@@ -1094,30 +1104,24 @@ private fun CategoriesContent(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(48.dp)
                     .clickable { navController.navigate(item.route) },
             ) {
-                Icon(
-                    painter = painterResource(item.icon),
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.width(16.dp))
                 Text(
                     text = item.label,
                     style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
                 Icon(
                     painter = painterResource(R.drawable.navigate_next),
                     contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 )
             }
             HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
             )
         }
     }

@@ -1287,8 +1287,8 @@ fun BottomSheetPlayer(
                         transitionSpec = {
                             fadeIn(tween(200)) togetherWith fadeOut(tween(200))
                         },
-                    ) { state ->
-                        val show = state != "none"
+                    ) { animState ->
+                        val show = animState != "none"
                         if (!show) {
                             Box(
                                 contentAlignment = Alignment.Center,
