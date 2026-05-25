@@ -959,12 +959,18 @@ fun BottomSheetPlayer(
                         .heightIn(min = 56.dp),
             ) {
                 AnimatedContent(
-                    targetState = showInlineLyrics || showQueue,
+                    targetState =
+                        when {
+                            showInlineLyrics -> "lyrics"
+                            showQueue -> "queue"
+                            else -> "none"
+                        },
                     label = "ThumbnailAnimation",
                     transitionSpec = {
-                        fadeIn(tween(100)) togetherWith fadeOut(tween(100))
+                        fadeIn(tween(200)) togetherWith fadeOut(tween(200))
                     },
-                ) { show ->
+                ) { panelState ->
+                    val show = panelState != "none"
                     if (show) {
                         Row {
                             if (hidePlayerThumbnail) {
@@ -1166,12 +1172,18 @@ fun BottomSheetPlayer(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         AnimatedContent(
-                            targetState = showInlineLyrics || showQueue,
+                            targetState =
+                                when {
+                                    showInlineLyrics -> "lyrics"
+                                    showQueue -> "queue"
+                                    else -> "none"
+                                },
                             label = "MoreButton",
                             transitionSpec = {
-                                fadeIn(tween(100)) togetherWith fadeOut(tween(100))
+                                fadeIn(tween(200)) togetherWith fadeOut(tween(200))
                             },
-                        ) { show ->
+                        ) { panelState ->
+                            val show = panelState != "none"
                             if (!show) {
                                 FilledIconButton(
                                     onClick = {
@@ -1265,12 +1277,18 @@ fun BottomSheetPlayer(
                     }
                 } else {
                     AnimatedContent(
-                        targetState = showInlineLyrics || showQueue,
+                        targetState =
+                            when {
+                                showInlineLyrics -> "lyrics"
+                                showQueue -> "queue"
+                                else -> "none"
+                            },
                         label = "MoreButton",
                         transitionSpec = {
-                            fadeIn(tween(100)) togetherWith fadeOut(tween(100))
+                            fadeIn(tween(200)) togetherWith fadeOut(tween(200))
                         },
-                    ) { show ->
+                    ) { state ->
+                        val show = state != "none"
                         if (!show) {
                             Box(
                                 contentAlignment = Alignment.Center,
@@ -1906,29 +1924,36 @@ fun BottomSheetPlayer(
                             }
                         }
                         AnimatedContent(
-                            targetState = when {
-                                showQueue -> "queue"
-                                !showInlineLyrics -> "thumbnail"
-                                else -> null
-                            },
+                            targetState =
+                                when {
+                                    showQueue -> "queue"
+                                    showInlineLyrics -> "lyrics"
+                                    else -> "thumbnail"
+                                },
                             label = "PlayerView",
-                            transitionSpec = { fadeIn() togetherWith fadeOut() },
+                            transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
                         ) { view ->
                             when (view) {
-                                "queue" -> InlineQueuePanel(
-                                    navController = navController,
-                                    playerBottomSheetState = state,
-                                    textButtonColor = textButtonColor,
-                                    iconButtonColor = iconButtonColor,
-                                    onClose = { showQueue = false },
-                                )
-                                "thumbnail" -> Thumbnail(
-                                    sliderPositionProvider = sliderPositionProvider,
-                                    modifier = Modifier.animateContentSize(),
-                                    isPlayerExpanded = isExpandedProvider,
-                                    isLandscape = true,
-                                    isListenTogetherGuest = isListenTogetherGuest,
-                                )
+                                "queue" ->
+                                    InlineQueuePanel(
+                                        navController = navController,
+                                        playerBottomSheetState = state,
+                                        textButtonColor = textButtonColor,
+                                        iconButtonColor = iconButtonColor,
+                                        onClose = { showQueue = false },
+                                    )
+
+                                "lyrics" -> Box(Modifier.fillMaxSize())
+
+                                "thumbnail" ->
+                                    Thumbnail(
+                                        sliderPositionProvider = sliderPositionProvider,
+                                        modifier = Modifier.animateContentSize(),
+                                        isPlayerExpanded = isExpandedProvider,
+                                        isLandscape = true,
+                                        isListenTogetherGuest = isListenTogetherGuest,
+                                    )
+
                                 else -> Box(Modifier.fillMaxSize())
                             }
                         }
@@ -2010,28 +2035,35 @@ fun BottomSheetPlayer(
                             }
                         }
                         AnimatedContent(
-                            targetState = when {
-                                showQueue -> "queue"
-                                !showInlineLyrics -> "thumbnail"
-                                else -> null
-                            },
+                            targetState =
+                                when {
+                                    showQueue -> "queue"
+                                    showInlineLyrics -> "lyrics"
+                                    else -> "thumbnail"
+                                },
                             label = "PlayerView",
-                            transitionSpec = { fadeIn() togetherWith fadeOut() },
+                            transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
                         ) { view ->
                             when (view) {
-                                "queue" -> InlineQueuePanel(
-                                    navController = navController,
-                                    playerBottomSheetState = state,
-                                    textButtonColor = textButtonColor,
-                                    iconButtonColor = iconButtonColor,
-                                    onClose = { showQueue = false },
-                                )
-                                "thumbnail" -> Thumbnail(
-                                    sliderPositionProvider = sliderPositionProvider,
-                                    modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
-                                    isPlayerExpanded = isExpandedProvider,
-                                    isListenTogetherGuest = isListenTogetherGuest,
-                                )
+                                "queue" ->
+                                    InlineQueuePanel(
+                                        navController = navController,
+                                        playerBottomSheetState = state,
+                                        textButtonColor = textButtonColor,
+                                        iconButtonColor = iconButtonColor,
+                                        onClose = { showQueue = false },
+                                    )
+
+                                "lyrics" -> Box(Modifier.fillMaxSize())
+
+                                "thumbnail" ->
+                                    Thumbnail(
+                                        sliderPositionProvider = sliderPositionProvider,
+                                        modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
+                                        isPlayerExpanded = isExpandedProvider,
+                                        isListenTogetherGuest = isListenTogetherGuest,
+                                    )
+
                                 else -> Box(Modifier.fillMaxSize())
                             }
                         }

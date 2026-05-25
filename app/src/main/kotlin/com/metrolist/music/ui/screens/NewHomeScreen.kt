@@ -64,9 +64,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -195,7 +192,6 @@ fun NewHomeScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
-    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     var betaBannerDismissed by rememberSaveable { mutableStateOf(false) }
 
     val speedDialItems by viewModel.speedDialItems.collectAsStateWithLifecycle()
@@ -286,8 +282,6 @@ fun NewHomeScreen(
         snapAnimationSpec = spring(stiffness = Spring.StiffnessMediumLow),
     )
 
-    val pullRefreshState = rememberPullToRefreshState()
-
     Scaffold(
         topBar = {
             HomeCollapsingHeader(
@@ -300,21 +294,6 @@ fun NewHomeScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
-
-    PullToRefreshBox(
-        state = pullRefreshState,
-        isRefreshing = isRefreshing,
-        onRefresh = viewModel::refresh,
-        indicator = {
-            Indicator(
-                isRefreshing = isRefreshing,
-                state = pullRefreshState,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = paddingValues.calculateTopPadding()),
-            )
-        },
-    ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val containerWidthDp = maxWidth
             val horizontalLazyGridItemWidthFactor =
@@ -1241,7 +1220,6 @@ fun NewHomeScreen(
             }
         }
     }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1262,15 +1240,15 @@ private fun HomeCollapsingHeader(
 
     val fraction = scrollBehavior.state.collapsedFraction
     val totalHeightDp = HomeSmallTitleBarHeightDp + HomeLargeTitleHeightDp
+    val statusBarHeightDp = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     Surface(
         color = MaterialTheme.colorScheme.background,
         modifier = Modifier
             .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .height(totalHeightDp + with(density) { scrollBehavior.state.heightOffset.toDp() }),
+            .height(totalHeightDp + statusBarHeightDp + with(density) { scrollBehavior.state.heightOffset.toDp() }),
     ) {
-        Box {
+        Box(modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars)) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

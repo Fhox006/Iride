@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -497,6 +498,7 @@ private fun PillContent(
                                 tintSelected = primaryColor,
                                 tintUnselected = onSurfaceColor.copy(alpha = 0.6f),
                                 showLabel = !slimNav,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
                         }
                     }
@@ -517,6 +519,7 @@ private fun PillNavItem(
     tintSelected: Color,
     tintUnselected: Color,
     showLabel: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val isSelected = remember(currentRoute, screen.route) {
         isRouteSelected(currentRoute, screen.route, navigationItems)
@@ -556,12 +559,13 @@ private fun PillNavItem(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier
+        modifier = modifier
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = { if (!isSearchItem) onNavItemClick(screen, currentIsSelected) },
             )
+            .fillMaxHeight()
             .padding(horizontal = 12.dp, vertical = 4.dp),
     ) {
         if (screen == Screens.Account && accountImageUrl != null) {
