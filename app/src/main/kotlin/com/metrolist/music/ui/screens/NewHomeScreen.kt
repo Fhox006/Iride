@@ -157,8 +157,22 @@ import com.metrolist.music.utils.SyncStatus
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.HomeViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.min
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import coil3.request.ImageRequest
+import com.metrolist.innertube.YouTube
+import com.metrolist.innertube.utils.completed
+import com.metrolist.music.LocalDatabase
+import com.metrolist.music.db.entities.PlaylistEntity
+import com.metrolist.music.db.entities.PlaylistSongMap
+import com.metrolist.music.utils.SyncState
+import com.metrolist.music.viewmodels.CommunityPlaylistItem
 
 private val HomeLargeTitleHeightDp = 80.dp
 private val HomeSmallTitleBarHeightDp = 56.dp
@@ -276,7 +290,11 @@ fun NewHomeScreen(
 
     Scaffold(
         topBar = {
-            HomeCollapsingHeader(scrollBehavior = scrollBehavior)
+            HomeCollapsingHeader(
+            scrollBehavior = scrollBehavior,
+            accountImageUrl = accountAvatarUrl,
+            onAccountClick = { navController.navigate("account") },
+        )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.background,
@@ -1230,6 +1248,8 @@ fun NewHomeScreen(
 @Composable
 private fun HomeCollapsingHeader(
     scrollBehavior: TopAppBarScrollBehavior,
+    accountImageUrl: String?,
+    onAccountClick: () -> Unit,
 ) {
     val density = LocalDensity.current
     val largeTitleHeightPx = with(density) { HomeLargeTitleHeightDp.toPx() }
@@ -1250,28 +1270,433 @@ private fun HomeCollapsingHeader(
             .windowInsetsPadding(WindowInsets.statusBars)
             .height(totalHeightDp + with(density) { scrollBehavior.state.heightOffset.toDp() }),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(HomeSmallTitleBarHeightDp)
-                .padding(horizontal = 12.dp)
-                .graphicsLayer {
-                    translationY = lerpFloat(
-                        with(density) { (HomeLargeTitleHeightDp - 12.dp).toPx() },
-                        0f,
+        Box {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(HomeSmallTitleBarHeightDp)
+                    .padding(horizontal = 12.dp)
+                    .graphicsLayer {
+                        translationY = lerpFloat(
+                            with(density) { (HomeLargeTitleHeightDp - 12.dp).toPx() },
+                            0f,
+                            fraction,
+                        )
+                    },
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(
+                    text = stringResource(R.string.home),
+                    style = lerp(
+                        MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                        MaterialTheme.typography.titleLarge,
                         fraction,
+                    ),
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(HomeSmallTitleBarHeightDp)
+                    .padding(end = 4.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                IconButton(onClick = onAccountClick) {
+                    if (accountImageUrl != null) {
+                        AsyncImage(
+                            model = accountImageUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop,
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(R.drawable.person),
+                            contentDescription = null,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SyncBanner(syncState: SyncState) {
+    val ops = listOf(
+        syncState.likedSongs, syncState.librarySongs, syncState.uploadedSongs,
+        syncState.likedAlbums, syncState.uploadedAlbums, syncState.artists, syncState.playlists,
+    )
+    val completedCount = ops.count { it == SyncStatus.Completed }
+    val progress = completedCount / ops.size.toFloat()
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Syncing your library…",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
-                },
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            Text(
-                text = stringResource(R.string.home),
-                style = lerp(
-                    MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
-                    MaterialTheme.typography.titleLarge,
-                    fraction,
-                ),
+                    Text(
+                        text = "Network features may not work until sync completes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(CircleShape),
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f),
             )
+            if (syncState.currentOperation.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = syncState.currentOperation,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.55f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CommunityPlaylistCard(
+    item: CommunityPlaylistItem,
+    onClick: () -> Unit,
+    onSongClick: (SongItem) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val database = LocalDatabase.current
+    val playerConnection = LocalPlayerConnection.current
+    val listenTogetherManager = LocalListenTogetherManager.current
+    val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
+    val scope = rememberCoroutineScope()
+    val isDark = isSystemInDarkTheme()
+
+    val containerColor = if (isDark) {
+        MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    }
+
+    val dbPlaylist by database.playlistByBrowseId(item.playlist.id).collectAsState(initial = null)
+    val isBookmarked = dbPlaylist?.playlist?.bookmarkedAt != null
+
+    Card(
+        modifier = modifier.width(320.dp).height(420.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        shape = RoundedCornerShape(28.dp),
+        onClick = onClick,
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Box(modifier = Modifier.size(100.dp).clip(RoundedCornerShape(12.dp))) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Row(modifier = Modifier.weight(1f)) {
+                            AsyncImage(
+                                model = item.songs.getOrNull(0)?.thumbnail?.replace(Regex("w\\d+-h\\d+"), "w120-h120"),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxSize(),
+                            )
+                            AsyncImage(
+                                model = item.songs.getOrNull(1)?.thumbnail?.replace(Regex("w\\d+-h\\d+"), "w120-h120"),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxSize(),
+                            )
+                        }
+                        Row(modifier = Modifier.weight(1f)) {
+                            AsyncImage(
+                                model = item.songs.getOrNull(2)?.thumbnail?.replace(Regex("w\\d+-h\\d+"), "w120-h120"),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxSize(),
+                            )
+                            AsyncImage(
+                                model = item.songs.getOrNull(3)?.thumbnail?.replace(Regex("w\\d+-h\\d+"), "w120-h120"),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxSize(),
+                            )
+                        }
+                    }
+                }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                    Text(
+                        text = item.playlist.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = item.playlist.author?.name ?: "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        maxLines = 1,
+                    )
+                }
+            }
+
+            Column(modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp)) {
+                item.songs.take(3).forEach { song ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .combinedClickable(onClick = { onSongClick(song) }),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        AsyncImage(
+                            model = song.thumbnail.replace(Regex("w\\d+-h\\d+"), "w120-h120"),
+                            contentDescription = null,
+                            modifier = Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Crop,
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = song.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = song.artists.joinToString(", ") { it.name },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+            ) {
+                IconButton(
+                    onClick = {
+                        if (!isListenTogetherGuest) {
+                            item.playlist.playEndpoint?.let { playerConnection?.playQueue(YouTubeQueue(it)) }
+                        }
+                    },
+                    modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_widget_play),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        if (!isListenTogetherGuest) {
+                            item.playlist.radioEndpoint?.let { playerConnection?.playQueue(YouTubeQueue(it)) }
+                        }
+                    },
+                    modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f), CircleShape),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.radio),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            if (dbPlaylist?.playlist == null) {
+                                val playlistEntity = PlaylistEntity(
+                                    name = item.playlist.title,
+                                    browseId = item.playlist.id,
+                                    thumbnailUrl = item.playlist.thumbnail,
+                                    remoteSongCount = item.playlist.songCountText?.split(" ")?.firstOrNull()?.toIntOrNull(),
+                                    playEndpointParams = item.playlist.playEndpoint?.params,
+                                    shuffleEndpointParams = item.playlist.shuffleEndpoint?.params,
+                                    radioEndpointParams = item.playlist.radioEndpoint?.params,
+                                ).toggleLike()
+                                val songMetadata = item.songs.ifEmpty {
+                                    YouTube.playlist(item.playlist.id).completed().getOrNull()?.songs.orEmpty()
+                                }.map { it.toMediaMetadata() }
+                                database.withTransaction {
+                                    insert(playlistEntity)
+                                    songMetadata.forEach { insert(it) }
+                                    songMetadata.mapIndexed { index, song ->
+                                        PlaylistSongMap(
+                                            songId = song.id,
+                                            playlistId = playlistEntity.id,
+                                            position = index,
+                                            setVideoId = song.setVideoId,
+                                        )
+                                    }.forEach { insert(it) }
+                                }
+                            } else {
+                                database.transaction {
+                                    update(dbPlaylist!!.playlist.toggleLike())
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f), CircleShape),
+                ) {
+                    Icon(
+                        painter = painterResource(if (isBookmarked) R.drawable.library_add_check else R.drawable.library_add),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+fun DailyDiscoverCard(
+    dailyDiscover: com.metrolist.music.viewmodels.DailyDiscoverItem,
+    onClick: () -> Unit,
+    navController: NavController,
+    modifier: Modifier = Modifier,
+) {
+    val database = LocalDatabase.current
+    val playCount by database.getLifetimePlayCount(dailyDiscover.recommendation.id).collectAsState(initial = 0)
+    val menuState = LocalMenuState.current
+    val haptic = LocalHapticFeedback.current
+
+    val song = dailyDiscover.recommendation as? SongItem
+    val playsString = stringResource(R.string.plays)
+
+    Card(
+        modifier = modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(28.dp))
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (song != null) {
+                        menuState.show {
+                            YouTubeSongMenu(
+                                song = song,
+                                navController = navController,
+                                onDismiss = { menuState.dismiss() },
+                            )
+                        }
+                    }
+                },
+            ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(28.dp),
+    ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(dailyDiscover.recommendation.thumbnail?.replace(Regex("w\\d+-h\\d+"), "w544-h544"))
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            if (maxWidth > 200.dp) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.3f),
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.6f),
+                                    Color.Black.copy(alpha = 0.9f),
+                                ),
+                            ),
+                        ),
+                )
+
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column {
+                        Text(
+                            text = dailyDiscover.recommendation.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                        )
+                        Text(
+                            text = buildString {
+                                append((dailyDiscover.recommendation as? SongItem)?.artists?.joinToString(", ") { it.name } ?: "")
+                                if (playCount > 0) append(" • $playCount $playsString")
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.7f),
+                        )
+                    }
+
+                    val messages = listOf(
+                        R.string.daily_discover_sounds_like,
+                        R.string.daily_discover_because_you_listen_to,
+                        R.string.daily_discover_similar_to,
+                        R.string.daily_discover_based_on,
+                        R.string.daily_discover_for_fans_of,
+                    )
+                    val messageRes = remember(dailyDiscover.seed.id) {
+                        messages[kotlin.math.abs(dailyDiscover.seed.id.hashCode()) % messages.size]
+                    }
+                    Text(
+                        text = stringResource(
+                            messageRes,
+                            "${dailyDiscover.seed.title} • ${dailyDiscover.seed.artists.joinToString(", ") { it.name }}",
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White.copy(alpha = 0.6f),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
     }
 }

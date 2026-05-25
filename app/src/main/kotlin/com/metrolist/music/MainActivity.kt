@@ -27,10 +27,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -48,7 +46,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Badge
@@ -117,7 +114,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
@@ -676,7 +672,6 @@ class MainActivity : ComponentActivity() {
                     remember {
                         listOf(
                             Screens.NewHome.route,
-                            Screens.Home.route,
                             Screens.Library.route,
                             Screens.ListenTogether.route,
                             "settings",
@@ -848,6 +843,7 @@ class MainActivity : ComponentActivity() {
                     shouldShowTopBar = currentRoute in topLevelScreens &&
                         currentRoute != Screens.Library.route &&
                         currentRoute != "settings" &&
+                        currentRoute != Screens.NewHome.route &&
                         !(isListenTogetherScreen && listenTogetherInTopBar)
                 }
 
@@ -882,8 +878,6 @@ class MainActivity : ComponentActivity() {
                 val currentTitleRes =
                     remember(navBackStackEntry) {
                         when (navBackStackEntry?.destination?.route) {
-                            Screens.NewHome.route -> R.string.new_home
-                            Screens.Home.route -> R.string.old_home
                             Screens.Search.route -> R.string.search
                             Screens.Library.route -> R.string.filter_library
                             Screens.ListenTogether.route -> R.string.together
@@ -970,77 +964,17 @@ class MainActivity : ComponentActivity() {
                                 Row {
                                     TopAppBar(
                                         title = {
-                                            if (currentRoute == Screens.NewHome.route || currentRoute == Screens.Home.route) {
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                                ) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(28.dp)
-                                                            .clip(CircleShape)
-                                                            .background(MaterialTheme.colorScheme.secondaryContainer),
-                                                        contentAlignment = Alignment.Center,
-                                                    ) {
-                                                        Image(
-                                                            painter = painterResource(R.drawable.ic_launcher_foreground),
-                                                            contentDescription = null,
-                                                            modifier = Modifier.fillMaxSize(),
-                                                            contentScale = ContentScale.Fit,
-                                                        )
-                                                    }
-                                                    Text(
-                                                        text = "Iride",
-                                                        style = MaterialTheme.typography.titleLarge,
-                                                    )
-                                                }
-                                            } else {
-                                                Text(
-                                                    text = currentTitleRes?.let { stringResource(it) } ?: "",
-                                                    style = MaterialTheme.typography.titleLarge,
-                                                )
-                                            }
+                                            Text(
+                                                text = currentTitleRes?.let { stringResource(it) } ?: "",
+                                                style = MaterialTheme.typography.titleLarge,
+                                            )
                                         },
-                                        actions = {
-                                            if (currentRoute == Screens.NewHome.route || currentRoute == Screens.Home.route) {
-                                                IconButton(onClick = { navController.navigate(Screens.Account.route) }) {
-                                                    if (accountImageUrl != null) {
-                                                        AsyncImage(
-                                                            model = accountImageUrl,
-                                                            contentDescription = stringResource(R.string.account),
-                                                            modifier = Modifier
-                                                                .size(28.dp)
-                                                                .clip(CircleShape),
-                                                            contentScale = ContentScale.Crop,
-                                                        )
-                                                    } else {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.person),
-                                                            contentDescription = stringResource(R.string.account),
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        },
+                                        actions = {},
                                         scrollBehavior = topAppBarScrollBehavior,
                                         colors =
                                             TopAppBarDefaults.topAppBarColors(
-                                                containerColor = when {
-                                                    (currentRoute == Screens.Home.route || currentRoute == Screens.NewHome.route) && pureBlack ->
-                                                        Color.Black
-                                                    (currentRoute == Screens.Home.route || currentRoute == Screens.NewHome.route) ->
-                                                        MaterialTheme.colorScheme.surfaceContainerLow
-                                                    pureBlack -> Color.Black
-                                                    else -> MaterialTheme.colorScheme.surfaceContainer
-                                                },
-                                                scrolledContainerColor = when {
-                                                    (currentRoute == Screens.Home.route || currentRoute == Screens.NewHome.route) && pureBlack ->
-                                                        Color.Black
-                                                    (currentRoute == Screens.Home.route || currentRoute == Screens.NewHome.route) ->
-                                                        MaterialTheme.colorScheme.surfaceContainerLow
-                                                    pureBlack -> Color.Black
-                                                    else -> MaterialTheme.colorScheme.surfaceContainer
-                                                },
+                                                containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
+                                                scrolledContainerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
                                                 titleContentColor = MaterialTheme.colorScheme.onSurface,
                                                 actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,

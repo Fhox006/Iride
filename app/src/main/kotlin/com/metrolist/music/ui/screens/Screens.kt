@@ -24,13 +24,6 @@ sealed class Screens(
         route = "new_home"
     )
 
-    object Home : Screens(
-        titleId = R.string.old_home,
-        iconIdInactive = R.drawable.home_outlined,
-        iconIdActive = R.drawable.home_filled,
-        route = "home"
-    )
-
     object WhatNew : Screens(
         titleId = R.string.what_new,
         iconIdInactive = R.drawable.newspaper,

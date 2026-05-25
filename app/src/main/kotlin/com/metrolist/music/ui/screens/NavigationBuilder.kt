@@ -93,10 +93,6 @@ fun NavGraphBuilder.NavigationBuilder(
         NewHomeScreen(navController = navController, snackbarHostState = snackbarHostState)
     }
 
-    composable(Screens.Home.route) {
-        HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
-    }
-
     composable(Screens.WhatNew.route) {
         WhatNewScreen(navController = navController)
     }

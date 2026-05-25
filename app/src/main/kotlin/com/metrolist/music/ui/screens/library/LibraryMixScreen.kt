@@ -48,9 +48,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
-import androidx.compose.material3.pulltorefresh.pullToRefresh
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -144,6 +141,7 @@ import java.text.Collator
 import java.time.LocalDateTime
 import java.util.UUID
 
+private val LargeTitleHeightDp = 80.dp
 private val SmallTitleBarHeightDp = 56.dp
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -401,9 +399,13 @@ fun LibraryMixScreen(
         }
     }
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LibraryCollapsingHeader(
+                scrollBehavior = scrollBehavior,
                 isSearchActive = isSearchActive,
                 onSearchActiveChange = { isSearchActive = it },
                 searchQuery = searchQuery,
@@ -941,6 +943,7 @@ fun LibraryMixScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LibraryCollapsingHeader(
+    scrollBehavior: TopAppBarScrollBehavior,
     isSearchActive: Boolean,
     onSearchActiveChange: (Boolean) -> Unit,
     searchQuery: String,
@@ -950,16 +953,95 @@ private fun LibraryCollapsingHeader(
     onViewTypeChange: (LibraryViewType) -> Unit,
     pureBlack: Boolean,
 ) {
+    val density = LocalDensity.current
+    val largeTitleHeightPx = with(density) { LargeTitleHeightDp.toPx() }
+
+    SideEffect {
+        if (scrollBehavior.state.heightOffsetLimit != -largeTitleHeightPx) {
+            scrollBehavior.state.heightOffsetLimit = -largeTitleHeightPx
+        }
+    }
+
+    val fraction = scrollBehavior.state.collapsedFraction
+    val totalHeightDp = SmallTitleBarHeightDp + LargeTitleHeightDp
+
     Surface(
         color = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .height(totalHeightDp + with(density) { scrollBehavior.state.heightOffset.toDp() }),
     ) {
-        Box(
-            modifier = Modifier
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .height(SmallTitleBarHeightDp)
-                .padding(horizontal = 4.dp),
-        ) {
+        Box {
+            // Animated title — moves from large position up to small topbar position
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(SmallTitleBarHeightDp)
+                    .padding(horizontal = 12.dp)
+                    .graphicsLayer {
+                        translationY = lerpFloat(
+                            with(density) { (LargeTitleHeightDp - 12.dp).toPx() },
+                            0f,
+                            fraction
+                        )
+                    },
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Text(
+                    text = stringResource(R.string.filter_library),
+                    style = lerp(
+                        MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                        MaterialTheme.typography.titleLarge,
+                        fraction
+                    )
+                )
+            }
+
+            // Action icons pinned to top-right, always visible
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(SmallTitleBarHeightDp)
+                    .padding(end = 4.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(
+                    onClick = { onSearchActiveChange(true) },
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.search),
+                        contentDescription = stringResource(R.string.search),
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        onViewTypeChange(
+                            if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else LibraryViewType.LIST
+                        )
+                    },
+                    modifier = Modifier.padding(end = 8.dp).size(40.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(
+                            when (viewType) {
+                                LibraryViewType.LIST -> R.drawable.list
+                                else -> R.drawable.grid_view
+                            }
+                        ),
+                        contentDescription = stringResource(
+                            when (viewType) {
+                                LibraryViewType.LIST -> R.string.switch_to_grid_view
+                                else -> R.string.switch_to_list_view
+                            }
+                        ),
+                    )
+                }
+            }
+
+            // Search overlay — untouched, covers header when active
             LibrarySearchHeader(
                 isSearchActive = isSearchActive,
                 searchQuery = searchQuery,
@@ -970,47 +1052,7 @@ private fun LibraryCollapsingHeader(
                 },
                 keyboardController = keyboardController,
                 modifier = Modifier,
-            ) {
-                Text(
-                    text = stringResource(R.string.filter_library),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-
-                Spacer(Modifier.weight(1f))
-
-                IconButton(
-                    onClick = { onSearchActiveChange(true) },
-                    modifier = Modifier.padding(start = 8.dp).size(40.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.search),
-                        contentDescription = stringResource(R.string.search),
-                    )
-                }
-
-                IconButton(
-                    onClick = {
-                        onViewTypeChange(if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else LibraryViewType.LIST)
-                    },
-                    modifier = Modifier.padding(end = 8.dp).size(40.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(
-                            when (viewType) {
-                                LibraryViewType.LIST -> R.drawable.list
-                                else -> R.drawable.grid_view
-                            },
-                        ),
-                        contentDescription = stringResource(
-                            when (viewType) {
-                                LibraryViewType.LIST -> R.string.switch_to_grid_view
-                                else -> R.string.switch_to_list_view
-                            },
-                        ),
-                    )
-                }
-            }
+            ) {}
         }
     }
 }
