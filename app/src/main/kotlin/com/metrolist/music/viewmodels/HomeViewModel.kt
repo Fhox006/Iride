@@ -30,6 +30,8 @@ import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.HomeCacheLastLoadedKey
+import com.metrolist.music.constants.AccountNameKey
+import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.SyncBannerLaunchCountKey
 import com.metrolist.innertube.utils.parseCookieString
@@ -1163,6 +1165,8 @@ class HomeViewModel @Inject constructor(
                 runCatching { snapshotJson.decodeFromString<MoodSnapshot>(json) }
                     .getOrNull()?.let { cachedMoodSnapshot.value = it }
             }
+            prefs[AccountNameKey]?.takeIf { it.isNotEmpty() }?.let { accountName.value = it }
+            prefs[AccountPhotoUrlKey]?.takeIf { it.isNotEmpty() }?.let { accountImageUrl.value = it }
         }
 
         // Save speed dial snapshot when live items change
@@ -1256,10 +1260,15 @@ class HomeViewModel @Inject constructor(
                         if (!cookie.isNullOrEmpty()) {
                             YouTube.cookie = cookie
                             YouTube.accountInfo().onSuccess { info ->
-                                accountName.value = info.name
-                                accountImageUrl.value = info.thumbnailUrl
+                                val photoUrl = info.thumbnailUrl
                                     ?.replace(Regex("w\\d+-h\\d+(-[a-zA-Z0-9]+)?"), "w256-h256-c")
                                     ?: info.thumbnailUrl
+                                accountName.value = info.name
+                                accountImageUrl.value = photoUrl
+                                context.dataStore.edit { prefs ->
+                                    prefs[AccountNameKey] = info.name
+                                    if (photoUrl != null) prefs[AccountPhotoUrlKey] = photoUrl
+                                }
                             }.onFailure { reportException(it) }
                             if (previousCookie != null && previousCookie != cookie) {
                                 syncUtils.performFullSync()

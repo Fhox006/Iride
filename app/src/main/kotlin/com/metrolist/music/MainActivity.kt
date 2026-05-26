@@ -19,6 +19,8 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.EaseInOut
@@ -1070,7 +1072,7 @@ class MainActivity : ComponentActivity() {
                                                 else -> Screens.NewHome
                                             }.route
                                         },
-                                    // Enter Transition - smoother with smaller offset and longer duration
+                                    // Enter Transition - no animation between tabs, slide for sub-screens
                                     enterTransition = {
                                         val currentRouteIndex =
                                             navigationItems.indexOfFirst {
@@ -1081,13 +1083,15 @@ class MainActivity : ComponentActivity() {
                                                 it.route == initialState.destination.route
                                             }
 
-                                        if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex) {
+                                        if (currentRouteIndex != -1 && previousRouteIndex != -1) {
+                                            EnterTransition.None
+                                        } else if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex) {
                                             slideInHorizontally { it / 8 } + fadeIn(tween(200))
                                         } else {
                                             slideInHorizontally { -it / 8 } + fadeIn(tween(200))
                                         }
                                     },
-                                    // Exit Transition - smoother with smaller offset and longer duration
+                                    // Exit Transition - no animation between tabs, slide for sub-screens
                                     exitTransition = {
                                         val currentRouteIndex =
                                             navigationItems.indexOfFirst {
@@ -1098,13 +1102,15 @@ class MainActivity : ComponentActivity() {
                                                 it.route == targetState.destination.route
                                             }
 
-                                        if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex) {
+                                        if (currentRouteIndex != -1 && targetRouteIndex != -1) {
+                                            ExitTransition.None
+                                        } else if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex) {
                                             slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
                                         } else {
                                             slideOutHorizontally { it / 8 } + fadeOut(tween(200))
                                         }
                                     },
-                                    // Pop Enter Transition - smoother with smaller offset and longer duration
+                                    // Pop Enter Transition - no animation between tabs
                                     popEnterTransition = {
                                         val currentRouteIndex =
                                             navigationItems.indexOfFirst {
@@ -1115,13 +1121,15 @@ class MainActivity : ComponentActivity() {
                                                 it.route == initialState.destination.route
                                             }
 
-                                        if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex) {
+                                        if (currentRouteIndex != -1 && previousRouteIndex != -1) {
+                                            EnterTransition.None
+                                        } else if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex) {
                                             slideInHorizontally { it / 8 } + fadeIn(tween(200))
                                         } else {
                                             slideInHorizontally { -it / 8 } + fadeIn(tween(200))
                                         }
                                     },
-                                    // Pop Exit Transition - smoother with smaller offset and longer duration
+                                    // Pop Exit Transition - no animation between tabs
                                     popExitTransition = {
                                         val currentRouteIndex =
                                             navigationItems.indexOfFirst {
@@ -1132,7 +1140,9 @@ class MainActivity : ComponentActivity() {
                                                 it.route == targetState.destination.route
                                             }
 
-                                        if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex) {
+                                        if (currentRouteIndex != -1 && targetRouteIndex != -1) {
+                                            ExitTransition.None
+                                        } else if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex) {
                                             slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
                                         } else {
                                             slideOutHorizontally { it / 8 } + fadeOut(tween(200))

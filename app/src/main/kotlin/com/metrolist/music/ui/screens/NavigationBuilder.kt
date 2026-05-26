@@ -5,8 +5,6 @@
 package com.metrolist.music.ui.screens
 
 import android.app.Activity
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -91,13 +89,7 @@ fun NavGraphBuilder.NavigationBuilder(
         OnboardingScreen(navController = navController)
     }
 
-    composable(
-        route = Screens.NewHome.route,
-        enterTransition = { EnterTransition.None },
-        exitTransition = { ExitTransition.None },
-        popEnterTransition = { EnterTransition.None },
-        popExitTransition = { ExitTransition.None },
-    ) {
+    composable(Screens.NewHome.route) {
         NewHomeScreen(navController = navController, snackbarHostState = snackbarHostState)
     }
 
@@ -107,10 +99,6 @@ fun NavGraphBuilder.NavigationBuilder(
 
     composable(
         route = Screens.Search.route,
-        enterTransition = { EnterTransition.None },
-        exitTransition = { ExitTransition.None },
-        popEnterTransition = { EnterTransition.None },
-        popExitTransition = { ExitTransition.None },
     ) { backStackEntry ->
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
         val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
@@ -130,23 +118,11 @@ fun NavGraphBuilder.NavigationBuilder(
         )
     }
 
-    composable(
-        route = Screens.Library.route,
-        enterTransition = { EnterTransition.None },
-        exitTransition = { ExitTransition.None },
-        popEnterTransition = { EnterTransition.None },
-        popExitTransition = { ExitTransition.None },
-    ) {
+    composable(Screens.Library.route) {
         LibraryScreen(navController)
     }
 
-    composable(
-        route = Screens.ListenTogether.route,
-        enterTransition = { EnterTransition.None },
-        exitTransition = { ExitTransition.None },
-        popEnterTransition = { EnterTransition.None },
-        popExitTransition = { ExitTransition.None },
-    ) {
+    composable(Screens.ListenTogether.route) {
         ListenTogetherScreen(navController, showTopBar = false)
     }
 

@@ -118,6 +118,8 @@ import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
+import com.metrolist.music.constants.AccountNameKey
+import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
@@ -214,12 +216,16 @@ fun NewHomeScreen(
     val homePage by viewModel.homePage.collectAsStateWithLifecycle()
     val phase1Complete by viewModel.phase1Complete.collectAsStateWithLifecycle()
 
-    val accountName by viewModel.accountName.collectAsStateWithLifecycle()
-    val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
+    val accountNameFlow by viewModel.accountName.collectAsStateWithLifecycle()
+    val accountImageUrlFlow by viewModel.accountImageUrl.collectAsStateWithLifecycle()
     val syncState by viewModel.syncState.collectAsStateWithLifecycle()
     val syncBannerLaunchCount by viewModel.syncBannerLaunchCount.collectAsStateWithLifecycle()
     val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     val isLoggedIn = remember(innerTubeCookie) { "SAPISID" in parseCookieString(innerTubeCookie) }
+    val accountNamePref by rememberPreference(AccountNameKey, "")
+    val accountPhotoUrlPref by rememberPreference(AccountPhotoUrlKey, "")
+    val accountName = if (accountNameFlow != "Guest") accountNameFlow else accountNamePref
+    val accountImageUrl: String? = accountImageUrlFlow ?: accountPhotoUrlPref.takeIf { it.isNotEmpty() }
     val accountAvatarUrl = if (isLoggedIn) accountImageUrl else null
 
     val hideExplicit by rememberPreference(HideExplicitKey, defaultValue = false)
@@ -539,13 +545,6 @@ fun NewHomeScreen(
                 }
 
                 // ── Speed Dial ──────────────────────────────────────────────
-                item(key = "speed_dial_title") {
-                    NavigationTitle(
-                        title = stringResource(R.string.speed_dial),
-                        modifier = Modifier.animateItem(),
-                    )
-                }
-
                 if (speedDialItems.isNotEmpty()) {
                     item(key = "speed_dial_list") {
                         val items = speedDialItems

@@ -279,6 +279,7 @@ class App :
                 settings.remove(AccountNameKey)
                 settings.remove(AccountEmailKey)
                 settings.remove(AccountChannelHandleKey)
+                settings.remove(AccountPhotoUrlKey)
             }
             Timber.d("forgetAccount: DataStore preferences cleared")
 
