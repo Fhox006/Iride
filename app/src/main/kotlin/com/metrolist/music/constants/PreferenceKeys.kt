@@ -260,6 +260,8 @@ val MoodSnapshotKey = stringPreferencesKey("moodSnapshot")
 val LastMoodChipTitleKey = stringPreferencesKey("lastMoodChipTitle")
 val LastMoodChipParamsKey = stringPreferencesKey("lastMoodChipParams")
 
+val LibraryOfflineModeKey = booleanPreferencesKey("library_offline_mode")
+
 val ShowLikedPlaylistKey = booleanPreferencesKey("show_liked_playlist")
 val ShowDownloadedPlaylistKey = booleanPreferencesKey("show_downloaded_playlist")
 val ShowTopPlaylistKey = booleanPreferencesKey("show_top_playlist")

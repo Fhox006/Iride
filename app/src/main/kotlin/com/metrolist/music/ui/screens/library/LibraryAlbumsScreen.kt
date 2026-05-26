@@ -92,6 +92,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun LibraryAlbumsScreen(
     navController: NavController,
+    isOffline: Boolean = false,
     viewModel: LibraryAlbumsViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
@@ -123,7 +124,7 @@ fun LibraryAlbumsScreen(
         }
     }
 
-    val albums by viewModel.allAlbums.collectAsState()
+    val albums by (if (isOffline) viewModel.downloadedAlbums else viewModel.allAlbums).collectAsState()
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     val searchQuery by viewModel.searchQuery.collectAsState()
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForSearch() }
@@ -243,24 +244,26 @@ fun LibraryAlbumsScreen(
                         bottom = insets.calculateBottomPadding(),
                     ),
                 ) {
-                    item(
-                        key = "filter",
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier,
+                    if (!isOffline) {
+                        item(
+                            key = "filter",
+                            contentType = CONTENT_TYPE_HEADER,
                         ) {
-                            ChipsRow(
-                                chips = listOf(
-                                    AlbumFilter.LIKED to stringResource(R.string.filter_liked),
-                                    AlbumFilter.LIBRARY to stringResource(R.string.filter_library),
-                                    AlbumFilter.UPLOADED to stringResource(R.string.filter_uploaded),
-                                ),
-                                currentValue = filter,
-                                onValueUpdate = { filter = it },
-                                modifier = Modifier.weight(1f),
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier,
+                            ) {
+                                ChipsRow(
+                                    chips = listOf(
+                                        AlbumFilter.LIKED to stringResource(R.string.filter_liked),
+                                        AlbumFilter.LIBRARY to stringResource(R.string.filter_library),
+                                        AlbumFilter.UPLOADED to stringResource(R.string.filter_uploaded),
+                                    ),
+                                    currentValue = filter,
+                                    onValueUpdate = { filter = it },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
                         }
                     }
 
@@ -324,25 +327,27 @@ fun LibraryAlbumsScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    item(
-                        key = "filter",
-                        span = { GridItemSpan(maxLineSpan) },
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier,
+                    if (!isOffline) {
+                        item(
+                            key = "filter",
+                            span = { GridItemSpan(maxLineSpan) },
+                            contentType = CONTENT_TYPE_HEADER,
                         ) {
-                            ChipsRow(
-                                chips = listOf(
-                                    AlbumFilter.LIKED to stringResource(R.string.filter_liked),
-                                    AlbumFilter.LIBRARY to stringResource(R.string.filter_library),
-                                    AlbumFilter.UPLOADED to stringResource(R.string.filter_uploaded),
-                                ),
-                                currentValue = filter,
-                                onValueUpdate = { filter = it },
-                                modifier = Modifier.weight(1f),
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier,
+                            ) {
+                                ChipsRow(
+                                    chips = listOf(
+                                        AlbumFilter.LIKED to stringResource(R.string.filter_liked),
+                                        AlbumFilter.LIBRARY to stringResource(R.string.filter_library),
+                                        AlbumFilter.UPLOADED to stringResource(R.string.filter_uploaded),
+                                    ),
+                                    currentValue = filter,
+                                    onValueUpdate = { filter = it },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
                         }
                     }
 

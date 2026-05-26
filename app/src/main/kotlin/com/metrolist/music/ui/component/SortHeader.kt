@@ -8,6 +8,7 @@ package com.metrolist.music.ui.component
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -41,6 +42,7 @@ inline fun <reified T : Enum<T>> SortHeader(
     crossinline sortTypeText: (T) -> Int,
     modifier: Modifier = Modifier,
     showDescending: Boolean? = true,
+    noinline trailingContent: (@Composable () -> Unit)? = null,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -110,5 +112,7 @@ inline fun <reified T : Enum<T>> SortHeader(
                 onClick = { onSortDescendingChange(!sortDescending) },
             )
         }
+        Spacer(modifier = Modifier.weight(1f))
+        trailingContent?.invoke()
     }
 }

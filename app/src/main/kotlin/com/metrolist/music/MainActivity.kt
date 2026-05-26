@@ -475,6 +475,37 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        var pendingUpdateRelease by remember { mutableStateOf<com.metrolist.music.utils.ReleaseInfo?>(null) }
+        var pendingUpdateDownloadUrl by remember { mutableStateOf<String?>(null) }
+        var updateDialogDismissedThisSession by rememberSaveable { mutableStateOf(false) }
+
+        if (BuildConfig.UPDATER_AVAILABLE) {
+            LaunchedEffect(checkForUpdates) {
+                if (!checkForUpdates) {
+                    pendingUpdateRelease = null
+                    pendingUpdateDownloadUrl = null
+                    return@LaunchedEffect
+                }
+
+                withContext(Dispatchers.IO) {
+                    Updater.checkForAnyUpdate(forceRefresh = true)
+                        .onSuccess { (releaseInfo, hasUpdate) ->
+                            if (hasUpdate && releaseInfo != null) {
+                                pendingUpdateRelease = releaseInfo
+                                pendingUpdateDownloadUrl = Updater.getDownloadUrlForCurrentVariant(releaseInfo)
+                            } else {
+                                pendingUpdateRelease = null
+                                pendingUpdateDownloadUrl = null
+                            }
+                        }
+                        .onFailure {
+                            pendingUpdateRelease = null
+                            pendingUpdateDownloadUrl = null
+                        }
+                }
+            }
+        }
+
         val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = true)
         val enableHighRefreshRate by rememberPreference(EnableHighRefreshRateKey, defaultValue = true)
 
@@ -1072,7 +1103,7 @@ class MainActivity : ComponentActivity() {
                                                 else -> Screens.Home
                                             }.route
                                         },
-                                    // Enter Transition - no animation between tabs, slide for sub-screens
+                                    // Enter Transition - fade between tabs, slide for sub-screens
                                     enterTransition = {
                                         val currentRouteIndex =
                                             navigationItems.indexOfFirst {
@@ -1084,14 +1115,14 @@ class MainActivity : ComponentActivity() {
                                             }
 
                                         if (currentRouteIndex != -1 && previousRouteIndex != -1) {
-                                            EnterTransition.None
+                                            fadeIn(tween(200))
                                         } else if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex) {
                                             slideInHorizontally { it / 8 } + fadeIn(tween(200))
                                         } else {
                                             slideInHorizontally { -it / 8 } + fadeIn(tween(200))
                                         }
                                     },
-                                    // Exit Transition - no animation between tabs, slide for sub-screens
+                                    // Exit Transition - fade between tabs, slide for sub-screens
                                     exitTransition = {
                                         val currentRouteIndex =
                                             navigationItems.indexOfFirst {
@@ -1103,14 +1134,14 @@ class MainActivity : ComponentActivity() {
                                             }
 
                                         if (currentRouteIndex != -1 && targetRouteIndex != -1) {
-                                            ExitTransition.None
+                                            fadeOut(tween(200))
                                         } else if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex) {
                                             slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
                                         } else {
                                             slideOutHorizontally { it / 8 } + fadeOut(tween(200))
                                         }
                                     },
-                                    // Pop Enter Transition - no animation between tabs
+                                    // Pop Enter Transition - fade between tabs
                                     popEnterTransition = {
                                         val currentRouteIndex =
                                             navigationItems.indexOfFirst {
@@ -1122,14 +1153,14 @@ class MainActivity : ComponentActivity() {
                                             }
 
                                         if (currentRouteIndex != -1 && previousRouteIndex != -1) {
-                                            EnterTransition.None
+                                            fadeIn(tween(200))
                                         } else if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex) {
                                             slideInHorizontally { it / 8 } + fadeIn(tween(200))
                                         } else {
                                             slideInHorizontally { -it / 8 } + fadeIn(tween(200))
                                         }
                                     },
-                                    // Pop Exit Transition - no animation between tabs
+                                    // Pop Exit Transition - fade between tabs
                                     popExitTransition = {
                                         val currentRouteIndex =
                                             navigationItems.indexOfFirst {
@@ -1141,7 +1172,7 @@ class MainActivity : ComponentActivity() {
                                             }
 
                                         if (currentRouteIndex != -1 && targetRouteIndex != -1) {
-                                            ExitTransition.None
+                                            fadeOut(tween(200))
                                         } else if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex) {
                                             slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
                                         } else {
@@ -1218,6 +1249,28 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
+                    }
+
+                    if (
+                        pendingUpdateRelease != null &&
+                        !updateDialogDismissedThisSession &&
+                        currentRoute != "onboarding"
+                    ) {
+                        com.metrolist.music.ui.component.AppUpdateDialog(
+                            releaseInfo = pendingUpdateRelease!!,
+                            downloadUrl = pendingUpdateDownloadUrl,
+                            onDismiss = { updateDialogDismissedThisSession = true },
+                            onInstall = {
+                                updateDialogDismissedThisSession = true
+                                pendingUpdateDownloadUrl?.let { url ->
+                                    startActivity(
+                                        Intent(Intent.ACTION_VIEW, url.toUri()).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                    )
+                                }
+                            },
+                        )
                     }
 
                     DebugBubble()

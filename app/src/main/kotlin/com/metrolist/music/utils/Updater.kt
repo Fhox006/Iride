@@ -245,4 +245,39 @@ object Updater {
      * Get the latest release info (cached)
      */
     fun getCachedLatestRelease(): ReleaseInfo? = cachedReleaseInfo
+
+    suspend fun getLatestAvailableReleaseIncludingPrerelease(forceRefresh: Boolean = false): Result<ReleaseInfo> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val releases = getAllReleases(forceRefresh = forceRefresh).getOrThrow()
+                releases
+                    .filter { it.assets.isNotEmpty() }
+                    .maxWithOrNull { a, b -> compareVersions(a.versionName, b.versionName) }
+                    ?: throw IllegalStateException("No valid release with APK assets found")
+            }
+        }
+
+    suspend fun checkForAnyUpdate(forceRefresh: Boolean = false): Result<Pair<ReleaseInfo?, Boolean>> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val shouldFetch = forceRefresh ||
+                    (System.currentTimeMillis() - lastCheckTime) > CHECK_INTERVAL_MILLIS
+                val releaseInfo =
+                    if (!shouldFetch && cachedAllReleases.isNotEmpty()) {
+                        cachedAllReleases
+                            .filter { it.assets.isNotEmpty() }
+                            .maxWithOrNull { a, b -> compareVersions(a.versionName, b.versionName) }
+                    } else {
+                        getLatestAvailableReleaseIncludingPrerelease(forceRefresh = true).getOrThrow()
+                    }
+
+                if (releaseInfo == null) return@runCatching null to false
+
+                cachedReleaseInfo = releaseInfo
+                lastCheckTime = System.currentTimeMillis()
+
+                val hasUpdate = isUpdateAvailable(BuildConfig.VERSION_NAME, releaseInfo.versionName)
+                releaseInfo to hasUpdate
+            }
+        }
 }

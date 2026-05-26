@@ -83,7 +83,12 @@ import androidx.compose.ui.util.fastForEachIndexed
 import androidx.compose.ui.util.fastForEachReversed
 import sv.lib.squircleshape.SquircleShape
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextButton
+import androidx.core.net.toUri
 import androidx.media3.exoplayer.offline.Download
+import androidx.media3.exoplayer.offline.DownloadRequest
+import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import coil3.imageLoader
@@ -99,8 +104,10 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.db.entities.Album
+import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.LocalAlbumRadio
 /*import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground*/
+import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
@@ -183,6 +190,7 @@ fun AlbumScreen(
     var downloadState by remember {
         mutableIntStateOf(Download.STATE_STOPPED)
     }
+    var showRemoveDownloadDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(albumWithSongs) {
         val songs = albumWithSongs?.songs?.map { it.id }
@@ -227,6 +235,42 @@ fun AlbumScreen(
         gradientReady = true
     }
     */
+
+    if (showRemoveDownloadDialog) {
+        DefaultDialog(
+            onDismiss = { showRemoveDownloadDialog = false },
+            content = {
+                Text(
+                    text = stringResource(
+                        R.string.remove_download_playlist_confirm,
+                        albumWithSongs?.album?.title ?: "",
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                TextButton(onClick = { showRemoveDownloadDialog = false }) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+                TextButton(
+                    onClick = {
+                        showRemoveDownloadDialog = false
+                        albumWithSongs?.songs?.forEach { song ->
+                            DownloadService.sendRemoveDownload(
+                                context,
+                                ExoDownloadService::class.java,
+                                song.id,
+                                false,
+                            )
+                        }
+                    },
+                ) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -443,19 +487,37 @@ fun AlbumScreen(
                                 }
                             }
 
-                            // Menu Button - Smaller secondary button
+                            // Download Button - Smaller secondary button
                             Surface(
                                 onClick = {
-                                    menuState.show {
-                                        AlbumMenu(
-                                            originalAlbum =
-                                                Album(
-                                                    albumWithSongs.album,
-                                                    albumWithSongs.artists,
-                                                ),
-                                            navController = navController,
-                                            onDismiss = menuState::dismiss,
-                                        )
+                                    when (downloadState) {
+                                        Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
+                                        Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                                            albumWithSongs.songs.forEach { song ->
+                                                DownloadService.sendRemoveDownload(
+                                                    context,
+                                                    ExoDownloadService::class.java,
+                                                    song.id,
+                                                    false,
+                                                )
+                                            }
+                                        }
+                                        else -> {
+                                            albumWithSongs.songs.forEach { song ->
+                                                val downloadRequest =
+                                                    DownloadRequest
+                                                        .Builder(song.id, song.id.toUri())
+                                                        .setCustomCacheKey(song.id)
+                                                        .setData(song.song.title.toByteArray())
+                                                        .build()
+                                                DownloadService.sendAddDownload(
+                                                    context,
+                                                    ExoDownloadService::class.java,
+                                                    downloadRequest,
+                                                    false,
+                                                )
+                                            }
+                                        }
                                     }
                                 },
                                 shape = CircleShape,
@@ -466,11 +528,22 @@ fun AlbumScreen(
                                     modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.more_vert),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
-                                    )
+                                    when (downloadState) {
+                                        Download.STATE_COMPLETED -> Icon(
+                                            painter = painterResource(R.drawable.check),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                        Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> CircularProgressIndicator(
+                                            strokeWidth = 2.dp,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                        else -> Icon(
+                                            painter = painterResource(R.drawable.arrow_downward),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    }
                                 }
                             }
                         }

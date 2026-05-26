@@ -49,6 +49,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -860,6 +861,67 @@ fun LocalPlaylistScreen(
                             contentDescription = null,
                         )
                     }
+                    playlist?.let { currentPlaylist ->
+                        IconButton(
+                            onClick = {
+                                menuState.show {
+                                    LocalPlaylistMenu(
+                                        playlist = currentPlaylist,
+                                        songs = songs,
+                                        context = context,
+                                        downloadState = downloadState,
+                                        onEdit = { showEditDialog = true },
+                                        onSync = { syncUtils.syncSavedPlaylists() },
+                                        onDelete = { showDeletePlaylistDialog = true },
+                                        onDownload = {
+                                            when (downloadState) {
+                                                Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
+                                                Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                                                    songs.forEach { song ->
+                                                        DownloadService.sendRemoveDownload(
+                                                            context,
+                                                            ExoDownloadService::class.java,
+                                                            song.song.id,
+                                                            false,
+                                                        )
+                                                    }
+                                                }
+                                                else -> {
+                                                    songs.forEach { song ->
+                                                        val downloadRequest = DownloadRequest
+                                                            .Builder(song.song.id, song.song.id.toUri())
+                                                            .setCustomCacheKey(song.song.id)
+                                                            .setData(song.song.song.title.toByteArray())
+                                                            .build()
+                                                        DownloadService.sendAddDownload(
+                                                            context,
+                                                            ExoDownloadService::class.java,
+                                                            downloadRequest,
+                                                            false,
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        onQueue = {
+                                            playerConnection.playQueue(
+                                                ListQueue(
+                                                    title = currentPlaylist.playlist.name,
+                                                    items = songs.map { it.song.toMediaItem() },
+                                                ),
+                                            )
+                                        },
+                                        onDismiss = menuState::dismiss,
+                                    )
+                                }
+                            },
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.more_vert),
+                                contentDescription = null,
+                            )
+                        }
+                    }
                 }
             },
         )
@@ -1341,87 +1403,37 @@ fun LocalPlaylistHeader(
                 }
             }
 
-            // Menu Button - Smaller secondary button
+            // Download Button - Smaller secondary button
             Surface(
                 onClick = {
-                    menuState.show {
-                        LocalPlaylistMenu(
-                            playlist = playlist,
-                            songs = songs,
-                            context = context,
-                            downloadState = downloadState,
-                            onEdit = onShowEditDialog,
-                            onSync = {
-                                scope.launch(Dispatchers.IO) {
-                                    val playlistPage =
-                                        YouTube
-                                            .playlist(playlist.playlist.browseId!!)
-                                            .completed()
-                                            .getOrNull() ?: return@launch
-                                    database.transaction {
-                                        clearPlaylist(playlist.id)
-                                        playlistPage.songs
-                                            .map(SongItem::toMediaMetadata)
-                                            .onEach(::insert)
-                                            .mapIndexed { position, song ->
-                                                PlaylistSongMap(
-                                                    songId = song.id,
-                                                    playlistId = playlist.id,
-                                                    position = position,
-                                                    setVideoId = song.setVideoId,
-                                                )
-                                            }.forEach(::insert)
-                                    }
-                                }
-                                scope.launch(Dispatchers.Main) {
-                                    snackbarHostState.showSnackbar(playlistSyncedStr)
-                                }
-                            },
-                            onDelete = onshowDeletePlaylistDialog,
-                            onDownload = {
-                                when (downloadState) {
-                                    Download.STATE_COMPLETED -> {
-                                        onShowRemoveDownloadDialog()
-                                    }
-
-                                    Download.STATE_DOWNLOADING -> {
-                                        songs.forEach { song ->
-                                            DownloadService.sendRemoveDownload(
-                                                context,
-                                                ExoDownloadService::class.java,
-                                                song.song.id,
-                                                false,
-                                            )
-                                        }
-                                    }
-
-                                    else -> {
-                                        songs.forEach { song ->
-                                            val downloadRequest =
-                                                DownloadRequest
-                                                    .Builder(song.song.id, song.song.id.toUri())
-                                                    .setCustomCacheKey(song.song.id)
-                                                    .setData(
-                                                        song.song.song.title
-                                                            .toByteArray(),
-                                                    ).build()
-                                            DownloadService.sendAddDownload(
-                                                context,
-                                                ExoDownloadService::class.java,
-                                                downloadRequest,
-                                                false,
-                                            )
-                                        }
-                                    }
-                                }
-                            },
-                            onQueue = {
-                                playerConnection.addToQueue(
-                                    items = songs.map { it.song.toMediaItem() },
+                    when (downloadState) {
+                        Download.STATE_COMPLETED -> onShowRemoveDownloadDialog()
+                        Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                            songs.forEach { song ->
+                                DownloadService.sendRemoveDownload(
+                                    context,
+                                    ExoDownloadService::class.java,
+                                    song.song.id,
+                                    false,
                                 )
-                            },
-                            onDismiss = { menuState.dismiss() },
-                        )
+                            }
+                        }
+                        else -> {
+                            songs.forEach { song ->
+                                val downloadRequest =
+                                    DownloadRequest
+                                        .Builder(song.song.id, song.song.id.toUri())
+                                        .setCustomCacheKey(song.song.id)
+                                        .setData(song.song.song.title.toByteArray())
+                                        .build()
+                                DownloadService.sendAddDownload(
+                                    context,
+                                    ExoDownloadService::class.java,
+                                    downloadRequest,
+                                    false,
+                                )
+                            }
+                        }
                     }
                 },
                 shape = CircleShape,
@@ -1432,11 +1444,22 @@ fun LocalPlaylistHeader(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                    )
+                    when (downloadState) {
+                        Download.STATE_COMPLETED -> Icon(
+                            painter = painterResource(R.drawable.check),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> CircularProgressIndicator(
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        else -> Icon(
+                            painter = painterResource(R.drawable.arrow_downward),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
                 }
             }
         }

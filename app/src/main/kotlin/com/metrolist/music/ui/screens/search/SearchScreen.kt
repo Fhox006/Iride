@@ -7,7 +7,9 @@ package com.metrolist.music.ui.screens.search
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,7 +27,13 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -165,7 +173,7 @@ fun SearchScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-        snapAnimationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        snapAnimationSpec = tween(durationMillis = 200),
     )
 
     Scaffold(
@@ -278,6 +286,15 @@ private fun SearchCollapsingHeader(
     val fraction = scrollBehavior.state.collapsedFraction
     val totalHeightDp = SmallTitleBarHeightDp + LargeTitleHeightDp + SearchBoxHeightDp + 12.dp
 
+    val indicatorOffset by animateDpAsState(
+        targetValue = if (searchSource == SearchSource.ONLINE) 2.dp else 42.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "searchSourceIndicator",
+    )
+
     Surface(
         color = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
         modifier = Modifier
@@ -299,14 +316,81 @@ private fun SearchCollapsingHeader(
                     },
                 contentAlignment = Alignment.CenterStart
             ) {
-                Text(
-                    text = stringResource(R.string.search),
-                    style = lerp(
-                        MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
-                        MaterialTheme.typography.titleLarge,
-                        fraction
+                val pillAlpha = (1f - fraction * 2f).coerceIn(0f, 1f)
+                val pillEnabled = fraction < 0.05f
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = stringResource(R.string.search),
+                        style = lerp(
+                            MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                            MaterialTheme.typography.titleLarge,
+                            fraction
+                        )
                     )
-                )
+                    Box(
+                        modifier = Modifier
+                            .alpha(pillAlpha)
+                            .padding(bottom = 4.dp)
+                            .width(80.dp)
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .offset(x = indicatorOffset, y = 2.dp)
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.secondaryContainer),
+                        )
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clickable(
+                                        enabled = pillEnabled,
+                                        indication = null,
+                                        interactionSource = remember { MutableInteractionSource() },
+                                    ) { if (searchSource != SearchSource.ONLINE) onSearchSourceToggle() },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.language),
+                                    contentDescription = null,
+                                    tint = if (searchSource == SearchSource.ONLINE)
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clickable(
+                                        enabled = pillEnabled,
+                                        indication = null,
+                                        interactionSource = remember { MutableInteractionSource() },
+                                    ) { if (searchSource != SearchSource.LOCAL) onSearchSourceToggle() },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.bookmark_outlined),
+                                    contentDescription = null,
+                                    tint = if (searchSource == SearchSource.LOCAL)
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             // Search Box Layer
@@ -370,18 +454,6 @@ private fun SearchCollapsingHeader(
                                 tint = MaterialTheme.colorScheme.onSurface,
                             )
                         }
-                    }
-
-                    FilledTonalIconButton(onClick = onSearchSourceToggle) {
-                        Icon(
-                            painter = painterResource(
-                                when (searchSource) {
-                                    SearchSource.LOCAL -> R.drawable.library_music
-                                    SearchSource.ONLINE -> R.drawable.language
-                                },
-                            ),
-                            contentDescription = null,
-                        )
                     }
                 }
             }

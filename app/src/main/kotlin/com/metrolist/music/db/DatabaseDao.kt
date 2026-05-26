@@ -1187,6 +1187,14 @@ interface DatabaseDao {
     }.map { it.reversed(descending) }
 
     @Transaction
+    @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
+    @Query("SELECT DISTINCT album.* FROM album JOIN song ON song.albumId = album.id WHERE song.isDownloaded = 1 ORDER BY song.dateDownload DESC")
+    fun albumsDownloadedByDateDesc(): Flow<List<Album>>
+
+    @Query("SELECT DISTINCT playlist_song_map.playlistId FROM playlist_song_map JOIN song ON song.id = playlist_song_map.songId WHERE song.isDownloaded = 1")
+    fun playlistIdsWithDownloadedSongs(): Flow<List<String>>
+
+    @Transaction
     @Query("SELECT * FROM song WHERE isDownloaded = 1 AND (isEpisode = 0 OR isEpisode IS NULL) ORDER BY dateDownload")
     fun downloadedSongsByCreateDateAsc(): Flow<List<Song>>
 

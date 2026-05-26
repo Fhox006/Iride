@@ -86,6 +86,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun LibraryArtistsScreen(
     navController: NavController,
+    isOffline: Boolean = false,
     viewModel: LibraryArtistsViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
@@ -113,7 +114,8 @@ fun LibraryArtistsScreen(
 
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     val searchQuery by viewModel.searchQuery.collectAsState()
-    val filteredArtists by viewModel.filteredArtists.collectAsState()
+    val filteredArtistsRaw by viewModel.filteredArtists.collectAsState()
+    val filteredArtists = if (isOffline) emptyList() else filteredArtistsRaw
 
     val lazyListState = rememberLazyListState()
     val lazyGridState = rememberLazyGridState()

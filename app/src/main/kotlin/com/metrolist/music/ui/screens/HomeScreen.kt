@@ -7,8 +7,6 @@ package com.metrolist.music.ui.screens
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -17,6 +15,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -78,6 +77,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -186,6 +186,7 @@ fun HomeScreen(
 ) {
     val menuState = LocalMenuState.current
     val playerConnection = LocalPlayerConnection.current ?: return
+    val database = LocalDatabase.current
     val haptic = LocalHapticFeedback.current
     val listenTogetherManager = LocalListenTogetherManager.current
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
@@ -285,7 +286,7 @@ fun HomeScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-        snapAnimationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        snapAnimationSpec = tween(durationMillis = 200),
     )
 
     Scaffold(
@@ -781,16 +782,18 @@ fun HomeScreen(
                                     .height(ListItemHeight * 4)
                                     .animateItem(),
                             ) {
-                                items(items = filteredQp, key = { "home_quickpick_${it.id}" }) { song ->
+                                items(items = filteredQp, key = { "home_quickpick_${it.id}" }) { originalSong ->
+                                    val song by database.song(originalSong.id).collectAsStateWithLifecycle(initialValue = originalSong)
+                                    val currentSong = song ?: originalSong
                                     SongListItem(
-                                        song = song,
-                                        isActive = song.id == mediaMetadata?.id,
+                                        song = currentSong,
+                                        isActive = currentSong.id == mediaMetadata?.id,
                                         isPlaying = isPlaying,
                                         isSwipeable = false,
                                         trailingContent = {
                                             IconButton(onClick = {
                                                 menuState.show {
-                                                    SongMenu(originalSong = song, navController = navController, onDismiss = menuState::dismiss)
+                                                    SongMenu(originalSong = currentSong, navController = navController, onDismiss = menuState::dismiss)
                                                 }
                                             }) { Icon(painter = painterResource(R.drawable.more_vert), contentDescription = null) }
                                         },
@@ -799,14 +802,14 @@ fun HomeScreen(
                                             .combinedClickable(
                                                 onClick = {
                                                     if (!isListenTogetherGuest) {
-                                                        if (song.id == mediaMetadata?.id) playerConnection.togglePlayPause()
-                                                        else playerConnection.startRadioForSong(song.toMediaMetadata())
+                                                        if (currentSong.id == mediaMetadata?.id) playerConnection.togglePlayPause()
+                                                        else playerConnection.playQueue(YouTubeQueue.radio(currentSong.toMediaMetadata()))
                                                     }
                                                 },
                                                 onLongClick = {
                                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     menuState.show {
-                                                        SongMenu(originalSong = song, navController = navController, onDismiss = menuState::dismiss)
+                                                        SongMenu(originalSong = currentSong, navController = navController, onDismiss = menuState::dismiss)
                                                     }
                                                 },
                                             ),
@@ -1262,37 +1265,36 @@ private fun HomeCollapsingHeader(
                     },
                 contentAlignment = Alignment.CenterStart,
             ) {
-                Text(
-                    text = stringResource(R.string.home),
-                    style = lerp(
-                        MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
-                        MaterialTheme.typography.titleLarge,
-                        fraction,
-                    ),
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(HomeSmallTitleBarHeightDp)
-                    .padding(end = 4.dp),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                IconButton(onClick = onAccountClick) {
-                    if (accountImageUrl != null) {
-                        AsyncImage(
-                            model = accountImageUrl,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop,
-                        )
-                    } else {
+                val pillAlpha = (1f - fraction * 2f).coerceIn(0f, 1f)
+                val pillEnabled = fraction < 0.05f
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = stringResource(R.string.home),
+                        style = lerp(
+                            MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                            MaterialTheme.typography.titleLarge,
+                            fraction,
+                        ),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .alpha(pillAlpha)
+                            .padding(bottom = 4.dp)
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable(enabled = pillEnabled) { onAccountClick() },
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Icon(
                             painter = painterResource(R.drawable.person),
                             contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
                         )
                     }
                 }

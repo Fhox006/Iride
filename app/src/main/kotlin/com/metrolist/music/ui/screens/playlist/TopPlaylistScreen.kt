@@ -34,6 +34,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -517,6 +518,59 @@ fun TopPlaylistScreen(
                             contentDescription = null
                         )
                     }
+                    IconButton(
+                        onClick = {
+                            menuState.show {
+                                TopPlaylistMenu(
+                                    downloadState = downloadState,
+                                    onQueue = {
+                                        playerConnection.playQueue(
+                                            ListQueue(
+                                                title = name,
+                                                items = songs?.map { it.toMediaItem() } ?: emptyList(),
+                                            ),
+                                        )
+                                    },
+                                    onDownload = {
+                                        when (downloadState) {
+                                            Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
+                                            Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                                                songs?.forEach { song ->
+                                                    DownloadService.sendRemoveDownload(
+                                                        context,
+                                                        ExoDownloadService::class.java,
+                                                        song.id,
+                                                        false,
+                                                    )
+                                                }
+                                            }
+                                            else -> {
+                                                songs?.forEach { song ->
+                                                    val downloadRequest = DownloadRequest
+                                                        .Builder(song.id, song.id.toUri())
+                                                        .setCustomCacheKey(song.id)
+                                                        .setData(song.title.toByteArray())
+                                                        .build()
+                                                    DownloadService.sendAddDownload(
+                                                        context,
+                                                        ExoDownloadService::class.java,
+                                                        downloadRequest,
+                                                        false,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    },
+                                    onDismiss = menuState::dismiss,
+                                )
+                            }
+                        },
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.more_vert),
+                            contentDescription = null,
+                        )
+                    }
                 }
             }
         )
@@ -654,49 +708,36 @@ private fun TopPlaylistHeader(
                 }
             }
 
-            // Menu Button - Smaller secondary button
+            // Download Button - Smaller secondary button
             androidx.compose.material3.Surface(
                 onClick = {
-                    menuState.show {
-                        TopPlaylistMenu(
-                            downloadState = downloadState,
-                            onQueue = {
-                                playerConnection.addToQueue(
-                                    songs.map { it.toMediaItem() }
+                    when (downloadState) {
+                        Download.STATE_COMPLETED -> onShowRemoveDownloadDialog()
+                        Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                            songs.forEach { song ->
+                                DownloadService.sendRemoveDownload(
+                                    context,
+                                    ExoDownloadService::class.java,
+                                    song.id,
+                                    false,
                                 )
-                            },
-                            onDownload = {
-                                when (downloadState) {
-                                    Download.STATE_COMPLETED -> onShowRemoveDownloadDialog()
-                                    Download.STATE_DOWNLOADING -> {
-                                        songs.forEach { song ->
-                                            DownloadService.sendRemoveDownload(
-                                                context,
-                                                ExoDownloadService::class.java,
-                                                song.id,
-                                                false,
-                                            )
-                                        }
-                                    }
-                                    else -> {
-                                        songs.forEach { song ->
-                                            val downloadRequest = DownloadRequest
-                                                .Builder(song.id, song.id.toUri())
-                                                .setCustomCacheKey(song.id)
-                                                .setData(song.title.toByteArray())
-                                                .build()
-                                            DownloadService.sendAddDownload(
-                                                context,
-                                                ExoDownloadService::class.java,
-                                                downloadRequest,
-                                                false,
-                                            )
-                                        }
-                                    }
-                                }
-                            },
-                            onDismiss = { menuState.dismiss() }
-                        )
+                            }
+                        }
+                        else -> {
+                            songs.forEach { song ->
+                                val downloadRequest = DownloadRequest
+                                    .Builder(song.id, song.id.toUri())
+                                    .setCustomCacheKey(song.id)
+                                    .setData(song.title.toByteArray())
+                                    .build()
+                                DownloadService.sendAddDownload(
+                                    context,
+                                    ExoDownloadService::class.java,
+                                    downloadRequest,
+                                    false,
+                                )
+                            }
+                        }
                     }
                 },
                 shape = androidx.compose.foundation.shape.CircleShape,
@@ -707,11 +748,22 @@ private fun TopPlaylistHeader(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    when (downloadState) {
+                        Download.STATE_COMPLETED -> Icon(
+                            painter = painterResource(R.drawable.check),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> CircularProgressIndicator(
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        else -> Icon(
+                            painter = painterResource(R.drawable.arrow_downward),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
                 }
             }
         }

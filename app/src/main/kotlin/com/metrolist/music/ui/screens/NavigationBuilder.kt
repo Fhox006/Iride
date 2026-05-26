@@ -401,4 +401,16 @@ fun NavGraphBuilder.NavigationBuilder(
     composable("library_artists") {
         LibraryArtistsScreen(navController = navController)
     }
+    composable("library_playlists_offline") {
+        LibraryPlaylistsScreen(navController = navController, isOffline = true)
+    }
+    composable("library_songs_offline") {
+        LibrarySongsScreen(navController = navController, isOffline = true)
+    }
+    composable("library_albums_offline") {
+        LibraryAlbumsScreen(navController = navController, isOffline = true)
+    }
+    composable("library_artists_offline") {
+        LibraryArtistsScreen(navController = navController, isOffline = true)
+    }
 }

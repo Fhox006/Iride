@@ -116,6 +116,19 @@ constructor(
                 }
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    val downloadedSongs =
+        context.dataStore.data
+            .map {
+                Triple(
+                    it[SongSortTypeKey].toEnum(SongSortType.CREATE_DATE),
+                    it[SongSortDescendingKey] ?: true,
+                    it[HideExplicitKey] ?: false,
+                )
+            }.distinctUntilChanged()
+            .flatMapLatest { (sortType, descending, hideExplicit) ->
+                database.downloadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit) }
+            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     fun syncLikedSongs() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedSongs() }
     }
@@ -238,6 +251,9 @@ constructor(
                 }
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    val downloadedAlbums = database.albumsDownloadedByDateDesc()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     fun sync() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedAlbums() }
     }
@@ -299,6 +315,10 @@ constructor(
             .flatMapLatest { (sortType, descending, hideYoutubeShorts) ->
                 database.playlists(sortType, descending).map { it.filterYoutubeShorts(hideYoutubeShorts) }
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val downloadedPlaylistIds = database.playlistIdsWithDownloadedSongs()
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
 
     fun sync() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncSavedPlaylists() }
@@ -407,6 +427,9 @@ constructor(
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     var uploadedSongs = database
         .uploadedSongs(SongSortType.CREATE_DATE, true)
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    var downloadedAlbums = database
+        .albumsDownloadedByDateDesc()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     var playlists = context.dataStore.data
         .map { it[HideYoutubeShortsKey] ?: false }

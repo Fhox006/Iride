@@ -101,6 +101,7 @@ private data class VisiblePlaylistItem(
 @Composable
 fun LibraryPlaylistsScreen(
     navController: NavController,
+    isOffline: Boolean = false,
     viewModel: LibraryPlaylistsViewModel = hiltViewModel(),
     initialTextFieldValue: String? = null,
     allowSyncing: Boolean = true,
@@ -123,15 +124,17 @@ fun LibraryPlaylistsScreen(
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
 
     val playlists by viewModel.allPlaylists.collectAsState()
+    val downloadedPlaylistIds by viewModel.downloadedPlaylistIds.collectAsState()
 
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     val searchQuery by viewModel.searchQuery.collectAsState()
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForSearch() }
-    val filteredPlaylists = remember(playlists, normalizedQuery) {
+    val filteredPlaylists = remember(playlists, normalizedQuery, isOffline, downloadedPlaylistIds) {
+        val base = if (isOffline) playlists.filter { it.id in downloadedPlaylistIds } else playlists
         if (normalizedQuery.isBlank()) {
-            playlists
+            base
         } else {
-            playlists.filter { playlist ->
+            base.filter { playlist ->
                 matchesNormalizedQuery(normalizedQuery, playlist.playlist.name)
             }
         }

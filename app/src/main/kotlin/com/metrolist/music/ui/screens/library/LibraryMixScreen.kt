@@ -5,11 +5,19 @@
 
 package com.metrolist.music.ui.screens.library
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +43,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,8 +57,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -80,7 +87,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.lerp
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp as lerpFloat
@@ -99,6 +105,7 @@ import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.constants.MixSortDescendingKey
 import com.metrolist.music.constants.MixSortType
 import com.metrolist.music.constants.MixSortTypeKey
+import com.metrolist.music.constants.LibraryOfflineModeKey
 import com.metrolist.music.constants.MixViewTypeKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
@@ -176,6 +183,7 @@ fun LibraryMixScreen(
 
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
 
+    val (isLibraryFilter, setLibraryFilter) = rememberPreference(LibraryOfflineModeKey, defaultValue = true)
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     val searchQuery by viewModel.searchQuery.collectAsState()
     val debouncedSearchQuery by viewModel.debouncedSearchQuery.collectAsState()
@@ -262,17 +270,20 @@ fun LibraryMixScreen(
     val songs = viewModel.songs.collectAsState()
     val playlist = viewModel.playlists.collectAsState()
     val uploadedSongs by viewModel.uploadedSongs.collectAsState()
-    var allItems = albums.value + artist.value + playlist.value
+    val downloadedAlbums by viewModel.downloadedAlbums.collectAsState()
     val locale = LocalLocale.current.platformLocale
     val collator = remember(locale) {
         Collator.getInstance(locale).apply {
             strength = Collator.PRIMARY
         }
     }
-    allItems =
+    var allItems = if (!isLibraryFilter) {
+        downloadedAlbums
+    } else {
+        val base = albums.value + artist.value + playlist.value
         when (sortType) {
             MixSortType.CREATE_DATE -> {
-                allItems.sortedBy { item ->
+                base.sortedBy { item ->
                     when (item) {
                         is Album -> item.album.bookmarkedAt
                         is Artist -> item.artist.bookmarkedAt
@@ -281,9 +292,8 @@ fun LibraryMixScreen(
                     }
                 }
             }
-
             MixSortType.NAME -> {
-                allItems.sortedWith(
+                base.sortedWith(
                     compareBy(collator) { item ->
                         when (item) {
                             is Album -> item.album.title
@@ -294,9 +304,8 @@ fun LibraryMixScreen(
                     },
                 )
             }
-
             MixSortType.LAST_UPDATED -> {
-                allItems.sortedBy { item ->
+                base.sortedBy { item ->
                     when (item) {
                         is Album -> item.album.lastUpdateTime
                         is Artist -> item.artist.lastUpdateTime
@@ -306,6 +315,7 @@ fun LibraryMixScreen(
                 }
             }
         }.reversed(sortDescending)
+    }
 
     val searchableItems = if (normalizedQuery.isBlank()) allItems else allItems + songs.value
 
@@ -403,7 +413,14 @@ fun LibraryMixScreen(
         }
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val contentAlpha = remember { Animatable(1f) }
+    LaunchedEffect(isLibraryFilter) {
+        contentAlpha.animateTo(0f, animationSpec = tween(100))
+        contentAlpha.animateTo(1f, animationSpec = tween(150))
+    }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        snapAnimationSpec = tween(durationMillis = 200),
+    )
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -415,10 +432,9 @@ fun LibraryMixScreen(
                 searchQuery = searchQuery,
                 onSearchQueryChange = viewModel::updateSearchQuery,
                 keyboardController = keyboardController,
-                viewType = viewType,
-                onViewTypeChange = { viewType = it },
                 pureBlack = pureBlack,
-                onDownloadsClick = { onViewChange(LibraryView.DOWNLOADS) },
+                isLibraryFilter = isLibraryFilter,
+                onFilterToggle = { setLibraryFilter(!isLibraryFilter) },
             )
         },
         containerColor = Color.Transparent,
@@ -429,7 +445,8 @@ fun LibraryMixScreen(
                 Modifier
                     .fillMaxSize()
                     .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
-                    .padding(paddingValues),
+                    .padding(paddingValues)
+                    .alpha(contentAlpha.value),
         ) {
             CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
                 key(viewType) {
@@ -448,13 +465,15 @@ fun LibraryMixScreen(
                                     CategoriesContent(
                                         navController = navController,
                                         showUploads = uploadedSongs.isNotEmpty(),
+                                        showCache = showCached,
+                                        isOffline = !isLibraryFilter,
                                     )
                                 }
 
                                 if (normalizedQuery.isBlank()) {
                                     item(key = "recently_added_label", contentType = CONTENT_TYPE_HEADER) {
                                         Text(
-                                            text = "Recently Added",
+                                            text = if (isLibraryFilter) "Recently Added" else "Recently Downloaded",
                                             style = MaterialTheme.typography.headlineMedium,
                                             modifier = Modifier.padding(vertical = 12.dp),
                                         )
@@ -470,6 +489,29 @@ fun LibraryMixScreen(
                                                     MixSortType.CREATE_DATE -> R.string.sort_by_create_date
                                                     MixSortType.LAST_UPDATED -> R.string.sort_by_last_updated
                                                     MixSortType.NAME -> R.string.sort_by_name
+                                                }
+                                            },
+                                            trailingContent = {
+                                                IconButton(
+                                                    onClick = {
+                                                        viewType = if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else LibraryViewType.LIST
+                                                    },
+                                                    modifier = Modifier.size(40.dp),
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(
+                                                            when (viewType) {
+                                                                LibraryViewType.LIST -> R.drawable.list
+                                                                else -> R.drawable.grid_view
+                                                            }
+                                                        ),
+                                                        contentDescription = stringResource(
+                                                            when (viewType) {
+                                                                LibraryViewType.LIST -> R.string.switch_to_grid_view
+                                                                else -> R.string.switch_to_list_view
+                                                            }
+                                                        ),
+                                                    )
                                                 }
                                             },
                                         )
@@ -639,6 +681,8 @@ fun LibraryMixScreen(
                                     CategoriesContent(
                                         navController = navController,
                                         showUploads = uploadedSongs.isNotEmpty(),
+                                        showCache = showCached,
+                                        isOffline = !isLibraryFilter,
                                     )
                                 }
 
@@ -649,7 +693,7 @@ fun LibraryMixScreen(
                                         contentType = CONTENT_TYPE_HEADER,
                                     ) {
                                         Text(
-                                            text = "Recently Added",
+                                            text = if (isLibraryFilter) "Recently Added" else "Recently Downloaded",
                                             style = MaterialTheme.typography.headlineMedium,
                                             modifier = Modifier.padding(vertical = 12.dp),
                                         )
@@ -669,6 +713,29 @@ fun LibraryMixScreen(
                                                     MixSortType.CREATE_DATE -> R.string.sort_by_create_date
                                                     MixSortType.LAST_UPDATED -> R.string.sort_by_last_updated
                                                     MixSortType.NAME -> R.string.sort_by_name
+                                                }
+                                            },
+                                            trailingContent = {
+                                                IconButton(
+                                                    onClick = {
+                                                        viewType = if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else LibraryViewType.LIST
+                                                    },
+                                                    modifier = Modifier.size(40.dp),
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(
+                                                            when (viewType) {
+                                                                LibraryViewType.LIST -> R.drawable.list
+                                                                else -> R.drawable.grid_view
+                                                            }
+                                                        ),
+                                                        contentDescription = stringResource(
+                                                            when (viewType) {
+                                                                LibraryViewType.LIST -> R.string.switch_to_grid_view
+                                                                else -> R.string.switch_to_list_view
+                                                            }
+                                                        ),
+                                                    )
                                                 }
                                             },
                                         )
@@ -954,10 +1021,9 @@ private fun LibraryCollapsingHeader(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     keyboardController: SoftwareKeyboardController?,
-    viewType: LibraryViewType,
-    onViewTypeChange: (LibraryViewType) -> Unit,
     pureBlack: Boolean,
-    onDownloadsClick: () -> Unit,
+    isLibraryFilter: Boolean,
+    onFilterToggle: () -> Unit,
 ) {
     val density = LocalDensity.current
     val largeTitleHeightPx = with(density) { LargeTitleHeightDp.toPx() }
@@ -984,7 +1050,7 @@ private fun LibraryCollapsingHeader(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(SmallTitleBarHeightDp)
-                    .padding(horizontal = 12.dp)
+                    .padding(start = 12.dp, end = 12.dp)
                     .graphicsLayer {
                         translationY = lerpFloat(
                             with(density) { (LargeTitleHeightDp - 12.dp).toPx() },
@@ -994,75 +1060,126 @@ private fun LibraryCollapsingHeader(
                     },
                 contentAlignment = Alignment.CenterStart
             ) {
+                val btnSize = 40.dp
+                val iconSize = 20.dp
+                val indicatorSize = 36.dp
+                val pillAlpha = (1f - fraction * 2f).coerceIn(0f, 1f)
+                val pillEnabled = fraction < 0.05f
+                val indicatorOffset by animateDpAsState(
+                    targetValue = if (isLibraryFilter) 2.dp else 42.dp,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium,
+                    ),
+                    label = "libraryFilterIndicator",
+                )
+
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text(
-                        text = stringResource(R.string.filter_library),
-                        style = lerp(
-                            MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
-                            MaterialTheme.typography.titleLarge,
-                            fraction
-                        )
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(lerpFloat(22f, 14f, fraction).dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.expand_more),
-                            contentDescription = null,
-                            modifier = Modifier.size(lerpFloat(14f, 10f, fraction).dp),
-                            tint = Color.White,
+                    AnimatedContent(
+                        targetState = isLibraryFilter,
+                        transitionSpec = {
+                            if (targetState) {
+                                // TO Library: Library enters from LEFT, Offline exits RIGHT
+                                slideInHorizontally(
+                                    initialOffsetX = { -it },
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium,
+                                    ),
+                                ) togetherWith slideOutHorizontally(
+                                    targetOffsetX = { it },
+                                    animationSpec = tween(durationMillis = 200),
+                                )
+                            } else {
+                                // TO Offline: Offline enters from RIGHT, Library exits LEFT
+                                slideInHorizontally(
+                                    initialOffsetX = { it },
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium,
+                                    ),
+                                ) togetherWith slideOutHorizontally(
+                                    targetOffsetX = { -it },
+                                    animationSpec = tween(durationMillis = 200),
+                                )
+                            }
+                        },
+                        contentAlignment = Alignment.BottomStart,
+                        label = "libraryTitleSlide",
+                    ) { isLibrary ->
+                        Text(
+                            text = if (isLibrary) stringResource(R.string.filter_library) else "Offline Library",
+                            style = lerp(
+                                MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                                MaterialTheme.typography.titleLarge,
+                                fraction
+                            )
                         )
                     }
-                }
-            }
 
-            // Action icons pinned to top-right, always visible
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(SmallTitleBarHeightDp)
-                    .padding(end = 4.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(
-                    onClick = { onSearchActiveChange(true) },
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.search),
-                        contentDescription = stringResource(R.string.search),
-                    )
-                }
-                IconButton(
-                    onClick = {
-                        onViewTypeChange(
-                            if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else LibraryViewType.LIST
+                    Box(
+                        modifier = Modifier
+                            .alpha(pillAlpha)
+                            .padding(bottom = 4.dp)
+                            .width(btnSize * 2)
+                            .height(btnSize)
+                            .clip(RoundedCornerShape(btnSize / 2))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .offset(x = indicatorOffset, y = 2.dp)
+                                .size(indicatorSize)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.secondaryContainer),
                         )
-                    },
-                    modifier = Modifier.padding(end = 8.dp).size(40.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(
-                            when (viewType) {
-                                LibraryViewType.LIST -> R.drawable.list
-                                else -> R.drawable.grid_view
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                modifier = Modifier
+                                    .size(btnSize)
+                                    .clickable(
+                                        enabled = pillEnabled,
+                                        indication = null,
+                                        interactionSource = remember { MutableInteractionSource() },
+                                    ) { if (!isLibraryFilter) onFilterToggle() },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.bookmark_outlined),
+                                    contentDescription = null,
+                                    tint = if (isLibraryFilter)
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(iconSize),
+                                )
                             }
-                        ),
-                        contentDescription = stringResource(
-                            when (viewType) {
-                                LibraryViewType.LIST -> R.string.switch_to_grid_view
-                                else -> R.string.switch_to_list_view
+                            Box(
+                                modifier = Modifier
+                                    .size(btnSize)
+                                    .clickable(
+                                        enabled = pillEnabled,
+                                        indication = null,
+                                        interactionSource = remember { MutableInteractionSource() },
+                                    ) { if (isLibraryFilter) onFilterToggle() },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.download),
+                                    contentDescription = null,
+                                    tint = if (!isLibraryFilter)
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(iconSize),
+                                )
                             }
-                        ),
-                    )
+                        }
+                    }
                 }
             }
 
@@ -1092,24 +1209,24 @@ private data class CategoryItem(
 private fun CategoriesContent(
     navController: NavController,
     showUploads: Boolean,
+    showCache: Boolean,
+    isOffline: Boolean,
 ) {
     val albumsStr = stringResource(R.string.albums)
     val artistsStr = stringResource(R.string.artists)
     val playlistsStr = stringResource(R.string.playlists)
-    val downloadsStr = stringResource(R.string.downloads)
     val cacheStr = stringResource(R.string.cache)
     val uploadedStr = stringResource(R.string.filter_uploaded)
 
-    val items = remember(showUploads, albumsStr, artistsStr, playlistsStr, downloadsStr, cacheStr, uploadedStr) {
+    val items = remember(isOffline, showUploads, showCache, albumsStr, artistsStr, playlistsStr, cacheStr, uploadedStr) {
         buildList {
-            add(CategoryItem(albumsStr, R.drawable.album, "library_albums"))
-            add(CategoryItem(artistsStr, R.drawable.artist, "library_artists"))
-            add(CategoryItem("Songs", R.drawable.music_note, "auto_playlist/liked"))
-            add(CategoryItem("All Tracks", R.drawable.library_music, "library_songs"))
-            add(CategoryItem(playlistsStr, R.drawable.queue_music, "library_playlists"))
-            add(CategoryItem(downloadsStr, R.drawable.download, "auto_playlist/downloaded"))
-            add(CategoryItem(cacheStr, R.drawable.cached, "cache_playlist/cached"))
-            if (showUploads) add(CategoryItem(uploadedStr, R.drawable.upload, "auto_playlist/uploaded"))
+            add(CategoryItem(albumsStr, R.drawable.album, if (isOffline) "library_albums_offline" else "library_albums"))
+            add(CategoryItem(artistsStr, R.drawable.artist, if (isOffline) "library_artists_offline" else "library_artists"))
+            add(CategoryItem("Songs", R.drawable.music_note, if (isOffline) "library_songs_offline" else "auto_playlist/liked"))
+            add(CategoryItem("All Tracks", R.drawable.library_music, if (isOffline) "library_songs_offline" else "library_songs"))
+            add(CategoryItem(playlistsStr, R.drawable.queue_music, if (isOffline) "library_playlists_offline" else "library_playlists"))
+            if (isOffline && showCache) add(CategoryItem(cacheStr, R.drawable.cached, "cache_playlist/cached"))
+            if (isOffline && showUploads) add(CategoryItem(uploadedStr, R.drawable.upload, "auto_playlist/uploaded"))
         }
     }
 
@@ -1119,7 +1236,7 @@ private fun CategoriesContent(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(48.dp)
                     .clickable { navController.navigate(item.route) },
             ) {
                 Icon(
@@ -1128,7 +1245,7 @@ private fun CategoriesContent(
                     modifier = Modifier.size(24.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(12.dp))
                 Text(
                     text = item.label,
                     style = MaterialTheme.typography.bodyLarge,

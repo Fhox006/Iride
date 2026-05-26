@@ -2669,7 +2669,13 @@ class MusicService :
             return
         }
 
-        // Final fallback
+        // Final fallback — auto-retry once before showing error to user
+        if (mediaId != null && !hasExceededRetryLimit(mediaId)) {
+            Timber.tag(TAG).d("Unknown error (${error.errorCode}), auto-retrying $mediaId before giving up")
+            handleGenericIOError(mediaId)
+            return
+        }
+
         if (dataStore.get(AutoSkipNextOnErrorKey, false)) {
             Timber.tag(TAG).d("Auto-skipping to next track due to unrecoverable error")
             skipOnError()
@@ -2825,15 +2831,18 @@ class MusicService :
                 // Clear all caches aggressively
                 performAggressiveCacheClear(mediaId)
 
+                // Save position before any state change
+                val currentPosition = player.currentPosition
+                val currentIndex = player.currentMediaItemIndex
+
                 // Wait before retry
                 delay(RETRY_DELAY_MS)
 
-                // Force re-prepare from position 0 to avoid range issues
-                val currentIndex = player.currentMediaItemIndex
-                player.seekTo(currentIndex, 0)
+                // Seek to saved position (not 0) — preserves playback position across BT reconnects
+                player.seekTo(currentIndex, currentPosition)
                 player.prepare()
 
-                Timber.tag(TAG).d("Retrying playback for $mediaId after 416 error (from position 0)")
+                Timber.tag(TAG).d("Retrying playback for $mediaId after 416 error (from position ${currentPosition}ms)")
             }
     }
 
@@ -2922,13 +2931,18 @@ class MusicService :
         retryJob =
             scope.launch {
                 performAggressiveCacheClear(mediaId)
+
+                // Save position before stop (stop resets position to 0)
+                val currentPosition = player.currentPosition
+                val currentIndex = player.currentMediaItemIndex
+
                 delay(RETRY_DELAY_MS)
 
-                val currentIndex = player.currentMediaItemIndex
                 player.stop()
+                player.seekTo(currentIndex, currentPosition)
                 player.prepare()
 
-                Timber.tag(TAG).d("Retrying playback for $mediaId after generic IO error")
+                Timber.tag(TAG).d("Retrying playback for $mediaId after generic IO error (from position ${currentPosition}ms)")
             }
     }
 
