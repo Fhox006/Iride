@@ -11,9 +11,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -1079,37 +1076,9 @@ private fun LibraryCollapsingHeader(
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    AnimatedContent(
+                    Crossfade(
                         targetState = isLibraryFilter,
-                        transitionSpec = {
-                            if (targetState) {
-                                // TO Library: Library enters from LEFT, Offline exits RIGHT
-                                slideInHorizontally(
-                                    initialOffsetX = { -it },
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessMedium,
-                                    ),
-                                ) togetherWith slideOutHorizontally(
-                                    targetOffsetX = { it },
-                                    animationSpec = tween(durationMillis = 200),
-                                )
-                            } else {
-                                // TO Offline: Offline enters from RIGHT, Library exits LEFT
-                                slideInHorizontally(
-                                    initialOffsetX = { it },
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessMedium,
-                                    ),
-                                ) togetherWith slideOutHorizontally(
-                                    targetOffsetX = { -it },
-                                    animationSpec = tween(durationMillis = 200),
-                                )
-                            }
-                        },
-                        contentAlignment = Alignment.BottomStart,
-                        label = "libraryTitleSlide",
+                        label = "libraryTitleFade",
                     ) { isLibrary ->
                         Text(
                             text = if (isLibrary) stringResource(R.string.filter_library) else "Offline Library",
