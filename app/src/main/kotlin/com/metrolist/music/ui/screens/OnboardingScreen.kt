@@ -123,7 +123,7 @@ fun OnboardingScreen(navController: NavController) {
                     },
                     onSkip = {
                         completeOnboarding()
-                        navController.navigate(Screens.NewHome.route) {
+                        navController.navigate(Screens.Home.route) {
                             popUpTo("onboarding") { inclusive = true }
                         }
                     }

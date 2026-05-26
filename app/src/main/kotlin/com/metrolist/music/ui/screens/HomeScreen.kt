@@ -179,7 +179,7 @@ private val HomeSmallTitleBarHeightDp = 56.dp
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class,
     androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun NewHomeScreen(
+fun HomeScreen(
     navController: NavController,
     @Suppress("UNUSED_PARAMETER") snackbarHostState: SnackbarHostState,
     viewModel: HomeViewModel = hiltViewModel(),

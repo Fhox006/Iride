@@ -35,6 +35,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.horizontalScroll
@@ -47,6 +48,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -77,6 +80,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.lerp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp as lerpFloat
@@ -414,6 +418,7 @@ fun LibraryMixScreen(
                 viewType = viewType,
                 onViewTypeChange = { viewType = it },
                 pureBlack = pureBlack,
+                onDownloadsClick = { onViewChange(LibraryView.DOWNLOADS) },
             )
         },
         containerColor = Color.Transparent,
@@ -952,6 +957,7 @@ private fun LibraryCollapsingHeader(
     viewType: LibraryViewType,
     onViewTypeChange: (LibraryViewType) -> Unit,
     pureBlack: Boolean,
+    onDownloadsClick: () -> Unit,
 ) {
     val density = LocalDensity.current
     val largeTitleHeightPx = with(density) { LargeTitleHeightDp.toPx() }
@@ -989,7 +995,7 @@ private fun LibraryCollapsingHeader(
                 contentAlignment = Alignment.CenterStart
             ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
@@ -1000,11 +1006,20 @@ private fun LibraryCollapsingHeader(
                             fraction
                         )
                     )
-                    Icon(
-                        painter = painterResource(R.drawable.expand_more),
-                        contentDescription = null,
-                        modifier = Modifier.size(lerpFloat(32f, 20f, fraction).dp),
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(lerpFloat(22f, 14f, fraction).dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.expand_more),
+                            contentDescription = null,
+                            modifier = Modifier.size(lerpFloat(14f, 10f, fraction).dp),
+                            tint = Color.White,
+                        )
+                    }
                 }
             }
 

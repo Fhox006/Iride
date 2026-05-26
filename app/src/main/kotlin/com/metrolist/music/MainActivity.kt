@@ -644,7 +644,7 @@ class MainActivity : ComponentActivity() {
                 val sharedContentViewModel: SharedContentViewModel = hiltViewModel()
                 val accountImageUrl by homeViewModel.accountImageUrl.collectAsState()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("new_home") }
+                val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
 
                 val (listenTogetherInTopBar) = rememberPreference(ListenTogetherInTopBarKey, defaultValue = true)
                 val navigationItems =
@@ -673,7 +673,7 @@ class MainActivity : ComponentActivity() {
                 val topLevelScreens =
                     remember {
                         listOf(
-                            Screens.NewHome.route,
+                            Screens.Home.route,
                             Screens.Library.route,
                             Screens.ListenTogether.route,
                             "settings",
@@ -845,7 +845,7 @@ class MainActivity : ComponentActivity() {
                     shouldShowTopBar = currentRoute in topLevelScreens &&
                         currentRoute != Screens.Library.route &&
                         currentRoute != "settings" &&
-                        currentRoute != Screens.NewHome.route &&
+                        currentRoute != Screens.Home.route &&
                         !(isListenTogetherScreen && listenTogetherInTopBar)
                 }
 
@@ -1067,9 +1067,9 @@ class MainActivity : ComponentActivity() {
                                             "onboarding"
                                         } else {
                                             when (tabOpenedFromShortcut ?: defaultOpenTab) {
-                                                NavigationTab.HOME -> Screens.NewHome
+                                                NavigationTab.HOME -> Screens.Home
                                                 NavigationTab.LIBRARY -> Screens.Library
-                                                else -> Screens.NewHome
+                                                else -> Screens.Home
                                             }.route
                                         },
                                     // Enter Transition - no animation between tabs, slide for sub-screens

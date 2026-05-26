@@ -17,11 +17,11 @@ sealed class Screens(
     @DrawableRes val iconIdActive: Int,
     val route: String,
 ) {
-    object NewHome : Screens(
-        titleId = R.string.new_home,
+    object Home : Screens(
+        titleId = R.string.home,
         iconIdInactive = R.drawable.home_outlined,
         iconIdActive = R.drawable.home_filled,
-        route = "new_home"
+        route = "home"
     )
 
     object WhatNew : Screens(
@@ -60,6 +60,6 @@ sealed class Screens(
     )
 
     companion object {
-        val MainScreens = listOf(NewHome, Library, Account, Search)
+        val MainScreens = listOf(Home, Library, Account, Search)
     }
 }
