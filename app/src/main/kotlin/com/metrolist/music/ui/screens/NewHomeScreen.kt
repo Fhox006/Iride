@@ -293,7 +293,7 @@ fun NewHomeScreen(
             HomeCollapsingHeader(
             scrollBehavior = scrollBehavior,
             accountImageUrl = accountAvatarUrl,
-            onAccountClick = { navController.navigate("account") },
+            onAccountClick = { navController.navigate("settings") },
         )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),

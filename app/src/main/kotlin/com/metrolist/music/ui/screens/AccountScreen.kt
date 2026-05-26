@@ -334,7 +334,7 @@ fun AccountScreen(
     }
 
     TopAppBar(
-        title = { Text(stringResource(R.string.account)) },
+        title = { Text(stringResource(R.string.account_content)) },
         navigationIcon = {
             IconButton(
                 onClick = navController::navigateUp,
