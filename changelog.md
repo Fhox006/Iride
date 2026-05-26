@@ -1,3 +1,28 @@
+## 0.1.0-alpha06
+
+### Major changes
+
+**In-app update system**
+Added AppUpdateDialog: a native popup that appears on launch when a new version is available on GitHub. Uses Updater.kt which calls the GitHub Releases API, compares semver against the current build, detects the correct APK variant (foss/gms), and triggers download + install. The check runs every 2 hours with in-memory caching. The dialog is shown at most once per session.
+
+**Animated collapsing app bar**
+Screens now use a two-state title bar: a large title visible at the top of the list that collapses into a compact sticky header when the user scrolls down. The transition is animated. This affects the Library screen and all sub-screens (albums, artists, playlists, songs).
+
+**Favorites button rework**
+The favorite/like button across song rows, player, and detail screens has been redesigned. The toggle logic and visual state have been unified to behave consistently in every context.
+
+**Library and Offline Library redesign**
+The Library screen has a new layout: a spring-animated pill toggle to switch between Library mode and Offline mode, followed by a category row (Albums, Artists, Songs, All Tracks, Playlists) with chevron navigation. The offline mode filters all content to locally available tracks only.
+
+### Minor improvements
+- OnlinePlaylistScreen: sticky header with thumbnail, song count, play and shuffle buttons, chip filter row
+- LocalPlaylistScreen, AutoPlaylistScreen, TopPlaylistScreen: consistent header and action bar
+- AlbumScreen: chip filter row, cleaner action layout
+- ArtistScreen: simplified rendering, reduced code
+- SearchScreen: chip filter bar, consistent result layout
+- LibrarySongsScreen, LibraryAlbumsScreen, LibraryArtistsScreen: sort header and alignment fixes
+- HomeScreen: internal cleanup
+
 ## 0.1.0-alpha01
 First public alpha release of Iride. Experimental — expect bugs and breaking changes.
 
