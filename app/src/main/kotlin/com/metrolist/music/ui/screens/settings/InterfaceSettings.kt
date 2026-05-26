@@ -103,7 +103,7 @@ fun InterfaceSettings(
     val (randomizeHomeOrder, onRandomizeHomeOrderChange) =
         rememberPreference(RandomizeHomeOrderKey, defaultValue = true)
     val (hideDurationForStandard, onHideDurationForStandardChange) =
-        rememberPreference(HideDurationForStandardSongsKey, defaultValue = false)
+        rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
 
     val context = activity as Context
     val sharedPreferences = remember { context.getSharedPreferences("metrolist_settings", Context.MODE_PRIVATE) }

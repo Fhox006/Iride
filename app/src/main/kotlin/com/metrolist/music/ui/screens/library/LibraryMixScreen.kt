@@ -988,14 +988,24 @@ private fun LibraryCollapsingHeader(
                     },
                 contentAlignment = Alignment.CenterStart
             ) {
-                Text(
-                    text = stringResource(R.string.filter_library),
-                    style = lerp(
-                        MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
-                        MaterialTheme.typography.titleLarge,
-                        fraction
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.filter_library),
+                        style = lerp(
+                            MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                            MaterialTheme.typography.titleLarge,
+                            fraction
+                        )
                     )
-                )
+                    Icon(
+                        painter = painterResource(R.drawable.expand_more),
+                        contentDescription = null,
+                        modifier = Modifier.size(lerpFloat(32f, 20f, fraction).dp),
+                    )
+                }
             }
 
             // Action icons pinned to top-right, always visible
