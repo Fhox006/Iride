@@ -401,7 +401,6 @@ class PlayerConnection(
     }
 
     fun seekToNext() {
-        playSkipTick()
         try {
             // When casting, use Cast skip instead of local player
             val castHandler = service.castConnectionHandler
@@ -426,7 +425,6 @@ class PlayerConnection(
     var onRestartSong: (() -> Unit)? = null
 
     fun seekToPrevious() {
-        playSkipTick()
         try {
             // When casting, use Cast skip instead of local player
             val castHandler = service.castConnectionHandler
@@ -461,6 +459,32 @@ class PlayerConnection(
             }
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error in seekToPrevious")
+        }
+    }
+
+    fun seekToPreviousAlways() {
+        try {
+            val castHandler = service.castConnectionHandler
+            if (castHandler?.isCasting?.value == true) {
+                castHandler.skipToPrevious()
+                return
+            }
+            if (!player.hasPreviousMediaItem()) {
+                player.seekTo(0)
+                player.playWhenReady = true
+                return
+            }
+            val faded = service.skipWithFade(forward = false, onComplete = { onSkipPrevious?.invoke() })
+            if (!faded) {
+                player.seekToPreviousMediaItem()
+                if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+                    player.prepare()
+                }
+                player.playWhenReady = true
+                onSkipPrevious?.invoke()
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Error in seekToPreviousAlways")
         }
     }
 
@@ -662,17 +686,6 @@ class PlayerConnection(
             canSkipPrevious.value = false
             canSkipNext.value = false
         }
-    }
-
-    private fun playSkipTick() {
-        Thread {
-            try {
-                val tg = android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, 8) // 8/100 volume = very quiet
-                tg.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 40) // 40ms duration
-                Thread.sleep(60)
-                tg.release()
-            } catch (_: Exception) {}
-        }.start()
     }
 
     fun dispose() {

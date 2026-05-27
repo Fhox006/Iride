@@ -29,6 +29,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -171,6 +174,45 @@ fun OnlineSearchScreen(
                         if (row.size < 2) {
                             Spacer(Modifier.weight(1f))
                         }
+                    }
+                }
+            }
+
+            if (false) item(key = "genres_card") {
+                ElevatedCard(
+                    onClick = { navController.navigate("genres_screen") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(96.dp)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    ),
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Column {
+                            Text(
+                                text = "Find your genres",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            )
+                            Text(
+                                text = "Explore all music genres",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                            )
+                        }
+                        Icon(
+                            painter = painterResource(R.drawable.music_note),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.3f),
+                            modifier = Modifier
+                                .size(64.dp)
+                                .align(Alignment.CenterEnd),
+                        )
                     }
                 }
             }
@@ -672,6 +714,10 @@ fun OnlineSearchScreen(
                             .animateItem(),
                 )
             }
+        }
+
+        item(key = "pill_spacer") {
+            Spacer(modifier = Modifier.height(136.dp))
         }
     }
 }

@@ -277,7 +277,7 @@ fun Thumbnail(
         if (currentItem > currentMediaIndex && canSkipNext) {
             playerConnection.seekToNext()
         } else if (currentItem < currentMediaIndex && canSkipPrevious) {
-            playerConnection.seekToPrevious()
+            playerConnection.seekToPreviousAlways()
         }
     }
 

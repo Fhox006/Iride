@@ -9,9 +9,11 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -453,12 +455,66 @@ fun OnlineSearchResult(
                         }
                     }
                 } else {
-                    // Filtered tab: flat vertical list
-                    items(
-                        items = itemsPage?.items.orEmpty().distinctBy { it.id },
-                        key = { "filtered_${it.id}" },
-                        itemContent = ytItemContent,
-                    )
+                    val filteredItems = itemsPage?.items.orEmpty().distinctBy { it.id }
+                    val isPlaylistFilter = searchFilter == FILTER_COMMUNITY_PLAYLIST || searchFilter == FILTER_FEATURED_PLAYLIST
+
+                    if (isPlaylistFilter) {
+                        val chunked = filteredItems.chunked(2)
+                        items(
+                            items = chunked,
+                            key = { row -> "filtered_row_${row.first().id}" },
+                        ) { row ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    .animateItem(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                row.forEach { item ->
+                                    YouTubeGridItem(
+                                        item = item,
+                                        isActive = false,
+                                        isPlaying = isPlaying,
+                                        coroutineScope = coroutineScope,
+                                        thumbnailRatio = 1f,
+                                        thumbnailCornerRadius = 6.dp,
+                                        showPlayButton = false,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .combinedClickable(
+                                                onClick = {
+                                                    when (item) {
+                                                        is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
+                                                        is PodcastItem -> navController.navigate("online_podcast/${item.id}")
+                                                        else -> {}
+                                                    }
+                                                },
+                                                onLongClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    menuState.show {
+                                                        when (item) {
+                                                            is PlaylistItem -> YouTubePlaylistMenu(playlist = item, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                                                            is PodcastItem -> YouTubePlaylistMenu(playlist = item.asPlaylistItem(), coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                                                            else -> {}
+                                                        }
+                                                    }
+                                                },
+                                            ),
+                                    )
+                                }
+                                if (row.size == 1) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    } else {
+                        items(
+                            items = filteredItems,
+                            key = { "filtered_${it.id}" },
+                            itemContent = ytItemContent,
+                        )
+                    }
 
                     // Pagination shimmer
                     if (itemsPage?.continuation != null) {

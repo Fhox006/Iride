@@ -139,6 +139,7 @@ import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.RandomizeGridItem
+import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.SpeedDialGridItem
@@ -803,7 +804,12 @@ fun HomeScreen(
                                                 onClick = {
                                                     if (!isListenTogetherGuest) {
                                                         if (currentSong.id == mediaMetadata?.id) playerConnection.togglePlayPause()
-                                                        else playerConnection.playQueue(YouTubeQueue.radio(currentSong.toMediaMetadata()))
+                                                        else playerConnection.playQueue(
+                                                            YouTubeQueue(
+                                                                WatchEndpoint(videoId = currentSong.id),
+                                                                currentSong.toMediaMetadata(),
+                                                            )
+                                                        )
                                                     }
                                                 },
                                                 onLongClick = {
@@ -1080,23 +1086,46 @@ fun HomeScreen(
                         NavigationTitle(title = stringResource(R.string.from_the_community), modifier = Modifier.animateItem())
                     }
                     item(key = "community_playlists_content") {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.animateItem(),
+                        val chunked = playlists.chunked(2)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp)
+                                .animateItem(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            items(playlists) { cpItem ->
-                                CommunityPlaylistCard(
-                                    item = cpItem,
-                                    onClick = { navController.navigate("online_playlist/${cpItem.playlist.id.removePrefix("VL")}") },
-                                    onSongClick = { song ->
-                                        if (!isListenTogetherGuest) {
-                                            playerConnection.playQueue(
-                                                YouTubeQueue(song.endpoint ?: WatchEndpoint(videoId = song.id), song.toMediaMetadata())
-                                            )
-                                        }
-                                    },
-                                )
+                            chunked.forEach { rowItems ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    rowItems.forEach { cpItem ->
+                                        PlaylistGridItem(
+                                            playlist = Playlist(
+                                                playlist = PlaylistEntity(
+                                                    id = cpItem.playlist.id.removePrefix("VL"),
+                                                    name = cpItem.playlist.title,
+                                                    browseId = cpItem.playlist.id.removePrefix("VL"),
+                                                    thumbnailUrl = cpItem.playlist.thumbnail,
+                                                ),
+                                                songCount = 0,
+                                                songThumbnails = emptyList(),
+                                            ),
+                                            fillMaxWidth = true,
+                                            autoPlaylist = false,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .combinedClickable(
+                                                    onClick = {
+                                                        navController.navigate("online_playlist/${cpItem.playlist.id.removePrefix("VL")}")
+                                                    },
+                                                ),
+                                        )
+                                    }
+                                    if (rowItems.size == 1) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
+                                }
                             }
                         }
                     }

@@ -277,7 +277,6 @@ class MusicService :
     private var persistentQueueEnabled = true
     private var shufflePlaylistFirst = false
     private var rememberShuffleAndRepeat = true
-    private var preloadGhostPlayer: ExoPlayer? = null
     private var preloadJob: Job? = null
 
     private val secondaryPlayerListener =
@@ -1095,20 +1094,6 @@ class MusicService :
         _playerFlow.value = player
         return player
     }
-
-    // Minimal ExoPlayer for skip-fade ghost audio. No analytics, no equalizer,
-    // no _playerFlow update, audio focus disabled (service holds focus).
-    private fun createGhostExoPlayer(): ExoPlayer =
-        ExoPlayer.Builder(this)
-            .setMediaSourceFactory(createMediaSourceFactory())
-            .setWakeMode(C.WAKE_MODE_NETWORK)
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(C.USAGE_MEDIA)
-                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                    .build(),
-                false,
-            ).build()
 
     private fun setupAudioFocusRequest() {
         audioFocusRequest =
@@ -3922,23 +3907,31 @@ class MusicService :
         sleepTimer.notifySongTransition()
     }
 
-    // Starts buffering the next track into cache after the current track has been playing
-    // for 15 seconds. This warms the cache so skip crossfade starts with minimal latency.
+    // Pre-fetches the stream URL for the next track into songUrlCache so crossfade/skip
+    // starts with minimal latency. Does NOT create an ExoPlayer to avoid BT A2DP interference.
     private fun schedulePreload() {
         cancelPreload()
         if (!::player.isInitialized) return
         val nextIndex = player.nextMediaItemIndex
         if (nextIndex == C.INDEX_UNSET) return
         val nextItem = try { player.getMediaItemAt(nextIndex) } catch (_: Exception) { return }
+        val mediaId = nextItem.mediaId
 
         preloadJob = scope.launch {
-            delay(500L)
+            delay(3000L)
             if (!isActive) return@launch
+            if (songUrlCache[mediaId]?.second?.let { it > System.currentTimeMillis() } == true) return@launch
             try {
-                val ghost = createGhostExoPlayer()
-                ghost.setMediaItem(nextItem)
-                ghost.prepare()
-                preloadGhostPlayer = ghost
+                withContext(Dispatchers.IO) {
+                    YTPlayerUtils.playerResponseForPlayback(
+                        mediaId,
+                        audioQuality = audioQuality,
+                        connectivityManager = connectivityManager,
+                    ).getOrNull()?.let { playbackData ->
+                        songUrlCache[mediaId] = playbackData.streamUrl to
+                            System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
+                    }
+                }
             } catch (_: Exception) { }
         }
     }
@@ -3946,13 +3939,6 @@ class MusicService :
     private fun cancelPreload() {
         preloadJob?.cancel()
         preloadJob = null
-        val ghost = preloadGhostPlayer
-        preloadGhostPlayer = null
-        try {
-            ghost?.stop()
-            ghost?.clearMediaItems()
-            ghost?.release()
-        } catch (_: Exception) { }
     }
 
     companion object {

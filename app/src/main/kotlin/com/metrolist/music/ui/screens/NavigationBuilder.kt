@@ -73,6 +73,7 @@ import com.metrolist.music.ui.screens.settings.integrations.IntegrationScreen
 import com.metrolist.music.ui.screens.settings.integrations.LastFMSettings
 import com.metrolist.music.ui.screens.settings.integrations.ListenTogetherSettings
 import com.metrolist.music.ui.screens.wrapped.WrappedScreen
+import com.metrolist.music.ui.screens.GenresScreen
 import com.metrolist.music.ui.screens.IrideScreen
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -138,6 +139,7 @@ fun NavGraphBuilder.NavigationBuilder(
         IrideScreen(navController, readyToAnimate = readyToAnimate)
     }
     composable("mood_and_genres") { MoodAndGenresScreen(navController) }
+    composable("genres_screen") { GenresScreen(navController = navController) }
     composable("account") { AccountScreen(navController) }
     composable("new_release") { NewReleaseScreen(navController) }
     composable("charts_screen") { ChartsScreen(navController) }

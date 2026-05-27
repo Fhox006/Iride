@@ -1,3 +1,13 @@
+## 0.1.0-alpha07
+
+### Changes
+
+- Reworked page title handling across all screens: titles now adapt dynamically and collapse correctly on scroll
+- New filter chips on search and listing screens for faster content navigation
+- Playback optimizations: reduced latency on track start and queue transitions
+- Typography adjustments: text sizes tuned for better readability across screen sizes
+- Added Genres screen
+
 ## 0.1.0-alpha06
 
 ### Major changes
