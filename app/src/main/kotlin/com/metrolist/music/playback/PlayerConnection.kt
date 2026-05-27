@@ -246,6 +246,10 @@ class PlayerConnection(
         }
     }
 
+    fun prefetchStreamUrls(mediaIds: List<String>) {
+        try { service.prefetchStreamUrls(mediaIds) } catch (_: Exception) { }
+    }
+
     fun startRadioSeamlessly() {
         // Block if Listen Together guest
         if (shouldBlockPlaybackChanges?.invoke() == true) {

@@ -71,6 +71,7 @@ import com.metrolist.music.constants.PlaylistSortTypeKey
 import com.metrolist.music.constants.PlaylistViewTypeKey
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.db.entities.Playlist
+import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.ui.component.CreatePlaylistDialog
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
@@ -125,6 +126,18 @@ fun LibraryPlaylistsScreen(
 
     val playlists by viewModel.allPlaylists.collectAsState()
     val downloadedPlaylistIds by viewModel.downloadedPlaylistIds.collectAsState()
+
+    val likedName = stringResource(R.string.liked)
+    val likedPlaylistPinned = remember(likedName) {
+        Playlist(
+            playlist = PlaylistEntity(
+                id = PlaylistEntity.LIKED_PLAYLIST_ID,
+                name = likedName,
+            ),
+            songCount = 0,
+            songThumbnails = emptyList(),
+        )
+    }
 
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -295,6 +308,17 @@ fun LibraryPlaylistsScreen(
                         headerContent()
                     }
 
+                    item(key = "liked_pinned", contentType = CONTENT_TYPE_PLAYLIST) {
+                        PlaylistListItem(
+                            playlist = likedPlaylistPinned,
+                            autoPlaylist = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { navController.navigate("auto_playlist/liked") }
+                                .animateItem(),
+                        )
+                    }
+
                     if (visibleResults.isEmpty()) {
                         item(key = "empty_placeholder") {
                             if (searchQuery.isNotBlank()) {
@@ -372,6 +396,20 @@ fun LibraryPlaylistsScreen(
                         contentType = CONTENT_TYPE_HEADER,
                     ) {
                         headerContent()
+                    }
+
+                    item(key = "liked_pinned", contentType = { CONTENT_TYPE_PLAYLIST }) {
+                        PlaylistGridItem(
+                            playlist = likedPlaylistPinned,
+                            fillMaxWidth = true,
+                            autoPlaylist = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .combinedClickable(
+                                    onClick = { navController.navigate("auto_playlist/liked") },
+                                )
+                                .animateItem(),
+                        )
                     }
 
                     if (visibleResults.isEmpty()) {

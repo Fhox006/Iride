@@ -10,6 +10,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -83,9 +84,8 @@ import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.lerp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+
 import androidx.compose.ui.util.lerp as lerpFloat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -98,6 +98,7 @@ import com.metrolist.music.constants.CONTENT_TYPE_PLAYLIST
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
+import com.metrolist.music.constants.LibraryView
 import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.constants.MixSortDescendingKey
 import com.metrolist.music.constants.MixSortType
@@ -107,7 +108,6 @@ import com.metrolist.music.constants.MixViewTypeKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
-import com.metrolist.music.constants.ShowLikedPlaylistKey
 import com.metrolist.music.constants.ShowUploadedPlaylistKey
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.db.entities.Album
@@ -193,16 +193,20 @@ fun LibraryMixScreen(
     }
 
     val topSize by viewModel.topValue.collectAsState(initial = 50)
-    val likedPlaylist =
+    val lastLikedDate by viewModel.lastLikedDate.collectAsState()
+    val likedPlaylistName = stringResource(R.string.liked)
+    val likedPlaylist = remember(lastLikedDate, likedPlaylistName) {
         Playlist(
-            playlist =
-                PlaylistEntity(
-                    id = UUID.randomUUID().toString(),
-                    name = stringResource(R.string.liked),
-                ),
+            playlist = PlaylistEntity(
+                id = PlaylistEntity.LIKED_PLAYLIST_ID,
+                name = likedPlaylistName,
+                createdAt = lastLikedDate,
+                lastUpdateTime = lastLikedDate,
+            ),
             songCount = 0,
             songThumbnails = emptyList(),
         )
+    }
 
     val downloadPlaylist =
         Playlist(
@@ -248,12 +252,10 @@ fun LibraryMixScreen(
             songThumbnails = emptyList(),
         )
 
-    val (showLiked) = rememberPreference(ShowLikedPlaylistKey, false)
     val (showDownloaded) = rememberPreference(ShowDownloadedPlaylistKey, false)
     val (showCached) = rememberPreference(ShowCachedPlaylistKey, false)
     val (showUploaded) = rememberPreference(ShowUploadedPlaylistKey, false)
 
-    val showLikedPlaylist = showLiked && matchesNormalizedQuery(normalizedQuery, likedPlaylist.playlist.name)
     val showDownloadedPlaylist =
         showDownloaded && matchesNormalizedQuery(normalizedQuery, downloadPlaylist.playlist.name)
     val showTopPlaylists = false
@@ -277,7 +279,8 @@ fun LibraryMixScreen(
     var allItems = if (!isLibraryFilter) {
         downloadedAlbums
     } else {
-        val base = albums.value + artist.value + playlist.value
+        val likedEntry = if (lastLikedDate != null) listOf(likedPlaylist) else emptyList()
+        val base = albums.value + artist.value + playlist.value + likedEntry
         when (sortType) {
             MixSortType.CREATE_DATE -> {
                 base.sortedBy { item ->
@@ -403,6 +406,8 @@ fun LibraryMixScreen(
     }
 
     LaunchedEffect(Unit) {
+        // Always reset to Library mode on fresh launch (do not persist Downloads selection)
+        setLibraryFilter(true)
         if (ytmSync) {
             withContext(Dispatchers.IO) {
                 viewModel.syncAllLibrary()
@@ -411,8 +416,16 @@ fun LibraryMixScreen(
     }
 
     val contentAlpha = remember { Animatable(1f) }
+    var isFirstComposition by remember { mutableStateOf(true) }
+    var displayedFilter by remember { mutableStateOf(isLibraryFilter) }
     LaunchedEffect(isLibraryFilter) {
+        if (isFirstComposition) {
+            isFirstComposition = false
+            displayedFilter = isLibraryFilter
+            return@LaunchedEffect
+        }
         contentAlpha.animateTo(0f, animationSpec = tween(100))
+        displayedFilter = isLibraryFilter
         contentAlpha.animateTo(1f, animationSpec = tween(150))
     }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
@@ -463,14 +476,14 @@ fun LibraryMixScreen(
                                         navController = navController,
                                         showUploads = uploadedSongs.isNotEmpty(),
                                         showCache = showCached,
-                                        isOffline = !isLibraryFilter,
+                                        isOffline = !displayedFilter,
                                     )
                                 }
 
                                 if (normalizedQuery.isBlank()) {
                                     item(key = "recently_added_label", contentType = CONTENT_TYPE_HEADER) {
                                         Text(
-                                            text = if (isLibraryFilter) "Recently Added" else "Recently Downloaded",
+                                            text = if (displayedFilter) "Recently Added" else "Recently Downloaded",
                                             style = MaterialTheme.typography.headlineMedium,
                                             modifier = Modifier.padding(vertical = 12.dp),
                                         )
@@ -511,19 +524,6 @@ fun LibraryMixScreen(
                                                     )
                                                 }
                                             },
-                                        )
-                                    }
-                                }
-
-                                if (showLikedPlaylist) {
-                                    item(key = "likedPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
-                                        PlaylistListItem(
-                                            playlist = likedPlaylist,
-                                            autoPlaylist = true,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable { navController.navigate("auto_playlist/liked") }
-                                                .animateItem(),
                                         )
                                     }
                                 }
@@ -587,15 +587,26 @@ fun LibraryMixScreen(
                                 ) { item ->
                                     when (item) {
                                         is Playlist -> {
-                                            LibraryPlaylistListItem(
-                                                navController = navController,
-                                                menuState = menuState,
-                                                coroutineScope = coroutineScope,
-                                                playlist = item,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .animateItem(),
-                                            )
+                                            if (item.id == PlaylistEntity.LIKED_PLAYLIST_ID) {
+                                                PlaylistListItem(
+                                                    playlist = item,
+                                                    autoPlaylist = true,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clickable { navController.navigate("auto_playlist/liked") }
+                                                        .animateItem(),
+                                                )
+                                            } else {
+                                                LibraryPlaylistListItem(
+                                                    navController = navController,
+                                                    menuState = menuState,
+                                                    coroutineScope = coroutineScope,
+                                                    playlist = item,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .animateItem(),
+                                                )
+                                            }
                                         }
 
                                         is Song -> {
@@ -679,7 +690,7 @@ fun LibraryMixScreen(
                                         navController = navController,
                                         showUploads = uploadedSongs.isNotEmpty(),
                                         showCache = showCached,
-                                        isOffline = !isLibraryFilter,
+                                        isOffline = !displayedFilter,
                                     )
                                 }
 
@@ -690,7 +701,7 @@ fun LibraryMixScreen(
                                         contentType = CONTENT_TYPE_HEADER,
                                     ) {
                                         Text(
-                                            text = if (isLibraryFilter) "Recently Added" else "Recently Downloaded",
+                                            text = if (displayedFilter) "Recently Added" else "Recently Downloaded",
                                             style = MaterialTheme.typography.headlineMedium,
                                             modifier = Modifier.padding(vertical = 12.dp),
                                         )
@@ -735,27 +746,6 @@ fun LibraryMixScreen(
                                                     )
                                                 }
                                             },
-                                        )
-                                    }
-                                }
-
-                                if (showLikedPlaylist) {
-                                    item(
-                                        key = "likedPlaylist",
-                                        contentType = { CONTENT_TYPE_PLAYLIST },
-                                    ) {
-                                        PlaylistGridItem(
-                                            playlist = likedPlaylist,
-                                            fillMaxWidth = true,
-                                            autoPlaylist = true,
-                                            modifier =
-                                                Modifier
-                                                    .fillMaxWidth()
-                                                    .combinedClickable(
-                                                        onClick = {
-                                                            navController.navigate("auto_playlist/liked")
-                                                        },
-                                                    ).animateItem(),
                                         )
                                     }
                                 }
@@ -854,12 +844,15 @@ fun LibraryMixScreen(
                                             PlaylistGridItem(
                                                 playlist = item,
                                                 fillMaxWidth = true,
+                                                autoPlaylist = item.id == PlaylistEntity.LIKED_PLAYLIST_ID,
                                                 modifier =
                                                     Modifier
                                                         .fillMaxWidth()
                                                         .combinedClickable(
                                                             onClick = {
-                                                                if (!item.playlist.isEditable && item.songCount == 0 &&
+                                                                if (item.id == PlaylistEntity.LIKED_PLAYLIST_ID) {
+                                                                    navController.navigate("auto_playlist/liked")
+                                                                } else if (!item.playlist.isEditable && item.songCount == 0 &&
                                                                     item.playlist.browseId != null
                                                                 ) {
                                                                     navController.navigate("online_playlist/${item.playlist.browseId}")
@@ -868,13 +861,15 @@ fun LibraryMixScreen(
                                                                 }
                                                             },
                                                             onLongClick = {
-                                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                                menuState.show {
-                                                                    PlaylistMenu(
-                                                                        playlist = item,
-                                                                        coroutineScope = coroutineScope,
-                                                                        onDismiss = menuState::dismiss,
-                                                                    )
+                                                                if (item.id != PlaylistEntity.LIKED_PLAYLIST_ID) {
+                                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                                    menuState.show {
+                                                                        PlaylistMenu(
+                                                                            playlist = item,
+                                                                            coroutineScope = coroutineScope,
+                                                                            onDismiss = menuState::dismiss,
+                                                                        )
+                                                                    }
                                                                 }
                                                             },
                                                         ).animateItem(),
@@ -983,7 +978,6 @@ fun LibraryMixScreen(
 
                                 if (
                                     filteredItems.isEmpty() &&
-                                    !showLikedPlaylist &&
                                     !showDownloadedPlaylist &&
                                     !showCachedPlaylists &&
                                     !showTopPlaylists &&
@@ -1076,19 +1070,23 @@ private fun LibraryCollapsingHeader(
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Crossfade(
-                        targetState = isLibraryFilter,
-                        label = "libraryTitleFade",
-                    ) { isLibrary ->
-                        Text(
-                            text = if (isLibrary) stringResource(R.string.filter_library) else "Offline Library",
-                            style = lerp(
-                                MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
-                                MaterialTheme.typography.titleLarge,
-                                fraction
-                            )
-                        )
-                    }
+                    val largeStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold)
+                    val titleText = if (isLibraryFilter) stringResource(R.string.filter_library) else "Offline Library"
+
+                    Text(
+                        text = titleText,
+                        style = largeStyle,
+                        maxLines = 1,
+                        modifier = Modifier
+                            .graphicsLayer {
+                                val targetScale = 0.61f
+                                val scale = lerpFloat(1f, targetScale, fraction)
+                                scaleX = scale
+                                scaleY = scale
+                                transformOrigin = TransformOrigin(0f, 0.5f)
+                                alpha = lerpFloat(1f, 0.95f, fraction)
+                            }
+                    )
 
                     Box(
                         modifier = Modifier
@@ -1189,11 +1187,10 @@ private fun CategoriesContent(
 
     val items = remember(isOffline, showUploads, showCache, albumsStr, artistsStr, playlistsStr, cacheStr, uploadedStr) {
         buildList {
+            add(CategoryItem(playlistsStr, R.drawable.queue_music, if (isOffline) "library_playlists_offline" else "library_playlists"))
             add(CategoryItem(albumsStr, R.drawable.album, if (isOffline) "library_albums_offline" else "library_albums"))
             add(CategoryItem(artistsStr, R.drawable.artist, if (isOffline) "library_artists_offline" else "library_artists"))
-            add(CategoryItem("Songs", R.drawable.music_note, if (isOffline) "library_songs_offline" else "auto_playlist/liked"))
             add(CategoryItem("All Tracks", R.drawable.library_music, if (isOffline) "library_songs_offline" else "library_songs"))
-            add(CategoryItem(playlistsStr, R.drawable.queue_music, if (isOffline) "library_playlists_offline" else "library_playlists"))
             if (isOffline && showCache) add(CategoryItem(cacheStr, R.drawable.cached, "cache_playlist/cached"))
             if (isOffline && showUploads) add(CategoryItem(uploadedStr, R.drawable.upload, "auto_playlist/uploaded"))
         }

@@ -88,9 +88,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.lerp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
 import androidx.compose.ui.util.lerp as lerpFloat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -164,6 +164,7 @@ import kotlin.math.min
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.platform.LocalContext
 import coil3.request.ImageRequest
 import com.metrolist.innertube.YouTube
@@ -763,6 +764,9 @@ fun HomeScreen(
                     val filteredQp = qp.distinctBy { it.id }.filter { it.id !in speedDialSongIds }
                     if (filteredQp.isNotEmpty()) {
                         item(key = "quick_picks_title") {
+                            LaunchedEffect(filteredQp) {
+                                playerConnection.prefetchStreamUrls(filteredQp.take(6).map { it.id })
+                            }
                             val title = stringResource(R.string.quick_picks)
                             NavigationTitle(
                                 title = title,
@@ -1301,13 +1305,19 @@ private fun HomeCollapsingHeader(
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
+                    val homeStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold)
+
                     Text(
                         text = stringResource(R.string.home),
-                        style = lerp(
-                            MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
-                            MaterialTheme.typography.titleLarge,
-                            fraction,
-                        ),
+                        style = homeStyle,
+                        maxLines = 1,
+                        modifier = Modifier.graphicsLayer {
+                            val targetScale = 0.61f
+                            val scale = lerpFloat(1f, targetScale, fraction)
+                            scaleX = scale
+                            scaleY = scale
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
+                        },
                     )
                     Box(
                         modifier = Modifier

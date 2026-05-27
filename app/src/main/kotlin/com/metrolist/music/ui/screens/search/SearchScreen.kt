@@ -64,6 +64,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
@@ -75,7 +76,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.lerp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -323,13 +323,20 @@ private fun SearchCollapsingHeader(
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
+                    val searchStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold)
+
                     Text(
                         text = stringResource(R.string.search),
-                        style = lerp(
-                            MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
-                            MaterialTheme.typography.titleLarge,
-                            fraction
-                        )
+                        style = searchStyle,
+                        maxLines = 1,
+                        modifier = Modifier.graphicsLayer {
+                            val targetScale = 0.61f
+                            val scale = lerpFloat(1f, targetScale, fraction)
+                            scaleX = scale
+                            scaleY = scale
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
+                            },
+
                     )
                     Box(
                         modifier = Modifier

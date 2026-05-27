@@ -533,6 +533,7 @@ class MusicService :
             },
         )
         player = createExoPlayer()
+        _playerFlow.value = player
         player.addListener(this@MusicService)
         sleepTimer =
             SleepTimer(scope, player) { multiplier ->
@@ -1091,7 +1092,6 @@ class MusicService :
 
             // Cleanup handled manually in onDestroy/release
         }
-        _playerFlow.value = player
         return player
     }
 
@@ -3898,9 +3898,11 @@ class MusicService :
     }
 
     private fun cleanupCrossfade() {
-        fadingPlayer?.stop()
-        fadingPlayer?.clearMediaItems()
-        fadingPlayer?.release()
+        val dying = fadingPlayer
+        dying?.stop()
+        dying?.clearMediaItems()
+        dying?.release()
+        dying?.let { playerSilenceProcessors.remove(it) }
         fadingPlayer = null
         isCrossfading = false
         applyEffectiveVolume()
@@ -3939,6 +3941,24 @@ class MusicService :
     private fun cancelPreload() {
         preloadJob?.cancel()
         preloadJob = null
+    }
+
+    fun prefetchStreamUrls(mediaIds: List<String>) {
+        mediaIds.forEach { mediaId ->
+            if (songUrlCache[mediaId]?.second?.let { it > System.currentTimeMillis() } == true) return@forEach
+            scope.launch(Dispatchers.IO) {
+                try {
+                    YTPlayerUtils.playerResponseForPlayback(
+                        mediaId,
+                        audioQuality = audioQuality,
+                        connectivityManager = connectivityManager,
+                    ).getOrNull()?.let { playbackData ->
+                        songUrlCache[mediaId] = playbackData.streamUrl to
+                            System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
+                    }
+                } catch (_: Exception) { }
+            }
+        }
     }
 
     companion object {

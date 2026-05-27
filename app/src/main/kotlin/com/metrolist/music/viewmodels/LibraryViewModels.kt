@@ -16,8 +16,6 @@ import androidx.lifecycle.viewModelScope
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.utils.completed
-import com.metrolist.music.constants.AlbumFilter
-import com.metrolist.music.constants.AlbumFilterKey
 import com.metrolist.music.constants.AlbumSortDescendingKey
 import com.metrolist.music.constants.AlbumSortType
 import com.metrolist.music.constants.AlbumSortTypeKey
@@ -33,6 +31,7 @@ import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.LibraryFilter
+import com.metrolist.music.constants.LibraryView
 import com.metrolist.music.constants.PlaylistSortDescendingKey
 import com.metrolist.music.constants.PlaylistSortType
 import com.metrolist.music.constants.PlaylistSortTypeKey
@@ -233,22 +232,14 @@ constructor(
     val allAlbums =
         context.dataStore.data
             .map {
-                Pair(
-                    Triple(
-                        it[AlbumFilterKey].toEnum(AlbumFilter.LIKED),
-                        it[AlbumSortTypeKey].toEnum(AlbumSortType.CREATE_DATE),
-                        it[AlbumSortDescendingKey] ?: true,
-                    ),
-                    it[HideExplicitKey] ?: false
+                Triple(
+                    it[AlbumSortTypeKey].toEnum(AlbumSortType.CREATE_DATE),
+                    it[AlbumSortDescendingKey] ?: true,
+                    it[HideExplicitKey] ?: false,
                 )
             }.distinctUntilChanged()
-            .flatMapLatest { (filterSort, hideExplicit) ->
-                val (filter, sortType, descending) = filterSort
-                when (filter) {
-                    AlbumFilter.LIKED -> database.albumsLiked(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
-                    AlbumFilter.LIBRARY -> database.albums(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
-                    AlbumFilter.UPLOADED -> database.albumsUploaded(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
-                }
+            .flatMapLatest { (sortType, descending, hideExplicit) ->
+                database.albums(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val downloadedAlbums = database.albumsDownloadedByDateDesc()
@@ -437,6 +428,9 @@ constructor(
         .flatMapLatest { hideYoutubeShorts ->
             database.playlists(PlaylistSortType.CREATE_DATE, true).map { it.filterYoutubeShorts(hideYoutubeShorts) }
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val lastLikedDate = database.lastLikedSongDate()
+        .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -640,4 +634,6 @@ class LibraryViewModel
 constructor() : ViewModel() {
     private val curScreen = mutableStateOf(LibraryFilter.LIBRARY)
     val filter: MutableState<LibraryFilter> = curScreen
+
+    val currentView: MutableState<LibraryView> = mutableStateOf(LibraryView.LIBRARY)
 }

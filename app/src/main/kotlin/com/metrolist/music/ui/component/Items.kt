@@ -853,19 +853,21 @@ fun PlaylistListItem(
             thumbnails = playlist.thumbnails,
             size = ListThumbnailSize,
             placeHolder = {
+                val likedName = stringResource(R.string.liked)
                 val painter = when (playlist.playlist.name) {
-                    stringResource(R.string.liked) -> R.drawable.favorite_border
+                    likedName -> R.drawable.star
                     stringResource(R.string.offline) -> R.drawable.offline
                     stringResource(R.string.cached_playlist) -> R.drawable.cached
                     // R.drawable.backup as placeholder
                     stringResource(R.string.uploaded_playlist) -> R.drawable.backup
                     else -> if (autoPlaylist) R.drawable.trending_up else R.drawable.queue_music
                 }
+                val iconSize = if (playlist.playlist.name == likedName) ListThumbnailSize * 0.65f else ListThumbnailSize / 2
                 Icon(
                     painter = painterResource(painter),
                     contentDescription = null,
                     tint = LocalContentColor.current.copy(alpha = 0.8f),
-                    modifier = Modifier.size(ListThumbnailSize / 2)
+                    modifier = Modifier.size(iconSize)
                 )
             },
             shape = SquircleShape(radius = 2.dp, cornerSmoothing = 0.48f)
@@ -954,14 +956,16 @@ fun PlaylistGridItem(
             thumbnails = playlist.thumbnails,
             size = width,
             placeHolder = {
+                val likedName = stringResource(R.string.liked)
                 val painter = when (playlist.playlist.name) {
-                    stringResource(R.string.liked) -> R.drawable.favorite_border
+                    likedName -> R.drawable.star
                     stringResource(R.string.offline) -> R.drawable.offline
                     stringResource(R.string.cached_playlist) -> R.drawable.cached
                     // R.drawable.backup as placeholder
                     stringResource(R.string.uploaded_playlist) -> R.drawable.backup
                     else -> if (autoPlaylist) R.drawable.trending_up else R.drawable.queue_music
                 }
+                val iconSize = if (playlist.playlist.name == likedName) width * 0.65f else width / 2
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.fillMaxSize()
@@ -970,7 +974,7 @@ fun PlaylistGridItem(
                         painter = painterResource(painter),
                         contentDescription = null,
                         tint = LocalContentColor.current.copy(alpha = 0.8f),
-                        modifier = Modifier.size(width / 2)
+                        modifier = Modifier.size(iconSize)
                     )
                 }
             },

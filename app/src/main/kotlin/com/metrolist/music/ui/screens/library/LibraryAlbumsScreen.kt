@@ -8,14 +8,11 @@ package com.metrolist.music.ui.screens.library
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -24,14 +21,15 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -43,13 +41,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -57,8 +57,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
-import com.metrolist.music.constants.AlbumFilter
-import com.metrolist.music.constants.AlbumFilterKey
 import com.metrolist.music.constants.AlbumSortDescendingKey
 import com.metrolist.music.constants.AlbumSortType
 import com.metrolist.music.constants.AlbumSortTypeKey
@@ -73,15 +71,13 @@ import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
-import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.EmptyPlaceholder
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
-import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LibraryAlbumGridItem
 import com.metrolist.music.ui.component.LibraryAlbumListItem
+import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.SortHeader
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LibraryAlbumsViewModel
@@ -96,7 +92,6 @@ fun LibraryAlbumsScreen(
     viewModel: LibraryAlbumsViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -104,12 +99,8 @@ fun LibraryAlbumsScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
     var viewType by rememberEnumPreference(AlbumViewTypeKey, LibraryViewType.GRID)
-    var filter by rememberEnumPreference(AlbumFilterKey, AlbumFilter.LIKED)
     val (sortType, onSortTypeChange) =
-        rememberEnumPreference(
-            AlbumSortTypeKey,
-            AlbumSortType.CREATE_DATE,
-        )
+        rememberEnumPreference(AlbumSortTypeKey, AlbumSortType.CREATE_DATE)
     val (sortDescending, onSortDescendingChange) = rememberPreference(AlbumSortDescendingKey, true)
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
 
@@ -118,9 +109,7 @@ fun LibraryAlbumsScreen(
 
     LaunchedEffect(Unit) {
         if (ytmSync) {
-            withContext(Dispatchers.IO) {
-                viewModel.sync()
-            }
+            withContext(Dispatchers.IO) { viewModel.sync() }
         }
     }
 
@@ -129,13 +118,33 @@ fun LibraryAlbumsScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForSearch() }
 
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(isSearchActive) {
+        if (isSearchActive) {
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
     val filteredAlbums = remember(albums, hideExplicit, normalizedQuery) {
-        val visibleAlbums = if (hideExplicit) albums.filter { !it.album.explicit } else albums
-        visibleAlbums.filter { album ->
+        val visible = if (hideExplicit) albums.filter { !it.album.explicit } else albums
+        visible.filter { album ->
             val artistNames = album.artists.map { it.name }.toTypedArray()
             matchesNormalizedQuery(normalizedQuery, album.album.title, *artistNames)
         }.distinctBy { it.id }
     }
+
+    val sortOptions = listOf(
+        AlbumSortType.CREATE_DATE to stringResource(R.string.sort_by_create_date),
+        AlbumSortType.NAME       to stringResource(R.string.sort_by_name),
+        AlbumSortType.ARTIST     to stringResource(R.string.sort_by_artist),
+        AlbumSortType.YEAR       to stringResource(R.string.sort_by_year),
+        AlbumSortType.SONG_COUNT to stringResource(R.string.sort_by_song_count),
+        AlbumSortType.LENGTH     to stringResource(R.string.sort_by_length),
+        AlbumSortType.PLAY_TIME  to stringResource(R.string.sort_by_play_time),
+    )
+
+    val itemCountText = pluralStringResource(R.plurals.n_album, filteredAlbums.size, filteredAlbums.size)
 
     val lazyListState = rememberLazyListState()
     val lazyGridState = rememberLazyGridState()
@@ -153,242 +162,131 @@ fun LibraryAlbumsScreen(
         }
     }
 
-    val headerContent = @Composable {
-        LibrarySearchHeader(
-            isSearchActive = isSearchActive,
-            searchQuery = searchQuery,
-            onSearchQueryChange = viewModel::updateSearchQuery,
-            onBack = {
-                isSearchActive = false
-                viewModel.updateSearchQuery("")
-            },
-            keyboardController = keyboardController,
-            modifier = Modifier,
-        ) {
-            SortHeader(
-                sortType = sortType,
-                sortDescending = sortDescending,
-                onSortTypeChange = onSortTypeChange,
-                onSortDescendingChange = onSortDescendingChange,
-                sortTypeText = { sortType ->
-                    when (sortType) {
-                        AlbumSortType.CREATE_DATE -> R.string.sort_by_create_date
-                        AlbumSortType.NAME -> R.string.sort_by_name
-                        AlbumSortType.ARTIST -> R.string.sort_by_artist
-                        AlbumSortType.YEAR -> R.string.sort_by_year
-                        AlbumSortType.SONG_COUNT -> R.string.sort_by_song_count
-                        AlbumSortType.LENGTH -> R.string.sort_by_length
-                        AlbumSortType.PLAY_TIME -> R.string.sort_by_play_time
-                    }
-                },
-            )
-
-            Spacer(Modifier.weight(1f))
-
-            Text(
-                text = pluralStringResource(R.plurals.n_album, filteredAlbums.size, filteredAlbums.size),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.secondary,
-            )
-
-            IconButton(
-                onClick = { isSearchActive = true },
-                modifier = Modifier.padding(start = 8.dp).size(40.dp),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.search),
-                    contentDescription = stringResource(R.string.search),
-                )
-            }
-
-            IconButton(
-                onClick = {
-                    viewType = viewType.toggle()
-                },
-                modifier = Modifier.padding(end = 8.dp).size(40.dp),
-            ) {
-                Icon(
-                    painter = painterResource(
-                        when (viewType) {
-                            LibraryViewType.LIST -> R.drawable.list
-                            LibraryViewType.GRID -> R.drawable.grid_view
-                            LibraryViewType.GRID_WIDE -> R.drawable.grid_view_3
-                        },
-                    ),
-                    contentDescription = stringResource(
-                        when (viewType) {
-                            LibraryViewType.LIST -> R.string.switch_to_grid_view
-                            LibraryViewType.GRID -> R.string.switch_to_wide_grid_view
-                            LibraryViewType.GRID_WIDE -> R.string.switch_to_list_view
-                        },
-                    ),
-                )
-            }
-        }
-    }
-
     val insets = LocalPlayerAwareWindowInsets.current.asPaddingValues()
 
-    Box(
-        modifier = Modifier.fillMaxSize(),
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
-        when (viewType) {
-            LibraryViewType.LIST -> {
-                LazyColumn(
-                    state = lazyListState,
-                    contentPadding = PaddingValues(
-                        start = 12.dp,
-                        end = 12.dp,
-                        top = insets.calculateTopPadding(),
-                        bottom = insets.calculateBottomPadding(),
-                    ),
-                ) {
-                    if (!isOffline) {
-                        item(
-                            key = "filter",
-                            contentType = CONTENT_TYPE_HEADER,
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier,
-                            ) {
-                                ChipsRow(
-                                    chips = listOf(
-                                        AlbumFilter.LIKED to stringResource(R.string.filter_liked),
-                                        AlbumFilter.LIBRARY to stringResource(R.string.filter_library),
-                                        AlbumFilter.UPLOADED to stringResource(R.string.filter_uploaded),
-                                    ),
-                                    currentValue = filter,
-                                    onValueUpdate = { filter = it },
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                        }
-                    }
-
-                    item(
-                        key = "header",
-                        contentType = CONTENT_TYPE_HEADER,
+            when (viewType) {
+                LibraryViewType.LIST -> {
+                    LazyColumn(
+                        state = lazyListState,
+                        contentPadding = PaddingValues(
+                            start = 12.dp,
+                            end = 12.dp,
+                            top = insets.calculateTopPadding(),
+                            bottom = insets.calculateBottomPadding(),
+                        ),
                     ) {
-                        headerContent()
-                    }
+                        item(key = "sort", contentType = CONTENT_TYPE_HEADER) {
+                            LibrarySortRow(
+                                sortOptions = sortOptions,
+                                currentSort = sortType,
+                                onSortChange = onSortTypeChange,
+                                sortDescending = sortDescending,
+                                onSortDescendingChange = onSortDescendingChange,
+                                viewType = viewType,
+                                onViewTypeChange = { viewType = it },
+                                itemCountText = itemCountText,
+                            )
+                        }
 
-                    filteredAlbums.let { albums ->
-                        if (albums.isEmpty()) {
-                            item(key = "empty_placeholder") {
-                                if (searchQuery.isNotBlank()) {
-                                    LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
-                                } else {
-                                    EmptyPlaceholder(
-                                        icon = R.drawable.album,
-                                        text = stringResource(R.string.library_album_empty),
-                                        modifier = Modifier.animateItem(),
-                                    )
+                        filteredAlbums.let { albums ->
+                            if (albums.isEmpty()) {
+                                item(key = "empty_placeholder") {
+                                    if (searchQuery.isNotBlank()) {
+                                        LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
+                                    } else {
+                                        EmptyPlaceholder(
+                                            icon = R.drawable.album,
+                                            text = stringResource(R.string.library_album_empty),
+                                            modifier = Modifier.animateItem(),
+                                        )
+                                    }
                                 }
                             }
-                        }
-                        items(
-                            items = albums,
-                            key = { it.id },
-                            contentType = { CONTENT_TYPE_ALBUM },
-                        ) { album ->
-                            LibraryAlbumListItem(
-                                navController = navController,
-                                menuState = menuState,
-                                album = album,
-                                isActive = album.id == mediaMetadata?.album?.id,
-                                isPlaying = isPlaying,
-                                modifier =
-                                    Modifier
-                                        .animateItem(),
-                            )
+                            items(
+                                items = albums,
+                                key = { it.id },
+                                contentType = { CONTENT_TYPE_ALBUM },
+                            ) { album ->
+                                LibraryAlbumListItem(
+                                    navController = navController,
+                                    menuState = menuState,
+                                    album = album,
+                                    isActive = album.id == mediaMetadata?.album?.id,
+                                    isPlaying = isPlaying,
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            LibraryViewType.GRID, LibraryViewType.GRID_WIDE -> {
-                LazyVerticalGrid(
-                    state = lazyGridState,
-                    columns = if (viewType == LibraryViewType.GRID_WIDE) {
-                        GridCells.Fixed(3)
-                    } else {
-                        GridCells.Adaptive(
-                            minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
-                        )
-                    },
-                    contentPadding = PaddingValues(
-                        start = 12.dp,
-                        end = 12.dp,
-                        top = insets.calculateTopPadding(),
-                        bottom = insets.calculateBottomPadding(),
-                    ),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    if (!isOffline) {
+                LibraryViewType.GRID, LibraryViewType.GRID_WIDE -> {
+                    LazyVerticalGrid(
+                        state = lazyGridState,
+                        columns = if (viewType == LibraryViewType.GRID_WIDE) {
+                            GridCells.Fixed(3)
+                        } else {
+                            GridCells.Adaptive(
+                                minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
+                            )
+                        },
+                        contentPadding = PaddingValues(
+                            start = 12.dp,
+                            end = 12.dp,
+                            top = insets.calculateTopPadding(),
+                            bottom = insets.calculateBottomPadding(),
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
                         item(
-                            key = "filter",
+                            key = "sort",
                             span = { GridItemSpan(maxLineSpan) },
                             contentType = CONTENT_TYPE_HEADER,
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier,
-                            ) {
-                                ChipsRow(
-                                    chips = listOf(
-                                        AlbumFilter.LIKED to stringResource(R.string.filter_liked),
-                                        AlbumFilter.LIBRARY to stringResource(R.string.filter_library),
-                                        AlbumFilter.UPLOADED to stringResource(R.string.filter_uploaded),
-                                    ),
-                                    currentValue = filter,
-                                    onValueUpdate = { filter = it },
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
+                            LibrarySortRow(
+                                sortOptions = sortOptions,
+                                currentSort = sortType,
+                                onSortChange = onSortTypeChange,
+                                sortDescending = sortDescending,
+                                onSortDescendingChange = onSortDescendingChange,
+                                viewType = viewType,
+                                onViewTypeChange = { viewType = it },
+                                itemCountText = itemCountText,
+                            )
                         }
-                    }
 
-                    item(
-                        key = "header",
-                        span = { GridItemSpan(maxLineSpan) },
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        headerContent()
-                    }
-
-                    filteredAlbums.let { albums ->
-                        if (albums.isEmpty()) {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                if (searchQuery.isNotBlank()) {
-                                    LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
-                                } else {
-                                    EmptyPlaceholder(
-                                        icon = R.drawable.album,
-                                        text = stringResource(R.string.library_album_empty),
-                                        modifier = Modifier.animateItem(),
-                                    )
+                        filteredAlbums.let { albums ->
+                            if (albums.isEmpty()) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    if (searchQuery.isNotBlank()) {
+                                        LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
+                                    } else {
+                                        EmptyPlaceholder(
+                                            icon = R.drawable.album,
+                                            text = stringResource(R.string.library_album_empty),
+                                            modifier = Modifier.animateItem(),
+                                        )
+                                    }
                                 }
                             }
-                        }
-                        items(
-                            items = albums,
-                            key = { it.id },
-                            contentType = { CONTENT_TYPE_ALBUM },
-                        ) { album ->
-                            LibraryAlbumGridItem(
-                                navController = navController,
-                                menuState = menuState,
-                                coroutineScope = coroutineScope,
-                                album = album,
-                                isActive = album.id == mediaMetadata?.album?.id,
-                                isPlaying = isPlaying,
-                                modifier =
-                                    Modifier
-                                        .animateItem(),
-                            )
+                            items(
+                                items = albums,
+                                key = { it.id },
+                                contentType = { CONTENT_TYPE_ALBUM },
+                            ) { album ->
+                                LibraryAlbumGridItem(
+                                    navController = navController,
+                                    menuState = menuState,
+                                    coroutineScope = coroutineScope,
+                                    album = album,
+                                    isActive = album.id == mediaMetadata?.album?.id,
+                                    isPlaying = isPlaying,
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
                         }
                     }
                 }
@@ -396,16 +294,68 @@ fun LibraryAlbumsScreen(
         }
 
         TopAppBar(
-            title = { Text(stringResource(R.string.albums)) },
+            title = {
+                if (isSearchActive) {
+                    TextField(
+                        value = searchQuery,
+                        onValueChange = viewModel::updateSearchQuery,
+                        placeholder = {
+                            Text(
+                                text = stringResource(R.string.search_library),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                        },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.titleMedium,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester),
+                    )
+                } else {
+                    Text(stringResource(R.string.albums))
+                }
+            },
             navigationIcon = {
-                IconButton(onClick = navController::navigateUp) {
+                IconButton(
+                    onClick = {
+                        if (isSearchActive) {
+                            isSearchActive = false
+                            viewModel.updateSearchQuery("")
+                        } else {
+                            navController.navigateUp()
+                        }
+                    },
+                ) {
                     Icon(
-                        painter = painterResource(R.drawable.arrow_back),
+                        painter = painterResource(
+                            if (isSearchActive) R.drawable.close else R.drawable.arrow_back,
+                        ),
                         contentDescription = null,
                     )
                 }
             },
+            actions = {
+                if (!isSearchActive) {
+                    IconButton(
+                        onClick = { isSearchActive = true },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.search),
+                            contentDescription = stringResource(R.string.search),
+                        )
+                    }
+                }
+            },
         )
-        }
     }
 }

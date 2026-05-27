@@ -183,6 +183,9 @@ interface DatabaseDao {
     @Query("SELECT COUNT(1) FROM song WHERE liked")
     fun likedSongsCount(): Flow<Int>
 
+    @Query("SELECT likedDate FROM song WHERE liked = 1 ORDER BY likedDate DESC LIMIT 1")
+    fun lastLikedSongDate(): Flow<LocalDateTime?>
+
     @Transaction
     @Query("SELECT * FROM song WHERE starred ORDER BY rowId")
     fun starredSongsByRowIdAsc(): Flow<List<Song>>
