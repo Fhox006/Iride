@@ -10,7 +10,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -30,9 +29,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -45,21 +42,16 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -73,20 +65,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-
-import androidx.compose.ui.util.lerp as lerpFloat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -121,13 +107,11 @@ import com.metrolist.music.extensions.reversed
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.AlbumGridItem
-import com.metrolist.music.ui.component.AlbumListItem
 import com.metrolist.music.ui.component.ArtistGridItem
-import com.metrolist.music.ui.component.ArtistListItem
 import com.metrolist.music.ui.component.LibraryAlbumListItem
 import com.metrolist.music.ui.component.LibraryPlaylistListItem
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
-import com.metrolist.music.ui.component.LibrarySearchHeader
+import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
@@ -148,9 +132,6 @@ import kotlinx.coroutines.withContext
 import java.text.Collator
 import java.time.LocalDateTime
 import java.util.UUID
-
-private val LargeTitleHeightDp = 80.dp
-private val SmallTitleBarHeightDp = 56.dp
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -431,20 +412,94 @@ fun LibraryMixScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         snapAnimationSpec = tween(durationMillis = 200),
     )
+    val fraction = scrollBehavior.state.collapsedFraction
+    val onFilterToggle = { setLibraryFilter(!isLibraryFilter) }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LibraryCollapsingHeader(
+            CollapsingScreenHeader(
+                title = if (isLibraryFilter)
+                    stringResource(R.string.filter_library)
+                else
+                    "Offline Library",
                 scrollBehavior = scrollBehavior,
+                pureBlack = pureBlack,
                 isSearchActive = isSearchActive,
                 onSearchActiveChange = { isSearchActive = it },
                 searchQuery = searchQuery,
                 onSearchQueryChange = viewModel::updateSearchQuery,
                 keyboardController = keyboardController,
-                pureBlack = pureBlack,
-                isLibraryFilter = isLibraryFilter,
-                onFilterToggle = { setLibraryFilter(!isLibraryFilter) },
+                trailingContent = {
+                    val btnSize = 40.dp
+                    val iconSize = 20.dp
+                    val indicatorSize = 36.dp
+                    val indicatorOffset by animateDpAsState(
+                        targetValue = if (isLibraryFilter) 2.dp else 42.dp,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium,
+                        ),
+                        label = "libraryFilterIndicator",
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(btnSize * 2)
+                            .height(btnSize)
+                            .clip(RoundedCornerShape(btnSize / 2))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .offset(x = indicatorOffset, y = 2.dp)
+                                .size(indicatorSize)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.secondaryContainer),
+                        )
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                modifier = Modifier
+                                    .size(btnSize)
+                                    .clickable(
+                                        enabled = fraction < 0.05f,
+                                        indication = null,
+                                        interactionSource = remember { MutableInteractionSource() },
+                                    ) { if (!isLibraryFilter) onFilterToggle() },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.bookmark_outlined),
+                                    contentDescription = null,
+                                    tint = if (isLibraryFilter)
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(iconSize),
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(btnSize)
+                                    .clickable(
+                                        enabled = fraction < 0.05f,
+                                        indication = null,
+                                        interactionSource = remember { MutableInteractionSource() },
+                                    ) { if (isLibraryFilter) onFilterToggle() },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.download),
+                                    contentDescription = null,
+                                    tint = if (!isLibraryFilter)
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(iconSize),
+                                )
+                            }
+                        }
+                    }
+                },
             )
         },
         containerColor = Color.Transparent,
@@ -999,169 +1054,6 @@ fun LibraryMixScreen(
                 }
             }
 
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun LibraryCollapsingHeader(
-    scrollBehavior: TopAppBarScrollBehavior,
-    isSearchActive: Boolean,
-    onSearchActiveChange: (Boolean) -> Unit,
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit,
-    keyboardController: SoftwareKeyboardController?,
-    pureBlack: Boolean,
-    isLibraryFilter: Boolean,
-    onFilterToggle: () -> Unit,
-) {
-    val density = LocalDensity.current
-    val largeTitleHeightPx = with(density) { LargeTitleHeightDp.toPx() }
-
-    SideEffect {
-        if (scrollBehavior.state.heightOffsetLimit != -largeTitleHeightPx) {
-            scrollBehavior.state.heightOffsetLimit = -largeTitleHeightPx
-        }
-    }
-
-    val fraction = scrollBehavior.state.collapsedFraction
-    val totalHeightDp = SmallTitleBarHeightDp + LargeTitleHeightDp
-
-    Surface(
-        color = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
-        modifier = Modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .height(totalHeightDp + with(density) { scrollBehavior.state.heightOffset.toDp() }),
-    ) {
-        Box {
-            // Animated title — moves from large position up to small topbar position
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(SmallTitleBarHeightDp)
-                    .padding(start = 12.dp, end = 12.dp)
-                    .graphicsLayer {
-                        translationY = lerpFloat(
-                            with(density) { (LargeTitleHeightDp - 12.dp).toPx() },
-                            0f,
-                            fraction
-                        )
-                    },
-                contentAlignment = Alignment.CenterStart
-            ) {
-                val btnSize = 40.dp
-                val iconSize = 20.dp
-                val indicatorSize = 36.dp
-                val pillAlpha = (1f - fraction * 2f).coerceIn(0f, 1f)
-                val pillEnabled = fraction < 0.05f
-                val indicatorOffset by animateDpAsState(
-                    targetValue = if (isLibraryFilter) 2.dp else 42.dp,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium,
-                    ),
-                    label = "libraryFilterIndicator",
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    val largeStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold)
-                    val titleText = if (isLibraryFilter) stringResource(R.string.filter_library) else "Offline Library"
-
-                    Text(
-                        text = titleText,
-                        style = largeStyle,
-                        maxLines = 1,
-                        modifier = Modifier
-                            .graphicsLayer {
-                                val targetScale = 0.61f
-                                val scale = lerpFloat(1f, targetScale, fraction)
-                                scaleX = scale
-                                scaleY = scale
-                                transformOrigin = TransformOrigin(0f, 0.5f)
-                                alpha = lerpFloat(1f, 0.95f, fraction)
-                            }
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .alpha(pillAlpha)
-                            .padding(bottom = 4.dp)
-                            .width(btnSize * 2)
-                            .height(btnSize)
-                            .clip(RoundedCornerShape(btnSize / 2))
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .offset(x = indicatorOffset, y = 2.dp)
-                                .size(indicatorSize)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.secondaryContainer),
-                        )
-                        Row(modifier = Modifier.fillMaxSize()) {
-                            Box(
-                                modifier = Modifier
-                                    .size(btnSize)
-                                    .clickable(
-                                        enabled = pillEnabled,
-                                        indication = null,
-                                        interactionSource = remember { MutableInteractionSource() },
-                                    ) { if (!isLibraryFilter) onFilterToggle() },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.bookmark_outlined),
-                                    contentDescription = null,
-                                    tint = if (isLibraryFilter)
-                                        MaterialTheme.colorScheme.onSecondaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(iconSize),
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .size(btnSize)
-                                    .clickable(
-                                        enabled = pillEnabled,
-                                        indication = null,
-                                        interactionSource = remember { MutableInteractionSource() },
-                                    ) { if (isLibraryFilter) onFilterToggle() },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.download),
-                                    contentDescription = null,
-                                    tint = if (!isLibraryFilter)
-                                        MaterialTheme.colorScheme.onSecondaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(iconSize),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Search overlay — untouched, covers header when active
-            LibrarySearchHeader(
-                isSearchActive = isSearchActive,
-                searchQuery = searchQuery,
-                onSearchQueryChange = onSearchQueryChange,
-                onBack = {
-                    onSearchActiveChange(false)
-                    onSearchQueryChange("")
-                },
-                keyboardController = keyboardController,
-                modifier = Modifier,
-            ) {}
         }
     }
 }

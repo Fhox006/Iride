@@ -18,11 +18,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -54,6 +56,8 @@ fun <T> LibrarySortRow(
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     val currentLabel = sortOptions.firstOrNull { it.first == currentSort }?.second ?: ""
+    val defaultSort = sortOptions.firstOrNull()?.first
+    val isDefault = defaultSort == null || currentSort == defaultSort
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -66,7 +70,12 @@ fun <T> LibrarySortRow(
             SortMenuChip(
                 label = currentLabel,
                 expanded = menuExpanded,
-                onClick = { menuExpanded = true },
+                isDefault = isDefault,
+                onOpen = { menuExpanded = true },
+                onReset = {
+                    defaultSort?.let { onSortChange(it) }
+                    menuExpanded = false
+                },
             )
             DropdownMenu(
                 expanded = menuExpanded,
@@ -75,28 +84,42 @@ fun <T> LibrarySortRow(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             ) {
                 sortOptions.forEach { (type, label) ->
-                    DropdownMenuItem(
-                        text = {
+                    val isSelected = type == currentSort
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onSortChange(type)
+                                menuExpanded = false
+                            },
+                        color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer
+                                else Color.Transparent,
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Text(
                                 text = label,
                                 style = MaterialTheme.typography.bodyMedium,
+                                color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer
+                                        else MaterialTheme.colorScheme.onSurface,
                             )
-                        },
-                        leadingIcon = if (type == currentSort) {
-                            {
-                                Icon(
-                                    painter = painterResource(R.drawable.check),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp),
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(
+                                            color = MaterialTheme.colorScheme.primary,
+                                            shape = CircleShape,
+                                        )
                                 )
                             }
-                        } else null,
-                        onClick = {
-                            onSortChange(type)
-                            menuExpanded = false
-                        },
-                    )
+                        }
+                    }
                 }
             }
         }
@@ -112,7 +135,6 @@ fun <T> LibrarySortRow(
             viewType = viewType,
             onViewTypeChange = onViewTypeChange,
         )
-
     }
 }
 
@@ -120,7 +142,9 @@ fun <T> LibrarySortRow(
 private fun SortMenuChip(
     label: String,
     expanded: Boolean,
-    onClick: () -> Unit,
+    isDefault: Boolean,
+    onOpen: () -> Unit,
+    onReset: () -> Unit,
 ) {
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
@@ -128,35 +152,60 @@ private fun SortMenuChip(
         label = "sortMenuArrow",
     )
 
+    val containerColor = if (isDefault) MaterialTheme.colorScheme.surfaceContainerHigh
+                         else MaterialTheme.colorScheme.secondaryContainer
+    val contentColor = if (isDefault) MaterialTheme.colorScheme.onSurfaceVariant
+                       else MaterialTheme.colorScheme.onSecondaryContainer
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier
             .height(32.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(containerColor)
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
-                onClick = onClick,
+                onClick = onOpen,
             )
             .padding(horizontal = 12.dp),
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = contentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Icon(
-            painter = painterResource(R.drawable.expand_more),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier
-                .size(16.dp)
-                .graphicsLayer { rotationZ = arrowRotation },
-        )
+        if (isDefault) {
+            Icon(
+                painter = painterResource(R.drawable.expand_more),
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier
+                    .size(16.dp)
+                    .graphicsLayer { rotationZ = arrowRotation },
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(18.dp)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = onReset,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.close),
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+        }
     }
 }
 
