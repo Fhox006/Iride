@@ -362,6 +362,8 @@ constructor(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing = _isRefreshing.asStateFlow()
 
+    val isLibraryMode: MutableState<Boolean> = mutableStateOf(true)
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
     val debouncedSearchQuery = _searchQuery

@@ -89,7 +89,6 @@ import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.constants.MixSortDescendingKey
 import com.metrolist.music.constants.MixSortType
 import com.metrolist.music.constants.MixSortTypeKey
-import com.metrolist.music.constants.LibraryOfflineModeKey
 import com.metrolist.music.constants.MixViewTypeKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
@@ -161,7 +160,7 @@ fun LibraryMixScreen(
 
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
 
-    val (isLibraryFilter, setLibraryFilter) = rememberPreference(LibraryOfflineModeKey, defaultValue = true)
+    var isLibraryFilter by viewModel.isLibraryMode
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     val searchQuery by viewModel.searchQuery.collectAsState()
     val debouncedSearchQuery by viewModel.debouncedSearchQuery.collectAsState()
@@ -387,8 +386,6 @@ fun LibraryMixScreen(
     }
 
     LaunchedEffect(Unit) {
-        // Always reset to Library mode on fresh launch (do not persist Downloads selection)
-        setLibraryFilter(true)
         if (ytmSync) {
             withContext(Dispatchers.IO) {
                 viewModel.syncAllLibrary()
@@ -413,7 +410,7 @@ fun LibraryMixScreen(
         snapAnimationSpec = tween(durationMillis = 200),
     )
     val fraction = scrollBehavior.state.collapsedFraction
-    val onFilterToggle = { setLibraryFilter(!isLibraryFilter) }
+    val onFilterToggle = { isLibraryFilter = !isLibraryFilter }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
