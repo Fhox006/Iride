@@ -29,6 +29,7 @@ import com.metrolist.music.utils.ReleaseInfo
 import sv.lib.squircleshape.SquircleShape
 
 private fun ReleaseInfo.isPreviewBuild(): Boolean {
+    if (preRelease) return true
     val combined = (tagName + versionName).lowercase()
     return listOf("alpha", "beta", "rc", "pre").any { combined.contains(it) }
 }

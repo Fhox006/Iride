@@ -19,7 +19,8 @@ data class ReleaseInfo(
     val versionName: String,
     val description: String,
     val releaseDate: String,
-    val assets: List<ReleaseAsset>
+    val assets: List<ReleaseAsset>,
+    val preRelease: Boolean = false,
 )
 
 data class ReleaseAsset(
@@ -46,10 +47,20 @@ object Updater {
      * Returns: 1 if v1 > v2, -1 if v1 < v2, 0 if equal
      */
     fun compareVersions(v1: String, v2: String): Int {
-        val v1Parts = v1.removePrefix("v").split(".").map { it.toIntOrNull() ?: 0 }
-        val v2Parts = v2.removePrefix("v").split(".").map { it.toIntOrNull() ?: 0 }
+        val clean1 = v1.removePrefix("v")
+        val clean2 = v2.removePrefix("v")
+
+        val dash1 = clean1.indexOf('-')
+        val dash2 = clean2.indexOf('-')
+        val base1 = if (dash1 >= 0) clean1.substring(0, dash1) else clean1
+        val base2 = if (dash2 >= 0) clean2.substring(0, dash2) else clean2
+        val pre1 = if (dash1 >= 0) clean1.substring(dash1 + 1) else null
+        val pre2 = if (dash2 >= 0) clean2.substring(dash2 + 1) else null
+
+        val v1Parts = base1.split(".").map { it.toIntOrNull() ?: 0 }
+        val v2Parts = base2.split(".").map { it.toIntOrNull() ?: 0 }
         val maxLength = maxOf(v1Parts.size, v2Parts.size)
-        
+
         for (i in 0 until maxLength) {
             val part1 = v1Parts.getOrNull(i) ?: 0
             val part2 = v2Parts.getOrNull(i) ?: 0
@@ -58,7 +69,14 @@ object Updater {
                 part1 < part2 -> return -1
             }
         }
-        return 0
+
+        // base equal — stable > pre-release (semver); if both pre-release, compare lexicographically
+        return when {
+            pre1 == null && pre2 == null -> 0
+            pre1 == null -> 1
+            pre2 == null -> -1
+            else -> pre1.compareTo(pre2)
+        }
     }
 
     /**
@@ -131,7 +149,8 @@ object Updater {
                     versionName = json.getString("name"),
                     description = json.getString("body"),
                     releaseDate = json.getString("published_at"),
-                    assets = parseAssets(json.getJSONArray("assets"))
+                    assets = parseAssets(json.getJSONArray("assets")),
+                    preRelease = json.optBoolean("prerelease", false),
                 )
                 
                 cachedReleaseInfo = releaseInfo
@@ -171,7 +190,8 @@ object Updater {
                             versionName = releaseObj.getString("name"),
                             description = releaseObj.getString("body"),
                             releaseDate = releaseObj.getString("published_at"),
-                            assets = parseAssets(releaseObj.getJSONArray("assets"))
+                            assets = parseAssets(releaseObj.getJSONArray("assets")),
+                            preRelease = releaseObj.optBoolean("prerelease", false),
                         ))
                     }
                     

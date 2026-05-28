@@ -35,6 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -48,8 +49,8 @@ fun <T> LibrarySortRow(
     onSortChange: (T) -> Unit,
     sortDescending: Boolean,
     onSortDescendingChange: (Boolean) -> Unit,
-    viewType: LibraryViewType,
-    onViewTypeChange: (LibraryViewType) -> Unit,
+    viewType: LibraryViewType? = null,
+    onViewTypeChange: (LibraryViewType) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -71,27 +72,20 @@ fun <T> LibrarySortRow(
             DropdownMenu(
                 expanded = menuExpanded,
                 onDismissRequest = { menuExpanded = false },
-                shape = MaterialTheme.shapes.extraLarge,
+                shape = RoundedCornerShape(16.dp),
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             ) {
                 sortOptions.forEach { (type, label) ->
+                    val isSelected = type == currentSort
                     DropdownMenuItem(
                         text = {
                             Text(
                                 text = label,
                                 style = MaterialTheme.typography.bodyMedium,
+                                textDecoration = if (isSelected) TextDecoration.Underline
+                                                 else TextDecoration.None,
                             )
                         },
-                        leadingIcon = if (type == currentSort) {
-                            {
-                                Icon(
-                                    painter = painterResource(R.drawable.check),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        } else null,
                         onClick = {
                             onSortChange(type)
                             menuExpanded = false
@@ -106,12 +100,13 @@ fun <T> LibrarySortRow(
             onClick = { onSortDescendingChange(!sortDescending) },
         )
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        LibraryViewTypeButton(
-            viewType = viewType,
-            onViewTypeChange = onViewTypeChange,
-        )
+        if (viewType != null) {
+            Spacer(modifier = Modifier.weight(1f))
+            LibraryViewTypeButton(
+                viewType = viewType,
+                onViewTypeChange = onViewTypeChange,
+            )
+        }
     }
 }
 
@@ -132,7 +127,7 @@ private fun SortMenuChip(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier
             .height(32.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(50))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(
                 indication = null,
@@ -174,7 +169,7 @@ private fun SortDirectionButton(
     Box(
         modifier = modifier
             .size(32.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(50))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(
                 indication = null,
@@ -204,7 +199,7 @@ fun LibraryViewTypeButton(
     Box(
         modifier = modifier
             .size(size)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(50))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(
                 indication = null,

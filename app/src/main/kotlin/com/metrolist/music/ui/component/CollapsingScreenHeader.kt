@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -124,13 +124,33 @@ fun CollapsingScreenHeader(
             .height(totalHeightDp + with(density) { scrollBehavior.state.heightOffset.toDp() }),
     ) {
         Box {
-            // Title row — translates upward from the large position to the small bar.
-            // navigationIcon (if any) is inside so it animates together with the title.
+            // Navigation icon — same translation as title so it animates together,
+            // but in its own Box so it centers in the 56dp bar independent of text height.
+            if (navigationIcon != null) {
+                Box(
+                    modifier = Modifier
+                        .width(56.dp)
+                        .height(CollapsingHeaderSmallBarHeight)
+                        .padding(start = 4.dp)
+                        .graphicsLayer {
+                            translationY = lerpFloat(
+                                with(density) { (CollapsingHeaderLargeTitleHeight - 12.dp).toPx() },
+                                0f,
+                                fraction,
+                            )
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    navigationIcon()
+                }
+            }
+
+            // Title row — translates upward from the large position to the small bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(CollapsingHeaderSmallBarHeight)
-                    .padding(start = if (navigationIcon != null) 4.dp else 12.dp, end = 12.dp)
+                    .padding(start = if (navigationIcon != null) 52.dp else 12.dp, end = 12.dp)
                     .graphicsLayer {
                         translationY = lerpFloat(
                             with(density) { (CollapsingHeaderLargeTitleHeight - 12.dp).toPx() },
@@ -144,18 +164,6 @@ fun CollapsingScreenHeader(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
                 ) {
-                    // Navigation icon — animates with title, no scale effect
-                    if (navigationIcon != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .align(Alignment.CenterVertically),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            navigationIcon()
-                        }
-                    }
-
                     // Large title — scales down as the header collapses
                     Text(
                         text = title,

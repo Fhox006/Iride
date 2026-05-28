@@ -84,7 +84,7 @@ fun UpdaterScreen(
             checkError = null
             withContext(Dispatchers.IO) {
                 Updater
-                    .checkForUpdate(forceRefresh = true)
+                    .checkForAnyUpdate(forceRefresh = true)
                     .onSuccess { (releaseInfo, hasUpdate) ->
                         if (releaseInfo != null) {
                             latestVersion = releaseInfo.versionName
