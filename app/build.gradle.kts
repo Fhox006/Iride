@@ -33,8 +33,8 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.1.0-alpha08"
+        versionCode = 6
+        versionName = "0.1.0-alpha09"
         resValue("string", "app_name", appNameOverride ?: "Iride")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
