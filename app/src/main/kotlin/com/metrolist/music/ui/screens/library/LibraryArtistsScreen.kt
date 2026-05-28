@@ -32,7 +32,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import com.metrolist.music.constants.PureBlackKey
+import com.metrolist.music.ui.component.CollapsingScreenHeader
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -103,6 +112,10 @@ fun LibraryArtistsScreen(
     val (sortDescending, onSortDescendingChange) = rememberPreference(ArtistSortDescendingKey, true)
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
+    val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        snapAnimationSpec = tween(durationMillis = 200),
+    )
 
     LaunchedEffect(Unit) {
         if (ytmSync) {
@@ -133,250 +146,251 @@ fun LibraryArtistsScreen(
         }
     }
 
-    val headerContent = @Composable {
-        LibrarySearchHeader(
-            isSearchActive = isSearchActive,
-            searchQuery = searchQuery,
-            onSearchQueryChange = viewModel::updateSearchQuery,
-            onBack = {
-                isSearchActive = false
-                viewModel.updateSearchQuery("")
-            },
-            keyboardController = keyboardController,
-            modifier = Modifier,
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            CollapsingScreenHeader(
+                title = stringResource(R.string.artists),
+                scrollBehavior = scrollBehavior,
+                pureBlack = pureBlack,
+                isSearchActive = isSearchActive,
+                onSearchActiveChange = { active ->
+                    isSearchActive = active
+                    if (!active) viewModel.updateSearchQuery("")
+                },
+                searchQuery = searchQuery,
+                onSearchQueryChange = viewModel::updateSearchQuery,
+                keyboardController = keyboardController,
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_back),
+                            contentDescription = null,
+                        )
+                    }
+                },
+                trailingContent = {
+                    IconButton(
+                        onClick = { isSearchActive = true },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.search),
+                            contentDescription = stringResource(R.string.search),
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            viewType = if (viewType == LibraryViewType.LIST)
+                                LibraryViewType.GRID
+                            else
+                                LibraryViewType.LIST
+                        },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(
+                                when (viewType) {
+                                    LibraryViewType.LIST -> R.drawable.list
+                                    else -> R.drawable.grid_view
+                                }
+                            ),
+                            contentDescription = null,
+                        )
+                    }
+                },
+            )
+        },
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0),
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+                .padding(paddingValues),
         ) {
-            SortHeader(
-                sortType = sortType,
-                sortDescending = sortDescending,
-                onSortTypeChange = onSortTypeChange,
-                onSortDescendingChange = onSortDescendingChange,
-                sortTypeText = { sortType ->
-                    when (sortType) {
-                        ArtistSortType.CREATE_DATE -> R.string.sort_by_create_date
-                        ArtistSortType.NAME -> R.string.sort_by_name
-                        ArtistSortType.SONG_COUNT -> R.string.sort_by_song_count
-                        ArtistSortType.PLAY_TIME -> R.string.sort_by_play_time
-                    }
-                },
-            )
-
-            Spacer(Modifier.weight(1f))
-
-            Text(
-                text = pluralStringResource(
-                    R.plurals.n_artist,
-                    filteredArtists.size,
-                    filteredArtists.size,
-                ),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.secondary,
-            )
-
-            IconButton(
-                onClick = { isSearchActive = true },
-                modifier = Modifier.padding(start = 8.dp).size(40.dp),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.search),
-                    contentDescription = stringResource(R.string.search),
-                )
-            }
-
-            IconButton(
-                onClick = {
-                    viewType = if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else LibraryViewType.LIST
-                },
-                modifier = Modifier.padding(end = 8.dp).size(40.dp),
-            ) {
-                Icon(
-                    painter = painterResource(
-                        when (viewType) {
-                            LibraryViewType.LIST -> R.drawable.list
-                            else -> R.drawable.grid_view
-                        },
-                    ),
-                    contentDescription = stringResource(
-                        when (viewType) {
-                            LibraryViewType.LIST -> R.string.switch_to_grid_view
-                            else -> R.string.switch_to_list_view
-                        },
-                    ),
-                )
-            }
-        }
-    }
-
-    val insets = LocalPlayerAwareWindowInsets.current.asPaddingValues()
-
-    Box(
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
-        when (viewType) {
-            LibraryViewType.LIST ->
-                LazyColumn(
-                    state = lazyListState,
-                    contentPadding = PaddingValues(
-                        start = 12.dp,
-                        end = 12.dp,
-                        top = insets.calculateTopPadding(),
-                        bottom = insets.calculateBottomPadding(),
-                    ),
-                ) {
-                    item(
-                        key = "filter",
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier,
+            CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
+                when (viewType) {
+                    LibraryViewType.LIST ->
+                        LazyColumn(
+                            state = lazyListState,
+                            contentPadding = PaddingValues(
+                                start = 12.dp,
+                                end = 12.dp,
+                                top = 0.dp,
+                                bottom = LocalPlayerAwareWindowInsets.current
+                                    .asPaddingValues().calculateBottomPadding(),
+                            ),
                         ) {
-                            ChipsRow(
-                                chips = listOf(
-                                    ArtistFilter.LIKED to stringResource(R.string.filter_liked),
-                                    ArtistFilter.LIBRARY to stringResource(R.string.filter_library),
-                                ),
-                                currentValue = filter,
-                                onValueUpdate = { filter = it },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
-
-                    item(
-                        key = "header",
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        headerContent()
-                    }
-
-                    filteredArtists.let { artists ->
-                        if (artists.isEmpty()) {
-                            item(key = "empty_placeholder") {
-                                if (searchQuery.isNotBlank()) {
-                                    LibrarySearchEmptyPlaceholder(
-                                        icon = R.drawable.search,
-                                        text = stringResource(R.string.no_results_found),
-                                        modifier = Modifier.animateItem(),
+                            item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                ) {
+                                    ChipsRow(
+                                        chips = listOf(
+                                            ArtistFilter.LIKED to stringResource(R.string.filter_liked),
+                                            ArtistFilter.LIBRARY to stringResource(R.string.filter_library),
+                                        ),
+                                        currentValue = filter,
+                                        onValueUpdate = { filter = it },
+                                        modifier = Modifier.weight(1f),
                                     )
-                                } else {
-                                    LibrarySearchEmptyPlaceholder(
-                                        icon = R.drawable.artist,
-                                        text = stringResource(R.string.library_artist_empty),
+                                }
+                            }
+
+                            item(key = "sort", contentType = CONTENT_TYPE_HEADER) {
+                                SortHeader(
+                                    sortType = sortType,
+                                    sortDescending = sortDescending,
+                                    onSortTypeChange = onSortTypeChange,
+                                    onSortDescendingChange = onSortDescendingChange,
+                                    sortTypeText = { type ->
+                                        when (type) {
+                                            ArtistSortType.CREATE_DATE -> R.string.sort_by_create_date
+                                            ArtistSortType.NAME -> R.string.sort_by_name
+                                            ArtistSortType.SONG_COUNT -> R.string.sort_by_song_count
+                                            ArtistSortType.PLAY_TIME -> R.string.sort_by_play_time
+                                        }
+                                    },
+                                )
+                            }
+
+                            filteredArtists.let { artists ->
+                                if (artists.isEmpty()) {
+                                    item(key = "empty_placeholder") {
+                                        if (searchQuery.isNotBlank()) {
+                                            LibrarySearchEmptyPlaceholder(
+                                                icon = R.drawable.search,
+                                                text = stringResource(R.string.no_results_found),
+                                                modifier = Modifier.animateItem(),
+                                            )
+                                        } else {
+                                            LibrarySearchEmptyPlaceholder(
+                                                icon = R.drawable.artist,
+                                                text = stringResource(R.string.library_artist_empty),
+                                                modifier = Modifier.animateItem(),
+                                            )
+                                        }
+                                    }
+                                }
+
+                                items(
+                                    items = artists,
+                                    key = { it.id },
+                                    contentType = { CONTENT_TYPE_ARTIST },
+                                ) { artist ->
+                                    LibraryArtistListItem(
+                                        navController = navController,
+                                        menuState = menuState,
+                                        coroutineScope = coroutineScope,
                                         modifier = Modifier.animateItem(),
+                                        artist = artist
                                     )
                                 }
                             }
                         }
 
-                        items(
-                            items = artists,
-                            key = { it.id },
-                            contentType = { CONTENT_TYPE_ARTIST },
-                        ) { artist ->
-                            LibraryArtistListItem(
-                                navController = navController,
-                                menuState = menuState,
-                                coroutineScope = coroutineScope,
-                                modifier = Modifier.animateItem(),
-                                artist = artist
-                            )
-                        }
-                    }
-                }
-
-            LibraryViewType.GRID, LibraryViewType.GRID_WIDE ->
-                LazyVerticalGrid(
-                    state = lazyGridState,
-                    columns =
-                        GridCells.Adaptive(
-                            minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
-                        ),
-                    contentPadding = PaddingValues(
-                        start = 12.dp,
-                        end = 12.dp,
-                        top = insets.calculateTopPadding(),
-                        bottom = insets.calculateBottomPadding(),
-                    ),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    item(
-                        key = "filter",
-                        span = { GridItemSpan(maxLineSpan) },
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier,
+                    LibraryViewType.GRID, LibraryViewType.GRID_WIDE ->
+                        LazyVerticalGrid(
+                            state = lazyGridState,
+                            columns = GridCells.Adaptive(
+                                minSize = GridThumbnailHeight +
+                                    if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
+                            ),
+                            contentPadding = PaddingValues(
+                                start = 12.dp,
+                                end = 12.dp,
+                                top = 0.dp,
+                                bottom = LocalPlayerAwareWindowInsets.current
+                                    .asPaddingValues().calculateBottomPadding(),
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            ChipsRow(
-                                chips = listOf(
-                                    ArtistFilter.LIKED to stringResource(R.string.filter_liked),
-                                    ArtistFilter.LIBRARY to stringResource(R.string.filter_library),
-                                ),
-                                currentValue = filter,
-                                onValueUpdate = { filter = it },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
-
-                    item(
-                        key = "header",
-                        span = { GridItemSpan(maxLineSpan) },
-                        contentType = CONTENT_TYPE_HEADER,
-                    ) {
-                        headerContent()
-                    }
-
-                    filteredArtists.let { artists ->
-                        if (artists.isEmpty()) {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                if (searchQuery.isNotBlank()) {
-                                    LibrarySearchEmptyPlaceholder(
-                                        icon = R.drawable.search,
-                                        text = stringResource(R.string.no_results_found),
-                                        modifier = Modifier.animateItem(),
+                            item(
+                                key = "filter",
+                                span = { GridItemSpan(maxLineSpan) },
+                                contentType = CONTENT_TYPE_HEADER,
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                ) {
+                                    ChipsRow(
+                                        chips = listOf(
+                                            ArtistFilter.LIKED to stringResource(R.string.filter_liked),
+                                            ArtistFilter.LIBRARY to stringResource(R.string.filter_library),
+                                        ),
+                                        currentValue = filter,
+                                        onValueUpdate = { filter = it },
+                                        modifier = Modifier.weight(1f),
                                     )
-                                } else {
-                                    LibrarySearchEmptyPlaceholder(
-                                        icon = R.drawable.artist,
-                                        text = stringResource(R.string.library_artist_empty),
+                                }
+                            }
+
+                            item(
+                                key = "sort",
+                                span = { GridItemSpan(maxLineSpan) },
+                                contentType = CONTENT_TYPE_HEADER,
+                            ) {
+                                SortHeader(
+                                    sortType = sortType,
+                                    sortDescending = sortDescending,
+                                    onSortTypeChange = onSortTypeChange,
+                                    onSortDescendingChange = onSortDescendingChange,
+                                    sortTypeText = { type ->
+                                        when (type) {
+                                            ArtistSortType.CREATE_DATE -> R.string.sort_by_create_date
+                                            ArtistSortType.NAME -> R.string.sort_by_name
+                                            ArtistSortType.SONG_COUNT -> R.string.sort_by_song_count
+                                            ArtistSortType.PLAY_TIME -> R.string.sort_by_play_time
+                                        }
+                                    },
+                                )
+                            }
+
+                            filteredArtists.let { artists ->
+                                if (artists.isEmpty()) {
+                                    item(span = { GridItemSpan(maxLineSpan) }) {
+                                        if (searchQuery.isNotBlank()) {
+                                            LibrarySearchEmptyPlaceholder(
+                                                icon = R.drawable.search,
+                                                text = stringResource(R.string.no_results_found),
+                                                modifier = Modifier.animateItem(),
+                                            )
+                                        } else {
+                                            LibrarySearchEmptyPlaceholder(
+                                                icon = R.drawable.artist,
+                                                text = stringResource(R.string.library_artist_empty),
+                                                modifier = Modifier.animateItem(),
+                                            )
+                                        }
+                                    }
+                                }
+
+                                items(
+                                    items = artists,
+                                    key = { it.id },
+                                    contentType = { CONTENT_TYPE_ARTIST },
+                                ) { artist ->
+                                    LibraryArtistGridItem(
+                                        navController = navController,
+                                        menuState = menuState,
+                                        coroutineScope = coroutineScope,
                                         modifier = Modifier.animateItem(),
+                                        artist = artist
                                     )
                                 }
                             }
                         }
-
-                        items(
-                            items = artists,
-                            key = { it.id },
-                            contentType = { CONTENT_TYPE_ARTIST },
-                        ) { artist ->
-                            LibraryArtistGridItem(
-                                navController = navController,
-                                menuState = menuState,
-                                coroutineScope = coroutineScope,
-                                modifier = Modifier.animateItem(),
-                                artist = artist
-                            )
-                        }
-                    }
                 }
+            }
         }
-
-        }
-        TopAppBar(
-            title = { Text(stringResource(R.string.artists)) },
-            navigationIcon = {
-                IconButton(onClick = navController::navigateUp) {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_back),
-                        contentDescription = null,
-                    )
-                }
-            },
-        )
     }
 }

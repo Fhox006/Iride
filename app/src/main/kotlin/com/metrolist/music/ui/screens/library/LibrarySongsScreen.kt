@@ -308,7 +308,7 @@ fun LibrarySongsScreen(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             CollapsingScreenHeader(
-                title = stringResource(R.string.songs),
+                title = stringResource(R.string.all_tracks),
                 scrollBehavior = scrollBehavior,
                 pureBlack = pureBlack,
                 isSearchActive = isSearchActive,

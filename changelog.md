@@ -1,3 +1,10 @@
+## 0.1.0-alpha10
+
+### Changes
+
+- Artists screen: collapsing header with smooth scroll behavior
+- Library songs screen: renamed "Songs" to "All Tracks"
+
 ## 0.1.0-alpha09
 
 ### Changes
