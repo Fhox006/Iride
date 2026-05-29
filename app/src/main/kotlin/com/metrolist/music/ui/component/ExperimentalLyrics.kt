@@ -7,6 +7,9 @@ package com.metrolist.music.ui.component
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.view.WindowManager
 import androidx.compose.foundation.layout.systemBars
@@ -399,6 +402,7 @@ fun ExperimentalLyrics(
     var showShareDialog by remember { mutableStateOf(false) }
     var showColorPickerDialog by remember { mutableStateOf(false) }
     var shareDialogData by remember { mutableStateOf<Triple<String, String, String>?>(null) }
+
     var isSelectionModeActive by rememberSaveable { mutableStateOf(false) }
     val selectedIndices = remember { mutableStateListOf<Int>() }
     var showMaxSelectionToast by remember { mutableStateOf(false) }
@@ -1118,7 +1122,7 @@ fun ExperimentalLyrics(
                                         lyricsOffset = (currentSong?.song?.lyricsOffset ?: 0).toLong(),
                                         playerConnection = playerConnection,
                                         lyricsTextSize = 36f,
-                                        lyricsLineSpacing = 1.3f,
+                                        lyricsLineSpacing = 1.05f,
                                         expressiveAccent = expressiveAccent,
                                         lyricsTextPosition = lyricsTextPosition,
                                         respectAgentPositioning = respectAgentPositioning,

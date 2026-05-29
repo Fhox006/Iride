@@ -3925,26 +3925,41 @@ class MusicService :
         if (!::player.isInitialized) return
         val nextIndex = player.nextMediaItemIndex
         if (nextIndex == C.INDEX_UNSET) return
-        val nextItem = try { player.getMediaItemAt(nextIndex) } catch (_: Exception) { return }
-        val mediaId = nextItem.mediaId
 
         preloadJob = scope.launch {
-            delay(3000L)
+            delay(500L)
             if (!isActive) return@launch
-            if (songUrlCache[mediaId]?.second?.let { it > System.currentTimeMillis() } == true) return@launch
-            try {
-                withContext(Dispatchers.IO) {
-                    YTPlayerUtils.playerResponseForPlayback(
-                        mediaId,
-                        audioQuality = audioQuality,
-                        connectivityManager = connectivityManager,
-                    ).getOrNull()?.let { playbackData ->
-                        songUrlCache[mediaId] = playbackData.streamUrl to
-                            System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
-                    }
-                }
-            } catch (_: Exception) { }
+            prefetchTrackUrl(nextIndex)
+
+            delay(2500L)
+            if (!isActive) return@launch
+            val count = player.mediaItemCount
+            if (count < 3) return@launch
+            val secondNextIndex = if (nextIndex + 1 < count) nextIndex + 1 else 0
+            if (secondNextIndex != player.currentMediaItemIndex) {
+                prefetchTrackUrl(secondNextIndex)
+            }
         }
+    }
+
+    // Fetches and caches stream URL for the track at the given player index.
+    // Skips if URL is cached and not expiring within 10 minutes.
+    private suspend fun prefetchTrackUrl(index: Int) {
+        val item = try { player.getMediaItemAt(index) } catch (_: Exception) { return }
+        val mediaId = item.mediaId
+        if (songUrlCache[mediaId]?.second?.let { it > System.currentTimeMillis() + 600_000L } == true) return
+        try {
+            withContext(Dispatchers.IO) {
+                YTPlayerUtils.playerResponseForPlayback(
+                    mediaId,
+                    audioQuality = audioQuality,
+                    connectivityManager = connectivityManager,
+                ).getOrNull()?.let { playbackData ->
+                    songUrlCache[mediaId] = playbackData.streamUrl to
+                        System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
+                }
+            }
+        } catch (_: Exception) { }
     }
 
     private fun cancelPreload() {

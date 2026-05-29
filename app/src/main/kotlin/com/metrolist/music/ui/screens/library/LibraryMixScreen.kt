@@ -44,7 +44,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -108,6 +107,7 @@ import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.AlbumGridItem
 import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.LibraryAlbumListItem
+import com.metrolist.music.ui.component.LibraryArtistListItem
 import com.metrolist.music.ui.component.LibraryPlaylistListItem
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.CollapsingScreenHeader
@@ -115,9 +115,9 @@ import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
+import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
-import com.metrolist.music.ui.component.SortHeader
 import com.metrolist.music.ui.menu.AlbumMenu
 import com.metrolist.music.ui.menu.ArtistMenu
 import com.metrolist.music.ui.menu.PlaylistMenu
@@ -406,6 +406,12 @@ fun LibraryMixScreen(
         displayedFilter = isLibraryFilter
         contentAlpha.animateTo(1f, animationSpec = tween(150))
     }
+    val sortOptions = listOf(
+        MixSortType.CREATE_DATE to stringResource(R.string.sort_by_create_date),
+        MixSortType.LAST_UPDATED to stringResource(R.string.sort_by_last_updated),
+        MixSortType.NAME to stringResource(R.string.sort_by_name),
+    )
+
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         snapAnimationSpec = tween(durationMillis = 200),
     )
@@ -533,50 +539,23 @@ fun LibraryMixScreen(
                                 }
 
                                 if (normalizedQuery.isBlank()) {
-                                    item(key = "recently_added_label", contentType = CONTENT_TYPE_HEADER) {
-                                        Text(
-                                            text = if (displayedFilter) "Recently Added" else "Recently Downloaded",
-                                            style = MaterialTheme.typography.headlineMedium,
-                                            modifier = Modifier.padding(vertical = 12.dp),
-                                        )
-                                    }
-                                    item(key = "sort_header", contentType = CONTENT_TYPE_HEADER) {
-                                        SortHeader(
-                                            sortType = sortType,
-                                            sortDescending = sortDescending,
-                                            onSortTypeChange = onSortTypeChange,
-                                            onSortDescendingChange = onSortDescendingChange,
-                                            sortTypeText = { sortType ->
-                                                when (sortType) {
-                                                    MixSortType.CREATE_DATE -> R.string.sort_by_create_date
-                                                    MixSortType.LAST_UPDATED -> R.string.sort_by_last_updated
-                                                    MixSortType.NAME -> R.string.sort_by_name
-                                                }
-                                            },
-                                            trailingContent = {
-                                                IconButton(
-                                                    onClick = {
-                                                        viewType = if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else LibraryViewType.LIST
-                                                    },
-                                                    modifier = Modifier.size(40.dp),
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(
-                                                            when (viewType) {
-                                                                LibraryViewType.LIST -> R.drawable.list
-                                                                else -> R.drawable.grid_view
-                                                            }
-                                                        ),
-                                                        contentDescription = stringResource(
-                                                            when (viewType) {
-                                                                LibraryViewType.LIST -> R.string.switch_to_grid_view
-                                                                else -> R.string.switch_to_list_view
-                                                            }
-                                                        ),
-                                                    )
-                                                }
-                                            },
-                                        )
+                                    item(key = "recently_added_header", contentType = CONTENT_TYPE_HEADER) {
+                                        Column {
+                                            Text(
+                                                text = if (displayedFilter) "Recently Added" else "Recently Downloaded",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                modifier = Modifier.padding(top = 16.dp),
+                                            )
+                                            LibrarySortRow(
+                                                sortOptions = sortOptions,
+                                                currentSort = sortType,
+                                                onSortChange = onSortTypeChange,
+                                                sortDescending = sortDescending,
+                                                onSortDescendingChange = onSortDescendingChange,
+                                                viewType = viewType,
+                                                onViewTypeChange = { viewType = it },
+                                            )
+                                        }
                                     }
                                 }
 
@@ -712,6 +691,16 @@ fun LibraryMixScreen(
                                             )
                                         }
 
+                                        is Artist -> {
+                                            LibraryArtistListItem(
+                                                navController = navController,
+                                                menuState = menuState,
+                                                coroutineScope = coroutineScope,
+                                                artist = item,
+                                                modifier = Modifier.animateItem(),
+                                            )
+                                        }
+
                                         else -> {}
                                     }
                                 }
@@ -721,10 +710,13 @@ fun LibraryMixScreen(
                         LibraryViewType.GRID, LibraryViewType.GRID_WIDE -> {
                             LazyVerticalGrid(
                                 state = lazyGridState,
-                                columns =
+                                columns = if (viewType == LibraryViewType.GRID_WIDE) {
+                                    GridCells.Fixed(3)
+                                } else {
                                     GridCells.Adaptive(
                                         minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
-                                    ),
+                                    )
+                                },
                                 contentPadding = PaddingValues(
                                     start = 12.dp,
                                     end = 12.dp,
@@ -748,57 +740,26 @@ fun LibraryMixScreen(
 
                                 if (normalizedQuery.isBlank()) {
                                     item(
-                                        key = "recently_added_label",
+                                        key = "recently_added_header",
                                         span = { GridItemSpan(maxLineSpan) },
                                         contentType = CONTENT_TYPE_HEADER,
                                     ) {
-                                        Text(
-                                            text = if (displayedFilter) "Recently Added" else "Recently Downloaded",
-                                            style = MaterialTheme.typography.headlineMedium,
-                                            modifier = Modifier.padding(vertical = 12.dp),
-                                        )
-                                    }
-                                    item(
-                                        key = "sort_header",
-                                        span = { GridItemSpan(maxLineSpan) },
-                                        contentType = CONTENT_TYPE_HEADER,
-                                    ) {
-                                        SortHeader(
-                                            sortType = sortType,
-                                            sortDescending = sortDescending,
-                                            onSortTypeChange = onSortTypeChange,
-                                            onSortDescendingChange = onSortDescendingChange,
-                                            sortTypeText = { sortType ->
-                                                when (sortType) {
-                                                    MixSortType.CREATE_DATE -> R.string.sort_by_create_date
-                                                    MixSortType.LAST_UPDATED -> R.string.sort_by_last_updated
-                                                    MixSortType.NAME -> R.string.sort_by_name
-                                                }
-                                            },
-                                            trailingContent = {
-                                                IconButton(
-                                                    onClick = {
-                                                        viewType = if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else LibraryViewType.LIST
-                                                    },
-                                                    modifier = Modifier.size(40.dp),
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(
-                                                            when (viewType) {
-                                                                LibraryViewType.LIST -> R.drawable.list
-                                                                else -> R.drawable.grid_view
-                                                            }
-                                                        ),
-                                                        contentDescription = stringResource(
-                                                            when (viewType) {
-                                                                LibraryViewType.LIST -> R.string.switch_to_grid_view
-                                                                else -> R.string.switch_to_list_view
-                                                            }
-                                                        ),
-                                                    )
-                                                }
-                                            },
-                                        )
+                                        Column {
+                                            Text(
+                                                text = if (displayedFilter) "Recently Added" else "Recently Downloaded",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                modifier = Modifier.padding(top = 4.dp),
+                                            )
+                                            LibrarySortRow(
+                                                sortOptions = sortOptions,
+                                                currentSort = sortType,
+                                                onSortChange = onSortTypeChange,
+                                                sortDescending = sortDescending,
+                                                onSortDescendingChange = onSortDescendingChange,
+                                                viewType = viewType,
+                                                onViewTypeChange = { viewType = it },
+                                            )
+                                        }
                                     }
                                 }
 

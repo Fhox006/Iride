@@ -90,6 +90,7 @@
     <string name="similar_content">Similar content</string>
 
     <string name="share_as_image">Share image</string>
+    <string name="copy_as_image">Copy as image</string>
     <string name="player_background_style">Player background style</string>
     <string name="player_background_solid">Color</string>
     <string name="follow_theme">Follow theme</string>

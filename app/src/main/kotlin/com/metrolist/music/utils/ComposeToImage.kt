@@ -125,7 +125,7 @@ object ComposeToImage {
             val lyricsLayout = StaticLayout.Builder
                 .obtain(lyrics, 0, lyrics.length, lyricsPaint, contentWidth.toInt())
                 .setAlignment(lyricsAlignment)
-                .setLineSpacing(0f, 1.3f)
+                .setLineSpacing(0f, 1.05f)
                 .setIncludePad(false)
                 .build()
 

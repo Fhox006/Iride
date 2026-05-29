@@ -41,6 +41,9 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import sv.lib.squircleshape.SquircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -142,33 +145,32 @@ private class PillProgressState(
 private class PillProgressDrawCache {
     private var cachedSize = Size.Zero
     private var cachedInset = 0f
-    private var cachedR = 0f
     private val trackPath = Path()
     private val progressPath = Path()
     private val pm = PathMeasure()
     private var total = 0f
     private var startOffset = 0f
+    private val shape = SquircleShape(radius = 14.dp, cornerSmoothing = 0.48f)
 
     fun draw(scope: DrawScope, progress: Float, primaryColor: Color, trackColor: Color, strokeWidth: Float) {
-        val inset = with(scope) { 5.5.dp.toPx() }
-        val r = with(scope) { 16.dp.toPx() }
+        val inset = with(scope) { 2.dp.toPx() }
 
-        if (scope.size != cachedSize || inset != cachedInset || r != cachedR) {
+        if (scope.size != cachedSize || inset != cachedInset) {
             cachedSize = scope.size
             cachedInset = inset
-            cachedR = r
+            val pathSize = Size(scope.size.width - 2 * inset, scope.size.height - 2 * inset)
+            val outline = shape.createOutline(pathSize, LayoutDirection.Ltr, scope)
             trackPath.reset()
-            trackPath.addRoundRect(
-                RoundRect(
-                    left = inset, top = inset,
-                    right = scope.size.width - inset, bottom = scope.size.height - inset,
-                    radiusX = r, radiusY = r,
-                )
-            )
+            when (outline) {
+                is Outline.Generic -> trackPath.addPath(outline.path, Offset(inset, inset))
+                else -> {
+                    val r = with(scope) { 14.dp.toPx() }
+                    trackPath.addRoundRect(RoundRect(inset, inset, scope.size.width - inset, scope.size.height - inset, r, r))
+                }
+            }
             pm.setPath(trackPath, false)
             total = pm.length
-            val topStraightWidth = (scope.size.width - 2 * inset) - 2 * r
-            startOffset = topStraightWidth / 2f
+            startOffset = findTopCenter(trackPath, scope.size.width / 2f, inset)
         }
 
         val stroke = Stroke(width = strokeWidth, cap = StrokeCap.Round)
@@ -188,6 +190,27 @@ private class PillProgressDrawCache {
             }
             scope.drawPath(progressPath, color = primaryColor, style = stroke)
         }
+    }
+
+    private fun findTopCenter(path: Path, targetX: Float, topY: Float): Float {
+        val nativePM = android.graphics.PathMeasure(path.asAndroidPath(), false)
+        val nativeTotal = nativePM.length
+        val pos = FloatArray(2)
+        val tan = FloatArray(2)
+        var bestOffset = 0f
+        var bestDist = Float.MAX_VALUE
+        repeat(120) { i ->
+            val t = nativeTotal * i / 120f
+            nativePM.getPosTan(t, pos, tan)
+            val dx = pos[0] - targetX
+            val dy = pos[1] - topY
+            val dist = dx * dx + dy * dy * 9f
+            if (dist < bestDist) {
+                bestDist = dist
+                bestOffset = t
+            }
+        }
+        return bestOffset
     }
 }
 

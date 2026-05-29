@@ -255,7 +255,7 @@ internal fun LyricsLine(
                 val lyricStyle = TextStyle(
                     fontFamily = InterFontFamily,
                     fontSize = if (item.isBackground) (lyricsTextSize * 0.7f).sp else lyricsTextSize.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Black,
                     fontStyle = if (item.isBackground) FontStyle.Italic else FontStyle.Normal,
                     lineHeight = if (item.isBackground) (lyricsTextSize * 0.7f * lyricsLineSpacing).sp else (lyricsTextSize * lyricsLineSpacing).sp,
                     letterSpacing = (-0.5).sp,
