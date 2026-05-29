@@ -525,6 +525,7 @@ fun AutoPlaylistScreen(
                                 downloadState = downloadState,
                                 onShowRemoveDownloadDialog = { showRemoveDownloadDialog = true },
                                 menuState = menuState,
+                                isLiked = playlistType == PlaylistType.LIKE,
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -897,6 +898,7 @@ private fun AutoPlaylistHeader(
     downloadState: Int,
     onShowRemoveDownloadDialog: () -> Unit,
     menuState: com.metrolist.music.ui.component.MenuState,
+    isLiked: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -924,12 +926,25 @@ private fun AutoPlaylistHeader(
                         ),
                 shape = RoundedCornerShape(3.dp),
             ) {
-                AsyncImage(
-                    model = songs[0].song.thumbnailUrl,
-                    contentDescription = null,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = songs[0].song.thumbnailUrl,
+                        contentDescription = null,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    if (isLiked) {
+                        Icon(
+                            painter = painterResource(R.drawable.star),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(10.dp)
+                                .size(48.dp),
+                        )
+                    }
+                }
             }
         }
 

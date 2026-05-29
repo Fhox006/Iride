@@ -1199,6 +1199,7 @@ fun BottomSheetPlayer(
                                                         }
                                                     }
                                                 },
+                                                onShowSleepTimer = { showSleepTimerDialog = true },
                                                 onDismiss = menuState::dismiss,
                                             )
                                         }
@@ -1310,6 +1311,7 @@ fun BottomSheetPlayer(
                                                             }
                                                         }
                                                     },
+                                                    onShowSleepTimer = { showSleepTimerDialog = true },
                                                     onDismiss = menuState::dismiss,
                                                 )
                                             }

@@ -207,6 +207,8 @@ class SyncUtils @Inject constructor(
         }
     }
 
+    suspend fun reInjectCredentials(): Boolean = isLoggedIn()
+
     private suspend fun isLoggedIn(): Boolean {
         return try {
             val prefs = context.dataStore.data.first()

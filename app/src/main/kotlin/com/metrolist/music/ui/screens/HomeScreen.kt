@@ -72,7 +72,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -270,16 +269,8 @@ fun HomeScreen(
     var randomizeJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val lazyListState = rememberLazyListState()
 
-    LaunchedEffect(Unit) {
-        snapshotFlow {
-            lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
-        }.collect { lastVisibleIndex: Int? ->
-            val len = lazyListState.layoutInfo.totalItemsCount
-            if (lastVisibleIndex != null && lastVisibleIndex >= len - 3 && phase1Complete) {
-                viewModel.loadMoreYouTubeItems(homePage?.continuation)
-            }
-        }
-    }
+    val isLoadingMoreHomeSections by viewModel.isLoadingMoreHomeSections.collectAsState()
+    val homePageContinuation by viewModel.homePageContinuation.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.onSectionBecameVisible("daily_discover")
@@ -1248,6 +1239,27 @@ fun HomeScreen(
                                         ytGridItem(secItem, null)
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+
+                if (homePageContinuation != null) {
+                    item(key = "load_more_trigger") {
+                        LaunchedEffect(Unit) {
+                            viewModel.loadMoreHomeSections()
+                        }
+                        if (isLoadingMoreHomeSections) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(32.dp),
+                                    strokeWidth = 2.dp,
+                                )
                             }
                         }
                     }

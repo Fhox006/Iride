@@ -12,7 +12,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,7 +25,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -201,7 +199,7 @@ fun OnlineSearchResult(
     }
 
     val searchFilter by viewModel.filter.collectAsState()
-    val searchSummary = viewModel.summaryPage
+    val bestResultsSections = viewModel.bestResultsSections
     val itemsPage by remember(searchFilter) {
         derivedStateOf {
             searchFilter?.value?.let { viewModel.viewStateMap[it] }
@@ -339,7 +337,7 @@ fun OnlineSearchResult(
 
         // Filter pills
         val visibleChips = buildList {
-            add(null to stringResource(R.string.filter_all))
+            add(null to stringResource(R.string.filter_best_results))
             add(FILTER_SONG to stringResource(R.string.filter_songs))
             if (!hideVideoSongs) add(FILTER_VIDEO to stringResource(R.string.filter_videos))
             add(FILTER_ALBUM to stringResource(R.string.filter_albums))
@@ -369,89 +367,29 @@ fun OnlineSearchResult(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 if (searchFilter == null) {
-                    // "All" tab: grouped summary sections
-                    val summaries = searchSummary?.summaries ?: emptyList()
-
-                    summaries.forEachIndexed { index, summary ->
-                        item(key = "title_${summary.title}") {
-                            NavigationTitle(summary.title)
-                        }
-
-                        if (index == 0) {
-                            // First section (top result): vertical list
+                    // "Best Results" tab: load all filters and show each as a full vertical section
+                    if (bestResultsSections.isEmpty()) {
+                        // still loading — shimmer handled below by the initial loading shimmer condition
+                    } else {
+                        bestResultsSections.forEach { (sectionTitle, sectionItems) ->
+                            item(key = "best_title_$sectionTitle") {
+                                NavigationTitle(sectionTitle)
+                            }
                             items(
-                                items = summary.items,
-                                key = { it.id },
+                                items = sectionItems,
+                                key = { "best_${sectionTitle}_${it.id}" },
                                 itemContent = ytItemContent,
                             )
-                        } else {
-                            // All other sections: horizontal scroll
-                            item(key = "row_${summary.title}") {
-                                LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 8.dp)) {
-                                    items(
-                                        items = summary.items,
-                                        key = { it.id },
-                                    ) { rowItem ->
-                                        YouTubeGridItem(
-                                            item = rowItem,
-                                            isActive = when (rowItem) {
-                                                is SongItem -> mediaMetadata?.id == rowItem.id
-                                                is AlbumItem -> mediaMetadata?.album?.id == rowItem.id
-                                                is EpisodeItem -> mediaMetadata?.id == rowItem.id
-                                                else -> false
-                                            },
-                                            isPlaying = isPlaying,
-                                            coroutineScope = coroutineScope,
-                                            thumbnailRatio = 1f,
-                                            thumbnailCornerRadius = 6.dp,
-                                            showPlayButton = false,
-                                            modifier = Modifier
-                                                .combinedClickable(
-                                                    onClick = {
-                                                        when (rowItem) {
-                                                            is SongItem -> {
-                                                                if (rowItem.id == mediaMetadata?.id) playerConnection.togglePlayPause()
-                                                                else playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = rowItem.id), rowItem.toMediaMetadata()))
-                                                            }
-                                                            is AlbumItem -> navController.navigate("album/${rowItem.id}")
-                                                            is ArtistItem -> navController.navigate("artist/${rowItem.id}")
-                                                            is PlaylistItem -> navController.navigate("online_playlist/${rowItem.id}")
-                                                            is PodcastItem -> navController.navigate("online_podcast/${rowItem.id}")
-                                                            is EpisodeItem -> {
-                                                                if (rowItem.id == mediaMetadata?.id) playerConnection.togglePlayPause()
-                                                                else playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = rowItem.id), rowItem.toMediaMetadata()))
-                                                            }
-                                                        }
-                                                    },
-                                                    onLongClick = {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        menuState.show {
-                                                            when (rowItem) {
-                                                                is SongItem -> YouTubeSongMenu(song = rowItem, navController = navController, onDismiss = menuState::dismiss)
-                                                                is AlbumItem -> YouTubeAlbumMenu(albumItem = rowItem, navController = navController, onDismiss = menuState::dismiss)
-                                                                is ArtistItem -> YouTubeArtistMenu(artist = rowItem, onDismiss = menuState::dismiss)
-                                                                is PlaylistItem -> YouTubePlaylistMenu(playlist = rowItem, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
-                                                                is PodcastItem -> YouTubePlaylistMenu(playlist = rowItem.asPlaylistItem(), coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
-                                                                is EpisodeItem -> YouTubeSongMenu(song = rowItem.asSongItem(), navController = navController, onDismiss = menuState::dismiss)
-                                                            }
-                                                        }
-                                                    },
-                                                )
-                                                .animateItem(),
-                                        )
-                                    }
-                                }
-                            }
                         }
-                    }
 
-                    // Empty state after data loads with no results
-                    if (searchSummary != null && summaries.isEmpty()) {
-                        item {
-                            EmptyPlaceholder(
-                                icon = R.drawable.search,
-                                text = stringResource(R.string.no_results_found),
-                            )
+                        // Empty state: all sections loaded but nothing returned
+                        if (bestResultsSections.all { it.second.isEmpty() }) {
+                            item {
+                                EmptyPlaceholder(
+                                    icon = R.drawable.search,
+                                    text = stringResource(R.string.no_results_found),
+                                )
+                            }
                         }
                     }
                 } else {
@@ -537,7 +475,7 @@ fun OnlineSearchResult(
                 }
 
                 // Initial loading shimmer
-                if ((searchFilter == null && searchSummary == null) || (searchFilter != null && itemsPage == null)) {
+                if ((searchFilter == null && bestResultsSections.isEmpty()) || (searchFilter != null && itemsPage == null)) {
                     item {
                         ShimmerHost {
                             repeat(8) { ListItemPlaceHolder() }

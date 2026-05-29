@@ -56,6 +56,7 @@
     <string name="filter_library">Library</string>
     <string name="filter_liked">Songs</string>
     <string name="filter_downloaded">Downloaded</string>
+    <string name="filter_best_results">Best Results</string>
     <string name="filter_all">All</string>
     <string name="filter_songs">Songs</string>
     <string name="filter_videos">Videos</string>
@@ -80,7 +81,7 @@
     <string name="other_versions">Other versions</string>
 
     <!-- Playlist -->
-    <string name="liked_songs">Songs</string>
+    <string name="liked_songs">Liked Songs</string>
     <string name="downloaded_songs">Downloaded songs</string>
     <string name="playlist_is_empty">The playlist is empty</string>
     <string name="remove_download_playlist_confirm">Do you really want to remove all \"%s\" playlist songs from the Downloaded Songs storage?</string>

@@ -2160,6 +2160,9 @@ class MusicService :
         mediaItem: MediaItem?,
         reason: Int,
     ) {
+        if (isCrossfading && reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
+            cleanupCrossfade()
+        }
         // Save previous episode position if it was an episode
         previousEpisodeId?.let { episodeId ->
             if (previousEpisodePosition > 0) {
@@ -2283,7 +2286,7 @@ class MusicService :
                 resetRetryCount(mediaId)
                 Timber.tag(TAG).d("Playback successful for $mediaId, reset retry count")
             }
-            scheduleCrossfade()
+            if (crossfadeEnabled) scheduleCrossfade()
         }
 
         if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED) {
@@ -2334,7 +2337,7 @@ class MusicService :
                 Player.EVENT_PLAY_WHEN_READY_CHANGED,
             )
         ) {
-            scheduleCrossfade()
+            if (crossfadeEnabled) scheduleCrossfade()
             val isBufferingOrReady =
                 player.playbackState == Player.STATE_BUFFERING || player.playbackState == Player.STATE_READY
             if (isBufferingOrReady && player.playWhenReady) {
@@ -3667,7 +3670,7 @@ class MusicService :
         reason: Int,
     ) {
         if (reason == Player.DISCONTINUITY_REASON_SEEK) {
-            scheduleCrossfade()
+            if (crossfadeEnabled) scheduleCrossfade()
         }
     }
 
@@ -3734,7 +3737,8 @@ class MusicService :
     private fun scheduleCrossfade() {
         crossfadeTriggerJob?.cancel()
         crossfadeTriggerJob = null
-        if (!crossfadeEnabled || player.duration == C.TIME_UNSET || player.duration <= crossfadeDuration) return
+        if (!crossfadeEnabled) return
+        if (player.duration == C.TIME_UNSET || player.duration <= crossfadeDuration) return
         if (crossfadeGapless && isNextItemGapless()) return
         if (!player.hasNextMediaItem() && player.repeatMode != REPEAT_MODE_ONE) return
 
@@ -3813,6 +3817,11 @@ class MusicService :
         fadeDuration: Float = crossfadeDuration,
         onComplete: (() -> Unit)? = null,
     ) {
+        if (!crossfadeEnabled && !skipFadeEnabled) {
+            Timber.tag(TAG).w("performCrossfadeSwap called but neither crossfade nor skipFade is enabled — aborting")
+            cleanupCrossfade()
+            return
+        }
         isCrossfading = true
         val nextPlayer = secondaryPlayer ?: return
         val currentPlayer = player
