@@ -199,6 +199,7 @@ fun OnlineSearchResult(
 
     LaunchedEffect(decodedQuery) {
         query = TextFieldValue(decodedQuery, TextRange(decodedQuery.length))
+        lazyListState.scrollToItem(0)
     }
 
     LaunchedEffect(hideVideoSongs) {
@@ -399,50 +400,46 @@ fun OnlineSearchResult(
 
                     if (bestResultsSections.isNotEmpty()) {
 
-                        // ── TOP 5 RESULTS (no title, vertical list) ────────────────────────────
-                        if (sectionVisible(BestResultsSection.SONGS)) {
-                            val topSongs = bestResultsSections
-                                .firstOrNull { it.first == "Songs" }
-                                ?.second
-                                ?.take(5)
-                                .orEmpty()
+                        // ── TOP RESULTS (no title, vertical list: top artist + top songs) ────
+                        val allSongs = bestResultsSections
+                            .firstOrNull { it.first == "Songs" }
+                            ?.second.orEmpty()
+                        val allArtists = bestResultsSections
+                            .firstOrNull { it.first == "Artists" }
+                            ?.second.orEmpty()
 
+                        if (activeBestSection == BestResultsSection.ALL) {
+                            val topArtist = allArtists.firstOrNull()
+                            val songSlots = if (topArtist != null) 4 else 5
+                            val topSongs = allSongs.take(songSlots)
+
+                            if (topArtist != null) {
+                                item(key = "top_artist_${topArtist.id}") {
+                                    ytItemContent(this@item, topArtist)
+                                }
+                            }
                             topSongs.forEach { song ->
+                                item(key = "top_${song.id}") {
+                                    ytItemContent(this@item, song)
+                                }
+                            }
+                        } else if (activeBestSection == BestResultsSection.SONGS) {
+                            allSongs.forEach { song ->
                                 item(key = "top_${song.id}") {
                                     ytItemContent(this@item, song)
                                 }
                             }
                         }
 
-                        // ── SONGS (full vertical list with title) ──────────────────────────────
-                        if (sectionVisible(BestResultsSection.SONGS)) {
-                            val songItems = bestResultsSections
-                                .firstOrNull { it.first == "Songs" }
-                                ?.second
-                                .orEmpty()
-
-                            if (songItems.isNotEmpty()) {
-                                item(key = "best_title_Songs") {
-                                    NavigationTitle(stringResource(R.string.filter_songs))
-                                }
-                                val songsToShow = if (activeBestSection == BestResultsSection.ALL)
-                                    songItems.drop(5)
-                                else
-                                    songItems
-                                songsToShow.forEach { song ->
-                                    item(key = "song_full_${song.id}") {
-                                        ytItemContent(this@item, song)
-                                    }
-                                }
-                            }
-                        }
-
                         // ── ARTISTS (horizontal scroll) ────────────────────────────────────────
                         if (sectionVisible(BestResultsSection.ARTISTS)) {
-                            val artistItems = bestResultsSections
-                                .firstOrNull { it.first == "Artists" }
-                                ?.second
-                                .orEmpty()
+                            val artistItems = run {
+                                val all = bestResultsSections
+                                    .firstOrNull { it.first == "Artists" }
+                                    ?.second.orEmpty()
+                                // In ALL view first artist already shown in top results — skip it
+                                if (activeBestSection == BestResultsSection.ALL) all.drop(1) else all
+                            }
 
                             if (artistItems.isNotEmpty()) {
                                 item(key = "best_title_Artists") {
@@ -505,7 +502,7 @@ fun OnlineSearchResult(
                         // ── ALBUMS & EP (horizontal scroll) ────────────────────────────────────
                         if (sectionVisible(BestResultsSection.ALBUMS_EP)) {
                             val albumItems = bestResultsSections
-                                .firstOrNull { it.first == "Albums" }
+                                .firstOrNull { it.first.contains("album", ignoreCase = true) }
                                 ?.second
                                 .orEmpty()
 
@@ -564,9 +561,10 @@ fun OnlineSearchResult(
 
                         // ── PLAYLISTS (horizontal scroll, size=160dp) ──────────────────────────
                         if (sectionVisible(BestResultsSection.PLAYLISTS)) {
-                            val communityItems = bestResultsSections.firstOrNull { it.first == "Community playlists" }?.second.orEmpty()
-                            val featuredItems = bestResultsSections.firstOrNull { it.first == "Featured playlists" }?.second.orEmpty()
-                            val playlistItems = (communityItems + featuredItems).distinctBy { it.id }
+                            val playlistItems = bestResultsSections
+                                .filter { (title, _) -> title.contains("playlist", ignoreCase = true) }
+                                .flatMap { it.second }
+                                .distinctBy { it.id }
 
                             if (playlistItems.isNotEmpty()) {
                                 item(key = "best_title_Playlists") {
@@ -644,7 +642,8 @@ fun OnlineSearchResult(
                                                 thumbnailRatio = 16f / 9f,
                                                 thumbnailCornerRadius = 8.dp,
                                                 showPlayButton = true,
-                                                size = 110.dp,
+                                                size = 130.dp,
+                                                forceAspectRatio = true,
                                                 modifier = Modifier
                                                     .combinedClickable(
                                                         onClick = {

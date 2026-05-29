@@ -1153,10 +1153,12 @@ fun YouTubeGridItem(
     showPlayButton: Boolean = true,
     size: Dp = currentGridThumbnailHeight(),
     showTitle: Boolean = true,
+    forceAspectRatio: Boolean = false,
 ) {
     val squareVideoThumbnail by rememberPreference(SquareVideoThumbnailKey, defaultValue = true)
     val defaultRatio = if (item is SongItem) 16f / 9 else 1f
     val effectiveThumbnailRatio = when {
+        forceAspectRatio -> thumbnailRatio
         thumbnailRatio != defaultRatio -> thumbnailRatio
         item is SongItem && squareVideoThumbnail -> 1f
         else -> thumbnailRatio

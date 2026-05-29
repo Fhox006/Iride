@@ -418,7 +418,7 @@ fun ArtistScreen(
                                             .weight(1f)
                                             .padding(end = 8.dp),
                                     )
-                                    if (libraryAlbums.isNotEmpty()) {
+                                    if (librarySongs.isNotEmpty() && libraryArtist?.artist?.isLocal != true) {
                                         Box(
                                             modifier = Modifier
                                                 .padding(bottom = 4.dp)
@@ -777,9 +777,10 @@ fun ArtistScreen(
                                                     thumbnailRatio = if (isVideoSection) 16f / 9f else 1f,
                                                     thumbnailCornerRadius = if (isVideoSection) 8.dp else 3.dp,
                                                     showPlayButton = !hidePlayButton,
+                                                    forceAspectRatio = isVideoSection,
                                                     size = when {
                                                         isAlbumSection -> 180.dp
-                                                        isVideoSection -> 110.dp
+                                                        isVideoSection -> 130.dp
                                                         else -> 148.dp
                                                     },
                                                     modifier =

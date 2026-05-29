@@ -27,6 +27,7 @@ import com.metrolist.music.utils.get
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
@@ -47,9 +48,6 @@ constructor(
     val filter = MutableStateFlow<YouTube.SearchFilter?>(null)
     val viewStateMap = mutableStateMapOf<String, ItemsPage?>()
 
-    // Sentinel value for the "Best Results" tab — not a real YouTube filter
-    private val FILTER_BEST_RESULTS_SENTINEL = "best_results_sentinel"
-
     // Each entry: section title (string) → list of YTItems
     var bestResultsSections by mutableStateOf<List<Pair<String, List<YTItem>>>>(emptyList())
         private set
@@ -64,35 +62,40 @@ constructor(
             val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
             val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
 
-            val filtersToLoad = buildList {
-                add(YouTube.SearchFilter.FILTER_ARTIST to "Artists")
+            val filtersToLoad = buildList<Pair<YouTube.SearchFilter, String>> {
                 add(YouTube.SearchFilter.FILTER_SONG to "Songs")
+                add(YouTube.SearchFilter.FILTER_ARTIST to "Artists")
                 add(YouTube.SearchFilter.FILTER_ALBUM to "Albums")
                 add(YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST to "Community playlists")
                 add(YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST to "Featured playlists")
                 if (!hideVideoSongs) add(YouTube.SearchFilter.FILTER_VIDEO to "Videos")
             }
+            val sectionOrder = filtersToLoad.map { it.second }
 
-            val sections = mutableListOf<Pair<String, List<YTItem>>>()
-
-            for ((ytFilter, sectionTitle) in filtersToLoad) {
-                YouTube.search(query, ytFilter)
-                    .onSuccess { result ->
-                        val items = result.items
-                            .distinctBy { it.id }
-                            .filterExplicit(hideExplicit)
-                            .filterVideoSongs(hideVideoSongs)
-                            .filterYoutubeShorts(hideYoutubeShorts)
-                        if (items.isNotEmpty()) {
-                            sections.add(sectionTitle to items)
-                        }
-                        // Cache in viewStateMap so individual filter tabs are free
-                        viewStateMap[ytFilter.value] = ItemsPage(items, result.continuation)
+            coroutineScope {
+                filtersToLoad.forEach { (ytFilter, sectionTitle) ->
+                    launch {
+                        YouTube.search(query, ytFilter)
+                            .onSuccess { result ->
+                                val items = result.items
+                                    .distinctBy { it.id }
+                                    .filterExplicit(hideExplicit)
+                                    .filterVideoSongs(hideVideoSongs)
+                                    .filterYoutubeShorts(hideYoutubeShorts)
+                                    .let { if (sectionTitle == "Songs") it.take(5) else it }
+                                if (items.isNotEmpty()) {
+                                    bestResultsSections = (bestResultsSections + (sectionTitle to items))
+                                        .sortedBy { (title, _) -> sectionOrder.indexOf(title) }
+                                }
+                            }
+                            .onFailure { reportException(it) }
                     }
-                    .onFailure { reportException(it) }
+                }
             }
-
-            bestResultsSections = sections
+            // If all calls failed, trigger empty state instead of infinite shimmer
+            if (bestResultsSections.isEmpty()) {
+                bestResultsSections = listOf("__empty__" to emptyList())
+            }
         }
     }
 
