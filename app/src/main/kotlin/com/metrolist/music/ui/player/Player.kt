@@ -967,7 +967,7 @@ fun BottomSheetPlayer(
                         },
                     label = "ThumbnailAnimation",
                     transitionSpec = {
-                        fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+                        fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(380, easing = FastOutSlowInEasing))
                     },
                 ) { panelState ->
                     val show = panelState != "none"
@@ -1180,7 +1180,7 @@ fun BottomSheetPlayer(
                                 },
                             label = "MoreButton",
                             transitionSpec = {
-                                fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+                                fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(380, easing = FastOutSlowInEasing))
                             },
                         ) { panelState ->
                             val show = panelState != "none"
@@ -1286,7 +1286,7 @@ fun BottomSheetPlayer(
                             },
                         label = "MoreButton",
                         transitionSpec = {
-                            fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+                            fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(380, easing = FastOutSlowInEasing))
                         },
                     ) { animState ->
                         val show = animState != "none"
@@ -1890,41 +1890,6 @@ fun BottomSheetPlayer(
                         val currentSliderPosition by rememberUpdatedState(sliderPosition)
                         val sliderPositionProvider = remember { { currentSliderPosition } }
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
-                        if (mediaMetadata != null) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .alpha(if (showInlineLyrics) 1f else 0f)
-                                    .then(if (!showInlineLyrics) Modifier.pointerInput(Unit) {} else Modifier)
-                            ) {
-                                InlineLyricsView(
-                                    mediaMetadata = mediaMetadata,
-                                    showLyrics = showInlineLyrics,
-                                    positionProvider = { effectivePosition },
-                                    isFullScreen = isFullScreen,
-                                    onExitFullScreen = { isFullScreen = false },
-                                    onShowOptionsMenu = {
-                                        mediaMetadata?.let { mm ->
-                                            menuState.show {
-                                                com.metrolist.music.ui.menu.LyricsMenu(
-                                                    lyricsProvider = { currentLyrics },
-                                                    songProvider = { currentSong?.song },
-                                                    mediaMetadataProvider = { mm },
-                                                    onDismiss = menuState::dismiss,
-                                                    onShowOffsetDialog = {
-                                                        bottomSheetPageState.show {
-                                                            ShowOffsetDialog(songProvider = { currentSong?.song })
-                                                        }
-                                                    },
-                                                )
-                                            }
-                                        }
-                                    },
-                                    textButtonColor = textButtonColor,
-                                    iconButtonColor = iconButtonColor,
-                                )
-                            }
-                        }
                         AnimatedContent(
                             targetState =
                                 when {
@@ -1933,7 +1898,10 @@ fun BottomSheetPlayer(
                                     else -> "thumbnail"
                                 },
                             label = "PlayerView",
-                            transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
+                            transitionSpec = {
+                                fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith
+                                fadeOut(tween(380, easing = FastOutSlowInEasing))
+                            },
                         ) { view ->
                             when (view) {
                                 "queue" ->
@@ -1945,7 +1913,37 @@ fun BottomSheetPlayer(
                                         onClose = { showQueue = false },
                                     )
 
-                                "lyrics" -> Box(Modifier.fillMaxSize())
+                                "lyrics" ->
+                                    if (mediaMetadata != null) {
+                                        InlineLyricsView(
+                                            mediaMetadata = mediaMetadata,
+                                            showLyrics = true,
+                                            positionProvider = { effectivePosition },
+                                            isFullScreen = isFullScreen,
+                                            onExitFullScreen = { isFullScreen = false },
+                                            onShowOptionsMenu = {
+                                                mediaMetadata?.let { mm ->
+                                                    menuState.show {
+                                                        com.metrolist.music.ui.menu.LyricsMenu(
+                                                            lyricsProvider = { currentLyrics },
+                                                            songProvider = { currentSong?.song },
+                                                            mediaMetadataProvider = { mm },
+                                                            onDismiss = menuState::dismiss,
+                                                            onShowOffsetDialog = {
+                                                                bottomSheetPageState.show {
+                                                                    ShowOffsetDialog(songProvider = { currentSong?.song })
+                                                                }
+                                                            },
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            textButtonColor = textButtonColor,
+                                            iconButtonColor = iconButtonColor,
+                                        )
+                                    } else {
+                                        Box(Modifier.fillMaxSize())
+                                    }
 
                                 "thumbnail" ->
                                     Thumbnail(
@@ -2001,41 +1999,6 @@ fun BottomSheetPlayer(
                         val currentSliderPosition by rememberUpdatedState(sliderPosition)
                         val sliderPositionProvider = remember { { currentSliderPosition } }
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
-                        if (mediaMetadata != null) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .alpha(if (showInlineLyrics) 1f else 0f)
-                                    .then(if (!showInlineLyrics) Modifier.pointerInput(Unit) {} else Modifier)
-                            ) {
-                                InlineLyricsView(
-                                    mediaMetadata = mediaMetadata,
-                                    showLyrics = showInlineLyrics,
-                                    positionProvider = { effectivePosition },
-                                    isFullScreen = isFullScreen,
-                                    onExitFullScreen = { isFullScreen = false },
-                                    onShowOptionsMenu = {
-                                        mediaMetadata?.let { mm ->
-                                            menuState.show {
-                                                com.metrolist.music.ui.menu.LyricsMenu(
-                                                    lyricsProvider = { currentLyrics },
-                                                    songProvider = { currentSong?.song },
-                                                    mediaMetadataProvider = { mm },
-                                                    onDismiss = menuState::dismiss,
-                                                    onShowOffsetDialog = {
-                                                        bottomSheetPageState.show {
-                                                            ShowOffsetDialog(songProvider = { currentSong?.song })
-                                                        }
-                                                    },
-                                                )
-                                            }
-                                        }
-                                    },
-                                    textButtonColor = textButtonColor,
-                                    iconButtonColor = iconButtonColor,
-                                )
-                            }
-                        }
                         AnimatedContent(
                             targetState =
                                 when {
@@ -2044,7 +2007,10 @@ fun BottomSheetPlayer(
                                     else -> "thumbnail"
                                 },
                             label = "PlayerView",
-                            transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
+                            transitionSpec = {
+                                fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith
+                                fadeOut(tween(380, easing = FastOutSlowInEasing))
+                            },
                         ) { view ->
                             when (view) {
                                 "queue" ->
@@ -2056,7 +2022,37 @@ fun BottomSheetPlayer(
                                         onClose = { showQueue = false },
                                     )
 
-                                "lyrics" -> Box(Modifier.fillMaxSize())
+                                "lyrics" ->
+                                    if (mediaMetadata != null) {
+                                        InlineLyricsView(
+                                            mediaMetadata = mediaMetadata,
+                                            showLyrics = true,
+                                            positionProvider = { effectivePosition },
+                                            isFullScreen = isFullScreen,
+                                            onExitFullScreen = { isFullScreen = false },
+                                            onShowOptionsMenu = {
+                                                mediaMetadata?.let { mm ->
+                                                    menuState.show {
+                                                        com.metrolist.music.ui.menu.LyricsMenu(
+                                                            lyricsProvider = { currentLyrics },
+                                                            songProvider = { currentSong?.song },
+                                                            mediaMetadataProvider = { mm },
+                                                            onDismiss = menuState::dismiss,
+                                                            onShowOffsetDialog = {
+                                                                bottomSheetPageState.show {
+                                                                    ShowOffsetDialog(songProvider = { currentSong?.song })
+                                                                }
+                                                            },
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            textButtonColor = textButtonColor,
+                                            iconButtonColor = iconButtonColor,
+                                        )
+                                    } else {
+                                        Box(Modifier.fillMaxSize())
+                                    }
 
                                 "thumbnail" ->
                                     Thumbnail(

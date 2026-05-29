@@ -1245,22 +1245,22 @@ fun HomeScreen(
                 }
 
                 if (homePageContinuation != null) {
-                    item(key = "load_more_trigger") {
-                        LaunchedEffect(Unit) {
-                            viewModel.loadMoreHomeSections()
-                        }
-                        if (isLoadingMoreHomeSections) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(32.dp),
-                                    strokeWidth = 2.dp,
-                                )
+                    item(key = "load_more_trigger_$homePageContinuation") {
+                        LaunchedEffect(homePageContinuation) {
+                            if (!isLoadingMoreHomeSections) {
+                                viewModel.loadMoreHomeSections()
                             }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(32.dp),
+                                strokeWidth = 2.dp,
+                            )
                         }
                     }
                 }

@@ -71,9 +71,6 @@ constructor(
                 add(YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST to "Community playlists")
                 add(YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST to "Featured playlists")
                 if (!hideVideoSongs) add(YouTube.SearchFilter.FILTER_VIDEO to "Videos")
-                add(YouTube.SearchFilter.FILTER_PODCAST to "Podcasts")
-                add(YouTube.SearchFilter.FILTER_EPISODE to "Episodes")
-                add(YouTube.SearchFilter.FILTER_PROFILE to "Profiles")
             }
 
             val sections = mutableListOf<Pair<String, List<YTItem>>>()
