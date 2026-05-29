@@ -11,6 +11,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -52,6 +53,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.gestures.ScrollableDefaults
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -99,6 +101,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -578,17 +581,13 @@ fun Queue(
                 }
             }
 
+        val dragScrollZone = LocalConfiguration.current.screenHeightDp.dp * 0.15f
         val reorderableState =
             rememberReorderableLazyListState(
                 lazyListState = lazyListState,
-                scrollThresholdPadding =
-                    WindowInsets.systemBars
-                        .add(
-                            WindowInsets(
-                                top = ListItemHeight,
-                                bottom = ListItemHeight,
-                            ),
-                        ).asPaddingValues(),
+                scrollThresholdPadding = WindowInsets.systemBars
+                    .add(WindowInsets(top = dragScrollZone, bottom = dragScrollZone))
+                    .asPaddingValues(),
             ) { from, to ->
                 val currentDragInfo = dragInfo
                 dragInfo =
@@ -636,10 +635,29 @@ fun Queue(
             }
         }
 
-        LaunchedEffect(mutableQueueWindows) {
-            if (currentWindowIndex != -1) {
-                lazyListState.scrollToItem(currentWindowIndex)
+        LaunchedEffect(currentWindowIndex) {
+            if (currentWindowIndex == -1) return@LaunchedEffect
+            val layoutInfo = lazyListState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val itemInfo = visibleItems.firstOrNull { it.index == currentWindowIndex }
+
+            if (itemInfo == null) {
+                lazyListState.scrollToItem(maxOf(0, currentWindowIndex - 3))
             }
+
+            val updatedItem = lazyListState.layoutInfo.visibleItemsInfo
+                .firstOrNull { it.index == currentWindowIndex }
+            val viewportCenter = lazyListState.layoutInfo.viewportSize.height / 2
+            val scrollTarget = ((updatedItem?.offset ?: 0) - viewportCenter
+                + (updatedItem?.size ?: 0) / 2).toFloat()
+
+            lazyListState.animateScrollBy(
+                value = scrollTarget,
+                animationSpec = tween(
+                    durationMillis = 2000,
+                    easing = EaseInOut,
+                ),
+            )
         }
 
         Box(
@@ -1363,10 +1381,11 @@ fun InlineQueuePanel(
         }
     }
 
+    val dragScrollZone = LocalConfiguration.current.screenHeightDp.dp * 0.15f
     val reorderableState = rememberReorderableLazyListState(
         lazyListState = lazyListState,
         scrollThresholdPadding = WindowInsets.systemBars
-            .add(WindowInsets(top = ListItemHeight * 3, bottom = ListItemHeight * 3))
+            .add(WindowInsets(top = dragScrollZone, bottom = dragScrollZone))
             .asPaddingValues(),
     ) { from, to ->
         // spacer(1) + historyItems + divider(1) = queue starts here

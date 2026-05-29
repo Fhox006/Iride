@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -662,17 +663,6 @@ fun AutoPlaylistScreen(
             headerItems = 2,
         )
 
-        if (canRefresh) {
-            Indicator(
-                isRefreshing = isRefreshing,
-                state = pullRefreshState,
-                modifier =
-                    Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(LocalPlayerAwareWindowInsets.current.asPaddingValues()),
-            )
-        }
-
         // Upload FAB for uploaded playlist - positioned above mini player
         if (playlistType == PlaylistType.UPLOADED) {
             androidx.compose.animation.AnimatedVisibility(
@@ -927,21 +917,26 @@ private fun AutoPlaylistHeader(
                 shape = RoundedCornerShape(3.dp),
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    AsyncImage(
-                        model = songs[0].song.thumbnailUrl,
-                        contentDescription = null,
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
                     if (isLiked) {
-                        Icon(
-                            painter = painterResource(R.drawable.star),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                        Box(
                             modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(10.dp)
-                                .size(48.dp),
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.star),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                modifier = Modifier.size(156.dp),
+                            )
+                        }
+                    } else {
+                        AsyncImage(
+                            model = songs[0].song.thumbnailUrl,
+                            contentDescription = null,
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
                 }
