@@ -81,33 +81,10 @@ object Updater {
 
     /**
      * Checks if the latest version is newer than the current version.
-     *
-     * Update is shown ONLY if the base version of [latestVersion] is strictly
-     * greater than the base version of [currentVersion].
-     *
-     * This prevents showing the update dialog to users who are already running
-     * a pre-release (beta/alpha/rc) of the same version number as the latest
-     * stable release.
-     *
-     * Examples:
-     *   currentVersion = "10.0.0-beta1", latestVersion = "10.0.0"  → false (same base)
-     *   currentVersion = "9.5.0",        latestVersion = "10.0.0"  → true
-     *   currentVersion = "10.0.0",       latestVersion = "10.1.0"  → true
-     *   currentVersion = "10.0.0-beta1", latestVersion = "10.1.0"  → true
-     *   currentVersion = "10.0.0",       latestVersion = "10.0.0"  → false
+     * Returns true if an update is available (latestVersion > currentVersion)
      */
     fun isUpdateAvailable(currentVersion: String, latestVersion: String): Boolean {
-        fun baseVersion(v: String): String {
-            val clean = v.removePrefix("v")
-            val dash = clean.indexOf('-')
-            return if (dash >= 0) clean.substring(0, dash) else clean
-        }
-
-        val currentBase = baseVersion(currentVersion)
-        val latestBase  = baseVersion(latestVersion)
-
-        // Only suggest update if the latest base version is strictly greater
-        return compareVersions(latestBase, currentBase) > 0
+        return compareVersions(latestVersion, currentVersion) > 0
     }
 
     /**

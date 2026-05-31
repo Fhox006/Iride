@@ -1,12 +1,3 @@
-## 0.1.0-alpha12
-
-### Changes
-
-- Library screen: almost complete, browsing experience significantly improved
-- Redesigned floating pill bar (mini player / playback scrubber)
-- Playback optimizations: reduced latency on track start
-- Typography: text sizes adjusted for better readability
-
 ## 0.1.0-alpha10
 
 ### Changes

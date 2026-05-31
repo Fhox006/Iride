@@ -72,6 +72,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -111,6 +112,8 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.BuildConfig
+import com.metrolist.music.constants.BetaBannerDismissedVersionKey
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
@@ -196,7 +199,7 @@ fun HomeScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
-    var betaBannerDismissed by rememberSaveable { mutableStateOf(false) }
+    var betaBannerDismissedVersion by rememberPreference(BetaBannerDismissedVersionKey, "")
 
     val speedDialItems by viewModel.speedDialItems.collectAsStateWithLifecycle()
     val pinnedSpeedDialItems by viewModel.pinnedSpeedDialItems.collectAsStateWithLifecycle()
@@ -269,8 +272,16 @@ fun HomeScreen(
     var randomizeJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val lazyListState = rememberLazyListState()
 
-    val isLoadingMoreHomeSections by viewModel.isLoadingMoreHomeSections.collectAsState()
-    val homePageContinuation by viewModel.homePageContinuation.collectAsState()
+    LaunchedEffect(Unit) {
+        snapshotFlow {
+            lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+        }.collect { lastVisibleIndex: Int? ->
+            val len = lazyListState.layoutInfo.totalItemsCount
+            if (lastVisibleIndex != null && lastVisibleIndex >= len - 3 && phase1Complete) {
+                viewModel.loadMoreYouTubeItems(homePage?.continuation)
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.onSectionBecameVisible("daily_discover")
@@ -478,7 +489,7 @@ fun HomeScreen(
             ) {
                 item(key = "beta_banner") {
                     AnimatedVisibility(
-                        visible = !betaBannerDismissed,
+                        visible = betaBannerDismissedVersion != BuildConfig.VERSION_NAME,
                         enter = fadeIn() + expandVertically(),
                         exit = fadeOut() + shrinkVertically(),
                     ) {
@@ -510,7 +521,7 @@ fun HomeScreen(
                                         color = MaterialTheme.colorScheme.onErrorContainer,
                                     )
                                 }
-                                IconButton(onClick = { betaBannerDismissed = true }) {
+                                IconButton(onClick = { betaBannerDismissedVersion = BuildConfig.VERSION_NAME }) {
                                     Icon(
                                         painter = painterResource(R.drawable.close),
                                         contentDescription = "Dismiss",
@@ -1240,27 +1251,6 @@ fun HomeScreen(
                                     }
                                 }
                             }
-                        }
-                    }
-                }
-
-                if (homePageContinuation != null) {
-                    item(key = "load_more_trigger_$homePageContinuation") {
-                        LaunchedEffect(homePageContinuation) {
-                            if (!isLoadingMoreHomeSections) {
-                                viewModel.loadMoreHomeSections()
-                            }
-                        }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(32.dp),
-                                strokeWidth = 2.dp,
-                            )
                         }
                     }
                 }

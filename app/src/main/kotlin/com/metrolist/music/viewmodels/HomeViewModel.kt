@@ -70,8 +70,10 @@ import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -128,8 +130,6 @@ class HomeViewModel @Inject constructor(
     val similarRecommendations = MutableStateFlow<List<SimilarRecommendation>?>(null)
     val accountPlaylists = MutableStateFlow<List<PlaylistItem>?>(null)
     val homePage = MutableStateFlow<HomePage?>(null)
-    val homePageContinuation = MutableStateFlow<String?>(null)
-    val isLoadingMoreHomeSections = MutableStateFlow(false)
     val explorePage = MutableStateFlow<ExplorePage?>(null)
     val communityPlaylists = MutableStateFlow<List<CommunityPlaylistItem>?>(null)
     val selectedChip = MutableStateFlow<HomePage.Chip?>(null)
@@ -983,7 +983,6 @@ class HomeViewModel @Inject constructor(
                     }
                 )
                 homePage.value = transformedPage
-                homePageContinuation.value = transformedPage.continuation
                 if (selectedChip.value == null) {
                     val savedParams = cachedMoodSnapshot.value?.chipParams
                     val preferredChip = if (!savedParams.isNullOrEmpty())
@@ -1019,37 +1018,36 @@ class HomeViewModel @Inject constructor(
         // lazy — started via onSectionBecameVisible() when the user scrolls to them.
     }
 
-    fun loadMoreHomeSections() {
-        val continuation = homePageContinuation.value ?: return
-        if (isLoadingMoreHomeSections.value) return
+    private val _isLoadingMore = MutableStateFlow(false)
+    fun loadMoreYouTubeItems(continuation: String?) {
+        if (continuation == null || _isLoadingMore.value) return
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
         val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+        val currentChip = selectedChip.value
+
         viewModelScope.launch(Dispatchers.IO) {
-            isLoadingMoreHomeSections.value = true
-            try {
-                var result = YouTube.home(continuation = continuation)
-                if (result.isFailure) {
-                    val recovered = syncUtils.reInjectCredentials()
-                    if (recovered) result = YouTube.home(continuation = continuation)
-                }
-                result.onSuccess { nextPage ->
-                    val current = homePage.value ?: return@onSuccess
-                    val merged = current.copy(
-                        sections = (current.sections + nextPage.sections).mapNotNull { section ->
-                            val filtered = section.items
-                                .filterExplicit(hideExplicit)
-                                .filterVideoSongs(hideVideoSongs)
-                                .filterYoutubeShorts(hideYoutubeShorts)
-                            if (filtered.isEmpty()) null else section.copy(items = filtered)
-                        }
-                    )
-                    homePage.value = merged
-                    homePageContinuation.value = nextPage.continuation
-                }
-            } finally {
-                isLoadingMoreHomeSections.value = false
+            _isLoadingMore.value = true
+            val nextSections = try {
+                withTimeout(30_000L) { YouTube.home(continuation).getOrNull() }
+            } catch (e: TimeoutCancellationException) {
+                null
+            } ?: run {
+                _isLoadingMore.value = false
+                return@launch
             }
+
+            homePage.value = nextSections.copy(
+                chips = homePage.value?.chips,
+                sections = (homePage.value?.sections.orEmpty() + nextSections.sections).mapNotNull { section ->
+                    val filteredItems = section.items
+                        .filterExplicit(hideExplicit)
+                        .filterVideoSongs(hideVideoSongs)
+                        .filterYoutubeShorts(hideYoutubeShorts)
+                    if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
+                }
+            )
+            _isLoadingMore.value = false
         }
     }
 

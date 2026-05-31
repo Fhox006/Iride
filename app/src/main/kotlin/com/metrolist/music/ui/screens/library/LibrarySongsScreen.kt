@@ -15,6 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -47,6 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -76,6 +78,7 @@ import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.queues.ListQueue
+import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.HideOnScrollFAB
@@ -125,7 +128,7 @@ fun LibrarySongsScreen(
     val debouncedSearchQuery by viewModel.debouncedSearchQuery.collectAsState()
     val normalizedQuery = remember(debouncedSearchQuery) { debouncedSearchQuery.normalizeForSearch() }
 
-    var filter by rememberEnumPreference(SongFilterKey, SongFilter.LIBRARY)
+    var filter by rememberEnumPreference(SongFilterKey, SongFilter.LIKED)
 
     var showUploadDialog by remember { mutableStateOf(false) }
     var uploadProgress by remember { mutableFloatStateOf(0f) }
@@ -346,6 +349,43 @@ fun LibrarySongsScreen(
                         .asPaddingValues().calculateBottomPadding(),
                 ),
             ) {
+                if (!isOffline) {
+                    item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(0.dp)
+                                .clipToBounds(),
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                            ) {
+                                ChipsRow(
+                                    chips = listOf(
+                                        SongFilter.LIKED      to stringResource(R.string.filter_liked),
+                                        SongFilter.LIBRARY    to stringResource(R.string.filter_library),
+                                        SongFilter.UPLOADED   to stringResource(R.string.filter_uploaded),
+                                        SongFilter.DOWNLOADED to stringResource(R.string.filter_downloaded),
+                                    ),
+                                    currentValue = filter,
+                                    onValueUpdate = { filter = it },
+                                    modifier = Modifier.weight(1f),
+                                )
+                                IconButton(onClick = { /* TODO: star action */ }) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.star),
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 item(key = "sort", contentType = CONTENT_TYPE_HEADER) {
                     LibrarySortRow(
                         sortOptions = sortOptions,
@@ -427,16 +467,29 @@ fun LibrarySongsScreen(
             }
 
             HideOnScrollFAB(
-                visible = filteredSongs.isNotEmpty(),
+                visible = if (filter == SongFilter.UPLOADED) true else filteredSongs.isNotEmpty(),
                 lazyListState = lazyListState,
-                icon = R.drawable.shuffle,
+                icon = if (filter == SongFilter.UPLOADED) R.drawable.upload else R.drawable.shuffle,
                 onClick = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = queueAllSongsStr,
-                            items = filteredSongs.shuffled().map { it.toMediaItem() },
-                        ),
-                    )
+                    if (filter == SongFilter.UPLOADED) {
+                        filePickerLauncher.launch(
+                            arrayOf(
+                                "audio/mpeg",
+                                "audio/mp4",
+                                "audio/x-m4a",
+                                "audio/flac",
+                                "audio/ogg",
+                                "audio/x-ms-wma",
+                            ),
+                        )
+                    } else {
+                        playerConnection.playQueue(
+                            ListQueue(
+                                title = queueAllSongsStr,
+                                items = filteredSongs.shuffled().map { it.toMediaItem() },
+                            ),
+                        )
+                    }
                 },
             )
         }

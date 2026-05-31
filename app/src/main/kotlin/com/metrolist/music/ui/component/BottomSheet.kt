@@ -271,23 +271,15 @@ class BottomSheetState(
 
     val preUpPostDownNestedScrollConnection
         get() = object : NestedScrollConnection {
-            val PANEL_DRAG_THRESHOLD_PX = 80f
-            var accumulatedDelta = 0f
             var isTopReached = false
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (isExpanded && available.y < 0) {
                     isTopReached = false
-                    accumulatedDelta = 0f
                 }
 
                 return if (isTopReached && available.y < 0 && source == NestedScrollSource.UserInput) {
-                    accumulatedDelta += available.y
-                    if (kotlin.math.abs(accumulatedDelta) > PANEL_DRAG_THRESHOLD_PX) {
-                        val excess = (accumulatedDelta + PANEL_DRAG_THRESHOLD_PX) * 0.45f
-                        dispatchRawDelta(excess)
-                        accumulatedDelta = -PANEL_DRAG_THRESHOLD_PX
-                    }
+                    dispatchRawDelta(available.y)
                     available
                 } else {
                     Offset.Zero
@@ -301,16 +293,10 @@ class BottomSheetState(
             ): Offset {
                 if (!isTopReached) {
                     isTopReached = consumed.y == 0f && available.y > 0
-                    if (isTopReached) accumulatedDelta = 0f
                 }
 
                 return if (isTopReached && source == NestedScrollSource.UserInput) {
-                    accumulatedDelta += available.y
-                    if (accumulatedDelta > PANEL_DRAG_THRESHOLD_PX) {
-                        val excess = (accumulatedDelta - PANEL_DRAG_THRESHOLD_PX) * 0.45f
-                        dispatchRawDelta(excess)
-                        accumulatedDelta = PANEL_DRAG_THRESHOLD_PX
-                    }
+                    dispatchRawDelta(available.y)
                     available
                 } else {
                     Offset.Zero
@@ -320,8 +306,8 @@ class BottomSheetState(
             override suspend fun onPreFling(available: Velocity): Velocity {
                 return if (isTopReached) {
                     val velocity = -available.y
-                    accumulatedDelta = 0f
                     performFling(velocity, null)
+
                     available
                 } else {
                     Velocity.Zero
@@ -330,7 +316,6 @@ class BottomSheetState(
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                 isTopReached = false
-                accumulatedDelta = 0f
                 return Velocity.Zero
             }
         }

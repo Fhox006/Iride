@@ -108,7 +108,6 @@ fun PlayerMenu(
     playerBottomSheetState: BottomSheetState,
     isQueueTrigger: Boolean? = false,
     onShowDetailsDialog: () -> Unit,
-    onShowSleepTimer: () -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     mediaMetadata ?: return
@@ -303,6 +302,7 @@ fun PlayerMenu(
             ),
     ) {
         item {
+            val startingRadioText = stringResource(R.string.starting_radio)
             NewActionGrid(
                 actions =
                     listOfNotNull(
@@ -310,15 +310,16 @@ fun PlayerMenu(
                             NewAction(
                                 icon = {
                                     Icon(
-                                        painter = painterResource(R.drawable.bedtime),
+                                        painter = painterResource(R.drawable.radio),
                                         contentDescription = null,
                                         modifier = Modifier.size(32.dp),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 },
-                                text = stringResource(R.string.sleep_timer),
+                                text = stringResource(R.string.start_radio),
                                 onClick = {
-                                    onShowSleepTimer()
+                                    Toast.makeText(context, startingRadioText, Toast.LENGTH_SHORT).show()
+                                    playerConnection.startRadioSeamlessly()
                                     onDismiss()
                                 },
                             )
@@ -352,12 +353,19 @@ fun PlayerMenu(
                         when (download?.state) {
                             Download.STATE_COMPLETED -> NewAction(
                                 icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.offline),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    )
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50)),
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.offline),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(28.dp),
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        )
+                                    }
                                 },
                                 text = stringResource(R.string.remove_download),
                                 onClick = {
@@ -368,11 +376,18 @@ fun PlayerMenu(
                             )
                             Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> NewAction(
                                 icon = {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    )
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50)),
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        )
+                                    }
                                 },
                                 text = stringResource(R.string.downloading),
                                 onClick = {
@@ -383,12 +398,19 @@ fun PlayerMenu(
                             )
                             else -> NewAction(
                                 icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.download),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    )
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50)),
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.download),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(28.dp),
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        )
+                                    }
                                 },
                                 text = stringResource(R.string.action_download),
                                 onClick = {

@@ -8,10 +8,14 @@ package com.metrolist.music.ui.screens.library
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -20,7 +24,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,8 +36,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.metrolist.music.constants.PureBlackKey
@@ -70,12 +79,14 @@ import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.constants.YtmSyncKey
+import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.LibraryArtistGridItem
 import com.metrolist.music.ui.component.LibraryArtistListItem
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
-import com.metrolist.music.ui.component.LibrarySortRow
+import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.SortHeader
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LibraryArtistsViewModel
@@ -95,7 +106,7 @@ fun LibraryArtistsScreen(
     val coroutineScope = rememberCoroutineScope()
     var viewType by rememberEnumPreference(ArtistViewTypeKey, LibraryViewType.GRID)
 
-    var filter by rememberEnumPreference(ArtistFilterKey, ArtistFilter.LIBRARY)
+    var filter by rememberEnumPreference(ArtistFilterKey, ArtistFilter.LIKED)
     val (sortType, onSortTypeChange) = rememberEnumPreference(
         ArtistSortTypeKey,
         ArtistSortType.CREATE_DATE
@@ -104,14 +115,6 @@ fun LibraryArtistsScreen(
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
-
-    val sortOptions = listOf(
-        ArtistSortType.CREATE_DATE to stringResource(R.string.sort_by_create_date),
-        ArtistSortType.NAME to stringResource(R.string.sort_by_name),
-        ArtistSortType.SONG_COUNT to stringResource(R.string.sort_by_song_count),
-        ArtistSortType.PLAY_TIME to stringResource(R.string.sort_by_play_time),
-    )
-
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         snapAnimationSpec = tween(durationMillis = 200),
     )
@@ -168,6 +171,36 @@ fun LibraryArtistsScreen(
                         )
                     }
                 },
+                trailingContent = {
+                    IconButton(
+                        onClick = { isSearchActive = true },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.search),
+                            contentDescription = stringResource(R.string.search),
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            viewType = if (viewType == LibraryViewType.LIST)
+                                LibraryViewType.GRID
+                            else
+                                LibraryViewType.LIST
+                        },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(
+                                when (viewType) {
+                                    LibraryViewType.LIST -> R.drawable.list
+                                    else -> R.drawable.grid_view
+                                }
+                            ),
+                            contentDescription = null,
+                        )
+                    }
+                },
             )
         },
         containerColor = Color.Transparent,
@@ -192,15 +225,46 @@ fun LibraryArtistsScreen(
                                     .asPaddingValues().calculateBottomPadding(),
                             ),
                         ) {
+                            item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(0.dp)
+                                        .clipToBounds(),
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp),
+                                    ) {
+                                        ChipsRow(
+                                            chips = listOf(
+                                                ArtistFilter.LIKED to stringResource(R.string.filter_liked),
+                                                ArtistFilter.LIBRARY to stringResource(R.string.filter_library),
+                                            ),
+                                            currentValue = filter,
+                                            onValueUpdate = { filter = it },
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                }
+                            }
+
                             item(key = "sort", contentType = CONTENT_TYPE_HEADER) {
-                                LibrarySortRow(
-                                    sortOptions = sortOptions,
-                                    currentSort = sortType,
-                                    onSortChange = onSortTypeChange,
+                                SortHeader(
+                                    sortType = sortType,
                                     sortDescending = sortDescending,
+                                    onSortTypeChange = onSortTypeChange,
                                     onSortDescendingChange = onSortDescendingChange,
-                                    viewType = viewType,
-                                    onViewTypeChange = { viewType = it },
+                                    sortTypeText = { type ->
+                                        when (type) {
+                                            ArtistSortType.CREATE_DATE -> R.string.sort_by_create_date
+                                            ArtistSortType.NAME -> R.string.sort_by_name
+                                            ArtistSortType.SONG_COUNT -> R.string.sort_by_song_count
+                                            ArtistSortType.PLAY_TIME -> R.string.sort_by_play_time
+                                        }
+                                    },
                                 )
                             }
 
@@ -242,14 +306,10 @@ fun LibraryArtistsScreen(
                     LibraryViewType.GRID, LibraryViewType.GRID_WIDE ->
                         LazyVerticalGrid(
                             state = lazyGridState,
-                            columns = if (viewType == LibraryViewType.GRID_WIDE) {
-                                GridCells.Fixed(3)
-                            } else {
-                                GridCells.Adaptive(
-                                    minSize = GridThumbnailHeight +
-                                        if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
-                                )
-                            },
+                            columns = GridCells.Adaptive(
+                                minSize = GridThumbnailHeight +
+                                    if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
+                            ),
                             contentPadding = PaddingValues(
                                 start = 12.dp,
                                 end = 12.dp,
@@ -261,18 +321,53 @@ fun LibraryArtistsScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             item(
+                                key = "filter",
+                                span = { GridItemSpan(maxLineSpan) },
+                                contentType = CONTENT_TYPE_HEADER,
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(0.dp)
+                                        .clipToBounds(),
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp),
+                                    ) {
+                                        ChipsRow(
+                                            chips = listOf(
+                                                ArtistFilter.LIKED to stringResource(R.string.filter_liked),
+                                                ArtistFilter.LIBRARY to stringResource(R.string.filter_library),
+                                            ),
+                                            currentValue = filter,
+                                            onValueUpdate = { filter = it },
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                }
+                            }
+
+                            item(
                                 key = "sort",
                                 span = { GridItemSpan(maxLineSpan) },
                                 contentType = CONTENT_TYPE_HEADER,
                             ) {
-                                LibrarySortRow(
-                                    sortOptions = sortOptions,
-                                    currentSort = sortType,
-                                    onSortChange = onSortTypeChange,
+                                SortHeader(
+                                    sortType = sortType,
                                     sortDescending = sortDescending,
+                                    onSortTypeChange = onSortTypeChange,
                                     onSortDescendingChange = onSortDescendingChange,
-                                    viewType = viewType,
-                                    onViewTypeChange = { viewType = it },
+                                    sortTypeText = { type ->
+                                        when (type) {
+                                            ArtistSortType.CREATE_DATE -> R.string.sort_by_create_date
+                                            ArtistSortType.NAME -> R.string.sort_by_name
+                                            ArtistSortType.SONG_COUNT -> R.string.sort_by_song_count
+                                            ArtistSortType.PLAY_TIME -> R.string.sort_by_play_time
+                                        }
+                                    },
                                 )
                             }
 

@@ -183,6 +183,7 @@ import com.metrolist.music.lyrics.LyricsDebugLog
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground
+import com.metrolist.music.ui.component.BetterAnimatedGradientBackground
 import com.metrolist.music.ui.component.BottomSheet
 import com.metrolist.music.ui.component.BottomSheetState
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -270,7 +271,7 @@ fun BottomSheetPlayer(
 
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.ANIMATED_GRADIENT,
+        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
     )
     val playerButtonsStyle by rememberEnumPreference(
         key = PlayerButtonsStyleKey,
@@ -287,7 +288,7 @@ fun BottomSheetPlayer(
     val shouldUseDarkButtonColors =
         remember(playerBackground, useDarkTheme) {
             when (playerBackground) {
-                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT -> true
+                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT, PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> true
                 else -> useDarkTheme
             }
         }
@@ -302,7 +303,7 @@ fun BottomSheetPlayer(
             val insetsController = WindowCompat.getInsetsController(window, window.decorView)
 
             when (playerBackground) {
-                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
+                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT, PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> {
                     insetsController.isAppearanceLightStatusBars = false
                 }
 
@@ -373,7 +374,7 @@ fun BottomSheetPlayer(
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
     val isMuted by playerConnection.isMuted.collectAsState()
 
-    val sliderStyle by rememberEnumPreference(SliderStyleKey, SliderStyle.DEFAULT)
+    val sliderStyle by rememberEnumPreference(SliderStyleKey, SliderStyle.SLIM)
     val squigglySlider by rememberPreference(SquigglySliderKey, defaultValue = false)
 
     // Listen Together state (reactive)
@@ -520,7 +521,8 @@ fun BottomSheetPlayer(
         when {
             playerBackground == PlayerBackgroundStyle.BLUR ||
                     playerBackground == PlayerBackgroundStyle.GRADIENT ||
-                    playerBackground == PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
+                    playerBackground == PlayerBackgroundStyle.ANIMATED_GRADIENT ||
+                    playerBackground == PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> {
                 when (playerButtonsStyle) {
                     PlayerButtonsStyle.DEFAULT -> {
                         Pair(Color.White, Color.Black)
@@ -576,7 +578,8 @@ fun BottomSheetPlayer(
         when {
             playerBackground == PlayerBackgroundStyle.BLUR ||
                     playerBackground == PlayerBackgroundStyle.GRADIENT ||
-                    playerBackground == PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
+                    playerBackground == PlayerBackgroundStyle.ANIMATED_GRADIENT ||
+                    playerBackground == PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> {
                 when (playerButtonsStyle) {
                     PlayerButtonsStyle.DEFAULT -> {
                         Pair(
@@ -825,7 +828,7 @@ fun BottomSheetPlayer(
 
     val bottomSheetBackgroundColor =
         when (playerBackground) {
-            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT -> {
+            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT, PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> {
                 MaterialTheme.colorScheme.surfaceContainer
             }
 
@@ -908,6 +911,28 @@ fun BottomSheetPlayer(
                         )
                     }
 
+                    PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> {
+                        var currentBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+                        LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl) {
+                            if (mediaMetadata?.thumbnailUrl != null) {
+                                val request = ImageRequest.Builder(context)
+                                    .data(mediaMetadata?.thumbnailUrl)
+                                    .size(100, 100)
+                                    .allowHardware(false)
+                                    .build()
+                                val result = context.imageLoader.execute(request)
+                                currentBitmap = result.image?.toBitmap()
+                            } else {
+                                currentBitmap = null
+                            }
+                        }
+
+                        BetterAnimatedGradientBackground(
+                            thumbnail = currentBitmap,
+                            modifier = Modifier.fillMaxSize().alpha(backgroundAlpha)
+                        )
+                    }
+
                     else -> {}
                 }
             }
@@ -938,6 +963,41 @@ fun BottomSheetPlayer(
                 animationSpec = tween(durationMillis = 90, easing = LinearEasing),
                 label = "playPauseRoundness",
             )
+            val albumArtCorner by animateDpAsState(
+                targetValue = if (isFullScreen) 14.dp else ThumbnailCornerRadius,
+                animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
+                label = "albumArtCorner",
+            )
+            val controlsRowStartPadding by animateDpAsState(
+                targetValue = if (isFullScreen) 8.dp else PlayerHorizontalPadding,
+                animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
+                label = "controlsRowStartPadding",
+            )
+            val controlsRowTopPadding by animateDpAsState(
+                targetValue = if (isFullScreen) 6.dp else 0.dp,
+                animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
+                label = "controlsRowTopPadding",
+            )
+            val controlsToSliderSpacing by animateDpAsState(
+                targetValue = if (isFullScreen) 10.dp else 24.dp,
+                animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
+                label = "controlsToSliderSpacing",
+            )
+            val durationRowTopSpacing by animateDpAsState(
+                targetValue = if (isFullScreen) 0.dp else 4.dp,
+                animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
+                label = "durationRowTopSpacing",
+            )
+            val durationFontSize by animateFloatAsState(
+                targetValue = if (isFullScreen) 10f else 11f,
+                animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
+                label = "durationFontSize",
+            )
+            val fullscreenBtnBgAlpha by animateFloatAsState(
+                targetValue = if (isFullScreen) 0.3f else 1f,
+                animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
+                label = "fullscreenBtnBgAlpha",
+            )
 
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -945,7 +1005,7 @@ fun BottomSheetPlayer(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = PlayerHorizontalPadding)
+                        .padding(start = controlsRowStartPadding, end = PlayerHorizontalPadding, top = controlsRowTopPadding)
                         .heightIn(min = 56.dp),
             ) {
                 AnimatedContent(
@@ -968,7 +1028,7 @@ fun BottomSheetPlayer(
                                     modifier =
                                         Modifier
                                             .size(56.dp)
-                                            .clip(RoundedCornerShape(ThumbnailCornerRadius))
+                                            .clip(RoundedCornerShape(albumArtCorner))
                                             .background(MaterialTheme.colorScheme.surfaceVariant)
                                             .clickable { if (isFullScreen) { isFullScreen = false; showInlineLyrics = false; showQueue = false } else { showInlineLyrics = false; showQueue = false } },
                                     contentAlignment = Alignment.Center,
@@ -990,7 +1050,7 @@ fun BottomSheetPlayer(
                                     modifier =
                                         Modifier
                                             .size(56.dp)
-                                            .clip(RoundedCornerShape(ThumbnailCornerRadius))
+                                            .clip(RoundedCornerShape(albumArtCorner))
                                             .clickable { if (isFullScreen) { isFullScreen = false; showInlineLyrics = false; showQueue = false } else { showInlineLyrics = false; showQueue = false } },
                                 )
                             }
@@ -1189,7 +1249,6 @@ fun BottomSheetPlayer(
                                                         }
                                                     }
                                                 },
-                                                onShowSleepTimer = { showSleepTimerDialog = true },
                                                 onDismiss = menuState::dismiss,
                                             )
                                         }
@@ -1231,7 +1290,7 @@ fun BottomSheetPlayer(
                                     bottomStart = btnCornerBottomStart,
                                     bottomEnd = 21.dp,
                                 ))
-                                .background(textButtonColor)
+                                .background(textButtonColor.copy(alpha = fullscreenBtnBgAlpha))
                                 .clickable {
                                     if (isLyricsOrQueue) {
                                         isFullScreen = !isFullScreen
@@ -1301,7 +1360,6 @@ fun BottomSheetPlayer(
                                                             }
                                                         }
                                                     },
-                                                    onShowSleepTimer = { showSleepTimerDialog = true },
                                                     onDismiss = menuState::dismiss,
                                                 )
                                             }
@@ -1383,7 +1441,7 @@ fun BottomSheetPlayer(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(controlsToSliderSpacing))
 
             when (sliderStyle) {
                 SliderStyle.DEFAULT -> {
@@ -1501,7 +1559,7 @@ fun BottomSheetPlayer(
                 }
             }
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(durationRowTopSpacing))
 
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1513,7 +1571,7 @@ fun BottomSheetPlayer(
             ) {
                 Text(
                     text = makeTimeString(sliderPosition ?: effectivePosition),
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelMedium.copy(fontSize = durationFontSize.sp),
                     color = TextBackgroundColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1521,7 +1579,7 @@ fun BottomSheetPlayer(
 
                 Text(
                     text = if (duration != C.TIME_UNSET) makeTimeString(duration) else "",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelMedium.copy(fontSize = durationFontSize.sp),
                     color = TextBackgroundColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -2319,27 +2377,33 @@ internal fun InlinePlayerPageFrame(
     pills: @Composable RowScope.() -> Unit,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
             .padding(horizontal = 20.dp)
             .padding(top = 8.dp, bottom = 16.dp),
     ) {
-        Spacer(Modifier.fillMaxHeight(0.10f))
+        // Content always fills the full area regardless of pills visibility
+        Box(modifier = Modifier.fillMaxSize(), content = content)
+
+        // Pills overlay on top without consuming vertical space
         AnimatedVisibility(
             visible = !isFullScreen,
             enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
             exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+            modifier = Modifier.fillMaxSize(),
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp, horizontal = 12.dp),
-                content = pills,
-            )
+            Column {
+                Spacer(Modifier.fillMaxHeight(0.10f))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp, horizontal = 12.dp),
+                    content = pills,
+                )
+            }
         }
-        Box(modifier = Modifier.weight(1f), content = content)
     }
 }

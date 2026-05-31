@@ -69,6 +69,7 @@ import com.metrolist.music.lyrics.WordTimestamp
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.ui.screens.settings.LyricsPosition
 import com.metrolist.music.ui.theme.InterFontFamily
+import com.metrolist.music.ui.theme.SatoshiFontFamily
 import kotlinx.coroutines.isActive
 import kotlin.math.abs
 import kotlin.math.cos
@@ -165,8 +166,6 @@ internal fun LyricsLine(
         )
         .background(if (isSelected && isSelectionModeActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else Color.Transparent)
         .padding(
-            start = 32.dp,
-            end = 32.dp,
             top = if (item.isBackground) 0.dp else 8.dp,
             bottom = if (item.isBackground) 2.dp else 8.dp
         )
@@ -178,9 +177,9 @@ internal fun LyricsLine(
             val distance = abs(index - displayedCurrentLineIndex)
             when (distance) {
                 0 -> 0f
-                1 -> 2f
-                2 -> 3f
-                else -> 4f
+                1 -> 4f
+                2 -> 6f
+                else -> 14f
             }
         },
         animationSpec = spring(
@@ -214,9 +213,10 @@ internal fun LyricsLine(
         }
     }
 
-    Box(modifier = itemModifier.then(
-        if (blurRadius > 0.5f) Modifier.blur(blurRadius.dp) else Modifier
-    ), contentAlignment = when {
+    Box(modifier = itemModifier
+        .then(if (blurRadius > 0.5f) Modifier.blur(blurRadius.dp) else Modifier)
+        .padding(start = 8.dp, end = 32.dp),
+        contentAlignment = when {
         respectAgentPositioning && item.agent == "v1" -> Alignment.CenterStart
         respectAgentPositioning && item.agent == "v2" -> Alignment.CenterEnd
         item.isBackground -> Alignment.Center
@@ -230,7 +230,7 @@ internal fun LyricsLine(
         @Composable
         fun LyricContent() {
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = agentAlignment) {
-                val inactiveAlpha = if (item.isBackground) 0.08f else 0.2f
+                val inactiveAlpha = if (item.isBackground) 0.15f else 0.38f
                 val activeAlpha = 1f
                 val focusedAlpha = if (item.isBackground) 0.5f else 0.3f
 
@@ -253,12 +253,12 @@ internal fun LyricsLine(
                 val subText = if (item.isBackground) subTextRaw?.removePrefix("(")?.removeSuffix(")") else subTextRaw
 
                 val lyricStyle = TextStyle(
-                    fontFamily = InterFontFamily,
+                    fontFamily = SatoshiFontFamily,
                     fontSize = if (item.isBackground) (lyricsTextSize * 0.7f).sp else lyricsTextSize.sp,
                     fontWeight = FontWeight.Black,
                     fontStyle = if (item.isBackground) FontStyle.Italic else FontStyle.Normal,
                     lineHeight = if (item.isBackground) (lyricsTextSize * 0.7f * lyricsLineSpacing).sp else (lyricsTextSize * lyricsLineSpacing).sp,
-                    letterSpacing = (-0.5).sp,
+                    letterSpacing = 0.3.sp,
                     textAlign = agentTextAlign,
                     platformStyle = PlatformTextStyle(includeFontPadding = false),
                     lineHeightStyle = LineHeightStyle(

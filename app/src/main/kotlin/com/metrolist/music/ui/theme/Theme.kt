@@ -13,7 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.SaverScope
@@ -21,8 +20,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
 import androidx.palette.graphics.Palette
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
@@ -67,16 +64,12 @@ fun IrideTheme(
         }
     }
 
-    val currentDensity = LocalDensity.current
-    CompositionLocalProvider(
-        LocalDensity provides Density(density = currentDensity.density, fontScale = 1f)
-    ) {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            typography = AppTypography,
-            content = content
-        )
-    }
+    // Use standard MaterialTheme instead of MaterialExpressiveTheme
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = AppTypography, // Use the defined AppTypography
+        content = content
+    )
 }
 
 suspend fun Bitmap.extractThemeColor(): Color = withContext(Dispatchers.Default) {

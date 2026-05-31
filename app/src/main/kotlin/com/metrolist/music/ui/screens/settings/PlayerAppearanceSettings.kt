@@ -88,7 +88,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
     val (useNewPlayerDesign, onUseNewPlayerDesignChange) =
         rememberPreference(UseNewPlayerDesignKey, defaultValue = true)
     val (playerBackground, onPlayerBackgroundChange) =
-        rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.ANIMATED_GRADIENT)
+        rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
     val (hidePlayerThumbnail, onHidePlayerThumbnailChange) =
         rememberPreference(HidePlayerThumbnailKey, defaultValue = false)
     val (cropAlbumArt, onCropAlbumArtChange) =
@@ -96,7 +96,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
     val (playerButtonsStyle, onPlayerButtonsStyleChange) =
         rememberEnumPreference(PlayerButtonsStyleKey, defaultValue = PlayerButtonsStyle.DEFAULT)
     val (sliderStyle, onSliderStyleChange) =
-        rememberEnumPreference(SliderStyleKey, defaultValue = SliderStyle.DEFAULT)
+        rememberEnumPreference(SliderStyleKey, defaultValue = SliderStyle.SLIM)
     val (squigglySlider, onSquigglySliderChange) =
         rememberPreference(SquigglySliderKey, defaultValue = false)
     val (swipeThumbnail, onSwipeThumbnailChange) =
@@ -136,6 +136,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                     PlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
                     PlayerBackgroundStyle.ANIMATED_GRADIENT -> stringResource(R.string.animated_gradient)
                     PlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
+                    PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> stringResource(R.string.better_animated_gradient)
                     else -> ""
                 }
             }
@@ -436,6 +437,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                                     PlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
                                     PlayerBackgroundStyle.ANIMATED_GRADIENT -> stringResource(R.string.animated_gradient)
                                     PlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
+                                    PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> stringResource(R.string.better_animated_gradient)
                                     else -> ""
                                 }
                             )

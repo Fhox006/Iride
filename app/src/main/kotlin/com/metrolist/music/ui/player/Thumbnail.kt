@@ -226,9 +226,9 @@ fun Thumbnail(
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.ANIMATED_GRADIENT
+        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT
     )
-    
+
     // Pre-calculate text color based on background style
     val textBackgroundColor = getTextColor(playerBackground)
     

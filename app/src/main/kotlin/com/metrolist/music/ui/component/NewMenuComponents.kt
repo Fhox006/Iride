@@ -7,6 +7,7 @@ package com.metrolist.music.ui.component
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -79,7 +80,7 @@ fun NewActionButton(
             CardDefaults.cardColors(
                 containerColor = animatedBackground,
             ),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(16.dp),
         elevation =
             CardDefaults.cardElevation(),
     ) {
@@ -92,7 +93,7 @@ fun NewActionButton(
             verticalArrangement = Arrangement.Center,
         ) {
             Box(
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier.size(28.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 icon()
@@ -102,11 +103,12 @@ fun NewActionButton(
 
             Text(
                 text = text,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelMedium,
                 color = animatedContent,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.basicMarquee(),
             )
         }
     }

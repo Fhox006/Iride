@@ -291,9 +291,17 @@ fun LibraryPlaylistsScreen(
                                 )
                             }
 
-                            if (visibleResults.isEmpty() && searchQuery.isNotBlank()) {
+                            if (visibleResults.isEmpty()) {
                                 item(key = "empty_placeholder") {
-                                    LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
+                                    if (searchQuery.isNotBlank()) {
+                                        LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
+                                    } else {
+                                        LibrarySearchEmptyPlaceholder(
+                                            modifier = Modifier.animateItem(),
+                                            icon = R.drawable.playlist_play,
+                                            text = stringResource(R.string.library_playlist_empty),
+                                        )
+                                    }
                                 }
                             }
 
@@ -398,9 +406,17 @@ fun LibraryPlaylistsScreen(
                                 )
                             }
 
-                            if (visibleResults.isEmpty() && searchQuery.isNotBlank()) {
+                            if (visibleResults.isEmpty()) {
                                 item(span = { GridItemSpan(maxLineSpan) }) {
-                                    LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
+                                    if (searchQuery.isNotBlank()) {
+                                        LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
+                                    } else {
+                                        LibrarySearchEmptyPlaceholder(
+                                            modifier = Modifier.animateItem(),
+                                            icon = R.drawable.playlist_play,
+                                            text = stringResource(R.string.library_playlist_empty),
+                                        )
+                                    }
                                 }
                             }
 

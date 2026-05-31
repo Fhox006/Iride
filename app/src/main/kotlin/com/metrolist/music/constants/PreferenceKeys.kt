@@ -111,6 +111,7 @@ val SelectedYtmPlaylistsKey = stringPreferencesKey("selectedYtmPlaylists")
 val CheckForUpdatesKey = booleanPreferencesKey("checkForUpdates")
 val UpdateNotificationsEnabledKey = booleanPreferencesKey("updateNotifications")
 val LastUpdateCheckTimeKey = longPreferencesKey("lastUpdateCheckTime")
+val BetaBannerDismissedVersionKey = stringPreferencesKey("betaBannerDismissedVersion")
 
 val AudioQualityKey = stringPreferencesKey("audioQuality")
 
@@ -443,6 +444,7 @@ enum class PlayerBackgroundStyle {
     GRADIENT,
     ANIMATED_GRADIENT,
     BLUR,
+    BETTER_ANIMATED_GRADIENT,
 }
 
 val TopSize = stringPreferencesKey("topSize")

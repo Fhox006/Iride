@@ -588,7 +588,6 @@ fun ArtistListItem(
                 .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .build(),
             contentDescription = null,
-            contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(ListThumbnailSize)
                 .clip(CircleShape),
@@ -1154,12 +1153,10 @@ fun YouTubeGridItem(
     showPlayButton: Boolean = true,
     size: Dp = currentGridThumbnailHeight(),
     showTitle: Boolean = true,
-    forceAspectRatio: Boolean = false,
 ) {
     val squareVideoThumbnail by rememberPreference(SquareVideoThumbnailKey, defaultValue = true)
     val defaultRatio = if (item is SongItem) 16f / 9 else 1f
     val effectiveThumbnailRatio = when {
-        forceAspectRatio -> thumbnailRatio
         thumbnailRatio != defaultRatio -> thumbnailRatio
         item is SongItem && squareVideoThumbnail -> 1f
         else -> thumbnailRatio
@@ -1200,7 +1197,7 @@ fun YouTubeGridItem(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.secondary,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -1411,7 +1408,7 @@ fun ItemThumbnail(
                 contentDescription = null,
                 contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .clip(shape)
             )
         }

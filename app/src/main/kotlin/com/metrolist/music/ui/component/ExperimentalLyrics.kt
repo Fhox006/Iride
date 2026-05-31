@@ -207,8 +207,6 @@ private val LYRICS_ITEM_FALLBACK_HEIGHT_DP = 68.dp
 private val LYRICS_ITEM_GAP_DP = 16.dp
 private val LYRICS_FADE_TOP_DP = 130.dp
 private val LYRICS_FADE_BOTTOM_DP = 160.dp
-private const val LYRICS_STAGGER_DELAY_PER_DISTANCE = 20
-private const val LYRICS_STAGGER_DELAY_MAX_MS = 200
 private const val LYRICS_PREVIEW_TIME = 8000L
 
 @OptIn(
@@ -271,7 +269,7 @@ fun ExperimentalLyrics(
 
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.ANIMATED_GRADIENT
+        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT
     )
 
     val enabledLanguages = remember(romanizeLyricsList.value) {
@@ -644,8 +642,7 @@ fun ExperimentalLyrics(
         isSwitchingFullScreen = true
         if (isFullScreen) pillsVisible = false
         else pillsVisible = true
-        withFrameNanos {}
-        withFrameNanos {}
+        delay(700L)
         isSwitchingFullScreen = false
     }
 
@@ -1062,7 +1059,6 @@ fun ExperimentalLyrics(
 
                 mergedLyricsList.forEachIndexed { listIndex, listItem ->
                     key(listItem) {
-                        val distance = abs(listIndex - activeListIndex)
                         val targetOffset = anchorY + positions.getOrDefault(listIndex, (listIndex - activeListIndex) * lineHeightPx)
                         val frozenOffset = remember { mutableFloatStateOf(targetOffset) }
                         LaunchedEffect(isAutoScrollEnabled, targetOffset, isInitialLayout, isSwitchingFullScreen) {
@@ -1074,7 +1070,7 @@ fun ExperimentalLyrics(
                                           else if (isAutoScrollEnabled) targetOffset
                                           else frozenOffset.floatValue,
                             animationSpec = if (isInitialLayout || !isAutoScrollEnabled) snap()
-                            else tween(750, (distance * LYRICS_STAGGER_DELAY_PER_DISTANCE).coerceAtMost(LYRICS_STAGGER_DELAY_MAX_MS), FastOutSlowInEasing),
+                            else tween(750, 0, FastOutSlowInEasing),
                             label = "lyricStaggeredOffset_$listIndex"
                         )
                         Box(
@@ -1121,7 +1117,7 @@ fun ExperimentalLyrics(
                                         currentPositionState = currentPositionState,
                                         lyricsOffset = (currentSong?.song?.lyricsOffset ?: 0).toLong(),
                                         playerConnection = playerConnection,
-                                        lyricsTextSize = 36f,
+                                        lyricsTextSize = 32.4f,
                                         lyricsLineSpacing = 1.05f,
                                         expressiveAccent = expressiveAccent,
                                         lyricsTextPosition = lyricsTextPosition,

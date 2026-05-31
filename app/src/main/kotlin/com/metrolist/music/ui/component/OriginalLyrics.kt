@@ -18,7 +18,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -82,11 +85,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -239,7 +244,7 @@ fun OriginalLyrics(
 
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.ANIMATED_GRADIENT,
+        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
     )
 
     val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
@@ -592,15 +597,14 @@ fun OriginalLyrics(
      */
     suspend fun performSmoothPageScroll(
         targetIndex: Int,
-        duration: Int = 1500,
+        duration: Int = 800,
     ) {
-        if (isAnimating) return // Prevent multiple animations
+        if (isAnimating) return
         isAnimating = true
         try {
             val lookUpIndex = if (isLyricsProviderShown) targetIndex + 1 else targetIndex
             val itemInfo = lazyListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == lookUpIndex }
             if (itemInfo != null) {
-                // Item is visible, animate directly to center without sudden jumps
                 val viewportHeight = lazyListState.layoutInfo.viewportEndOffset - lazyListState.layoutInfo.viewportStartOffset
                 val center = lazyListState.layoutInfo.viewportStartOffset + (viewportHeight / 2)
                 val itemCenter = itemInfo.offset + itemInfo.size / 2
@@ -608,11 +612,10 @@ fun OriginalLyrics(
                 if (kotlin.math.abs(offset) > 10) {
                     lazyListState.animateScrollBy(
                         value = offset.toFloat(),
-                        animationSpec = tween(durationMillis = duration),
+                        animationSpec = tween(durationMillis = duration, easing = FastOutSlowInEasing),
                     )
                 }
             } else {
-                // Item is not visible, scroll to it first without animation, then it will be handled in next cycle
                 lazyListState.scrollToItem(targetIndex)
             }
         } finally {
@@ -641,7 +644,7 @@ fun OriginalLyrics(
                     if (currentLineIndex != previousLineIndex) {
                         // Calculate which line should be at the top to center the active group
                         val centerTargetIndex = currentLineIndex
-                        performSmoothPageScroll(centerTargetIndex, 1500) // Auto scroll duration
+                        performSmoothPageScroll(centerTargetIndex, 800)
                     }
                 }
             }
@@ -963,10 +966,10 @@ fun OriginalLyrics(
                                                     val itemCenter = itemInfo.offset + itemInfo.size / 2
                                                     val offset = itemCenter - center
 
-                                                    if (kotlin.math.abs(offset) > 10) { // Only animate if not already centered
+                                                    if (kotlin.math.abs(offset) > 10) {
                                                         lazyListState.animateScrollBy(
                                                             value = offset.toFloat(),
-                                                            animationSpec = tween(durationMillis = 1500), // Reduced to half speed
+                                                            animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
                                                         )
                                                     }
                                                 }
@@ -994,7 +997,7 @@ fun OriginalLyrics(
                                     } else {
                                         Color.Transparent
                                     },
-                                ).padding(horizontal = 24.dp, vertical = 8.dp)
+                                ).padding(horizontal = 0.dp, vertical = 8.dp)
 
                         // Check if this line shares the same time as the currently active line
                         // This enables synchronized word-by-word animation for both main and background vocals
@@ -1013,13 +1016,33 @@ fun OriginalLyrics(
                                 when {
                                     !isSynced || (isSelectionModeActive && isSelected) -> 1f
                                     isActiveByIndex || isActiveByTime -> 1f
-                                    else -> 0.5f
+                                    else -> 0.35f
                                 },
-                            animationSpec = tween(durationMillis = 400),
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMedium,
+                            ),
                         )
                         val scale by animateFloatAsState(
-                            targetValue = if (isActiveByIndex || isActiveByTime) 1.05f else 1f,
-                            animationSpec = tween(durationMillis = 400),
+                            targetValue = if (isActiveByIndex || isActiveByTime) 1.1f else 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                stiffness = Spring.StiffnessLow,
+                            ),
+                        )
+                        val blurRadius by animateDpAsState(
+                            targetValue = when {
+                                !isSynced -> 0.dp
+                                isActiveByIndex || isActiveByTime -> 0.dp
+                                displayedCurrentLineIndex < 0 -> 0.dp
+                                else -> when (abs(index - displayedCurrentLineIndex)) {
+                                    1 -> 2.dp
+                                    2 -> 6.dp
+                                    else -> 14.dp
+                                }
+                            },
+                            animationSpec = tween(durationMillis = 300),
+                            label = "blur",
                         )
 
                         // Determine alignment based on agent for multi-singer support
@@ -1084,13 +1107,28 @@ fun OriginalLyrics(
                         // Smaller scale for background vocals
                         val bgScale = if (item.isBackground) 0.85f else 1f
 
+                        val originX = when {
+                            item.isBackground -> 0.5f
+                            item.agent == "v1" -> 0f
+                            item.agent == "v2" -> 1f
+                            item.agent == "v1000" -> 0.5f
+                            else -> when (lyricsTextPosition) {
+                                LyricsPosition.LEFT -> 0f
+                                LyricsPosition.CENTER -> 0.5f
+                                LyricsPosition.RIGHT -> 1f
+                            }
+                        }
+
                         Column(
                             modifier =
-                                itemModifier.graphicsLayer {
-                                    this.alpha = if (item.isBackground) alpha * 0.8f else alpha
-                                    this.scaleX = scale * bgScale
-                                    this.scaleY = scale * bgScale
-                                },
+                                itemModifier
+                                    .graphicsLayer {
+                                        this.alpha = if (item.isBackground) alpha * 0.8f else alpha
+                                        this.scaleX = scale * bgScale
+                                        this.scaleY = scale * bgScale
+                                        this.transformOrigin = TransformOrigin(originX, 1f)
+                                    }
+                                    .blur(blurRadius),
                             horizontalAlignment = agentAlignment,
                         ) {
                             // Use time-based active check to sync both main and background lines with same timestamp
@@ -1158,9 +1196,9 @@ fun OriginalLyrics(
                                             val wordColor = expressiveAccent.copy(alpha = wordAlpha)
                                             val wordWeight =
                                                 when {
-                                                    !isActiveLine -> FontWeight.Bold
-                                                    hasWordPassed -> FontWeight.Bold
-                                                    isWordActive -> FontWeight.ExtraBold
+                                                    !isActiveLine -> FontWeight.SemiBold
+                                                    hasWordPassed -> FontWeight.SemiBold
+                                                    isWordActive -> FontWeight.Bold
                                                     else -> FontWeight.Medium
                                                 }
 
@@ -1176,6 +1214,7 @@ fun OriginalLyrics(
                                     fontSize = lyricsTextSize.sp,
                                     textAlign = alignment,
                                     lineHeight = (lyricsTextSize * lyricsLineSpacing).sp,
+                                    letterSpacing = 1.5.sp,
                                 )
                             } else if (hasWordTimings && lyricsAnimationStyle == LyricsAnimationStyle.FADE) {
                                 val styledText =
@@ -1212,9 +1251,9 @@ fun OriginalLyrics(
                                             val wordColor = expressiveAccent.copy(alpha = wordAlpha)
                                             val wordWeight =
                                                 when {
-                                                    !isActiveLine -> FontWeight.Bold
-                                                    hasWordPassed -> FontWeight.Bold
-                                                    isWordActive -> FontWeight.ExtraBold
+                                                    !isActiveLine -> FontWeight.SemiBold
+                                                    hasWordPassed -> FontWeight.SemiBold
+                                                    isWordActive -> FontWeight.Bold
                                                     else -> FontWeight.Medium
                                                 }
                                             // Enhanced shadow for active words
@@ -1253,6 +1292,7 @@ fun OriginalLyrics(
                                     fontSize = lyricsTextSize.sp,
                                     textAlign = alignment,
                                     lineHeight = (lyricsTextSize * lyricsLineSpacing).sp,
+                                    letterSpacing = 1.5.sp,
                                 )
                             } else if (hasWordTimings && lyricsAnimationStyle == LyricsAnimationStyle.GLOW) {
                                 val styledText =
@@ -1291,9 +1331,9 @@ fun OriginalLyrics(
                                                 }
                                             val wordWeight =
                                                 when {
-                                                    !isActiveLine -> FontWeight.Bold
-                                                    isWordActive -> FontWeight.ExtraBold
-                                                    hasWordPassed -> FontWeight.Bold
+                                                    !isActiveLine -> FontWeight.SemiBold
+                                                    isWordActive -> FontWeight.Bold
+                                                    hasWordPassed -> FontWeight.SemiBold
                                                     else -> FontWeight.Medium
                                                 }
                                             val wordShadow =
@@ -1326,6 +1366,7 @@ fun OriginalLyrics(
                                     fontSize = lyricsTextSize.sp,
                                     textAlign = alignment,
                                     lineHeight = (lyricsTextSize * lyricsLineSpacing).sp,
+                                    letterSpacing = 1.5.sp,
                                 )
                             } else if (hasWordTimings && lyricsAnimationStyle == LyricsAnimationStyle.SLIDE) {
                                 val styledText =
@@ -1368,7 +1409,7 @@ fun OriginalLyrics(
                                                     style =
                                                         SpanStyle(
                                                             brush = slideBrush,
-                                                            fontWeight = FontWeight.ExtraBold,
+                                                            fontWeight = FontWeight.Bold,
                                                             shadow =
                                                                 Shadow(
                                                                     color = expressiveAccent.copy(alpha = 0.4f * glowIntensity),
@@ -1385,7 +1426,7 @@ fun OriginalLyrics(
                                                     style =
                                                         SpanStyle(
                                                             color = expressiveAccent,
-                                                            fontWeight = FontWeight.Bold,
+                                                            fontWeight = FontWeight.SemiBold,
                                                             shadow =
                                                                 Shadow(
                                                                     color = expressiveAccent.copy(alpha = 0.4f),
@@ -1415,6 +1456,7 @@ fun OriginalLyrics(
                                             lyricsTextSize *
                                                 lyricsLineSpacing
                                         ).sp,
+                                    letterSpacing = 1.5.sp,
                                 )
                             } else if (hasWordTimings && lyricsAnimationStyle == LyricsAnimationStyle.KARAOKE) {
                                 val styledText =
@@ -1463,7 +1505,7 @@ fun OriginalLyrics(
                                                     style =
                                                         SpanStyle(
                                                             brush = wordBrush,
-                                                            fontWeight = FontWeight.ExtraBold,
+                                                            fontWeight = FontWeight.Bold,
                                                             shadow = wordShadow,
                                                         ),
                                                 ) {
@@ -1475,7 +1517,7 @@ fun OriginalLyrics(
                                                     style =
                                                         SpanStyle(
                                                             color = expressiveAccent,
-                                                            fontWeight = FontWeight.Bold,
+                                                            fontWeight = FontWeight.SemiBold,
                                                             shadow =
                                                                 Shadow(
                                                                     color = expressiveAccent.copy(alpha = 0.25f),
@@ -1506,6 +1548,7 @@ fun OriginalLyrics(
                                             lyricsTextSize *
                                                 lyricsLineSpacing
                                         ).sp,
+                                    letterSpacing = 1.5.sp,
                                 )
                             } else if (hasWordTimings && lyricsAnimationStyle == LyricsAnimationStyle.APPLE) {
                                 val styledText =
@@ -1546,8 +1589,8 @@ fun OriginalLyrics(
                                             val wordWeight =
                                                 when {
                                                     !isActiveLine -> FontWeight.SemiBold
-                                                    hasWordPassed -> FontWeight.Bold
-                                                    isWordActive -> FontWeight.ExtraBold
+                                                    hasWordPassed -> FontWeight.SemiBold
+                                                    isWordActive -> FontWeight.Bold
                                                     else -> FontWeight.Normal
                                                 }
                                             // Enhanced shadow with better glow intensity
@@ -1591,6 +1634,7 @@ fun OriginalLyrics(
                                             lyricsTextSize *
                                                 lyricsLineSpacing
                                         ).sp,
+                                    letterSpacing = 1.5.sp,
                                 )
                             } else if (isActiveLine && lyricsGlowEffect) {
                                 // Initial animation for glow fill from left to right
@@ -1675,8 +1719,9 @@ fun OriginalLyrics(
                                     fontFamily = InterFontFamily,
                                     fontSize = lyricsTextSize.sp,
                                     textAlign = alignment,
-                                    fontWeight = FontWeight.ExtraBold,
+                                    fontWeight = FontWeight.Bold,
                                     lineHeight = (lyricsTextSize * lyricsLineSpacing).sp,
+                                    letterSpacing = 1.5.sp,
                                     modifier =
                                         Modifier
                                             .graphicsLayer {
@@ -1692,8 +1737,9 @@ fun OriginalLyrics(
                                     fontSize = lyricsTextSize.sp,
                                     color = expressiveAccent,
                                     textAlign = alignment,
-                                    fontWeight = FontWeight.ExtraBold,
+                                    fontWeight = FontWeight.Bold,
                                     lineHeight = (lyricsTextSize * lyricsLineSpacing).sp,
+                                    letterSpacing = 1.5.sp,
                                 )
                             } else {
                                 // Inactive line
@@ -1703,8 +1749,9 @@ fun OriginalLyrics(
                                     fontSize = lyricsTextSize.sp,
                                     color = lineColor,
                                     textAlign = alignment,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.SemiBold,
                                     lineHeight = (lyricsTextSize * lyricsLineSpacing).sp,
+                                    letterSpacing = 1.5.sp,
                                 )
                             }
                             if (currentSong?.romanizeLyrics == true && enabledLanguages.isNotEmpty()) {
@@ -1764,7 +1811,7 @@ fun OriginalLyrics(
             ) {
                 FilledTonalButton(onClick = {
                     scope.launch {
-                        performSmoothPageScroll(currentLineIndex, 1500)
+                        performSmoothPageScroll(currentLineIndex, 800)
                     }
                     isAutoScrollEnabled = true
                 }) {
@@ -1927,10 +1974,10 @@ fun OriginalLyrics(
 }
 
 // Professional page animation constants inspired by Metrolist design - slower for smoothness
-private const val METROLIST_AUTO_SCROLL_DURATION = 1500L // Much slower auto-scroll for smooth transitions
-private const val METROLIST_INITIAL_SCROLL_DURATION = 1000L // Slower initial positioning
-private const val METROLIST_SEEK_DURATION = 800L // Slower user interaction
-private const val METROLIST_FAST_SEEK_DURATION = 600L // Less aggressive seeking
+private const val METROLIST_AUTO_SCROLL_DURATION = 800L
+private const val METROLIST_INITIAL_SCROLL_DURATION = 800L
+private const val METROLIST_SEEK_DURATION = 500L
+private const val METROLIST_FAST_SEEK_DURATION = 300L
 
 // Lyrics constants
 val LyricsPreviewTime = 2.seconds

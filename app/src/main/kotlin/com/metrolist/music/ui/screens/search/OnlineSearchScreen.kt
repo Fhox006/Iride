@@ -128,6 +128,12 @@ fun OnlineSearchScreen(
         }
     }
 
+    LaunchedEffect(explorePage?.moodAndGenres?.isNotEmpty()) {
+        if (explorePage?.moodAndGenres?.isNotEmpty() == true && query.isEmpty() && !isFocused) {
+            lazyListState.scrollToItem(0)
+        }
+    }
+
     LazyColumn(
         state = lazyListState,
         contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Bottom).asPaddingValues(),

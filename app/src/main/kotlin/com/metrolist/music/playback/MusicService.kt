@@ -2160,9 +2160,6 @@ class MusicService :
         mediaItem: MediaItem?,
         reason: Int,
     ) {
-        if (isCrossfading && reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
-            cleanupCrossfade()
-        }
         // Save previous episode position if it was an episode
         previousEpisodeId?.let { episodeId ->
             if (previousEpisodePosition > 0) {
@@ -2286,7 +2283,7 @@ class MusicService :
                 resetRetryCount(mediaId)
                 Timber.tag(TAG).d("Playback successful for $mediaId, reset retry count")
             }
-            if (crossfadeEnabled) scheduleCrossfade()
+            scheduleCrossfade()
         }
 
         if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED) {
@@ -2337,7 +2334,7 @@ class MusicService :
                 Player.EVENT_PLAY_WHEN_READY_CHANGED,
             )
         ) {
-            if (crossfadeEnabled) scheduleCrossfade()
+            scheduleCrossfade()
             val isBufferingOrReady =
                 player.playbackState == Player.STATE_BUFFERING || player.playbackState == Player.STATE_READY
             if (isBufferingOrReady && player.playWhenReady) {
@@ -3670,7 +3667,7 @@ class MusicService :
         reason: Int,
     ) {
         if (reason == Player.DISCONTINUITY_REASON_SEEK) {
-            if (crossfadeEnabled) scheduleCrossfade()
+            scheduleCrossfade()
         }
     }
 
@@ -3737,8 +3734,7 @@ class MusicService :
     private fun scheduleCrossfade() {
         crossfadeTriggerJob?.cancel()
         crossfadeTriggerJob = null
-        if (!crossfadeEnabled) return
-        if (player.duration == C.TIME_UNSET || player.duration <= crossfadeDuration) return
+        if (!crossfadeEnabled || player.duration == C.TIME_UNSET || player.duration <= crossfadeDuration) return
         if (crossfadeGapless && isNextItemGapless()) return
         if (!player.hasNextMediaItem() && player.repeatMode != REPEAT_MODE_ONE) return
 
@@ -3817,11 +3813,6 @@ class MusicService :
         fadeDuration: Float = crossfadeDuration,
         onComplete: (() -> Unit)? = null,
     ) {
-        if (!crossfadeEnabled && !skipFadeEnabled) {
-            Timber.tag(TAG).w("performCrossfadeSwap called but neither crossfade nor skipFade is enabled — aborting")
-            cleanupCrossfade()
-            return
-        }
         isCrossfading = true
         val nextPlayer = secondaryPlayer ?: return
         val currentPlayer = player
@@ -3925,41 +3916,26 @@ class MusicService :
         if (!::player.isInitialized) return
         val nextIndex = player.nextMediaItemIndex
         if (nextIndex == C.INDEX_UNSET) return
+        val nextItem = try { player.getMediaItemAt(nextIndex) } catch (_: Exception) { return }
+        val mediaId = nextItem.mediaId
 
         preloadJob = scope.launch {
-            delay(500L)
+            delay(3000L)
             if (!isActive) return@launch
-            prefetchTrackUrl(nextIndex)
-
-            delay(2500L)
-            if (!isActive) return@launch
-            val count = player.mediaItemCount
-            if (count < 3) return@launch
-            val secondNextIndex = if (nextIndex + 1 < count) nextIndex + 1 else 0
-            if (secondNextIndex != player.currentMediaItemIndex) {
-                prefetchTrackUrl(secondNextIndex)
-            }
-        }
-    }
-
-    // Fetches and caches stream URL for the track at the given player index.
-    // Skips if URL is cached and not expiring within 10 minutes.
-    private suspend fun prefetchTrackUrl(index: Int) {
-        val item = try { player.getMediaItemAt(index) } catch (_: Exception) { return }
-        val mediaId = item.mediaId
-        if (songUrlCache[mediaId]?.second?.let { it > System.currentTimeMillis() + 600_000L } == true) return
-        try {
-            withContext(Dispatchers.IO) {
-                YTPlayerUtils.playerResponseForPlayback(
-                    mediaId,
-                    audioQuality = audioQuality,
-                    connectivityManager = connectivityManager,
-                ).getOrNull()?.let { playbackData ->
-                    songUrlCache[mediaId] = playbackData.streamUrl to
-                        System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
+            if (songUrlCache[mediaId]?.second?.let { it > System.currentTimeMillis() } == true) return@launch
+            try {
+                withContext(Dispatchers.IO) {
+                    YTPlayerUtils.playerResponseForPlayback(
+                        mediaId,
+                        audioQuality = audioQuality,
+                        connectivityManager = connectivityManager,
+                    ).getOrNull()?.let { playbackData ->
+                        songUrlCache[mediaId] = playbackData.streamUrl to
+                            System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
+                    }
                 }
-            }
-        } catch (_: Exception) { }
+            } catch (_: Exception) { }
+        }
     }
 
     private fun cancelPreload() {

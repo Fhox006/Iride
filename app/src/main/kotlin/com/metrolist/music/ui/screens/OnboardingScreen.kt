@@ -33,7 +33,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.Image
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -168,26 +167,27 @@ private fun WelcomePage(onNext: () -> Unit) {
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Top,
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(horizontal = 40.dp)
-            .padding(bottom = 48.dp)
+            .padding(top = 72.dp, bottom = 48.dp)
     ) {
         AnimatedVisibility(
             visible = visible,
             enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { it / 3 }
         ) {
-            Image(
-                painter = painterResource(R.drawable.app_logo),
+            Icon(
+                painter = painterResource(R.drawable.ic_logo),
                 contentDescription = null,
-                modifier = Modifier.size(96.dp)
+                tint = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.size(140.dp)
             )
         }
 
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(32.dp))
 
         AnimatedVisibility(
             visible = visible,
@@ -220,7 +220,7 @@ private fun WelcomePage(onNext: () -> Unit) {
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
 
         AnimatedVisibility(
             visible = visible,
@@ -234,7 +234,7 @@ private fun WelcomePage(onNext: () -> Unit) {
             )
         }
 
-        Spacer(Modifier.height(64.dp))
+        Spacer(Modifier.weight(1f))
 
         AnimatedVisibility(
             visible = visible,
