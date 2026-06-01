@@ -33,6 +33,7 @@ import com.metrolist.music.constants.HomeCacheLastLoadedKey
 import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.constants.VisitorDataKey
 import com.metrolist.music.constants.SyncBannerLaunchCountKey
 import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.music.constants.LastMoodChipParamsKey
@@ -967,9 +968,30 @@ class HomeViewModel @Inject constructor(
             kotlinx.coroutines.delay(2500)
             var homeResult = YouTube.home()
             if (homeResult.isFailure) {
-                val recovered = syncUtils.reInjectCredentials()
-                if (recovered) homeResult = YouTube.home()
+                if (YouTube.cookie != null) {
+                    val recovered = syncUtils.reInjectCredentials()
+                    if (recovered) homeResult = YouTube.home()
+                } else {
+                    // Anonymous: stale/expired visitorData can cause failures on reopen.
+                    // Fetch fresh visitor data and retry once.
+                    YouTube.visitorData().getOrNull()?.let { fresh ->
+                        YouTube.visitorData = fresh
+                        context.dataStore.edit { it[VisitorDataKey] = fresh }
+                    }
+                    homeResult = YouTube.home()
+                }
             }
+            // Anonymous users: if the response succeeded but returned no sections,
+            // also try refreshing visitor data once (stale session can return empty content).
+            if (homeResult.isSuccess && YouTube.cookie == null &&
+                homeResult.getOrNull()?.sections?.isEmpty() == true) {
+                YouTube.visitorData().getOrNull()?.let { fresh ->
+                    YouTube.visitorData = fresh
+                    context.dataStore.edit { it[VisitorDataKey] = fresh }
+                }
+                homeResult = YouTube.home()
+            }
+
             homeResult.onSuccess { page ->
                 val transformedChips = transformChips(page.chips)
                 val transformedPage = page.copy(

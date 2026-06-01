@@ -207,6 +207,8 @@ private val LYRICS_ITEM_FALLBACK_HEIGHT_DP = 68.dp
 private val LYRICS_ITEM_GAP_DP = 16.dp
 private val LYRICS_FADE_TOP_DP = 130.dp
 private val LYRICS_FADE_BOTTOM_DP = 160.dp
+private const val LYRICS_STAGGER_DELAY_PER_DISTANCE = 20
+private const val LYRICS_STAGGER_DELAY_MAX_MS = 200
 private const val LYRICS_PREVIEW_TIME = 8000L
 
 @OptIn(
@@ -505,7 +507,7 @@ fun ExperimentalLyrics(
             val effectivePosition = position + lyricsOffset
 
             val initialActiveIndices = findActiveLineIndices(lines, effectivePosition)
-            val scrollActiveIndicesRaw = findActiveLineIndices(lines, effectivePosition + (if (hasWordTimings) 0L else 250L))
+            val scrollActiveIndicesRaw = findActiveLineIndices(lines, effectivePosition + 750L)
 
             val scrollActiveIndices = scrollActiveIndicesRaw.toMutableSet()
             for (i in scrollActiveIndicesRaw) {
@@ -1059,6 +1061,7 @@ fun ExperimentalLyrics(
 
                 mergedLyricsList.forEachIndexed { listIndex, listItem ->
                     key(listItem) {
+                        val distance = abs(listIndex - activeListIndex)
                         val targetOffset = anchorY + positions.getOrDefault(listIndex, (listIndex - activeListIndex) * lineHeightPx)
                         val frozenOffset = remember { mutableFloatStateOf(targetOffset) }
                         LaunchedEffect(isAutoScrollEnabled, targetOffset, isInitialLayout, isSwitchingFullScreen) {
@@ -1070,7 +1073,7 @@ fun ExperimentalLyrics(
                                           else if (isAutoScrollEnabled) targetOffset
                                           else frozenOffset.floatValue,
                             animationSpec = if (isInitialLayout || !isAutoScrollEnabled) snap()
-                            else tween(750, 0, FastOutSlowInEasing),
+                            else tween(750, (distance * LYRICS_STAGGER_DELAY_PER_DISTANCE).coerceAtMost(LYRICS_STAGGER_DELAY_MAX_MS), FastOutSlowInEasing),
                             label = "lyricStaggeredOffset_$listIndex"
                         )
                         Box(
@@ -1091,7 +1094,13 @@ fun ExperimentalLyrics(
                                         Modifier.fillMaxWidth()
                                             .onSizeChanged { itemHeights[listIndex] = it.height }
                                             .padding(horizontal = 32.dp)
-                                            .wrapContentWidth(Alignment.CenterHorizontally)
+                                            .wrapContentWidth(
+                                                when (lyricsTextPosition) {
+                                                    LyricsPosition.CENTER -> Alignment.CenterHorizontally
+                                                    LyricsPosition.RIGHT -> Alignment.End
+                                                    else -> Alignment.Start
+                                                }
+                                            )
                                     )
                                 }
                                 is LyricsListItem.Line -> {

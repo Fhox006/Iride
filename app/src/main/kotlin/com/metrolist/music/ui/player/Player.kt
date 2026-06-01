@@ -964,14 +964,9 @@ fun BottomSheetPlayer(
                 label = "playPauseRoundness",
             )
             val albumArtCorner by animateDpAsState(
-                targetValue = if (isFullScreen) 14.dp else ThumbnailCornerRadius,
+                targetValue = if (isFullScreen) 8.dp else ThumbnailCornerRadius,
                 animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
                 label = "albumArtCorner",
-            )
-            val controlsRowStartPadding by animateDpAsState(
-                targetValue = if (isFullScreen) 8.dp else PlayerHorizontalPadding,
-                animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
-                label = "controlsRowStartPadding",
             )
             val controlsRowTopPadding by animateDpAsState(
                 targetValue = if (isFullScreen) 6.dp else 0.dp,
@@ -993,10 +988,20 @@ fun BottomSheetPlayer(
                 animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
                 label = "durationFontSize",
             )
-            val fullscreenBtnBgAlpha by animateFloatAsState(
-                targetValue = if (isFullScreen) 0.3f else 1f,
+            val fullscreenBtnBgColor by animateColorAsState(
+                targetValue = if (isFullScreen) textButtonColor.copy(alpha = 0.1f) else textButtonColor,
                 animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
-                label = "fullscreenBtnBgAlpha",
+                label = "fullscreenBtnBgColor",
+            )
+            val fullscreenBtnBorderAlpha by animateFloatAsState(
+                targetValue = if (isFullScreen) 0.3f else 0f,
+                animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
+                label = "fullscreenBtnBorderAlpha",
+            )
+            val fullscreenBtnIconColor by animateColorAsState(
+                targetValue = if (isFullScreen) textButtonColor else iconButtonColor,
+                animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
+                label = "fullscreenBtnIconColor",
             )
 
             Row(
@@ -1005,7 +1010,8 @@ fun BottomSheetPlayer(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = controlsRowStartPadding, end = PlayerHorizontalPadding, top = controlsRowTopPadding)
+                        .padding(horizontal = PlayerHorizontalPadding)
+                        .padding(top = controlsRowTopPadding)
                         .heightIn(min = 56.dp),
             ) {
                 AnimatedContent(
@@ -1284,13 +1290,14 @@ fun BottomSheetPlayer(
                         Box(
                             modifier = Modifier
                                 .size(42.dp)
+                                .border(1.dp, textButtonColor.copy(alpha = fullscreenBtnBorderAlpha), RoundedCornerShape(50))
                                 .clip(RoundedCornerShape(
                                     topStart = btnCornerTopStart,
                                     topEnd = 21.dp,
                                     bottomStart = btnCornerBottomStart,
                                     bottomEnd = 21.dp,
                                 ))
-                                .background(textButtonColor.copy(alpha = fullscreenBtnBgAlpha))
+                                .background(fullscreenBtnBgColor)
                                 .clickable {
                                     if (isLyricsOrQueue) {
                                         isFullScreen = !isFullScreen
@@ -1309,7 +1316,7 @@ fun BottomSheetPlayer(
                                     Icon(
                                         painter = painterResource(if (isFullScreen) R.drawable.expand_less else R.drawable.fullscreen),
                                         contentDescription = null,
-                                        tint = iconButtonColor,
+                                        tint = fullscreenBtnIconColor,
                                         modifier = Modifier.size(24.dp),
                                     )
                                 } else {
@@ -1318,7 +1325,7 @@ fun BottomSheetPlayer(
                                     Icon(
                                         painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
                                         contentDescription = null,
-                                        tint = iconButtonColor,
+                                        tint = fullscreenBtnIconColor,
                                         modifier = Modifier.size(24.dp),
                                     )
                                 }
@@ -1938,71 +1945,77 @@ fun BottomSheetPlayer(
                         val currentSliderPosition by rememberUpdatedState(sliderPosition)
                         val sliderPositionProvider = remember { { currentSliderPosition } }
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
-                        AnimatedContent(
-                            targetState =
-                                when {
-                                    showQueue -> "queue"
-                                    showInlineLyrics -> "lyrics"
-                                    else -> "thumbnail"
-                                },
-                            label = "PlayerView",
-                            transitionSpec = {
-                                fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith
-                                fadeOut(tween(380, easing = FastOutSlowInEasing))
-                            },
-                        ) { view ->
-                            when (view) {
-                                "queue" ->
-                                    InlineQueuePanel(
-                                        navController = navController,
-                                        playerBottomSheetState = state,
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            val snapshot = mediaMetadata
+                            if (snapshot != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .zIndex(if (showInlineLyrics) 1f else 0f)
+                                        .alpha(if (showInlineLyrics) 1f else 0f),
+                                ) {
+                                    InlineLyricsView(
+                                        mediaMetadata = snapshot,
+                                        showLyrics = showInlineLyrics,
+                                        positionProvider = { effectivePosition },
+                                        isFullScreen = isFullScreen,
+                                        onExitFullScreen = { isFullScreen = false },
+                                        onShowOptionsMenu = {
+                                            menuState.show {
+                                                com.metrolist.music.ui.menu.LyricsMenu(
+                                                    lyricsProvider = { currentLyrics },
+                                                    songProvider = { currentSong?.song },
+                                                    mediaMetadataProvider = { snapshot },
+                                                    onDismiss = menuState::dismiss,
+                                                    onShowOffsetDialog = {
+                                                        bottomSheetPageState.show {
+                                                            ShowOffsetDialog(songProvider = { currentSong?.song })
+                                                        }
+                                                    },
+                                                )
+                                            }
+                                        },
                                         textButtonColor = textButtonColor,
                                         iconButtonColor = iconButtonColor,
-                                        onClose = { showQueue = false },
                                     )
-
-                                "lyrics" ->
-                                    if (mediaMetadata != null) {
-                                        InlineLyricsView(
-                                            mediaMetadata = mediaMetadata,
-                                            showLyrics = true,
-                                            positionProvider = { effectivePosition },
-                                            isFullScreen = isFullScreen,
-                                            onExitFullScreen = { isFullScreen = false },
-                                            onShowOptionsMenu = {
-                                                mediaMetadata?.let { mm ->
-                                                    menuState.show {
-                                                        com.metrolist.music.ui.menu.LyricsMenu(
-                                                            lyricsProvider = { currentLyrics },
-                                                            songProvider = { currentSong?.song },
-                                                            mediaMetadataProvider = { mm },
-                                                            onDismiss = menuState::dismiss,
-                                                            onShowOffsetDialog = {
-                                                                bottomSheetPageState.show {
-                                                                    ShowOffsetDialog(songProvider = { currentSong?.song })
-                                                                }
-                                                            },
-                                                        )
-                                                    }
-                                                }
-                                            },
-                                            textButtonColor = textButtonColor,
-                                            iconButtonColor = iconButtonColor,
-                                        )
-                                    } else {
-                                        Box(Modifier.fillMaxSize())
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .zIndex(if (showInlineLyrics) 0f else 1f)
+                                    .alpha(if (showInlineLyrics) 0f else 1f),
+                            ) {
+                                AnimatedContent(
+                                    targetState = when {
+                                        showQueue -> "queue"
+                                        else -> "thumbnail"
+                                    },
+                                    label = "PlayerView",
+                                    transitionSpec = {
+                                        fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith
+                                        fadeOut(tween(380, easing = FastOutSlowInEasing))
+                                    },
+                                ) { view ->
+                                    when (view) {
+                                        "queue" ->
+                                            InlineQueuePanel(
+                                                navController = navController,
+                                                playerBottomSheetState = state,
+                                                textButtonColor = textButtonColor,
+                                                iconButtonColor = iconButtonColor,
+                                                onClose = { showQueue = false },
+                                            )
+                                        else ->
+                                            Thumbnail(
+                                                sliderPositionProvider = sliderPositionProvider,
+                                                modifier = Modifier.animateContentSize(),
+                                                isPlayerExpanded = isExpandedProvider,
+                                                isLandscape = true,
+                                                isListenTogetherGuest = isListenTogetherGuest,
+                                            )
                                     }
-
-                                "thumbnail" ->
-                                    Thumbnail(
-                                        sliderPositionProvider = sliderPositionProvider,
-                                        modifier = Modifier.animateContentSize(),
-                                        isPlayerExpanded = isExpandedProvider,
-                                        isLandscape = true,
-                                        isListenTogetherGuest = isListenTogetherGuest,
-                                    )
-
-                                else -> Box(Modifier.fillMaxSize())
+                                }
                             }
                         }
                     }
@@ -2047,70 +2060,76 @@ fun BottomSheetPlayer(
                         val currentSliderPosition by rememberUpdatedState(sliderPosition)
                         val sliderPositionProvider = remember { { currentSliderPosition } }
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
-                        AnimatedContent(
-                            targetState =
-                                when {
-                                    showQueue -> "queue"
-                                    showInlineLyrics -> "lyrics"
-                                    else -> "thumbnail"
-                                },
-                            label = "PlayerView",
-                            transitionSpec = {
-                                fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith
-                                fadeOut(tween(380, easing = FastOutSlowInEasing))
-                            },
-                        ) { view ->
-                            when (view) {
-                                "queue" ->
-                                    InlineQueuePanel(
-                                        navController = navController,
-                                        playerBottomSheetState = state,
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            val snapshot = mediaMetadata
+                            if (snapshot != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .zIndex(if (showInlineLyrics) 1f else 0f)
+                                        .alpha(if (showInlineLyrics) 1f else 0f),
+                                ) {
+                                    InlineLyricsView(
+                                        mediaMetadata = snapshot,
+                                        showLyrics = showInlineLyrics,
+                                        positionProvider = { effectivePosition },
+                                        isFullScreen = isFullScreen,
+                                        onExitFullScreen = { isFullScreen = false },
+                                        onShowOptionsMenu = {
+                                            menuState.show {
+                                                com.metrolist.music.ui.menu.LyricsMenu(
+                                                    lyricsProvider = { currentLyrics },
+                                                    songProvider = { currentSong?.song },
+                                                    mediaMetadataProvider = { snapshot },
+                                                    onDismiss = menuState::dismiss,
+                                                    onShowOffsetDialog = {
+                                                        bottomSheetPageState.show {
+                                                            ShowOffsetDialog(songProvider = { currentSong?.song })
+                                                        }
+                                                    },
+                                                )
+                                            }
+                                        },
                                         textButtonColor = textButtonColor,
                                         iconButtonColor = iconButtonColor,
-                                        onClose = { showQueue = false },
                                     )
-
-                                "lyrics" ->
-                                    if (mediaMetadata != null) {
-                                        InlineLyricsView(
-                                            mediaMetadata = mediaMetadata,
-                                            showLyrics = true,
-                                            positionProvider = { effectivePosition },
-                                            isFullScreen = isFullScreen,
-                                            onExitFullScreen = { isFullScreen = false },
-                                            onShowOptionsMenu = {
-                                                mediaMetadata?.let { mm ->
-                                                    menuState.show {
-                                                        com.metrolist.music.ui.menu.LyricsMenu(
-                                                            lyricsProvider = { currentLyrics },
-                                                            songProvider = { currentSong?.song },
-                                                            mediaMetadataProvider = { mm },
-                                                            onDismiss = menuState::dismiss,
-                                                            onShowOffsetDialog = {
-                                                                bottomSheetPageState.show {
-                                                                    ShowOffsetDialog(songProvider = { currentSong?.song })
-                                                                }
-                                                            },
-                                                        )
-                                                    }
-                                                }
-                                            },
-                                            textButtonColor = textButtonColor,
-                                            iconButtonColor = iconButtonColor,
-                                        )
-                                    } else {
-                                        Box(Modifier.fillMaxSize())
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .zIndex(if (showInlineLyrics) 0f else 1f)
+                                    .alpha(if (showInlineLyrics) 0f else 1f),
+                            ) {
+                                AnimatedContent(
+                                    targetState = when {
+                                        showQueue -> "queue"
+                                        else -> "thumbnail"
+                                    },
+                                    label = "PlayerView",
+                                    transitionSpec = {
+                                        fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith
+                                        fadeOut(tween(380, easing = FastOutSlowInEasing))
+                                    },
+                                ) { view ->
+                                    when (view) {
+                                        "queue" ->
+                                            InlineQueuePanel(
+                                                navController = navController,
+                                                playerBottomSheetState = state,
+                                                textButtonColor = textButtonColor,
+                                                iconButtonColor = iconButtonColor,
+                                                onClose = { showQueue = false },
+                                            )
+                                        else ->
+                                            Thumbnail(
+                                                sliderPositionProvider = sliderPositionProvider,
+                                                modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
+                                                isPlayerExpanded = isExpandedProvider,
+                                                isListenTogetherGuest = isListenTogetherGuest,
+                                            )
                                     }
-
-                                "thumbnail" ->
-                                    Thumbnail(
-                                        sliderPositionProvider = sliderPositionProvider,
-                                        modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
-                                        isPlayerExpanded = isExpandedProvider,
-                                        isListenTogetherGuest = isListenTogetherGuest,
-                                    )
-
-                                else -> Box(Modifier.fillMaxSize())
+                                }
                             }
                         }
                     }
@@ -2377,33 +2396,26 @@ internal fun InlinePlayerPageFrame(
     pills: @Composable RowScope.() -> Unit,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    Box(
+    Column(
         modifier = modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
             .padding(horizontal = 20.dp)
             .padding(top = 8.dp, bottom = 16.dp),
     ) {
-        // Content always fills the full area regardless of pills visibility
-        Box(modifier = Modifier.fillMaxSize(), content = content)
-
-        // Pills overlay on top without consuming vertical space
         AnimatedVisibility(
             visible = !isFullScreen,
-            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
-            modifier = Modifier.fillMaxSize(),
+            enter = slideInVertically(tween(380, easing = FastOutSlowInEasing)) { -it } + fadeIn(tween(380, easing = FastOutSlowInEasing)),
+            exit = shrinkVertically(tween(380, easing = FastOutSlowInEasing), shrinkTowards = Alignment.Top) + slideOutVertically(tween(380, easing = FastOutSlowInEasing)) { -it } + fadeOut(tween(380, easing = FastOutSlowInEasing)),
         ) {
-            Column {
-                Spacer(Modifier.fillMaxHeight(0.10f))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp, horizontal = 12.dp),
-                    content = pills,
-                )
-            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp, horizontal = 12.dp),
+                content = pills,
+            )
         }
+        Box(modifier = Modifier.weight(1f), content = content)
     }
 }
