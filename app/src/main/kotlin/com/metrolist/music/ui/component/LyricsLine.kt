@@ -260,7 +260,7 @@ internal fun LyricsLine(
                     platformStyle = PlatformTextStyle(includeFontPadding = false),
                     lineHeightStyle = LineHeightStyle(
                         alignment = LineHeightStyle.Alignment.Center,
-                        trim = LineHeightStyle.Trim.Both
+                        trim = LineHeightStyle.Trim.None
                     )
                 )
 
@@ -512,9 +512,42 @@ private fun WordLevelLyrics(
         map
     }
 
+    val remappedWordTimesMs = remember(effectiveWords) {
+        if (effectiveWords.size <= 1) {
+            effectiveWords.map { w ->
+                (w.startTime * 1000).toLong() to (w.endTime * 1000).toLong()
+            }
+        } else {
+            val durations = effectiveWords.map { it.endTime - it.startTime }
+            val mean = durations.average()
+            val adjusted = durations.map { d -> d + (mean - d) * 0.5 }
+            val scale = durations.sum() / adjusted.sum()
+            val normalized = adjusted.map { it * scale }
+            var currentMs = (effectiveWords.first().startTime * 1000).toLong()
+            normalized.map { dur ->
+                val startMs = currentMs
+                val endMs = currentMs + (dur * 1000).toLong()
+                currentMs = endMs
+                startMs to endMs
+            }
+        }
+    }
+
+    val clusterTimes = remember(clusterCount, charToWordData, remappedWordTimesMs) {
+        val (wordIdxMap, charInWordMap, wordLenMap) = charToWordData
+        FloatArray(clusterCount) { i ->
+            val wordIdx = wordIdxMap[i]
+            if (wordIdx == -1) -1f
+            else {
+                val (rStartMs, rEndMs) = remappedWordTimesMs[wordIdx]
+                rStartMs + (charInWordMap[i].toFloat() / wordLenMap[i].coerceAtLeast(1)) * (rEndMs - rStartMs)
+            }
+        }
+    }
+
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val maxWidthPx = constraints.maxWidth
-        val layoutResult = remember(mainText, maxWidthPx, lyricStyle) {
+        val layoutResult = remember(mainText, maxWidthPx, lyricStyle, alignment) {
             val unconstrained = textMeasurer.measure(
                 text = mainText,
                 style = lyricStyle,
@@ -522,11 +555,15 @@ private fun WordLevelLyrics(
                 softWrap = false
             )
             val naturalWidth = unconstrained.size.width
-            val cappedWidth = minOf(naturalWidth, (maxWidthPx * 0.9f).toInt())
+            val layoutWidth = if (alignment == TextAlign.Left) {
+                minOf(naturalWidth, (maxWidthPx * 0.9f).toInt())
+            } else {
+                maxWidthPx
+            }
             textMeasurer.measure(
                 text = mainText,
                 style = lyricStyle,
-                constraints = Constraints(minWidth = cappedWidth, maxWidth = cappedWidth),
+                constraints = Constraints(minWidth = layoutWidth, maxWidth = layoutWidth),
                 softWrap = true
             )
         }
@@ -539,7 +576,7 @@ private fun WordLevelLyrics(
 
         Canvas(modifier = Modifier
             .fillMaxWidth()
-            .height(with(density) { layoutResult.size.height.toDp() + 8.dp })
+            .height(with(density) { layoutResult.size.height.toDp() + 20.dp })
             .graphicsLayer(clip = false, compositingStrategy = CompositingStrategy.Offscreen)
         ) {
             if (mainText.isEmpty()) return@Canvas
@@ -548,13 +585,12 @@ private fun WordLevelLyrics(
             } else {
                 if (isRtlText) {
                     val (wordIdxMap, _, _) = charToWordData
-                    val wordFactors = effectiveWords.map { word ->
-                        val wStartMs = (word.startTime * 1000).toLong()
-                        val wEndMs = (word.endTime * 1000).toLong()
+                    val wordFactors = effectiveWords.mapIndexed { wordIdx, word ->
+                        val (wStartMs, wEndMs) = remappedWordTimesMs[wordIdx]
                         val isWordSung = smoothPosition > wEndMs
                         val isWordActive = smoothPosition in wStartMs..wEndMs
                         val sungFactor = if (isWordSung) 1f
-                        else if (isWordActive) ((smoothPosition - wStartMs).toFloat() / (wEndMs - wStartMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+                        else if (smoothPosition >= wStartMs) ((smoothPosition - wStartMs).toFloat() / (wEndMs - wStartMs).coerceAtLeast(1)).coerceIn(0f, 1f)
                         else 0f
                         Triple(sungFactor, isWordSung, isWordActive)
                     }
@@ -597,13 +633,11 @@ private fun WordLevelLyrics(
                 }
 
                 val (wordIdxMap, charInWordMap, wordLenMap) = charToWordData
-                val wordFactors = effectiveWords.map { word ->
-                    val wStartMs = (word.startTime * 1000).toLong()
-                    val wEndMs = (word.endTime * 1000).toLong()
+                val wordFactors = effectiveWords.mapIndexed { wordIdx, word ->
+                    val (wStartMs, wEndMs) = remappedWordTimesMs[wordIdx]
                     val isWordSung = smoothPosition > wEndMs
-                    val isWordActive = smoothPosition in wStartMs..wEndMs
                     val sungFactor = if (isWordSung) 1f
-                    else if (isWordActive) ((smoothPosition - wStartMs).toFloat() / (wEndMs - wStartMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+                    else if (smoothPosition >= wStartMs) ((smoothPosition - wStartMs).toFloat() / (wEndMs - wStartMs).coerceAtLeast(1)).coerceIn(0f, 1f)
                     else 0f
                     Triple(sungFactor, word, isWordSung)
                 }
@@ -617,9 +651,10 @@ private fun WordLevelLyrics(
                     val (sungFactor, wordItem, isWordSung) = if (wordIdx != -1) wordFactors[wordIdx] else Triple(0f, null, false)
 
                     val charLp = if (wordItem != null) {
-                        val sMs = wordItem.startTime * 1000; val dur = (wordItem.endTime * 1000 - sMs).coerceAtLeast(100.0)
-                        val wProg = (smoothPosition.toDouble() - sMs) / dur
-                        ((wProg - charInWordMap[i].toDouble() / wordLenMap[i].toDouble()) * wordLenMap[i].toDouble()).coerceIn(0.0, 1.0).toFloat()
+                        val edgeMs = 80f
+                        val charTimeMs = clusterTimes[i]
+                        if (charTimeMs < 0f) 0f
+                        else ((smoothPosition - charTimeMs + edgeMs / 2f) / edgeMs).coerceIn(0f, 1f)
                     } else 0f
 
                     val shouldGlow = wordItem != null && !isWordSung && sungFactor > 0.001f

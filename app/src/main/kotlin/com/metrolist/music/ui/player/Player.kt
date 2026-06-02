@@ -16,6 +16,8 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -1947,12 +1949,17 @@ fun BottomSheetPlayer(
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
                         Box(modifier = Modifier.fillMaxSize()) {
                             val snapshot = mediaMetadata
+                            val lyricsAlpha by animateFloatAsState(
+                                targetValue = if (showInlineLyrics) 1f else 0f,
+                                animationSpec = tween(380, easing = FastOutSlowInEasing),
+                                label = "lyricsAlpha",
+                            )
                             if (snapshot != null) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .zIndex(if (showInlineLyrics) 1f else 0f)
-                                        .alpha(if (showInlineLyrics) 1f else 0f),
+                                        .alpha(lyricsAlpha),
                                 ) {
                                     InlineLyricsView(
                                         mediaMetadata = snapshot,
@@ -1984,7 +1991,7 @@ fun BottomSheetPlayer(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .zIndex(if (showInlineLyrics) 0f else 1f)
-                                    .alpha(if (showInlineLyrics) 0f else 1f),
+                                    .alpha(1f - lyricsAlpha),
                             ) {
                                 AnimatedContent(
                                     targetState = when {
@@ -1993,8 +2000,12 @@ fun BottomSheetPlayer(
                                     },
                                     label = "PlayerView",
                                     transitionSpec = {
-                                        fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith
-                                        fadeOut(tween(380, easing = FastOutSlowInEasing))
+                                        if (initialState == "thumbnail" && lyricsAlpha > 0f) {
+                                            EnterTransition.None togetherWith ExitTransition.None
+                                        } else {
+                                            fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith
+                                            fadeOut(tween(380, easing = FastOutSlowInEasing))
+                                        }
                                     },
                                 ) { view ->
                                     when (view) {
@@ -2062,12 +2073,17 @@ fun BottomSheetPlayer(
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
                         Box(modifier = Modifier.fillMaxSize()) {
                             val snapshot = mediaMetadata
+                            val lyricsAlpha by animateFloatAsState(
+                                targetValue = if (showInlineLyrics) 1f else 0f,
+                                animationSpec = tween(380, easing = FastOutSlowInEasing),
+                                label = "lyricsAlpha",
+                            )
                             if (snapshot != null) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .zIndex(if (showInlineLyrics) 1f else 0f)
-                                        .alpha(if (showInlineLyrics) 1f else 0f),
+                                        .alpha(lyricsAlpha),
                                 ) {
                                     InlineLyricsView(
                                         mediaMetadata = snapshot,
@@ -2099,7 +2115,7 @@ fun BottomSheetPlayer(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .zIndex(if (showInlineLyrics) 0f else 1f)
-                                    .alpha(if (showInlineLyrics) 0f else 1f),
+                                    .alpha(1f - lyricsAlpha),
                             ) {
                                 AnimatedContent(
                                     targetState = when {
@@ -2108,8 +2124,12 @@ fun BottomSheetPlayer(
                                     },
                                     label = "PlayerView",
                                     transitionSpec = {
-                                        fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith
-                                        fadeOut(tween(380, easing = FastOutSlowInEasing))
+                                        if (initialState == "thumbnail" && lyricsAlpha > 0f) {
+                                            EnterTransition.None togetherWith ExitTransition.None
+                                        } else {
+                                            fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith
+                                            fadeOut(tween(380, easing = FastOutSlowInEasing))
+                                        }
                                     },
                                 ) { view ->
                                     when (view) {
@@ -2401,7 +2421,7 @@ internal fun InlinePlayerPageFrame(
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
             .padding(horizontal = 20.dp)
-            .padding(top = 8.dp, bottom = 16.dp),
+            .padding(top = 20.dp, bottom = 16.dp),
     ) {
         AnimatedVisibility(
             visible = !isFullScreen,

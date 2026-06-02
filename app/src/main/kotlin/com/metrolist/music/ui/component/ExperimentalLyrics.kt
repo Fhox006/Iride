@@ -507,7 +507,7 @@ fun ExperimentalLyrics(
             val effectivePosition = position + lyricsOffset
 
             val initialActiveIndices = findActiveLineIndices(lines, effectivePosition)
-            val scrollActiveIndicesRaw = findActiveLineIndices(lines, effectivePosition + 750L)
+            val scrollActiveIndicesRaw = findActiveLineIndices(lines, effectivePosition + (if (hasWordTimings) 0L else 250L))
 
             val scrollActiveIndices = scrollActiveIndicesRaw.toMutableSet()
             for (i in scrollActiveIndicesRaw) {
