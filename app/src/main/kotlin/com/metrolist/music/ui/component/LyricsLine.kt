@@ -38,9 +38,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -200,7 +202,7 @@ internal fun LyricsLine(
     }
 
     Box(modifier = itemModifier
-        .then(if (blurRadius > 0.5f) Modifier.blur(blurRadius.dp) else Modifier)
+        .then(if (blurRadius > 0.5f) Modifier.blur(blurRadius.dp, BlurredEdgeTreatment.Unbounded) else Modifier)
         .padding(
             start = when (agentAlignment) {
                 Alignment.End -> 32.dp
@@ -314,7 +316,7 @@ internal fun LyricsLine(
                     Text(
                         text = mainText ?: "",
                         style = lyricStyle.copy(color = if (isActiveLine) expressiveAccent else lineColor),
-                        modifier = Modifier.fillMaxWidth().graphicsLayer(clip = false)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 
@@ -669,10 +671,8 @@ private fun WordLevelLyrics(
                         }
                     }
 
-                    val lineIdx = layoutResult.getLineForOffset(charOffset)
-                    val lineBottom = layoutResult.getLineBottom(lineIdx)
                     val cTop = charBounds.top + waveOffset
-                    val cBottom = maxOf(charBounds.bottom, lineBottom) + waveOffset
+                    val cBottom = charBounds.bottom + waveOffset
 
                     if (shouldGlow && wordItem != null) {
                         val sMs = wordItem.startTime * 1000; val eMs = wordItem.endTime * 1000; val dur = eMs - sMs
@@ -713,6 +713,41 @@ private fun WordLevelLyrics(
                                 }
                             }
                         }
+                    }
+                }
+
+                // Descender pass: fix clipping for y/g/p/q/j — drawn after main loop to overwrite row below
+                val extraDescent = lyricStyle.fontSize.toPx() * 0.12f
+                for (i in 0 until clusterCount) {
+                    if (!graphemeClusters[i].any { c -> c.lowercaseChar() in "gjpqy" }) continue
+                    val charOffset = clusterCharOffsets[i]
+                    val charBounds = layoutResult.getBoundingBox(charOffset)
+                    val wordIdx = wordIdxMap[i]
+                    val (sungFactor, _, isWordSung) = if (wordIdx != -1) wordFactors[wordIdx] else Triple(0f, null, false)
+                    val baseAlpha = if (isWordSung) 1f else (focusedAlpha + (1f - focusedAlpha) * sungFactor)
+                    val groupWord = if (wordIdx != -1) hyphenGroupData[wordIdx] else null
+                    var waveOffset = 0f
+                    if (groupWord != null) {
+                        val wallTime = System.currentTimeMillis()
+                        val timeInGroup = (smoothPosition - groupWord.groupStartMs).toFloat()
+                        val timeToGroupEnd = (groupWord.groupEndMs - smoothPosition).toFloat()
+                        val waveFade = (timeInGroup / 200f).coerceIn(0f, 1f) * (timeToGroupEnd / 200f).coerceIn(0f, 1f)
+                        if (waveFade > 0.01f) {
+                            waveOffset = sin(wallTime * 0.006f + i * 0.4f) * 3.24f * waveFade
+                        }
+                    }
+                    clipRect(
+                        left = charBounds.left,
+                        top = charBounds.bottom + waveOffset,
+                        right = charBounds.right,
+                        bottom = charBounds.bottom + extraDescent + waveOffset
+                    ) {
+                        drawText(
+                            layoutResult,
+                            topLeft = androidx.compose.ui.geometry.Offset(0f, waveOffset),
+                            color = expressiveAccent.copy(alpha = baseAlpha),
+                            blendMode = BlendMode.Src
+                        )
                     }
                 }
             }

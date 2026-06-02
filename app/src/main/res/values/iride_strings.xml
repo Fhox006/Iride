@@ -97,6 +97,8 @@
     <string name="gradient">Gradient</string>
     <string name="animated_gradient">Animated Gradient</string>
     <string name="better_animated_gradient">Better Animated Gradient</string>
+    <string name="better_gradient_smooth_transition">Smooth background transition</string>
+    <string name="better_gradient_smooth_transition_desc">Crossfade between album colors on track skip</string>
     <string name="new_player_design">New player design</string>
     <string name="new_mini_player_design">New mini-player design</string>
     <string name="player_background_blur">Blur</string>
@@ -110,6 +112,8 @@
     <string name="density_restart_message">The display density change will take effect after restarting the app. Restart now?</string>
     <string name="wavy">Wavy</string>
     <string name="enable_swipe_thumbnail">Enable swipe to change song</string>
+    <string name="thumbnail_carousel_mode">Carousel thumbnail mode</string>
+    <string name="thumbnail_carousel_mode_desc">Show prev/next covers peeking from sides with swipe animation</string>
     <string name="swipe_song_to_add">Swipe left to add the song to the queue, or right to play it next</string>
     <string name="swipe_song_to_remove">Swipe to remove the song from the playlist</string>
     <string name="lyrics_click_change">Change lyrics on tap</string>

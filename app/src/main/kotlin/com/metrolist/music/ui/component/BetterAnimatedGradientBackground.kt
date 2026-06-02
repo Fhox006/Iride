@@ -38,8 +38,11 @@ import kotlin.math.sin
 fun BetterAnimatedGradientBackground(
     thumbnail: Bitmap?,
     modifier: Modifier = Modifier,
+    incomingThumbnail: Bitmap? = null,
+    crossfadeProgress: Float = 0f,
 ) {
     val albumImage = remember(thumbnail) { thumbnail?.asImageBitmap() }
+    val incomingAlbumImage = remember(incomingThumbnail) { incomingThumbnail?.asImageBitmap() }
 
     val infinite = rememberInfiniteTransition(label = "better_anim_grad")
 
@@ -86,7 +89,7 @@ fun BetterAnimatedGradientBackground(
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .blur(120.dp),  // heavier blur = more zoom, fewer distinct colors visible
+                .blur(120.dp),
         ) {
             val w = size.width
             val h = size.height
@@ -94,50 +97,95 @@ fun BetterAnimatedGradientBackground(
 
             // Dark base — ensures no pure-black bleed if blur clips at edge
             drawRect(Color(0xFF0D0D0D))
-            val image = albumImage ?: return@Canvas
 
-            // sprite 0 — centered, 3.0× maxDim.
-            // GUARANTEES full coverage: at 3× the sprite extends 1.5× maxDim in all directions
-            // from center — impossible to expose background regardless of position.
-            val sz0 = (maxDim * 3.0f).toInt()
-            withTransform({
-                translate(w / 2f, h / 2f)
-                rotate(Math.toDegrees(angle0.toDouble()).toFloat())
-            }) {
-                drawImage(image, dstOffset = IntOffset(-sz0 / 2, -sz0 / 2), dstSize = IntSize(sz0, sz0), filterQuality = FilterQuality.Low)
+            val isCrossfading = incomingAlbumImage != null && crossfadeProgress > 0f
+            val currentAlpha = if (isCrossfading) 1f - crossfadeProgress else 1f
+
+            albumImage?.let { image ->
+                // sprite 0 — centered, 3.0× maxDim
+                val sz0 = (maxDim * 3.0f).toInt()
+                withTransform({
+                    translate(w / 2f, h / 2f)
+                    rotate(Math.toDegrees(angle0.toDouble()).toFloat())
+                }) {
+                    drawImage(image, dstOffset = IntOffset(-sz0 / 2, -sz0 / 2), dstSize = IntSize(sz0, sz0), filterQuality = FilterQuality.Low, alpha = currentAlpha)
+                }
+
+                // sprite 1 — centered, 2.5× maxDim, faster CCW rotation
+                val sz1 = (maxDim * 2.5f).toInt()
+                withTransform({
+                    translate(w / 2f, h / 2f)
+                    rotate(-Math.toDegrees(angle1.toDouble()).toFloat())
+                }) {
+                    drawImage(image, dstOffset = IntOffset(-sz1 / 2, -sz1 / 2), dstSize = IntSize(sz1, sz1), filterQuality = FilterQuality.Low, alpha = currentAlpha)
+                }
+
+                // sprite 2 — orbiting CCW, 2.2× maxDim
+                val oa2 = -(angle2 * 0.75f).toDouble()
+                val cx2 = w / 2f + (maxDim * 0.18f) * cos(oa2).toFloat()
+                val cy2 = h / 2f + (maxDim * 0.18f) * sin(oa2).toFloat()
+                val sz2 = (maxDim * 2.2f).toInt()
+                withTransform({
+                    translate(cx2, cy2)
+                    rotate(-Math.toDegrees(angle2.toDouble()).toFloat())
+                }) {
+                    drawImage(image, dstOffset = IntOffset(-sz2 / 2, -sz2 / 2), dstSize = IntSize(sz2, sz2), filterQuality = FilterQuality.Low, alpha = currentAlpha)
+                }
+
+                // sprite 3 — orbiting CW, 2.0× maxDim
+                val oa3 = (angle3 * 0.5f).toDouble()
+                val cx3 = w / 2f + (maxDim * 0.22f) * cos(oa3).toFloat()
+                val cy3 = h / 2f + (maxDim * 0.22f) * sin(oa3).toFloat()
+                val sz3 = (maxDim * 2.0f).toInt()
+                withTransform({
+                    translate(cx3, cy3)
+                    rotate(Math.toDegrees(angle3.toDouble()).toFloat())
+                }) {
+                    drawImage(image, dstOffset = IntOffset(-sz3 / 2, -sz3 / 2), dstSize = IntSize(sz3, sz3), filterQuality = FilterQuality.Low, alpha = currentAlpha)
+                }
             }
 
-            // sprite 1 — centered, 2.5× maxDim, faster CCW rotation
-            val sz1 = (maxDim * 2.5f).toInt()
-            withTransform({
-                translate(w / 2f, h / 2f)
-                rotate(-Math.toDegrees(angle1.toDouble()).toFloat())
-            }) {
-                drawImage(image, dstOffset = IntOffset(-sz1 / 2, -sz1 / 2), dstSize = IntSize(sz1, sz1), filterQuality = FilterQuality.Low)
-            }
+            // Draw incoming bitmap sprites on top during crossfade
+            if (isCrossfading) {
+                incomingAlbumImage?.let { incoming ->
+                    val sz0 = (maxDim * 3.0f).toInt()
+                    withTransform({
+                        translate(w / 2f, h / 2f)
+                        rotate(Math.toDegrees(angle0.toDouble()).toFloat())
+                    }) {
+                        drawImage(incoming, dstOffset = IntOffset(-sz0 / 2, -sz0 / 2), dstSize = IntSize(sz0, sz0), filterQuality = FilterQuality.Low, alpha = crossfadeProgress)
+                    }
 
-            // sprite 2 — orbiting CCW, 2.2× maxDim, tight orbit so it never leaves coverage zone
-            val oa2 = -(angle2 * 0.75f).toDouble()
-            val cx2 = w / 2f + (maxDim * 0.18f) * cos(oa2).toFloat()
-            val cy2 = h / 2f + (maxDim * 0.18f) * sin(oa2).toFloat()
-            val sz2 = (maxDim * 2.2f).toInt()
-            withTransform({
-                translate(cx2, cy2)
-                rotate(-Math.toDegrees(angle2.toDouble()).toFloat())
-            }) {
-                drawImage(image, dstOffset = IntOffset(-sz2 / 2, -sz2 / 2), dstSize = IntSize(sz2, sz2), filterQuality = FilterQuality.Low)
-            }
+                    val sz1 = (maxDim * 2.5f).toInt()
+                    withTransform({
+                        translate(w / 2f, h / 2f)
+                        rotate(-Math.toDegrees(angle1.toDouble()).toFloat())
+                    }) {
+                        drawImage(incoming, dstOffset = IntOffset(-sz1 / 2, -sz1 / 2), dstSize = IntSize(sz1, sz1), filterQuality = FilterQuality.Low, alpha = crossfadeProgress)
+                    }
 
-            // sprite 3 — orbiting CW, 2.0× maxDim
-            val oa3 = (angle3 * 0.5f).toDouble()
-            val cx3 = w / 2f + (maxDim * 0.22f) * cos(oa3).toFloat()
-            val cy3 = h / 2f + (maxDim * 0.22f) * sin(oa3).toFloat()
-            val sz3 = (maxDim * 2.0f).toInt()
-            withTransform({
-                translate(cx3, cy3)
-                rotate(Math.toDegrees(angle3.toDouble()).toFloat())
-            }) {
-                drawImage(image, dstOffset = IntOffset(-sz3 / 2, -sz3 / 2), dstSize = IntSize(sz3, sz3), filterQuality = FilterQuality.Low)
+                    val oa2 = -(angle2 * 0.75f).toDouble()
+                    val cx2 = w / 2f + (maxDim * 0.18f) * cos(oa2).toFloat()
+                    val cy2 = h / 2f + (maxDim * 0.18f) * sin(oa2).toFloat()
+                    val sz2 = (maxDim * 2.2f).toInt()
+                    withTransform({
+                        translate(cx2, cy2)
+                        rotate(-Math.toDegrees(angle2.toDouble()).toFloat())
+                    }) {
+                        drawImage(incoming, dstOffset = IntOffset(-sz2 / 2, -sz2 / 2), dstSize = IntSize(sz2, sz2), filterQuality = FilterQuality.Low, alpha = crossfadeProgress)
+                    }
+
+                    val oa3 = (angle3 * 0.5f).toDouble()
+                    val cx3 = w / 2f + (maxDim * 0.22f) * cos(oa3).toFloat()
+                    val cy3 = h / 2f + (maxDim * 0.22f) * sin(oa3).toFloat()
+                    val sz3 = (maxDim * 2.0f).toInt()
+                    withTransform({
+                        translate(cx3, cy3)
+                        rotate(Math.toDegrees(angle3.toDouble()).toFloat())
+                    }) {
+                        drawImage(incoming, dstOffset = IntOffset(-sz3 / 2, -sz3 / 2), dstSize = IntSize(sz3, sz3), filterQuality = FilterQuality.Low, alpha = crossfadeProgress)
+                    }
+                }
             }
 
             // Darkness overlay for text legibility

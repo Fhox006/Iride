@@ -27,6 +27,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
@@ -89,6 +90,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
@@ -159,6 +161,7 @@ import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.BetterGradientSmoothTransitionKey
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
@@ -177,6 +180,7 @@ import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
 import com.metrolist.music.constants.SliderStyle
 import com.metrolist.music.constants.SliderStyleKey
 import com.metrolist.music.constants.SquigglySliderKey
+import com.metrolist.music.constants.ThumbnailCarouselModeKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.constants.UseNewPlayerDesignKey
 import com.metrolist.music.extensions.togglePlayPause
@@ -249,6 +253,7 @@ fun BottomSheetPlayer(
             defaultValue = true,
         )
     val (hidePlayerThumbnail, onHidePlayerThumbnailChange) = rememberPreference(HidePlayerThumbnailKey, false)
+    val thumbnailCarouselMode by rememberPreference(ThumbnailCarouselModeKey, defaultValue = false)
     val (hideStatusBarOnFullscreen) = rememberPreference(HideStatusBarOnFullscreenKey, false)
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
 
@@ -915,7 +920,10 @@ fun BottomSheetPlayer(
                     }
 
                     PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> {
-                        var currentBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+                        val smoothTransition by rememberPreference(BetterGradientSmoothTransitionKey, true)
+                        var displayedBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+                        var incomingBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+                        val crossfadeProgress = remember { Animatable(0f) }
                         LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl) {
                             if (mediaMetadata?.thumbnailUrl != null) {
                                 val request = ImageRequest.Builder(context)
@@ -924,14 +932,27 @@ fun BottomSheetPlayer(
                                     .allowHardware(false)
                                     .build()
                                 val result = context.imageLoader.execute(request)
-                                currentBitmap = result.image?.toBitmap()
+                                val newBitmap = result.image?.toBitmap()
+                                if (smoothTransition && displayedBitmap != null && newBitmap != null) {
+                                    crossfadeProgress.snapTo(0f)
+                                    incomingBitmap = newBitmap
+                                    crossfadeProgress.animateTo(1f, tween(700))
+                                    displayedBitmap = newBitmap
+                                    incomingBitmap = null
+                                    crossfadeProgress.snapTo(0f)
+                                } else {
+                                    displayedBitmap = newBitmap
+                                }
                             } else {
-                                currentBitmap = null
+                                displayedBitmap = null
+                                incomingBitmap = null
                             }
                         }
 
                         BetterAnimatedGradientBackground(
-                            thumbnail = currentBitmap,
+                            thumbnail = displayedBitmap,
+                            incomingThumbnail = incomingBitmap,
+                            crossfadeProgress = crossfadeProgress.value,
                             modifier = Modifier.fillMaxSize().alpha(backgroundAlpha)
                         )
                     }
@@ -1602,130 +1623,61 @@ fun BottomSheetPlayer(
                 Column {
                     if (useNewPlayerDesign) {
                         Row(
-                            horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = PlayerHorizontalPadding),
                         ) {
-                            val backInteractionSource = remember { MutableInteractionSource() }
-                            val nextInteractionSource = remember { MutableInteractionSource() }
-                            val playPauseInteractionSource = remember { MutableInteractionSource() }
-
-                            val isPlayPausePressed by playPauseInteractionSource.collectIsPressedAsState()
-                            val isBackPressed by backInteractionSource.collectIsPressedAsState()
-                            val isNextPressed by nextInteractionSource.collectIsPressedAsState()
-
-                            val playPauseWeight by animateFloatAsState(
-                                targetValue =
-                                    if (isPlayPausePressed) {
-                                        1.9f
-                                    } else if (isBackPressed || isNextPressed) {
-                                        1.1f
-                                    } else {
-                                        1.3f
-                                    },
-                                animationSpec =
-                                    spring(
-                                        dampingRatio = 0.6f,
-                                        stiffness = 500f,
-                                    ),
-                                label = "playPauseWeight",
-                            )
-
-                            val backButtonWeight by animateFloatAsState(
-                                targetValue =
-                                    if (isBackPressed) {
-                                        0.65f
-                                    } else if (isPlayPausePressed) {
-                                        0.35f
-                                    } else {
-                                        0.45f
-                                    },
-                                animationSpec =
-                                    spring(
-                                        dampingRatio = 0.6f,
-                                        stiffness = 500f,
-                                    ),
-                                label = "backButtonWeight",
-                            )
-
-                            val nextButtonWeight by animateFloatAsState(
-                                targetValue =
-                                    if (isNextPressed) {
-                                        0.65f
-                                    } else if (isPlayPausePressed) {
-                                        0.35f
-                                    } else {
-                                        0.45f
-                                    },
-                                animationSpec =
-                                    spring(
-                                        dampingRatio = 0.6f,
-                                        stiffness = 500f,
-                                    ),
-                                label = "nextButtonWeight",
-                            )
-
-                            FilledIconButton(
-                                onClick = playerConnection::seekToPrevious,
-                                enabled = canSkipPrevious && !isListenTogetherGuest,
-                                shape = RoundedCornerShape(50),
-                                interactionSource = backInteractionSource,
-                                colors =
-                                    IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = sideButtonContainerColor,
-                                        contentColor = sideButtonContentColor,
-                                    ),
-                                modifier =
-                                    Modifier
-                                        .height(68.dp)
-                                        .weight(backButtonWeight),
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.skip_previous),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
-                                )
+                                IconButton(
+                                    onClick = playerConnection::seekToPrevious,
+                                    enabled = canSkipPrevious && !isListenTogetherGuest,
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        contentColor = sideButtonContentColor,
+                                        disabledContentColor = sideButtonContentColor.copy(alpha = 0.38f),
+                                    ),
+                                    modifier = Modifier.size(96.dp),
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.skip_previous),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(72.dp),
+                                    )
+                                }
                             }
 
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            FilledIconButton(
-                                onClick = {
-                                    if (isListenTogetherGuest) {
-                                        playerConnection.toggleMute()
-                                        return@FilledIconButton
-                                    }
-                                    if (isCasting) {
-                                        if (castIsPlaying) {
-                                            castHandler?.pause()
-                                        } else {
-                                            castHandler?.play()
-                                        }
-                                    } else if (playbackState == STATE_ENDED) {
-                                        playerConnection.player.seekTo(0, 0)
-                                        playerConnection.player.playWhenReady = true
-                                    } else {
-                                        playerConnection.togglePlayPause()
-                                    }
-                                },
-                                shape = RoundedCornerShape(50),
-                                interactionSource = playPauseInteractionSource,
-                                colors =
-                                    IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = textButtonColor,
-                                        contentColor = iconButtonColor,
-                                    ),
-                                modifier =
-                                    Modifier
-                                        .height(68.dp)
-                                        .weight(playPauseWeight),
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center,
+                                IconButton(
+                                    onClick = {
+                                        if (isListenTogetherGuest) {
+                                            playerConnection.toggleMute()
+                                            return@IconButton
+                                        }
+                                        if (isCasting) {
+                                            if (castIsPlaying) {
+                                                castHandler?.pause()
+                                            } else {
+                                                castHandler?.play()
+                                            }
+                                        } else if (playbackState == STATE_ENDED) {
+                                            playerConnection.player.seekTo(0, 0)
+                                            playerConnection.player.playWhenReady = true
+                                        } else {
+                                            playerConnection.togglePlayPause()
+                                        }
+                                    },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        contentColor = textButtonColor,
+                                        disabledContentColor = textButtonColor.copy(alpha = 0.38f),
+                                    ),
+                                    modifier = Modifier.size(84.dp),
                                 ) {
                                     Icon(
                                         painter =
@@ -1742,43 +1694,30 @@ fun BottomSheetPlayer(
                                             } else {
                                                 if (effectiveIsPlaying) stringResource(R.string.pause) else stringResource(R.string.play)
                                             },
-                                        modifier = Modifier.size(32.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text =
-                                            if (isListenTogetherGuest) {
-                                                if (isMuted) stringResource(R.string.unmute) else stringResource(R.string.mute)
-                                            } else {
-                                                if (effectiveIsPlaying) stringResource(R.string.pause) else stringResource(R.string.play)
-                                            },
-                                        style = MaterialTheme.typography.titleMedium,
+                                        modifier = Modifier.size(60.dp),
                                     )
                                 }
                             }
 
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            FilledIconButton(
-                                onClick = playerConnection::seekToNext,
-                                enabled = canSkipNext && !isListenTogetherGuest,
-                                shape = RoundedCornerShape(50),
-                                interactionSource = nextInteractionSource,
-                                colors =
-                                    IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = sideButtonContainerColor,
-                                        contentColor = sideButtonContentColor,
-                                    ),
-                                modifier =
-                                    Modifier
-                                        .height(68.dp)
-                                        .weight(nextButtonWeight),
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.skip_next),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
-                                )
+                                IconButton(
+                                    onClick = playerConnection::seekToNext,
+                                    enabled = canSkipNext && !isListenTogetherGuest,
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        contentColor = sideButtonContentColor,
+                                        disabledContentColor = sideButtonContentColor.copy(alpha = 0.38f),
+                                    ),
+                                    modifier = Modifier.size(96.dp),
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.skip_next),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(72.dp),
+                                    )
+                                }
                             }
                         }
                     } else {
@@ -2017,13 +1956,23 @@ fun BottomSheetPlayer(
                                                 onClose = { showQueue = false },
                                             )
                                         else ->
-                                            Thumbnail(
-                                                sliderPositionProvider = sliderPositionProvider,
-                                                modifier = Modifier.animateContentSize(),
-                                                isPlayerExpanded = isExpandedProvider,
-                                                isLandscape = true,
-                                                isListenTogetherGuest = isListenTogetherGuest,
-                                            )
+                                            if (thumbnailCarouselMode) {
+                                                ThumbnailCarousel(
+                                                    sliderPositionProvider = sliderPositionProvider,
+                                                    modifier = Modifier.animateContentSize(),
+                                                    isPlayerExpanded = isExpandedProvider,
+                                                    isLandscape = true,
+                                                    isListenTogetherGuest = isListenTogetherGuest,
+                                                )
+                                            } else {
+                                                Thumbnail(
+                                                    sliderPositionProvider = sliderPositionProvider,
+                                                    modifier = Modifier.animateContentSize(),
+                                                    isPlayerExpanded = isExpandedProvider,
+                                                    isLandscape = true,
+                                                    isListenTogetherGuest = isListenTogetherGuest,
+                                                )
+                                            }
                                     }
                                 }
                             }
@@ -2143,12 +2092,21 @@ fun BottomSheetPlayer(
                                                 onClose = { showQueue = false },
                                             )
                                         else ->
-                                            Thumbnail(
-                                                sliderPositionProvider = sliderPositionProvider,
-                                                modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
-                                                isPlayerExpanded = isExpandedProvider,
-                                                isListenTogetherGuest = isListenTogetherGuest,
-                                            )
+                                            if (thumbnailCarouselMode) {
+                                                ThumbnailCarousel(
+                                                    sliderPositionProvider = sliderPositionProvider,
+                                                    modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
+                                                    isPlayerExpanded = isExpandedProvider,
+                                                    isListenTogetherGuest = isListenTogetherGuest,
+                                                )
+                                            } else {
+                                                Thumbnail(
+                                                    sliderPositionProvider = sliderPositionProvider,
+                                                    modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
+                                                    isPlayerExpanded = isExpandedProvider,
+                                                    isListenTogetherGuest = isListenTogetherGuest,
+                                                )
+                                            }
                                     }
                                 }
                             }

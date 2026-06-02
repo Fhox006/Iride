@@ -130,7 +130,7 @@ private fun calculateThumbnailDimensions(
     val effectiveSize = if (isLandscape) {
         minOf(containerWidth, containerHeight) - (horizontalPadding * 2)
     } else {
-        containerWidth - (horizontalPadding * 2)
+        containerWidth - (horizontalPadding * 2) - 16.dp
     }
     return ThumbnailDimensions(
         itemWidth = containerWidth,
@@ -542,7 +542,7 @@ private fun ThumbnailItem(
         Box(
             modifier = Modifier
                 .size(dimensions.thumbnailSize)
-                .clip(SquircleShape(radius = dimensions.thumbnailSize * 0.04f, cornerSmoothing = 0.48f))
+                .clip(SquircleShape(radius = dimensions.thumbnailSize * 0.05f, cornerSmoothing = 0.48f))
         ) {
             if (hidePlayerThumbnail) {
                 HiddenThumbnailPlaceholder(textBackgroundColor = textBackgroundColor)

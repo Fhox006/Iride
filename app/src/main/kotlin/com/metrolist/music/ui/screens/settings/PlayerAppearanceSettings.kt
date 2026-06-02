@@ -55,6 +55,7 @@ import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
 import com.metrolist.music.constants.MiniPlayerBackgroundStyle
 import com.metrolist.music.constants.MiniPlayerBackgroundStyleKey
+import com.metrolist.music.constants.BetterGradientSmoothTransitionKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerButtonsStyle
@@ -65,6 +66,7 @@ import com.metrolist.music.constants.SliderStyleKey
 import com.metrolist.music.constants.SquigglySliderKey
 import com.metrolist.music.constants.SwipeSensitivityKey
 import com.metrolist.music.constants.SwipeThumbnailKey
+import com.metrolist.music.constants.ThumbnailCarouselModeKey
 import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
 import com.metrolist.music.constants.UseNewPlayerDesignKey
 import com.metrolist.music.ui.component.DefaultDialog
@@ -101,6 +103,8 @@ fun PlayerAppearanceSettings(navController: NavController) {
         rememberPreference(SquigglySliderKey, defaultValue = false)
     val (swipeThumbnail, onSwipeThumbnailChange) =
         rememberPreference(SwipeThumbnailKey, defaultValue = true)
+    val (thumbnailCarouselMode, onThumbnailCarouselModeChange) =
+        rememberPreference(ThumbnailCarouselModeKey, defaultValue = false)
     val (swipeSensitivity, onSwipeSensitivityChange) =
         rememberPreference(SwipeSensitivityKey, defaultValue = 0.73f)
     val (useNewMiniPlayerDesign, onUseNewMiniPlayerDesignChange) =
@@ -109,6 +113,8 @@ fun PlayerAppearanceSettings(navController: NavController) {
         rememberEnumPreference(MiniPlayerBackgroundStyleKey, defaultValue = MiniPlayerBackgroundStyle.DEFAULT)
     val (pureBlackMiniPlayer, onPureBlackMiniPlayerChange) =
         rememberPreference(PureBlackMiniPlayerKey, defaultValue = false)
+    val (betterGradientSmoothTransition, onBetterGradientSmoothTransitionChange) =
+        rememberPreference(BetterGradientSmoothTransitionKey, defaultValue = true)
 
     val availableBackgroundStyles = PlayerBackgroundStyle.values().filter {
         it != PlayerBackgroundStyle.BLUR || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
@@ -445,6 +451,29 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         onClick = { showPlayerBackgroundDialog = true }
                     )
                 )
+                if (playerBackground == PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT) add(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.gradient),
+                        title = { Text(stringResource(R.string.better_gradient_smooth_transition)) },
+                        description = { Text(stringResource(R.string.better_gradient_smooth_transition_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = betterGradientSmoothTransition,
+                                onCheckedChange = onBetterGradientSmoothTransitionChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            if (betterGradientSmoothTransition) R.drawable.check else R.drawable.close
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onBetterGradientSmoothTransitionChange(!betterGradientSmoothTransition) }
+                    )
+                )
                 /* HIDDEN - hide_player_thumbnail toggle
                 add(
                     Material3SettingsItem(
@@ -547,6 +576,29 @@ fun PlayerAppearanceSettings(navController: NavController) {
                             )
                         },
                         onClick = { onSwipeThumbnailChange(!swipeThumbnail) }
+                    )
+                )
+                add(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.queue_music),
+                        title = { Text(stringResource(R.string.thumbnail_carousel_mode)) },
+                        description = { Text(stringResource(R.string.thumbnail_carousel_mode_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = thumbnailCarouselMode,
+                                onCheckedChange = onThumbnailCarouselModeChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            if (thumbnailCarouselMode) R.drawable.check else R.drawable.close
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onThumbnailCarouselModeChange(!thumbnailCarouselMode) }
                     )
                 )
                 /* HIDDEN - swipe_sensitivity setting

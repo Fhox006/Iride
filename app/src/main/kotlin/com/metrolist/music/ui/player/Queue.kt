@@ -309,7 +309,7 @@ fun Queue(
             if (useNewPlayerDesign) {
                 // New design
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier =
                         Modifier
@@ -323,28 +323,14 @@ fun Queue(
                 ) {
                     val buttonSize = 42.dp
                     val iconSize = 24.dp
-                    val queueShape =
-                        RoundedCornerShape(
-                            topStart = 50.dp,
-                            bottomStart = 50.dp,
-                            topEnd = 3.dp,
-                            bottomEnd = 3.dp,
-                        )
-                    val middleShape = RoundedCornerShape(3.dp)
-                    val lyricsShape =
-                        RoundedCornerShape(
-                            topStart = 3.dp,
-                            bottomStart = 3.dp,
-                            topEnd = 50.dp,
-                            bottomEnd = 50.dp,
-                        )
+                    val pillShape = RoundedCornerShape(50)
 
                     // 1. Queue
                     PlayerQueueButton(
                         icon = R.drawable.queue_music,
                         onClick = { onToggleQueue() },
                         isActive = isQueueActive,
-                        shape = queueShape,
+                        shape = pillShape,
                         modifier = Modifier.size(buttonSize),
                         textButtonColor = textButtonColor,
                         iconButtonColor = iconButtonColor,
@@ -358,14 +344,13 @@ fun Queue(
                         icon = R.drawable.lyrics,
                         onClick = { onToggleLyrics() },
                         isActive = showInlineLyrics,
-                        shape = lyricsShape,
+                        shape = pillShape,
                         modifier = Modifier.size(buttonSize),
                         textButtonColor = textButtonColor,
                         iconButtonColor = iconButtonColor,
                         iconSize = iconSize,
                         textBackgroundColor = TextBackgroundColor,
                         playerBackground = playerBackground,
-                        isLoading = isLyricsLoading,
                     )
                 }
             } else {
@@ -1184,31 +1169,11 @@ private fun PlayerQueueButton(
     iconSize: androidx.compose.ui.unit.Dp,
     textBackgroundColor: Color,
     playerBackground: PlayerBackgroundStyle,
-    isLoading: Boolean = false,
 ) {
-    // Subtle pulse on the border while loading (only when button is inactive)
-    val loadingTransition = rememberInfiniteTransition(label = "btnLoading")
-    val loadingBorderAlpha by loadingTransition.animateFloat(
-        initialValue = 0.25f,
-        targetValue = 0.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(700, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "btnLoadingBorder",
-    )
-
-    val borderAlpha = if (isLoading && !isActive) loadingBorderAlpha else 0.3f
-
     val animatedBackgroundAlpha by animateFloatAsState(
         targetValue = if (isActive) 1f else 0f,
         animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
         label = "btnBackgroundAlpha",
-    )
-    val animatedBorderAlpha by animateFloatAsState(
-        targetValue = if (isActive) 0f else borderAlpha,
-        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
-        label = "btnBorderAlpha",
     )
 
     val buttonModifier =
@@ -1222,11 +1187,6 @@ private fun PlayerQueueButton(
         modifier
             .then(buttonModifier)
             .background(textButtonColor.copy(alpha = animatedBackgroundAlpha * alphaFactor))
-            .border(
-                width = 1.dp,
-                color = textButtonColor.copy(alpha = animatedBorderAlpha * alphaFactor),
-                shape = shape,
-            )
             .alpha(alphaFactor)
 
     Box(
@@ -1253,8 +1213,8 @@ private fun PlayerQueueButton(
                         iconButtonColor
                     } else {
                         when (playerBackground) {
-                            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT, PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> Color.White
-                            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT, PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> Color.White.copy(alpha = 0.4f)
+                            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         }
                     },
                 animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
