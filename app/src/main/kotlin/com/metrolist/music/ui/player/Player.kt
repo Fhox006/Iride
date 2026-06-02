@@ -79,6 +79,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import sv.lib.squircleshape.SquircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -965,11 +966,7 @@ fun BottomSheetPlayer(
                 animationSpec = tween(durationMillis = 90, easing = LinearEasing),
                 label = "playPauseRoundness",
             )
-            val albumArtCorner by animateDpAsState(
-                targetValue = if (isFullScreen) 8.dp else ThumbnailCornerRadius,
-                animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
-                label = "albumArtCorner",
-            )
+
             val controlsRowTopPadding by animateDpAsState(
                 targetValue = if (isFullScreen) 6.dp else 0.dp,
                 animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
@@ -1036,7 +1033,7 @@ fun BottomSheetPlayer(
                                     modifier =
                                         Modifier
                                             .size(56.dp)
-                                            .clip(RoundedCornerShape(albumArtCorner))
+                                            .clip(SquircleShape(radius = 8.dp, cornerSmoothing = 0.6f))
                                             .background(MaterialTheme.colorScheme.surfaceVariant)
                                             .clickable { if (isFullScreen) { isFullScreen = false; showInlineLyrics = false; showQueue = false } else { showInlineLyrics = false; showQueue = false } },
                                     contentAlignment = Alignment.Center,
@@ -1058,7 +1055,7 @@ fun BottomSheetPlayer(
                                     modifier =
                                         Modifier
                                             .size(56.dp)
-                                            .clip(RoundedCornerShape(albumArtCorner))
+                                            .clip(SquircleShape(radius = 8.dp, cornerSmoothing = 0.6f))
                                             .clickable { if (isFullScreen) { isFullScreen = false; showInlineLyrics = false; showQueue = false } else { showInlineLyrics = false; showQueue = false } },
                                 )
                             }
@@ -2000,7 +1997,9 @@ fun BottomSheetPlayer(
                                     },
                                     label = "PlayerView",
                                     transitionSpec = {
-                                        if (initialState == "thumbnail" && lyricsAlpha > 0f) {
+                                        val skipAnim = (initialState == "thumbnail" && lyricsAlpha > 0f) ||
+                                                       (targetState == "thumbnail" && showInlineLyrics)
+                                        if (skipAnim) {
                                             EnterTransition.None togetherWith ExitTransition.None
                                         } else {
                                             fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith
@@ -2124,7 +2123,9 @@ fun BottomSheetPlayer(
                                     },
                                     label = "PlayerView",
                                     transitionSpec = {
-                                        if (initialState == "thumbnail" && lyricsAlpha > 0f) {
+                                        val skipAnim = (initialState == "thumbnail" && lyricsAlpha > 0f) ||
+                                                       (targetState == "thumbnail" && showInlineLyrics)
+                                        if (skipAnim) {
                                             EnterTransition.None togetherWith ExitTransition.None
                                         } else {
                                             fadeIn(tween(380, easing = FastOutSlowInEasing)) togetherWith

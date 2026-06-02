@@ -39,7 +39,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.metrolist.music.constants.PureBlackKey
@@ -226,28 +225,21 @@ fun LibraryArtistsScreen(
                             ),
                         ) {
                             item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
-                                Box(
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(0.dp)
-                                        .clipToBounds(),
+                                        .padding(vertical = 4.dp),
                                 ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 4.dp),
-                                    ) {
-                                        ChipsRow(
-                                            chips = listOf(
-                                                ArtistFilter.LIKED to stringResource(R.string.filter_liked),
-                                                ArtistFilter.LIBRARY to stringResource(R.string.filter_library),
-                                            ),
-                                            currentValue = filter,
-                                            onValueUpdate = { filter = it },
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                    }
+                                    ChipsRow(
+                                        chips = listOf(
+                                            ArtistFilter.LIKED to stringResource(R.string.filter_liked),
+                                            ArtistFilter.LIBRARY to stringResource(R.string.filter_library),
+                                        ),
+                                        currentValue = filter,
+                                        onValueUpdate = { filter = it },
+                                        modifier = Modifier.weight(1f),
+                                    )
                                 }
                             }
 
@@ -325,28 +317,21 @@ fun LibraryArtistsScreen(
                                 span = { GridItemSpan(maxLineSpan) },
                                 contentType = CONTENT_TYPE_HEADER,
                             ) {
-                                Box(
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(0.dp)
-                                        .clipToBounds(),
+                                        .padding(vertical = 4.dp),
                                 ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 4.dp),
-                                    ) {
-                                        ChipsRow(
-                                            chips = listOf(
-                                                ArtistFilter.LIKED to stringResource(R.string.filter_liked),
-                                                ArtistFilter.LIBRARY to stringResource(R.string.filter_library),
-                                            ),
-                                            currentValue = filter,
-                                            onValueUpdate = { filter = it },
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                    }
+                                    ChipsRow(
+                                        chips = listOf(
+                                            ArtistFilter.LIKED to stringResource(R.string.filter_liked),
+                                            ArtistFilter.LIBRARY to stringResource(R.string.filter_library),
+                                        ),
+                                        currentValue = filter,
+                                        onValueUpdate = { filter = it },
+                                        modifier = Modifier.weight(1f),
+                                    )
                                 }
                             }
 

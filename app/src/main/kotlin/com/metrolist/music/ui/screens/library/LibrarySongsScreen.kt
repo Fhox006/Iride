@@ -48,7 +48,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -351,36 +350,29 @@ fun LibrarySongsScreen(
             ) {
                 if (!isOffline) {
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
-                        Box(
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(0.dp)
-                                .clipToBounds(),
+                                .padding(vertical = 4.dp),
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                            ) {
-                                ChipsRow(
-                                    chips = listOf(
-                                        SongFilter.LIKED      to stringResource(R.string.filter_liked),
-                                        SongFilter.LIBRARY    to stringResource(R.string.filter_library),
-                                        SongFilter.UPLOADED   to stringResource(R.string.filter_uploaded),
-                                        SongFilter.DOWNLOADED to stringResource(R.string.filter_downloaded),
-                                    ),
-                                    currentValue = filter,
-                                    onValueUpdate = { filter = it },
-                                    modifier = Modifier.weight(1f),
+                            ChipsRow(
+                                chips = listOf(
+                                    SongFilter.LIKED      to stringResource(R.string.filter_liked),
+                                    SongFilter.LIBRARY    to stringResource(R.string.filter_library),
+                                    SongFilter.UPLOADED   to stringResource(R.string.filter_uploaded),
+                                    SongFilter.DOWNLOADED to stringResource(R.string.filter_downloaded),
+                                ),
+                                currentValue = filter,
+                                onValueUpdate = { filter = it },
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconButton(onClick = { /* TODO: star action */ }) {
+                                Icon(
+                                    painter = painterResource(R.drawable.star),
+                                    contentDescription = null,
+                                    tint = Color.White,
                                 )
-                                IconButton(onClick = { /* TODO: star action */ }) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.star),
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                    )
-                                }
                             }
                         }
                     }
