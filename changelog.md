@@ -1,3 +1,21 @@
+## 0.1.0-alpha13
+
+### New features
+
+- **New player UI**: fully redesigned bottom player with thumbnail carousel — swipe left/right to navigate the queue directly from the player
+- **Lyrics animations**: reworked lyrics line rendering with smoother highlight transitions and better scroll behavior
+- **Animated gradient background**: improved dynamic background that reacts to album art colors with fluid animations
+- **Player appearance settings**: new options to customize player look in Settings → Player
+- **Satoshi font**: added Satoshi variable font for improved typography
+
+### Bug fixes
+
+- Fixed home screen auto-chip selection resetting unexpectedly
+- Fixed library Artists and Songs screens layout and filter behavior
+- Fixed gradient background flickering on player open/close
+- Multiple stability and rendering fixes across player, queue, and lyrics components
+- Updater reliability improvements
+
 ## 0.1.0-alpha10
 
 ### Changes
