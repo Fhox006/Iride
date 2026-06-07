@@ -120,6 +120,7 @@ fun LibrarySongsScreen(
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
+    val betterLibraryBeta by rememberPreference(com.metrolist.music.constants.BetterLibraryBetaKey, defaultValue = false)
 
     val songs by (if (isOffline) viewModel.downloadedSongs else viewModel.allSongs).collectAsState()
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
@@ -304,9 +305,13 @@ fun LibrarySongsScreen(
         }
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-        snapAnimationSpec = tween(durationMillis = 200),
-    )
+    val scrollBehavior = if (betterLibraryBeta) {
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    } else {
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+            snapAnimationSpec = tween(durationMillis = 200),
+        )
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -327,19 +332,31 @@ fun LibrarySongsScreen(
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
                             painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
+                            contentDescription = if (betterLibraryBeta)
+                                stringResource(R.string.navigate_back)
+                            else null,
                         )
                     }
                 },
             )
         },
-        containerColor = Color.Transparent,
+        containerColor = if (betterLibraryBeta) {
+            if (pureBlack) Color.Black else MaterialTheme.colorScheme.background
+        } else {
+            Color.Transparent
+        },
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+                .then(
+                    if (!betterLibraryBeta) {
+                        Modifier.background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+                    } else {
+                        Modifier
+                    }
+                )
                 .padding(paddingValues),
         ) {
             LazyColumn(
@@ -358,7 +375,7 @@ fun LibrarySongsScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(0.dp),
+                                .then(if (betterLibraryBeta) Modifier else Modifier.height(0.dp)),
                         ) {
                             ChipsRow(
                                 chips = listOf(
@@ -374,8 +391,8 @@ fun LibrarySongsScreen(
                             IconButton(onClick = { /* TODO: star action */ }) {
                                 Icon(
                                     painter = painterResource(R.drawable.star),
-                                    contentDescription = null,
-                                    tint = Color.White,
+                                    contentDescription = if (betterLibraryBeta) stringResource(R.string.starred) else null,
+                                    tint = if (betterLibraryBeta) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
                                 )
                             }
                         }
@@ -423,7 +440,9 @@ fun LibrarySongsScreen(
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.more_vert),
-                                    contentDescription = null,
+                                    contentDescription = if (betterLibraryBeta)
+                                        stringResource(R.string.more_options)
+                                    else null,
                                 )
                             }
                         },
@@ -466,6 +485,12 @@ fun LibrarySongsScreen(
                 visible = if (filter == SongFilter.UPLOADED) true else filteredSongs.isNotEmpty(),
                 lazyListState = lazyListState,
                 icon = if (filter == SongFilter.UPLOADED) R.drawable.upload else R.drawable.shuffle,
+                label = if (betterLibraryBeta) {
+                    if (filter == SongFilter.UPLOADED)
+                        stringResource(R.string.upload)
+                    else
+                        stringResource(R.string.shuffle)
+                } else null,
                 onClick = {
                     if (filter == SongFilter.UPLOADED) {
                         filePickerLauncher.launch(

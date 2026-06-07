@@ -550,6 +550,8 @@ val AccountChannelHandleKey = stringPreferencesKey("accountChannelHandle")
 val AccountPhotoUrlKey = stringPreferencesKey("accountPhotoUrl")
 val UseLoginForBrowse = booleanPreferencesKey("useLoginForBrowse")
 
+val BetterLibraryBetaKey = booleanPreferencesKey("better_library_beta")
+
 val LanguageCodeToName =
     mapOf(
         "af" to "Afrikaans",

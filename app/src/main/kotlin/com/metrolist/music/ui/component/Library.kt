@@ -13,6 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.WatchEndpoint
@@ -50,7 +51,7 @@ fun LibraryArtistListItem(
         ) {
             Icon(
                 painter = painterResource(R.drawable.more_vert),
-                contentDescription = null
+                contentDescription = stringResource(R.string.more_options)
             )
         }
     },
@@ -118,7 +119,7 @@ fun LibraryAlbumListItem(
         ) {
             Icon(
                 painter = painterResource(R.drawable.more_vert),
-                contentDescription = null
+                contentDescription = stringResource(R.string.more_options)
             )
         }
     },
@@ -217,7 +218,7 @@ fun LibraryPlaylistListItem(
         ) {
             Icon(
                 painter = painterResource(R.drawable.more_vert),
-                contentDescription = null
+                contentDescription = stringResource(R.string.more_options)
             )
         }
     },

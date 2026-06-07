@@ -107,6 +107,8 @@ fun InterfaceSettings(
         rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
     val (discoveryCarouselEnabled, onDiscoveryCarouselEnabledChange) =
         rememberPreference(DiscoveryCarouselEnabledKey, defaultValue = false)
+    val (betterLibraryBeta, onBetterLibraryBetaChange) =
+        rememberPreference(com.metrolist.music.constants.BetterLibraryBetaKey, defaultValue = false)
 
     val context = activity as Context
     val sharedPreferences = remember { context.getSharedPreferences("metrolist_settings", Context.MODE_PRIVATE) }
@@ -555,6 +557,36 @@ fun InterfaceSettings(
                         )
                     },
                     onClick = { onHideDurationForStandardChange(!hideDurationForStandard) }
+                )
+            )
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ── Lab ───────────────────────────────────────────────────────────
+        Material3SettingsGroup(
+            title = "Lab",
+            items = listOf(
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.bug_report),
+                    title = { Text(stringResource(R.string.better_library_beta)) },
+                    description = { Text(stringResource(R.string.better_library_beta_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = betterLibraryBeta,
+                            onCheckedChange = onBetterLibraryBetaChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        if (betterLibraryBeta) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                )
+                            },
+                        )
+                    },
+                    onClick = { onBetterLibraryBetaChange(!betterLibraryBeta) },
                 )
             )
         )

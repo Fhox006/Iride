@@ -984,4 +984,11 @@
     <string name="hide_duration_standard_songs_desc">Hides the time indicator for songs between 2 and 5 minutes. Only the artist name is shown.</string>
     <string name="fast_loader_beta">Fast Song Loader (BETA)</string>
     <string name="fast_loader_beta_desc">Reduces load time when manually changing tracks. Skips URL validation for faster stream resolution. May occasionally cause playback errors on the first try.</string>
+
+    <string name="better_library_beta">Better Library BETA</string>
+    <string name="better_library_beta_desc">Enable Material 3 refactored Library (Top App Bar, FAB, and UI fixes)</string>
+    <string name="upload">Upload</string>
+    <string name="new_playlist">New playlist</string>
+    <string name="toggle_view_type">Toggle view type</string>
+    <string name="navigate_back">Go back</string>
 </resources>

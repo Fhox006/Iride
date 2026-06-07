@@ -10,9 +10,12 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -304,12 +307,9 @@ fun StatsScreen(
             state = lazyListState,
             contentPadding =
                 LocalPlayerAwareWindowInsets.current
-                    .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                    .add(WindowInsets(top = 96.dp))
                     .asPaddingValues(),
-            modifier =
-                Modifier.windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top),
-                ),
+            modifier = Modifier.fillMaxSize()
         ) {
             val filteredArtists =
                 allArtists
@@ -322,287 +322,189 @@ fun StatsScreen(
                         artist.name.contains(query.text, ignoreCase = true)
                     }
 
-            item(key = "choice_chips") {
-                ChoiceChipsRow(
-                    chips =
-                        when (selectedOption) {
-                            OptionStats.WEEKS -> {
-                                weeklyDates
-                            }
-
-                            OptionStats.MONTHS -> {
-                                monthlyDates
-                            }
-
-                            OptionStats.YEARS -> {
-                                yearlyDates
-                            }
-
-                            OptionStats.CONTINUOUS -> {
-                                listOf(
-                                    StatPeriod.WEEK_1.ordinal to
-                                        pluralStringResource(
-                                            R.plurals.n_week,
-                                            1,
-                                            1,
-                                        ),
-                                    StatPeriod.MONTH_1.ordinal to
-                                        pluralStringResource(
-                                            R.plurals.n_month,
-                                            1,
-                                            1,
-                                        ),
-                                    StatPeriod.MONTH_3.ordinal to
-                                        pluralStringResource(
-                                            R.plurals.n_month,
-                                            3,
-                                            3,
-                                        ),
-                                    StatPeriod.MONTH_6.ordinal to
-                                        pluralStringResource(
-                                            R.plurals.n_month,
-                                            6,
-                                            6,
-                                        ),
-                                    StatPeriod.YEAR_1.ordinal to
-                                        pluralStringResource(
-                                            R.plurals.n_year,
-                                            1,
-                                            1,
-                                        ),
-                                    StatPeriod.ALL.ordinal to stringResource(R.string.filter_all),
-                                )
-                            }
-                        },
-                    options =
-                        listOf(
-                            OptionStats.CONTINUOUS to stringResource(id = R.string.continuous),
-                            OptionStats.WEEKS to stringResource(R.string.weeks),
-                            OptionStats.MONTHS to stringResource(R.string.months),
-                            OptionStats.YEARS to stringResource(R.string.years),
-                        ),
-                    selectedOption = selectedOption,
-                    onSelectionChange = {
-                        viewModel.selectedOption.value = it
-                        viewModel.indexChips.value = 0
-                    },
-                    currentValue = indexChips,
-                    onValueUpdate = { viewModel.indexChips.value = it },
-                )
-            }
-
-            if (visibleStatsPlaylists.isNotEmpty() && !isSearching && sArtists.isEmpty()) {
-                item(key = "mostPeriodPlaylistsTitle") {
-                    NavigationTitle(
-                        title =
-                            pluralStringResource(
-                                R.plurals.n_playlist,
-                                visibleStatsPlaylists.size,
-                                visibleStatsPlaylists.size,
-                            ),
-                        modifier = Modifier.animateItem(),
+            if (!isSearching && sArtists.isEmpty()) {
+                // ── TOP ARTISTS CAROUSEL ──
+                item {
+                    SectionHeader(title = stringResource(R.string.top_artists))
+                }
+                item {
+                    TopItemsCarousel(
+                        items = mostPlayedArtists,
+                        content = { index, artist ->
+                            TopArtistCard(
+                                rank = index + 1,
+                                artist = artist.artist,
+                                onClick = {
+                                    navController.navigate("artist/${artist.id}")
+                                }
+                            )
+                        }
                     )
                 }
 
-                item(key = "mostPeriodPlaylists") {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 4.dp),
-                        modifier = Modifier.animateItem(),
-                    ) {
-                        itemsIndexed(
-                            items = visibleStatsPlaylists,
-                            key = { _, playlist -> playlist.id },
-                        ) { _, playlist ->
-                            PlaylistGridItem(
-                                playlist = playlist,
-                                autoPlaylist = true,
-                                modifier =
-                                    Modifier
-                                        .combinedClickable(
-                                            onClick = {
-                                                navController.navigate("local_playlist/${playlist.id}")
-                                            },
-                                        ).animateItem(),
+                // ── TOP ALBUMS CAROUSEL ──
+                item {
+                    SectionHeader(title = stringResource(R.string.top_albums))
+                }
+                item {
+                    TopItemsCarousel(
+                        items = mostPlayedAlbums,
+                        content = { index, album ->
+                            TopAlbumCard(
+                                rank = index + 1,
+                                album = album.album,
+                                artists = album.artists,
+                                onClick = {
+                                    navController.navigate("album/${album.id}")
+                                }
                             )
                         }
-                    }
+                    )
                 }
-            }
 
-            if (!isSearching) {
-                item(key = "mostPlayedSongs") {
-                    NavigationTitle(
-                        title = "${mostPlayedSongsStats.size} ${stringResource(id = R.string.songs)}",
-                        onPlayAllClick =
-                            if (orderedMostPlayedSongs.isNotEmpty()) {
-                                {
-                                    playerConnection.playQueue(
-                                        ListQueue(
-                                            title = context.getString(R.string.most_played_songs),
-                                            items = orderedMostPlayedSongs.map { it.toMediaMetadata().toMediaItem() },
-                                        ),
+                // ── TOP SONGS CAROUSEL ──
+                item {
+                    SectionHeader(title = stringResource(R.string.top_songs))
+                }
+                item {
+                    TopItemsCarousel(
+                        items = mostPlayedSongs,
+                        content = { index, song ->
+                            TopSongCard(
+                                rank = index + 1,
+                                song = song.song,
+                                artists = song.artists,
+                                onClick = {
+                                    if (song.id == mediaMetadata?.id) {
+                                        playerConnection.togglePlayPause()
+                                    } else {
+                                        playerConnection.playQueue(
+                                            YouTubeQueue(
+                                                endpoint = WatchEndpoint(song.id),
+                                                preloadItem = song.toMediaMetadata(),
+                                            ),
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    )
+                }
+
+                // ── STATS DATA BOX ──
+                item {
+                    val totalMinutes = mostPlayedSongsStats.sumOf { it.timeListened ?: 0L } / 60000
+                    val uniqueArtistsCount = mostPlayedArtists.size
+                    val uniqueAlbumsCount = mostPlayedAlbums.size
+                    val totalSongsPlayed = mostPlayedSongsStats.sumOf { (it.songCountListened ?: 0).toLong() }.toInt()
+
+                    StatsDataBox(
+                        totalMinutes = totalMinutes,
+                        totalSongs = totalSongsPlayed,
+                        totalArtists = uniqueArtistsCount,
+                        totalAlbums = uniqueAlbumsCount
+                    )
+                }
+
+                item(key = "choice_chips") {
+                    ChoiceChipsRow(
+                        chips =
+                            when (selectedOption) {
+                                OptionStats.WEEKS -> {
+                                    weeklyDates
+                                }
+
+                                OptionStats.MONTHS -> {
+                                    monthlyDates
+                                }
+
+                                OptionStats.YEARS -> {
+                                    yearlyDates
+                                }
+
+                                OptionStats.CONTINUOUS -> {
+                                    listOf(
+                                        StatPeriod.WEEK_1.ordinal to
+                                            pluralStringResource(
+                                                R.plurals.n_week,
+                                                1,
+                                                1,
+                                            ),
+                                        StatPeriod.MONTH_1.ordinal to
+                                            pluralStringResource(
+                                                R.plurals.n_month,
+                                                1,
+                                                1,
+                                            ),
+                                        StatPeriod.MONTH_3.ordinal to
+                                            pluralStringResource(
+                                                R.plurals.n_month,
+                                                3,
+                                                3,
+                                            ),
+                                        StatPeriod.MONTH_6.ordinal to
+                                            pluralStringResource(
+                                                R.plurals.n_month,
+                                                6,
+                                                6,
+                                            ),
+                                        StatPeriod.YEAR_1.ordinal to
+                                            pluralStringResource(
+                                                R.plurals.n_year,
+                                                1,
+                                                1,
+                                            ),
+                                        StatPeriod.ALL.ordinal to stringResource(R.string.filter_all),
                                     )
                                 }
-                            } else {
-                                null
                             },
-                        modifier = Modifier.animateItem(),
+                        options =
+                            listOf(
+                                OptionStats.CONTINUOUS to stringResource(id = R.string.continuous),
+                                OptionStats.WEEKS to stringResource(R.string.weeks),
+                                OptionStats.MONTHS to stringResource(R.string.months),
+                                OptionStats.YEARS to stringResource(R.string.years),
+                            ),
+                        selectedOption = selectedOption,
+                        onSelectionChange = {
+                            viewModel.selectedOption.value = it
+                            viewModel.indexChips.value = 0
+                        },
+                        currentValue = indexChips,
+                        onValueUpdate = { viewModel.indexChips.value = it },
                     )
-
-                    LazyRow(
-                        modifier = Modifier.animateItem(),
-                    ) {
-                        itemsIndexed(
-                            items = mostPlayedSongsStats,
-                            key = { _, song -> song.id },
-                        ) { index, song ->
-                            LocalSongsGrid(
-                                title = "${index + 1}. ${song.title}",
-                                subtitle =
-                                    joinByBullet(
-                                        pluralStringResource(
-                                            R.plurals.n_time,
-                                            song.songCountListened,
-                                            song.songCountListened,
-                                        ),
-                                        makeTimeString(song.timeListened),
-                                    ),
-                                thumbnailUrl = song.thumbnailUrl,
-                                isActive = song.id == mediaMetadata?.id,
-                                isPlaying = isPlaying,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .combinedClickable(
-                                            onClick = {
-                                                if (song.id == mediaMetadata?.id) {
-                                                    playerConnection.togglePlayPause()
-                                                } else {
-                                                    val targetSong = mostPlayedSongs.find { it.id == song.id }
-                                                    if (targetSong != null) {
-                                                        playerConnection.playQueue(
-                                                            YouTubeQueue(
-                                                                endpoint = WatchEndpoint(song.id),
-                                                                preloadItem = targetSong.toMediaMetadata(),
-                                                            ),
-                                                        )
-                                                    }
-                                                }
-                                            },
-                                            onLongClick = {
-                                                val targetSong = mostPlayedSongs.find { it.id == song.id }
-                                                if (targetSong != null) {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    menuState.show {
-                                                        SongMenu(
-                                                            originalSong = targetSong,
-                                                            navController = navController,
-                                                            onDismiss = menuState::dismiss,
-                                                        )
-                                                    }
-                                                }
-                                            },
-                                        ).animateItem(),
-                            )
-                        }
-                    }
                 }
-            }
 
-            if (!isSearching) {
-                item(key = "mostPlayedArtists") {
-                    NavigationTitle(
-                        title = "${mostPlayedArtists.size} ${stringResource(id = R.string.artists)}",
-                        modifier = Modifier.animateItem(),
-                    )
-
-                    LazyRow(
-                        modifier = Modifier.animateItem(),
-                    ) {
-                        itemsIndexed(
-                            items = mostPlayedArtists,
-                            key = { _, artist -> artist.id },
-                        ) { index, artist ->
-                            LocalArtistsGrid(
-                                title = "${index + 1}. ${artist.artist.name}",
-                                subtitle =
-                                    joinByBullet(
-                                        pluralStringResource(
-                                            R.plurals.n_time,
-                                            artist.songCount,
-                                            artist.songCount,
-                                        ),
-                                        makeTimeString(artist.timeListened?.toLong()),
-                                    ),
-                                thumbnailUrl = artist.artist.thumbnailUrl,
-                                modifier =
-                                    Modifier
-                                        .combinedClickable(
-                                            onClick = {
-                                                navController.navigate("artist/${artist.id}")
-                                            },
-                                            onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                menuState.show {
-                                                    ArtistMenu(
-                                                        originalArtist = artist,
-                                                        coroutineScope = coroutineScope,
-                                                        onDismiss = menuState::dismiss,
-                                                    )
-                                                }
-                                            },
-                                        ).animateItem(),
-                            )
-                        }
+                if (visibleStatsPlaylists.isNotEmpty()) {
+                    item(key = "mostPeriodPlaylistsTitle") {
+                        NavigationTitle(
+                            title =
+                                pluralStringResource(
+                                    R.plurals.n_playlist,
+                                    visibleStatsPlaylists.size,
+                                    visibleStatsPlaylists.size,
+                                ),
+                            modifier = Modifier.animateItem(),
+                        )
                     }
-                }
-            }
 
-            if (!isSearching) {
-                item(key = "mostPlayedAlbums") {
-                    NavigationTitle(
-                        title = "${mostPlayedAlbums.size} ${stringResource(id = R.string.albums)}",
-                        modifier = Modifier.animateItem(),
-                    )
-
-                    if (mostPlayedAlbums.isNotEmpty()) {
+                    item(key = "mostPeriodPlaylists") {
                         LazyRow(
+                            contentPadding = PaddingValues(horizontal = 4.dp),
                             modifier = Modifier.animateItem(),
                         ) {
                             itemsIndexed(
-                                items = mostPlayedAlbums,
-                                key = { _, album -> album.id },
-                            ) { index, album ->
-                                LocalAlbumsGrid(
-                                    title = "${index + 1}. ${album.album.title}",
-                                    subtitle =
-                                        joinByBullet(
-                                            pluralStringResource(
-                                                R.plurals.n_time,
-                                                album.songCountListened ?: 0,
-                                                album.songCountListened ?: 0,
-                                            ),
-                                            makeTimeString(album.timeListened),
-                                        ),
-                                    thumbnailUrl = album.album.thumbnailUrl,
-                                    isActive = album.id == mediaMetadata?.album?.id,
-                                    isPlaying = isPlaying,
+                                items = visibleStatsPlaylists,
+                                key = { _, playlist -> playlist.id },
+                            ) { _, playlist ->
+                                PlaylistGridItem(
+                                    playlist = playlist,
+                                    autoPlaylist = true,
                                     modifier =
                                         Modifier
-                                            .fillMaxWidth()
                                             .combinedClickable(
                                                 onClick = {
-                                                    navController.navigate("album/${album.id}")
-                                                },
-                                                onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    menuState.show {
-                                                        AlbumMenu(
-                                                            originalAlbum = album,
-                                                            navController = navController,
-                                                            onDismiss = menuState::dismiss,
-                                                        )
-                                                    }
+                                                    navController.navigate("local_playlist/${playlist.id}")
                                                 },
                                             ).animateItem(),
                                 )

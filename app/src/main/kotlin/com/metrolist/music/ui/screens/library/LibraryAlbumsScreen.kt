@@ -108,6 +108,7 @@ fun LibraryAlbumsScreen(
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
+    val betterLibraryBeta by rememberPreference(com.metrolist.music.constants.BetterLibraryBetaKey, defaultValue = false)
 
     LaunchedEffect(Unit) {
         if (ytmSync) {
@@ -156,9 +157,13 @@ fun LibraryAlbumsScreen(
         }
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-        snapAnimationSpec = tween(durationMillis = 200),
-    )
+    val scrollBehavior = if (betterLibraryBeta) {
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    } else {
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+            snapAnimationSpec = tween(durationMillis = 200),
+        )
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -179,19 +184,31 @@ fun LibraryAlbumsScreen(
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
                             painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
+                            contentDescription = if (betterLibraryBeta)
+                                stringResource(R.string.navigate_back)
+                            else null,
                         )
                     }
                 },
             )
         },
-        containerColor = Color.Transparent,
+        containerColor = if (betterLibraryBeta) {
+            if (pureBlack) Color.Black else MaterialTheme.colorScheme.background
+        } else {
+            Color.Transparent
+        },
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+                .then(
+                    if (!betterLibraryBeta) {
+                        Modifier.background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+                    } else {
+                        Modifier
+                    }
+                )
                 .padding(paddingValues),
         ) {
             CompositionLocalProvider(LocalItemHorizontalPadding provides false) {

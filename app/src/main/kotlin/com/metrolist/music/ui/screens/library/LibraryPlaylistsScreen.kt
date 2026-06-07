@@ -122,6 +122,7 @@ fun LibraryPlaylistsScreen(
     val (sortDescending, onSortDescendingChange) = rememberPreference(PlaylistSortDescendingKey, true)
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
+    val betterLibraryBeta by rememberPreference(com.metrolist.music.constants.BetterLibraryBetaKey, defaultValue = false)
 
     val playlists by viewModel.allPlaylists.collectAsState()
     val downloadedPlaylistIds by viewModel.downloadedPlaylistIds.collectAsState()
@@ -217,9 +218,13 @@ fun LibraryPlaylistsScreen(
         )
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-        snapAnimationSpec = tween(durationMillis = 200),
-    )
+    val scrollBehavior = if (betterLibraryBeta) {
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    } else {
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+            snapAnimationSpec = tween(durationMillis = 200),
+        )
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -240,19 +245,31 @@ fun LibraryPlaylistsScreen(
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
                             painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
+                            contentDescription = if (betterLibraryBeta)
+                                stringResource(R.string.navigate_back)
+                            else null,
                         )
                     }
                 },
             )
         },
-        containerColor = Color.Transparent,
+        containerColor = if (betterLibraryBeta) {
+            if (pureBlack) Color.Black else MaterialTheme.colorScheme.background
+        } else {
+            Color.Transparent
+        },
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+                .then(
+                    if (!betterLibraryBeta) {
+                        Modifier.background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+                    } else {
+                        Modifier
+                    }
+                )
                 .padding(paddingValues),
         ) {
             CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
@@ -351,6 +368,7 @@ fun LibraryPlaylistsScreen(
                         HideOnScrollFAB(
                             lazyListState = lazyListState,
                             icon = R.drawable.add,
+                            label = if (betterLibraryBeta) stringResource(R.string.new_playlist) else null,
                             onClick = { showCreatePlaylistDialog = true },
                         )
                     }
@@ -472,6 +490,7 @@ fun LibraryPlaylistsScreen(
                         HideOnScrollFAB(
                             lazyListState = lazyGridState,
                             icon = R.drawable.add,
+                            label = if (betterLibraryBeta) stringResource(R.string.new_playlist) else null,
                             onClick = { showCreatePlaylistDialog = true },
                         )
                     }

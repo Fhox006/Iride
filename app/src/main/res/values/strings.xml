@@ -48,6 +48,12 @@
     <string name="most_played_songs">Most played songs</string>
     <string name="most_played_artists">Most played artists</string>
     <string name="most_played_albums">Most played albums</string>
+    <string name="top_artists">Top Artists</string>
+    <string name="top_albums">Top Albums</string>
+    <string name="top_songs">Top Songs</string>
+    <string name="listening_stats">Your Stats</string>
+    <string name="listened">Listened</string>
+    <string name="songs_played">Played</string>
 
     <!-- Search -->
     <string name="search">Search</string>

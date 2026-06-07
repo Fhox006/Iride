@@ -180,7 +180,7 @@ private fun SortDirectionButton(
     ) {
         Icon(
             painter = painterResource(R.drawable.arrow_downward),
-            contentDescription = null,
+            contentDescription = stringResource(if (descending) R.string.sort_descending else R.string.sort_ascending),
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier
                 .size(16.dp)

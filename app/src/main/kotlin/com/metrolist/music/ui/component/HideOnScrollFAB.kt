@@ -21,10 +21,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +42,7 @@ fun BoxScope.HideOnScrollFAB(
     visible: Boolean = true,
     lazyListState: LazyListState,
     @DrawableRes icon: Int,
+    label: String? = null,
     onClick: () -> Unit,
     onRecognitionClick: (() -> Unit)? = null,
 ) {
@@ -74,13 +77,27 @@ fun BoxScope.HideOnScrollFAB(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
             }
-            FloatingActionButton(
-                onClick = onClick,
-            ) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
+            if (label != null) {
+                ExtendedFloatingActionButton(
+                    text = { Text(text = label) },
+                    icon = {
+                        Icon(
+                            painter = painterResource(icon),
+                            contentDescription = null,
+                        )
+                    },
+                    onClick = onClick,
+                    expanded = lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset == 0,
                 )
+            } else {
+                FloatingActionButton(
+                    onClick = onClick,
+                ) {
+                    Icon(
+                        painter = painterResource(icon),
+                        contentDescription = null,
+                    )
+                }
             }
         }
     }
@@ -91,6 +108,7 @@ fun BoxScope.HideOnScrollFAB(
     visible: Boolean = true,
     lazyListState: LazyGridState,
     @DrawableRes icon: Int,
+    label: String? = null,
     onClick: () -> Unit,
     onRecognitionClick: (() -> Unit)? = null,
 ) {
@@ -125,13 +143,27 @@ fun BoxScope.HideOnScrollFAB(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
             }
-            FloatingActionButton(
-                onClick = onClick,
-            ) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
+            if (label != null) {
+                ExtendedFloatingActionButton(
+                    text = { Text(text = label) },
+                    icon = {
+                        Icon(
+                            painter = painterResource(icon),
+                            contentDescription = null,
+                        )
+                    },
+                    onClick = onClick,
+                    expanded = lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset == 0,
                 )
+            } else {
+                FloatingActionButton(
+                    onClick = onClick,
+                ) {
+                    Icon(
+                        painter = painterResource(icon),
+                        contentDescription = null,
+                    )
+                }
             }
         }
     }
@@ -142,6 +174,7 @@ fun BoxScope.HideOnScrollFAB(
     visible: Boolean = true,
     scrollState: ScrollState,
     @DrawableRes icon: Int,
+    label: String? = null,
     onClick: () -> Unit,
     onRecognitionClick: (() -> Unit)? = null,
 ) {
@@ -176,13 +209,27 @@ fun BoxScope.HideOnScrollFAB(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
             }
-            FloatingActionButton(
-                onClick = onClick,
-            ) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
+            if (label != null) {
+                ExtendedFloatingActionButton(
+                    text = { Text(text = label) },
+                    icon = {
+                        Icon(
+                            painter = painterResource(icon),
+                            contentDescription = null,
+                        )
+                    },
+                    onClick = onClick,
+                    expanded = scrollState.value == 0,
                 )
+            } else {
+                FloatingActionButton(
+                    onClick = onClick,
+                ) {
+                    Icon(
+                        painter = painterResource(icon),
+                        contentDescription = null,
+                    )
+                }
             }
         }
     }
