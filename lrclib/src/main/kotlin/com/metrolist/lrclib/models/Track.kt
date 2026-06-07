@@ -25,22 +25,37 @@ internal fun List<Track>.bestMatchingFor(duration: Int): Track? {
 }
 
 // Relaxed matching with ±5 seconds tolerance
-internal fun List<Track>.bestMatchingForRelaxed(duration: Int): Track? {
+internal fun List<Track>.bestMatchingForRelaxed(
+    duration: Int,
+    artistName: String? = null,
+): Track? {
     if (isEmpty()) return null
 
     if (duration == -1) {
         return firstOrNull { it.syncedLyrics != null } ?: firstOrNull()
     }
 
+    // Filter by artist similarity first; fall back to full list if no matches
+    val candidates = if (!artistName.isNullOrBlank()) {
+        val normalized = artistName.trim().lowercase()
+        filter { track ->
+            calculateSimilarity(normalized, track.artistName.trim().lowercase()) >= 0.4
+        }
+    } else {
+        this
+    }
+
+    if (candidates.isEmpty()) return null
+
     // First try to find synced lyrics within tolerance
-    val syncedMatch = filter { it.syncedLyrics != null }
+    val syncedMatch = candidates.filter { it.syncedLyrics != null }
         .minByOrNull { abs(it.duration.toInt() - duration) }
         ?.takeIf { abs(it.duration.toInt() - duration) <= 5 }
-    
+
     if (syncedMatch != null) return syncedMatch
-    
+
     // Fall back to any lyrics within tolerance
-    return minByOrNull { abs(it.duration.toInt() - duration) }
+    return candidates.minByOrNull { abs(it.duration.toInt() - duration) }
         ?.takeIf { abs(it.duration.toInt() - duration) <= 5 }
 }
 

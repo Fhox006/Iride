@@ -239,7 +239,7 @@ constructor(
                 )
             }.distinctUntilChanged()
             .flatMapLatest { (sortType, descending, hideExplicit) ->
-                database.albums(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
+                database.albumsLiked(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val downloadedAlbums = database.albumsDownloadedByDateDesc()

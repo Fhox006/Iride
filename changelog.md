@@ -1,3 +1,26 @@
+## 0.1.0-alpha14
+
+### New features
+
+- **Fast Song Loader (BETA)**: new option in Settings → Player that skips URL validation for faster stream resolution when changing tracks manually — reduces perceived load time; may occasionally cause a retry on the first attempt
+- **Sleep Timer in player menu**: sleep timer dialog now accessible directly from the player action grid — no need to open Settings
+- **Liked Songs custom cover**: Liked Songs playlist header now shows a star icon instead of the first song's thumbnail
+
+### Bug fixes
+
+- Fixed updater comparing versions lexicographically instead of numerically — alpha9 no longer sorts above alpha10
+- Fixed updater using `versionName` instead of `tagName` when checking for available updates
+- Fixed Library Songs screen opening on the "Liked" filter instead of "Library"
+- Fixed Library Albums screen showing all albums instead of liked-only
+- Fixed Local Album Radio including duplicate album tracks in the radio queue
+- Fixed Player Menu download icons having inconsistent background containers
+
+### Improvements
+
+- Library Artists screen: filter chips replaced by unified sort+view toggle row (LibrarySortRow) — cleaner layout
+- LrcLib lyrics matching: artist similarity filter now applied in relaxed mode, reducing wrong-artist matches
+- Play icon path adjusted for better visual centering
+
 ## 0.1.0-alpha13
 
 ### New features

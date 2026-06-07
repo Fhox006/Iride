@@ -147,7 +147,7 @@ object LrcLib {
             }
             else -> {
                 // Try with relaxed duration matching (±5 seconds instead of ±2)
-                tracks.bestMatchingForRelaxed(duration)?.let { track ->
+                tracks.bestMatchingForRelaxed(duration, cleanedArtist)?.let { track ->
                     track.syncedLyrics ?: track.plainLyrics
                 }?.let(LrcLib::Lyrics)
             }
@@ -188,7 +188,14 @@ object LrcLib {
                 }
             }
             else -> {
-                tracks.sortedBy { abs(it.duration.toInt() - duration) }
+                val artistFiltered = if (cleanedArtist.isNotBlank()) {
+                    tracks.filter { track ->
+                        calculateStringSimilarity(cleanedArtist, track.artistName) >= 0.4
+                    }
+                } else {
+                    tracks
+                }
+                artistFiltered.sortedBy { abs(it.duration.toInt() - duration) }
             }
         }
 

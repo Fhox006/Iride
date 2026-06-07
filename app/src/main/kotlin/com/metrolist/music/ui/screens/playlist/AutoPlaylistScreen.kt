@@ -523,6 +523,7 @@ fun AutoPlaylistScreen(
                                 songs = songs!!,
                                 likeLength = likeLength,
                                 downloadState = downloadState,
+                                playlistType = playlistType,
                                 onShowRemoveDownloadDialog = { showRemoveDownloadDialog = true },
                                 menuState = menuState,
                                 modifier = Modifier.animateItem(),
@@ -661,7 +662,7 @@ fun AutoPlaylistScreen(
             headerItems = 2,
         )
 
-        if (canRefresh) {
+        if (canRefresh && playlistType != PlaylistType.LIKE) {
             Indicator(
                 isRefreshing = isRefreshing,
                 state = pullRefreshState,
@@ -895,6 +896,7 @@ private fun AutoPlaylistHeader(
     songs: List<Song>,
     likeLength: Int,
     downloadState: Int,
+    playlistType: PlaylistType,
     onShowRemoveDownloadDialog: () -> Unit,
     menuState: com.metrolist.music.ui.component.MenuState,
     modifier: Modifier = Modifier,
@@ -923,13 +925,28 @@ private fun AutoPlaylistHeader(
                             spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                         ),
                 shape = RoundedCornerShape(3.dp),
+                color = if (playlistType == PlaylistType.LIKE) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.surface,
             ) {
-                AsyncImage(
-                    model = songs[0].song.thumbnailUrl,
-                    contentDescription = null,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                if (playlistType == PlaylistType.LIKE) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.star),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                            modifier = Modifier.size(240.dp * 0.65f),
+                        )
+                    }
+                } else {
+                    AsyncImage(
+                        model = songs[0].song.thumbnailUrl,
+                        contentDescription = null,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
 

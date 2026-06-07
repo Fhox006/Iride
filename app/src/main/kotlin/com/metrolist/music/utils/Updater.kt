@@ -70,12 +70,25 @@ object Updater {
             }
         }
 
-        // base equal — stable > pre-release (semver); if both pre-release, compare lexicographically
+        // base equal — stable > pre-release (semver); extract numeric suffix for correct ordering
         return when {
             pre1 == null && pre2 == null -> 0
             pre1 == null -> 1
             pre2 == null -> -1
-            else -> pre1.compareTo(pre2)
+            else -> {
+                val numMatch1 = Regex("(\\D+)(\\d+)$").find(pre1)
+                val numMatch2 = Regex("(\\D+)(\\d+)$").find(pre2)
+                val prefix1 = numMatch1?.groupValues?.get(1) ?: pre1
+                val prefix2 = numMatch2?.groupValues?.get(1) ?: pre2
+                val num1 = numMatch1?.groupValues?.get(2)?.toIntOrNull()
+                val num2 = numMatch2?.groupValues?.get(2)?.toIntOrNull()
+                val prefixCmp = prefix1.compareTo(prefix2)
+                when {
+                    prefixCmp != 0 -> prefixCmp
+                    num1 != null && num2 != null -> num1.compareTo(num2)
+                    else -> pre1.compareTo(pre2)
+                }
+            }
         }
     }
 
@@ -234,7 +247,7 @@ object Updater {
                 if (!shouldFetch && cachedReleaseInfo != null) {
                     val hasUpdate = isUpdateAvailable(
                         BuildConfig.VERSION_NAME,
-                        cachedReleaseInfo!!.versionName
+                        cachedReleaseInfo!!.tagName
                     )
                     return@runCatching cachedReleaseInfo!! to hasUpdate
                 }
@@ -244,7 +257,7 @@ object Updater {
                     val releaseInfo = result.getOrThrow()
                     val hasUpdate = isUpdateAvailable(
                         BuildConfig.VERSION_NAME,
-                        releaseInfo.versionName
+                        releaseInfo.tagName
                     )
                     releaseInfo to hasUpdate
                 } else {
@@ -272,7 +285,7 @@ object Updater {
                 val releases = getAllReleases(forceRefresh = forceRefresh).getOrThrow()
                 releases
                     .filter { it.assets.isNotEmpty() }
-                    .maxWithOrNull { a, b -> compareVersions(a.versionName, b.versionName) }
+                    .maxWithOrNull { a, b -> compareVersions(a.tagName, b.tagName) }
                     ?: throw IllegalStateException("No valid release with APK assets found")
             }
         }
@@ -286,7 +299,7 @@ object Updater {
                     if (!shouldFetch && cachedAllReleases.isNotEmpty()) {
                         cachedAllReleases
                             .filter { it.assets.isNotEmpty() }
-                            .maxWithOrNull { a, b -> compareVersions(a.versionName, b.versionName) }
+                            .maxWithOrNull { a, b -> compareVersions(a.tagName, b.tagName) }
                     } else {
                         getLatestAvailableReleaseIncludingPrerelease(forceRefresh = true).getOrThrow()
                     }
@@ -296,7 +309,7 @@ object Updater {
                 cachedReleaseInfo = releaseInfo
                 lastCheckTime = System.currentTimeMillis()
 
-                val hasUpdate = isUpdateAvailable(BuildConfig.VERSION_NAME, releaseInfo.versionName)
+                val hasUpdate = isUpdateAvailable(BuildConfig.VERSION_NAME, releaseInfo.tagName)
                 releaseInfo to hasUpdate
             }
         }

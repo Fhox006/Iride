@@ -37,6 +37,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -50,6 +52,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -82,6 +86,9 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.ListItemHeight
+import com.metrolist.music.constants.SleepTimerDefaultKey
+import com.metrolist.music.constants.SleepTimerFadeOutKey
+import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
 import com.metrolist.music.constants.VarispeedKey
 import com.metrolist.music.listentogether.ConnectionState
 import com.metrolist.music.listentogether.ListenTogetherEvent
@@ -94,12 +101,15 @@ import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.VolumeSlider
+import androidx.datastore.preferences.core.edit
+import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.math.log2
 import kotlin.math.pow
 import kotlin.math.round
+import kotlin.math.roundToInt
 
 @Composable
 fun PlayerMenu(
@@ -132,6 +142,14 @@ fun PlayerMenu(
     val varispeedMode by rememberPreference(VarispeedKey, defaultValue = false)
 
     val coroutineScope = rememberCoroutineScope()
+
+    var showSleepTimerDialog by rememberSaveable { mutableStateOf(false) }
+    val sleepTimerDefault by rememberPreference(SleepTimerDefaultKey, 30f)
+    var sleepTimerValue by remember { mutableFloatStateOf(sleepTimerDefault) }
+    val isAtDefault by remember { derivedStateOf { sleepTimerValue.roundToInt() == sleepTimerDefault.roundToInt() } }
+    val sleepTimerStopAfterCurrentSong by rememberPreference(SleepTimerStopAfterCurrentSongKey, false)
+    val sleepTimerFadeOut by rememberPreference(SleepTimerFadeOutKey, false)
+    val sleepTimerDefaultSetTemplate = stringResource(R.string.sleep_timer_default_set)
 
     val download by LocalDownloadUtil.current
         .getDownload(mediaMetadata.id)
@@ -235,6 +253,100 @@ fun PlayerMenu(
         )
     }
 
+    if (showSleepTimerDialog) {
+        AlertDialog(
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+            onDismissRequest = { showSleepTimerDialog = false },
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.bedtime),
+                    contentDescription = null,
+                )
+            },
+            title = { Text(stringResource(R.string.sleep_timer)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSleepTimerDialog = false
+                        playerConnection.service.sleepTimer.start(
+                            minute = sleepTimerValue.roundToInt(),
+                            stopAfterCurrentSong = sleepTimerStopAfterCurrentSong,
+                            fadeOut = sleepTimerFadeOut,
+                        )
+                    },
+                ) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showSleepTimerDialog = false },
+                ) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = pluralStringResource(
+                            R.plurals.minute,
+                            sleepTimerValue.roundToInt(),
+                            sleepTimerValue.roundToInt(),
+                        ),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Slider(
+                        value = sleepTimerValue,
+                        onValueChange = { sleepTimerValue = it },
+                        valueRange = 5f..120f,
+                        steps = (120 - 5) / 5 - 1,
+                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        val setDefaultClick = {
+                            coroutineScope.launch {
+                                context.dataStore.edit { settings ->
+                                    settings[SleepTimerDefaultKey] = sleepTimerValue
+                                }
+                            }
+                            Toast.makeText(
+                                context,
+                                String.format(sleepTimerDefaultSetTemplate, sleepTimerValue.roundToInt()),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                        if (isAtDefault) {
+                            Button(
+                                onClick = setDefaultClick,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(stringResource(R.string.set_as_default))
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = setDefaultClick,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(stringResource(R.string.set_as_default))
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                showSleepTimerDialog = false
+                                playerConnection.service.sleepTimer.start(minute = -1)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.end_of_song))
+                        }
+                    }
+                }
+            },
+        )
+    }
+
     if (isQueueTrigger != true) {
         Column(
             modifier =
@@ -302,7 +414,6 @@ fun PlayerMenu(
             ),
     ) {
         item {
-            val startingRadioText = stringResource(R.string.starting_radio)
             NewActionGrid(
                 actions =
                     listOfNotNull(
@@ -310,17 +421,15 @@ fun PlayerMenu(
                             NewAction(
                                 icon = {
                                     Icon(
-                                        painter = painterResource(R.drawable.radio),
+                                        painter = painterResource(R.drawable.bedtime),
                                         contentDescription = null,
                                         modifier = Modifier.size(32.dp),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 },
-                                text = stringResource(R.string.start_radio),
+                                text = stringResource(R.string.sleep_timer),
                                 onClick = {
-                                    Toast.makeText(context, startingRadioText, Toast.LENGTH_SHORT).show()
-                                    playerConnection.startRadioSeamlessly()
-                                    onDismiss()
+                                    showSleepTimerDialog = true
                                 },
                             )
                         } else {
@@ -353,19 +462,12 @@ fun PlayerMenu(
                         when (download?.state) {
                             Download.STATE_COMPLETED -> NewAction(
                                 icon = {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50)),
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.offline),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(28.dp),
-                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        )
-                                    }
+                                    Icon(
+                                        painter = painterResource(R.drawable.offline),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(32.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 },
                                 text = stringResource(R.string.remove_download),
                                 onClick = {
@@ -376,18 +478,11 @@ fun PlayerMenu(
                             )
                             Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> NewAction(
                                 icon = {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50)),
-                                    ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            strokeWidth = 2.dp,
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        )
-                                    }
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(32.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 },
                                 text = stringResource(R.string.downloading),
                                 onClick = {
@@ -398,19 +493,12 @@ fun PlayerMenu(
                             )
                             else -> NewAction(
                                 icon = {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50)),
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.download),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(28.dp),
-                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        )
-                                    }
+                                    Icon(
+                                        painter = painterResource(R.drawable.download),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(32.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 },
                                 text = stringResource(R.string.action_download),
                                 onClick = {

@@ -45,10 +45,10 @@ class LocalAlbumRadio(
             val nextResult = YouTube.next(endpoint, continuation).getOrThrow()
             continuation = nextResult.continuation
             firstTimeLoaded = true
-            return@withContext nextResult.items.subList(
-                albumWithSongs.songs.size,
-                nextResult.items.size
-            ).map { it.toMediaItem() }
+            val albumSongIds = albumWithSongs.songs.map { it.song.id }.toSet()
+            return@withContext nextResult.items
+                .filter { it.id !in albumSongIds }
+                .map { it.toMediaItem() }
         }
         val nextResult = YouTube.next(endpoint, continuation).getOrThrow()
         continuation = nextResult.continuation

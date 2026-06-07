@@ -39,6 +39,7 @@ import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
+import com.metrolist.music.constants.FastLoaderKey
 import com.metrolist.music.constants.AudioNormalizationKey
 import com.metrolist.music.constants.AudioOffload
 import com.metrolist.music.constants.AudioQuality
@@ -93,6 +94,7 @@ fun PlayerSettings(
     navController: NavController
 ) {
     val (advancedMode, _) = rememberPreference(AdvancedModeKey, defaultValue = false)
+    val (fastLoader, onFastLoaderChange) = rememberPreference(FastLoaderKey, defaultValue = false)
 
     val (audioQuality, onAudioQualityChange) = rememberEnumPreference(
         AudioQualityKey,
@@ -592,6 +594,27 @@ fun PlayerSettings(
                         )
                     },
                     onClick = { onSeekExtraSeconds(!seekExtraSeconds) }
+                ))
+                add(Material3SettingsItem(
+                    icon = painterResource(R.drawable.fast_forward),
+                    title = { Text(stringResource(R.string.fast_loader_beta)) },
+                    description = { Text(stringResource(R.string.fast_loader_beta_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = fastLoader,
+                            onCheckedChange = onFastLoaderChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        if (fastLoader) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onFastLoaderChange(!fastLoader) }
                 ))
             }
         )

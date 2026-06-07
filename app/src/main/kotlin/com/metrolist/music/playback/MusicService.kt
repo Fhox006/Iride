@@ -108,6 +108,7 @@ import com.metrolist.music.constants.DiscordUseDetailsKey
 import com.metrolist.music.constants.EnableDiscordRPCKey
 import com.metrolist.music.constants.EnableLastFMScrobblingKey
 import com.metrolist.music.constants.EnableSongCacheKey
+import com.metrolist.music.constants.FastLoaderKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HistoryDuration
@@ -278,6 +279,7 @@ class MusicService :
     private var shufflePlaylistFirst = false
     private var rememberShuffleAndRepeat = true
     private var preloadJob: Job? = null
+    private var fastLoaderEnabled = false
 
     private val secondaryPlayerListener =
         object : Player.Listener {
@@ -936,6 +938,11 @@ class MusicService :
             .distinctUntilChanged()
             .collect(scope) { rememberShuffleAndRepeat = it }
 
+        dataStore.data
+            .map { prefs -> prefs[FastLoaderKey] ?: false }
+            .distinctUntilChanged()
+            .collect(scope) { fastLoaderEnabled = it }
+
         if (persistentQueueEnabled) {
             val queueFile = filesDir.resolve(PERSISTENT_QUEUE_FILE)
             if (queueFile.exists()) {
@@ -1398,6 +1405,22 @@ class MusicService :
         // Reset original queue size when starting a new queue
         originalQueueSize = 0
         if (queue.preloadItem != null) {
+            if (fastLoaderEnabled) {
+                val preloadId = queue.preloadItem!!.id
+                if (songUrlCache[preloadId]?.second?.let { it > System.currentTimeMillis() } != true) {
+                    scope.launch(Dispatchers.IO) {
+                        YTPlayerUtils.playerResponseForPlayback(
+                            preloadId,
+                            audioQuality = audioQuality,
+                            connectivityManager = connectivityManager,
+                            skipValidation = true,
+                        ).getOrNull()?.let { playbackData ->
+                            songUrlCache[preloadId] = playbackData.streamUrl to
+                                System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
+                        }
+                    }
+                }
+            }
             player.setMediaItem(queue.preloadItem!!.toMediaItem())
             player.prepare()
             player.playWhenReady = playWhenReady
@@ -3116,13 +3139,14 @@ class MusicService :
                 Timber.tag("MusicService").i("BYPASSING CACHE for $mediaId due to quality change")
             }
 
-            Timber.tag("MusicService").i("FETCHING STREAM: $mediaId | quality=$audioQuality")
+            Timber.tag("MusicService").i("FETCHING STREAM: $mediaId | quality=$audioQuality | fastLoader=$fastLoaderEnabled")
             val playbackData =
                 runBlocking(Dispatchers.IO) {
                     YTPlayerUtils.playerResponseForPlayback(
                         mediaId,
                         audioQuality = audioQuality,
                         connectivityManager = connectivityManager,
+                        skipValidation = fastLoaderEnabled,
                     )
                 }.getOrElse { throwable ->
                     when (throwable) {
@@ -3929,6 +3953,7 @@ class MusicService :
                         mediaId,
                         audioQuality = audioQuality,
                         connectivityManager = connectivityManager,
+                        skipValidation = fastLoaderEnabled,
                     ).getOrNull()?.let { playbackData ->
                         songUrlCache[mediaId] = playbackData.streamUrl to
                             System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
@@ -3952,6 +3977,7 @@ class MusicService :
                         mediaId,
                         audioQuality = audioQuality,
                         connectivityManager = connectivityManager,
+                        skipValidation = fastLoaderEnabled,
                     ).getOrNull()?.let { playbackData ->
                         songUrlCache[mediaId] = playbackData.streamUrl to
                             System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)

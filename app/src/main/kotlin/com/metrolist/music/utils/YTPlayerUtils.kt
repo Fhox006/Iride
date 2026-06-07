@@ -79,6 +79,7 @@ object YTPlayerUtils {
         playlistId: String? = null,
         audioQuality: AudioQuality,
         connectivityManager: ConnectivityManager,
+        skipValidation: Boolean = false,
     ): Result<PlaybackData> = runCatching {
         Timber.tag(TAG).d("=== PLAYER RESPONSE FOR PLAYBACK ===")
         Timber.tag(TAG).d("videoId: $videoId")
@@ -321,6 +322,11 @@ object YTPlayerUtils {
 
                 // Check if this is a privately owned track (uploaded song)
                 val isPrivatelyOwned = streamPlayerResponse.videoDetails?.musicVideoType == "MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK"
+
+                if (skipValidation && clientIndex == -1) {
+                    Timber.tag(TAG).i("FastLoader: skipping validation for primary client, videoId=$videoId")
+                    break
+                }
 
                 if (clientIndex == STREAM_FALLBACK_CLIENTS.size - 1 || isPrivatelyOwned) {
                     /** skip [validateStatus] for last client or private tracks */

@@ -982,4 +982,6 @@
     <string name="interface_settings">Interface</string>
     <string name="hide_duration_standard_songs">Hide duration for standard songs</string>
     <string name="hide_duration_standard_songs_desc">Hides the time indicator for songs between 2 and 5 minutes. Only the artist name is shown.</string>
+    <string name="fast_loader_beta">Fast Song Loader (BETA)</string>
+    <string name="fast_loader_beta_desc">Reduces load time when manually changing tracks. Skips URL validation for faster stream resolution. May occasionally cause playback errors on the first try.</string>
 </resources>

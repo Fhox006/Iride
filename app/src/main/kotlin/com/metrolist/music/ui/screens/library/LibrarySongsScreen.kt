@@ -127,7 +127,11 @@ fun LibrarySongsScreen(
     val debouncedSearchQuery by viewModel.debouncedSearchQuery.collectAsState()
     val normalizedQuery = remember(debouncedSearchQuery) { debouncedSearchQuery.normalizeForSearch() }
 
-    var filter by rememberEnumPreference(SongFilterKey, SongFilter.LIKED)
+    var filter by rememberEnumPreference(SongFilterKey, SongFilter.LIBRARY)
+
+    LaunchedEffect(Unit) {
+        filter = SongFilter.LIBRARY
+    }
 
     var showUploadDialog by remember { mutableStateOf(false) }
     var uploadProgress by remember { mutableFloatStateOf(0f) }
@@ -354,7 +358,7 @@ fun LibrarySongsScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp),
+                                .height(0.dp),
                         ) {
                             ChipsRow(
                                 chips = listOf(
