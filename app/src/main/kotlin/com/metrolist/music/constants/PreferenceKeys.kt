@@ -19,6 +19,7 @@ val DynamicThemeKey = booleanPreferencesKey("dynamicTheme")
 val SelectedThemeColorKey = intPreferencesKey("selectedThemeColor")
 val DarkModeKey = stringPreferencesKey("darkMode")
 val PureBlackKey = booleanPreferencesKey("pureBlack")
+val IrideStyleKey = booleanPreferencesKey("iride_style")
 val PureBlackMiniPlayerKey = booleanPreferencesKey("pureBlackMiniPlayer")
 val MiniPlayerOutlineKey = booleanPreferencesKey("miniPlayerOutline")
 val MiniPlayerBackgroundStyleKey = stringPreferencesKey("miniPlayerBackgroundStyle")
@@ -261,6 +262,8 @@ val SpeedDialSnapshotKey = stringPreferencesKey("speedDialSnapshot")
 val MoodSnapshotKey = stringPreferencesKey("moodSnapshot")
 val LastMoodChipTitleKey = stringPreferencesKey("lastMoodChipTitle")
 val LastMoodChipParamsKey = stringPreferencesKey("lastMoodChipParams")
+
+val DiscoveryCarouselEnabledKey = booleanPreferencesKey("discoveryCarouselEnabled")
 
 val LibraryOfflineModeKey = booleanPreferencesKey("library_offline_mode")
 

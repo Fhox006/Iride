@@ -25,6 +25,8 @@ import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
+import com.metrolist.music.constants.IrideStyleKey
+import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -55,12 +57,32 @@ fun IrideTheme(
         )
     }
 
-    // Apply pureBlack modification if needed, similar to original logic
-    val colorScheme = remember(baseColorScheme, pureBlack, darkTheme) {
-        if (darkTheme && pureBlack) {
-            baseColorScheme.pureBlack(true)
-        } else {
-            baseColorScheme
+    val (irideStyle, _) = rememberPreference(IrideStyleKey, defaultValue = false)
+
+    val colorScheme = remember(irideStyle, baseColorScheme, pureBlack, darkTheme) {
+        when {
+            irideStyle -> baseColorScheme.copy(
+                background             = Color(0xFF25221B),
+                onBackground           = Color(0xFFE8E1D8),
+                surface                = Color(0xFF25221B),
+                onSurface              = Color(0xFFE8E1D8),
+                surfaceVariant         = Color(0xFF33302A),
+                onSurfaceVariant       = Color(0xFFCEC4B8),
+                surfaceContainerLowest = Color(0xFF1C1A14),
+                surfaceContainerLow    = Color(0xFF2D2A23),
+                surfaceContainer       = Color(0xFF322F27),
+                surfaceContainerHigh   = Color(0xFF3D392F),
+                surfaceContainerHighest= Color(0xFF48443A),
+                inverseSurface         = Color(0xFFE8E1D8),
+                inverseOnSurface       = Color(0xFF32302A),
+                outline                = Color(0xFF998F84),
+                outlineVariant         = Color(0xFF4D4840),
+                scrim                  = Color(0xFF000000),
+                surfaceBright          = Color(0xFF4A463C),
+                surfaceDim             = Color(0xFF25221B),
+            )
+            darkTheme && pureBlack -> baseColorScheme.pureBlack(true)
+            else -> baseColorScheme
         }
     }
 

@@ -100,6 +100,7 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.DarkModeKey
+import com.metrolist.music.constants.IrideStyleKey
 import com.metrolist.music.constants.MiniPlayerBackgroundStyle
 import com.metrolist.music.constants.MiniPlayerBackgroundStyleKey
 import com.metrolist.music.constants.MiniPlayerHeight
@@ -312,6 +313,7 @@ private fun PillContent(
         MiniPlayerBackgroundStyleKey,
         defaultValue = MiniPlayerBackgroundStyle.DEFAULT,
     )
+    val (irideStyle, _) = rememberPreference(IrideStyleKey, defaultValue = false)
     val context = LocalContext.current
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
     val isSystemInDarkTheme = isSystemInDarkTheme()
@@ -383,19 +385,31 @@ private fun PillContent(
         miniPlayerBackground
     }
 
-    val backgroundColor = when (effectiveBackground) {
-        MiniPlayerBackgroundStyle.DEFAULT     -> MaterialTheme.colorScheme.surfaceContainer
-        MiniPlayerBackgroundStyle.TRANSPARENT -> Color.Black.copy(alpha = 0.25f)
-        MiniPlayerBackgroundStyle.GRADIENT    -> MaterialTheme.colorScheme.surfaceContainer
-        MiniPlayerBackgroundStyle.PURE_BLACK  -> Color.Black
+    val irideDefaultActive = irideStyle && effectiveBackground == MiniPlayerBackgroundStyle.DEFAULT
+    val backgroundColor = when {
+        irideDefaultActive -> MaterialTheme.colorScheme.primaryContainer
+        else -> when (effectiveBackground) {
+            MiniPlayerBackgroundStyle.DEFAULT     -> MaterialTheme.colorScheme.surfaceContainer
+            MiniPlayerBackgroundStyle.TRANSPARENT -> Color.Black.copy(alpha = 0.25f)
+            MiniPlayerBackgroundStyle.GRADIENT    -> MaterialTheme.colorScheme.surfaceContainer
+            MiniPlayerBackgroundStyle.PURE_BLACK  -> Color.Black
+        }
     }
     val forceLightColors = !useDarkTheme && (
             effectiveBackground == MiniPlayerBackgroundStyle.PURE_BLACK ||
                     effectiveBackground == MiniPlayerBackgroundStyle.GRADIENT
             )
     val primaryColor   = if (forceLightColors) Color.White else MaterialTheme.colorScheme.primary
-    val outlineColor   = if (forceLightColors) Color.White else MaterialTheme.colorScheme.outline
-    val onSurfaceColor = if (forceLightColors) Color.White else MaterialTheme.colorScheme.onSurface
+    val outlineColor   = when {
+        forceLightColors     -> Color.White
+        irideDefaultActive   -> MaterialTheme.colorScheme.onPrimaryContainer
+        else                 -> MaterialTheme.colorScheme.outline
+    }
+    val onSurfaceColor = when {
+        forceLightColors     -> Color.White
+        irideDefaultActive   -> MaterialTheme.colorScheme.onPrimaryContainer
+        else                 -> MaterialTheme.colorScheme.onSurface
+    }
     val errorColor     = if (forceLightColors) Color(0xFFFF6B6B) else MaterialTheme.colorScheme.error
 
     Column(

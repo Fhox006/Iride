@@ -88,6 +88,7 @@ import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableDynamicIconKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
+import com.metrolist.music.constants.IrideStyleKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.PureBlackMiniPlayerKey
 import com.metrolist.music.constants.SelectedThemeColorKey
@@ -153,6 +154,7 @@ fun ThemeScreen(
         onPureBlackChangeRaw(enabled)
         onPureBlackMiniPlayerChange(enabled)
     }
+    val (irideStyle, onIrideStyleChange) = rememberPreference(IrideStyleKey, defaultValue = false)
     val (selectedThemeColorInt, onSelectedThemeColorChange) = rememberPreference(
         SelectedThemeColorKey,
         DefaultThemeColor.toArgb()
@@ -204,7 +206,9 @@ fun ThemeScreen(
             onEnableHighRefreshRateChange = onEnableHighRefreshRateChange,
             dynamicTheme = dynamicTheme,
             onDynamicThemeChange = onDynamicThemeChange,
-            isUsingCustomColor = isUsingCustomColor
+            isUsingCustomColor = isUsingCustomColor,
+            irideStyle = irideStyle,
+            onIrideStyleChange = onIrideStyleChange
         )
     } else {
         PortraitThemeLayout(
@@ -221,7 +225,9 @@ fun ThemeScreen(
             onEnableHighRefreshRateChange = onEnableHighRefreshRateChange,
             dynamicTheme = dynamicTheme,
             onDynamicThemeChange = onDynamicThemeChange,
-            isUsingCustomColor = isUsingCustomColor
+            isUsingCustomColor = isUsingCustomColor,
+            irideStyle = irideStyle,
+            onIrideStyleChange = onIrideStyleChange
         )
     }
 
@@ -253,7 +259,9 @@ fun PortraitThemeLayout(
     onEnableHighRefreshRateChange: (Boolean) -> Unit = {},
     dynamicTheme: Boolean = false,
     onDynamicThemeChange: (Boolean) -> Unit = {},
-    isUsingCustomColor: Boolean = false
+    isUsingCustomColor: Boolean = false,
+    irideStyle: Boolean = false,
+    onIrideStyleChange: (Boolean) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -291,7 +299,9 @@ fun PortraitThemeLayout(
             onEnableHighRefreshRateChange = onEnableHighRefreshRateChange,
             dynamicTheme = dynamicTheme,
             onDynamicThemeChange = onDynamicThemeChange,
-            isUsingCustomColor = isUsingCustomColor
+            isUsingCustomColor = isUsingCustomColor,
+            irideStyle = irideStyle,
+            onIrideStyleChange = onIrideStyleChange
         )
 
         Spacer(modifier = Modifier.height(120.dp))
@@ -313,7 +323,9 @@ fun LandscapeThemeLayout(
     onEnableHighRefreshRateChange: (Boolean) -> Unit = {},
     dynamicTheme: Boolean = false,
     onDynamicThemeChange: (Boolean) -> Unit = {},
-    isUsingCustomColor: Boolean = false
+    isUsingCustomColor: Boolean = false,
+    irideStyle: Boolean = false,
+    onIrideStyleChange: (Boolean) -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -362,7 +374,9 @@ fun LandscapeThemeLayout(
                 onEnableHighRefreshRateChange = onEnableHighRefreshRateChange,
                 dynamicTheme = dynamicTheme,
                 onDynamicThemeChange = onDynamicThemeChange,
-                isUsingCustomColor = isUsingCustomColor
+                isUsingCustomColor = isUsingCustomColor,
+                irideStyle = irideStyle,
+                onIrideStyleChange = onIrideStyleChange
             )
 
             Spacer(modifier = Modifier.height(80.dp))
@@ -384,8 +398,74 @@ fun ThemeControls(
     onEnableHighRefreshRateChange: (Boolean) -> Unit = {},
     dynamicTheme: Boolean = false,
     onDynamicThemeChange: (Boolean) -> Unit = {},
-    isUsingCustomColor: Boolean = false
+    isUsingCustomColor: Boolean = false,
+    irideStyle: Boolean = false,
+    onIrideStyleChange: (Boolean) -> Unit = {}
 ) {
+    // ── Iride Style BETA ──────────────────────────────────────────────
+    Spacer(modifier = Modifier.height(16.dp))
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (irideStyle)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.iride_style_beta),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (irideStyle)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = stringResource(R.string.iride_style_beta_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (irideStyle)
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = irideStyle,
+                onCheckedChange = onIrideStyleChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary
+                ),
+                thumbContent = {
+                    Icon(
+                        painter = painterResource(
+                            if (irideStyle) R.drawable.check else R.drawable.close
+                        ),
+                        contentDescription = null,
+                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                    )
+                }
+            )
+        }
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
+
     Card(
         modifier = Modifier
             .fillMaxWidth()

@@ -174,7 +174,9 @@ import coil3.request.ImageRequest
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.utils.completed
 import com.metrolist.music.LocalDatabase
+import com.metrolist.music.constants.DiscoveryCarouselEnabledKey
 import com.metrolist.music.db.entities.PlaylistEntity
+import com.metrolist.music.models.DiscoveryItem
 import com.metrolist.music.db.entities.PlaylistSongMap
 import com.metrolist.music.utils.SyncState
 import com.metrolist.music.viewmodels.CommunityPlaylistItem
@@ -226,6 +228,8 @@ fun HomeScreen(
     val similarRecommendations by viewModel.similarRecommendations.collectAsStateWithLifecycle()
     val homePage by viewModel.homePage.collectAsStateWithLifecycle()
     val phase1Complete by viewModel.phase1Complete.collectAsStateWithLifecycle()
+    val isDiscoveryEnabled by viewModel.isDiscoveryEnabled.collectAsStateWithLifecycle()
+    val discoveryItems by viewModel.discoveryItems.collectAsStateWithLifecycle()
 
     val accountNameFlow by viewModel.accountName.collectAsStateWithLifecycle()
     val accountImageUrlFlow by viewModel.accountImageUrl.collectAsStateWithLifecycle()
@@ -552,6 +556,25 @@ fun HomeScreen(
                         exit = fadeOut() + shrinkVertically(),
                     ) {
                         SyncBanner(syncState = syncState)
+                    }
+                }
+
+                // ── Discovery Carousel ─────────────────────────────────────
+                if (isDiscoveryEnabled && discoveryItems.isNotEmpty()) {
+                    item(key = "discovery_carousel") {
+                        DiscoveryCarouselSection(
+                            items = discoveryItems,
+                            onPlaylistClick = { id ->
+                                if (id == PlaylistEntity.LIKED_PLAYLIST_ID)
+                                    navController.navigate("auto_playlist/liked")
+                                else
+                                    navController.navigate("local_playlist/$id")
+                            },
+                            onArtistStationClick = { artistId -> navController.navigate("artist/$artistId") },
+                            onAlbumClick = { albumId -> navController.navigate("album/$albumId") },
+                            onRefresh = { viewModel.refreshDiscovery(System.currentTimeMillis()) },
+                            modifier = Modifier.animateItem(),
+                        )
                     }
                 }
 

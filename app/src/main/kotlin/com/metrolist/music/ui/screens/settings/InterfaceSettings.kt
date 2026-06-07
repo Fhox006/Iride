@@ -45,6 +45,7 @@ import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
+import com.metrolist.music.constants.DiscoveryCarouselEnabledKey
 import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.ChipSortTypeKey
 import com.metrolist.music.constants.DefaultOpenTabKey
@@ -104,6 +105,8 @@ fun InterfaceSettings(
         rememberPreference(RandomizeHomeOrderKey, defaultValue = true)
     val (hideDurationForStandard, onHideDurationForStandardChange) =
         rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
+    val (discoveryCarouselEnabled, onDiscoveryCarouselEnabledChange) =
+        rememberPreference(DiscoveryCarouselEnabledKey, defaultValue = false)
 
     val context = activity as Context
     val sharedPreferences = remember { context.getSharedPreferences("metrolist_settings", Context.MODE_PRIVATE) }
@@ -368,6 +371,36 @@ fun InterfaceSettings(
                 )
             )
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ── Discovery ──────────────────────────────────────────────────────
+        Material3SettingsGroup(
+            title = "Home",
+            items = listOf(
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.queue_music),
+                    title = { Text("Discovery Carousel") },
+                    description = { Text("Replace Speed Dial with personalized suggestions") },
+                    trailingContent = {
+                        Switch(
+                            checked = discoveryCarouselEnabled,
+                            onCheckedChange = onDiscoveryCarouselEnabledChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        if (discoveryCarouselEnabled) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                )
+                            },
+                        )
+                    },
+                    onClick = { onDiscoveryCarouselEnabledChange(!discoveryCarouselEnabled) },
+                )
+            )
+        )
 
         /* HIDDEN - auto_playlists group (show liked/downloaded/top/cached/uploaded playlist toggles)
         Spacer(modifier = Modifier.height(16.dp))

@@ -41,8 +41,11 @@ import com.metrolist.music.constants.LastMoodChipTitleKey
 import com.metrolist.music.constants.MoodSnapshotKey
 import com.metrolist.music.constants.QuickPicks
 import com.metrolist.music.constants.QuickPicksKey
+import com.metrolist.music.constants.DiscoveryCarouselEnabledKey
 import com.metrolist.music.constants.RandomizeHomeOrderKey
 import com.metrolist.music.constants.ShowWrappedCardKey
+import com.metrolist.music.discovery.DiscoveryCarouselGenerator
+import com.metrolist.music.models.DiscoveryItem
 import com.metrolist.music.constants.SpeedDialSnapshotKey
 import com.metrolist.music.constants.WrappedSeenKey
 import com.metrolist.music.models.HomeSnapshotItem
@@ -175,6 +178,21 @@ class HomeViewModel @Inject constructor(
 
     val moodPage = MutableStateFlow<HomePage?>(null)
     private var lastMoodChipParams: String? = null
+
+    val isDiscoveryEnabled: StateFlow<Boolean> = context.dataStore.data
+        .map { it[DiscoveryCarouselEnabledKey] ?: false }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val discoveryItems = MutableStateFlow<List<DiscoveryItem>>(emptyList())
+
+    private val discoveryGenerator = DiscoveryCarouselGenerator(database)
+
+    fun refreshDiscovery(seed: Long = java.time.LocalDate.now().toEpochDay() xor context.packageName.hashCode().toLong()) {
+        viewModelScope.launch(Dispatchers.IO) {
+            discoveryItems.value = discoveryGenerator.generate(seed)
+        }
+    }
 
     val cachedSpeedDialSnapshot = MutableStateFlow<SpeedDialSnapshot?>(null)
     val cachedMoodSnapshot = MutableStateFlow<MoodSnapshot?>(null)
@@ -1181,6 +1199,8 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
+        refreshDiscovery()
+
         // Read snapshots once from DataStore for fast first paint
         viewModelScope.launch(Dispatchers.IO) {
             val prefs = context.dataStore.data.first()

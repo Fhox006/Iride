@@ -380,4 +380,7 @@
     <string name="clear_resolved_track_cache">Clear resolved track cache</string>
     <string name="clear_resolved_track_cache_dialog">Do you really want to clear the resolved track cache? This will force the app to re-search for audio versions of videos.</string>
     <string name="searching_synced_lyrics">Searching for synced lyrics…</string>
+
+    <string name="iride_style_beta">Iride Style BETA</string>
+    <string name="iride_style_beta_desc">Custom warm dark palette with fixed #25221B background</string>
 </resources>
