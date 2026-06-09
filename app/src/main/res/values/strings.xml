@@ -52,6 +52,7 @@
     <string name="top_albums">Top Albums</string>
     <string name="top_songs">Top Songs</string>
     <string name="listening_stats">Your Stats</string>
+    <string name="stats_not_enough_data">Keep listening to discover your music story 🎵</string>
     <string name="listened">Listened</string>
     <string name="songs_played">Played</string>
 

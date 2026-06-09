@@ -6,7 +6,9 @@
 package com.metrolist.music.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -14,13 +16,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -32,10 +33,12 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,8 +57,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -73,6 +78,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.CONTENT_TYPE_ARTIST
 import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.StatPeriod
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.toMediaMetadata
@@ -80,6 +86,7 @@ import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.ArtistListItem
 import com.metrolist.music.ui.component.ChoiceChipsRow
+import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.EmptyPlaceholder
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
@@ -193,6 +200,11 @@ fun StatsScreen(
         }
 
     val coroutineScope = rememberCoroutineScope()
+    val (pureBlack) = rememberPreference(PureBlackKey, defaultValue = false)
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        snapAnimationSpec = tween(durationMillis = 200),
+    )
     val lazyListState = rememberLazyListState()
     val selectedOption by viewModel.selectedOption.collectAsState()
 
@@ -303,393 +315,351 @@ fun StatsScreen(
             emptyList()
         }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            state = lazyListState,
-            contentPadding =
-                LocalPlayerAwareWindowInsets.current
-                    .add(WindowInsets(top = 96.dp))
-                    .asPaddingValues(),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val filteredArtists =
-                allArtists
-                    .map { artistWrapper ->
-                        Artist(
-                            id = artistWrapper.artist.id,
-                            name = artistWrapper.artist.name,
-                        )
-                    }.filter { artist ->
-                        artist.name.contains(query.text, ignoreCase = true)
-                    }
-
-            if (!isSearching && sArtists.isEmpty()) {
-                item(key = "page_title") {
-                    NavigationTitle(
-                        title = stringResource(R.string.stats),
-                        modifier = Modifier.animateItem()
-                    )
-                }
-
-                item(key = "choice_chips") {
-                    ChoiceChipsRow(
-                        chips =
-                            when (selectedOption) {
-                                OptionStats.WEEKS -> {
-                                    weeklyDates
-                                }
-
-                                OptionStats.MONTHS -> {
-                                    monthlyDates
-                                }
-
-                                OptionStats.YEARS -> {
-                                    yearlyDates
-                                }
-
-                                OptionStats.CONTINUOUS -> {
-                                    listOf(
-                                        StatPeriod.WEEK_1.ordinal to
-                                            pluralStringResource(
-                                                R.plurals.n_week,
-                                                1,
-                                                1,
-                                            ),
-                                        StatPeriod.MONTH_1.ordinal to
-                                            pluralStringResource(
-                                                R.plurals.n_month,
-                                                1,
-                                                1,
-                                            ),
-                                        StatPeriod.MONTH_3.ordinal to
-                                            pluralStringResource(
-                                                R.plurals.n_month,
-                                                3,
-                                                3,
-                                            ),
-                                        StatPeriod.MONTH_6.ordinal to
-                                            pluralStringResource(
-                                                R.plurals.n_month,
-                                                6,
-                                                6,
-                                            ),
-                                        StatPeriod.YEAR_1.ordinal to
-                                            pluralStringResource(
-                                                R.plurals.n_year,
-                                                1,
-                                                1,
-                                            ),
-                                        StatPeriod.ALL.ordinal to stringResource(R.string.filter_all),
-                                    )
-                                }
-                            },
-                        options =
-                            listOf(
-                                OptionStats.CONTINUOUS to stringResource(id = R.string.continuous),
-                                OptionStats.WEEKS to stringResource(R.string.weeks),
-                                OptionStats.MONTHS to stringResource(R.string.months),
-                                OptionStats.YEARS to stringResource(R.string.years),
-                            ),
-                        selectedOption = selectedOption,
-                        onSelectionChange = {
-                            viewModel.selectedOption.value = it
-                            viewModel.indexChips.value = 0
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            CollapsingScreenHeader(
+                title = stringResource(R.string.stats),
+                scrollBehavior = scrollBehavior,
+                pureBlack = pureBlack,
+                isSearchActive = isSearching,
+                onSearchActiveChange = { isSearching = it },
+                searchQuery = query.text,
+                onSearchQueryChange = { query = TextFieldValue(it) },
+                keyboardController = keyboardController,
+                navigationIcon = {
+                    IconButton(
+                        onClick = {
+                            if (isSearching) {
+                                isSearching = false
+                                query = TextFieldValue()
+                            } else {
+                                navController.navigateUp()
+                            }
                         },
-                        currentValue = indexChips,
-                        onValueUpdate = { viewModel.indexChips.value = it },
-                    )
-                }
-
-                // ── TOP ARTISTS CAROUSEL ──
-                item {
-                    SectionHeader(title = stringResource(R.string.top_artists))
-                }
-                item {
-                    TopItemsCarousel(
-                        items = mostPlayedArtists,
-                        content = { index, artist ->
-                            TopArtistCard(
-                                rank = index + 1,
-                                artist = artist.artist,
-                                onClick = {
-                                    navController.navigate("artist/${artist.id}")
-                                }
-                            )
-                        }
-                    )
-                }
-
-                // ── TOP ALBUMS CAROUSEL ──
-                item {
-                    SectionHeader(title = stringResource(R.string.top_albums))
-                }
-                item {
-                    TopItemsCarousel(
-                        items = mostPlayedAlbums,
-                        content = { index, album ->
-                            TopAlbumCard(
-                                rank = index + 1,
-                                album = album.album,
-                                artists = album.artists,
-                                onClick = {
-                                    navController.navigate("album/${album.id}")
-                                }
-                            )
-                        }
-                    )
-                }
-
-                // ── TOP SONGS CAROUSEL ──
-                item {
-                    SectionHeader(title = stringResource(R.string.top_songs))
-                }
-                item {
-                    TopItemsCarousel(
-                        items = mostPlayedSongs,
-                        content = { index, song ->
-                            TopSongCard(
-                                rank = index + 1,
-                                song = song.song,
-                                artists = song.artists,
-                                onClick = {
-                                    if (song.id == mediaMetadata?.id) {
-                                        playerConnection.togglePlayPause()
-                                    } else {
-                                        playerConnection.playQueue(
-                                            YouTubeQueue(
-                                                endpoint = WatchEndpoint(song.id),
-                                                preloadItem = song.toMediaMetadata(),
-                                            ),
-                                        )
-                                    }
-                                }
-                            )
-                        }
-                    )
-                }
-
-                // ── STATS DATA BOX ──
-                item {
-                    val totalMinutes = mostPlayedSongsStats.sumOf { it.timeListened ?: 0L } / 60000
-                    val uniqueArtistsCount = mostPlayedArtists.size
-                    val uniqueAlbumsCount = mostPlayedAlbums.size
-                    val totalSongsPlayed = mostPlayedSongsStats.sumOf { (it.songCountListened ?: 0).toLong() }.toInt()
-
-                    StatsDataBox(
-                        totalMinutes = totalMinutes,
-                        totalSongs = totalSongsPlayed,
-                        totalArtists = uniqueArtistsCount,
-                        totalAlbums = uniqueAlbumsCount
-                    )
-                }
-
-                // HIDDEN — playlists section temporarily disabled
-                // if (visibleStatsPlaylists.isNotEmpty()) {
-                //     item(key = "mostPeriodPlaylistsTitle") {
-                //         NavigationTitle(
-                //             title =
-                //                 pluralStringResource(
-                //                     R.plurals.n_playlist,
-                //                     visibleStatsPlaylists.size,
-                //                     visibleStatsPlaylists.size,
-                //                 ),
-                //             modifier = Modifier.animateItem(),
-                //         )
-                //     }
-
-                //     item(key = "mostPeriodPlaylists") {
-                //         LazyRow(
-                //             contentPadding = PaddingValues(horizontal = 4.dp),
-                //             modifier = Modifier.animateItem(),
-                //         ) {
-                //             itemsIndexed(
-                //                 items = visibleStatsPlaylists,
-                //                 key = { _, playlist -> playlist.id },
-                //             ) { _, playlist ->
-                //                 PlaylistGridItem(
-                //                     playlist = playlist,
-                //                     autoPlaylist = true,
-                //                     modifier =
-                //                         Modifier
-                //                             .combinedClickable(
-                //                                 onClick = {
-                //                                     navController.navigate("local_playlist/${playlist.id}")
-                //                                 },
-                //                             ).animateItem(),
-                //                 )
-                //             }
-                //         }
-                //     }
-                // }
-            }
-
-            if (isSearching) {
-                items(
-                    items =
-                        allArtists.filter { artist ->
-                            artist.artist.name.contains(query.text, ignoreCase = true)
+                        onLongClick = {
+                            if (!isSearching) navController.backToMain()
                         },
-                    key = { "stats_artist_${it.id}" },
-                    contentType = { CONTENT_TYPE_ARTIST },
-                ) { artist ->
-                    val uiArtist = Artist(name = artist.artist.name, id = artist.id)
-                    val isChecked = sArtists.any { it.id == uiArtist.id }
-                    Row( // Use a row to arrange the checkbox and ArtistListItem horizontally
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    toggleArtistSelection(uiArtist)
-                                }.padding(8.dp),
                     ) {
-                        ArtistListItem(
-                            artist = artist,
-                            modifier = Modifier.weight(1f), // Allow ArtistListItem to take remaining space
-                        )
-
-                        Checkbox(
-                            checked = sArtists.contains(Artist(name = artist.artist.name, id = artist.id)), // Get the current checked state
-                            onCheckedChange = {
-                                toggleArtistSelection(uiArtist)
-                            },
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_back),
+                            contentDescription = "Back Button",
                         )
                     }
-                }
-            }
-            if (query.text.isNotEmpty() && filteredArtists.isEmpty()) {
-                item(key = "no_result") {
-                    EmptyPlaceholder(
-                        icon = R.drawable.search,
-                        text = stringResource(R.string.no_results_found),
-                    )
-                }
-            }
-        }
-        // FAB to shuffle most played songs
-        if (mostPlayedSongsStats.isNotEmpty() && !isSearching) {
-            HideOnScrollFAB(
-                visible = true,
-                lazyListState = lazyListState,
-                icon = R.drawable.shuffle,
-                onClick = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = context.getString(R.string.most_played_songs),
-                            items = orderedMostPlayedSongs.map { it.toMediaMetadata().toMediaItem() }.shuffled(),
-                        ),
-                    )
                 },
             )
-        }
-    }
-
-    TopAppBar(
-        title = {
-            if (inSelectMode) {
-                Text(pluralStringResource(R.plurals.n_selected, selection.size, selection.size))
-            } else if (isSearching) {
-                Row {
-                    TextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        placeholder = {
-                            Text(
-                                text = stringResource(R.string.search),
-                                style = MaterialTheme.typography.titleLarge,
+        },
+        containerColor = Color.Transparent,
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+                .padding(paddingValues)
+        ) {
+            LazyColumn(
+                state = lazyListState,
+                contentPadding = LocalPlayerAwareWindowInsets.current
+                    .asPaddingValues(),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                val filteredArtists =
+                    allArtists
+                        .map { artistWrapper ->
+                            Artist(
+                                id = artistWrapper.artist.id,
+                                name = artistWrapper.artist.name,
                             )
-                        },
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.titleLarge,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        colors =
-                            TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                disabledIndicatorColor = Color.Transparent,
-                            ),
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .focusRequester(focusRequester),
-                    )
+                        }.filter { artist ->
+                            artist.name.contains(query.text, ignoreCase = true)
+                        }
 
-                    if (sArtists.isNotEmpty()) {
-                        androidx.compose.material3.IconButton(onClick = clearArtistSelection) {
-                            Icon(
-                                painter = painterResource(R.drawable.close),
-                                contentDescription = "Clear Artists",
-                                tint = MaterialTheme.colorScheme.onSurface,
+                if (!isSearching && sArtists.isEmpty()) {
+                    val hasEnoughData = mostPlayedArtists.isNotEmpty() &&
+                            mostPlayedAlbums.isNotEmpty() &&
+                            mostPlayedSongs.isNotEmpty()
+
+                    if (!hasEnoughData) {
+                        item(key = "empty_stats") {
+                            EmptyPlaceholder(
+                                icon = R.drawable.music_note,
+                                text = stringResource(R.string.stats_not_enough_data),
+                                modifier = Modifier
+                                    .animateItem()
+                                    .padding(top = 48.dp),
+                            )
+                        }
+                    } else {
+                        item(key = "choice_chips") {
+                            ChoiceChipsRow(
+                                modifier = Modifier.padding(top = 0.dp),
+                                chips =
+                                when (selectedOption) {
+                                    OptionStats.WEEKS -> {
+                                        weeklyDates
+                                    }
+
+                                    OptionStats.MONTHS -> {
+                                        monthlyDates
+                                    }
+
+                                    OptionStats.YEARS -> {
+                                        yearlyDates
+                                    }
+
+                                    OptionStats.CONTINUOUS -> {
+                                        listOf(
+                                            StatPeriod.WEEK_1.ordinal to
+                                                    pluralStringResource(
+                                                        R.plurals.n_week,
+                                                        1,
+                                                        1,
+                                                    ),
+                                            StatPeriod.MONTH_1.ordinal to
+                                                    pluralStringResource(
+                                                        R.plurals.n_month,
+                                                        1,
+                                                        1,
+                                                    ),
+                                            StatPeriod.MONTH_3.ordinal to
+                                                    pluralStringResource(
+                                                        R.plurals.n_month,
+                                                        3,
+                                                        3,
+                                                    ),
+                                            StatPeriod.MONTH_6.ordinal to
+                                                    pluralStringResource(
+                                                        R.plurals.n_month,
+                                                        6,
+                                                        6,
+                                                    ),
+                                            StatPeriod.YEAR_1.ordinal to
+                                                    pluralStringResource(
+                                                        R.plurals.n_year,
+                                                        1,
+                                                        1,
+                                                    ),
+                                            StatPeriod.ALL.ordinal to stringResource(R.string.filter_all),
+                                        )
+                                    }
+                                },
+                                options =
+                                listOf(
+                                    OptionStats.CONTINUOUS to stringResource(id = R.string.continuous),
+                                    OptionStats.WEEKS to stringResource(R.string.weeks),
+                                    OptionStats.MONTHS to stringResource(R.string.months),
+                                    OptionStats.YEARS to stringResource(R.string.years),
+                                ),
+                                selectedOption = selectedOption,
+                                onSelectionChange = {
+                                    viewModel.selectedOption.value = it
+                                    viewModel.indexChips.value = 0
+                                },
+                                currentValue = indexChips,
+                                onValueUpdate = { viewModel.indexChips.value = it },
+                            )
+                        }
+
+                        // ── TOP ARTISTS CAROUSEL ──
+                        item {
+                            SectionHeader(title = stringResource(R.string.top_artists))
+                        }
+                        item {
+                            TopItemsCarousel(
+                                items = mostPlayedArtists,
+                                content = { index, artist ->
+                                    TopArtistCard(
+                                        rank = index + 1,
+                                        artist = artist.artist,
+                                        onClick = {
+                                            navController.navigate("artist/${artist.id}")
+                                        }
+                                    )
+                                }
+                            )
+                        }
+
+                        // ── TOP ALBUMS CAROUSEL ──
+                        item {
+                            SectionHeader(title = stringResource(R.string.top_albums))
+                        }
+                        item {
+                            TopItemsCarousel(
+                                items = mostPlayedAlbums,
+                                content = { index, album ->
+                                    TopAlbumCard(
+                                        rank = index + 1,
+                                        album = album.album,
+                                        artists = album.artists,
+                                        onClick = {
+                                            navController.navigate("album/${album.id}")
+                                        }
+                                    )
+                                }
+                            )
+                        }
+
+                        // ── TOP SONGS CAROUSEL ──
+                        item {
+                            SectionHeader(title = stringResource(R.string.top_songs))
+                        }
+                        item {
+                            TopItemsCarousel(
+                                items = mostPlayedSongs,
+                                content = { index, song ->
+                                    TopSongCard(
+                                        rank = index + 1,
+                                        song = song.song,
+                                        artists = song.artists,
+                                        onClick = {
+                                            if (song.id == mediaMetadata?.id) {
+                                                playerConnection.togglePlayPause()
+                                            } else {
+                                                playerConnection.playQueue(
+                                                    YouTubeQueue(
+                                                        endpoint = WatchEndpoint(song.id),
+                                                        preloadItem = song.toMediaMetadata(),
+                                                    ),
+                                                )
+                                            }
+                                        }
+                                    )
+                                }
+                            )
+                        }
+
+                        // ── STATS DATA BOX ──
+                        item {
+                            val totalMinutes = mostPlayedSongsStats.sumOf { it.timeListened ?: 0L } / 60000
+                            val uniqueArtistsCount = mostPlayedArtists.size
+                            val uniqueAlbumsCount = mostPlayedAlbums.size
+                            val totalSongsPlayed = mostPlayedSongsStats.sumOf { (it.songCountListened ?: 0).toLong() }.toInt()
+
+                            StatsDataBox(
+                                totalMinutes = totalMinutes,
+                                totalSongs = totalSongsPlayed,
+                                totalArtists = uniqueArtistsCount,
+                                totalAlbums = uniqueAlbumsCount
+                            )
+                        }
+
+                        // HIDDEN — playlists section temporarily disabled
+                        // if (visibleStatsPlaylists.isNotEmpty()) {
+                        //     item(key = "mostPeriodPlaylistsTitle") {
+                        //         NavigationTitle(
+                        //             title =
+                        //                 pluralStringResource(
+                        //                     R.plurals.n_playlist,
+                        //                     visibleStatsPlaylists.size,
+                        //                     visibleStatsPlaylists.size,
+                        //                 ),
+                        //             modifier = Modifier.animateItem(),
+                        //         )
+                        //     }
+
+                        //     item(key = "mostPeriodPlaylists") {
+                        //         LazyRow(
+                        //             contentPadding = PaddingValues(horizontal = 4.dp),
+                        //             modifier = Modifier.animateItem(),
+                        //         ) {
+                        //             itemsIndexed(
+                        //                 items = visibleStatsPlaylists,
+                        //                 key = { _, playlist -> playlist.id },
+                        //             ) { _, playlist ->
+                        //                 PlaylistGridItem(
+                        //                     playlist = playlist,
+                        //                     autoPlaylist = true,
+                        //                     modifier =
+                        //                         Modifier
+                        //                             .combinedClickable(
+                        //                                 onClick = {
+                        //                                     navController.navigate("local_playlist/${playlist.id}")
+                        //                                 },
+                        //                             ).animateItem(),
+                        //                 )
+                        //             }
+                        //         }
+                        //     }
+                        // }
+                    }
+                }
+
+                if (isSearching) {
+                    items(
+                        items =
+                            allArtists.filter { artist ->
+                                artist.artist.name.contains(query.text, ignoreCase = true)
+                            },
+                        key = { "stats_artist_${it.id}" },
+                        contentType = { CONTENT_TYPE_ARTIST },
+                    ) { artist ->
+                        val uiArtist = Artist(name = artist.artist.name, id = artist.id)
+                        val isChecked = sArtists.any { it.id == uiArtist.id }
+                        Row( // Use a row to arrange the checkbox and ArtistListItem horizontally
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        toggleArtistSelection(uiArtist)
+                                    }.padding(8.dp),
+                        ) {
+                            ArtistListItem(
+                                artist = artist,
+                                modifier = Modifier.weight(1f), // Allow ArtistListItem to take remaining space
+                            )
+
+                            Checkbox(
+                                checked = sArtists.contains(Artist(name = artist.artist.name, id = artist.id)), // Get the current checked state
+                                onCheckedChange = {
+                                    toggleArtistSelection(uiArtist)
+                                },
                             )
                         }
                     }
                 }
-            } else {
-                Text(
-                    text = stringResource(R.string.stats),
-                    style = MaterialTheme.typography.titleLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        },
-        navigationIcon = {
-            if (inSelectMode) {
-                androidx.compose.material3.IconButton(onClick = onExitSelectionMode) {
-                    Icon(
-                        painter = painterResource(R.drawable.close),
-                        contentDescription = "Select Button",
-                    )
-                }
-            } else {
-                IconButton(
-                    onClick = {
-                        if (isSearching) {
-                            isSearching = false
-                            query = TextFieldValue()
-                        } else {
-                            navController.navigateUp()
-                        }
-                    },
-                    onLongClick = {
-                        if (!isSearching) {
-                            navController.backToMain()
-                        }
-                    },
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_back),
-                        contentDescription = "Back Button",
-                    )
+                if (query.text.isNotEmpty() && filteredArtists.isEmpty()) {
+                    item(key = "no_result") {
+                        EmptyPlaceholder(
+                            icon = R.drawable.search,
+                            text = stringResource(R.string.no_results_found),
+                        )
+                    }
                 }
             }
-        },
-        actions = {
-            if (inSelectMode) {
-                Checkbox(
-                    checked = true,
-                    onCheckedChange = {
+
+            if (mostPlayedSongsStats.isNotEmpty() && !isSearching) {
+                HideOnScrollFAB(
+                    visible = true,
+                    lazyListState = lazyListState,
+                    icon = R.drawable.shuffle,
+                    onClick = {
+                        playerConnection.playQueue(
+                            ListQueue(
+                                title = context.getString(R.string.most_played_songs),
+                                items = orderedMostPlayedSongs.map { it.toMediaMetadata().toMediaItem() }.shuffled(),
+                            ),
+                        )
                     },
                 )
-                androidx.compose.material3.IconButton(
-                    enabled = selection.isNotEmpty(),
-                    onClick = {
-                    },
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = "More Button",
-                    )
-                }
-            } else if (!isSearching) {
-                androidx.compose.material3.IconButton(
-                    onClick = { isSearching = true },
-                ) {
+            }
+        }
+
+        // Action buttons overlay — aligned with the collapsed toolbar row
+        if (!isSearching) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars)
+                    .height(56.dp)
+                    .padding(end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                androidx.compose.material3.IconButton(onClick = { isSearching = true }) {
                     Icon(
                         painter = painterResource(R.drawable.search),
-                        contentDescription = "Search Button",
+                        contentDescription = "Search",
                     )
                 }
                 IconButton(
@@ -697,13 +667,13 @@ fun StatsScreen(
                     onLongClick = { showTimeTransfer = true },
                 ) {
                     Icon(
-                        painterResource(R.drawable.sync),
+                        painter = painterResource(R.drawable.sync),
                         contentDescription = "Time Transfer",
                     )
                 }
             }
-        },
-    )
+        }
+    }
 }
 
 enum class OptionStats { WEEKS, MONTHS, YEARS, CONTINUOUS }
