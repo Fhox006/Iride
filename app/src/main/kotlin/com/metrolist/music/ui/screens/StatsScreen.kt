@@ -647,29 +647,31 @@ fun StatsScreen(
         }
 
         // Action buttons overlay — aligned with the collapsed toolbar row
-        if (!isSearching) {
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars)
-                    .height(56.dp)
-                    .padding(end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                androidx.compose.material3.IconButton(onClick = { isSearching = true }) {
-                    Icon(
-                        painter = painterResource(R.drawable.search),
-                        contentDescription = "Search",
-                    )
-                }
-                IconButton(
-                    onClick = { showTimeTransfer = true },
-                    onLongClick = { showTimeTransfer = true },
+        Box(modifier = Modifier.fillMaxWidth()) {
+            if (!isSearching) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)  // ✅ ora in BoxScope
+                        .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars)
+                        .height(56.dp)
+                        .padding(end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.sync),
-                        contentDescription = "Time Transfer",
-                    )
+                    androidx.compose.material3.IconButton(onClick = { isSearching = true }) {
+                        Icon(
+                            painter = painterResource(R.drawable.search),
+                            contentDescription = "Search",
+                        )
+                    }
+                    IconButton(
+                        onClick = { showTimeTransfer = true },
+                        onLongClick = { showTimeTransfer = true },
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.sync),
+                            contentDescription = "Time Transfer",
+                        )
+                    }
                 }
             }
         }
