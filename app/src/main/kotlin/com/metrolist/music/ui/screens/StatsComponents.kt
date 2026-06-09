@@ -68,8 +68,8 @@ private fun squirclePath(size: androidx.compose.ui.geometry.Size, cornerFraction
     fun superellipsePoint(t: Double, a: Double, b: Double): Pair<Double, Double> {
         val cos = kotlin.math.cos(t)
         val sin = kotlin.math.sin(t)
-        val x = a * kotlin.math.sign(cos) * kotlin.math.abs(cos).pow(2.0 / n)
-        val y = b * kotlin.math.sign(sin) * kotlin.math.abs(sin).pow(2.0 / n)
+        val x = a * signOf(cos) * kotlin.math.abs(cos).pow(2.0 / n)
+        val y = b * signOf(sin) * kotlin.math.abs(sin).pow(2.0 / n)
         return Pair(x, y)
     }
 
@@ -95,7 +95,7 @@ private fun squirclePath(size: androidx.compose.ui.geometry.Size, cornerFraction
     return path
 }
 
-private fun kotlin.math.sign(x: Double) = if (x >= 0) 1.0 else -1.0
+private fun signOf(x: Double): Double = if (x >= 0.0) 1.0 else -1.0
 
 private val SoftSquircle = SquircleShapeImpl(cornerRadiusFraction = 0.22f, n = 6.0)
 private val CardSquircle = SquircleShapeImpl(cornerRadiusFraction = 0.25f, n = 7.0)
