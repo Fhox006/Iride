@@ -27,6 +27,8 @@ import com.metrolist.innertube.models.YouTubeClient.Companion.WEB_REMIX
 import com.metrolist.innertube.models.response.PlayerResponse
 import com.metrolist.music.constants.AudioQuality
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
+import com.metrolist.music.utils.cipher.FunctionNameExtractor
+import com.metrolist.music.utils.cipher.PlayerJsFetcher
 import com.metrolist.music.utils.YTPlayerUtils.MAIN_CLIENT
 import com.metrolist.music.utils.YTPlayerUtils.STREAM_FALLBACK_CLIENTS
 import com.metrolist.music.utils.YTPlayerUtils.validateStatus
@@ -494,10 +496,22 @@ object YTPlayerUtils {
                     Timber.tag(logTag).d("Age-restricted content detected from NewPipe")
                     Timber.tag(TAG).i("Age-restricted detected early via NewPipe: videoId=$videoId")
                 } else {
-                    Timber.tag(logTag).e(error, "Failed to get signature timestamp")
+                    Timber.tag(logTag).e(error, "Failed to get signature timestamp via NewPipe")
                     reportException(error)
                 }
-                SignatureTimestampResult(null, isAgeRestricted)
+                // Fallback: extract signatureTimestamp directly from player.js when NewPipe fails.
+                val fallbackSts = runCatching {
+                    Timber.tag(logTag).d("Trying player.js fallback for signature timestamp")
+                    val (playerJs, hash) = PlayerJsFetcher.getPlayerJs()
+                        ?: error("PlayerJsFetcher returned null")
+                    FunctionNameExtractor.extractSignatureTimestamp(playerJs)
+                        ?: error("extractSignatureTimestamp returned null for hash=$hash")
+                }.onSuccess { sts ->
+                    Timber.tag(logTag).d("Signature timestamp obtained via player.js fallback: $sts")
+                }.onFailure { e ->
+                    Timber.tag(logTag).e(e, "player.js fallback for signature timestamp also failed")
+                }.getOrNull()
+                SignatureTimestampResult(fallbackSts, isAgeRestricted)
             }
         )
     }
