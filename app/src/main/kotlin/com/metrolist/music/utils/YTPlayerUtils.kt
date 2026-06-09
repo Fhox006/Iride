@@ -169,14 +169,9 @@ object YTPlayerUtils {
                 .i("Age-restricted content detected: videoId=$videoId, status=$currentStatus")
         }
 
-        // Check if this is a privately owned track (uploaded song)
-        val isPrivateTrack = mainPlayerResponse.videoDetails?.musicVideoType == "MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK"
-
-        // For private tracks: use TVHTML5 (index 1) with PoToken + n-transform
         // For age-restricted: skip main client, start with fallbacks
         // For normal content: standard order
         val startIndex = when {
-            isPrivateTrack -> 1  // TVHTML5
             isAgeRestricted -> 0
             else -> -1
         }
@@ -481,7 +476,7 @@ object YTPlayerUtils {
         val isAgeRestricted: Boolean
     )
 
-    private fun getSignatureTimestampOrNull(videoId: String): SignatureTimestampResult {
+    private suspend fun getSignatureTimestampOrNull(videoId: String): SignatureTimestampResult {
         Timber.tag(logTag).d("Getting signature timestamp for videoId: $videoId")
         val result = NewPipeExtractor.getSignatureTimestamp(videoId)
         return result.fold(
@@ -542,17 +537,19 @@ object YTPlayerUtils {
             Timber.tag(logTag).d("Custom cipher deobfuscation failed")
         }
 
-        // Skip NewPipe for age-restricted content
-        if (skipNewPipe) {
-            Timber.tag(logTag).d("Skipping NewPipe methods for age-restricted content")
-            return null
-        }
-
-        // Try to get URL using NewPipeExtractor signature deobfuscation
+        // Always try NewPipe signature deobfuscation — it doesn't need auth,
+        // it just applies the cipher algorithm from player.js.
         val deobfuscatedUrl = NewPipeExtractor.getStreamUrl(format, videoId)
         if (deobfuscatedUrl != null) {
             Timber.tag(logTag).d("Stream URL obtained via NewPipe deobfuscation")
             return deobfuscatedUrl
+        }
+
+        // Skip StreamInfo fallback for age-restricted or private content
+        // (StreamInfo fetch may fail without auth for these)
+        if (skipNewPipe) {
+            Timber.tag(logTag).d("Skipping StreamInfo fallback for age-restricted/private content")
+            return null
         }
 
         // Fallback: try to get URL from StreamInfo

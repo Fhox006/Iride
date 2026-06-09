@@ -30,6 +30,76 @@ import com.metrolist.music.R
 import com.metrolist.music.db.entities.AlbumEntity
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.SongEntity
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import kotlin.math.min
+import kotlin.math.pow
+
+/**
+ * A superellipse ("squircle") shape implemented without external libraries.
+ * n controls how square-like the curve is: higher = more square, lower = more circle.
+ * For Material Expressive "squircle" look, use smoothing between 0.60 and 0.75.
+ * cornerSmoothing maps to n: 0.60 â†’ nâ‰ˆ5, 0.72 â†’ nâ‰ˆ8
+ */
+private class SquircleShapeImpl(
+    private val cornerRadiusFraction: Float = 0.25f, // fraction of min(width, height)
+    private val n: Double = 6.0                       // superellipse exponent; 5â€“8 for squircle
+) : Shape {
+    override fun createOutline(
+        size: androidx.compose.ui.geometry.Size,
+        layoutDirection: LayoutDirection,
+        density: Density
+    ): Outline {
+        val path = squirclePath(size, cornerRadiusFraction, n)
+        return Outline.Generic(path)
+    }
+}
+
+private fun squirclePath(size: androidx.compose.ui.geometry.Size, cornerFraction: Float, n: Double): Path {
+    val w = size.width
+    val h = size.height
+    val r = min(w, h) * cornerFraction.coerceIn(0.05f, 0.5f)
+    val path = Path()
+    val steps = 72
+
+    fun superellipsePoint(t: Double, a: Double, b: Double): Pair<Double, Double> {
+        val cos = kotlin.math.cos(t)
+        val sin = kotlin.math.sin(t)
+        val x = a * kotlin.math.sign(cos) * kotlin.math.abs(cos).pow(2.0 / n)
+        val y = b * kotlin.math.sign(sin) * kotlin.math.abs(sin).pow(2.0 / n)
+        return Pair(x, y)
+    }
+
+    // Build 4 corner arcs
+    val corners = listOf(
+        Triple(r, r, Math.PI),          // top-left,     start angle = Ï€
+        Triple(w - r, r, 3 * Math.PI / 2),  // top-right
+        Triple(w - r, h - r, 0.0),      // bottom-right
+        Triple(r, h - r, Math.PI / 2)   // bottom-left
+    )
+
+    var first = true
+    for ((cx, cy, startAngle) in corners) {
+        for (i in 0..steps / 4) {
+            val t = startAngle + (Math.PI / 2) * (i.toDouble() / (steps / 4))
+            val (dx, dy) = superellipsePoint(t, r.toDouble(), r.toDouble())
+            val x = (cx + dx).toFloat()
+            val y = (cy + dy).toFloat()
+            if (first) { path.moveTo(x, y); first = false } else path.lineTo(x, y)
+        }
+    }
+    path.close()
+    return path
+}
+
+private fun kotlin.math.sign(x: Double) = if (x >= 0) 1.0 else -1.0
+
+private val SoftSquircle = SquircleShapeImpl(cornerRadiusFraction = 0.22f, n = 6.0)
+private val CardSquircle = SquircleShapeImpl(cornerRadiusFraction = 0.25f, n = 7.0)
+private val BadgeSquircle = SquircleShapeImpl(cornerRadiusFraction = 0.35f, n = 6.0)
 
 @Composable
 fun <T> TopItemsCarousel(
@@ -53,7 +123,7 @@ fun <T> TopItemsCarousel(
 fun TopArtistCard(rank: Int, artist: ArtistEntity, onClick: () -> Unit = {}) {
     Card(
         onClick = onClick,
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = CardSquircle,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
@@ -69,14 +139,14 @@ fun TopArtistCard(rank: Int, artist: ArtistEntity, onClick: () -> Unit = {}) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
-                    .clip(MaterialTheme.shapes.extraLarge)
+                    .clip(CardSquircle)
             )
             Box(
                 modifier = Modifier
                     .padding(10.dp)
                     .background(
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
-                        shape = MaterialTheme.shapes.medium
+                        shape = BadgeSquircle
                     )
                     .padding(horizontal = 10.dp, vertical = 4.dp)
                     .align(Alignment.TopStart)
@@ -109,12 +179,12 @@ fun TopArtistCard(rank: Int, artist: ArtistEntity, onClick: () -> Unit = {}) {
 fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onClick: () -> Unit = {}) {
     Card(
         onClick = onClick,
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = CardSquircle,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         modifier = Modifier
-            .width(160.dp)
+            .width(200.dp)
             .wrapContentHeight()
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -124,15 +194,15 @@ fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onC
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
-                    .clip(MaterialTheme.shapes.extraLarge)
+                    .height(200.dp)
+                    .clip(CardSquircle)
             )
             Box(
                 modifier = Modifier
                     .padding(10.dp)
                     .background(
                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.88f),
-                        shape = MaterialTheme.shapes.medium
+                        shape = BadgeSquircle
                     )
                     .padding(horizontal = 10.dp, vertical = 4.dp)
                     .align(Alignment.TopStart)
@@ -170,7 +240,7 @@ fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onC
 fun TopSongCard(rank: Int, song: SongEntity, artists: List<ArtistEntity>, onClick: () -> Unit = {}) {
     Card(
         onClick = onClick,
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = CardSquircle,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
@@ -186,14 +256,14 @@ fun TopSongCard(rank: Int, song: SongEntity, artists: List<ArtistEntity>, onClic
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
-                    .clip(MaterialTheme.shapes.extraLarge)
+                    .clip(CardSquircle)
             )
             Box(
                 modifier = Modifier
                     .padding(10.dp)
                     .background(
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.88f),
-                        shape = MaterialTheme.shapes.medium
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.88f),
+                        shape = BadgeSquircle
                     )
                     .padding(horizontal = 10.dp, vertical = 4.dp)
                     .align(Alignment.TopStart)
@@ -204,7 +274,7 @@ fun TopSongCard(rank: Int, song: SongEntity, artists: List<ArtistEntity>, onClic
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 22.sp
                     ),
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }
@@ -248,7 +318,7 @@ fun StatsDataBox(
     val minutes = totalMinutes % 60
 
     Card(
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = CardSquircle,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         ),

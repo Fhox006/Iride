@@ -323,6 +323,82 @@ fun StatsScreen(
                     }
 
             if (!isSearching && sArtists.isEmpty()) {
+                item(key = "page_title") {
+                    NavigationTitle(
+                        title = stringResource(R.string.stats),
+                        modifier = Modifier.animateItem()
+                    )
+                }
+
+                item(key = "choice_chips") {
+                    ChoiceChipsRow(
+                        chips =
+                            when (selectedOption) {
+                                OptionStats.WEEKS -> {
+                                    weeklyDates
+                                }
+
+                                OptionStats.MONTHS -> {
+                                    monthlyDates
+                                }
+
+                                OptionStats.YEARS -> {
+                                    yearlyDates
+                                }
+
+                                OptionStats.CONTINUOUS -> {
+                                    listOf(
+                                        StatPeriod.WEEK_1.ordinal to
+                                            pluralStringResource(
+                                                R.plurals.n_week,
+                                                1,
+                                                1,
+                                            ),
+                                        StatPeriod.MONTH_1.ordinal to
+                                            pluralStringResource(
+                                                R.plurals.n_month,
+                                                1,
+                                                1,
+                                            ),
+                                        StatPeriod.MONTH_3.ordinal to
+                                            pluralStringResource(
+                                                R.plurals.n_month,
+                                                3,
+                                                3,
+                                            ),
+                                        StatPeriod.MONTH_6.ordinal to
+                                            pluralStringResource(
+                                                R.plurals.n_month,
+                                                6,
+                                                6,
+                                            ),
+                                        StatPeriod.YEAR_1.ordinal to
+                                            pluralStringResource(
+                                                R.plurals.n_year,
+                                                1,
+                                                1,
+                                            ),
+                                        StatPeriod.ALL.ordinal to stringResource(R.string.filter_all),
+                                    )
+                                }
+                            },
+                        options =
+                            listOf(
+                                OptionStats.CONTINUOUS to stringResource(id = R.string.continuous),
+                                OptionStats.WEEKS to stringResource(R.string.weeks),
+                                OptionStats.MONTHS to stringResource(R.string.months),
+                                OptionStats.YEARS to stringResource(R.string.years),
+                            ),
+                        selectedOption = selectedOption,
+                        onSelectionChange = {
+                            viewModel.selectedOption.value = it
+                            viewModel.indexChips.value = 0
+                        },
+                        currentValue = indexChips,
+                        onValueUpdate = { viewModel.indexChips.value = it },
+                    )
+                }
+
                 // ── TOP ARTISTS CAROUSEL ──
                 item {
                     SectionHeader(title = stringResource(R.string.top_artists))
@@ -406,112 +482,44 @@ fun StatsScreen(
                     )
                 }
 
-                item(key = "choice_chips") {
-                    ChoiceChipsRow(
-                        chips =
-                            when (selectedOption) {
-                                OptionStats.WEEKS -> {
-                                    weeklyDates
-                                }
+                // HIDDEN — playlists section temporarily disabled
+                // if (visibleStatsPlaylists.isNotEmpty()) {
+                //     item(key = "mostPeriodPlaylistsTitle") {
+                //         NavigationTitle(
+                //             title =
+                //                 pluralStringResource(
+                //                     R.plurals.n_playlist,
+                //                     visibleStatsPlaylists.size,
+                //                     visibleStatsPlaylists.size,
+                //                 ),
+                //             modifier = Modifier.animateItem(),
+                //         )
+                //     }
 
-                                OptionStats.MONTHS -> {
-                                    monthlyDates
-                                }
-
-                                OptionStats.YEARS -> {
-                                    yearlyDates
-                                }
-
-                                OptionStats.CONTINUOUS -> {
-                                    listOf(
-                                        StatPeriod.WEEK_1.ordinal to
-                                            pluralStringResource(
-                                                R.plurals.n_week,
-                                                1,
-                                                1,
-                                            ),
-                                        StatPeriod.MONTH_1.ordinal to
-                                            pluralStringResource(
-                                                R.plurals.n_month,
-                                                1,
-                                                1,
-                                            ),
-                                        StatPeriod.MONTH_3.ordinal to
-                                            pluralStringResource(
-                                                R.plurals.n_month,
-                                                3,
-                                                3,
-                                            ),
-                                        StatPeriod.MONTH_6.ordinal to
-                                            pluralStringResource(
-                                                R.plurals.n_month,
-                                                6,
-                                                6,
-                                            ),
-                                        StatPeriod.YEAR_1.ordinal to
-                                            pluralStringResource(
-                                                R.plurals.n_year,
-                                                1,
-                                                1,
-                                            ),
-                                        StatPeriod.ALL.ordinal to stringResource(R.string.filter_all),
-                                    )
-                                }
-                            },
-                        options =
-                            listOf(
-                                OptionStats.CONTINUOUS to stringResource(id = R.string.continuous),
-                                OptionStats.WEEKS to stringResource(R.string.weeks),
-                                OptionStats.MONTHS to stringResource(R.string.months),
-                                OptionStats.YEARS to stringResource(R.string.years),
-                            ),
-                        selectedOption = selectedOption,
-                        onSelectionChange = {
-                            viewModel.selectedOption.value = it
-                            viewModel.indexChips.value = 0
-                        },
-                        currentValue = indexChips,
-                        onValueUpdate = { viewModel.indexChips.value = it },
-                    )
-                }
-
-                if (visibleStatsPlaylists.isNotEmpty()) {
-                    item(key = "mostPeriodPlaylistsTitle") {
-                        NavigationTitle(
-                            title =
-                                pluralStringResource(
-                                    R.plurals.n_playlist,
-                                    visibleStatsPlaylists.size,
-                                    visibleStatsPlaylists.size,
-                                ),
-                            modifier = Modifier.animateItem(),
-                        )
-                    }
-
-                    item(key = "mostPeriodPlaylists") {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 4.dp),
-                            modifier = Modifier.animateItem(),
-                        ) {
-                            itemsIndexed(
-                                items = visibleStatsPlaylists,
-                                key = { _, playlist -> playlist.id },
-                            ) { _, playlist ->
-                                PlaylistGridItem(
-                                    playlist = playlist,
-                                    autoPlaylist = true,
-                                    modifier =
-                                        Modifier
-                                            .combinedClickable(
-                                                onClick = {
-                                                    navController.navigate("local_playlist/${playlist.id}")
-                                                },
-                                            ).animateItem(),
-                                )
-                            }
-                        }
-                    }
-                }
+                //     item(key = "mostPeriodPlaylists") {
+                //         LazyRow(
+                //             contentPadding = PaddingValues(horizontal = 4.dp),
+                //             modifier = Modifier.animateItem(),
+                //         ) {
+                //             itemsIndexed(
+                //                 items = visibleStatsPlaylists,
+                //                 key = { _, playlist -> playlist.id },
+                //             ) { _, playlist ->
+                //                 PlaylistGridItem(
+                //                     playlist = playlist,
+                //                     autoPlaylist = true,
+                //                     modifier =
+                //                         Modifier
+                //                             .combinedClickable(
+                //                                 onClick = {
+                //                                     navController.navigate("local_playlist/${playlist.id}")
+                //                                 },
+                //                             ).animateItem(),
+                //                 )
+                //             }
+                //         }
+                //     }
+                // }
             }
 
             if (isSearching) {
@@ -618,7 +626,12 @@ fun StatsScreen(
                     }
                 }
             } else {
-                Text(stringResource(R.string.stats))
+                Text(
+                    text = stringResource(R.string.stats),
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         },
         navigationIcon = {
