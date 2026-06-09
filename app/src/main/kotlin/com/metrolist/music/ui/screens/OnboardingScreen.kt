@@ -67,7 +67,7 @@ import kotlinx.coroutines.launch
 fun OnboardingScreen(navController: NavController) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val pagerState = rememberPagerState { 3 }
+    val pagerState = rememberPagerState { 4 }
 
     val notificationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -115,8 +115,16 @@ fun OnboardingScreen(navController: NavController) {
                 )
                 2 -> LoginPage(
                     onLogin = {
+                        coroutineScope.launch { pagerState.animateScrollToPage(3) }
+                    },
+                    onSkip = {
+                        coroutineScope.launch { pagerState.animateScrollToPage(3) }
+                    }
+                )
+                3 -> ImportMusicPage(
+                    onLearnHow = {
                         completeOnboarding()
-                        navController.navigate("login") {
+                        navController.navigate("spotify_import") {
                             popUpTo("onboarding") { inclusive = true }
                         }
                     },
@@ -138,7 +146,7 @@ fun OnboardingScreen(navController: NavController) {
                 .navigationBarsPadding()
                 .padding(bottom = 24.dp)
         ) {
-            repeat(3) { index ->
+            repeat(4) { index ->
                 val isSelected = pagerState.currentPage == index
                 val scale by animateFloatAsState(
                     targetValue = if (isSelected) 1f else 0.7f,
@@ -426,12 +434,117 @@ private fun LoginPage(onLogin: () -> Unit, onSkip: () -> Unit) {
                     )
                 }
 
+        }
+    }
+}
+
+@Composable
+private fun ImportMusicPage(onLearnHow: () -> Unit, onSkip: () -> Unit) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 40.dp)
+            .padding(bottom = 48.dp)
+    ) {
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { it / 3 }
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(20.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.download),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(64.dp)
+                )
+            }
+        }
+
+        Spacer(Modifier.height(40.dp))
+
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(tween(700, delayMillis = 100)) + slideInVertically(tween(700, delayMillis = 100)) { it / 4 }
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Bring Your Music With You",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.tertiaryContainer)
+                        .padding(horizontal = 12.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "BETA",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(tween(700, delayMillis = 200)) + slideInVertically(tween(700, delayMillis = 200)) { it / 4 }
+        ) {
+            Text(
+                text = "Import your saved playlists and tracks from Spotify — your library, your way.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                textAlign = TextAlign.Center
+            )
+        }
+
+        Spacer(Modifier.height(64.dp))
+
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(tween(700, delayMillis = 300))
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Button(
+                    onClick = onLearnHow,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Import from Spotify",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
                 OutlinedButton(
                     onClick = onSkip,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Continue Without Account",
+                        text = "Skip for now",
                         style = MaterialTheme.typography.titleMedium
                     )
                 }

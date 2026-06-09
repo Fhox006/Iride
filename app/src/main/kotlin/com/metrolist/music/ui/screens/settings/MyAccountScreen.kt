@@ -426,6 +426,20 @@ fun MyAccountScreen(
                         )
                     },
                     onClick = { navController.navigate("settings/privacy") }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.download),
+                    title = { Text("Import Music Library") },
+                    description = { Text("Import playlists and tracks from Spotify", style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_forward),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    onClick = { navController.navigate("spotify_import") }
                 )
             ),
             useLowContrast = true

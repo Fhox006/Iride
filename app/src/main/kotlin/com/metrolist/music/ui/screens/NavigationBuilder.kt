@@ -66,8 +66,9 @@ import com.metrolist.music.ui.screens.settings.PrivacySettings
 import com.metrolist.music.ui.screens.settings.RomanizationSettings
 import com.metrolist.music.ui.screens.settings.SettingsScreen
 import com.metrolist.music.ui.screens.settings.StorageSettings
-import com.metrolist.music.ui.screens.settings.ThemeScreen
 import com.metrolist.music.ui.screens.settings.UpdaterScreen
+import com.metrolist.music.ui.screens.settings.ThemeScreen
+import com.metrolist.music.ui.screens.SpotifyImportScreen
 import com.metrolist.music.ui.screens.settings.integrations.DiscordSettings
 import com.metrolist.music.ui.screens.settings.integrations.IntegrationScreen
 import com.metrolist.music.ui.screens.settings.integrations.LastFMSettings
@@ -388,6 +389,10 @@ fun NavGraphBuilder.NavigationBuilder(
 
     composable("settings/android_auto") {
         AndroidAutoSettings(navController, scrollBehavior)
+    }
+
+    composable("spotify_import") {
+        SpotifyImportScreen(navController = navController)
     }
 
     // Library sub-screens (no scrollBehavior needed)

@@ -59,6 +59,13 @@ sealed class Screens(
         route = "settings"
     )
 
+    object SpotifyImport : Screens(
+        titleId = 0,
+        iconIdInactive = 0,
+        iconIdActive = 0,
+        route = "spotify_import"
+    )
+
     companion object {
         val MainScreens = listOf(Home, Library, Account, Search)
     }
