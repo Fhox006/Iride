@@ -434,9 +434,20 @@ private fun LoginPage(onLogin: () -> Unit, onSkip: () -> Unit) {
                     )
                 }
 
+                OutlinedButton(
+                    onClick = onSkip,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Continue Without Account",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            }
         }
     }
 }
+
 
 @Composable
 private fun ImportMusicPage(onLearnHow: () -> Unit, onSkip: () -> Unit) {
