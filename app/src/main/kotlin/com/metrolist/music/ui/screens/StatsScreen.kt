@@ -393,7 +393,7 @@ fun StatsScreen(
                     } else {
                         item(key = "choice_chips") {
                             ChoiceChipsRow(
-                                modifier = Modifier.padding(top = 0.dp),
+                                modifier = Modifier.padding(top = 0.dp, bottom = 0.dp),
                                 chips =
                                 when (selectedOption) {
                                     OptionStats.WEEKS -> {
@@ -472,6 +472,7 @@ fun StatsScreen(
                                     TopArtistCard(
                                         rank = index + 1,
                                         artist = artist.artist,
+                                        minutesListened = (artist.timeListened?.toLong() ?: 0L) / 60000L,
                                         onClick = {
                                             navController.navigate("artist/${artist.id}")
                                         }

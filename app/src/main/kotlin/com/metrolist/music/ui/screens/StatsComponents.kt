@@ -120,7 +120,12 @@ fun <T> TopItemsCarousel(
 }
 
 @Composable
-fun TopArtistCard(rank: Int, artist: ArtistEntity, onClick: () -> Unit = {}) {
+fun TopArtistCard(
+    rank: Int,
+    artist: ArtistEntity,
+    minutesListened: Long = 0L,
+    onClick: () -> Unit = {}
+) {
     Card(
         onClick = onClick,
         shape = CardSquircle,
@@ -128,7 +133,7 @@ fun TopArtistCard(rank: Int, artist: ArtistEntity, onClick: () -> Unit = {}) {
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         modifier = Modifier
-            .width(160.dp)
+            .width(140.dp)
             .wrapContentHeight()
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -138,45 +143,60 @@ fun TopArtistCard(rank: Int, artist: ArtistEntity, onClick: () -> Unit = {}) {
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
+                    .height(140.dp)
                     .clip(CardSquircle)
             )
+            // Small discrete rank badge — top-start corner, small text
             Box(
                 modifier = Modifier
-                    .padding(10.dp)
+                    .padding(6.dp)
                     .background(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.82f),
                         shape = BadgeSquircle
                     )
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .padding(horizontal = 7.dp, vertical = 2.dp)
                     .align(Alignment.TopStart)
             ) {
                 Text(
                     text = "#$rank",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 22.sp
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
                     ),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
         ) {
             Text(
                 text = artist.name,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            if (minutesListened > 0L) {
+                Text(
+                    text = "$minutesListened min",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
 
 @Composable
-fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onClick: () -> Unit = {}) {
+fun TopAlbumCard(
+    rank: Int,
+    album: AlbumEntity,
+    artists: List<ArtistEntity>,
+    onClick: () -> Unit = {}
+) {
     Card(
         onClick = onClick,
         shape = CardSquircle,
@@ -184,7 +204,7 @@ fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onC
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         modifier = Modifier
-            .width(200.dp)
+            .width(140.dp)
             .wrapContentHeight()
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -194,33 +214,33 @@ fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onC
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
+                    .height(140.dp)
                     .clip(CardSquircle)
             )
             Box(
                 modifier = Modifier
-                    .padding(10.dp)
+                    .padding(6.dp)
                     .background(
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.88f),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.82f),
                         shape = BadgeSquircle
                     )
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .padding(horizontal = 7.dp, vertical = 2.dp)
                     .align(Alignment.TopStart)
             ) {
                 Text(
                     text = "#$rank",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 22.sp
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
                     ),
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
             Text(
                 text = album.title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -237,7 +257,12 @@ fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onC
 }
 
 @Composable
-fun TopSongCard(rank: Int, song: SongEntity, artists: List<ArtistEntity>, onClick: () -> Unit = {}) {
+fun TopSongCard(
+    rank: Int,
+    song: SongEntity,
+    artists: List<ArtistEntity>,
+    onClick: () -> Unit = {}
+) {
     Card(
         onClick = onClick,
         shape = CardSquircle,
@@ -245,7 +270,7 @@ fun TopSongCard(rank: Int, song: SongEntity, artists: List<ArtistEntity>, onClic
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         modifier = Modifier
-            .width(160.dp)
+            .width(140.dp)
             .wrapContentHeight()
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -255,33 +280,33 @@ fun TopSongCard(rank: Int, song: SongEntity, artists: List<ArtistEntity>, onClic
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
+                    .height(140.dp)
                     .clip(CardSquircle)
             )
             Box(
                 modifier = Modifier
-                    .padding(10.dp)
+                    .padding(6.dp)
                     .background(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.88f),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.82f),
                         shape = BadgeSquircle
                     )
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .padding(horizontal = 7.dp, vertical = 2.dp)
                     .align(Alignment.TopStart)
             ) {
                 Text(
                     text = "#$rank",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 22.sp
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
                     ),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
             Text(
                 text = song.title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -303,7 +328,7 @@ fun SectionHeader(title: String) {
         text = title,
         style = MaterialTheme.typography.titleLarge,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp, end = 16.dp)
+        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp, end = 16.dp)
     )
 }
 
@@ -320,19 +345,21 @@ fun StatsDataBox(
     Card(
         shape = CardSquircle,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 16.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Text(
-                text = stringResource(R.string.listening_stats),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.padding(bottom = 16.dp)
+                text = "IRIDE",
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 12.dp)
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -367,26 +394,27 @@ fun StatsDataBox(
 fun StatItem(value: String, label: String, iconRes: Int) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(horizontal = 8.dp)
+        modifier = Modifier.padding(horizontal = 6.dp)
     ) {
         Icon(
             painter = painterResource(iconRes),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
-                .size(28.dp)
-                .padding(bottom = 4.dp)
+                .size(22.dp)
+                .padding(bottom = 3.dp)
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.ExtraBold,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
+
