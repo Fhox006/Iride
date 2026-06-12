@@ -159,9 +159,8 @@ fun TopArtistCard(
             ) {
                 Text(
                     text = "#$rank",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold
                     ),
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -172,7 +171,7 @@ fun TopArtistCard(
         ) {
             Text(
                 text = artist.name,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -180,7 +179,7 @@ fun TopArtistCard(
             if (minutesListened > 0L) {
                 Text(
                     text = "$minutesListened min",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -195,6 +194,7 @@ fun TopAlbumCard(
     rank: Int,
     album: AlbumEntity,
     artists: List<ArtistEntity>,
+    minutesListened: Long = 0L,
     onClick: () -> Unit = {}
 ) {
     Card(
@@ -204,7 +204,7 @@ fun TopAlbumCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         modifier = Modifier
-            .width(140.dp)
+            .width(160.dp)
             .wrapContentHeight()
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -214,7 +214,7 @@ fun TopAlbumCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(140.dp)
+                    .height(160.dp)
                     .clip(CardSquircle)
             )
             Box(
@@ -229,9 +229,8 @@ fun TopAlbumCard(
             ) {
                 Text(
                     text = "#$rank",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold
                     ),
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -240,18 +239,27 @@ fun TopAlbumCard(
         Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
             Text(
                 text = album.title,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = artists.joinToString(", ") { it.name },
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            if (minutesListened > 0L) {
+                Text(
+                    text = "$minutesListened min",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
@@ -295,9 +303,8 @@ fun TopSongCard(
             ) {
                 Text(
                     text = "#$rank",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold
                     ),
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -306,14 +313,14 @@ fun TopSongCard(
         Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
             Text(
                 text = song.title,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = artists.joinToString(", ") { it.name },
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -353,10 +360,9 @@ fun StatsDataBox(
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Text(
-                text = "IRIDE",
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp
+                text = "Recap",
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.SemiBold
                 ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 12.dp)
@@ -401,8 +407,8 @@ fun StatItem(value: String, label: String, iconRes: Int) {
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
-                .size(22.dp)
-                .padding(bottom = 3.dp)
+                .size(24.dp)
+                .padding(bottom = 4.dp)
         )
         Text(
             text = value,
@@ -417,4 +423,5 @@ fun StatItem(value: String, label: String, iconRes: Int) {
         )
     }
 }
+
 

@@ -182,6 +182,7 @@ fun ArtistScreen(
     val lazyListState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showLocal by rememberSaveable { mutableStateOf(false) }
+
     val librarySourceIndicatorOffset by animateDpAsState(
         targetValue = if (!showLocal) 2.dp else 42.dp,
         animationSpec = spring(
@@ -666,6 +667,7 @@ fun ArtistScreen(
                     }
                 } else {
                     artistPage?.sections?.fastForEach { section ->
+                        if (section.title.contains("from your library", ignoreCase = true)) return@fastForEach
                         if (section.items.isNotEmpty()) {
                             val isSinglesSection = section.title.contains("Single", ignoreCase = true) || section.title.contains("EP", ignoreCase = true)
                             // Filter out recent album and duplicate Singles/EPs

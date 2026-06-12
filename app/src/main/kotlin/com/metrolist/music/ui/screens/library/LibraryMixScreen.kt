@@ -117,7 +117,7 @@ import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
-import com.metrolist.music.ui.component.SortHeader
+import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.menu.AlbumMenu
 import com.metrolist.music.ui.menu.ArtistMenu
 import com.metrolist.music.ui.menu.PlaylistMenu
@@ -363,6 +363,13 @@ fun LibraryMixScreen(
         }
     }
 
+    val sortOptions = listOf(
+        MixSortType.CREATE_DATE to stringResource(R.string.sort_by_create_date),
+        MixSortType.LAST_UPDATED to stringResource(R.string.sort_by_last_updated),
+        MixSortType.NAME to stringResource(R.string.sort_by_name),
+    )
+    val hasRecentItems = filteredItems.isNotEmpty()
+
     val coroutineScope = rememberCoroutineScope()
 
     val lazyListState = rememberLazyListState()
@@ -528,7 +535,7 @@ fun LibraryMixScreen(
                                     )
                                 }
 
-                                if (normalizedQuery.isBlank()) {
+                                if (normalizedQuery.isBlank() && hasRecentItems) {
                                     item(key = "recently_added_label", contentType = CONTENT_TYPE_HEADER) {
                                         Text(
                                             text = if (displayedFilter) "Recently Added" else "Recently Downloaded",
@@ -537,41 +544,14 @@ fun LibraryMixScreen(
                                         )
                                     }
                                     item(key = "sort_header", contentType = CONTENT_TYPE_HEADER) {
-                                        SortHeader(
-                                            sortType = sortType,
+                                        LibrarySortRow(
+                                            sortOptions = sortOptions,
+                                            currentSort = sortType,
+                                            onSortChange = onSortTypeChange,
                                             sortDescending = sortDescending,
-                                            onSortTypeChange = onSortTypeChange,
                                             onSortDescendingChange = onSortDescendingChange,
-                                            sortTypeText = { sortType ->
-                                                when (sortType) {
-                                                    MixSortType.CREATE_DATE -> R.string.sort_by_create_date
-                                                    MixSortType.LAST_UPDATED -> R.string.sort_by_last_updated
-                                                    MixSortType.NAME -> R.string.sort_by_name
-                                                }
-                                            },
-                                            trailingContent = {
-                                                IconButton(
-                                                    onClick = {
-                                                        viewType = if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else LibraryViewType.LIST
-                                                    },
-                                                    modifier = Modifier.size(40.dp),
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(
-                                                            when (viewType) {
-                                                                LibraryViewType.LIST -> R.drawable.list
-                                                                else -> R.drawable.grid_view
-                                                            }
-                                                        ),
-                                                        contentDescription = stringResource(
-                                                            when (viewType) {
-                                                                LibraryViewType.LIST -> R.string.switch_to_grid_view
-                                                                else -> R.string.switch_to_list_view
-                                                            }
-                                                        ),
-                                                    )
-                                                }
-                                            },
+                                            viewType = viewType,
+                                            onViewTypeChange = { viewType = it },
                                         )
                                     }
                                 }
@@ -742,7 +722,7 @@ fun LibraryMixScreen(
                                     )
                                 }
 
-                                if (normalizedQuery.isBlank()) {
+                                if (normalizedQuery.isBlank() && hasRecentItems) {
                                     item(
                                         key = "recently_added_label",
                                         span = { GridItemSpan(maxLineSpan) },
@@ -759,41 +739,14 @@ fun LibraryMixScreen(
                                         span = { GridItemSpan(maxLineSpan) },
                                         contentType = CONTENT_TYPE_HEADER,
                                     ) {
-                                        SortHeader(
-                                            sortType = sortType,
+                                        LibrarySortRow(
+                                            sortOptions = sortOptions,
+                                            currentSort = sortType,
+                                            onSortChange = onSortTypeChange,
                                             sortDescending = sortDescending,
-                                            onSortTypeChange = onSortTypeChange,
                                             onSortDescendingChange = onSortDescendingChange,
-                                            sortTypeText = { sortType ->
-                                                when (sortType) {
-                                                    MixSortType.CREATE_DATE -> R.string.sort_by_create_date
-                                                    MixSortType.LAST_UPDATED -> R.string.sort_by_last_updated
-                                                    MixSortType.NAME -> R.string.sort_by_name
-                                                }
-                                            },
-                                            trailingContent = {
-                                                IconButton(
-                                                    onClick = {
-                                                        viewType = if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else LibraryViewType.LIST
-                                                    },
-                                                    modifier = Modifier.size(40.dp),
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(
-                                                            when (viewType) {
-                                                                LibraryViewType.LIST -> R.drawable.list
-                                                                else -> R.drawable.grid_view
-                                                            }
-                                                        ),
-                                                        contentDescription = stringResource(
-                                                            when (viewType) {
-                                                                LibraryViewType.LIST -> R.string.switch_to_grid_view
-                                                                else -> R.string.switch_to_list_view
-                                                            }
-                                                        ),
-                                                    )
-                                                }
-                                            },
+                                            viewType = viewType,
+                                            onViewTypeChange = { viewType = it },
                                         )
                                     }
                                 }

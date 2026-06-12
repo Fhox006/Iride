@@ -360,8 +360,9 @@ fun StatsScreen(
         ) {
             LazyColumn(
                 state = lazyListState,
-                contentPadding = LocalPlayerAwareWindowInsets.current
-                    .asPaddingValues(),
+                contentPadding = PaddingValues(
+                    bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()
+                ),
                 modifier = Modifier.fillMaxSize()
             ) {
                 val filteredArtists =
@@ -493,6 +494,7 @@ fun StatsScreen(
                                         rank = index + 1,
                                         album = album.album,
                                         artists = album.artists,
+                                        minutesListened = (album.timeListened?.toLong() ?: 0L) / 60000L,
                                         onClick = {
                                             navController.navigate("album/${album.id}")
                                         }
