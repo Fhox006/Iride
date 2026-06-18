@@ -8,8 +8,12 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.request.headers
 import io.ktor.client.request.parameter
+import io.ktor.client.request.url
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.append
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import timber.log.Timber

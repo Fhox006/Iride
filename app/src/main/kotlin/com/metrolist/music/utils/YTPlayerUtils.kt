@@ -117,7 +117,7 @@ object YTPlayerUtils {
 
         // Try WEB_REMIX with signature timestamp and poToken (same as before)
         Timber.tag(logTag).d("Attempting to get player response using MAIN_CLIENT: ${MAIN_CLIENT.clientName}")
-        var mainPlayerResponse = YouTube.player(videoId, playlistId, MAIN_CLIENT, signatureTimestamp.timestamp, poToken?.playerRequestPoToken).getOrThrow()
+        var mainPlayerResponse = YouTube.player(videoId, playlistId, MAIN_CLIENT, signatureTimestamp.timestamp).getOrThrow()
 
         // Debug uploaded track response
         if (isUploadedTrack || playlistId?.contains("MLPT") == true) {
@@ -140,7 +140,7 @@ object YTPlayerUtils {
             // Age-restricted: use WEB_CREATOR directly (no NewPipe needed from here)
             Timber.tag(logTag).d("Age-restricted detected, using WEB_CREATOR")
             Timber.tag(TAG).i("Age-restricted: using WEB_CREATOR for videoId=$videoId")
-            val creatorResponse = YouTube.player(videoId, playlistId, WEB_CREATOR, null, null).getOrNull()
+            val creatorResponse = YouTube.player(videoId, playlistId, WEB_CREATOR, null).getOrNull()
             if (creatorResponse?.playabilityStatus?.status == "OK") {
                 Timber.tag(logTag).d("WEB_CREATOR works for age-restricted content")
                 mainPlayerResponse = creatorResponse
@@ -206,7 +206,7 @@ object YTPlayerUtils {
                 // Skip signature timestamp for age-restricted (faster), use it for normal content
                 val clientSigTimestamp = if (wasOriginallyAgeRestricted) null else signatureTimestamp.timestamp
                 streamPlayerResponse =
-                    YouTube.player(videoId, playlistId, client, clientSigTimestamp, clientPoToken).getOrNull()
+                    YouTube.player(videoId, playlistId, client, clientSigTimestamp).getOrNull()
             }
 
             // process current client response

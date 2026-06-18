@@ -21,7 +21,7 @@ data class YouTubeClient(
     val loginRequired: Boolean = false,
     val useSignatureTimestamp: Boolean = false,
     val isEmbedded: Boolean = false,
-    val useWebPoTokens: Boolean = false,
+    val useWebPoTokens: Boolean = false, // Iride-specific
 ) {
     fun toContext(locale: YouTubeLocale, visitorData: String?, dataSyncId: String?) = Context(
         client = Context.Client(
@@ -42,7 +42,7 @@ data class YouTubeClient(
     )
 
     companion object {
-        const val USER_AGENT_WEB = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0"
+        const val USER_AGENT_WEB = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0"
 
         const val ORIGIN_YOUTUBE_MUSIC = "https://music.youtube.com"
         const val REFERER_YOUTUBE_MUSIC = "$ORIGIN_YOUTUBE_MUSIC/"
@@ -62,7 +62,7 @@ data class YouTubeClient(
             userAgent = USER_AGENT_WEB,
             loginSupported = true,
             useSignatureTimestamp = true,
-            useWebPoTokens = true,
+            useWebPoTokens = true, // Iride-specific
         )
 
         val WEB_CREATOR = YouTubeClient(
@@ -82,14 +82,9 @@ data class YouTubeClient(
             userAgent = "Mozilla/5.0(SMART-TV; Linux; Tizen 4.0.0.2) AppleWebkit/605.1.15 (KHTML, like Gecko) SamsungBrowser/9.2 TV Safari/605.1.15",
             loginSupported = true,
             loginRequired = true,
-            useSignatureTimestamp = true,
-            useWebPoTokens = true,
+            useSignatureTimestamp = true
         )
 
-        /**
-         * Embedded player that can bypass age-restriction.
-         * Does not require login for age-restricted content.
-         */
         val TVHTML5_SIMPLY_EMBEDDED_PLAYER = YouTubeClient(
             clientName = "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
             clientVersion = "2.0",
@@ -118,11 +113,6 @@ data class YouTubeClient(
             useSignatureTimestamp = true
         )
 
-        /**
-         * Video not playable: Paid / Movie / Private / Age-restricted.
-         * Note: The 'Authorization' key must be excluded from the header.
-         * For some reason, PoToken is not required.
-         */
         val ANDROID_NO_SDK = YouTubeClient(
             clientName = "ANDROID",
             clientVersion = "21.03.38",
@@ -142,10 +132,6 @@ data class YouTubeClient(
             useSignatureTimestamp = false
         )
 
-        /**
-         * Video not playable: Kids / Paid / Movie / Private / Age-restricted.
-         * This client can only be used when logged out.
-         */
         val ANDROID_VR_1_61_48 = YouTubeClient(
             clientName = "ANDROID_VR",
             clientVersion = "1.61.48",
@@ -164,10 +150,6 @@ data class YouTubeClient(
             useSignatureTimestamp = false
         )
 
-        /**
-         * Uses non adaptive bitrate, which fixes audio stuttering with YT Music.
-         * Does not use AV1.
-         */
         val ANDROID_VR_1_43_32 = YouTubeClient(
             clientName = "ANDROID_VR",
             clientVersion = "1.43.32",
@@ -186,9 +168,6 @@ data class YouTubeClient(
             useSignatureTimestamp = false
         )
 
-        /**
-         * Cannot play livestreams and lacks HDR, but can play videos with music and labeled "for children".
-         */
         val ANDROID_CREATOR = YouTubeClient(
             clientName = "ANDROID_CREATOR",
             clientVersion = "25.03.101",
@@ -207,9 +186,6 @@ data class YouTubeClient(
             useSignatureTimestamp = true
         )
 
-        /**
-         * Internal YT client for an unreleased YT client. May stop working at any time.
-         */
         val VISIONOS = YouTubeClient(
             clientName = "VISIONOS",
             clientVersion = "0.1",
@@ -224,10 +200,6 @@ data class YouTubeClient(
             useSignatureTimestamp = false
         )
 
-        /**
-         * The device machine id for the iPad 6th Gen (iPad7,6).
-         * AV1 hardware decoding is not supported.
-         */
         val IPADOS = YouTubeClient(
             clientName = "IOS",
             clientVersion = "21.03.3",

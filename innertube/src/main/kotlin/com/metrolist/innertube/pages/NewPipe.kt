@@ -7,6 +7,7 @@ import io.ktor.http.parseQueryString
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.schabi.newpipe.extractor.NewPipe
+import org.schabi.newpipe.extractor.downloader.CancellableCall
 import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Request
 import org.schabi.newpipe.extractor.downloader.Response
@@ -36,6 +37,29 @@ class NewPipeDownloaderImpl(
 
     @Throws(IOException::class, ReCaptchaException::class)
     override fun execute(request: Request): Response {
+        val response = client.newCall(buildOkHttpRequest(request)).execute()
+        return handleOkHttpResponse(response)
+    }
+
+    override fun executeAsync(request: Request, callback: AsyncCallback): CancellableCall {
+        val call = client.newCall(buildOkHttpRequest(request))
+        call.enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: IOException) {
+                callback.onError(e)
+            }
+
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                try {
+                    callback.onSuccess(handleOkHttpResponse(response))
+                } catch (e: Exception) {
+                    callback.onError(e)
+                }
+            }
+        })
+        return CancellableCall(call)
+    }
+
+    private fun buildOkHttpRequest(request: Request): okhttp3.Request {
         val httpMethod = request.httpMethod()
         val url = request.url()
         val headers = request.headers()
@@ -58,17 +82,27 @@ class NewPipeDownloaderImpl(
                 requestBuilder.header(headerName, headerValueList[0])
             }
         }
+        return requestBuilder.build()
+    }
 
-        val response = client.newCall(requestBuilder.build()).execute()
-
+    private fun handleOkHttpResponse(response: okhttp3.Response): Response {
         if (response.code == 429) {
+            val url = response.request.url.toString()
             response.close()
             throw ReCaptchaException("reCaptcha Challenge requested", url)
         }
 
-        val responseBodyToReturn = response.body.string()
+        val rawResponseBody = response.body?.bytes() ?: ByteArray(0)
+        val responseBodyToReturn = String(rawResponseBody)
         val latestUrl = response.request.url.toString()
-        return Response(response.code, response.message, response.headers.toMultimap(), responseBodyToReturn, latestUrl)
+        return Response(
+            response.code,
+            response.message,
+            response.headers.toMultimap(),
+            responseBodyToReturn,
+            rawResponseBody,
+            latestUrl,
+        )
     }
 }
 

@@ -149,17 +149,19 @@ class PlayerConnection(
 
     val mediaMetadata = MutableStateFlow(player.currentMetadata)
     val currentSong =
-        mediaMetadata.flatMapLatest {
-            database.song(it?.id)
-        }
+        mediaMetadata.flatMapLatest { metadata ->
+            database.song(metadata?.id)
+        }.stateIn(scope, SharingStarted.Lazily, null)
+
     val currentLyrics =
-        mediaMetadata.flatMapLatest { mediaMetadata ->
-            database.lyrics(mediaMetadata?.id)
-        }
+        mediaMetadata.flatMapLatest { metadata ->
+            database.lyrics(metadata?.id)
+        }.stateIn(scope, SharingStarted.Lazily, null)
+
     val currentFormat =
-        mediaMetadata.flatMapLatest { mediaMetadata ->
-            database.format(mediaMetadata?.id)
-        }
+        mediaMetadata.flatMapLatest { metadata ->
+            database.format(metadata?.id)
+        }.stateIn(scope, SharingStarted.Lazily, null)
 
     val queueTitle = MutableStateFlow<String?>(null)
     val queueWindows = MutableStateFlow<List<Timeline.Window>>(emptyList())
@@ -207,7 +209,6 @@ class PlayerConnection(
             Timber.tag(TAG).d("PlayerConnection flow observer registered")
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to initialize PlayerConnection listener or state")
-            // Propagate the error so MainActivity can retry
             throw e
         }
     }
@@ -216,7 +217,8 @@ class PlayerConnection(
         attachedPlayer?.removeListener(this)
         attachedPlayer = newPlayer
         newPlayer.addListener(this)
-        // Refresh all state from new player
+        
+        // Refresh all state from new player using Muzza's initial sync pattern
         playbackState.value = newPlayer.playbackState
         playWhenReady.value = newPlayer.playWhenReady
         mediaMetadata.value = newPlayer.currentMetadata
@@ -226,24 +228,17 @@ class PlayerConnection(
         currentMediaItemIndex.value = newPlayer.currentMediaItemIndex
         shuffleModeEnabled.value = newPlayer.shuffleModeEnabled
         repeatMode.value = newPlayer.repeatMode
+        updateCanSkipPreviousAndNext()
+        
         Timber.tag(TAG).d("Attached to new player instance: $newPlayer")
     }
 
     fun playQueue(queue: Queue) {
-        // Block if Listen Together guest (unless internal sync)
         if (!allowInternalSync && shouldBlockPlaybackChanges?.invoke() == true) {
-            Timber.tag("PlayerConnection").d("playQueue blocked - Listen Together guest")
+            Timber.tag(TAG).d("playQueue blocked - Listen Together guest")
             return
         }
-        if (!playerReadinessFlow.value) {
-            Timber.tag(TAG).w("playQueue called before player ready; delegating to service")
-        }
-        try {
-            service.playQueue(queue)
-        } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "Error in playQueue")
-            throw e
-        }
+        service.playQueue(queue)
     }
 
     fun prefetchStreamUrls(mediaIds: List<String>) {

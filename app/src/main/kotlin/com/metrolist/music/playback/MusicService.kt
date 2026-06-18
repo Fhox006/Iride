@@ -1067,24 +1067,22 @@ class MusicService :
             silenceProcessor.instantModeEnabled = skipSilence && instantSkip
         }
 
-        val player =
-            ExoPlayer
-                .Builder(this)
-                .setMediaSourceFactory(createMediaSourceFactory())
-                .setRenderersFactory(createRenderersFactory(eqProcessor, silenceProcessor))
-                .setHandleAudioBecomingNoisy(true)
-                .setWakeMode(C.WAKE_MODE_NETWORK)
-                .setAudioAttributes(
-                    AudioAttributes
-                        .Builder()
-                        .setUsage(C.USAGE_MEDIA)
-                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                        .build(),
-                    false,
-                ).setSeekBackIncrementMs(5000)
-                .setSeekForwardIncrementMs(5000)
-                .setDeviceVolumeControlEnabled(true)
-                .build()
+        val player = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(createDataSourceFactory()))
+            .setRenderersFactory(createRenderersFactory(eqProcessor, silenceProcessor))
+            .setHandleAudioBecomingNoisy(true)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .build(),
+                true, // Muzza uses automatic audio focus
+            )
+            .setSeekBackIncrementMs(5000)
+            .setSeekForwardIncrementMs(5000)
+            .setDeviceVolumeControlEnabled(true)
+            .build()
 
         playerSilenceProcessors[player] = silenceProcessor
 
@@ -1096,8 +1094,38 @@ class MusicService :
                 skipSilenceEnabled = dataStore.get(SkipSilenceKey, false)
             }
             addAnalyticsListener(PlaybackStatsListener(false, this@MusicService))
+        }
+        return player
+    }
 
-            // Cleanup handled manually in onDestroy/release
+    fun createExoPlayerWithoutAudioFocus(): ExoPlayer {
+        val eqProcessor = CustomEqualizerAudioProcessor()
+        equalizerService.addAudioProcessor(eqProcessor)
+        val silenceProcessor = SilenceDetectorAudioProcessor(onLongSilence = { /* ignore for crossfade */ })
+
+        val player = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(createDataSourceFactory()))
+            .setRenderersFactory(createRenderersFactory(eqProcessor, silenceProcessor)) // Standard processors for crossfade
+            .setHandleAudioBecomingNoisy(false)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .build(),
+                false,
+            )
+            .setSeekBackIncrementMs(5000)
+            .setSeekForwardIncrementMs(5000)
+            .setDeviceVolumeControlEnabled(true)
+            .build()
+
+        player.apply {
+            runBlocking {
+                val offload = dataStore.get(AudioOffload, false)
+                setOffloadEnabled(offload)
+                skipSilenceEnabled = dataStore.get(SkipSilenceKey, false)
+            }
         }
         return player
     }
@@ -3115,7 +3143,37 @@ class MusicService :
         return ResolvingDataSource.Factory(createCacheDataSource()) { dataSpec ->
             val mediaId = dataSpec.key ?: error("No media id")
 
-            // Check if we need to bypass cache for quality change
+            // Check if song is local
+            val isLocalSong = runBlocking(Dispatchers.IO) {
+                database.song(mediaId).first()?.song?.isLocal == true
+            }
+
+            if (isLocalSong) {
+                val songData = runBlocking(Dispatchers.IO) {
+                    database.song(mediaId).first()
+                }
+                val localId = songData?.song?.id
+
+                return@Factory if (localId != null && (localId.startsWith("content://") || localId.startsWith("file://"))) {
+                    dataSpec.withUri(localId.toUri())
+                } else if (localId != null && java.io.File(localId).exists()) {
+                    try {
+                        val authority = "${packageName}.fileprovider"
+                        val fileUri = androidx.core.content.FileProvider.getUriForFile(
+                            this,
+                            authority,
+                            java.io.File(localId)
+                        )
+                        dataSpec.withUri(fileUri)
+                    } catch (_: Exception) {
+                        dataSpec.withUri(android.net.Uri.fromFile(java.io.File(localId)))
+                    }
+                } else {
+                    dataSpec
+                }
+            }
+
+            // Remote song logic
             val shouldBypassCache = bypassCacheForQualityChange.contains(mediaId)
 
             if (!shouldBypassCache) {
@@ -3135,11 +3193,8 @@ class MusicService :
                     scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
                     return@Factory dataSpec.withUri(it.first.toUri())
                 }
-            } else {
-                Timber.tag("MusicService").i("BYPASSING CACHE for $mediaId due to quality change")
             }
 
-            Timber.tag("MusicService").i("FETCHING STREAM: $mediaId | quality=$audioQuality | fastLoader=$fastLoaderEnabled")
             val playbackData =
                 runBlocking(Dispatchers.IO) {
                     YTPlayerUtils.playerResponseForPlayback(
@@ -3150,10 +3205,7 @@ class MusicService :
                     )
                 }.getOrElse { throwable ->
                     when (throwable) {
-                        is PlaybackException -> {
-                            throw throwable
-                        }
-
+                        is PlaybackException -> throw throwable
                         is java.net.ConnectException, is java.net.UnknownHostException -> {
                             throw PlaybackException(
                                 getString(R.string.error_no_internet),
@@ -3161,7 +3213,6 @@ class MusicService :
                                 PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
                             )
                         }
-
                         is java.net.SocketTimeoutException -> {
                             throw PlaybackException(
                                 getString(R.string.error_timeout),
@@ -3169,7 +3220,6 @@ class MusicService :
                                 PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
                             )
                         }
-
                         else -> {
                             throw PlaybackException(
                                 getString(R.string.error_unknown),
@@ -3180,51 +3230,35 @@ class MusicService :
                     }
                 }
 
-            val nonNullPlayback =
-                requireNotNull(playbackData) {
-                    getString(R.string.error_unknown)
-                }
-            run {
-                val format = nonNullPlayback.format
-                val loudnessDb = nonNullPlayback.audioConfig?.loudnessDb
-                val perceptualLoudnessDb = nonNullPlayback.audioConfig?.perceptualLoudnessDb
-
-                Timber
-                    .tag(TAG)
-                    .d("Storing format for $mediaId with loudnessDb: $loudnessDb, perceptualLoudnessDb: $perceptualLoudnessDb")
-                if (loudnessDb == null && perceptualLoudnessDb == null) {
-                    Timber.tag(TAG).w("No loudness data available from YouTube for video: $mediaId")
-                }
-
-                database.query {
-                    upsert(
-                        FormatEntity(
-                            id = mediaId,
-                            itag = format.itag,
-                            mimeType = format.mimeType.split(";")[0],
-                            codecs = format.mimeType.split("codecs=")[1].removeSurrounding("\""),
-                            bitrate = format.bitrate,
-                            sampleRate = format.audioSampleRate,
-                            contentLength = format.contentLength!!,
-                            loudnessDb = loudnessDb,
-                            perceptualLoudnessDb = perceptualLoudnessDb,
-                            playbackUrl = nonNullPlayback.playbackTracking?.videostatsPlaybackUrl?.baseUrl,
-                        ),
-                    )
-                }
-                scope.launch(Dispatchers.IO) { recoverSong(mediaId, nonNullPlayback) }
-
-                // Clear bypass flag now that we've fetched fresh stream
-                if (bypassCacheForQualityChange.remove(mediaId)) {
-                    Timber.tag("MusicService").d("Cleared bypass cache flag for $mediaId after fresh fetch")
-                }
-
-                val streamUrl = nonNullPlayback.streamUrl
-
-                songUrlCache[mediaId] =
-                    streamUrl to System.currentTimeMillis() + (nonNullPlayback.streamExpiresInSeconds * 1000L)
-                return@Factory dataSpec.withUri(streamUrl.toUri()).subrange(dataSpec.uriPositionOffset, CHUNK_LENGTH)
+            val nonNullPlayback = requireNotNull(playbackData) { getString(R.string.error_unknown) }
+            val format = nonNullPlayback.format
+            
+            database.query {
+                upsert(
+                    FormatEntity(
+                        id = mediaId,
+                        itag = format.itag,
+                        mimeType = format.mimeType.split(";")[0],
+                        codecs = format.mimeType.split("codecs=")[1].removeSurrounding("\""),
+                        bitrate = format.bitrate,
+                        sampleRate = format.audioSampleRate,
+                        contentLength = format.contentLength!!,
+                        loudnessDb = nonNullPlayback.audioConfig?.loudnessDb,
+                        perceptualLoudnessDb = nonNullPlayback.audioConfig?.perceptualLoudnessDb,
+                        playbackUrl = nonNullPlayback.playbackTracking?.videostatsPlaybackUrl?.baseUrl,
+                    ),
+                )
             }
+            scope.launch(Dispatchers.IO) { recoverSong(mediaId, nonNullPlayback) }
+
+            if (shouldBypassCache) {
+                bypassCacheForQualityChange.remove(mediaId)
+            }
+
+            val streamUrl = nonNullPlayback.streamUrl
+            songUrlCache[mediaId] = streamUrl to System.currentTimeMillis() + (nonNullPlayback.streamExpiresInSeconds * 1000L)
+            
+            return@Factory dataSpec.withUri(streamUrl.toUri()).subrange(dataSpec.uriPositionOffset, CHUNK_LENGTH)
         }
     }
 
