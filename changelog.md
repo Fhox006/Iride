@@ -1,3 +1,25 @@
+## 0.1.0-alpha16
+
+### New features
+
+- **Hero Carousel**: new opt-in home screen carousel (Settings → Interface) surfacing new releases, mood picks, personalized mixes, and artist radio — replaces the old Discovery Carousel
+- **BetterLyrics Unison & Sillaba providers**: two new word-synced lyrics sources, each individually toggleable in Settings → Content, with tier-based tie-break priority against existing providers
+- **Share to platform**: sharing a song now lets you pick YouTube Music, Spotify, Apple Music, or SoundCloud, resolving a matching link instead of only sharing the YouTube Music URL
+- **Faster Loader / Metrolist Player Logic**: two new player settings for faster stream resolution when changing tracks
+
+### Bug fixes
+
+- Fixed "Start radio" silently doing nothing in some cases by always forcing a full queue replace instead of an incremental insert that could swallow exceptions
+- Fixed network status reporting a stale "offline" state on signal degradation (walking, cellular handover, in-call) by dropping the strict `NET_CAPABILITY_VALIDATED` requirement
+- Fixed search results always following YouTube's fixed Songs/Videos/Albums/Artists order regardless of query intent — results are now reordered based on the inferred top-result category (artist, album, playlist, podcast)
+
+### Improvements
+
+- Search result grid now uses per-type thumbnail sizing and aspect ratio (16:9 for videos, larger tiles for albums)
+- Queue drag-to-reorder auto-scroll near screen edges slowed to ~25% of its previous speed
+- Search results are enriched in the background with additional items per category beyond the initial truncated summary
+- Small hidden bias added to lyrics word-timing offset to correct for perceptibly-early animation
+
 ## 0.1.0-alpha15
 
 ### New features
