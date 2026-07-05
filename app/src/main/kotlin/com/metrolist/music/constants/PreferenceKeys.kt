@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 
@@ -76,6 +77,8 @@ val AlarmEntriesKey = stringPreferencesKey("alarmEntries")
 val DeveloperModeKey = booleanPreferencesKey("developerMode")
 val AdvancedModeKey = booleanPreferencesKey("advancedMode")
 val FastLoaderKey = booleanPreferencesKey("fastLoader")
+val MetrolistPlayerLogicKey = booleanPreferencesKey("metrolistPlayerLogic")
+val FasterLoaderKey = booleanPreferencesKey("fasterLoader")
 
 enum class SliderStyle {
     DEFAULT,
@@ -90,6 +93,8 @@ val ContentCountryKey = stringPreferencesKey("contentCountry")
 val EnableKugouKey = booleanPreferencesKey("enableKugou")
 val EnableLrcLibKey = booleanPreferencesKey("enableLrclib")
 val EnableBetterLyricsKey = booleanPreferencesKey("enableBetterLyrics")
+val EnableBetterLyricsUnisonKey = booleanPreferencesKey("enableBetterLyricsUnison")
+val EnableBetterLyricsSillabaKey = booleanPreferencesKey("enableBetterLyricsSillaba")
 val EnablePaxsenixKey = booleanPreferencesKey("enablePaxsenix")
 val EnableLyricsPlus = booleanPreferencesKey("enableLyricsPlus")
 val HideExplicitKey = booleanPreferencesKey("hideExplicit")
@@ -263,7 +268,8 @@ val MoodSnapshotKey = stringPreferencesKey("moodSnapshot")
 val LastMoodChipTitleKey = stringPreferencesKey("lastMoodChipTitle")
 val LastMoodChipParamsKey = stringPreferencesKey("lastMoodChipParams")
 
-val DiscoveryCarouselEnabledKey = booleanPreferencesKey("discoveryCarouselEnabled")
+val HeroCarouselEnabledKey = booleanPreferencesKey("discoveryCarouselEnabled")
+val SeenNewReleaseFirstIdsKey = stringSetPreferencesKey("seenNewReleaseFirstIds")
 
 val LibraryOfflineModeKey = booleanPreferencesKey("library_offline_mode")
 

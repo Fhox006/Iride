@@ -26,6 +26,7 @@ import com.metrolist.innertube.models.YouTubeClient.Companion.WEB_CREATOR
 import com.metrolist.innertube.models.YouTubeClient.Companion.WEB_REMIX
 import com.metrolist.innertube.models.response.PlayerResponse
 import com.metrolist.music.constants.AudioQuality
+import com.metrolist.music.constants.FasterLoaderKey
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
 import com.metrolist.music.utils.cipher.FunctionNameExtractor
 import com.metrolist.music.utils.cipher.PlayerJsFetcher
@@ -87,6 +88,12 @@ object YTPlayerUtils {
         Timber.tag(TAG).d("videoId: $videoId")
         Timber.tag(TAG).d("playlistId: $playlistId")
         Timber.tag(TAG).d("audioQuality: $audioQuality")
+
+        // Faster Loader: skip the blocking HEAD-request stream URL validation and trust the
+        // URL directly from the (already successful) player response. Saves one network
+        // round-trip per play/skip; a bad URL still gets caught and retried by
+        // MusicService.onPlayerError, so this is safe to skip pre-emptively.
+        val skipStreamValidation = CipherDeobfuscator.appContext.dataStore.get(FasterLoaderKey, true)
 
         // Check if this is an uploaded/privately owned track
         val isUploadedTrack = playlistId == "MLPT" || playlistId?.contains("MLPT") == true
@@ -338,9 +345,9 @@ object YTPlayerUtils {
                     break
                 }
 
-                if (validateStatus(streamUrl)) {
-                    // working stream found
-                    Timber.tag(logTag).d("Stream validated successfully with client: ${currentClient.clientName}")
+                if (skipStreamValidation || validateStatus(streamUrl)) {
+                    // working stream found (or trusted without a pre-emptive HEAD check)
+                    Timber.tag(logTag).d("Stream accepted for client: ${currentClient.clientName} (validated=${!skipStreamValidation})")
                     // Log for release builds
                     Timber.tag(TAG).i("Playback: client=${currentClient.clientName}, videoId=$videoId")
                     break

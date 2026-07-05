@@ -42,6 +42,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -174,9 +175,8 @@ import coil3.request.ImageRequest
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.utils.completed
 import com.metrolist.music.LocalDatabase
-import com.metrolist.music.constants.DiscoveryCarouselEnabledKey
 import com.metrolist.music.db.entities.PlaylistEntity
-import com.metrolist.music.models.DiscoveryItem
+import com.metrolist.music.models.HeroCarouselItem
 import com.metrolist.music.db.entities.PlaylistSongMap
 import com.metrolist.music.utils.SyncState
 import com.metrolist.music.viewmodels.CommunityPlaylistItem
@@ -228,8 +228,8 @@ fun HomeScreen(
     val similarRecommendations by viewModel.similarRecommendations.collectAsStateWithLifecycle()
     val homePage by viewModel.homePage.collectAsStateWithLifecycle()
     val phase1Complete by viewModel.phase1Complete.collectAsStateWithLifecycle()
-    val isDiscoveryEnabled by viewModel.isDiscoveryEnabled.collectAsStateWithLifecycle()
-    val discoveryItems by viewModel.discoveryItems.collectAsStateWithLifecycle()
+    val isHeroCarouselEnabled by viewModel.isHeroCarouselEnabled.collectAsStateWithLifecycle()
+    val heroCarouselItems by viewModel.heroCarouselItems.collectAsStateWithLifecycle()
 
     val accountNameFlow by viewModel.accountName.collectAsStateWithLifecycle()
     val accountImageUrlFlow by viewModel.accountImageUrl.collectAsStateWithLifecycle()
@@ -559,28 +559,45 @@ fun HomeScreen(
                     }
                 }
 
-                // ── Discovery Carousel ─────────────────────────────────────
-                if (isDiscoveryEnabled && discoveryItems.isNotEmpty()) {
-                    item(key = "discovery_carousel") {
-                        DiscoveryCarouselSection(
-                            items = discoveryItems,
-                            onPlaylistClick = { id ->
-                                if (id == PlaylistEntity.LIKED_PLAYLIST_ID)
-                                    navController.navigate("auto_playlist/liked")
-                                else
-                                    navController.navigate("local_playlist/$id")
+                // ── Hero Carousel ───────────────────────────────────────────
+                if (isHeroCarouselEnabled && heroCarouselItems.isNotEmpty()) {
+                    item(key = "hero_carousel") {
+                        HeroCarouselSection(
+                            items = heroCarouselItems,
+                            onNewReleaseClick = { albumId -> navController.navigate("album/$albumId") },
+                            onForYouClick = { playlistId, isLocal ->
+                                when {
+                                    isLocal && playlistId == PlaylistEntity.LIKED_PLAYLIST_ID ->
+                                        navController.navigate("auto_playlist/liked")
+                                    isLocal -> navController.navigate("local_playlist/$playlistId")
+                                    else -> navController.navigate("online_playlist/$playlistId")
+                                }
                             },
-                            onArtistStationClick = { artistId -> navController.navigate("artist/$artistId") },
-                            onAlbumClick = { albumId -> navController.navigate("album/$albumId") },
-                            onRefresh = { viewModel.refreshDiscovery(System.currentTimeMillis()) },
+                            onMoodClick = { playlistId -> navController.navigate("online_playlist/$playlistId") },
+                            onArtistClick = { artistId -> navController.navigate("artist/$artistId") },
+                            onArtistRadioClick = { artistId, _ ->
+                                scope.launch(Dispatchers.IO) {
+                                    val endpoint = viewModel.fetchArtistRadioEndpoint(artistId)
+                                    withContext(Dispatchers.Main) {
+                                        if (endpoint != null) {
+                                            playerConnection?.playQueue(YouTubeQueue(endpoint))
+                                        } else {
+                                            navController.navigate("artist/$artistId")
+                                        }
+                                    }
+                                }
+                                Unit
+                            },
                             modifier = Modifier.animateItem(),
                         )
                     }
                 }
 
                 // ── Speed Dial ──────────────────────────────────────────────
-                if (speedDialItems.isNotEmpty()) {
-                    item(key = "speed_dial_list") {
+                // When the Hero Carousel leads the screen, push Speed Dial a few
+                // blocks down instead of stacking two big carousels back to back.
+                val deferSpeedDialToBottom = isHeroCarouselEnabled && heroCarouselItems.isNotEmpty()
+                val speedDialContent: @Composable LazyItemScope.() -> Unit = {
                         val items = speedDialItems
                         val targetItemSize = 160.dp
                         val columns = (containerWidthDp / targetItemSize).toInt().coerceAtLeast(3)
@@ -788,6 +805,11 @@ fun HomeScreen(
                                 }
                             }
                         }
+                }
+
+                if (speedDialItems.isNotEmpty() && !deferSpeedDialToBottom) {
+                    item(key = "speed_dial_list") {
+                        speedDialContent()
                     }
                 }
 
@@ -970,6 +992,12 @@ fun HomeScreen(
                         ) {
                             items(kl) { localGridItem(it) }
                         }
+                    }
+                }
+
+                if (speedDialItems.isNotEmpty() && deferSpeedDialToBottom) {
+                    item(key = "speed_dial_list") {
+                        speedDialContent()
                     }
                 }
 

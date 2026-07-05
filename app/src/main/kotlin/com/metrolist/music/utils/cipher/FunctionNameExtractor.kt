@@ -66,6 +66,29 @@ object FunctionNameExtractor {
             nArrayIndex = null, // Direct function, not array access
             nConstantArgs = listOf(6, 6010), // GU(6, 6010, n) - the function requires 3 args!
             signatureTimestamp = 20522
+        ),
+        "f4c47414" to HardcodedPlayerConfig(
+            sigFuncName = "hJ",
+            sigConstantArg = 6,
+            sigConstantArgs = listOf(6), // hJ(6, decodeURIComponent(h.s))
+            sigPreprocessFunc = null, // No preprocessing needed
+            sigPreprocessArgs = null,
+            nFuncName = "", // Will be extracted via regex
+            nArrayIndex = null,
+            nConstantArgs = null,
+            signatureTimestamp = 20543
+        ),
+        // May 2026: direct URLs, no client-side cipher or n-transform
+        "57f5d44f" to HardcodedPlayerConfig(
+            sigFuncName = "",
+            sigConstantArg = null,
+            sigConstantArgs = null,
+            sigPreprocessFunc = null,
+            sigPreprocessArgs = null,
+            nFuncName = "",
+            nArrayIndex = null,
+            nConstantArgs = null,
+            signatureTimestamp = 20591
         )
     )
 
@@ -85,6 +108,8 @@ object FunctionNameExtractor {
     private val SIG_FUNCTION_PATTERNS = listOf(
         // Pattern 1 (2025+): &&(VAR=FUNC(NUM,decodeURIComponent(VAR))
         Regex("""&&\s*\(\s*[a-zA-Z0-9$]+\s*=\s*([a-zA-Z0-9$]+)\s*\(\s*(\d+)\s*,\s*decodeURIComponent\s*\(\s*[a-zA-Z0-9$]+\s*\)"""),
+        // Pattern 1a (April 2026): &&(z=hJ(6,decodeURIComponent(h.s))
+        Regex("""&&\s*\(\s*[a-zA-Z0-9$]+\s*=\s*([a-zA-Z0-9$]+)\s*\(\s*(\d+)\s*,\s*decodeURIComponent\s*\(\s*[a-zA-Z0-9$]+\s*\.\s*[a-z]\s*\)"""),
         // Classic patterns (pre-2025, kept as fallback)
         Regex("""\b[cs]\s*&&\s*[adf]\.set\([^,]+\s*,\s*encodeURIComponent\(([a-zA-Z0-9$]+)\("""),
         Regex("""\b[a-zA-Z0-9]+\s*&&\s*[a-zA-Z0-9]+\.set\([^,]+\s*,\s*encodeURIComponent\(([a-zA-Z0-9$]+)\("""),
@@ -99,9 +124,11 @@ object FunctionNameExtractor {
         Regex("""\.get\("n"\)\)&&\(b=([a-zA-Z0-9$]+)(?:\[(\d+)\])?\(([a-zA-Z0-9])\)"""),
         // Pattern 2: .get("n"))&&(FUNC=VAR[IDX](FUNC) (2025+ variant)
         Regex("""\.get\("n"\)\)\s*&&\s*\(([a-zA-Z0-9$]+)\s*=\s*([a-zA-Z0-9$]+)(?:\[(\d+)\])?\(\1\)"""),
-        // Pattern 3: String.fromCharCode(110) variant (110 = 'n')
+        // Pattern 3: .get("n");if(m){var M=n.match... (April 2026 variant)
+        Regex("""\.get\("n"\);if\([a-zA-Z0-9$]+\)\s*\{[^}]*match"""),
+        // Pattern 4: String.fromCharCode(110) variant (110 = 'n')
         Regex("""\(\s*([a-zA-Z0-9$]+)\s*=\s*String\.fromCharCode\(110\)"""),
-        // Pattern 4: enhanced_except_ function pattern
+        // Pattern 5: enhanced_except_ function pattern
         Regex("""([a-zA-Z0-9$]+)\s*=\s*function\([a-zA-Z0-9]\)\s*\{[^}]*?enhanced_except_"""),
     )
 
@@ -258,6 +285,13 @@ object FunctionNameExtractor {
                         return NFunctionInfo(name, arrayIdx, isHardcoded = false)
                     }
                     else -> {
+                        // Skip patterns that match but don't expose a usable function name.
+                        // E.g. the `.get("n");if(...){var M=n.match...` April 2026 variant has
+                        // no capturing groups and reading groupValues[1] would throw.
+                        if (pattern.toPattern().matcher("").groupCount() < 1) {
+                            Timber.tag(TAG).d("N-pattern $index matched but has no capture groups; skipping")
+                            continue
+                        }
                         val name = match.groupValues[1]
                         Timber.tag(TAG).d("N-FUNCTION FOUND via pattern $index:")
                         Timber.tag(TAG).d("  name=$name")

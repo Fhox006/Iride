@@ -102,6 +102,8 @@ import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.VolumeSlider
 import androidx.datastore.preferences.core.edit
+import com.metrolist.music.utils.SharePlatform
+import com.metrolist.music.utils.SongLinkResolver
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
@@ -227,6 +229,63 @@ fun PlayerMenu(
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+
+    var showSharePlatformDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    if (showSharePlatformDialog) {
+        val sharePlatforms =
+            listOf(
+                SharePlatform.YOUTUBE_MUSIC to R.string.share_platform_youtube_music,
+                SharePlatform.SPOTIFY to R.string.share_platform_spotify,
+                SharePlatform.APPLE_MUSIC to R.string.share_platform_apple_music,
+                SharePlatform.SOUNDCLOUD to R.string.share_platform_soundcloud,
+            )
+        val notFoundMessage = stringResource(R.string.share_link_not_found)
+
+        ListDialog(
+            onDismiss = { showSharePlatformDialog = false },
+        ) {
+            item {
+                Text(
+                    text = stringResource(R.string.share_choose_platform),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                )
+            }
+            items(sharePlatforms) { (platform, labelRes) ->
+                Box(
+                    contentAlignment = Alignment.CenterStart,
+                    modifier =
+                        Modifier
+                            .fillParentMaxWidth()
+                            .height(ListItemHeight)
+                            .clickable {
+                                showSharePlatformDialog = false
+                                val youtubeMusicUrl = "https://music.youtube.com/watch?v=${mediaMetadata.id}"
+                                val fallbackQuery =
+                                    listOf(mediaMetadata.title, mediaMetadata.artists.firstOrNull()?.name)
+                                        .filterNotNull()
+                                        .joinToString(" ")
+                                SongLinkResolver.shareLink(
+                                    context = context,
+                                    youtubeMusicUrl = youtubeMusicUrl,
+                                    platform = platform,
+                                    fallbackQuery = fallbackQuery,
+                                    notFoundMessage = notFoundMessage,
+                                )
+                                onDismiss()
+                            }.padding(horizontal = 24.dp),
+                ) {
+                    Text(
+                        text = stringResource(labelRes),
+                        fontSize = 18.sp,
                     )
                 }
             }
@@ -446,17 +505,7 @@ fun PlayerMenu(
                             },
                             text = stringResource(R.string.share),
                             onClick = {
-                                val intent =
-                                    Intent().apply {
-                                        action = Intent.ACTION_SEND
-                                        type = "text/plain"
-                                        putExtra(
-                                            Intent.EXTRA_TEXT,
-                                            "https://music.youtube.com/watch?v=${mediaMetadata.id}",
-                                        )
-                                    }
-                                context.startActivity(Intent.createChooser(intent, null))
-                                onDismiss()
+                                showSharePlatformDialog = true
                             },
                         ),
                         when (download?.state) {

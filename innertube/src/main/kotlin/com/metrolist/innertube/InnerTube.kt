@@ -36,6 +36,13 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  */
 @OptIn(ExperimentalEncodingApi::class)
 class InnerTube {
+    var fastPlayerLogic: Boolean = true
+        set(value) {
+            field = value
+            httpClient.close()
+            httpClient = createClient()
+        }
+
     private var httpClient = createClient()
 
     var locale = YouTubeLocale(
@@ -85,8 +92,8 @@ class InnerTube {
                 // Connection pool settings for better connection reuse
                 connectionPool(
                     okhttp3.ConnectionPool(
-                        5, // maxIdleConnections
-                        2, // keepAliveDuration
+                        if (fastPlayerLogic) 10 else 5, // maxIdleConnections
+                        if (fastPlayerLogic) 5 else 2, // keepAliveDuration
                         java.util.concurrent.TimeUnit.MINUTES
                     )
                 )
@@ -106,7 +113,7 @@ class InnerTube {
                 cache(
                     okhttp3.Cache(
                         directory = java.io.File(System.getProperty("java.io.tmpdir"), "http_cache"),
-                        maxSize = 50L * 1024L * 1024L // 50 MB
+                        maxSize = if (fastPlayerLogic) 128L * 1024L * 1024L else 50L * 1024L * 1024L
                     )
                 )
                 

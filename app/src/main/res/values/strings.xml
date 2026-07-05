@@ -120,6 +120,13 @@
     <string name="view_album">View album</string>
     <string name="refetch">Refetch</string>
     <string name="share">Share</string>
+    <string name="share_choose_platform">Share via</string>
+    <string name="share_platform_youtube_music">YouTube Music</string>
+    <string name="share_platform_spotify">Spotify</string>
+    <string name="share_platform_apple_music">Apple Music</string>
+    <string name="share_platform_soundcloud">SoundCloud</string>
+    <string name="share_link_resolving">Looking for link…</string>
+    <string name="share_link_not_found">No link found on this platform for this song</string>
     <string name="delete">Delete</string>
     <string name="remove_from_history">Remove from history</string>
     <string name="remove_from_playlist">Remove from playlist</string>
@@ -214,7 +221,7 @@
     <string name="undo">Undo</string>
 
     <!-- Player -->
-    <string name="lyrics_not_found">Lyrics not found</string>
+    <string name="lyrics_not_found">Lyrics missing or loading</string>
     <string name="lyrics_searching">…</string>
     <string name="sleep_timer">Sleep timer</string>
     <string name="end_of_song">End of song</string>

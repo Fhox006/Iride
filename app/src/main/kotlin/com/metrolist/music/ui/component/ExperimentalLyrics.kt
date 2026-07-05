@@ -137,6 +137,7 @@ import com.metrolist.music.constants.ShowIntervalIndicatorKey
 import com.metrolist.music.constants.GeminiSetupCompletedKey
 import com.metrolist.music.constants.TranslateLanguageKey
 import com.metrolist.music.constants.TranslateModeKey
+import com.metrolist.music.db.entities.LYRICS_OFFSET_BIAS_MS
 import com.metrolist.music.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.metrolist.music.lyrics.LyricsTranslationHelper
 import com.metrolist.music.lyrics.LyricsUtils.findActiveLineIndices
@@ -503,7 +504,7 @@ fun ExperimentalLyrics(
             currentPositionState = position
             smoothPositionForSync = position
 
-            val lyricsOffset = currentSong?.song?.lyricsOffset ?: 0
+            val lyricsOffset = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS
             val effectivePosition = position + lyricsOffset
 
             val initialActiveIndices = findActiveLineIndices(lines, effectivePosition)
@@ -911,7 +912,7 @@ fun ExperimentalLyrics(
                                         flingJob?.cancel()
                                         var target = scrollTargetIndex
                                         if (target == -1) {
-                                            target = findActiveLineIndices(lines, currentPositionState + (currentSong?.song?.lyricsOffset ?: 0)).maxOrNull() ?: -1
+                                            target = findActiveLineIndices(lines, currentPositionState + (currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS)).maxOrNull() ?: -1
                                         }
                                         if (target != -1) {
                                             userManualOffset = 0f
@@ -1056,7 +1057,7 @@ fun ExperimentalLyrics(
                         }
                     }
             ) {
-                val lyricsOffsetVal = (currentSong?.song?.lyricsOffset ?: 0).toLong()
+                val lyricsOffsetVal = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS
                 val currentEffectivePosition = currentPositionState + lyricsOffsetVal
 
                 mergedLyricsList.forEachIndexed { listIndex, listItem ->
@@ -1124,7 +1125,7 @@ fun ExperimentalLyrics(
                                         isSelected = selectedIndices.contains(index),
                                         isSelectionModeActive = isSelectionModeActive,
                                         currentPositionState = currentPositionState,
-                                        lyricsOffset = (currentSong?.song?.lyricsOffset ?: 0).toLong(),
+                                        lyricsOffset = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS,
                                         playerConnection = playerConnection,
                                         lyricsTextSize = 32.4f,
                                         lyricsLineSpacing = 1.05f,
@@ -1150,7 +1151,7 @@ fun ExperimentalLyrics(
                                                 }
                                             } else if (changeLyrics && !isGuest) {
                                                 if (item.time < playerConnection.player.duration - 30000L) {
-                                                    playerConnection.seekTo(item.time - (currentSong?.song?.lyricsOffset ?: 0).coerceAtLeast(0))
+                                                    playerConnection.seekTo(item.time - (currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS).coerceAtLeast(0))
                                                     isAutoScrollEnabled = true
                                                     userManualOffset = 0f
                                                     lastPreviewTime = 0L

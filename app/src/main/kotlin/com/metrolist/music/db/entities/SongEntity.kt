@@ -16,6 +16,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
+/**
+ * Hidden bias applied on top of the user-facing lyrics offset (which still displays/edits
+ * around a "0" center). Compensates for the word-timing animation being perceptibly early.
+ */
+const val LYRICS_OFFSET_BIAS_MS = 250L
+
 @Immutable
 @Entity(
     tableName = "song",
@@ -108,4 +114,7 @@ data class SongEntity(
         copy(
             starred = !starred,
         )
+
+    val effectiveLyricsOffset: Long
+        get() = lyricsOffset + LYRICS_OFFSET_BIAS_MS
 }

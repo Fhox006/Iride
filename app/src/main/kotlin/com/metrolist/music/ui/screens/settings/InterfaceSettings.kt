@@ -45,7 +45,7 @@ import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
-import com.metrolist.music.constants.DiscoveryCarouselEnabledKey
+import com.metrolist.music.constants.HeroCarouselEnabledKey
 import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.ChipSortTypeKey
 import com.metrolist.music.constants.DefaultOpenTabKey
@@ -105,8 +105,8 @@ fun InterfaceSettings(
         rememberPreference(RandomizeHomeOrderKey, defaultValue = true)
     val (hideDurationForStandard, onHideDurationForStandardChange) =
         rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
-    val (discoveryCarouselEnabled, onDiscoveryCarouselEnabledChange) =
-        rememberPreference(DiscoveryCarouselEnabledKey, defaultValue = false)
+    val (heroCarouselEnabled, onHeroCarouselEnabledChange) =
+        rememberPreference(HeroCarouselEnabledKey, defaultValue = false)
     val (betterLibraryBeta, onBetterLibraryBetaChange) =
         rememberPreference(com.metrolist.music.constants.BetterLibraryBetaKey, defaultValue = false)
 
@@ -381,25 +381,25 @@ fun InterfaceSettings(
             title = "Home",
             items = listOf(
                 Material3SettingsItem(
-                    icon = painterResource(R.drawable.queue_music),
-                    title = { Text("Discovery Carousel") },
-                    description = { Text("Replace Speed Dial with personalized suggestions") },
+                    icon = painterResource(R.drawable.explore_outlined),
+                    title = { Text("Hero Carousel") },
+                    description = { Text("Show a carousel with new releases, mood picks, personalized mixes and artist radios") },
                     trailingContent = {
                         Switch(
-                            checked = discoveryCarouselEnabled,
-                            onCheckedChange = onDiscoveryCarouselEnabledChange,
+                            checked = heroCarouselEnabled,
+                            onCheckedChange = onHeroCarouselEnabledChange,
                             thumbContent = {
                                 Icon(
                                     painter = painterResource(
-                                        if (discoveryCarouselEnabled) R.drawable.check else R.drawable.close
+                                        if (heroCarouselEnabled) R.drawable.check else R.drawable.close
                                     ),
-                                    contentDescription = null,
                                     modifier = Modifier.size(SwitchDefaults.IconSize),
+                                    contentDescription = null,
                                 )
                             },
                         )
                     },
-                    onClick = { onDiscoveryCarouselEnabledChange(!discoveryCarouselEnabled) },
+                    onClick = { onHeroCarouselEnabledChange(!heroCarouselEnabled) },
                 )
             )
         )

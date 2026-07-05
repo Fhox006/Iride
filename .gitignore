@@ -106,3 +106,4 @@ app/src/main/java/com/metrolist/music/listentogether/proto/*
 # FFTW third-party library build artifacts
 .build-fftw
 app/src/main/cpp/coverart/
+.aider*

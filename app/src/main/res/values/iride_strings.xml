@@ -141,6 +141,10 @@
     <string name="youtube_music_lyrics_note">NOTE: YouTube Music lyrics will be shown automatically when no other source is available. They are usually not synchronized</string>
     <string name="enable_better_lyrics">Enable Better Lyrics</string>
     <string name="enable_better_lyrics_desc">Syllable-synced lyrics for any song, perfect for karaoke</string>
+    <string name="enable_better_lyrics_unison">Enable Better Lyrics Unison</string>
+    <string name="enable_better_lyrics_unison_desc">Word-by-word synced lyrics, Unison engine</string>
+    <string name="enable_better_lyrics_sillaba">Enable Better Lyrics Sillaba</string>
+    <string name="enable_better_lyrics_sillaba_desc">Word-by-word synced lyrics, Sillaba engine</string>
     <string name="enable_paxsenix">Enable Paxsenix</string>
     <string name="enable_paxsenix_desc">High-quality synchronized lyrics from Paxsenix API</string>
     <string name="enable_lyricsplus">Enable LyricsPlus</string>
@@ -984,6 +988,10 @@
     <string name="hide_duration_standard_songs_desc">Hides the time indicator for songs between 2 and 5 minutes. Only the artist name is shown.</string>
     <string name="fast_loader_beta">Fast Song Loader (BETA)</string>
     <string name="fast_loader_beta_desc">Reduces load time when manually changing tracks. Skips URL validation for faster stream resolution. May occasionally cause playback errors on the first try.</string>
+    <string name="metrolist_player_logic">Metrolist Player Logic</string>
+    <string name="metrolist_player_logic_desc">Uses the faster upstream Metrolist stream-resolution path (skips a slow legacy extraction step and caps a token-generation timeout). Disable to restore Iride\'s original, slower player logic.</string>
+    <string name="faster_loader">Faster Loader</string>
+    <string name="faster_loader_desc">Skips an extra network check before playing a song (on every client tried, not just the first), saving a round-trip on every play/skip. If a stream URL turns out bad, playback already recovers automatically. Disable if you notice odd playback errors.</string>
 
     <string name="better_library_beta">Better Library BETA</string>
     <string name="better_library_beta_desc">Enable Material 3 refactored Library (Top App Bar, FAB, and UI fixes)</string>

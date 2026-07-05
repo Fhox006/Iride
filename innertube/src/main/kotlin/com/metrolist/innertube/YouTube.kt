@@ -125,6 +125,12 @@ object YouTube {
             innerTube.useLoginForBrowse = value
         }
 
+    var fastPlayerLogic: Boolean = true
+        set(value) {
+            field = value
+            innerTube.fastPlayerLogic = value
+        }
+
     suspend fun searchSuggestions(query: String): Result<SearchSuggestions> = runCatching {
         val response = innerTube.getSearchSuggestions(WEB_REMIX, query).body<GetSearchSuggestionsResponse>()
         SearchSuggestions(
@@ -1870,6 +1876,7 @@ object YouTube {
     private val VISITOR_DATA_REGEX = Regex("^Cg[t|s]")
 
     fun getNewPipeStreamUrls(videoId: String): List<Pair<Int, String>> {
+        if (fastPlayerLogic) return emptyList()
         return NewPipeExtractor.newPipePlayer(videoId)
     }
 

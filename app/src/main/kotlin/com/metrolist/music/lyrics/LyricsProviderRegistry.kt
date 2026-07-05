@@ -7,9 +7,11 @@ package com.metrolist.music.lyrics
 
 object LyricsProviderRegistry {
     private val providerMap = mapOf(
+        "LrcLib" to LrcLibLyricsProvider,
+        "BetterLyricsUnison" to BetterLyricsUnisonProvider,
+        "BetterLyricsSillaba" to BetterLyricsSillabaProvider,
         "BetterLyrics" to BetterLyricsProvider,
         "Paxsenix" to PaxsenixLyricsProvider,
-        "LrcLib" to LrcLibLyricsProvider,
         "KuGou" to KuGouLyricsProvider,
         "LyricsPlus" to LyricsPlusProvider,
         "YouTubeSubtitle" to YouTubeSubtitleLyricsProvider,
@@ -35,9 +37,11 @@ object LyricsProviderRegistry {
     }
 
     fun getDefaultProviderOrder(): List<String> = listOf(
+        "LrcLib",
+        "BetterLyricsUnison",
+        "BetterLyricsSillaba",
         "BetterLyrics",
         "Paxsenix",
-        "LrcLib",
         "KuGou",
         "LyricsPlus",
         "YouTubeSubtitle",
@@ -48,4 +52,11 @@ object LyricsProviderRegistry {
         val order = deserializeProviderOrder(orderString)
         return order.mapNotNull { getProviderByName(it) }
     }
+
+    /**
+     * Tie-break rank when two providers return the same [LyricsTier]. Lower value wins.
+     * LrcLib beats every word-by-word provider; among word providers, Unison beats Sillaba.
+     */
+    fun getTierTieBreakPriority(providerName: String): Int =
+        getDefaultProviderOrder().indexOf(providerName).let { if (it == -1) Int.MAX_VALUE else it }
 }

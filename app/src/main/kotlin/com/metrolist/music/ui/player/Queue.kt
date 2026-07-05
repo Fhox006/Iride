@@ -147,6 +147,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import sh.calvin.reorderable.rememberScroller
 import kotlin.math.roundToInt
 import com.metrolist.music.constants.SleepTimerDefaultKey
 import com.metrolist.music.constants.SleepTimerFadeOutKey
@@ -567,12 +568,19 @@ fun Queue(
             }
 
         val dragScrollZone = LocalConfiguration.current.screenHeightDp.dp * 0.15f
+        val dragAutoScroller = rememberScroller(
+            scrollableState = lazyListState,
+            // Auto-scroll while dragging a queue item near the edges was ~4x too fast;
+            // slow it to ~25% of the library default (75% slower).
+            pixelAmountProvider = { lazyListState.layoutInfo.viewportSize.height * 0.0125f },
+        )
         val reorderableState =
             rememberReorderableLazyListState(
                 lazyListState = lazyListState,
                 scrollThresholdPadding = WindowInsets.systemBars
                     .add(WindowInsets(top = dragScrollZone, bottom = dragScrollZone))
                     .asPaddingValues(),
+                scroller = dragAutoScroller,
             ) { from, to ->
                 val currentDragInfo = dragInfo
                 dragInfo =
@@ -1342,11 +1350,18 @@ fun InlineQueuePanel(
     }
 
     val dragScrollZone = LocalConfiguration.current.screenHeightDp.dp * 0.15f
+    val dragAutoScroller = rememberScroller(
+        scrollableState = lazyListState,
+        // Auto-scroll while dragging a queue item near the edges was ~4x too fast;
+        // slow it to ~25% of the library default (75% slower).
+        pixelAmountProvider = { lazyListState.layoutInfo.viewportSize.height * 0.0125f },
+    )
     val reorderableState = rememberReorderableLazyListState(
         lazyListState = lazyListState,
         scrollThresholdPadding = WindowInsets.systemBars
             .add(WindowInsets(top = dragScrollZone, bottom = dragScrollZone))
             .asPaddingValues(),
+        scroller = dragAutoScroller,
     ) { from, to ->
         // spacer(1) + historyItems + divider(1) = queue starts here
         val queueStart = historyItems.size + 2

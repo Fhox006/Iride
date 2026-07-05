@@ -1581,101 +1581,12 @@ class MusicService :
             return
         }
 
-        if (player.mediaItemCount == 0 || player.playbackState == STATE_IDLE) {
-            playQueue(YouTubeQueue.radio(mediaMetadata))
-            return
-        }
-
-        val mediaId = mediaMetadata.id
-        val currentIndex = player.currentMediaItemIndex
-
-        scope.launch(SilentHandler) {
-            val radioQueue =
-                YouTubeQueue(
-                    endpoint =
-                        WatchEndpoint(
-                            videoId = mediaId,
-                        ),
-                )
-
-            try {
-                val initialStatus =
-                    withContext(Dispatchers.IO) {
-                        radioQueue
-                            .getInitialStatus()
-                            .filterExplicit(dataStore.get(HideExplicitKey, false))
-                            .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
-                    }
-
-                if (initialStatus.title != null) {
-                    queueTitle = initialStatus.title
-                }
-
-                val radioItems =
-                    initialStatus.items.filter { item ->
-                        item.mediaId != mediaId
-                    }
-
-                val itemCount = player.mediaItemCount
-                if (itemCount > currentIndex + 1) {
-                    player.removeMediaItems(currentIndex + 1, itemCount)
-                }
-                player.addMediaItem(currentIndex + 1, mediaMetadata.toMediaItem())
-                if (radioItems.isNotEmpty()) {
-                    player.addMediaItems(currentIndex + 2, radioItems)
-                }
-                player.seekTo(currentIndex + 1, 0)
-                player.play()
-                if (player.shuffleModeEnabled) {
-                    val shufflePlaylistFirst = shufflePlaylistFirst
-                    applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
-                }
-
-                currentQueue = radioQueue
-            } catch (e: Exception) {
-                try {
-                    val nextResult =
-                        withContext(Dispatchers.IO) {
-                            YouTube.next(WatchEndpoint(videoId = mediaId)).getOrNull()
-                        }
-                    nextResult?.relatedEndpoint?.let { relatedEndpoint ->
-                        val relatedPage =
-                            withContext(Dispatchers.IO) {
-                                YouTube.related(relatedEndpoint).getOrNull()
-                            }
-                        relatedPage?.songs?.let { songs ->
-                            val radioItems =
-                                songs
-                                    .filter { it.id != mediaId }
-                                    .map { it.toMediaItem() }
-                                    .filterExplicit(dataStore.get(HideExplicitKey, false))
-                                    .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
-
-                            val itemCount = player.mediaItemCount
-                            if (itemCount > currentIndex + 1) {
-                                player.removeMediaItems(currentIndex + 1, itemCount)
-                            }
-                            player.addMediaItem(currentIndex + 1, mediaMetadata.toMediaItem())
-                            if (radioItems.isNotEmpty()) {
-                                player.addMediaItems(currentIndex + 2, radioItems)
-                            }
-                            player.seekTo(currentIndex + 1, 0)
-                            player.play()
-                            if (player.shuffleModeEnabled) {
-                                val shufflePlaylistFirst = shufflePlaylistFirst
-                                applyShuffleOrder(
-                                    player.currentMediaItemIndex,
-                                    player.mediaItemCount,
-                                    shufflePlaylistFirst,
-                                )
-                            }
-                        }
-                    }
-                } catch (_: Exception) {
-                    // Silent fail
-                }
-            }
-        }
+        // Always force a full radio queue replace via playQueue, regardless of the
+        // current playback state or which screen/section the request came from.
+        // The previous incremental insert-after-current-index path could silently
+        // fail (double-nested try/catch swallowing exceptions), which is why radio
+        // requests sometimes appeared to do nothing.
+        playQueue(YouTubeQueue.radio(mediaMetadata))
     }
 
     fun getAutomixAlbum(albumId: String) {

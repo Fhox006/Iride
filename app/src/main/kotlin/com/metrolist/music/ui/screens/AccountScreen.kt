@@ -95,9 +95,13 @@ fun AccountScreen(
     val selectedContentType by viewModel.selectedContentType.collectAsState()
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
 
-    // Retry loading if data is still null when screen opens (e.g. previous attempt failed)
+    // Retry loading if data is still null when screen opens (e.g. previous attempt failed).
+    // Checked per-field (OR, not AND) because under a degraded connection some requests
+    // (e.g. playlists) can succeed while others (albums, artists) time out — requiring all
+    // three to be null left the failed ones stuck forever since a partial success never
+    // re-triggered refresh().
     LaunchedEffect(Unit) {
-        if (playlists == null && albums == null && artists == null) {
+        if (playlists == null || albums == null || artists == null) {
             viewModel.refresh()
         }
     }

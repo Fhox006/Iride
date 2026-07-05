@@ -1,12 +1,16 @@
 package com.metrolist.music.utils.potoken
 
 import android.webkit.CookieManager
+import com.metrolist.music.constants.MetrolistPlayerLogicKey
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
+import com.metrolist.music.utils.dataStore
+import com.metrolist.music.utils.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 
 class PoTokenGenerator {
@@ -30,7 +34,14 @@ class PoTokenGenerator {
 
         return try {
             Timber.tag(TAG).d("Calling runBlocking to generate poToken...")
-            runBlocking { getWebClientPoToken(videoId, sessionId, forceRecreate = false) }
+            val useTimeout = CipherDeobfuscator.appContext.dataStore.get(MetrolistPlayerLogicKey, true)
+            runBlocking {
+                if (useTimeout) {
+                    withTimeoutOrNull(8_000L) { getWebClientPoToken(videoId, sessionId, forceRecreate = false) }
+                } else {
+                    getWebClientPoToken(videoId, sessionId, forceRecreate = false)
+                }
+            }
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "poToken generation exception: ${e.javaClass.simpleName}: ${e.message}")
             when (e) {

@@ -40,6 +40,8 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.FastLoaderKey
+import com.metrolist.music.constants.MetrolistPlayerLogicKey
+import com.metrolist.music.constants.FasterLoaderKey
 import com.metrolist.music.constants.AudioNormalizationKey
 import com.metrolist.music.constants.AudioOffload
 import com.metrolist.music.constants.AudioQuality
@@ -95,6 +97,8 @@ fun PlayerSettings(
 ) {
     val (advancedMode, _) = rememberPreference(AdvancedModeKey, defaultValue = false)
     val (fastLoader, onFastLoaderChange) = rememberPreference(FastLoaderKey, defaultValue = false)
+    val (metrolistPlayerLogic, onMetrolistPlayerLogicChange) = rememberPreference(MetrolistPlayerLogicKey, defaultValue = true)
+    val (fasterLoader, onFasterLoaderChange) = rememberPreference(FasterLoaderKey, defaultValue = true)
 
     val (audioQuality, onAudioQualityChange) = rememberEnumPreference(
         AudioQualityKey,
@@ -615,6 +619,48 @@ fun PlayerSettings(
                         )
                     },
                     onClick = { onFastLoaderChange(!fastLoader) }
+                ))
+                add(Material3SettingsItem(
+                    icon = painterResource(R.drawable.speed),
+                    title = { Text(stringResource(R.string.metrolist_player_logic)) },
+                    description = { Text(stringResource(R.string.metrolist_player_logic_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = metrolistPlayerLogic,
+                            onCheckedChange = onMetrolistPlayerLogicChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        if (metrolistPlayerLogic) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onMetrolistPlayerLogicChange(!metrolistPlayerLogic) }
+                ))
+                add(Material3SettingsItem(
+                    icon = painterResource(R.drawable.timer_arrow_down),
+                    title = { Text(stringResource(R.string.faster_loader)) },
+                    description = { Text(stringResource(R.string.faster_loader_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = fasterLoader,
+                            onCheckedChange = onFasterLoaderChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        if (fasterLoader) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onFasterLoaderChange(!fasterLoader) }
                 ))
             }
         )

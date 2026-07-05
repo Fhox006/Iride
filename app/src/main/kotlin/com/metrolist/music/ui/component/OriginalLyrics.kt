@@ -148,6 +148,7 @@ import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.TranslateLanguageKey
 import com.metrolist.music.constants.TranslateModeKey
+import com.metrolist.music.db.entities.LYRICS_OFFSET_BIAS_MS
 import com.metrolist.music.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.metrolist.music.lyrics.LyricsEntry
 import com.metrolist.music.lyrics.LyricsTranslationHelper
@@ -575,7 +576,7 @@ fun OriginalLyrics(
             isSeeking = sliderPosition != null
             val position = sliderPosition ?: playerConnection.player.currentPosition
             currentPlaybackPosition = position
-            val lyricsOffset = currentSong?.song?.lyricsOffset ?: 0
+            val lyricsOffset = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS
             currentLineIndex = findCurrentLineIndex(lines, position + lyricsOffset)
         }
     }
@@ -915,7 +916,7 @@ fun OriginalLyrics(
                         }
                     }
                 } else {
-                    val lyricsOffset = currentSong?.song?.lyricsOffset?.toLong() ?: 0L
+                    val lyricsOffset = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS
                     val effectivePlaybackPosition = currentPlaybackPosition + lyricsOffset
 
                     itemsIndexed(
@@ -947,7 +948,7 @@ fun OriginalLyrics(
                                             }
                                         } else if (isSynced && changeLyrics && !isGuest) {
                                             // Professional seek action with smooth animation
-                                            val lyricsOffset = currentSong?.song?.lyricsOffset ?: 0
+                                            val lyricsOffset = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS
                                             playerConnection.seekTo((item.time - lyricsOffset).coerceAtLeast(0))
                                             // Smooth slow scroll when clicking on lyrics (3 seconds)
                                             scope.launch {

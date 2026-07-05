@@ -68,6 +68,13 @@
     <string name="view_album">Mostra album</string>
     <string name="refetch">Aggiorna</string>
     <string name="share">Condividi</string>
+    <string name="share_choose_platform">Condividi tramite</string>
+    <string name="share_platform_youtube_music">YouTube Music</string>
+    <string name="share_platform_spotify">Spotify</string>
+    <string name="share_platform_apple_music">Apple Music</string>
+    <string name="share_platform_soundcloud">SoundCloud</string>
+    <string name="share_link_resolving">Ricerca link…</string>
+    <string name="share_link_not_found">Nessun link trovato su questa piattaforma per questo brano</string>
     <string name="delete">Elimina</string>
     <string name="remove_from_history">Rimuovi da cronologia</string>
     <string name="search_online">Cerca online</string>
@@ -146,7 +153,7 @@
     <string name="removed_song_from_playlist">Rimosso \"%s\" da playlist</string>
     <string name="playlist_synced">Playlist sincronizzata</string>
     <string name="undo">Annulla</string>
-    <string name="lyrics_not_found">Testo non trovato</string>
+    <string name="lyrics_not_found">Testo assente o in caricamento</string>
     <string name="lyrics_searching">…</string>
     <string name="sleep_timer">Timer per il sonno</string>
     <string name="end_of_song">Fine del brano</string>

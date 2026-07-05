@@ -456,11 +456,37 @@ object LyricsUtils {
             RICH_SYNC_WORD_REGEX.containsMatchIn(line)
         }
 
-        return if (isRichSync) {
+        val entries = if (isRichSync) {
             parseRichSyncLyrics(lines)
         } else {
             parseStandardLyrics(lines)
         }
+
+        return entries.map { entry ->
+            entry.words?.let { entry.copy(words = normalizeWordTimings(it)) } ?: entry
+        }
+    }
+
+    /**
+     * Makes word-by-word highlighting flow continuously within a line: each word's end time
+     * is stretched to meet the next word's start time, unless the real gap exceeds 1s (a
+     * deliberate pause), in which case the word instead gets a minimum 0.5s duration.
+     */
+    private fun normalizeWordTimings(words: List<WordTimestamp>): List<WordTimestamp> {
+        if (words.size < 2) return words
+        val result = words.toMutableList()
+        for (i in 0 until result.size - 1) {
+            val current = result[i]
+            val next = result[i + 1]
+            val gap = next.startTime - current.endTime
+            result[i] = if (gap <= 1.0) {
+                current.copy(endTime = maxOf(current.endTime, next.startTime))
+            } else {
+                val minEnd = current.startTime + 0.5
+                if (current.endTime < minEnd) current.copy(endTime = minEnd) else current
+            }
+        }
+        return result
     }
 
     /**

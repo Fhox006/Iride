@@ -223,6 +223,10 @@
     <string name="sync_playlist_desc">Sincronizza questa playlist con YouTube Music</string>
     <string name="enable_better_lyrics">Attiva il fornitore di testi Better Lyrics</string>
     <string name="enable_better_lyrics_desc">Testi sincronizzati alla sillaba per ogni brano. Perfetto per il karaoke</string>
+    <string name="enable_better_lyrics_unison">Attiva Better Lyrics Unison</string>
+    <string name="enable_better_lyrics_unison_desc">Testi sincronizzati parola per parola, motore Unison</string>
+    <string name="enable_better_lyrics_sillaba">Attiva Better Lyrics Sillaba</string>
+    <string name="enable_better_lyrics_sillaba_desc">Testi sincronizzati parola per parola, motore Sillaba</string>
     <string name="shuffle_playlist_first">Riproduzione casuale della playlist o dell\'album all\'inizio</string>
     <string name="shuffle_playlist_first_desc">Durante la riproduzione casuale, riproduci prima tutte le canzoni della playlist/album originale e poi i contenuti simili</string>
     <string name="lyrics_animation_style">Stile di animazione parola per parola</string>

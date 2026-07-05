@@ -41,11 +41,12 @@ import com.metrolist.music.constants.LastMoodChipTitleKey
 import com.metrolist.music.constants.MoodSnapshotKey
 import com.metrolist.music.constants.QuickPicks
 import com.metrolist.music.constants.QuickPicksKey
-import com.metrolist.music.constants.DiscoveryCarouselEnabledKey
+import com.metrolist.music.constants.HeroCarouselEnabledKey
+import com.metrolist.music.constants.SeenNewReleaseFirstIdsKey
 import com.metrolist.music.constants.RandomizeHomeOrderKey
 import com.metrolist.music.constants.ShowWrappedCardKey
-import com.metrolist.music.discovery.DiscoveryCarouselGenerator
-import com.metrolist.music.models.DiscoveryItem
+import com.metrolist.music.discovery.HeroCarouselGenerator
+import com.metrolist.music.models.HeroCarouselItem
 import com.metrolist.music.constants.SpeedDialSnapshotKey
 import com.metrolist.music.constants.WrappedSeenKey
 import com.metrolist.music.models.HomeSnapshotItem
@@ -179,20 +180,40 @@ class HomeViewModel @Inject constructor(
     val moodPage = MutableStateFlow<HomePage?>(null)
     private var lastMoodChipParams: String? = null
 
-    val isDiscoveryEnabled: StateFlow<Boolean> = context.dataStore.data
-        .map { it[DiscoveryCarouselEnabledKey] ?: false }
+    val isHeroCarouselEnabled: StateFlow<Boolean> = context.dataStore.data
+        .map { it[HeroCarouselEnabledKey] ?: false }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    val discoveryItems = MutableStateFlow<List<DiscoveryItem>>(emptyList())
+    val heroCarouselItems = MutableStateFlow<List<HeroCarouselItem>>(emptyList())
 
-    private val discoveryGenerator = DiscoveryCarouselGenerator(database)
+    private val heroCarouselGenerator = HeroCarouselGenerator(database)
 
-    fun refreshDiscovery(seed: Long = java.time.LocalDate.now().toEpochDay() xor context.packageName.hashCode().toLong()) {
+    private fun defaultHeroCarouselSeed() =
+        LocalDate.now().toEpochDay() xor context.packageName.hashCode().toLong()
+
+    private var lastHeroCarouselSeed = defaultHeroCarouselSeed()
+
+    fun refreshHeroCarousel(seed: Long = lastHeroCarouselSeed) {
+        lastHeroCarouselSeed = seed
         viewModelScope.launch(Dispatchers.IO) {
-            discoveryItems.value = discoveryGenerator.generate(seed)
+            val seenAsFirstIds = context.dataStore.data.first()[SeenNewReleaseFirstIdsKey] ?: emptySet()
+            val result = heroCarouselGenerator.generate(
+                explorePage = explorePage.value,
+                homePage = homePage.value,
+                moodSnapshot = cachedMoodSnapshot.value,
+                seed = seed,
+                seenAsFirstIds = seenAsFirstIds,
+            )
+            heroCarouselItems.value = result.items
+            if (result.seenAsFirstIds != seenAsFirstIds) {
+                context.dataStore.edit { it[SeenNewReleaseFirstIdsKey] = result.seenAsFirstIds }
+            }
         }
     }
+
+    suspend fun fetchArtistRadioEndpoint(artistId: String): WatchEndpoint? =
+        YouTube.artist(artistId).getOrNull()?.artist?.radioEndpoint
 
     val cachedSpeedDialSnapshot = MutableStateFlow<SpeedDialSnapshot?>(null)
     val cachedMoodSnapshot = MutableStateFlow<MoodSnapshot?>(null)
@@ -246,6 +267,7 @@ class HomeViewModel @Inject constructor(
         if (existingIds == snapshotItems.map { it.id }) return
         val snapshot = MoodSnapshot(System.currentTimeMillis(), chipTitle, chipParams, snapshotItems)
         cachedMoodSnapshot.value = snapshot
+        refreshHeroCarousel()
         val json = runCatching { snapshotJson.encodeToString(snapshot) }.getOrNull() ?: return
         context.dataStore.edit { it[MoodSnapshotKey] = json }
     }
@@ -979,6 +1001,7 @@ class HomeViewModel @Inject constructor(
             YouTube.explore().onSuccess { page ->
                 explorePage.value = page.copy(newReleaseAlbums = page.newReleaseAlbums.filterExplicit(hideExplicit))
                 HomeCache.explorePage = explorePage.value
+                refreshHeroCarousel()
             }.onFailure { reportException(it) }
         }
 
@@ -1038,6 +1061,7 @@ class HomeViewModel @Inject constructor(
                     loadMoodPage(chip.endpoint?.params, chip.title, hideExplicit, hideVideoSongs, hideYoutubeShorts)
                 }
                 HomeCache.homePage = homePage.value
+                refreshHeroCarousel()
             }.onFailure { reportException(it) }
         }
 
@@ -1182,6 +1206,7 @@ class HomeViewModel @Inject constructor(
             } else {
                 load()
             }
+            refreshHeroCarousel(System.currentTimeMillis())
             isRefreshing.value = false
         }
         // Run sync when user manually refreshes
@@ -1199,7 +1224,7 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
-        refreshDiscovery()
+        refreshHeroCarousel()
 
         // Read snapshots once from DataStore for fast first paint
         viewModelScope.launch(Dispatchers.IO) {

@@ -135,6 +135,7 @@ class App :
         }
 
         YouTube.useLoginForBrowse = settings[UseLoginForBrowse] ?: true
+        YouTube.fastPlayerLogic = settings[MetrolistPlayerLogicKey] ?: true
 
         val channel =
             NotificationChannel(
@@ -149,6 +150,15 @@ class App :
     }
 
     private fun observeSettingsChanges() {
+        applicationScope.launch(Dispatchers.IO) {
+            dataStore.data
+                .map { it[MetrolistPlayerLogicKey] ?: true }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    YouTube.fastPlayerLogic = enabled
+                }
+        }
+
         applicationScope.launch(Dispatchers.IO) {
             dataStore.data
                 .map { it[VisitorDataKey] }

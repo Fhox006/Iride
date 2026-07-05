@@ -26,11 +26,15 @@ class NetworkConnectivityObserver(context: Context) {
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            _networkStatus.trySend(true)
+            _networkStatus.trySend(isCurrentlyConnected())
         }
 
         override fun onLost(network: Network) {
-            _networkStatus.trySend(false)
+            _networkStatus.trySend(isCurrentlyConnected())
+        }
+
+        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            _networkStatus.trySend(isCurrentlyConnected())
         }
     }
 
@@ -63,15 +67,13 @@ class NetworkConnectivityObserver(context: Context) {
         return try {
             val activeNetwork = connectivityManager.activeNetwork
             val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-            
-            // Check if we have internet capability
-            val hasInternet = networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-            
-            // For API 23+, also check if connection is validated
-            val isValidated =
-                networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
 
-            hasInternet && isValidated
+            // Check if we have internet capability. NET_CAPABILITY_VALIDATED is intentionally
+            // not required here: Android can drop it transiently during signal degradation
+            // (walking, cellular handover, in-call) while the connection is still usable, and
+            // requiring it made lyrics/library/album fetches bail out immediately instead of
+            // attempting the request.
+            networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
         } catch (e: Exception) {
             false
         }

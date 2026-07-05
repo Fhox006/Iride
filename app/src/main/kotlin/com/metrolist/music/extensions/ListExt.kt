@@ -6,8 +6,21 @@
 package com.metrolist.music.extensions
 
 import com.metrolist.music.db.entities.Album
+import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.Song
+
+// Minimum plays for an artist to count as a real listening habit rather than
+// a one-off (e.g. a couple of tracks heard once at a party).
+private const val MIN_GENUINE_ARTIST_SONG_COUNT = 3
+
+// ...unless the user genuinely binged them, even on an artist heard only once.
+private const val MIN_GENUINE_ARTIST_TIME_LISTENED_MS = 20 * 60 * 1000L
+
+// Filters out artists that only showed up because of a handful of plays
+// (party playlists, one-off genres) rather than an actual listening habit.
+fun List<Artist>.filterGenuineFavorites() =
+    filter { it.songCount >= MIN_GENUINE_ARTIST_SONG_COUNT || (it.timeListened ?: 0) >= MIN_GENUINE_ARTIST_TIME_LISTENED_MS }
 
 fun <T> List<T>.reversed(reversed: Boolean) = if (reversed) asReversed() else this
 

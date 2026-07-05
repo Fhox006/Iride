@@ -392,6 +392,8 @@ fun OnlineSearchResult(
                                         items = summary.items,
                                         key = { it.id },
                                     ) { rowItem ->
+                                        val isAlbum = rowItem is AlbumItem
+                                        val isVideo = rowItem is SongItem && rowItem.isVideoSong
                                         YouTubeGridItem(
                                             item = rowItem,
                                             isActive = when (rowItem) {
@@ -402,9 +404,14 @@ fun OnlineSearchResult(
                                             },
                                             isPlaying = isPlaying,
                                             coroutineScope = coroutineScope,
-                                            thumbnailRatio = 1f,
-                                            thumbnailCornerRadius = 6.dp,
-                                            showPlayButton = false,
+                                            thumbnailRatio = if (isVideo) 16f / 9f else 1f,
+                                            thumbnailCornerRadius = if (isVideo) 8.dp else 3.dp,
+                                            showPlayButton = rowItem is SongItem,
+                                            size = when {
+                                                isAlbum -> 180.dp
+                                                isVideo -> 110.dp
+                                                else -> 148.dp
+                                            },
                                             modifier = Modifier
                                                 .combinedClickable(
                                                     onClick = {
