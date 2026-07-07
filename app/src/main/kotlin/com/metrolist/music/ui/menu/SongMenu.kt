@@ -89,9 +89,9 @@ import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.ListDialog
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.Material3MenuGroup
-import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
+import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.utils.ShowMediaInfo
@@ -428,7 +428,8 @@ fun SongMenu(
         song = song,
         badges = {},
         trailingContent = {
-            if (showStarButton) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+            run {
                 val isEpisode = song.song.isEpisode
                 val isFavorite = if (isEpisode) song.song.inLibrary != null else song.song.liked
                 var optimisticFavorite by remember(isFavorite) { mutableStateOf(isFavorite) }
@@ -492,6 +493,24 @@ fun SongMenu(
                     )
                 }
             }
+            IconButton(
+                onClick = {
+                    onDismiss()
+                    val intent =
+                        Intent().apply {
+                            action = Intent.ACTION_SEND
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=${song.id}")
+                        }
+                    context.startActivity(Intent.createChooser(intent, null))
+                },
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.share),
+                    contentDescription = null,
+                )
+            }
+            }
         },
     )
 
@@ -514,64 +533,66 @@ fun SongMenu(
                 bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
             ),
     ) {
-        item {
-            NewActionGrid(
-                actions =
-                    listOf(
-                        NewAction(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.edit),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            text = stringResource(R.string.edit),
-                            onClick = { showEditDialog = true },
+        if (!isGuest) {
+            item {
+                NewActionGrid(
+                    actions =
+                        listOf(
+                            NewAction(
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.playlist_play),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(28.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                text = stringResource(R.string.swipe_label_next).lowercase().replaceFirstChar { it.uppercase() },
+                                onClick = {
+                                    onDismiss()
+                                    playerConnection.playNext(song.toMediaItem())
+                                },
+                            ),
+                            NewAction(
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.queue_music),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(28.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                text = stringResource(R.string.swipe_label_queue).lowercase().replaceFirstChar { it.uppercase() },
+                                onClick = {
+                                    onDismiss()
+                                    playerConnection.addToQueue(song.toMediaItem())
+                                },
+                            ),
+                            NewAction(
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.radio),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(28.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                text = stringResource(R.string.radio),
+                                onClick = {
+                                    onDismiss()
+                                    playerConnection.startRadioForSong(song.toMediaMetadata())
+                                },
+                            ),
                         ),
-                        NewAction(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.playlist_add),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            text = stringResource(R.string.add_to_playlist),
-                            onClick = { showChoosePlaylistDialog = true },
-                        ),
-                        NewAction(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.share),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            text = stringResource(R.string.share),
-                            onClick = {
-                                onDismiss()
-                                val intent =
-                                    Intent().apply {
-                                        action = Intent.ACTION_SEND
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=${song.id}")
-                                    }
-                                context.startActivity(Intent.createChooser(intent, null))
-                            },
-                        ),
-                    ),
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
-            )
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
+                )
+            }
         }
-        item {
-            Material3MenuGroup(
-                items =
-                    listOfNotNull(
-                        if (listenTogetherManager != null && listenTogetherManager.isInRoom && !listenTogetherManager.isHost) {
+        if (listenTogetherManager != null && listenTogetherManager.isInRoom && !listenTogetherManager.isHost) {
+            item {
+                Material3MenuGroup(
+                    items =
+                        listOf(
                             Material3MenuItemData(
                                 title = { Text(text = stringResource(R.string.suggest_to_host)) },
                                 icon = {
@@ -594,69 +615,13 @@ fun SongMenu(
                                     listenTogetherManager.suggestTrack(trackInfo)
                                     onDismiss()
                                 },
-                            )
-                        } else {
-                            null
-                        },
-                        if (!isGuest) {
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.start_radio)) },
-                                description = { Text(text = stringResource(R.string.start_radio_desc)) },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.radio),
-                                        contentDescription = null,
-                                    )
-                                },
-                                onClick = {
-                                    onDismiss()
-                                    playerConnection.startRadioForSong(song.toMediaMetadata())
-                                },
-                            )
-                        } else {
-                            null
-                        },
-                        if (!isGuest) {
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.play_next)) },
-                                description = { Text(text = stringResource(R.string.play_next_desc)) },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.playlist_play),
-                                        contentDescription = null,
-                                    )
-                                },
-                                onClick = {
-                                    onDismiss()
-                                    playerConnection.playNext(song.toMediaItem())
-                                },
-                            )
-                        } else {
-                            null
-                        },
-                        if (!isGuest) {
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.add_to_queue)) },
-                                description = { Text(text = stringResource(R.string.add_to_queue_desc)) },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.queue_music),
-                                        contentDescription = null,
-                                    )
-                                },
-                                onClick = {
-                                    onDismiss()
-                                    playerConnection.addToQueue(song.toMediaItem())
-                                },
-                            )
-                        } else {
-                            null
-                        },
-                    ),
-            )
-        }
+                            ),
+                        ),
+                )
+            }
 
-        item { Spacer(modifier = Modifier.height(12.dp)) }
+            item { Spacer(modifier = Modifier.height(12.dp)) }
+        }
 
         item {
             Material3MenuGroup(
@@ -1147,6 +1112,30 @@ fun SongMenu(
                                         ShowMediaInfo(song.id)
                                     }
                                 },
+                            ),
+                        )
+                        add(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.add_to_playlist)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.playlist_add),
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = { showChoosePlaylistDialog = true },
+                            ),
+                        )
+                        add(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.edit)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.edit),
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = { showEditDialog = true },
                             ),
                         )
                     },

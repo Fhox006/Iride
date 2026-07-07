@@ -108,7 +108,7 @@ import com.metrolist.music.constants.DiscordUseDetailsKey
 import com.metrolist.music.constants.EnableDiscordRPCKey
 import com.metrolist.music.constants.EnableLastFMScrobblingKey
 import com.metrolist.music.constants.EnableSongCacheKey
-import com.metrolist.music.constants.FastLoaderKey
+import com.metrolist.music.constants.MuzzaPlayerLogicKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HistoryDuration
@@ -279,7 +279,7 @@ class MusicService :
     private var shufflePlaylistFirst = false
     private var rememberShuffleAndRepeat = true
     private var preloadJob: Job? = null
-    private var fastLoaderEnabled = false
+    private var muzzaPlayerLogicEnabled = false
 
     private val secondaryPlayerListener =
         object : Player.Listener {
@@ -939,9 +939,9 @@ class MusicService :
             .collect(scope) { rememberShuffleAndRepeat = it }
 
         dataStore.data
-            .map { prefs -> prefs[FastLoaderKey] ?: false }
+            .map { prefs -> prefs[MuzzaPlayerLogicKey] ?: true }
             .distinctUntilChanged()
-            .collect(scope) { fastLoaderEnabled = it }
+            .collect(scope) { muzzaPlayerLogicEnabled = it }
 
         if (persistentQueueEnabled) {
             val queueFile = filesDir.resolve(PERSISTENT_QUEUE_FILE)
@@ -1405,22 +1405,6 @@ class MusicService :
         // Reset original queue size when starting a new queue
         originalQueueSize = 0
         if (queue.preloadItem != null) {
-            if (fastLoaderEnabled) {
-                val preloadId = queue.preloadItem!!.id
-                if (songUrlCache[preloadId]?.second?.let { it > System.currentTimeMillis() } != true) {
-                    scope.launch(Dispatchers.IO) {
-                        YTPlayerUtils.playerResponseForPlayback(
-                            preloadId,
-                            audioQuality = audioQuality,
-                            connectivityManager = connectivityManager,
-                            skipValidation = true,
-                        ).getOrNull()?.let { playbackData ->
-                            songUrlCache[preloadId] = playbackData.streamUrl to
-                                System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
-                        }
-                    }
-                }
-            }
             player.setMediaItem(queue.preloadItem!!.toMediaItem())
             player.prepare()
             player.playWhenReady = playWhenReady
@@ -3022,6 +3006,28 @@ class MusicService :
             }
     }
 
+    // Muzza Player Logic is a fully isolated, parallel resolution path — when the
+    // toggle is off this just forwards to the untouched playerResponseForPlayback.
+    private suspend fun resolvePlayback(
+        mediaId: String,
+        playlistId: String? = null,
+    ): Result<YTPlayerUtils.PlaybackData> =
+        if (muzzaPlayerLogicEnabled) {
+            YTPlayerUtils.playerResponseForPlaybackMuzza(
+                mediaId,
+                playlistId,
+                audioQuality = audioQuality,
+                connectivityManager = connectivityManager,
+            )
+        } else {
+            YTPlayerUtils.playerResponseForPlayback(
+                mediaId,
+                playlistId,
+                audioQuality = audioQuality,
+                connectivityManager = connectivityManager,
+            )
+        }
+
     private fun createDataSourceFactory(): DataSource.Factory {
         return ResolvingDataSource.Factory(createCacheDataSource()) { dataSpec ->
             val mediaId = dataSpec.key ?: error("No media id")
@@ -3050,15 +3056,10 @@ class MusicService :
                 Timber.tag("MusicService").i("BYPASSING CACHE for $mediaId due to quality change")
             }
 
-            Timber.tag("MusicService").i("FETCHING STREAM: $mediaId | quality=$audioQuality | fastLoader=$fastLoaderEnabled")
+            Timber.tag("MusicService").i("FETCHING STREAM: $mediaId | quality=$audioQuality")
             val playbackData =
                 runBlocking(Dispatchers.IO) {
-                    YTPlayerUtils.playerResponseForPlayback(
-                        mediaId,
-                        audioQuality = audioQuality,
-                        connectivityManager = connectivityManager,
-                        skipValidation = fastLoaderEnabled,
-                    )
+                    resolvePlayback(mediaId)
                 }.getOrElse { throwable ->
                     when (throwable) {
                         is PlaybackException -> {
@@ -3567,13 +3568,7 @@ class MusicService :
     suspend fun getStreamUrl(mediaId: String): String? =
         withContext(Dispatchers.IO) {
             try {
-                val playbackData =
-                    YTPlayerUtils
-                        .playerResponseForPlayback(
-                            videoId = mediaId,
-                            audioQuality = audioQuality,
-                            connectivityManager = connectivityManager,
-                        ).getOrNull()
+                val playbackData = resolvePlayback(mediaId).getOrNull()
                 playbackData?.streamUrl
             } catch (e: Exception) {
                 timber.log.Timber.e(e, "Failed to get stream URL for Cast")
@@ -3860,12 +3855,7 @@ class MusicService :
             if (songUrlCache[mediaId]?.second?.let { it > System.currentTimeMillis() } == true) return@launch
             try {
                 withContext(Dispatchers.IO) {
-                    YTPlayerUtils.playerResponseForPlayback(
-                        mediaId,
-                        audioQuality = audioQuality,
-                        connectivityManager = connectivityManager,
-                        skipValidation = fastLoaderEnabled,
-                    ).getOrNull()?.let { playbackData ->
+                    resolvePlayback(mediaId).getOrNull()?.let { playbackData ->
                         songUrlCache[mediaId] = playbackData.streamUrl to
                             System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
                     }
@@ -3884,12 +3874,7 @@ class MusicService :
             if (songUrlCache[mediaId]?.second?.let { it > System.currentTimeMillis() } == true) return@forEach
             scope.launch(Dispatchers.IO) {
                 try {
-                    YTPlayerUtils.playerResponseForPlayback(
-                        mediaId,
-                        audioQuality = audioQuality,
-                        connectivityManager = connectivityManager,
-                        skipValidation = fastLoaderEnabled,
-                    ).getOrNull()?.let { playbackData ->
+                    resolvePlayback(mediaId).getOrNull()?.let { playbackData ->
                         songUrlCache[mediaId] = playbackData.streamUrl to
                             System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
                     }

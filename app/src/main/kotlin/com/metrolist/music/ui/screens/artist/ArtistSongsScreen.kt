@@ -5,12 +5,13 @@
 
 package com.metrolist.music.ui.screens.artist
 
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,16 +22,23 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -45,13 +53,17 @@ import com.metrolist.music.constants.ArtistSongSortType
 import com.metrolist.music.constants.ArtistSongSortTypeKey
 import com.metrolist.music.constants.CONTENT_TYPE_HEADER
 import com.metrolist.music.constants.HideExplicitKey
+import com.metrolist.music.constants.PureBlackKey
+import com.metrolist.music.extensions.matchesNormalizedQuery
+import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.queues.ListQueue
+import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
-import com.metrolist.music.ui.component.SortHeader
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberEnumPreference
@@ -82,51 +94,89 @@ fun ArtistSongsScreen(
             true,
         )
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
+    val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val artist by viewModel.artist.collectAsState()
     val songs by viewModel.songs.collectAsState()
     val lazyListState = rememberLazyListState()
+    val keyboardController = LocalSoftwareKeyboardController.current
 
+    var isSearchActive by rememberSaveable { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForSearch() }
+    val filteredSongs = remember(songs, normalizedQuery) {
+        if (normalizedQuery.isBlank()) {
+            songs
+        } else {
+            songs.filter { song ->
+                val artistNames = song.artists.map { it.name }.toTypedArray()
+                matchesNormalizedQuery(normalizedQuery, song.song.title, song.album?.title, *artistNames)
+            }
+        }
+    }
+
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        snapAnimationSpec = tween(durationMillis = 200),
+    )
+
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            CollapsingScreenHeader(
+                title = stringResource(R.string.songs),
+                scrollBehavior = scrollBehavior,
+                pureBlack = pureBlack,
+                isSearchActive = isSearchActive,
+                onSearchActiveChange = { active ->
+                    isSearchActive = active
+                    if (!active) searchQuery = ""
+                },
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it },
+                keyboardController = keyboardController,
+                navigationIcon = {
+                    IconButton(
+                        onClick = navController::navigateUp,
+                        onLongClick = navController::backToMain,
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.arrow_back),
+                            contentDescription = null,
+                        )
+                    }
+                },
+            )
+        },
+        containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0),
+    ) { paddingValues ->
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues),
     ) {
         LazyColumn(
             state = lazyListState,
-            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            contentPadding = PaddingValues(
+                bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+            ),
         ) {
-            item(
-                key = "header",
-                contentType = CONTENT_TYPE_HEADER,
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                ) {
-                    SortHeader(
-                        sortType = sortType,
-                        sortDescending = sortDescending,
-                        onSortTypeChange = onSortTypeChange,
-                        onSortDescendingChange = onSortDescendingChange,
-                        sortTypeText = { sortType ->
-                            when (sortType) {
-                                ArtistSongSortType.CREATE_DATE -> R.string.sort_by_create_date
-                                ArtistSongSortType.NAME -> R.string.sort_by_name
-                                ArtistSongSortType.PLAY_TIME -> R.string.sort_by_play_time
-                            }
-                        },
-                    )
-
-                    Spacer(Modifier.weight(1f))
-
-                    Text(
-                        text = pluralStringResource(R.plurals.n_song, songs.size, songs.size),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
-                }
+            item(key = "sort", contentType = CONTENT_TYPE_HEADER) {
+                LibrarySortRow(
+                    sortOptions = listOf(
+                        ArtistSongSortType.CREATE_DATE to stringResource(R.string.sort_by_create_date),
+                        ArtistSongSortType.NAME to stringResource(R.string.sort_by_name),
+                        ArtistSongSortType.PLAY_TIME to stringResource(R.string.sort_by_play_time),
+                    ),
+                    currentSort = sortType,
+                    onSortChange = onSortTypeChange,
+                    sortDescending = sortDescending,
+                    onSortDescendingChange = onSortDescendingChange,
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                )
             }
 
             itemsIndexed(
-                items = songs,
+                items = filteredSongs,
                 key = { _, item -> item.id },
             ) { index, song ->
                 SongListItem(
@@ -162,7 +212,7 @@ fun ArtistSongsScreen(
                                         playerConnection.playQueue(
                                             ListQueue(
                                                 title = queueAllSongsStr,
-                                                items = songs.map { it.toMediaItem() },
+                                                items = filteredSongs.map { it.toMediaItem() },
                                                 startIndex = index,
                                             ),
                                         )
@@ -181,22 +231,22 @@ fun ArtistSongsScreen(
                             ).animateItem(),
                 )
             }
-        }
 
-        TopAppBar(
-            title = { Text(artist?.artist?.name.orEmpty()) },
-            navigationIcon = {
-                IconButton(
-                    onClick = navController::navigateUp,
-                    onLongClick = navController::backToMain,
+            item(key = "footer") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        painterResource(R.drawable.arrow_back),
-                        contentDescription = null,
+                    Text(
+                        text = pluralStringResource(R.plurals.n_song, filteredSongs.size, filteredSongs.size),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            },
-        )
+            }
+        }
 
         HideOnScrollFAB(
             lazyListState = lazyListState,
@@ -205,10 +255,11 @@ fun ArtistSongsScreen(
                 playerConnection.playQueue(
                     ListQueue(
                         title = artist?.artist?.name,
-                        items = songs.shuffled().map { it.toMediaItem() },
+                        items = filteredSongs.shuffled().map { it.toMediaItem() },
                     ),
                 )
             },
         )
+    }
     }
 }

@@ -639,6 +639,7 @@ interface DatabaseDao {
             JOIN song ON album_artist_map.albumId = song.albumId
         WHERE artistId = :artistId
         GROUP BY album.id
+        ORDER BY album.releaseDate DESC, album.year DESC
         LIMIT :previewSize
     """
     )

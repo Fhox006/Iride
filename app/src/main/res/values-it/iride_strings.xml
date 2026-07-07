@@ -683,6 +683,7 @@
     <string name="your_shows">I tuoi spettacoli</string>
     <string name="view_channel">Visualizza canale</string>
     <string name="filter_profiles">Profili</string>
+    <string name="filter_smart_search">Smart Search</string>
     <string name="sleep_timer_repeat">Ripeti</string>
     <string name="sleep_timer_daily">Giornaliero</string>
     <string name="sleep_timer_weekdays">Da lunedÃ¬ a venerdÃ¬</string>
@@ -804,4 +805,31 @@
     <string name="time_transfer_warning">ATTENZIONE: non Ã¨ possibile annullare questa azione una volta completata. Crea un file di backup prima di procedere. Puoi scegliere come destinazione solo brani con almeno una riproduzione</string>
     <string name="enable_advanced_settings">Abilita impostazioni avanzate</string>
     <string name="disable_advanced_settings">Disabilita funzioni avanzate</string>
+
+    <!-- News screen -->
+    <string name="show_news_tab">Mostra scheda News</string>
+    <string name="show_news_tab_desc">Aggiunge una scheda News alla barra di navigazione, tra Home e Libreria</string>
+    <string name="news">News</string>
+    <string name="news_new_albums">Album nuovi</string>
+    <string name="news_new_songs">Canzoni nuove</string>
+    <string name="news_charts">Classifiche</string>
+    <string name="news_new_albums_title">Nuovi album</string>
+    <string name="news_quick_play_title">Novità in ascolto rapido</string>
+    <string name="news_empty_albums">Nessun nuovo album trovato</string>
+    <string name="news_empty_songs">Nessuna nuova canzone trovata</string>
+
+    <!-- Comments -->
+    <string name="comments">Commenti</string>
+    <string name="comments_count">%s commenti</string>
+    <string name="comments_empty">Ancora nessun commento</string>
+    <string name="comments_error">Impossibile caricare i commenti</string>
+    <string name="comments_sign_in_to_comment">Accedi per commentare</string>
+    <string name="comments_write_hint">Aggiungi un commento…</string>
+    <string name="comments_post">Pubblica</string>
+    <string name="comments_post_failed">Impossibile pubblicare il commento</string>
+    <string name="comments_sort_top">Più pertinenti</string>
+    <string name="comments_sort_newest">Più recenti</string>
+    <string name="comments_reply_count">%d risposte</string>
+    <string name="enable_comments">Abilita commenti</string>
+    <string name="enable_comments_desc">Mostra i commenti YouTube dei brani nel player (sperimentale, potrebbe non caricare sempre)</string>
 </resources>

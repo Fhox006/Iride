@@ -25,7 +25,7 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import sv.lib.squircleshape.SquircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -90,10 +90,13 @@ import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.DraggableScrollbar
 import com.metrolist.music.ui.component.EmptyPlaceholder
+import com.metrolist.music.ui.component.GenrePillsRow
+import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
-import com.metrolist.music.ui.component.SortHeader
+import com.metrolist.music.ui.component.rememberGenreFilter
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.menu.TopPlaylistMenu
@@ -147,12 +150,21 @@ fun TopPlaylistScreen(
         selectionAnchorSongId = null
     }
 
-    val filteredSongs = remember(songs, query) {
-        if (query.text.isEmpty()) songs ?: emptyList()
-        else songs?.filter { song ->
-            song.title.contains(query.text, true) ||
-                song.artists.any { it.name.contains(query.text, true) }
-        } ?: emptyList()
+    val genreFilter =
+        rememberGenreFilter(
+            remember(songs) {
+                songs?.map { GenreSongInfo(it.id, it.title, it.artists.firstOrNull()?.name) } ?: emptyList()
+            },
+        )
+
+    val filteredSongs = remember(songs, query, genreFilter.selectedGenre, genreFilter.genreBySongId) {
+        val base =
+            if (query.text.isEmpty()) songs ?: emptyList()
+            else songs?.filter { song ->
+                song.title.contains(query.text, true) ||
+                    song.artists.any { it.name.contains(query.text, true) }
+            } ?: emptyList()
+        base.filter { genreFilter.matches(it.id) }
     }
 
     LaunchedEffect(filteredSongs) {
@@ -280,26 +292,27 @@ fun TopPlaylistScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(start = 16.dp),
                         ) {
-                            SortHeader(
-                                sortType = sortType,
+                            LibrarySortRow(
+                                sortOptions =
+                                    listOf(
+                                        MyTopFilter.ALL_TIME to stringResource(R.string.all_time),
+                                        MyTopFilter.DAY to stringResource(R.string.past_24_hours),
+                                        MyTopFilter.WEEK to stringResource(R.string.past_week),
+                                        MyTopFilter.MONTH to stringResource(R.string.past_month),
+                                        MyTopFilter.YEAR to stringResource(R.string.past_year),
+                                    ),
+                                currentSort = sortType,
+                                onSortChange = { viewModel.topPeriod.value = it },
                                 sortDescending = false,
-                                onSortTypeChange = {
-                                    viewModel.topPeriod.value = it
-                                },
                                 onSortDescendingChange = {},
-                                sortTypeText = { sortType ->
-                                    when (sortType) {
-                                        MyTopFilter.ALL_TIME -> R.string.all_time
-                                        MyTopFilter.DAY -> R.string.past_24_hours
-                                        MyTopFilter.WEEK -> R.string.past_week
-                                        MyTopFilter.MONTH -> R.string.past_month
-                                        MyTopFilter.YEAR -> R.string.past_year
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
                                 showDescending = false,
+                                modifier = Modifier.weight(1f),
                             )
                         }
+                    }
+
+                    item(key = "genre_pills") {
+                        GenrePillsRow(state = genreFilter)
                     }
                 }
 
@@ -605,10 +618,10 @@ private fun TopPlaylistHeader(
                     .size(240.dp)
                     .shadow(
                         elevation = 24.dp,
-                        shape = RoundedCornerShape(3.dp),
+                        shape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f),
                         spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                     ),
-                shape = RoundedCornerShape(3.dp)
+                shape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
             ) {
                 AsyncImage(
                     model = songs[0].thumbnailUrl,

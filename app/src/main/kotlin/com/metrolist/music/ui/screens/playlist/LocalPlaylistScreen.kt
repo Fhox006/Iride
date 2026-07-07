@@ -37,6 +37,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import sv.lib.squircleshape.SquircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -131,17 +132,20 @@ import com.metrolist.music.ui.component.ActionPromptDialog
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.DraggableScrollbar
 import com.metrolist.music.ui.component.EmptyPlaceholder
+import com.metrolist.music.ui.component.GenrePillsRow
+import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.OverlayEditButton
 import com.metrolist.music.ui.component.SongListItem
-import com.metrolist.music.ui.component.SortHeader
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.menu.CustomThumbnailMenu
 import com.metrolist.music.ui.menu.LocalPlaylistMenu
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.screens.settings.DarkMode
+import com.metrolist.music.ui.component.rememberGenreFilter
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
@@ -215,6 +219,13 @@ fun LocalPlaylistScreen(
                 }
             }
         }
+
+    val genreFilter =
+        rememberGenreFilter(
+            remember(songs) {
+                songs.map { GenreSongInfo(it.song.id, it.song.song.title, it.song.artists.firstOrNull()?.name) }
+            },
+        )
 
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(isSearching) {
@@ -522,20 +533,20 @@ fun LocalPlaylistScreen(
                                     .padding(start = 16.dp)
                                     .animateItem(),
                         ) {
-                            SortHeader(
-                                sortType = sortType,
+                            LibrarySortRow(
+                                sortOptions =
+                                    listOf(
+                                        PlaylistSongSortType.CUSTOM to stringResource(R.string.sort_by_custom),
+                                        PlaylistSongSortType.CREATE_DATE to stringResource(R.string.sort_by_create_date),
+                                        PlaylistSongSortType.NAME to stringResource(R.string.sort_by_name),
+                                        PlaylistSongSortType.ARTIST to stringResource(R.string.sort_by_artist),
+                                        PlaylistSongSortType.PLAY_TIME to stringResource(R.string.sort_by_play_time),
+                                    ),
+                                currentSort = sortType,
+                                onSortChange = onSortTypeChange,
                                 sortDescending = sortDescending,
-                                onSortTypeChange = onSortTypeChange,
                                 onSortDescendingChange = onSortDescendingChange,
-                                sortTypeText = { sortType ->
-                                    when (sortType) {
-                                        PlaylistSongSortType.CUSTOM -> R.string.sort_by_custom
-                                        PlaylistSongSortType.CREATE_DATE -> R.string.sort_by_create_date
-                                        PlaylistSongSortType.NAME -> R.string.sort_by_name
-                                        PlaylistSongSortType.ARTIST -> R.string.sort_by_artist
-                                        PlaylistSongSortType.PLAY_TIME -> R.string.sort_by_play_time
-                                    }
-                                },
+                                showDescending = sortType != PlaylistSongSortType.CUSTOM,
                                 modifier = Modifier.weight(1f),
                             )
                             if (editable) {
@@ -551,10 +562,20 @@ fun LocalPlaylistScreen(
                             }
                         }
                     }
+
+                    item(key = "genre_pills") {
+                        GenrePillsRow(
+                            state = genreFilter,
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
                 }
             }
 
-            val displayedSongs = if (isSearching) filteredSongs else mutableSongs
+            val displayedSongs =
+                (if (isSearching) filteredSongs else mutableSongs).filter {
+                    genreFilter.matches(it.song.id)
+                }
 
             itemsIndexed(
                 items = displayedSongs,
@@ -1124,6 +1145,7 @@ fun LocalPlaylistHeader(
             }
         }
         // Playlist Thumbnail(s) - Large centered with shadow
+        val playlistCoverSquircle = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
         Box(
             modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
         ) {
@@ -1135,9 +1157,9 @@ fun LocalPlaylistHeader(
                                 .size(240.dp)
                                 .shadow(
                                     elevation = 16.dp,
-                                    shape = RoundedCornerShape(3.dp),
+                                    shape = playlistCoverSquircle,
                                 ),
-                        shape = RoundedCornerShape(3.dp),
+                        shape = playlistCoverSquircle,
                         color = MaterialTheme.colorScheme.surfaceVariant,
                     ) {
                         Box(
@@ -1161,10 +1183,10 @@ fun LocalPlaylistHeader(
                                 .size(240.dp)
                                 .shadow(
                                     elevation = 24.dp,
-                                    shape = RoundedCornerShape(3.dp),
+                                    shape = playlistCoverSquircle,
                                     spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                                 ),
-                        shape = RoundedCornerShape(3.dp),
+                        shape = playlistCoverSquircle,
                     ) {
                         AsyncImage(
                             model = overrideThumbnail.value ?: playlist.thumbnails[0],
@@ -1230,10 +1252,10 @@ fun LocalPlaylistHeader(
                                 .size(240.dp)
                                 .shadow(
                                     elevation = 24.dp,
-                                    shape = RoundedCornerShape(3.dp),
+                                    shape = playlistCoverSquircle,
                                     spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                                 ),
-                        shape = RoundedCornerShape(3.dp),
+                        shape = playlistCoverSquircle,
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             listOf(

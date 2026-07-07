@@ -39,7 +39,7 @@ fun ListItemPlaceHolder(
         Spacer(
             modifier =
             Modifier
-                .padding(6.dp)
+                .padding(4.dp)
                 .size(ListThumbnailSize)
                 .clip(thumbnailShape)
                 .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),

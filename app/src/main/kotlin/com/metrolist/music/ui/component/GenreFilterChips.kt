@@ -1,0 +1,247 @@
+/**
+ * Metrolist Project (C) 2026
+ * Licensed under GPL-3.0 | See git history for contributors
+ */
+
+package com.metrolist.music.ui.component
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
+import com.metrolist.music.utils.GenreProvider
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+
+data class GenreSongInfo(
+    val id: String,
+    val title: String,
+    val artist: String?,
+)
+
+data class GenreFilterState(
+    val genreBySongId: Map<String, List<String>>,
+    val selectedGenre: String?,
+    val isLoading: Boolean,
+    val onSelect: (String) -> Unit,
+) {
+    private val genreCounts: Map<String, Int>
+        get() = genreBySongId.values.flatten().groupingBy { it }.eachCount()
+
+    // Genres with only 1 matching song aren't useful as a filter (they'd
+    // narrow the list to a single item), so they're dropped. The rest are
+    // ordered most → fewest songs, so the left edge is always the "biggest" pill.
+    val sortedGenres: List<String>
+        get() =
+            genreCounts
+                .filterValues { it >= 2 }
+                .entries
+                .sortedByDescending { it.value }
+                .map { it.key }
+
+    fun matches(songId: String): Boolean =
+        selectedGenre == null || genreBySongId[songId]?.contains(selectedGenre) == true
+}
+
+// Pills only re-sort/reflow once per interval. Committing on every single
+// fetch result made the row constantly jump around; ticking at a fixed pace
+// keeps it calm while genres are still being resolved in the background.
+private const val PILL_SNAPSHOT_INTERVAL_MS = 3000L
+
+/**
+ * Fetches genre/style tags for [songs] from [GenreProvider] (no genre data
+ * exists anywhere else in Iride) and exposes selection/filter state for
+ * [GenrePillsRow]. Resets the selected genre whenever the song list changes.
+ */
+@Composable
+fun rememberGenreFilter(songs: List<GenreSongInfo>): GenreFilterState {
+    var genres by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
+    var stableGenres by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
+    var selectedGenre by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+
+    val ids = remember(songs) { songs.map { it.id } }
+
+    LaunchedEffect(ids) {
+        selectedGenre = null
+        val missing = songs.filter { it.id !in genres }
+        if (missing.isEmpty()) {
+            stableGenres = genres
+            isLoading = false
+            return@LaunchedEffect
+        }
+
+        isLoading = true
+        val semaphore = Semaphore(4)
+        val fetchJob =
+            launch {
+                missing
+                    .map { info ->
+                        async {
+                            semaphore.withPermit {
+                                val songGenres = GenreProvider.getGenres(info.id, info.title, info.artist)
+                                if (songGenres.isNotEmpty()) {
+                                    genres = genres + (info.id to songGenres)
+                                }
+                            }
+                        }
+                    }.awaitAll()
+            }
+
+        while (fetchJob.isActive) {
+            delay(PILL_SNAPSHOT_INTERVAL_MS)
+            stableGenres = genres
+        }
+        stableGenres = genres
+        isLoading = false
+    }
+
+    return GenreFilterState(
+        genreBySongId = stableGenres,
+        selectedGenre = selectedGenre,
+        isLoading = isLoading,
+        onSelect = { genre -> selectedGenre = if (selectedGenre == genre) null else genre },
+    )
+}
+
+@Composable
+fun GenrePillsRow(
+    state: GenreFilterState,
+    modifier: Modifier = Modifier,
+) {
+    val genres = state.sortedGenres
+    val showPlaceholder = genres.size <= 1 && state.isLoading
+
+    AnimatedVisibility(
+        visible = genres.size > 1 || showPlaceholder,
+        // Anchor to Start so the row grows/shrinks from the right edge only —
+        // the first pill's position never shifts when the row appears/resizes.
+        enter = fadeIn() + expandHorizontally(expandFrom = Alignment.Start),
+        exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.Start),
+        modifier = modifier,
+    ) {
+        if (genres.size > 1) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(start = 20.dp, end = 16.dp),
+            ) {
+                items(genres, key = { it }) { genre ->
+                    val selected = state.selectedGenre == genre
+
+                    val containerColor by animateColorAsState(
+                        targetValue =
+                            if (selected) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                            },
+                        animationSpec = spring(stiffness = 400f),
+                        label = "genrePillColor",
+                    )
+                    val contentColor by animateColorAsState(
+                        targetValue =
+                            if (selected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        animationSpec = spring(stiffness = 400f),
+                        label = "genrePillContentColor",
+                    )
+                    val horizontalPadding by animateDpAsState(
+                        targetValue = if (selected) 16.dp else 14.dp,
+                        animationSpec = spring(stiffness = 400f),
+                        label = "genrePillPadding",
+                    )
+
+                    Surface(
+                        onClick = { state.onSelect(genre) },
+                        shape = RoundedCornerShape(percent = 50),
+                        color = containerColor,
+                        contentColor = contentColor,
+                        modifier = Modifier.animateItem(),
+                    ) {
+                        Text(
+                            text = genre,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = horizontalPadding, vertical = 8.dp),
+                        )
+                    }
+                }
+            }
+        } else {
+            GenrePillsPlaceholder()
+        }
+    }
+}
+
+/** Skeleton pills shown while genres are still being resolved, so the row doesn't look broken. */
+@Composable
+private fun GenrePillsPlaceholder(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "genrePillsShimmer")
+    val alpha by transition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 0.9f,
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(700),
+                repeatMode = RepeatMode.Reverse,
+            ),
+        label = "genrePillsShimmerAlpha",
+    )
+
+    LazyRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+    ) {
+        items(listOf(56.dp, 84.dp, 68.dp)) { width ->
+            Box(
+                modifier =
+                    Modifier
+                        .height(32.dp)
+                        .width(width)
+                        .clip(RoundedCornerShape(percent = 50))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha * 0.7f)),
+            )
+        }
+    }
+}

@@ -8,6 +8,8 @@ package com.metrolist.music.ui.player
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -311,26 +313,9 @@ fun Thumbnail(
                 compositingStrategy = CompositingStrategy.Offscreen
             }
     ) {
-        // Error view
+        // Main thumbnail view - always visible, playback errors never replace the artwork
         AnimatedVisibility(
-            visible = error != null,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier
-                .padding(32.dp)
-                .align(Alignment.Center),
-        ) {
-            error?.let { playbackError ->
-                PlaybackError(
-                    error = playbackError,
-                    retry = playerConnection.player::prepare,
-                )
-            }
-        }
-
-        // Main thumbnail view
-        AnimatedVisibility(
-            visible = error == null,
+            visible = true,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier
@@ -436,6 +421,18 @@ fun Thumbnail(
             modifier = Modifier.align(Alignment.Center)
         ) {
             SeekEffectOverlay(seekDirection = seekDirection)
+        }
+
+        // Minimal, transient error banner - never hides the artwork or swaps the screen.
+        AnimatedVisibility(
+            visible = error != null,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding(),
+        ) {
+            error?.let { PlaybackErrorBanner(error = it, retry = playerConnection.player::prepare) }
         }
     }
 }

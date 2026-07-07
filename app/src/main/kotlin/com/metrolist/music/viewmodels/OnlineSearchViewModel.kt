@@ -24,7 +24,6 @@ import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.models.filterExplicit
 import com.metrolist.innertube.models.filterVideoSongs
 import com.metrolist.innertube.models.filterYoutubeShorts
-import com.metrolist.innertube.pages.SearchSummary
 import com.metrolist.innertube.pages.SearchSummaryPage
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
@@ -56,6 +55,9 @@ constructor(
     var summaryPage by mutableStateOf<SearchSummaryPage?>(null)
     val viewStateMap = mutableStateMapOf<String, ItemsPage?>()
 
+    // Only the top-result card (summaries.first(), YT always returns it first) is used —
+    // as a pure query-intent signal for loadSmartSearch's ordering — so unlike the old "All"
+    // tab this doesn't need every shelf enriched with extra network calls.
     private suspend fun loadSummaryPage() {
         if (summaryPage == null) {
             YouTube
@@ -64,20 +66,17 @@ constructor(
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                     val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
                     val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-                    val filtered = it.filterExplicit(hideExplicit)
+                    summaryPage = it.filterExplicit(hideExplicit)
                         .filterVideoSongs(hideVideoSongs)
                         .filterYoutubeShorts(hideYoutubeShorts)
-                    summaryPage = filtered.copy(summaries = reorderByQueryType(filtered.summaries))
-                    enrichSummaries()
                 }.onFailure {
                     reportException(it)
                 }
         }
     }
 
-    // "Top result" tells us what the query is really about (an artist, a song, an album, ...).
-    // Reorder the remaining sections so the ones most relevant to that intent come first,
-    // instead of the fixed Songs/Videos/Albums/Artists order YT always returns.
+    // "Top result" tells us what the query is really about (an artist, a song, an album, ...),
+    // used to rank Smart Search's category order (see categoryPriorityOrder).
     private enum class Category { SONG, VIDEO, ALBUM, ARTIST, PLAYLIST, PODCAST, EPISODE, PROFILE, OTHER }
 
     private fun categoryOf(item: YTItem?): Category = when (item) {
@@ -90,83 +89,43 @@ constructor(
         null -> Category.OTHER
     }
 
-    private fun reorderByQueryType(summaries: List<SearchSummary>): List<SearchSummary> {
-        if (summaries.isEmpty()) return summaries
-        // The top-result card's title comes from YT's own (possibly localized) header text,
-        // not the "Top result" literal, so matching on title breaks in non-English locales.
-        // YT always returns that card as the first section instead, which is a stable signal.
-        val top = summaries.first()
-        val rest = summaries.drop(1)
-        val topCategory = categoryOf(top.items.firstOrNull())
-
-        val priorityOrder = when (topCategory) {
-            // Artist query: their songs and albums matter more than the artist card itself.
-            Category.ARTIST -> listOf(Category.SONG, Category.ALBUM, Category.PLAYLIST, Category.VIDEO, Category.PODCAST, Category.PROFILE, Category.ARTIST, Category.EPISODE)
-            // Album query: the album, then its tracks/artist.
-            Category.ALBUM -> listOf(Category.ALBUM, Category.SONG, Category.ARTIST, Category.PLAYLIST, Category.VIDEO, Category.PODCAST, Category.PROFILE, Category.EPISODE)
-            // Playlist/podcast queries: keep collections and their episodes up front.
-            Category.PLAYLIST -> listOf(Category.PLAYLIST, Category.PODCAST, Category.SONG, Category.ARTIST, Category.ALBUM, Category.VIDEO, Category.EPISODE, Category.PROFILE)
-            Category.PODCAST -> listOf(Category.PODCAST, Category.EPISODE, Category.PLAYLIST, Category.ARTIST, Category.SONG, Category.ALBUM, Category.VIDEO, Category.PROFILE)
-            Category.PROFILE -> listOf(Category.PROFILE, Category.PLAYLIST, Category.SONG, Category.VIDEO, Category.ARTIST, Category.ALBUM, Category.PODCAST, Category.EPISODE)
-            // Song/video/unclassified query: default YT Music ordering.
-            else -> listOf(Category.SONG, Category.VIDEO, Category.ARTIST, Category.ALBUM, Category.PLAYLIST, Category.PODCAST, Category.EPISODE, Category.PROFILE)
-        }
-
-        val ranked = rest.sortedBy { summary ->
-            priorityOrder.indexOf(categoryOf(summary.items.firstOrNull())).let { if (it == -1) priorityOrder.size else it }
-        }
-        return listOf(top) + ranked
+    // Ranks categories relative to what the query is actually about, used by loadSmartSearch
+    // to order its sections (most relevant category first).
+    private fun categoryPriorityOrder(topCategory: Category): List<Category> = when (topCategory) {
+        // Artist query: their songs and albums matter more than the artist card itself.
+        Category.ARTIST -> listOf(Category.SONG, Category.ALBUM, Category.PLAYLIST, Category.VIDEO, Category.PODCAST, Category.PROFILE, Category.ARTIST, Category.EPISODE)
+        // Album query: the album, then its tracks/artist.
+        Category.ALBUM -> listOf(Category.ALBUM, Category.SONG, Category.ARTIST, Category.PLAYLIST, Category.VIDEO, Category.PODCAST, Category.PROFILE, Category.EPISODE)
+        // Playlist/podcast queries: keep collections and their episodes up front.
+        Category.PLAYLIST -> listOf(Category.PLAYLIST, Category.PODCAST, Category.SONG, Category.ARTIST, Category.ALBUM, Category.VIDEO, Category.EPISODE, Category.PROFILE)
+        Category.PODCAST -> listOf(Category.PODCAST, Category.EPISODE, Category.PLAYLIST, Category.ARTIST, Category.SONG, Category.ALBUM, Category.VIDEO, Category.PROFILE)
+        Category.PROFILE -> listOf(Category.PROFILE, Category.PLAYLIST, Category.SONG, Category.VIDEO, Category.ARTIST, Category.ALBUM, Category.PODCAST, Category.EPISODE)
+        // Song/video/unclassified query: default YT Music ordering.
+        else -> listOf(Category.SONG, Category.VIDEO, Category.ARTIST, Category.ALBUM, Category.PLAYLIST, Category.PODCAST, Category.EPISODE, Category.PROFILE)
     }
 
-    // The summary endpoint truncates every section to a handful of items. Once it loads,
-    // fetch each section's dedicated filter in the background and merge in more results so
-    // the "All" tab actually shows everything, not just 3-5 items per category.
-    // The first section is always the top-result card (see reorderByQueryType) and is left
-    // untouched — it's a distinct card layout, not a plain category shelf.
-    private fun enrichSummaries() {
-        val sections = summaryPage?.summaries.orEmpty()
-        sections.drop(1).forEach { summary ->
-            val filter = filterForSummary(summary) ?: return@forEach
-            viewModelScope.launch {
-                YouTube.search(query, filter)
-                    .onSuccess { result ->
-                        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                        val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-                        val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-                        val merged = (summary.items + result.items)
-                            .distinctBy { it.id }
-                            .filterExplicit(hideExplicit)
-                            .filterVideoSongs(hideVideoSongs)
-                            .filterYoutubeShorts(hideYoutubeShorts)
-                        val current = summaryPage ?: return@onSuccess
-                        summaryPage = current.copy(
-                            summaries = current.summaries.map {
-                                if (it === summary) it.copy(items = merged) else it
-                            }
-                        )
-                    }.onFailure {
-                        reportException(it)
-                    }
-            }
-        }
+    // Community vs featured playlists share one Category, but Smart Search needs both as
+    // separate sections/filters, so a category can expand to more than one filter.
+    private fun Category.toFilters(): List<YouTube.SearchFilter> = when (this) {
+        Category.SONG -> listOf(YouTube.SearchFilter.FILTER_SONG)
+        Category.VIDEO -> listOf(YouTube.SearchFilter.FILTER_VIDEO)
+        Category.ALBUM -> listOf(YouTube.SearchFilter.FILTER_ALBUM)
+        Category.ARTIST -> listOf(YouTube.SearchFilter.FILTER_ARTIST)
+        Category.PROFILE -> listOf(YouTube.SearchFilter.FILTER_PROFILE)
+        Category.PODCAST -> listOf(YouTube.SearchFilter.FILTER_PODCAST)
+        Category.PLAYLIST -> listOf(YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST, YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST)
+        Category.EPISODE -> listOf(YouTube.SearchFilter.FILTER_EPISODE)
+        Category.OTHER -> emptyList()
     }
 
-    // Episodes are deliberately excluded: the dedicated FILTER_EPISODE search returns a
-    // shape that our parser can't reliably classify (see the filter.collect handling below),
-    // so mixing it into the summary would reintroduce that inconsistency.
-    private fun filterForSummary(summary: SearchSummary): YouTube.SearchFilter? =
-        when (categoryOf(summary.items.firstOrNull())) {
-            Category.SONG -> YouTube.SearchFilter.FILTER_SONG
-            Category.VIDEO -> YouTube.SearchFilter.FILTER_VIDEO
-            Category.ALBUM -> YouTube.SearchFilter.FILTER_ALBUM
-            Category.ARTIST -> YouTube.SearchFilter.FILTER_ARTIST
-            Category.PROFILE -> YouTube.SearchFilter.FILTER_PROFILE
-            Category.PODCAST -> YouTube.SearchFilter.FILTER_PODCAST
-            // Community vs featured playlists can't be told apart from the item shape alone;
-            // community is the far more common bucket so it's the safe default to enrich.
-            Category.PLAYLIST -> YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST
-            Category.EPISODE, Category.OTHER -> null
-        }
+    // Episodes matched by content type, not by title text: the dedicated-filter branch
+    // below already learned the hard way that YT's shelf titles are localized, so matching
+    // a literal "Episodes" string silently breaks on any non-English account language.
+    private fun episodesFromSummary(): List<YTItem> =
+        summaryPage?.summaries
+            ?.firstOrNull { categoryOf(it.items.firstOrNull()) == Category.EPISODE }
+            ?.items
+            .orEmpty()
 
     init {
         viewModelScope.launch {
@@ -178,39 +137,68 @@ constructor(
                     // summary search: playlistItemData is absent and the subtitle structure is
                     // different, making reliable isEpisode detection fail for many items.
                     // Reuse the "Episodes" section from the summary page instead — it is already
-                    // parsed correctly by fromMusicResponsiveListItemRenderer and guaranteed to
-                    // show the same results as the episodes section in the "All" filter.
+                    // parsed correctly by fromMusicResponsiveListItemRenderer.
                     if (viewStateMap[filter.value] == null) {
                         loadSummaryPage()
-                        summaryPage?.let { page ->
-                            val episodes = page.summaries
-                                .firstOrNull { it.title == "Episodes" }
-                                ?.items
-                                .orEmpty()
-                            viewStateMap[filter.value] = ItemsPage(episodes, null)
-                        }
+                        viewStateMap[filter.value] = ItemsPage(episodesFromSummary(), null)
                     }
                 } else {
-                    if (viewStateMap[filter.value] == null) {
-                        YouTube
-                            .search(query, filter)
-                            .onSuccess { result ->
-                                val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                                val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-                                val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-                                viewStateMap[filter.value] =
-                                    ItemsPage(
-                                        result.items
-                                            .distinctBy { it.id }
-                                            .filterExplicit(hideExplicit)
-                                            .filterVideoSongs(hideVideoSongs)
-                                            .filterYoutubeShorts(hideYoutubeShorts),
-                                        result.continuation,
-                                    )
-                            }.onFailure {
-                                reportException(it)
-                            }
+                    fetchAndStoreFilterResults(filter)
+                }
+            }
+        }
+    }
+
+    private suspend fun fetchAndStoreFilterResults(filter: YouTube.SearchFilter) {
+        if (viewStateMap[filter.value] != null) return
+        YouTube
+            .search(query, filter)
+            .onSuccess { result ->
+                val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+                val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+                viewStateMap[filter.value] =
+                    ItemsPage(
+                        result.items
+                            .distinctBy { it.id }
+                            .filterExplicit(hideExplicit)
+                            .filterVideoSongs(hideVideoSongs)
+                            .filterYoutubeShorts(hideYoutubeShorts),
+                        result.continuation,
+                    )
+            }.onFailure {
+                reportException(it)
+            }
+    }
+
+    // Smart Search: instead of relying on YT's own truncated summary shelves, fetch every
+    // category's dedicated filter endpoint directly (same one backing each filter pill), so
+    // every section shows a full page of real results, not just the 3-5 items YT's summary
+    // groups items into. Ordered by query-intent priority, computed once the summary's
+    // top-result card (used purely as an intent signal) is available.
+    var smartSearchOrder by mutableStateOf<List<YouTube.SearchFilter>>(emptyList())
+        private set
+    private var smartSearchStarted = false
+
+    fun loadSmartSearch() {
+        if (smartSearchStarted) return
+        smartSearchStarted = true
+        viewModelScope.launch {
+            loadSummaryPage()
+            val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+            val topCategory = categoryOf(summaryPage?.summaries?.firstOrNull()?.items?.firstOrNull())
+            val order = categoryPriorityOrder(topCategory)
+                .flatMap { it.toFilters() }
+                .let { filters -> if (hideVideoSongs) filters.filter { it != YouTube.SearchFilter.FILTER_VIDEO } else filters }
+            smartSearchOrder = order
+
+            order.forEach { sectionFilter ->
+                if (sectionFilter == YouTube.SearchFilter.FILTER_EPISODE) {
+                    if (viewStateMap[sectionFilter.value] == null) {
+                        viewStateMap[sectionFilter.value] = ItemsPage(episodesFromSummary(), null)
                     }
+                } else {
+                    viewModelScope.launch { fetchAndStoreFilterResults(sectionFilter) }
                 }
             }
         }

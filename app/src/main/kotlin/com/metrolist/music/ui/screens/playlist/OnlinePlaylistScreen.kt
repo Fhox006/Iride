@@ -26,7 +26,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import sv.lib.squircleshape.SquircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ContainedLoadingIndicator
@@ -103,9 +103,12 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.YouTubePlaylistQueue
 import com.metrolist.music.ui.component.DefaultDialog
+import com.metrolist.music.ui.component.GenrePillsRow
+import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.YouTubeListItem
+import com.metrolist.music.ui.component.rememberGenreFilter
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSelectionSongMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
@@ -150,16 +153,25 @@ fun OnlinePlaylistScreen(
     var isSearching by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
 
+    val genreFilter =
+        rememberGenreFilter(
+            remember(songs) {
+                songs.map { GenreSongInfo(it.id, it.title, it.artists.firstOrNull()?.name) }
+            },
+        )
+
     val filteredSongs =
-        remember(songs, query) {
-            if (query.text.isEmpty()) {
-                songs.mapIndexed { i, s -> i to s }
-            } else {
-                songs.mapIndexed { i, s -> i to s }.filter {
-                    it.second.title.contains(query.text, true) ||
-                            it.second.artists.fastAny { a -> a.name.contains(query.text, true) }
+        remember(songs, query, genreFilter.selectedGenre, genreFilter.genreBySongId) {
+            val base =
+                if (query.text.isEmpty()) {
+                    songs.mapIndexed { i, s -> i to s }
+                } else {
+                    songs.mapIndexed { i, s -> i to s }.filter {
+                        it.second.title.contains(query.text, true) ||
+                                it.second.artists.fastAny { a -> a.name.contains(query.text, true) }
+                    }
                 }
-            }
+            base.filter { genreFilter.matches(it.second.id) }
         }
 
     var inSelectMode by rememberSaveable { mutableStateOf(false) }
@@ -271,6 +283,15 @@ fun OnlinePlaylistScreen(
                                 coroutineScope = coroutineScope,
                                 continuation = viewModel.continuation,
                                 isPodcastPlaylist = isPodcastPlaylist,
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
+                    }
+
+                    if (!isSearching) {
+                        item(key = "genre_pills") {
+                            GenrePillsRow(
+                                state = genreFilter,
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -607,10 +628,10 @@ private fun OnlinePlaylistHeader(
                     .size(240.dp)
                     .shadow(
                         elevation = 24.dp,
-                        shape = RoundedCornerShape(3.dp),
+                        shape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f),
                         spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                     ),
-            shape = RoundedCornerShape(3.dp),
+            shape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f),
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current).data(playlist.thumbnail).build(),

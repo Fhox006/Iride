@@ -32,7 +32,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import sv.lib.squircleshape.SquircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -109,11 +109,14 @@ import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.DraggableScrollbar
 import com.metrolist.music.ui.component.EmptyPlaceholder
+import com.metrolist.music.ui.component.GenrePillsRow
+import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
-import com.metrolist.music.ui.component.SortHeader
+import com.metrolist.music.ui.component.rememberGenreFilter
 import com.metrolist.music.ui.menu.AutoPlaylistMenu
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
@@ -457,16 +460,25 @@ fun AutoPlaylistScreen(
         }
     }
 
+    val genreFilter =
+        rememberGenreFilter(
+            remember(songs) {
+                songs?.map { GenreSongInfo(it.id, it.song.title, it.artists.firstOrNull()?.name) } ?: emptyList()
+            },
+        )
+
     val filteredSongs =
-        remember(songs, query) {
-            if (query.text.isEmpty()) {
-                songs ?: emptyList()
-            } else {
-                songs?.filter { song ->
-                    song.song.title.contains(query.text, true) ||
-                        song.artists.any { it.name.contains(query.text, true) }
-                } ?: emptyList()
-            }
+        remember(songs, query, genreFilter.selectedGenre, genreFilter.genreBySongId) {
+            val base =
+                if (query.text.isEmpty()) {
+                    songs ?: emptyList()
+                } else {
+                    songs?.filter { song ->
+                        song.song.title.contains(query.text, true) ||
+                            song.artists.any { it.name.contains(query.text, true) }
+                    } ?: emptyList()
+                }
+            base.filter { genreFilter.matches(it.id) }
         }
 
     LaunchedEffect(filteredSongs) {
@@ -536,22 +548,25 @@ fun AutoPlaylistScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(start = 16.dp),
                         ) {
-                            SortHeader(
-                                sortType = sortType,
+                            LibrarySortRow(
+                                sortOptions =
+                                    listOf(
+                                        SongSortType.CREATE_DATE to stringResource(R.string.sort_by_create_date),
+                                        SongSortType.NAME to stringResource(R.string.sort_by_name),
+                                        SongSortType.ARTIST to stringResource(R.string.sort_by_artist),
+                                        SongSortType.PLAY_TIME to stringResource(R.string.sort_by_play_time),
+                                    ),
+                                currentSort = sortType,
+                                onSortChange = onSortTypeChange,
                                 sortDescending = sortDescending,
-                                onSortTypeChange = onSortTypeChange,
                                 onSortDescendingChange = onSortDescendingChange,
-                                sortTypeText = { sortType ->
-                                    when (sortType) {
-                                        SongSortType.CREATE_DATE -> R.string.sort_by_create_date
-                                        SongSortType.NAME -> R.string.sort_by_name
-                                        SongSortType.ARTIST -> R.string.sort_by_artist
-                                        SongSortType.PLAY_TIME -> R.string.sort_by_play_time
-                                    }
-                                },
                                 modifier = Modifier.weight(1f),
                             )
                         }
+                    }
+
+                    item(key = "genre_pills") {
+                        GenrePillsRow(state = genreFilter)
                     }
                 }
 
@@ -921,10 +936,10 @@ private fun AutoPlaylistHeader(
                         .size(240.dp)
                         .shadow(
                             elevation = 24.dp,
-                            shape = RoundedCornerShape(3.dp),
+                            shape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f),
                             spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                         ),
-                shape = RoundedCornerShape(3.dp),
+                shape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f),
                 color = if (playlistType == PlaylistType.LIKE) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.surface,
             ) {
                 if (playlistType == PlaylistType.LIKE) {

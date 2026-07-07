@@ -31,6 +31,7 @@ import com.metrolist.music.di.ApplicationScope
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.extensions.toInetSocketAddress
 import com.metrolist.music.utils.CrashHandler
+import com.metrolist.music.utils.GenreProvider
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.reportException
@@ -67,6 +68,9 @@ class App :
 
         // Initialize cipher deobfuscator for WEB_REMIX streaming
         CipherDeobfuscator.initialize(this)
+
+        // Load the on-disk genre-tag cache used by playlist filter pills
+        GenreProvider.init(this)
 
         Timber.plant(Timber.DebugTree())
 
@@ -135,7 +139,6 @@ class App :
         }
 
         YouTube.useLoginForBrowse = settings[UseLoginForBrowse] ?: true
-        YouTube.fastPlayerLogic = settings[MetrolistPlayerLogicKey] ?: true
 
         val channel =
             NotificationChannel(
@@ -150,15 +153,6 @@ class App :
     }
 
     private fun observeSettingsChanges() {
-        applicationScope.launch(Dispatchers.IO) {
-            dataStore.data
-                .map { it[MetrolistPlayerLogicKey] ?: true }
-                .distinctUntilChanged()
-                .collect { enabled ->
-                    YouTube.fastPlayerLogic = enabled
-                }
-        }
-
         applicationScope.launch(Dispatchers.IO) {
             dataStore.data
                 .map { it[VisitorDataKey] }

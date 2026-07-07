@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.NavController
+import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.YouTube.SearchFilter.Companion.FILTER_ALBUM
 import com.metrolist.innertube.YouTube.SearchFilter.Companion.FILTER_ARTIST
 import com.metrolist.innertube.YouTube.SearchFilter.Companion.FILTER_COMMUNITY_PLAYLIST
@@ -104,6 +105,7 @@ import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.YouTubeListItem
+import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
@@ -116,6 +118,28 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
 import java.net.URLEncoder
+
+// Chip row identity: Smart Search lives alongside the filter pills but isn't itself a
+// YouTube.SearchFilter, so the row's value type wraps both instead of overloading `null`.
+private sealed interface SearchChipKey {
+    data object Smart : SearchChipKey
+    data class Filter(val value: YouTube.SearchFilter?) : SearchChipKey
+}
+
+// Section header label for a Smart Search category — mirrors the same string used for that
+// filter's own pill, so the two stay visually consistent.
+private fun filterSectionTitleRes(filter: YouTube.SearchFilter): Int = when (filter) {
+    FILTER_SONG -> R.string.filter_songs
+    FILTER_VIDEO -> R.string.filter_videos
+    FILTER_ALBUM -> R.string.filter_albums
+    FILTER_ARTIST -> R.string.filter_artists
+    FILTER_COMMUNITY_PLAYLIST -> R.string.filter_community_playlists
+    FILTER_FEATURED_PLAYLIST -> R.string.filter_featured_playlists
+    FILTER_PODCAST -> R.string.filter_podcasts
+    FILTER_EPISODE -> R.string.filter_episodes
+    FILTER_PROFILE -> R.string.filter_profiles
+    else -> R.string.filter_all
+}
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -143,6 +167,11 @@ fun OnlineSearchResult(
 
     var lastHandledCount by rememberSaveable { mutableIntStateOf(0) }
     var isSearchFocused by remember { mutableStateOf(false) }
+    var smartSelected by rememberSaveable { mutableStateOf(true) }
+
+    LaunchedEffect(smartSelected) {
+        if (smartSelected) viewModel.loadSmartSearch()
+    }
 
     LaunchedEffect(scrollToTopCount) {
         if (scrollToTopCount > lastHandledCount) {
@@ -283,6 +312,79 @@ fun OnlineSearchResult(
         )
     }
 
+    // Horizontal carousel shared by the "All" tab's category shelves and Smart Search's
+    // per-filter sections — same card sizing/click/long-press behavior either way.
+    val searchResultRow: @Composable (List<YTItem>) -> Unit = { rowItems ->
+        LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 8.dp)) {
+            items(
+                items = rowItems,
+                key = { it.id },
+            ) { rowItem ->
+                val isAlbum = rowItem is AlbumItem
+                val isVideo = rowItem is SongItem && rowItem.isVideoSong
+                YouTubeGridItem(
+                    item = rowItem,
+                    isActive = when (rowItem) {
+                        is SongItem -> mediaMetadata?.id == rowItem.id
+                        is AlbumItem -> mediaMetadata?.album?.id == rowItem.id
+                        is EpisodeItem -> mediaMetadata?.id == rowItem.id
+                        else -> false
+                    },
+                    isPlaying = isPlaying,
+                    coroutineScope = coroutineScope,
+                    thumbnailRatio = if (isVideo) 16f / 9f else 1f,
+                    thumbnailCornerRadius = if (isVideo) 8.dp else 3.dp,
+                    showPlayButton = rowItem is SongItem,
+                    size = when {
+                        isAlbum -> 180.dp
+                        isVideo -> 110.dp
+                        else -> 148.dp
+                    },
+                    modifier = Modifier
+                        .combinedClickable(
+                            onClick = {
+                                when (rowItem) {
+                                    is SongItem -> {
+                                        if (rowItem.id == mediaMetadata?.id) playerConnection.togglePlayPause()
+                                        else playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = rowItem.id), rowItem.toMediaMetadata()))
+                                    }
+                                    is AlbumItem -> navController.navigate("album/${rowItem.id}")
+                                    is ArtistItem -> navController.navigate("artist/${rowItem.id}")
+                                    is PlaylistItem -> navController.navigate("online_playlist/${rowItem.id}")
+                                    is PodcastItem -> navController.navigate("online_podcast/${rowItem.id}")
+                                    is EpisodeItem -> {
+                                        if (rowItem.id == mediaMetadata?.id) playerConnection.togglePlayPause()
+                                        else playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = rowItem.id), rowItem.toMediaMetadata()))
+                                    }
+                                }
+                            },
+                            onLongClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                menuState.show {
+                                    when (rowItem) {
+                                        is SongItem -> YouTubeSongMenu(song = rowItem, navController = navController, onDismiss = menuState::dismiss)
+                                        is AlbumItem -> YouTubeAlbumMenu(albumItem = rowItem, navController = navController, onDismiss = menuState::dismiss)
+                                        is ArtistItem -> YouTubeArtistMenu(artist = rowItem, onDismiss = menuState::dismiss)
+                                        is PlaylistItem -> YouTubePlaylistMenu(playlist = rowItem, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                                        is PodcastItem -> YouTubePlaylistMenu(playlist = rowItem.asPlaylistItem(), coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                                        is EpisodeItem -> YouTubeSongMenu(song = rowItem.asSongItem(), navController = navController, onDismiss = menuState::dismiss)
+                                    }
+                                }
+                            },
+                        )
+                        .animateItem(),
+                )
+            }
+        }
+    }
+
+    // Shimmer placeholder for a Smart Search section still awaiting its dedicated search call.
+    val searchResultRowPlaceholder: @Composable () -> Unit = {
+        Row(modifier = Modifier.padding(start = 4.dp)) {
+            repeat(3) { GridItemPlaceHolder() }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -339,23 +441,29 @@ fun OnlineSearchResult(
 
         // Filter pills
         val visibleChips = buildList {
-            add(null to stringResource(R.string.filter_all))
-            add(FILTER_SONG to stringResource(R.string.filter_songs))
-            if (!hideVideoSongs) add(FILTER_VIDEO to stringResource(R.string.filter_videos))
-            add(FILTER_ALBUM to stringResource(R.string.filter_albums))
-            add(FILTER_ARTIST to stringResource(R.string.filter_artists))
-            add(FILTER_COMMUNITY_PLAYLIST to stringResource(R.string.filter_community_playlists))
-            add(FILTER_FEATURED_PLAYLIST to stringResource(R.string.filter_featured_playlists))
-            add(FILTER_PODCAST to stringResource(R.string.filter_podcasts))
-            add(FILTER_EPISODE to stringResource(R.string.filter_episodes))
-            add(FILTER_PROFILE to stringResource(R.string.filter_profiles))
+            add(SearchChipKey.Smart to stringResource(R.string.filter_smart_search))
+            add(SearchChipKey.Filter(FILTER_SONG) to stringResource(R.string.filter_songs))
+            if (!hideVideoSongs) add(SearchChipKey.Filter(FILTER_VIDEO) to stringResource(R.string.filter_videos))
+            add(SearchChipKey.Filter(FILTER_ALBUM) to stringResource(R.string.filter_albums))
+            add(SearchChipKey.Filter(FILTER_ARTIST) to stringResource(R.string.filter_artists))
+            add(SearchChipKey.Filter(FILTER_COMMUNITY_PLAYLIST) to stringResource(R.string.filter_community_playlists))
+            add(SearchChipKey.Filter(FILTER_FEATURED_PLAYLIST) to stringResource(R.string.filter_featured_playlists))
+            add(SearchChipKey.Filter(FILTER_PODCAST) to stringResource(R.string.filter_podcasts))
+            add(SearchChipKey.Filter(FILTER_EPISODE) to stringResource(R.string.filter_episodes))
+            add(SearchChipKey.Filter(FILTER_PROFILE) to stringResource(R.string.filter_profiles))
         }
 
         ChipsRow(
             chips = visibleChips,
-            currentValue = searchFilter,
-            onValueUpdate = { newFilter ->
-                if (viewModel.filter.value != newFilter) viewModel.filter.value = newFilter
+            currentValue = if (smartSelected) SearchChipKey.Smart else SearchChipKey.Filter(searchFilter),
+            onValueUpdate = { key ->
+                when (key) {
+                    is SearchChipKey.Smart -> smartSelected = true
+                    is SearchChipKey.Filter -> {
+                        smartSelected = false
+                        if (viewModel.filter.value != key.value) viewModel.filter.value = key.value
+                    }
+                }
                 coroutineScope.launch { lazyListState.animateScrollToItem(0) }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -368,97 +476,59 @@ fun OnlineSearchResult(
                 state = lazyListState,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                if (searchFilter == null) {
-                    // "All" tab: grouped summary sections
-                    val summaries = searchSummary?.summaries ?: emptyList()
+                if (smartSelected) {
+                    // Smart Search: full per-category carousels ordered by query intent, each
+                    // backed by that category's own dedicated search (not YT's truncated
+                    // summary shelves), so nothing is capped to a handful of items.
+                    val order = viewModel.smartSearchOrder
+                    val topResult = searchSummary?.summaries?.firstOrNull()
 
-                    summaries.forEachIndexed { index, summary ->
-                        item(key = "title_${summary.title}") {
-                            NavigationTitle(summary.title)
-                        }
-
-                        if (index == 0) {
-                            // First section (top result): vertical list
+                    if (order.isNotEmpty()) {
+                        topResult?.let { top ->
+                            item(key = "smart_top_title") {
+                                NavigationTitle(top.title)
+                            }
                             items(
-                                items = summary.items,
-                                key = { it.id },
+                                items = top.items,
+                                key = { "smart_top_${it.id}" },
                                 itemContent = ytItemContent,
                             )
-                        } else {
-                            // All other sections: horizontal scroll
-                            item(key = "row_${summary.title}") {
-                                LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 8.dp)) {
-                                    items(
-                                        items = summary.items,
-                                        key = { it.id },
-                                    ) { rowItem ->
-                                        val isAlbum = rowItem is AlbumItem
-                                        val isVideo = rowItem is SongItem && rowItem.isVideoSong
-                                        YouTubeGridItem(
-                                            item = rowItem,
-                                            isActive = when (rowItem) {
-                                                is SongItem -> mediaMetadata?.id == rowItem.id
-                                                is AlbumItem -> mediaMetadata?.album?.id == rowItem.id
-                                                is EpisodeItem -> mediaMetadata?.id == rowItem.id
-                                                else -> false
-                                            },
-                                            isPlaying = isPlaying,
-                                            coroutineScope = coroutineScope,
-                                            thumbnailRatio = if (isVideo) 16f / 9f else 1f,
-                                            thumbnailCornerRadius = if (isVideo) 8.dp else 3.dp,
-                                            showPlayButton = rowItem is SongItem,
-                                            size = when {
-                                                isAlbum -> 180.dp
-                                                isVideo -> 110.dp
-                                                else -> 148.dp
-                                            },
-                                            modifier = Modifier
-                                                .combinedClickable(
-                                                    onClick = {
-                                                        when (rowItem) {
-                                                            is SongItem -> {
-                                                                if (rowItem.id == mediaMetadata?.id) playerConnection.togglePlayPause()
-                                                                else playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = rowItem.id), rowItem.toMediaMetadata()))
-                                                            }
-                                                            is AlbumItem -> navController.navigate("album/${rowItem.id}")
-                                                            is ArtistItem -> navController.navigate("artist/${rowItem.id}")
-                                                            is PlaylistItem -> navController.navigate("online_playlist/${rowItem.id}")
-                                                            is PodcastItem -> navController.navigate("online_podcast/${rowItem.id}")
-                                                            is EpisodeItem -> {
-                                                                if (rowItem.id == mediaMetadata?.id) playerConnection.togglePlayPause()
-                                                                else playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = rowItem.id), rowItem.toMediaMetadata()))
-                                                            }
-                                                        }
-                                                    },
-                                                    onLongClick = {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        menuState.show {
-                                                            when (rowItem) {
-                                                                is SongItem -> YouTubeSongMenu(song = rowItem, navController = navController, onDismiss = menuState::dismiss)
-                                                                is AlbumItem -> YouTubeAlbumMenu(albumItem = rowItem, navController = navController, onDismiss = menuState::dismiss)
-                                                                is ArtistItem -> YouTubeArtistMenu(artist = rowItem, onDismiss = menuState::dismiss)
-                                                                is PlaylistItem -> YouTubePlaylistMenu(playlist = rowItem, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
-                                                                is PodcastItem -> YouTubePlaylistMenu(playlist = rowItem.asPlaylistItem(), coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
-                                                                is EpisodeItem -> YouTubeSongMenu(song = rowItem.asSongItem(), navController = navController, onDismiss = menuState::dismiss)
-                                                            }
-                                                        }
-                                                    },
-                                                )
-                                                .animateItem(),
-                                        )
-                                    }
+                        }
+
+                        order.forEach { sectionFilter ->
+                            val page = viewModel.viewStateMap[sectionFilter.value]
+                            if (page != null && page.items.isEmpty()) return@forEach
+
+                            item(key = "smart_title_${sectionFilter.value}") {
+                                NavigationTitle(
+                                    title = stringResource(filterSectionTitleRes(sectionFilter)),
+                                    onClick = {
+                                        smartSelected = false
+                                        if (viewModel.filter.value != sectionFilter) viewModel.filter.value = sectionFilter
+                                        coroutineScope.launch { lazyListState.animateScrollToItem(0) }
+                                    },
+                                )
+                            }
+
+                            item(key = "smart_row_${sectionFilter.value}") {
+                                if (page == null) {
+                                    searchResultRowPlaceholder()
+                                } else {
+                                    searchResultRow(page.items)
                                 }
                             }
                         }
-                    }
 
-                    // Empty state after data loads with no results
-                    if (searchSummary != null && summaries.isEmpty()) {
-                        item {
-                            EmptyPlaceholder(
-                                icon = R.drawable.search,
-                                text = stringResource(R.string.no_results_found),
-                            )
+                        val allResolved = order.all { viewModel.viewStateMap[it.value] != null }
+                        val allEmpty = allResolved && topResult == null &&
+                            order.all { viewModel.viewStateMap[it.value]?.items.isNullOrEmpty() }
+                        if (allEmpty) {
+                            item {
+                                EmptyPlaceholder(
+                                    icon = R.drawable.search,
+                                    text = stringResource(R.string.no_results_found),
+                                )
+                            }
                         }
                     }
                 } else {
@@ -544,7 +614,9 @@ fun OnlineSearchResult(
                 }
 
                 // Initial loading shimmer
-                if ((searchFilter == null && searchSummary == null) || (searchFilter != null && itemsPage == null)) {
+                if ((smartSelected && viewModel.smartSearchOrder.isEmpty()) ||
+                    (!smartSelected && itemsPage == null)
+                ) {
                     item {
                         ShimmerHost {
                             repeat(8) { ListItemPlaceHolder() }

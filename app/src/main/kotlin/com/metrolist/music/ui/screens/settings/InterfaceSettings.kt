@@ -58,6 +58,7 @@ import com.metrolist.music.constants.RandomizeHomeOrderKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
 import com.metrolist.music.constants.ShowLikedPlaylistKey
+import com.metrolist.music.constants.ShowNewsTabKey
 import com.metrolist.music.constants.ShowTopPlaylistKey
 import com.metrolist.music.constants.ShowUploadedPlaylistKey
 import com.metrolist.music.constants.ShowWrappedCardKey
@@ -85,6 +86,8 @@ fun InterfaceSettings(
         rememberEnumPreference(ChipSortTypeKey, defaultValue = LibraryFilter.LIBRARY)
     val (gridItemSize, onGridItemSizeChange) =
         rememberEnumPreference(GridItemsSizeKey, defaultValue = GridItemSize.BIG)
+    val (showNewsTab, onShowNewsTabChange) =
+        rememberPreference(ShowNewsTabKey, defaultValue = false)
     val (showLikedPlaylist, onShowLikedPlaylistChange) =
         rememberPreference(ShowLikedPlaylistKey, defaultValue = false)
     val (showDownloadedPlaylist, onShowDownloadedPlaylistChange) =
@@ -303,6 +306,24 @@ fun InterfaceSettings(
                         )
                     },
                     onClick = { showDefaultChipDialog = true }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.newspaper),
+                    title = { Text(stringResource(R.string.show_news_tab)) },
+                    description = { Text(stringResource(R.string.show_news_tab_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = showNewsTab, onCheckedChange = onShowNewsTabChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(if (showNewsTab) R.drawable.check else R.drawable.close),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onShowNewsTabChange(!showNewsTab) }
                 ),
                 if (advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.grid_view),

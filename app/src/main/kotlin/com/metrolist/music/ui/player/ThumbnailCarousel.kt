@@ -8,6 +8,8 @@ package com.metrolist.music.ui.player
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -219,18 +221,7 @@ fun ThumbnailCarousel(
         }
     ) {
         AnimatedVisibility(
-            visible = error != null,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier
-                .padding(32.dp)
-                .align(Alignment.Center),
-        ) {
-            error?.let { PlaybackError(error = it, retry = playerConnection.player::prepare) }
-        }
-
-        AnimatedVisibility(
-            visible = error == null,
+            visible = true,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier
@@ -421,6 +412,18 @@ fun ThumbnailCarousel(
             modifier = Modifier.align(Alignment.Center)
         ) {
             CarouselSeekEffectOverlay(seekDirection = seekDirection)
+        }
+
+        // Minimal, transient error banner - never hides the artwork or swaps the screen.
+        AnimatedVisibility(
+            visible = error != null,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding(),
+        ) {
+            error?.let { PlaybackErrorBanner(error = it, retry = playerConnection.player::prepare) }
         }
     }
 }

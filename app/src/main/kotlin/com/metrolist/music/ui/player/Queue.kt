@@ -181,6 +181,9 @@ fun Queue(
     playerBackground: PlayerBackgroundStyle = PlayerBackgroundStyle.DEFAULT,
     isLyricsLoading: Boolean = false,
     onToggleLyrics: () -> Unit = {},
+    isCommentsActive: Boolean = false,
+    isCommentsFeatureEnabled: Boolean = false,
+    onToggleComments: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -353,6 +356,22 @@ fun Queue(
                         textBackgroundColor = TextBackgroundColor,
                         playerBackground = playerBackground,
                     )
+
+                    // 3. Comments (opt-in, off by default)
+                    if (isCommentsFeatureEnabled) {
+                        PlayerQueueButton(
+                            icon = R.drawable.comment,
+                            onClick = { onToggleComments() },
+                            isActive = isCommentsActive,
+                            shape = pillShape,
+                            modifier = Modifier.size(buttonSize),
+                            textButtonColor = textButtonColor,
+                            iconButtonColor = iconButtonColor,
+                            iconSize = iconSize,
+                            textBackgroundColor = TextBackgroundColor,
+                            playerBackground = playerBackground,
+                        )
+                    }
                 }
             } else {
                 // Old design
@@ -417,6 +436,35 @@ fun Queue(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = stringResource(R.string.lyrics),
+                                color = TextBackgroundColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.basicMarquee(),
+                            )
+                        }
+                    }
+
+                    if (isCommentsFeatureEnabled) TextButton(
+                        onClick = {
+                            onToggleComments()
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.comment),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = TextBackgroundColor,
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.comments),
                                 color = TextBackgroundColor,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,

@@ -109,25 +109,32 @@ class ArtistViewModel @Inject constructor(
 
         if (localRecent != null) return@combine localRecent
 
-        // If not in library, look at the artist page from YTM
-        val albumSection = page?.sections
-            ?.find { 
-                it.title.contains("Album", ignoreCase = true) || 
+        // If not in library, look at the artist page from YTM.
+        // Consider every Albums/Singles/EPs shelf (not just the first match) and pick the
+        // newest item across all of them, since YTM doesn't always order shelves consistently.
+        val candidateSections = page?.sections
+            ?.filter {
+                it.title.contains("Album", ignoreCase = true) ||
                 it.title.contains("Singol", ignoreCase = true) ||
                 it.title.contains("Single", ignoreCase = true) ||
+                it.title.contains("EP", ignoreCase = true) ||
                 it.title.contains("Latest", ignoreCase = true) ||
                 it.title.contains("Uscita", ignoreCase = true) ||
                 it.title.contains("Release", ignoreCase = true)
             }
-        
-        val albumItem = albumSection?.items
-            ?.filterIsInstance<com.metrolist.innertube.models.AlbumItem>()
-            ?.firstOrNull()
+
+        val (albumSection, albumItem) = candidateSections
+            ?.flatMap { section ->
+                section.items.filterIsInstance<com.metrolist.innertube.models.AlbumItem>().map { section to it }
+            }
+            ?.maxByOrNull { (_, item) -> item.year ?: Int.MIN_VALUE }
+            ?: (null to null)
 
         albumItem?.let { item ->
-            val isSingle = albumSection?.title?.contains("Single", ignoreCase = true) == true || 
-                          albumSection?.title?.contains("Singol", ignoreCase = true) == true
-            
+            val isSingle = albumSection?.title?.contains("Single", ignoreCase = true) == true ||
+                          albumSection?.title?.contains("Singol", ignoreCase = true) == true ||
+                          albumSection?.title?.contains("EP", ignoreCase = true) == true
+
             com.metrolist.music.db.entities.Album(
                 album = com.metrolist.music.db.entities.AlbumEntity(
                     id = item.browseId,

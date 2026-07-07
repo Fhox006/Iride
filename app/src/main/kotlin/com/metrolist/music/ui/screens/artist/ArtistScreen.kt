@@ -67,7 +67,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -338,7 +337,11 @@ fun ArtistScreen(
                     val thumbnail = artistPage?.artist?.thumbnail ?: libraryArtist?.artist?.thumbnailUrl
                     val artistName = artistPage?.artist?.title ?: libraryArtist?.artist?.name
 
-                    Box {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (thumbnail != null) Modifier.aspectRatio(1f) else Modifier),
+                    ) {
                         // Artist Image with offset
                         if (thumbnail != null) {
                             Box(
@@ -376,24 +379,19 @@ fun ArtistScreen(
                             }
                         }
 
-                        // Artist Name and Controls Section - positioned at bottom of image
+                        // Artist Name and Controls Section — anchored to the bottom of the image so it
+                        // always hugs the edge regardless of how much optional content (monthly listeners,
+                        // recent album panel) is present, instead of leaving a dead gap below it.
                         Column(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(
-                                        top =
-                                            if (thumbnail != null) {
-                                                // Position content at the bottom part of the image
-                                                // Using screen width to calculate aspect ratio height minus overlap
-                                                LocalResources.current.displayMetrics.widthPixels.let { screenWidth ->
-                                                    with(density) {
-                                                        ((screenWidth / 1.2f) - 144).toDp()
-                                                    }
-                                                }
-                                            } else {
-                                                16.dp
-                                            },
+                                    .then(
+                                        if (thumbnail != null) {
+                                            Modifier.align(Alignment.BottomStart)
+                                        } else {
+                                            Modifier.padding(top = 16.dp)
+                                        },
                                     ),
                         ) {
                             Column(
@@ -505,8 +503,8 @@ fun ArtistScreen(
                                     )
                                 }
 
-                                // Recent Album Panel
-                                if (recentAlbum != null) {
+                                // Recent Album Panel (YTM view only — library view already lists albums below)
+                                if (!showLocal && recentAlbum != null) {
                                     Spacer(modifier = Modifier.height(8.dp))
                                     RecentAlbumPanel(
                                         album = recentAlbum!!,
@@ -524,7 +522,7 @@ fun ArtistScreen(
                                     )
                                 }
                             }
-                            if (recentAlbum != null) {
+                            if (!showLocal && recentAlbum != null) {
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
                         }
@@ -666,12 +664,25 @@ fun ArtistScreen(
                     }
                 } else {
                     artistPage?.sections?.fastForEach { section ->
-                        if (section.items.isNotEmpty()) {
+                        // "From your library" is redundant with the dedicated library toggle above — skip it
+                        val isFromYourLibrarySection = section.title.contains("your library", ignoreCase = true) ||
+                                section.title.contains("tua libreria", ignoreCase = true)
+                        if (section.items.isNotEmpty() && !isFromYourLibrarySection) {
                             val isSinglesSection = section.title.contains("Single", ignoreCase = true) || section.title.contains("EP", ignoreCase = true)
                             // Filter out recent album and duplicate Singles/EPs
-                            val filteredItems = section.items.filter { item ->
+                            val filteredItemsUnsorted = section.items.filter { item ->
                                 val isDuplicate = isSinglesSection && item is AlbumItem && albumsTitles.contains(item.title.lowercase().trim())
                                 !isDuplicate
+                            }
+
+                            val isAlbumOrSingleEpSection = section.title.contains("Album", ignoreCase = true) ||
+                                    section.title.contains("Single", ignoreCase = true) ||
+                                    section.title.contains("EP", ignoreCase = true)
+                            // Newest-first by release year — YTM shelves are not always correctly ordered
+                            val filteredItems = if (isAlbumOrSingleEpSection) {
+                                filteredItemsUnsorted.sortedByDescending { (it as? AlbumItem)?.year ?: Int.MIN_VALUE }
+                            } else {
+                                filteredItemsUnsorted
                             }
 
                             if (filteredItems.isNotEmpty()) {

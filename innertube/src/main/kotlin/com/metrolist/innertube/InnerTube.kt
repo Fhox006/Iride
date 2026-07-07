@@ -36,13 +36,6 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  */
 @OptIn(ExperimentalEncodingApi::class)
 class InnerTube {
-    var fastPlayerLogic: Boolean = true
-        set(value) {
-            field = value
-            httpClient.close()
-            httpClient = createClient()
-        }
-
     private var httpClient = createClient()
 
     var locale = YouTubeLocale(
@@ -92,8 +85,8 @@ class InnerTube {
                 // Connection pool settings for better connection reuse
                 connectionPool(
                     okhttp3.ConnectionPool(
-                        if (fastPlayerLogic) 10 else 5, // maxIdleConnections
-                        if (fastPlayerLogic) 5 else 2, // keepAliveDuration
+                        5, // maxIdleConnections
+                        2, // keepAliveDuration
                         java.util.concurrent.TimeUnit.MINUTES
                     )
                 )
@@ -113,7 +106,7 @@ class InnerTube {
                 cache(
                     okhttp3.Cache(
                         directory = java.io.File(System.getProperty("java.io.tmpdir"), "http_cache"),
-                        maxSize = if (fastPlayerLogic) 128L * 1024L * 1024L else 50L * 1024L * 1024L
+                        maxSize = 50L * 1024L * 1024L // 50 MB
                     )
                 )
                 
@@ -813,7 +806,7 @@ class InnerTube {
             val response = next(client = YouTubeClient.WEB, videoId, null, null, null, null, null).body<NextResponse>()
 
             val baseForInfo =
-                response.contents.twoColumnWatchNextResults
+                response.contents?.twoColumnWatchNextResults
                     ?.results
                     ?.results
                     ?.content
@@ -822,7 +815,7 @@ class InnerTube {
                     }?.videoSecondaryInfoRenderer
 
             val baseForTitle =
-                response.contents.twoColumnWatchNextResults
+                response.contents?.twoColumnWatchNextResults
                     ?.results
                     ?.results
                     ?.content
@@ -879,5 +872,21 @@ class InnerTube {
 
         }
 
+    suspend fun createComment(
+        client: YouTubeClient,
+        commentText: String,
+        createCommentParams: String,
+    ) = withRetry {
+        httpClient.post("comment/create_comment") {
+            ytClient(client, setLogin = true)
+            setBody(
+                CreateCommentBody(
+                    context = client.toContext(locale, visitorData, dataSyncId),
+                    commentText = commentText,
+                    createCommentParams = createCommentParams,
+                )
+            )
+        }
+    }
 
 }

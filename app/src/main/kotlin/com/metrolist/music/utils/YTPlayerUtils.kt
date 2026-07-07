@@ -26,7 +26,6 @@ import com.metrolist.innertube.models.YouTubeClient.Companion.WEB_CREATOR
 import com.metrolist.innertube.models.YouTubeClient.Companion.WEB_REMIX
 import com.metrolist.innertube.models.response.PlayerResponse
 import com.metrolist.music.constants.AudioQuality
-import com.metrolist.music.constants.FasterLoaderKey
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
 import com.metrolist.music.utils.cipher.FunctionNameExtractor
 import com.metrolist.music.utils.cipher.PlayerJsFetcher
@@ -88,12 +87,6 @@ object YTPlayerUtils {
         Timber.tag(TAG).d("videoId: $videoId")
         Timber.tag(TAG).d("playlistId: $playlistId")
         Timber.tag(TAG).d("audioQuality: $audioQuality")
-
-        // Faster Loader: skip the blocking HEAD-request stream URL validation and trust the
-        // URL directly from the (already successful) player response. Saves one network
-        // round-trip per play/skip; a bad URL still gets caught and retried by
-        // MusicService.onPlayerError, so this is safe to skip pre-emptively.
-        val skipStreamValidation = CipherDeobfuscator.appContext.dataStore.get(FasterLoaderKey, true)
 
         // Check if this is an uploaded/privately owned track
         val isUploadedTrack = playlistId == "MLPT" || playlistId?.contains("MLPT") == true
@@ -345,9 +338,9 @@ object YTPlayerUtils {
                     break
                 }
 
-                if (skipStreamValidation || validateStatus(streamUrl)) {
-                    // working stream found (or trusted without a pre-emptive HEAD check)
-                    Timber.tag(logTag).d("Stream accepted for client: ${currentClient.clientName} (validated=${!skipStreamValidation})")
+                if (validateStatus(streamUrl)) {
+                    // working stream found
+                    Timber.tag(logTag).d("Stream validated successfully with client: ${currentClient.clientName}")
                     // Log for release builds
                     Timber.tag(TAG).i("Playback: client=${currentClient.clientName}, videoId=$videoId")
                     break
@@ -588,5 +581,163 @@ object YTPlayerUtils {
 
     fun forceRefreshForVideo(videoId: String) {
         Timber.tag(logTag).d("Force refreshing for videoId: $videoId")
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Muzza player logic: fully isolated, parallel playback path. Does not call
+    // or share any state with playerResponseForPlayback above. Faithful port of
+    // Muzza's own YTPlayerUtils.playerResponseForPlayback: bare WEB_REMIX + a flat
+    // fallback-client loop, no PoToken, no age-restriction branching, no custom
+    // cipher/player.js fallback chain. Carries per-client diagnostics so failures
+    // can be copied straight out of the in-app error banner.
+    // ─────────────────────────────────────────────────────────────────────
+
+    private val MUZZA_MAIN_CLIENT: YouTubeClient = WEB_REMIX
+    private val MUZZA_STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> = arrayOf(
+        com.metrolist.innertube.models.YouTubeClient.Companion.VISIONOS,
+        WEB_CREATOR,
+        TVHTML5_SIMPLY_EMBEDDED_PLAYER,
+        TVHTML5,
+        ANDROID_VR_1_43_32,
+        ANDROID_VR_1_61_48,
+        IOS,
+        IPADOS,
+        ANDROID_CREATOR,
+        ANDROID_VR_NO_AUTH,
+        MOBILE,
+        WEB,
+    )
+
+    private fun getSignatureTimestampMuzzaOrNull(videoId: String): Int? {
+        val result = NewPipeExtractor.getSignatureTimestamp(videoId)
+        return result.fold(
+            onSuccess = { it },
+            onFailure = { error ->
+                Timber.tag(logTag).e(error, "Muzza: failed to get signature timestamp")
+                null
+            }
+        )
+    }
+
+    private fun validateStatusMuzza(url: String): Int {
+        return try {
+            val response = httpClient.newCall(
+                okhttp3.Request.Builder().head().url(url).build()
+            ).execute()
+            val code = response.code
+            response.close()
+            code
+        } catch (e: Exception) {
+            Timber.tag(logTag).e(e, "Muzza: stream URL validation failed with exception")
+            -1
+        }
+    }
+
+    suspend fun playerResponseForPlaybackMuzza(
+        videoId: String,
+        playlistId: String? = null,
+        audioQuality: AudioQuality,
+        connectivityManager: ConnectivityManager,
+    ): Result<PlaybackData> = runCatching {
+        val signatureTimestamp = getSignatureTimestampMuzzaOrNull(videoId)
+        val sessionId = YouTube.visitorData
+        val attemptLog = StringBuilder()
+
+        val mainPlayerResponse = YouTube.player(videoId, playlistId, MUZZA_MAIN_CLIENT, signatureTimestamp).getOrThrow()
+        val audioConfig = mainPlayerResponse.playerConfig?.audioConfig
+        val videoDetails = mainPlayerResponse.videoDetails
+        val playbackTracking = mainPlayerResponse.playbackTracking
+        var format: PlayerResponse.StreamingData.Format? = null
+        var streamUrl: String? = null
+        var streamExpiresInSeconds: Int? = null
+        var streamPlayerResponse: PlayerResponse? = null
+
+        for (clientIndex in (-1 until MUZZA_STREAM_FALLBACK_CLIENTS.size)) {
+            format = null
+            streamUrl = null
+            streamExpiresInSeconds = null
+
+            val client: YouTubeClient
+            if (clientIndex == -1) {
+                client = MUZZA_MAIN_CLIENT
+                streamPlayerResponse = mainPlayerResponse
+            } else {
+                client = MUZZA_STREAM_FALLBACK_CLIENTS[clientIndex]
+
+                if (client.loginRequired && sessionId.isNullOrEmpty() && YouTube.cookie == null) {
+                    attemptLog.append("${client.clientName}: skipped (loginRequired, no session)\n")
+                    continue
+                }
+
+                streamPlayerResponse = YouTube.player(videoId, playlistId, client, signatureTimestamp).getOrNull()
+            }
+
+            val status = streamPlayerResponse?.playabilityStatus?.status
+            val formatsCount = streamPlayerResponse?.streamingData?.adaptiveFormats?.size ?: -1
+
+            if (status == "OK") {
+                format = findFormat(streamPlayerResponse, audioQuality, connectivityManager)
+                if (format == null) {
+                    attemptLog.append("${client.clientName}: status=OK formats=$formatsCount -> no audio format found\n")
+                    continue
+                }
+
+                val streamUrlResult = NewPipeExtractor.getStreamUrl(format, videoId)
+                streamUrl = streamUrlResult
+                if (streamUrl == null) {
+                    attemptLog.append("${client.clientName}: status=OK format=${format.itag}/${format.mimeType} -> getStreamUrl returned null\n")
+                    continue
+                }
+
+                streamExpiresInSeconds = streamPlayerResponse.streamingData?.expiresInSeconds
+                if (streamExpiresInSeconds == null) {
+                    attemptLog.append("${client.clientName}: status=OK, streamUrl resolved, but no expiresInSeconds\n")
+                    continue
+                }
+
+                if (clientIndex == MUZZA_STREAM_FALLBACK_CLIENTS.size - 1) {
+                    attemptLog.append("${client.clientName}: status=OK, stream resolved, last client, accepted without validation\n")
+                    break
+                }
+
+                val validationCode = validateStatusMuzza(streamUrl)
+                if (validationCode in 200..299) {
+                    attemptLog.append("${client.clientName}: status=OK, stream resolved and validated (HTTP $validationCode)\n")
+                    break
+                } else {
+                    attemptLog.append("${client.clientName}: status=OK, stream resolved but HEAD validation failed (HTTP $validationCode)\n")
+                }
+            } else {
+                attemptLog.append("${client.clientName}: status=$status reason=${streamPlayerResponse?.playabilityStatus?.reason}\n")
+            }
+        }
+
+        Timber.tag(logTag).d("Muzza attempt log for $videoId:\n$attemptLog")
+
+        if (streamPlayerResponse == null) {
+            throw Exception("Bad stream player response\n$attemptLog")
+        }
+
+        if (streamPlayerResponse.playabilityStatus.status != "OK") {
+            throw PlaybackException(
+                "sts=$signatureTimestamp cookie=${YouTube.cookie != null}\n" +
+                    "MAIN_CLIENT(${MUZZA_MAIN_CLIENT.clientName}) status=${mainPlayerResponse.playabilityStatus.status} reason=${mainPlayerResponse.playabilityStatus.reason}\n$attemptLog",
+                null,
+                PlaybackException.ERROR_CODE_REMOTE_ERROR
+            )
+        }
+
+        if (streamExpiresInSeconds == null) throw Exception("Missing stream expire time\n$attemptLog")
+        if (format == null) throw Exception("Could not find format\n$attemptLog")
+        if (streamUrl == null) throw Exception("Could not find stream url\n$attemptLog")
+
+        PlaybackData(
+            audioConfig,
+            videoDetails,
+            playbackTracking,
+            format,
+            streamUrl,
+            streamExpiresInSeconds,
+        )
     }
 }

@@ -52,6 +52,7 @@ enum class DensityScale(
 }
 
 val DefaultOpenTabKey = stringPreferencesKey("defaultOpenTab")
+val ShowNewsTabKey = booleanPreferencesKey("showNewsTab")
 val SlimNavBarKey = booleanPreferencesKey("slimNavBar")
 val GridItemsSizeKey = stringPreferencesKey("gridItemSize")
 val SliderStyleKey = stringPreferencesKey("sliderStyle")
@@ -76,9 +77,7 @@ val AlarmNextTriggerAtKey = longPreferencesKey("alarmNextTriggerAt")
 val AlarmEntriesKey = stringPreferencesKey("alarmEntries")
 val DeveloperModeKey = booleanPreferencesKey("developerMode")
 val AdvancedModeKey = booleanPreferencesKey("advancedMode")
-val FastLoaderKey = booleanPreferencesKey("fastLoader")
-val MetrolistPlayerLogicKey = booleanPreferencesKey("metrolistPlayerLogic")
-val FasterLoaderKey = booleanPreferencesKey("fasterLoader")
+val MuzzaPlayerLogicKey = booleanPreferencesKey("muzzaPlayerLogic")
 
 enum class SliderStyle {
     DEFAULT,
@@ -557,6 +556,7 @@ val AccountPhotoUrlKey = stringPreferencesKey("accountPhotoUrl")
 val UseLoginForBrowse = booleanPreferencesKey("useLoginForBrowse")
 
 val BetterLibraryBetaKey = booleanPreferencesKey("better_library_beta")
+val EnableCommentsKey = booleanPreferencesKey("enableComments")
 
 val LanguageCodeToName =
     mapOf(

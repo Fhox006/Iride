@@ -56,6 +56,9 @@ import com.metrolist.innertube.pages.LibraryContinuationPage
 import com.metrolist.innertube.pages.LibraryPage
 import com.metrolist.innertube.pages.MoodAndGenres
 import com.metrolist.innertube.pages.NewReleaseAlbumPage
+import com.metrolist.innertube.pages.CommentItem
+import com.metrolist.innertube.pages.CommentSortOrder
+import com.metrolist.innertube.pages.CommentsPage
 import com.metrolist.innertube.pages.NextPage
 import com.metrolist.innertube.pages.NextResult
 import com.metrolist.innertube.pages.PageHelper
@@ -123,12 +126,6 @@ object YouTube {
         get() = innerTube.useLoginForBrowse
         set(value) {
             innerTube.useLoginForBrowse = value
-        }
-
-    var fastPlayerLogic: Boolean = true
-        set(value) {
-            field = value
-            innerTube.fastPlayerLogic = value
         }
 
     suspend fun searchSuggestions(query: String): Result<SearchSuggestions> = runCatching {
@@ -1637,10 +1634,10 @@ object YouTube {
             endpoint.params,
             continuation).body<NextResponse>()
         val playlistPanelRenderer = response.continuationContents?.playlistPanelContinuation
-            ?: response.contents.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer
+            ?: response.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer
                 ?.watchNextTabbedResultsRenderer?.tabs?.get(0)?.tabRenderer?.content?.musicQueueRenderer
                 ?.content?.playlistPanelRenderer!!
-        val title = response.contents.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer
+        val title = response.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer
             ?.watchNextTabbedResultsRenderer?.tabs?.get(0)?.tabRenderer?.content?.musicQueueRenderer
             ?.header?.musicQueueHeaderRenderer?.subtitle?.runs?.firstOrNull()?.text
         val items = playlistPanelRenderer.contents.mapNotNull { content ->
@@ -1657,8 +1654,8 @@ object YouTube {
                 result.copy(
                     title = title,
                     items = songs + result.items,
-                    lyricsEndpoint = response.contents.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.getOrNull(1)?.tabRenderer?.endpoint?.browseEndpoint,
-                    relatedEndpoint = response.contents.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.getOrNull(2)?.tabRenderer?.endpoint?.browseEndpoint,
+                    lyricsEndpoint = response.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.getOrNull(1)?.tabRenderer?.endpoint?.browseEndpoint,
+                    relatedEndpoint = response.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.getOrNull(2)?.tabRenderer?.endpoint?.browseEndpoint,
                     currentIndex = currentIndex,
                     endpoint = watchPlaylistEndpoint
                 )
@@ -1668,11 +1665,130 @@ object YouTube {
             title = title,
             items = songs,
             currentIndex = currentIndex,
-            lyricsEndpoint = response.contents.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.getOrNull(1)?.tabRenderer?.endpoint?.browseEndpoint,
-            relatedEndpoint = response.contents.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.getOrNull(2)?.tabRenderer?.endpoint?.browseEndpoint,
+            lyricsEndpoint = response.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.getOrNull(1)?.tabRenderer?.endpoint?.browseEndpoint,
+            relatedEndpoint = response.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.getOrNull(2)?.tabRenderer?.endpoint?.browseEndpoint,
             continuation = playlistPanelRenderer.continuations?.getContinuation(),
             endpoint = endpoint
         )
+    }
+
+    // WEB with cookie auth enabled, used only for comments so the "add comment" box
+    // (and its createCommentParams) is present when the user is logged in. The plain
+    // WEB client used by getMediaInfo() stays anonymous on purpose.
+    private val WEB_LOGIN_AWARE = WEB.copy(loginSupported = true)
+
+    // The initial comments continuation token is a deterministic protobuf encoding of the
+    // video ID (same construction yt-dlp/YouTube.js use) — scraping it from the watch page
+    // response is unnecessary and depends on undocumented field names that can drift.
+    @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
+    private fun commentsContinuationToken(videoId: String): String {
+        val videoIdBytes = videoId.toByteArray(Charsets.US_ASCII)
+        val sectionBytes = "comments-section".toByteArray(Charsets.US_ASCII)
+        val bytes = mutableListOf<Byte>()
+        fun put(vararg b: Int) = b.forEach { bytes.add(it.toByte()) }
+        fun put(b: ByteArray) = bytes.addAll(b.toList())
+        put(0x12, 0x0D)
+        put(0x12, 0x0B); put(videoIdBytes)
+        put(0x18, 0x06)
+        put(0x32, 0x27)
+        put(0x22, 0x11)
+        put(0x22, 0x0B); put(videoIdBytes)
+        put(0x30, 0x00)
+        put(0x78, 0x02)
+        put(0x30, 0x00)
+        put(0x42, 0x10); put(sectionBytes)
+        return kotlin.io.encoding.Base64.Default.encode(bytes.toByteArray())
+    }
+
+    suspend fun comments(videoId: String): Result<CommentsPage> = runCatching {
+        commentsContinuation(commentsContinuationToken(videoId)).getOrThrow()
+    }
+
+    suspend fun commentsContinuation(continuation: String): Result<CommentsPage> = runCatching {
+        val response = innerTube.next(
+            client = WEB_LOGIN_AWARE,
+            videoId = null,
+            playlistId = null,
+            playlistSetVideoId = null,
+            index = null,
+            params = null,
+            continuation = continuation,
+        ).body<NextResponse>()
+
+        val items = response.onResponseReceivedEndpoints
+            ?.firstNotNullOfOrNull {
+                it.reloadContinuationItemsCommand?.continuationItems
+                    ?: it.appendContinuationItemsAction?.continuationItems
+            }
+            ?: emptyList()
+
+        val entityMap = response.frameworkUpdates?.entityBatchUpdate?.mutations
+            ?.mapNotNull { mutation -> mutation.entityKey?.let { it to mutation.payload?.commentEntityPayload } }
+            ?.toMap()
+            ?: emptyMap()
+
+        val header = items.firstNotNullOfOrNull { it.commentsHeaderRenderer }
+
+        val sortTokens = header?.sortMenu?.sortFilterSubMenuRenderer?.subMenuItems
+            ?.mapIndexedNotNull { index, item ->
+                val token = item.serviceEndpoint?.continuationCommand?.token ?: return@mapIndexedNotNull null
+                val order = if (index == 0) CommentSortOrder.TOP else CommentSortOrder.NEWEST
+                order to token
+            }?.toMap() ?: emptyMap()
+
+        val createCommentParams = header?.createRenderer?.commentSimpleboxRenderer
+            ?.submitButton?.buttonRenderer?.serviceEndpoint?.createCommentEndpoint?.createCommentParams
+
+        val comments = items.mapNotNull { item ->
+            val thread = item.commentThreadRenderer ?: return@mapNotNull null
+            val entityKey = thread.commentViewModel?.commentViewModel?.commentKey
+            val payload = entityKey?.let { entityMap[it] }
+            val legacy = thread.comment?.commentRenderer
+
+            when {
+                payload != null -> CommentItem(
+                    id = payload.properties?.commentId ?: entityKey,
+                    authorName = payload.author?.displayName ?: "",
+                    authorThumbnailUrl = payload.author?.avatarThumbnailUrl,
+                    authorChannelId = payload.author?.channelId,
+                    isAuthorCreator = payload.author?.isCreator == true,
+                    text = payload.properties?.content?.content ?: "",
+                    publishedTimeText = payload.properties?.publishedTime,
+                    likeCountText = payload.toolbar?.likeCountLiked ?: payload.toolbar?.likeCountNotliked,
+                    replyCount = payload.toolbar?.replyCount?.toIntOrNull() ?: 0,
+                )
+
+                legacy != null -> CommentItem(
+                    id = legacy.commentId ?: return@mapNotNull null,
+                    authorName = legacy.authorText?.runs?.firstOrNull()?.text ?: "",
+                    authorThumbnailUrl = legacy.authorThumbnail?.thumbnails?.lastOrNull()?.url,
+                    authorChannelId = null,
+                    isAuthorCreator = false,
+                    text = legacy.contentText?.runs?.joinToString(separator = "") { it.text } ?: "",
+                    publishedTimeText = legacy.publishedTimeText?.runs?.firstOrNull()?.text,
+                    likeCountText = legacy.voteCount?.runs?.firstOrNull()?.text,
+                    replyCount = legacy.replyCount ?: 0,
+                )
+
+                else -> null
+            }
+        }
+
+        val nextToken = items.lastOrNull { it.continuationItemRenderer != null }
+            ?.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token
+
+        CommentsPage(
+            comments = comments,
+            continuation = nextToken,
+            commentsCountText = header?.countText?.runs?.firstOrNull()?.text,
+            sortTokens = sortTokens,
+            createCommentParams = createCommentParams,
+        )
+    }
+
+    suspend fun postComment(commentText: String, createCommentParams: String): Result<Unit> = runCatching {
+        innerTube.createComment(WEB_LOGIN_AWARE, commentText, createCommentParams)
+        Unit
     }
 
     suspend fun lyrics(endpoint: BrowseEndpoint): Result<String?> = runCatching {
@@ -1876,7 +1992,6 @@ object YouTube {
     private val VISITOR_DATA_REGEX = Regex("^Cg[t|s]")
 
     fun getNewPipeStreamUrls(videoId: String): List<Pair<Int, String>> {
-        if (fastPlayerLogic) return emptyList()
         return NewPipeExtractor.newPipePlayer(videoId)
     }
 

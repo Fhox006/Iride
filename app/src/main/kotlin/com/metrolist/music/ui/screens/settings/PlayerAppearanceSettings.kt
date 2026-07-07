@@ -52,6 +52,7 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.CropAlbumArtKey
+import com.metrolist.music.constants.EnableCommentsKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
 import com.metrolist.music.constants.MiniPlayerBackgroundStyle
 import com.metrolist.music.constants.MiniPlayerBackgroundStyleKey
@@ -105,6 +106,8 @@ fun PlayerAppearanceSettings(navController: NavController) {
         rememberPreference(SwipeThumbnailKey, defaultValue = true)
     val (thumbnailCarouselMode, onThumbnailCarouselModeChange) =
         rememberPreference(ThumbnailCarouselModeKey, defaultValue = false)
+    val (enableComments, onEnableCommentsChange) =
+        rememberPreference(EnableCommentsKey, defaultValue = false)
     val (swipeSensitivity, onSwipeSensitivityChange) =
         rememberPreference(SwipeSensitivityKey, defaultValue = 0.73f)
     val (useNewMiniPlayerDesign, onUseNewMiniPlayerDesignChange) =
@@ -599,6 +602,29 @@ fun PlayerAppearanceSettings(navController: NavController) {
                             )
                         },
                         onClick = { onThumbnailCarouselModeChange(!thumbnailCarouselMode) }
+                    )
+                )
+                add(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.comment),
+                        title = { Text(stringResource(R.string.enable_comments)) },
+                        description = { Text(stringResource(R.string.enable_comments_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = enableComments,
+                                onCheckedChange = onEnableCommentsChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            if (enableComments) R.drawable.check else R.drawable.close
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onEnableCommentsChange(!enableComments) }
                     )
                 )
                 /* HIDDEN - swipe_sensitivity setting

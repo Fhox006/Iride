@@ -51,6 +51,7 @@ fun <T> LibrarySortRow(
     onSortDescendingChange: (Boolean) -> Unit,
     viewType: LibraryViewType? = null,
     onViewTypeChange: (LibraryViewType) -> Unit = {},
+    showDescending: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -95,10 +96,12 @@ fun <T> LibrarySortRow(
             }
         }
 
-        SortDirectionButton(
-            descending = sortDescending,
-            onClick = { onSortDescendingChange(!sortDescending) },
-        )
+        if (showDescending) {
+            SortDirectionButton(
+                descending = sortDescending,
+                onClick = { onSortDescendingChange(!sortDescending) },
+            )
+        }
 
         if (viewType != null) {
             Spacer(modifier = Modifier.weight(1f))

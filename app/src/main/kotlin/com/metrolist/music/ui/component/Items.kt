@@ -58,7 +58,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -159,86 +158,101 @@ inline fun ListItem(
 ) {
     val applyHPad = LocalItemHorizontalPadding.current
     val highlightShape = RoundedCornerShape(24.dp)
+    val hPad = if (applyHPad) 12.dp else 0.dp
+    val plain = !isActive && isSelected != true
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = when {
-            isActive && isSelected == true -> {
-                modifier
-                    .padding(horizontal = if (applyHPad) 12.dp else 0.dp, vertical = 4.dp)
-                    .clip(highlightShape)
-                    .background(activeBackgroundColor ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.26f))
-                    .height(ListItemHeight)
+    Box(modifier = modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = when {
+                isActive && isSelected == true -> {
+                    Modifier
+                        .padding(horizontal = hPad, vertical = 2.dp)
+                        .clip(highlightShape)
+                        .background(activeBackgroundColor ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.26f))
+                        .height(ListItemHeight)
+                }
+                isActive -> {
+                    Modifier
+                        .padding(horizontal = hPad, vertical = 2.dp)
+                        .clip(highlightShape)
+                        .background(activeBackgroundColor ?: Color.White.copy(alpha = 0.10f))
+                        .height(ListItemHeight)
+                }
+                isSelected == true -> {
+                    Modifier
+                        .padding(horizontal = hPad, vertical = 2.dp)
+                        .clip(highlightShape)
+                        .background(selectedBackgroundColor ?: MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.22f))
+                        .height(ListItemHeight)
+                }
+                else -> {
+                    Modifier
+                        .padding(horizontal = hPad, vertical = 0.dp)
+                        .height(ListItemHeight)
+                }
             }
-            isActive -> {
-                modifier
-                    .padding(horizontal = if (applyHPad) 12.dp else 0.dp, vertical = 4.dp)
-                    .clip(highlightShape)
-                    .background(activeBackgroundColor ?: Color.White.copy(alpha = 0.10f))
-                    .height(ListItemHeight)
-            }
-            isSelected == true -> {
-                modifier
-                    .padding(horizontal = if (applyHPad) 12.dp else 0.dp, vertical = 4.dp)
-                    .clip(highlightShape)
-                    .background(selectedBackgroundColor ?: MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.22f))
-                    .height(ListItemHeight)
-            }
-            else -> {
-                modifier
-                    .padding(horizontal = if (applyHPad) 12.dp else 0.dp, vertical = 4.dp)
-                    .height(ListItemHeight)
-            }
-        }
-    ) {
-        Box(
-            modifier = Modifier.padding(6.dp),
-            contentAlignment = Alignment.Center
         ) {
-            thumbnailContent()
-            if (!isAvailable) {
-                Box(
-                    modifier = Modifier
-                        .size(ListThumbnailSize)
-                        .align(Alignment.Center)
-                        .background(
-                            Color.Black.copy(alpha = 0.25f),
-                            RoundedCornerShape(ThumbnailCornerRadius)
-                        )
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.offline),
-                        contentDescription = null,
-                        tint = Color.White,
+            Box(
+                modifier = Modifier.padding(4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                thumbnailContent()
+                if (!isAvailable) {
+                    Box(
                         modifier = Modifier
-                            .size(ListThumbnailSize / 2)
+                            .size(ListThumbnailSize)
                             .align(Alignment.Center)
-                            .graphicsLayer { alpha = 1f }
-                    )
+                            .background(
+                                Color.Black.copy(alpha = 0.25f),
+                                RoundedCornerShape(ThumbnailCornerRadius)
+                            )
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.offline),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier
+                                .size(ListThumbnailSize / 2)
+                                .align(Alignment.Center)
+                                .graphicsLayer { alpha = 1f }
+                        )
+                    }
                 }
             }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 6.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                if (subtitle != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        subtitle()
+                    }
+                }
+            }
+
+            trailingContent()
         }
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 6.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+
+        if (plain) {
+            androidx.compose.material3.HorizontalDivider(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(start = hPad + 4.dp + ListThumbnailSize + 6.dp, end = hPad),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
             )
-
-            if (subtitle != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    subtitle()
-                }
-            }
         }
-
-        trailingContent()
     }
 }
 
@@ -454,7 +468,7 @@ fun SongListItem(
                     isSelected = isSelected,
                     isActive = isActive,
                     isPlaying = isPlaying,
-                    shape = SquircleShape(radius = 2.dp, cornerSmoothing = 0.48f),
+                    shape = SquircleShape(radius = 9.dp, cornerSmoothing = 0.5f),
                     modifier = Modifier.size(ListThumbnailSize)
                 )
             },
@@ -539,12 +553,12 @@ fun SongGridItem(
     badges = badges,
     thumbnailContent = {
         val gridHeight = currentGridThumbnailHeight()
-        val squircleRadius = maxWidth * 0.05f
+        val squircleRadius = maxWidth * 0.06f
         ItemThumbnail(
             thumbnailUrl = song.song.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = SquircleShape(radius = squircleRadius, cornerSmoothing = 0.48f),
+            shape = SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f),
             modifier = Modifier.size(gridHeight)
         )
         if (!isActive) {
@@ -686,7 +700,7 @@ fun AlbumListItem(
             thumbnailUrl = album.album.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = SquircleShape(radius = 2.dp, cornerSmoothing = 0.48f),
+            shape = SquircleShape(radius = 9.dp, cornerSmoothing = 0.5f),
             modifier = Modifier.size(ListThumbnailSize)
         )
     },
@@ -764,13 +778,13 @@ fun AlbumGridItem(
         val database = LocalDatabase.current
         val playerConnection = LocalPlayerConnection.current ?: return@GridItem
         val scope = rememberCoroutineScope()
-        val squircleRadius = maxWidth * 0.05f
+        val squircleRadius = maxWidth * 0.06f
 
         ItemThumbnail(
             thumbnailUrl = album.album.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = SquircleShape(radius = squircleRadius, cornerSmoothing = 0.48f),
+            shape = SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f),
         )
 
         if (showPlayButton) {
@@ -870,7 +884,7 @@ fun PlaylistListItem(
                     modifier = Modifier.size(iconSize)
                 )
             },
-            shape = SquircleShape(radius = 2.dp, cornerSmoothing = 0.48f)
+            shape = SquircleShape(radius = 9.dp, cornerSmoothing = 0.5f)
         )
     },
     trailingContent = trailingContent,
@@ -951,7 +965,7 @@ fun PlaylistGridItem(
     badges = badges,
     thumbnailContent = {
         val width = maxWidth
-        val squircleRadius = maxWidth * 0.05f
+        val squircleRadius = maxWidth * 0.06f
         PlaylistThumbnail(
             thumbnails = playlist.thumbnails,
             size = width,
@@ -978,7 +992,7 @@ fun PlaylistGridItem(
                     )
                 }
             },
-            shape = SquircleShape(radius = squircleRadius, cornerSmoothing = 0.48f)
+            shape = SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f)
         )
     },
     fillMaxWidth = fillMaxWidth,
@@ -1207,12 +1221,18 @@ fun YouTubeGridItem(
         val database = LocalDatabase.current
         val playerConnection = LocalPlayerConnection.current ?: return@GridItem
         val scope = rememberCoroutineScope()
+        val squircleRadius = maxWidth * 0.06f
 
         ItemThumbnail(
             thumbnailUrl = item.thumbnail,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(thumbnailCornerRadius),
+            shape = when {
+                item is ArtistItem -> CircleShape
+                // Non-square thumbnails (e.g. 16:9 videos) don't suit a squircle
+                effectiveThumbnailRatio != 1f -> RoundedCornerShape(thumbnailCornerRadius)
+                else -> SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f)
+            },
         )
 
         if (item is SongItem && !isActive) {
@@ -1775,15 +1795,15 @@ fun SwipeToSongBox(
             )
     ) {
         if (offset.floatValue != 0f) {
-            val (iconRes, bg, tint, align) = if (offset.floatValue > 0)
+            val (labelRes, bg, tint, align) = if (offset.floatValue > 0)
                 Quadruple(
-                    R.drawable.playlist_play,
+                    R.string.swipe_label_next,
                     MaterialTheme.colorScheme.secondary,
                     MaterialTheme.colorScheme.onSecondary,
                     Alignment.CenterStart
                 ) else
                 Quadruple(
-                    R.drawable.queue_music,
+                    R.string.swipe_label_queue,
                     MaterialTheme.colorScheme.primary,
                     MaterialTheme.colorScheme.onPrimary,
                     Alignment.CenterEnd
@@ -1791,20 +1811,16 @@ fun SwipeToSongBox(
 
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
-                    .align(Alignment.Center)
+                    .matchParentSize()
                     .background(bg),
                 contentAlignment = align
             ) {
-                Icon(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .size(30.dp)
-                        .alpha(0.9f),
-                    tint = tint
+                Text(
+                    text = stringResource(labelRes),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Black,
+                    color = tint,
+                    modifier = Modifier.padding(horizontal = 24.dp)
                 )
             }
         }

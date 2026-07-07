@@ -279,7 +279,7 @@ fun AlbumScreen(
             val albumWithSongs = albumWithSongs
             if (albumWithSongs != null && albumWithSongs.songs.isNotEmpty()) {
                 item(key = "album_header") {
-                    val albumCoverSquircle = SquircleShape(radius = 10.dp, cornerSmoothing = 0.48f)
+                    val albumCoverSquircle = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
                     Column(
                         modifier =
                             Modifier
@@ -580,7 +580,6 @@ fun AlbumScreen(
                                         albumIndex = index + 1,
                                         isActive = song.id == mediaMetadata?.id,
                                         isPlaying = isPlaying,
-                                        isSwipeable = false,
                                         trailingContent = {
                                             if (inSelectMode) {
                                                 Checkbox(

@@ -138,6 +138,7 @@ import com.metrolist.music.constants.DataSyncIdKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.OnboardingCompletedKey
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
+import com.metrolist.music.constants.ShowNewsTabKey
 import com.metrolist.music.constants.ListenTogetherUsernameKey
 import com.metrolist.music.constants.LyricsProviderOrderKey
 import com.metrolist.music.constants.MiniPlayerHeight
@@ -678,12 +679,12 @@ class MainActivity : ComponentActivity() {
                 val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
 
                 val (listenTogetherInTopBar) = rememberPreference(ListenTogetherInTopBarKey, defaultValue = true)
+                val (showNewsTab) = rememberPreference(ShowNewsTabKey, defaultValue = false)
                 val navigationItems =
-                    remember(listenTogetherInTopBar) {
-                        if (listenTogetherInTopBar) {
-                            Screens.MainScreens.filter { it != Screens.ListenTogether }
-                        } else {
-                            Screens.MainScreens
+                    remember(listenTogetherInTopBar, showNewsTab) {
+                        Screens.MainScreens.filter {
+                            (it != Screens.ListenTogether || !listenTogetherInTopBar) &&
+                                (it != Screens.News || showNewsTab)
                         }
                     }
                 val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)

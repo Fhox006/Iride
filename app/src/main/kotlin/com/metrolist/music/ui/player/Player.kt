@@ -163,6 +163,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.BetterGradientSmoothTransitionKey
 import com.metrolist.music.constants.CropAlbumArtKey
+import com.metrolist.music.constants.EnableCommentsKey
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
 import com.metrolist.music.constants.HideStatusBarOnFullscreenKey
@@ -256,12 +257,17 @@ fun BottomSheetPlayer(
     val thumbnailCarouselMode by rememberPreference(ThumbnailCarouselModeKey, defaultValue = false)
     val (hideStatusBarOnFullscreen) = rememberPreference(HideStatusBarOnFullscreenKey, false)
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
+    val (enableComments) = rememberPreference(EnableCommentsKey, false)
 
     var showInlineLyrics by rememberSaveable {
         mutableStateOf(false)
     }
 
     var showQueue by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    var showComments by rememberSaveable {
         mutableStateOf(false)
     }
 
@@ -273,6 +279,7 @@ fun BottomSheetPlayer(
         if (!state.isExpanded) {
             showQueue = false
             showInlineLyrics = false
+            showComments = false
             isFullScreen = false
         }
     }
@@ -346,6 +353,10 @@ fun BottomSheetPlayer(
 
     BackHandler(enabled = state.isExpanded && showQueue) {
         showQueue = false
+    }
+
+    BackHandler(enabled = state.isExpanded && showComments) {
+        showComments = false
     }
 
 
@@ -1932,6 +1943,7 @@ fun BottomSheetPlayer(
                                 AnimatedContent(
                                     targetState = when {
                                         showQueue -> "queue"
+                                        showComments -> "comments"
                                         else -> "thumbnail"
                                     },
                                     label = "PlayerView",
@@ -1954,6 +1966,13 @@ fun BottomSheetPlayer(
                                                 textButtonColor = textButtonColor,
                                                 iconButtonColor = iconButtonColor,
                                                 onClose = { showQueue = false },
+                                            )
+                                        "comments" ->
+                                            CommentsPanel(
+                                                mediaId = mediaMetadata?.id,
+                                                onClose = { showComments = false },
+                                                textButtonColor = textButtonColor,
+                                                iconButtonColor = iconButtonColor,
                                             )
                                         else ->
                                             if (thumbnailCarouselMode) {
@@ -2068,6 +2087,7 @@ fun BottomSheetPlayer(
                                 AnimatedContent(
                                     targetState = when {
                                         showQueue -> "queue"
+                                        showComments -> "comments"
                                         else -> "thumbnail"
                                     },
                                     label = "PlayerView",
@@ -2090,6 +2110,13 @@ fun BottomSheetPlayer(
                                                 textButtonColor = textButtonColor,
                                                 iconButtonColor = iconButtonColor,
                                                 onClose = { showQueue = false },
+                                            )
+                                        "comments" ->
+                                            CommentsPanel(
+                                                mediaId = mediaMetadata?.id,
+                                                onClose = { showComments = false },
+                                                textButtonColor = textButtonColor,
+                                                iconButtonColor = iconButtonColor,
                                             )
                                         else ->
                                             if (thumbnailCarouselMode) {
@@ -2159,13 +2186,30 @@ fun BottomSheetPlayer(
                 playerBackground = playerBackground,
                 isLyricsLoading = mediaMetadata != null && currentLyrics == null,
                 isQueueActive = showQueue,
+                isCommentsActive = showComments,
+                isCommentsFeatureEnabled = enableComments,
                 onToggleLyrics = {
                     showInlineLyrics = !showInlineLyrics
-                    if (showInlineLyrics) showQueue = false
+                    if (showInlineLyrics) {
+                        showQueue = false
+                        showComments = false
+                    }
                 },
                 onToggleQueue = {
                     showQueue = !showQueue
-                    if (showQueue) showInlineLyrics = false
+                    if (showQueue) {
+                        showInlineLyrics = false
+                        showComments = false
+                    }
+                },
+                onToggleComments = {
+                    if (enableComments) {
+                        showComments = !showComments
+                        if (showComments) {
+                            showQueue = false
+                            showInlineLyrics = false
+                        }
+                    }
                 },
             )
         }
