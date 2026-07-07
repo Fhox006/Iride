@@ -71,6 +71,7 @@ import kotlinx.coroutines.isActive
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
+import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.PI
 
@@ -112,13 +113,16 @@ private const val SWEEP_FEATHER_FRACTION = 0.35f
 private const val SWEEP_FEATHER_MIN_DP = 8f
 private const val SWEEP_FEATHER_MAX_DP = 32f
 
-// Transient bloom: a soft blurred glow riding the currently-sung word, gated to longer words and
-// peaking mid-word so it never sits on-screen as a static halo.
+// Transient bloom: a soft blurred glow riding the currently-sung word, gated to long-duration
+// words (not char count) and cycling smoothly so it never sits on-screen as a static halo or
+// cuts off mid-cycle when the word ends.
 private const val BLOOM_MIN_CHARS = 6
 private const val BLOOM_MAX_CHARS = 14
 private const val BLOOM_MAX_ALPHA = 0.45f
 private const val BLOOM_MIN_RADIUS_DP = 4f
-private const val BLOOM_MAX_RADIUS_DP = 16f
+private const val BLOOM_MAX_RADIUS_DP = 10f
+private const val BLOOM_DURATION_THRESHOLD_MS = 1800L
+private const val BLOOM_CYCLE_DURATION_MS = 1200L
 
 private fun String.containsRtl(): Boolean {
     for (c in this) {
@@ -603,12 +607,20 @@ private fun WordLevelLyrics(
         fun bloomIntensity(idx: Int): Float {
             if (idx == -1) return 0f
             val originalWord = words[effectiveToOriginalIdx[idx]]
-            val len = originalWord.text.length
-            if (len < BLOOM_MIN_CHARS) return 0f
-            val lengthFactor = ((len - BLOOM_MIN_CHARS).toFloat() / (BLOOM_MAX_CHARS - BLOOM_MIN_CHARS)).coerceIn(0f, 1f)
             val (s, e) = remappedWordTimesMs[idx]
-            val progress = ((smoothPosition - s).toFloat() / (e - s).coerceAtLeast(1)).coerceIn(0f, 1f)
-            val shape = sin(PI.toFloat() * progress).coerceIn(0f, 1f)
+            val wordDuration = e - s
+            // Bloom only fires for sustained (long-duration) words, not by character count.
+            if (wordDuration <= BLOOM_DURATION_THRESHOLD_MS) return 0f
+            val len = originalWord.text.length
+            val lengthFactor = ((len - BLOOM_MIN_CHARS).toFloat() / (BLOOM_MAX_CHARS - BLOOM_MIN_CHARS)).coerceIn(0f, 1f)
+            // Run whole cycles within the word's own duration so the glow is always at its
+            // trough (intensity 0) at word start and word end - no jump/stutter on transition.
+            val cycles = max(1, (wordDuration / BLOOM_CYCLE_DURATION_MS).toInt())
+            val totalDurationMs = BLOOM_CYCLE_DURATION_MS * cycles
+            val elapsed = (smoothPosition - s).coerceIn(0L, totalDurationMs)
+            val fraction = elapsed.toFloat() / totalDurationMs.toFloat()
+            val cyclePhase = (fraction * cycles) % 1f
+            val shape = sin(PI.toFloat() * cyclePhase).coerceIn(0f, 1f)
             return (0.35f + 0.65f * lengthFactor) * shape
         }
 

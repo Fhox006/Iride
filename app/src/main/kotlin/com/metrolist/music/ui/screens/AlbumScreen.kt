@@ -7,8 +7,13 @@ package com.metrolist.music.ui.screens
 
 /*import android.graphics.Bitmap*/
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 /*import androidx.compose.animation.core.animateFloatAsState*/
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -182,6 +187,7 @@ fun AlbumScreen(
         resumeEvent?.let { event -> albumWithSongs?.songs?.indexOfFirst { it.id == event.songId } }
             ?.takeIf { it >= 0 }
     }
+    var resumeDismissed by rememberSaveable(albumWithSongs?.album?.id) { mutableStateOf(false) }
 
     var inSelectMode by rememberSaveable { mutableStateOf(false) }
     val selection =
@@ -572,49 +578,56 @@ fun AlbumScreen(
 
                 if (resumeTrackIndex != null) {
                     item(key = "resume_banner") {
-                        val resumeShape = SquircleShape(radius = 20.dp, cornerSmoothing = 0.45f)
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            shape = resumeShape,
-                            color = MaterialTheme.colorScheme.secondaryContainer,
+                        AnimatedVisibility(
+                            visible = !resumeDismissed,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically(),
                         ) {
-                            Row(
+                            val resumeShape = SquircleShape(radius = 20.dp, cornerSmoothing = 0.45f)
+                            Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                shape = resumeShape,
+                                color = MaterialTheme.colorScheme.secondaryContainer,
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.resume_album),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    )
-                                    Text(
-                                        text = stringResource(
-                                            R.string.resume_album_track_progress,
-                                            resumeTrackIndex + 1,
-                                            albumWithSongs?.songs?.size ?: 0,
-                                        ),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                TextButton(
-                                    onClick = {
-                                        val album = albumWithSongs
-                                        if (!isListenTogetherGuest && album != null) {
-                                            playerConnection.service.getAutomix(playlistId)
-                                            playerConnection.playQueue(
-                                                LocalAlbumRadio(album, startIndex = resumeTrackIndex),
-                                            )
-                                        }
-                                    },
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Text(text = stringResource(R.string.resume))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = stringResource(R.string.resume_album),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        )
+                                        Text(
+                                            text = stringResource(
+                                                R.string.resume_album_track_progress,
+                                                resumeTrackIndex + 1,
+                                                albumWithSongs?.songs?.size ?: 0,
+                                            ),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    TextButton(
+                                        onClick = {
+                                            val album = albumWithSongs
+                                            resumeDismissed = true
+                                            if (!isListenTogetherGuest && album != null) {
+                                                playerConnection.service.getAutomix(playlistId)
+                                                playerConnection.playQueue(
+                                                    LocalAlbumRadio(album, startIndex = resumeTrackIndex),
+                                                )
+                                            }
+                                        },
+                                    ) {
+                                        Text(text = stringResource(R.string.resume))
+                                    }
                                 }
                             }
                         }
