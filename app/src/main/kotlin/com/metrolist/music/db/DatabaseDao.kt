@@ -56,6 +56,7 @@ import com.metrolist.music.extensions.toSQLiteQuery
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.ui.utils.resize
+import com.metrolist.music.utils.TitleFeaturingParser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -1078,6 +1079,17 @@ interface DatabaseDao {
     @Query("SELECT * FROM album_artist_map WHERE albumId = :albumId")
     fun albumArtistMaps(albumId: String): List<AlbumArtistMap>
 
+    @Query(
+        """
+        SELECT event.* FROM event
+        JOIN song_album_map ON song_album_map.songId = event.songId
+        WHERE song_album_map.albumId = :albumId
+        ORDER BY event.timestamp DESC
+        LIMIT 1
+        """
+    )
+    fun latestAlbumEvent(albumId: String): Flow<Event?>
+
     @Transaction
     @Query("SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY rowId")
     fun playlistsByCreateDateAsc(): Flow<List<Playlist>>
@@ -1733,6 +1745,28 @@ interface DatabaseDao {
                 ),
             )
         }
+    }
+
+    /**
+     * Strips an embedded "feat./featuring/ft." credit out of [song]'s title and,
+     * if the credited artist isn't already linked to the song, creates/finds that
+     * artist and links them via [SongArtistMap]. The title mutation makes this
+     * idempotent: once stripped, the title no longer matches the parser.
+     */
+    @Transaction
+    fun linkFeaturedArtist(song: Song): Boolean {
+        val (cleanTitle, featuredName) = TitleFeaturingParser.extract(song.song.title) ?: return false
+
+        update(song.song.copy(title = cleanTitle))
+
+        val alreadyCredited = song.artists.any { it.name.equals(featuredName, ignoreCase = true) }
+        if (!alreadyCredited) {
+            val artistId = artistByName(featuredName)?.id ?: ArtistEntity.generateArtistId()
+            insert(ArtistEntity(id = artistId, name = featuredName))
+            val nextPosition = (songArtistMap(song.id).maxOfOrNull { it.position } ?: -1) + 1
+            insert(SongArtistMap(songId = song.id, artistId = artistId, position = nextPosition))
+        }
+        return true
     }
 
     @Update

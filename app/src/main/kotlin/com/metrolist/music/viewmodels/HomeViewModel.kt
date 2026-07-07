@@ -51,6 +51,7 @@ import com.metrolist.music.constants.SpeedDialSnapshotKey
 import com.metrolist.music.constants.WrappedSeenKey
 import com.metrolist.music.models.HomeSnapshotItem
 import com.metrolist.music.models.MoodSnapshot
+import com.metrolist.music.models.toPlaylistItem
 import com.metrolist.music.models.SpeedDialSnapshot
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -272,11 +273,24 @@ class HomeViewModel @Inject constructor(
         context.dataStore.edit { it[MoodSnapshotKey] = json }
     }
 
+    // Mixes actually rendered by the "Your Mood" row. Kept separate from moodPage so a chip
+    // switch can hydrate instantly from the last cached snapshot instead of showing a blank
+    // loader every time, and so the row never has to swap between differently-sized content.
+    val moodMixItems = MutableStateFlow<List<PlaylistItem>?>(null)
+    val isMoodLoading = MutableStateFlow(false)
+
     fun loadMoodPage(params: String?, chipTitle: String? = null, hideExplicit: Boolean, hideVideoSongs: Boolean, hideYoutubeShorts: Boolean) {
         if (params == lastMoodChipParams && moodPage.value != null) return
         lastMoodChipParams = params
+        if (params == null) {
+            moodPage.value = null
+            moodMixItems.value = null
+            isMoodLoading.value = false
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
-            if (params != null) {
+            isMoodLoading.value = true
+            try {
                 YouTube.home(params = params).onSuccess { nextSections ->
                     val filteredPage = nextSections.copy(
                         sections = nextSections.sections.mapNotNull { section ->
@@ -288,6 +302,13 @@ class HomeViewModel @Inject constructor(
                         }
                     )
                     moodPage.value = filteredPage
+                    val mixItems = filteredPage.sections
+                        .flatMap { it.items }
+                        .filterIsInstance<PlaylistItem>()
+                        .take(10)
+                    // Only replace what's on screen once the new mixes are actually in hand —
+                    // never swap to an empty list just because this particular chip came back thin.
+                    if (mixItems.isNotEmpty()) moodMixItems.value = mixItems
                     if (chipTitle != null) {
                         context.dataStore.edit { prefs ->
                             prefs[LastMoodChipTitleKey] = chipTitle
@@ -296,8 +317,8 @@ class HomeViewModel @Inject constructor(
                         saveMoodSnapshotAfterLoad(chipTitle, params, filteredPage)
                     }
                 }
-            } else {
-                moodPage.value = null
+            } finally {
+                isMoodLoading.value = false
             }
         }
     }
@@ -348,6 +369,16 @@ class HomeViewModel @Inject constructor(
                 filled.addAll(available.take(needed))
             }
 
+            // Fallback to YouTube home page songs when local DB has no data (e.g. fresh install).
+            // Preferred over Quick Picks so the two sections don't cannibalize each other's pool.
+            if (filled.size < targetSize && home != null) {
+                val needed = targetSize - filled.size
+                val homeSongs = home.sections.flatMap { it.items }
+                    .filterIsInstance<SongItem>()
+                    .filter { item -> filled.none { p -> p.id == item.id } }
+                filled.addAll(homeSongs.take(needed))
+            }
+
             if (filled.size < targetSize) {
                 val needed = targetSize - filled.size
                 val available = qp.filter { song ->
@@ -362,15 +393,6 @@ class HomeViewModel @Inject constructor(
                     )
                 }
                 filled.addAll(available.take(needed))
-            }
-
-            // Fallback to YouTube home page songs when local DB has no data (e.g. fresh install)
-            if (filled.size < targetSize && home != null) {
-                val needed = targetSize - filled.size
-                val homeSongs = home.sections.flatMap { it.items }
-                    .filterIsInstance<SongItem>()
-                    .filter { item -> filled.none { p -> p.id == item.id } }
-                filled.addAll(homeSongs.take(needed))
             }
 
             val albumIdMap = mutableMapOf<String, String?>()
@@ -1046,6 +1068,36 @@ class HomeViewModel @Inject constructor(
                     }
                 )
                 homePage.value = transformedPage
+
+                // Cold start fallback: fresh installs have no local history, so Quick Picks
+                // would otherwise stay empty forever. Seed it from the home feed and let it
+                // get replaced by real listening data over time.
+                if (quickPicks.value.isNullOrEmpty()) {
+                    val homeSongs = transformedPage.sections.flatMap { it.items }
+                        .filterIsInstance<SongItem>()
+                        .distinctBy { it.id }
+                        .shuffled()
+                        .take(20)
+                    if (homeSongs.isNotEmpty()) {
+                        quickPicks.value = homeSongs.map { ytSong ->
+                            Song(
+                                song = SongEntity(
+                                    id = ytSong.id,
+                                    title = ytSong.title,
+                                    thumbnailUrl = ytSong.thumbnail,
+                                    explicit = ytSong.explicit,
+                                    isVideo = ytSong.isVideoSong,
+                                    duration = ytSong.duration ?: -1
+                                ),
+                                artists = ytSong.artists.map { artist ->
+                                    ArtistEntity(id = artist.id ?: ArtistEntity.generateArtistId(), name = artist.name)
+                                }
+                            )
+                        }
+                        HomeCache.quickPicks = quickPicks.value
+                    }
+                }
+
                 if (selectedChip.value == null) {
                     val savedParams = cachedMoodSnapshot.value?.chipParams
                     val preferredChip = if (!savedParams.isNullOrEmpty())
@@ -1235,7 +1287,11 @@ class HomeViewModel @Inject constructor(
             }
             prefs[MoodSnapshotKey]?.let { json ->
                 runCatching { snapshotJson.decodeFromString<MoodSnapshot>(json) }
-                    .getOrNull()?.let { cachedMoodSnapshot.value = it }
+                    .getOrNull()?.let { snapshot ->
+                        cachedMoodSnapshot.value = snapshot
+                        moodMixItems.value = snapshot.items.mapNotNull { it.toPlaylistItem() }
+                            .takeIf { it.isNotEmpty() }
+                    }
             }
             prefs[AccountNameKey]?.takeIf { it.isNotEmpty() }?.let { accountName.value = it }
             prefs[AccountPhotoUrlKey]?.takeIf { it.isNotEmpty() }?.let { accountImageUrl.value = it }

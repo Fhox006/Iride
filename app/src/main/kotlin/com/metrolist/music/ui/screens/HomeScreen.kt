@@ -5,14 +5,12 @@
 
 package com.metrolist.music.ui.screens
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -215,9 +213,6 @@ fun HomeScreen(
         derivedStateOf { pinnedSpeedDialItems.map { it.id }.toSet() }
     }
     val isRandomizing by viewModel.isRandomizing.collectAsStateWithLifecycle()
-    val speedDialSongIds: Set<String> by remember(speedDialItems) {
-        derivedStateOf { speedDialItems.filterIsInstance<SongItem>().map { it.id }.toSet() }
-    }
 
     val quickPicks by viewModel.quickPicks.collectAsStateWithLifecycle()
     val keepListening by viewModel.keepListening.collectAsStateWithLifecycle()
@@ -250,7 +245,8 @@ fun HomeScreen(
     val currentGridHeight = if (gridItemSize == GridItemSize.BIG) GridThumbnailHeight else SmallGridThumbnailHeight
 
     // Your Mood
-    val moodPage by viewModel.moodPage.collectAsStateWithLifecycle()
+    val moodMixItems by viewModel.moodMixItems.collectAsStateWithLifecycle()
+    val isMoodLoading by viewModel.isMoodLoading.collectAsStateWithLifecycle()
     var selectedMoodCategory by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage.Chip?>(null) }
     val moodChips = remember(homePage?.chips) {
         homePage?.chips?.map { it to it.title } ?: emptyList()
@@ -814,7 +810,7 @@ fun HomeScreen(
                 }
 
                 quickPicks?.let { qp ->
-                    val filteredQp = qp.distinctBy { it.id }.filter { it.id !in speedDialSongIds }
+                    val filteredQp = qp.distinctBy { it.id }
                     if (filteredQp.isNotEmpty()) {
                         item(key = "quick_picks_title") {
                             LaunchedEffect(filteredQp) {
@@ -909,16 +905,18 @@ fun HomeScreen(
                                 )
                             }
 
-                            AnimatedContent(
-                                targetState = moodPage,
-                                transitionSpec = { fadeIn(tween(350)) togetherWith fadeOut(tween(200)) },
-                                label = "moodContent",
-                            ) { page ->
-                                if (page == null) {
+                            // Fixed height so switching chips never resizes the row mid-fade —
+                            // the old mixes stay put (dimmed) with a small corner spinner until
+                            // the new ones are ready, instead of the whole thing flashing blank.
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(159.dp),
+                            ) {
+                                val mixItems = moodMixItems
+                                if (mixItems.isNullOrEmpty()) {
                                     Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(100.dp),
+                                        modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         CircularProgressIndicator(
@@ -927,46 +925,55 @@ fun HomeScreen(
                                         )
                                     }
                                 } else {
-                                    val mixItems = page.sections
-                                        .flatMap { it.items }
-                                        .filterIsInstance<PlaylistItem>()
-                                        .take(10)
-                                    if (mixItems.isNotEmpty()) {
-                                        LazyRow(
-                                            state = moodMixesState,
-                                            contentPadding = PaddingValues(horizontal = 12.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                            modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
-                                        ) {
-                                            items(mixItems, key = { it.id }) { mix ->
-                                                YouTubeGridItem(
-                                                    item = mix,
-                                                    isActive = mix.id == mediaMetadata?.album?.id,
-                                                    isPlaying = isPlaying,
-                                                    coroutineScope = scope,
-                                                    thumbnailRatio = 1f,
-                                                    size = 135.dp,
-                                                    showTitle = true,
-                                                    modifier = Modifier
-                                                        .animateItem()
-                                                        .combinedClickable(
-                                                            onClick = {
-                                                                navController.navigate("online_playlist/${mix.id}")
-                                                            },
-                                                            onLongClick = {
-                                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                                menuState.show {
-                                                                    YouTubePlaylistMenu(
-                                                                        playlist = mix,
-                                                                        coroutineScope = scope,
-                                                                        onDismiss = menuState::dismiss,
-                                                                    )
-                                                                }
-                                                            },
-                                                        ),
-                                                )
-                                            }
+                                    LazyRow(
+                                        state = moodMixesState,
+                                        contentPadding = PaddingValues(horizontal = 12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(top = 10.dp, bottom = 4.dp)
+                                            .alpha(if (isMoodLoading) 0.4f else 1f),
+                                    ) {
+                                        items(mixItems, key = { it.id }) { mix ->
+                                            YouTubeGridItem(
+                                                item = mix,
+                                                isActive = mix.id == mediaMetadata?.album?.id,
+                                                isPlaying = isPlaying,
+                                                coroutineScope = scope,
+                                                thumbnailRatio = 1f,
+                                                size = 135.dp,
+                                                showTitle = true,
+                                                modifier = Modifier
+                                                    .animateItem()
+                                                    .combinedClickable(
+                                                        enabled = !isMoodLoading,
+                                                        onClick = {
+                                                            navController.navigate("online_playlist/${mix.id}")
+                                                        },
+                                                        onLongClick = {
+                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            menuState.show {
+                                                                YouTubePlaylistMenu(
+                                                                    playlist = mix,
+                                                                    coroutineScope = scope,
+                                                                    onDismiss = menuState::dismiss,
+                                                                )
+                                                            }
+                                                        },
+                                                    ),
+                                            )
                                         }
+                                    }
+                                    androidx.compose.animation.AnimatedVisibility(
+                                        visible = isMoodLoading,
+                                        modifier = Modifier.align(Alignment.Center),
+                                        enter = fadeIn(),
+                                        exit = fadeOut(),
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp,
+                                        )
                                     }
                                 }
                             }

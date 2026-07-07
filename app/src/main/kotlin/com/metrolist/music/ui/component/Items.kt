@@ -51,6 +51,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
@@ -99,6 +100,7 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.AutoLinkFeaturedArtistsKey
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.GridItemSize
@@ -124,6 +126,7 @@ import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.reportException
+import com.metrolist.music.utils.TitleFeaturingParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -413,7 +416,24 @@ fun GridItem(
 
 private fun shouldHideDuration(durationSeconds: Int, hideDurationForStandard: Boolean): Boolean {
     if (!hideDurationForStandard) return false
-    return durationSeconds in (2 * 60)..(5 * 60)
+    return durationSeconds in (1 * 60)..(5 * 60)
+}
+
+/**
+ * Lazily strips a "feat./featuring/ft." credit out of [song]'s title and links the
+ * collaborator as a real artist, wherever a song title is first rendered. Idempotent:
+ * a quick substring check skips songs whose titles were already cleaned up.
+ */
+@Composable
+private fun AutoLinkFeaturedArtistEffect(song: Song) {
+    val autoLink by rememberPreference(AutoLinkFeaturedArtistsKey, defaultValue = true)
+    val database = LocalDatabase.current
+    val looksFeatured = remember(song.song.title) { TitleFeaturingParser.looksFeatured(song.song.title) }
+    LaunchedEffect(song.id, song.song.title, autoLink, looksFeatured) {
+        if (autoLink && looksFeatured) {
+            database.query { linkFeaturedArtist(song) }
+        }
+    }
 }
 
 @Composable
@@ -425,7 +445,7 @@ fun SongListItem(
     showDownloadIcon: Boolean = true,
     subtitleOverride: String? = null,
     badges: @Composable RowScope.() -> Unit = {
-        if (showLikedIcon && song.song.liked) {
+        if (showLikedIcon && song.song.liked && albumIndex == null) {
             Icon.Starred()
         }
         if (song.song.explicit) {
@@ -447,9 +467,10 @@ fun SongListItem(
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
+    AutoLinkFeaturedArtistEffect(song)
 
     val content: @Composable () -> Unit = {
-        val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = false)
+        val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
         ListItem(
             title = song.song.title,
             subtitle = subtitleOverride ?: if (shouldHideDuration(song.song.duration, hideDurationForStandard)) {
@@ -469,7 +490,8 @@ fun SongListItem(
                     isActive = isActive,
                     isPlaying = isPlaying,
                     shape = SquircleShape(radius = 9.dp, cornerSmoothing = 0.5f),
-                    modifier = Modifier.size(ListThumbnailSize)
+                    modifier = Modifier.size(ListThumbnailSize),
+                    showLikedStar = showLikedIcon && song.song.liked,
                 )
             },
             trailingContent = {
@@ -523,6 +545,7 @@ fun SongGridItem(
     fillMaxWidth: Boolean = false,
 ) = GridItem(
     title = {
+        AutoLinkFeaturedArtistEffect(song)
         Text(
             text = song.song.title,
             style = MaterialTheme.typography.bodyLarge,
@@ -533,7 +556,7 @@ fun SongGridItem(
         )
     },
     subtitle = {
-        val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = false)
+        val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
         val subtitleText = if (shouldHideDuration(song.song.duration, hideDurationForStandard)) {
             song.orderedArtists.joinToString { it.name }
         } else {
@@ -1008,7 +1031,7 @@ fun MediaMetadataListItem(
     isPlaying: Boolean = false,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
-    val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = false)
+    val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
     ListItem(
         title = mediaMetadata.title,
         subtitle = if (mediaMetadata.suggestedBy != null) {
@@ -1086,7 +1109,7 @@ fun YouTubeListItem(
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
 
     val content: @Composable () -> Unit = {
-        val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = false)
+        val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
         ListItem(
             title = item.title,
             subtitle = when (item) {
@@ -1190,7 +1213,7 @@ fun YouTubeGridItem(
         }
     },
     subtitle = {
-        val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = false)
+        val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
         val subtitle = when (item) {
             is SongItem -> {
                 val durationSec = item.duration
@@ -1405,10 +1428,11 @@ fun ItemThumbnail(
     modifier: Modifier = Modifier,
     albumIndex: Int? = null,
     isSelected: Boolean = false,
-    thumbnailRatio: Float = 1f
+    thumbnailRatio: Float = 1f,
+    showLikedStar: Boolean = false,
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
-    
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -1416,6 +1440,17 @@ fun ItemThumbnail(
             .aspectRatio(thumbnailRatio)
             .clip(shape)
     ) {
+        if (albumIndex != null && showLikedStar) {
+            Icon(
+                painter = painterResource(R.drawable.favorite),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .size(12.dp)
+            )
+        }
+
         if (albumIndex == null) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)

@@ -27,11 +27,11 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ContainedLoadingIndicator
@@ -52,6 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
@@ -61,6 +62,7 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 /*import androidx.compose.ui.draw.alpha*/
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -72,12 +74,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
 import androidx.compose.ui.util.fastForEachReversed
@@ -101,9 +105,11 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.db.entities.Album
+import com.metrolist.music.db.entities.Event
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.LocalAlbumRadio
 /*import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground*/
@@ -118,6 +124,9 @@ import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.utils.GenreProvider
+import com.metrolist.music.utils.joinByBullet
+import com.metrolist.music.utils.makeReadableTimeString
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.AlbumViewModel
@@ -160,6 +169,19 @@ fun AlbumScreen(
             }
             songs
         }
+
+    val resumeEvent by produceState<Event?>(initialValue = null, albumWithSongs?.album?.id) {
+        val albumId = albumWithSongs?.album?.id
+        if (albumId == null) {
+            value = null
+        } else {
+            database.latestAlbumEvent(albumId).collect { value = it }
+        }
+    }
+    val resumeTrackIndex = remember(resumeEvent, albumWithSongs) {
+        resumeEvent?.let { event -> albumWithSongs?.songs?.indexOfFirst { it.id == event.songId } }
+            ?.takeIf { it >= 0 }
+    }
 
     var inSelectMode by rememberSaveable { mutableStateOf(false) }
     val selection =
@@ -322,20 +344,32 @@ fun AlbumScreen(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Artist Names - Below the album name
-                        Text(
-                            buildAnnotatedString {
-                                withStyle(
-                                    style =
-                                        MaterialTheme.typography.titleMedium
-                                            .copy(
-                                                fontWeight = FontWeight.Normal,
-                                                color = MaterialTheme.colorScheme.onBackground,
-                                            ).toSpanStyle(),
-                                ) {
+                        // Artist - small avatar + plain name, no underline
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            val primaryArtist = albumWithSongs.artists.firstOrNull()
+                            if (primaryArtist?.thumbnailUrl != null) {
+                                AsyncImage(
+                                    model = primaryArtist.thumbnailUrl,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .clip(CircleShape),
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
+                            Text(
+                                buildAnnotatedString {
                                     albumWithSongs.artists.fastForEachIndexed { index, artist ->
                                         val link =
-                                            LinkAnnotation.Clickable(artist.id) {
+                                            LinkAnnotation.Clickable(
+                                                tag = artist.id,
+                                                styles = TextLinkStyles(style = SpanStyle(textDecoration = TextDecoration.None)),
+                                            ) {
                                                 navController.navigate("artist/${artist.id}")
                                             }
                                         withLink(link) {
@@ -345,71 +379,57 @@ fun AlbumScreen(
                                             append(", ")
                                         }
                                     }
-                                }
-                            },
-                            textAlign = TextAlign.Center,
-                        )
+                                },
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Metadata - Year first, then song count • duration
+                        // Genre • Date • Duration - single combined row
                         val totalDuration = albumWithSongs.songs.sumOf { it.song.duration }
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            // Year / Release Date
-                            val releaseDate = albumWithSongs.album.releaseDate
-                            val displayDate = remember(releaseDate, albumWithSongs.album.year) {
-                                if (releaseDate == null) {
-                                    albumWithSongs.album.year?.toString()
-                                } else {
-                                    val parts = releaseDate.split("-")
-                                    when (parts.size) {
-                                        3 -> {
-                                            val y = parts[0]
-                                            val m = parts[1].toInt().toString()
-                                            val d = parts[2].toInt().toString()
-                                            "$d/$m/$y"
-                                        }
-                                        2 -> {
-                                            val y = parts[0]
-                                            val m = parts[1].toInt().toString()
-                                            "$m/$y"
-                                        }
-                                        else -> parts[0]
+                        val releaseDate = albumWithSongs.album.releaseDate
+                        val displayDate = remember(releaseDate, albumWithSongs.album.year) {
+                            if (releaseDate == null) {
+                                albumWithSongs.album.year?.toString()
+                            } else {
+                                val parts = releaseDate.split("-")
+                                when (parts.size) {
+                                    3 -> {
+                                        val y = parts[0]
+                                        val m = parts[1].toInt().toString()
+                                        val d = parts[2].toInt().toString()
+                                        "$d/$m/$y"
                                     }
+                                    2 -> {
+                                        val y = parts[0]
+                                        val m = parts[1].toInt().toString()
+                                        "$m/$y"
+                                    }
+                                    else -> parts[0]
                                 }
                             }
-
-                            if (displayDate != null) {
-                                Text(
-                                    text = displayDate,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                                )
-                            }
-
-                            // Song Count • Duration
-                            Text(
-                                text =
-                                    buildString {
-                                        append(
-                                            pluralStringResource(
-                                                R.plurals.n_song,
-                                                albumWithSongs.songs.size,
-                                                albumWithSongs.songs.size,
-                                            ),
-                                        )
-                                        if (totalDuration > 0) {
-                                            append(" • ")
-                                            append(makeTimeString(totalDuration * 1000L))
-                                        }
-                                    },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                            )
                         }
+                        val albumGenre by produceState<String?>(initialValue = null, albumWithSongs.album.id) {
+                            val primaryArtistName = albumWithSongs.artists.firstOrNull()?.name
+                            value = GenreProvider.getGenres(
+                                albumWithSongs.album.id,
+                                albumWithSongs.album.title,
+                                primaryArtistName,
+                            ).firstOrNull()
+                        }
+
+                        Text(
+                            text = joinByBullet(
+                                albumGenre,
+                                displayDate,
+                                if (totalDuration > 0) makeReadableTimeString(totalDuration * 1000L) else null,
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                        )
 
                         Spacer(modifier = Modifier.height(24.dp))
 
@@ -550,22 +570,65 @@ fun AlbumScreen(
                     }
                 }
 
-                if (filteredSongs.isNotEmpty()) {
-                    item(key = "songs_container") {
+                if (resumeTrackIndex != null) {
+                    item(key = "resume_banner") {
+                        val resumeShape = SquircleShape(radius = 20.dp, cornerSmoothing = 0.45f)
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
-                            shape = RoundedCornerShape(32.dp),
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.22f),
-                            tonalElevation = 0.dp,
-                            shadowElevation = 0.dp,
+                            shape = resumeShape,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
                         ) {
-                            Column(
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 10.dp)
+                                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.resume_album),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    )
+                                    Text(
+                                        text = stringResource(
+                                            R.string.resume_album_track_progress,
+                                            resumeTrackIndex + 1,
+                                            albumWithSongs?.songs?.size ?: 0,
+                                        ),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                TextButton(
+                                    onClick = {
+                                        val album = albumWithSongs
+                                        if (!isListenTogetherGuest && album != null) {
+                                            playerConnection.service.getAutomix(playlistId)
+                                            playerConnection.playQueue(
+                                                LocalAlbumRadio(album, startIndex = resumeTrackIndex),
+                                            )
+                                        }
+                                    },
+                                ) {
+                                    Text(text = stringResource(R.string.resume))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (filteredSongs.isNotEmpty()) {
+                    item(key = "songs_container") {
+                        val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
                                 filteredSongs.fastForEachIndexed { index, song ->
                                     val onCheckedChange: (Boolean) -> Unit = {
                                         if (it) {
@@ -575,9 +638,23 @@ fun AlbumScreen(
                                         }
                                     }
 
+                                    val featuredNames = song.orderedArtists.drop(1).map { it.name }
+                                    val hideDuration = hideDurationForStandard && song.song.duration in 60..300
+                                    val subtitleText = buildString {
+                                        if (featuredNames.isNotEmpty()) {
+                                            append("feat. ")
+                                            append(featuredNames.joinToString(", "))
+                                        }
+                                        if (!hideDuration) {
+                                            if (isNotEmpty()) append(" • ")
+                                            append(makeTimeString(song.song.duration * 1000L))
+                                        }
+                                    }
+
                                     SongListItem(
                                         song = song,
                                         albumIndex = index + 1,
+                                        subtitleOverride = subtitleText,
                                         isActive = song.id == mediaMetadata?.id,
                                         isPlaying = isPlaying,
                                         trailingContent = {
@@ -632,7 +709,6 @@ fun AlbumScreen(
                                             ),
                                     )
                                 }
-                            }
                         }
                     }
                 }

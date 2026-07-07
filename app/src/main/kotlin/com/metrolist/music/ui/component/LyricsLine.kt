@@ -75,22 +75,27 @@ import kotlin.math.sin
 import kotlin.math.PI
 
 // Apple-Music-style micro letter lift ("rainbow" arc): attack/release envelope is timed against the
-// word's own span. Short words (<= WAVE_LENGTH_MIN_CHARS) get zero lift so the arc never triggers on
-// them; the lift ramps in only past that length and reaches full height at WAVE_LENGTH_FULL_CHARS.
+// word's own span. Gate is on the word's sung DURATION, not its character count — a short word held
+// for a long time gets the arc, a long word sung quickly does not. Words shorter than
+// WAVE_DURATION_MIN_MS get zero lift; amplitude ramps in and reaches full height at
+// WAVE_DURATION_FULL_MS.
 private const val WAVE_ATTACK_MS = 350f
 private const val WAVE_RELEASE_MS = 220f
 private const val WAVE_MAX_AMP_DP = 2.2f
-private const val WAVE_LENGTH_MIN_CHARS = 3f
-private const val WAVE_LENGTH_FULL_CHARS = 10f
+private const val WAVE_DURATION_MIN_MS = 260f
+private const val WAVE_DURATION_FULL_MS = 750f
 // Attack/release are capped as a fraction of the word's own on-screen duration so a fast word
 // (short span) always ramps fully to 0 and back to 0 within its own span instead of getting cut
 // off mid-ramp when the next word starts (which read as a "jump"). Kept short in absolute terms
 // too, so the lift starts responding right away instead of appearing to trigger late.
 private const val WAVE_ATTACK_RELEASE_SPAN_FRACTION = 0.35f
-// Fast/short words get a much lighter (near-invisible) lift than long words, which keep full
-// amplitude; only words at/above this duration get the full, calm arc.
-private const val WAVE_DURATION_FOR_FULL_AMP_MS = 750f
-private const val WAVE_MIN_DURATION_AMP_FACTOR = 0.08f
+
+private fun easeOutCubic(t: Float): Float {
+    val inv = 1f - t
+    return 1f - inv * inv * inv
+}
+
+private fun smoothstep(t: Float): Float = t * t * (3f - 2f * t)
 
 // Whole-word glow: only long words get an extra brightening layered across the entire word as it's
 // sung; short/medium words show only the sweep bar, nothing else.
@@ -733,28 +738,36 @@ private fun WordLevelLyrics(
                         val dimAlpha = (focusedAlpha * NOT_STARTED_ALPHA_FACTOR + longWordGlow).coerceAtMost(1f)
 
                         var waveOffset = 0f
-                        if (!isWordSung && sungFactor > 0f && originalWord.text.length > WAVE_LENGTH_MIN_CHARS) {
+                        if (!isWordSung && sungFactor > 0f) {
                             val spanStartMs = (originalWord.startTime * 1000).toLong()
                             val spanEndMs = (originalWord.endTime * 1000).toLong()
                             val spanDurationMs = (spanEndMs - spanStartMs).toFloat().coerceAtLeast(1f)
-                            val timeIntoWord = (smoothPosition - spanStartMs).toFloat()
-                            val timeToEnd = (spanEndMs - smoothPosition).toFloat()
-                            // Cap attack/release to a fraction of the word's own span so short/fast
-                            // words always complete their in-and-out ramp within their own duration.
-                            val attackMs = minOf(WAVE_ATTACK_MS, spanDurationMs * WAVE_ATTACK_RELEASE_SPAN_FRACTION)
-                            val releaseMs = minOf(WAVE_RELEASE_MS, spanDurationMs * WAVE_ATTACK_RELEASE_SPAN_FRACTION)
-                            val attack = (timeIntoWord / attackMs).coerceIn(0f, 1f)
-                            val release = (timeToEnd / releaseMs).coerceIn(0f, 1f)
-                            val envelope = attack * release
-                            if (envelope > 0.001f) {
-                                val lengthWeight = ((originalWord.text.length - WAVE_LENGTH_MIN_CHARS) / (WAVE_LENGTH_FULL_CHARS - WAVE_LENGTH_MIN_CHARS)).coerceIn(0f, 1f)
-                                val durationWeight = (spanDurationMs / WAVE_DURATION_FOR_FULL_AMP_MS).coerceIn(WAVE_MIN_DURATION_AMP_FACTOR, 1f)
-                                val charCenterX = (charBounds.left + charBounds.right) / 2f
-                                val sweepXForLift = wLeft + sungFactor * wordWidthPx
-                                val sigma = wordWidthPx * 0.28f
-                                val dist = charCenterX - sweepXForLift
-                                val bump = exp(-(dist * dist) / (2f * sigma * sigma))
-                                waveOffset = -(envelope * lengthWeight * durationWeight * bump * waveMaxAmpPx)
+                            if (spanDurationMs > WAVE_DURATION_MIN_MS) {
+                                val timeIntoWord = (smoothPosition - spanStartMs).toFloat()
+                                val timeToEnd = (spanEndMs - smoothPosition).toFloat()
+                                // Cap attack/release to a fraction of the word's own span so short/fast
+                                // words always complete their in-and-out ramp within their own duration.
+                                val attackMs = minOf(WAVE_ATTACK_MS, spanDurationMs * WAVE_ATTACK_RELEASE_SPAN_FRACTION)
+                                val releaseMs = minOf(WAVE_RELEASE_MS, spanDurationMs * WAVE_ATTACK_RELEASE_SPAN_FRACTION)
+                                val rawAttack = (timeIntoWord / attackMs).coerceIn(0f, 1f)
+                                val rawRelease = (timeToEnd / releaseMs).coerceIn(0f, 1f)
+                                // easeOutCubic responds immediately (non-zero slope at t=0) so the lift
+                                // never reads as "starting late"; smoothstep on release eases the tail
+                                // out to zero instead of ending on a linear-ramp kink (the old "scatti").
+                                val attack = easeOutCubic(rawAttack)
+                                val release = smoothstep(rawRelease)
+                                val envelope = attack * release
+                                if (envelope > 0.001f) {
+                                    val durationWeight = smoothstep(
+                                        ((spanDurationMs - WAVE_DURATION_MIN_MS) / (WAVE_DURATION_FULL_MS - WAVE_DURATION_MIN_MS)).coerceIn(0f, 1f)
+                                    )
+                                    val charCenterX = (charBounds.left + charBounds.right) / 2f
+                                    val sweepXForLift = wLeft + sungFactor * wordWidthPx
+                                    val sigma = wordWidthPx * 0.28f
+                                    val dist = charCenterX - sweepXForLift
+                                    val bump = exp(-(dist * dist) / (2f * sigma * sigma))
+                                    waveOffset = -(envelope * durationWeight * bump * waveMaxAmpPx)
+                                }
                             }
                         }
 

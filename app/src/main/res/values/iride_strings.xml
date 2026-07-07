@@ -986,7 +986,12 @@
     <string name="player_appearance">Player</string>
     <string name="interface_settings">Interface</string>
     <string name="hide_duration_standard_songs">Hide duration for standard songs</string>
-    <string name="hide_duration_standard_songs_desc">Hides the time indicator for songs between 2 and 5 minutes. Only the artist name is shown.</string>
+    <string name="hide_duration_standard_songs_desc">Hides the time indicator for songs between 1 and 5 minutes. Only the artist name is shown.</string>
+    <string name="auto_link_featured_artists">Auto-detect featured artists</string>
+    <string name="auto_link_featured_artists_desc">Strips "feat./ft." credits out of song titles and links the collaborator as a real artist.</string>
+    <string name="resume_album">Resume Album</string>
+    <string name="resume">Resume</string>
+    <string name="resume_album_track_progress">Track %1$d of %2$d</string>
     <string name="muzza_player_logic">Muzza Player Logic</string>
     <string name="muzza_player_logic_desc">Experimental alternate stream-resolution engine.</string>
 

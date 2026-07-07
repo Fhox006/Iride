@@ -46,6 +46,7 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.HeroCarouselEnabledKey
+import com.metrolist.music.constants.AutoLinkFeaturedArtistsKey
 import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.ChipSortTypeKey
 import com.metrolist.music.constants.DefaultOpenTabKey
@@ -108,6 +109,8 @@ fun InterfaceSettings(
         rememberPreference(RandomizeHomeOrderKey, defaultValue = true)
     val (hideDurationForStandard, onHideDurationForStandardChange) =
         rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
+    val (autoLinkFeaturedArtists, onAutoLinkFeaturedArtistsChange) =
+        rememberPreference(AutoLinkFeaturedArtistsKey, defaultValue = true)
     val (heroCarouselEnabled, onHeroCarouselEnabledChange) =
         rememberPreference(HeroCarouselEnabledKey, defaultValue = false)
     val (betterLibraryBeta, onBetterLibraryBetaChange) =
@@ -578,6 +581,24 @@ fun InterfaceSettings(
                         )
                     },
                     onClick = { onHideDurationForStandardChange(!hideDurationForStandard) }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.person),
+                    title = { Text(stringResource(R.string.auto_link_featured_artists)) },
+                    description = { Text(stringResource(R.string.auto_link_featured_artists_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = autoLinkFeaturedArtists, onCheckedChange = onAutoLinkFeaturedArtistsChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(if (autoLinkFeaturedArtists) R.drawable.check else R.drawable.close),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onAutoLinkFeaturedArtistsChange(!autoLinkFeaturedArtists) }
                 )
             )
         )
