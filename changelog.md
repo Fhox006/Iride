@@ -1,3 +1,21 @@
+## 0.1.0-alpha17
+
+### New features
+
+- **Comments**: view and post YouTube comments for the current song from the player (Settings → Player Appearance, opt-in and off by default) — sort by top/newest, reply counts, sign-in prompt when logged out
+- **News tab**: new opt-in bottom navigation tab (Settings → Interface, between Home and Library) surfacing new albums and songs from your followed/frequently-played artists plus YouTube's curated new-release feed, with each release's year verified before it's shown
+- **Genre filter pills**: playlist screens (auto, cached, local, online, top) now show genre filter chips resolved via Last.fm's tag data with an iTunes Search fallback, cached on disk
+- **Smart Search**: search results can show full per-category carousels ordered by inferred query intent, each backed by its own dedicated search instead of YouTube's truncated summary shelves
+
+### Improvements
+
+- Consolidated the three separate player-logic toggles (Fast Song Loader BETA, Metrolist Player Logic, Faster Loader) into a single "Muzza Player Logic" setting — a faithful, fully isolated port of Muzza's own stream-resolution path
+- More compact song/album list rows with subtle dividers between plain rows and softer squircle thumbnail corners
+- Redesigned the playback-error UI: a small transient banner over the album art with a copy-debug-info button, instead of replacing the whole screen
+- Refined word-synced lyrics animation with an Apple-Music-style micro letter lift and glow
+- Artist page header now anchors the name/controls to the bottom of the artwork regardless of content, and recent releases are picked by newest year across all Albums/Singles/EP shelves instead of the first shelf match
+- Artist song/album list screens now support sorting by name or artist
+
 ## 0.1.0-alpha16
 
 ### New features
