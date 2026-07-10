@@ -114,7 +114,7 @@ import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.db.entities.Album
-import com.metrolist.music.db.entities.Event
+import com.metrolist.music.db.entities.AlbumPlayEvent
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.LocalAlbumRadio
 /*import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground*/
@@ -159,6 +159,7 @@ fun AlbumScreen(
     val playlistId by viewModel.playlistId.collectAsStateWithLifecycle()
     val albumWithSongs by viewModel.albumWithSongs.collectAsStateWithLifecycle()
     val otherVersions by viewModel.otherVersions.collectAsStateWithLifecycle()
+    val similarAlbums by viewModel.similarAlbums.collectAsStateWithLifecycle()
     val hasError by viewModel.hasError.collectAsStateWithLifecycle()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val hideVideoSongs by rememberPreference(key = HideVideoSongsKey, defaultValue = false)
@@ -175,17 +176,32 @@ fun AlbumScreen(
             songs
         }
 
-    val resumeEvent by produceState<Event?>(initialValue = null, albumWithSongs?.album?.id) {
+    val recentAlbumPlayEvents by produceState<List<AlbumPlayEvent>>(initialValue = emptyList(), albumWithSongs?.album?.id) {
         val albumId = albumWithSongs?.album?.id
         if (albumId == null) {
-            value = null
+            value = emptyList()
         } else {
-            database.latestAlbumEvent(albumId).collect { value = it }
+            database.recentAlbumPlayEvents(albumId).collect { value = it }
         }
     }
-    val resumeTrackIndex = remember(resumeEvent, albumWithSongs) {
-        resumeEvent?.let { event -> albumWithSongs?.songs?.indexOfFirst { it.id == event.songId } }
-            ?.takeIf { it >= 0 }
+    val resumeTrackIndex = remember(recentAlbumPlayEvents, albumWithSongs) {
+        val songCount = albumWithSongs?.songs?.size ?: 0
+        var inOrderStreak = 0
+        for (i in recentAlbumPlayEvents.indices) {
+            inOrderStreak = if (i == 0) {
+                1
+            } else if (recentAlbumPlayEvents[i - 1].songIndex - recentAlbumPlayEvents[i].songIndex == 1) {
+                inOrderStreak + 1
+            } else {
+                break
+            }
+        }
+        val lastPlayedIndex = recentAlbumPlayEvents.firstOrNull()?.songIndex
+        if (inOrderStreak >= 3 && lastPlayedIndex != null) {
+            (lastPlayedIndex + 1).takeIf { it in 0 until songCount }
+        } else {
+            null
+        }
     }
     var resumeDismissed by rememberSaveable(albumWithSongs?.album?.id) { mutableStateOf(false) }
 
@@ -740,6 +756,47 @@ fun AlbumScreen(
                             items(
                                 items = otherVersions.distinctBy { it.id },
                                 key = { "album_other_${it.id}" },
+                            ) { item ->
+                                YouTubeGridItem(
+                                    item = item,
+                                    isActive = mediaMetadata?.album?.id == item.id,
+                                    isPlaying = isPlaying,
+                                    coroutineScope = scope,
+                                    modifier =
+                                        Modifier
+                                            .combinedClickable(
+                                                onClick = { navController.navigate("album/${item.id}") },
+                                                onLongClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    menuState.show {
+                                                        YouTubeAlbumMenu(
+                                                            albumItem = item,
+                                                            navController = navController,
+                                                            onDismiss = menuState::dismiss,
+                                                        )
+                                                    }
+                                                },
+                                            ).animateItem(),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (similarAlbums.isNotEmpty()) {
+                    item(key = "similar_albums_title") {
+                        NavigationTitle(
+                            title = stringResource(R.string.similar_albums),
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
+                    item(key = "similar_albums_list") {
+                        LazyRow(
+                            contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues(),
+                        ) {
+                            items(
+                                items = similarAlbums.distinctBy { it.id },
+                                key = { "album_similar_${it.id}" },
                             ) { item ->
                                 YouTubeGridItem(
                                     item = item,

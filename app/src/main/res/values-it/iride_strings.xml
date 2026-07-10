@@ -809,6 +809,8 @@
     <!-- News screen -->
     <string name="show_news_tab">Mostra scheda News</string>
     <string name="show_news_tab_desc">Aggiunge una scheda News alla barra di navigazione, tra Home e Libreria</string>
+    <string name="top_navigation_bar">New Iride Ui</string>
+    <string name="top_navigation_bar_desc">Schede solo testo in alto e schermo interamente nero al posto della pillola in basso</string>
     <string name="news">News</string>
     <string name="news_new_albums">Album nuovi</string>
     <string name="news_new_songs">Canzoni nuove</string>

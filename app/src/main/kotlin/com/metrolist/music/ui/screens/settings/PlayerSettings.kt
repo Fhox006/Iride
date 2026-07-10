@@ -502,7 +502,7 @@ fun PlayerSettings(
                     onClick = { onAudioNormalizationChange(!audioNormalization) }
                 ))
                 if (advancedMode) add(Material3SettingsItem(
-                    icon = painterResource(R.drawable.graphic_eq),
+                    icon = painterResource(R.drawable.equalizer),
                     title = { Text(stringResource(R.string.audio_offload)) },
                     description = {
                         Text(
@@ -529,7 +529,7 @@ fun PlayerSettings(
                     onClick = { if (!crossfadeEnabled) onAudioOffloadChange(!audioOffload) }
                 ))
                 if (advancedMode) add(Material3SettingsItem(
-                    icon = painterResource(R.drawable.graphic_eq),
+                    icon = painterResource(R.drawable.tune),
                     title = { Text(stringResource(R.string.varispeed)) },
                     description = { Text(stringResource(R.string.varispeed_description)) },
                     trailingContent = {
@@ -859,7 +859,7 @@ fun PlayerSettings(
                     onClick = { onPersistentShuffleAcrossQueuesChange(!persistentShuffleAcrossQueues) }
                 ))
                 if (advancedMode) add(Material3SettingsItem(
-                    icon = painterResource(R.drawable.shuffle),
+                    icon = painterResource(R.drawable.repeat),
                     title = { Text(stringResource(R.string.remember_shuffle_and_repeat)) },
                     description = { Text(stringResource(R.string.remember_shuffle_and_repeat_desc)) },
                     trailingContent = {
@@ -880,7 +880,7 @@ fun PlayerSettings(
                     onClick = { onRememberShuffleAndRepeatChange(!rememberShuffleAndRepeat) }
                 ))
                 if (advancedMode) add(Material3SettingsItem(
-                    icon = painterResource(R.drawable.shuffle),
+                    icon = painterResource(R.drawable.shuffle_on),
                     title = { Text(stringResource(R.string.shuffle_playlist_first)) },
                     description = { Text(stringResource(R.string.shuffle_playlist_first_desc)) },
                     trailingContent = {

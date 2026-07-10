@@ -30,6 +30,7 @@ import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.AlbumArtistMap
 import com.metrolist.music.db.entities.AlbumEntity
 import com.metrolist.music.db.entities.AlbumWithSongs
+import com.metrolist.music.db.entities.AlbumPlayEvent
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.Event
@@ -1089,6 +1090,18 @@ interface DatabaseDao {
         """
     )
     fun latestAlbumEvent(albumId: String): Flow<Event?>
+
+    @Query(
+        """
+        SELECT event.songId AS songId, song_album_map.`index` AS songIndex, event.timestamp AS timestamp
+        FROM event
+        JOIN song_album_map ON song_album_map.songId = event.songId
+        WHERE song_album_map.albumId = :albumId
+        ORDER BY event.timestamp DESC
+        LIMIT :limit
+        """
+    )
+    fun recentAlbumPlayEvents(albumId: String, limit: Int = 20): Flow<List<AlbumPlayEvent>>
 
     @Transaction
     @Query("SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY rowId")

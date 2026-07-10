@@ -390,7 +390,7 @@
     <string name="settings_section_player_content">Player &amp; Content</string>
     <string name="settings_section_storage">Storage &amp; Data</string>
     <string name="app_data_storage">App Data &amp; Storage</string>
-    <string name="app_management_backup">App Management &amp; Backup</string>
+    <string name="app_management_backup">Data &amp; Storage</string>
     <string name="settings_section_system">System &amp; About</string>
     <string name="settings_section_player">Playback</string>
     <string name="settings_section_content">Content</string>
@@ -399,6 +399,9 @@
     <string name="settings_section_audio">Audio</string>
     <string name="settings_section_behavior">Behavior</string>
     <string name="settings_section_interface">Interface</string>
+    <string name="settings_section_navigation">Navigation</string>
+    <string name="settings_section_display">Display</string>
+    <string name="settings_section_lab">Lab</string>
     <string name="settings_section_system_short">System</string>
 
     <!-- Updater -->
@@ -842,6 +845,8 @@
     <string name="unpin_from_speed_dial">Unpin from speed dial</string>
     <string name="randomize_home_order">Randomize home screen order</string>
     <string name="randomize_home_order_desc">Randomly reorder home screen sections using weighted priorities</string>
+    <string name="hero_carousel_title">Hero carousel</string>
+    <string name="hero_carousel_desc">A rotating banner with new releases and picks for you</string>
 
     <!-- Daily Discover -->
     <string name="daily_discover_sounds_like">Sounds like %1$s</string>
@@ -859,6 +864,8 @@
 
     <!-- Credits / About Screen -->
     <string name="credits_lead_developer">Lead developer</string>
+    <string name="about_creator_role">Creator of Iride</string>
+    <string name="about_release_badge">First release soon</string>
     <string name="credits_special_thanks">Special thanks</string>
     <string name="credits_collaborator">Collaborator</string>
     <string name="credits_collaborators_section">Collaborators</string>
@@ -968,9 +975,9 @@
     <!-- Settings hub descriptions -->
     <string name="music_settings">Music Settings</string>
     <string name="music_settings_desc">Appearance, playback and content</string>
-    <string name="settings_appearance_desc">Theme, interface, player and lyrics</string>
+    <string name="settings_appearance_desc">Theme, home screen, player and lyrics</string>
     <string name="settings_appearance_theme_desc">Colors, dark mode and accents</string>
-    <string name="settings_appearance_interface_desc">Navigation, layout and playlists</string>
+    <string name="settings_appearance_interface_desc">Tabs, home screen and library defaults</string>
     <string name="settings_appearance_player_desc">Player, mini-player and slider</string>
     <string name="settings_appearance_lyrics_desc">Display, animations and scrolling</string>
     <string name="settings_playback_desc">Audio quality, crossfade and behavior</string>
@@ -979,12 +986,16 @@
     <string name="settings_integrations_desc">Discord, Last.fm and Listen Together</string>
     <string name="settings_privacy_desc">Listening history and security</string>
     <string name="settings_storage_desc">Downloads, cache and backup</string>
-    <string name="settings_system_desc">Updates, changelog and about</string>
+    <string name="settings_system_desc">Credits, license and version</string>
+    <string name="settings_account_desc">Sign-in, sync, stats and privacy</string>
+    <string name="android_auto_settings_desc">Visible sections and playlists</string>
     <string name="manage_account">Manage account</string>
+    <string name="spotify_import_title">Import Music Library</string>
+    <string name="spotify_import_desc">Playlists and songs from Spotify</string>
     <string name="sign_in_desc">Connect your account to access playlists and recommendations</string>
     <string name="settings_theme">Theme</string>
     <string name="player_appearance">Player</string>
-    <string name="interface_settings">Interface</string>
+    <string name="interface_settings">Home &amp; Navigation</string>
     <string name="hide_duration_standard_songs">Hide duration for standard songs</string>
     <string name="hide_duration_standard_songs_desc">Hides the time indicator for songs between 1 and 5 minutes. Only the artist name is shown.</string>
     <string name="auto_link_featured_artists">Auto-detect featured artists</string>
@@ -992,12 +1003,14 @@
     <string name="resume_album">Resume Album</string>
     <string name="resume">Resume</string>
     <string name="resume_album_track_progress">Track %1$d of %2$d</string>
-    <string name="muzza_player_logic">Muzza Player Logic</string>
-    <string name="muzza_player_logic_desc">Experimental alternate stream-resolution engine.</string>
+    <string name="muzza_player_logic">Fast Playback Engine</string>
+    <string name="muzza_player_logic_desc">Loads songs faster using an alternate streaming method.</string>
 
     <!-- News screen -->
     <string name="show_news_tab">Show News tab</string>
     <string name="show_news_tab_desc">Adds a News tab to the bottom navigation, between Home and Library</string>
+    <string name="top_navigation_bar">New Iride Ui</string>
+    <string name="top_navigation_bar_desc">Text-only tabs at the top and a full black screen instead of the bottom pill</string>
     <string name="news">News</string>
     <string name="news_new_albums">New albums</string>
     <string name="news_new_songs">New songs</string>

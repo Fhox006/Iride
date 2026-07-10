@@ -277,7 +277,7 @@ fun InterfaceSettings(
 
         // ── Navigation ─────────────────────────────────────────────────────
         Material3SettingsGroup(
-            title = stringResource(R.string.settings_section_interface),
+            title = stringResource(R.string.settings_section_navigation),
             items = listOfNotNull(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.nav_bar),
@@ -342,7 +342,7 @@ fun InterfaceSettings(
                     onClick = { showGridSizeDialog = true }
                 ) else null,
                 if (advancedMode) Material3SettingsItem(
-                    icon = painterResource(R.drawable.grid_view),
+                    icon = painterResource(R.drawable.grid_view_3),
                     title = { Text(stringResource(R.string.display_density)) },
                     description = { Text(DensityScale.fromValue(densityScale).label) },
                     onClick = { showDensityScaleDialog = true }
@@ -350,64 +350,16 @@ fun InterfaceSettings(
             )
         )
 
-        if (advancedMode) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // ── Home Screen ─────────────────────────────────────────────────
-            Material3SettingsGroup(
-                title = stringResource(R.string.home),
-                items = listOf(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.star),
-                        title = { Text(stringResource(R.string.show_wrapped_card)) },
-                        trailingContent = {
-                            Switch(
-                                checked = showWrappedCard, onCheckedChange = onShowWrappedCardChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(if (showWrappedCard) R.drawable.check else R.drawable.close),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize)
-                                    )
-                                }
-                            )
-                        },
-                        onClick = { onShowWrappedCardChange(!showWrappedCard) }
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.shuffle),
-                        title = { Text(stringResource(R.string.randomize_home_order)) },
-                        description = { Text(stringResource(R.string.randomize_home_order_desc)) },
-                        trailingContent = {
-                            Switch(
-                                checked = randomizeHomeOrder, onCheckedChange = onRandomizeHomeOrderChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            if (randomizeHomeOrder) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize)
-                                    )
-                                }
-                            )
-                        },
-                        onClick = { onRandomizeHomeOrderChange(!randomizeHomeOrder) }
-                    )
-                )
-            )
-        }
-
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ── Discovery ──────────────────────────────────────────────────────
+        // ── Home ─────────────────────────────────────────────────────────
         Material3SettingsGroup(
-            title = "Home",
-            items = listOf(
+            title = stringResource(R.string.home),
+            items = listOfNotNull(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.explore_outlined),
-                    title = { Text("Hero Carousel") },
-                    description = { Text("Show a carousel with new releases, mood picks, personalized mixes and artist radios") },
+                    title = { Text(stringResource(R.string.hero_carousel_title)) },
+                    description = { Text(stringResource(R.string.hero_carousel_desc)) },
                     trailingContent = {
                         Switch(
                             checked = heroCarouselEnabled,
@@ -424,7 +376,44 @@ fun InterfaceSettings(
                         )
                     },
                     onClick = { onHeroCarouselEnabledChange(!heroCarouselEnabled) },
-                )
+                ),
+                if (advancedMode) Material3SettingsItem(
+                    icon = painterResource(R.drawable.star),
+                    title = { Text(stringResource(R.string.show_wrapped_card)) },
+                    trailingContent = {
+                        Switch(
+                            checked = showWrappedCard, onCheckedChange = onShowWrappedCardChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(if (showWrappedCard) R.drawable.check else R.drawable.close),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onShowWrappedCardChange(!showWrappedCard) }
+                ) else null,
+                if (advancedMode) Material3SettingsItem(
+                    icon = painterResource(R.drawable.shuffle_on),
+                    title = { Text(stringResource(R.string.randomize_home_order)) },
+                    description = { Text(stringResource(R.string.randomize_home_order_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = randomizeHomeOrder, onCheckedChange = onRandomizeHomeOrderChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        if (randomizeHomeOrder) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onRandomizeHomeOrderChange(!randomizeHomeOrder) }
+                ) else null
             )
         )
 
@@ -583,7 +572,7 @@ fun InterfaceSettings(
                     onClick = { onHideDurationForStandardChange(!hideDurationForStandard) }
                 ),
                 Material3SettingsItem(
-                    icon = painterResource(R.drawable.person),
+                    icon = painterResource(R.drawable.link),
                     title = { Text(stringResource(R.string.auto_link_featured_artists)) },
                     description = { Text(stringResource(R.string.auto_link_featured_artists_desc)) },
                     trailingContent = {
@@ -607,7 +596,7 @@ fun InterfaceSettings(
 
         // ── Lab ───────────────────────────────────────────────────────────
         Material3SettingsGroup(
-            title = "Lab",
+            title = stringResource(R.string.settings_section_lab),
             items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.bug_report),

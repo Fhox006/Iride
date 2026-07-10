@@ -148,6 +148,8 @@ fun ThumbnailCarousel(
         val url = prevItem?.mediaMetadata?.artworkUri?.toString()?.resize(1080, 1080) ?: return@LaunchedEffect
         context.imageLoader.enqueue(
             ImageRequest.Builder(context).data(url)
+                .size(Size.ORIGINAL)
+                .memoryCacheKey(MemoryCache.Key(url))
                 .memoryCachePolicy(CachePolicy.ENABLED).diskCachePolicy(CachePolicy.ENABLED).build()
         )
     }
@@ -155,6 +157,8 @@ fun ThumbnailCarousel(
         val url = nextItem?.mediaMetadata?.artworkUri?.toString()?.resize(1080, 1080) ?: return@LaunchedEffect
         context.imageLoader.enqueue(
             ImageRequest.Builder(context).data(url)
+                .size(Size.ORIGINAL)
+                .memoryCacheKey(MemoryCache.Key(url))
                 .memoryCachePolicy(CachePolicy.ENABLED).diskCachePolicy(CachePolicy.ENABLED).build()
         )
     }
@@ -364,6 +368,7 @@ fun ThumbnailCarousel(
                                     }
                                 } else {
                                     val artworkUri = item.mediaMetadata.artworkUri?.toString()
+                                    val resizedArtworkUri = artworkUri?.resize(1080, 1080) ?: artworkUri
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -371,8 +376,9 @@ fun ThumbnailCarousel(
                                     ) {
                                         AsyncImage(
                                             model = ImageRequest.Builder(context)
-                                                .data(artworkUri?.resize(1080, 1080) ?: artworkUri)
+                                                .data(resizedArtworkUri)
                                                 .size(Size.ORIGINAL)
+                                                .memoryCacheKey(resizedArtworkUri?.let { MemoryCache.Key(it) })
                                                 .memoryCachePolicy(CachePolicy.ENABLED)
                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                 .networkCachePolicy(CachePolicy.ENABLED)

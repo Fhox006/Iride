@@ -397,8 +397,10 @@ fun OriginalLyrics(
 
     val aiApiKeyRequiredStr = stringResource(R.string.ai_api_key_required)
 
-    // Listen for manual trigger
-    LaunchedEffect(showLyrics, lines.size) {
+    // Listen for manual trigger. Kept alive for the whole composition (LaunchedEffect(Unit))
+    // so the manualTrigger SharedFlow always has a collector — restarting on every key change
+    // used to create resubscribe gaps where a click landed and was silently dropped.
+    LaunchedEffect(Unit) {
         LyricsTranslationHelper.manualTrigger.collect {
             val effectiveApiKey = if (aiProvider == "DeepL") deeplApiKey else openRouterApiKey
             if (showLyrics && lines.isNotEmpty() && effectiveApiKey.isNotBlank()) {

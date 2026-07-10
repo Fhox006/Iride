@@ -30,3 +30,10 @@ data class Event(
     @ColumnInfo(defaultValue = "0") val timestamp: LocalDateTime,
     val playTime: Long,
 )
+
+@Immutable
+data class AlbumPlayEvent(
+    val songId: String,
+    val songIndex: Int,
+    val timestamp: LocalDateTime,
+)

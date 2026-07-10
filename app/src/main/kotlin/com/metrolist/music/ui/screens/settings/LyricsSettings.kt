@@ -363,7 +363,7 @@ fun LyricsSettings(navController: NavController) {
 
         // ── Display ────────────────────────────────────────────────────────
         Material3SettingsGroup(
-            title = stringResource(R.string.settings_section_interface),
+            title = stringResource(R.string.settings_section_display),
             items = listOfNotNull(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.lyrics),
@@ -380,7 +380,7 @@ fun LyricsSettings(navController: NavController) {
                     onClick = { showLyricsPositionDialog = true }
                 ),
                 if (advancedMode) Material3SettingsItem(
-                    icon = painterResource(R.drawable.lyrics),
+                    icon = painterResource(R.drawable.group_outlined),
                     title = { Text(stringResource(R.string.respect_agent_positioning)) },
                     description = { Text(stringResource(R.string.respect_agent_positioning_desc)) },
                     trailingContent = {
@@ -401,7 +401,7 @@ fun LyricsSettings(navController: NavController) {
                     onClick = { onRespectAgentPositioningChange(!respectAgentPositioning) }
                 ) else null,
                 if (advancedMode) Material3SettingsItem(
-                    icon = painterResource(R.drawable.lyrics),
+                    icon = painterResource(R.drawable.skip_next),
                     title = { Text(stringResource(R.string.lyrics_click_change)) },
                     trailingContent = {
                         Switch(
@@ -421,7 +421,7 @@ fun LyricsSettings(navController: NavController) {
                     onClick = { onLyricsClickChange(!lyricsClick) }
                 ) else null,
                 if (advancedMode) Material3SettingsItem(
-                    icon = painterResource(R.drawable.lyrics),
+                    icon = painterResource(R.drawable.arrow_downward),
                     title = { Text(stringResource(R.string.lyrics_auto_scroll)) },
                     trailingContent = {
                         Switch(
@@ -441,7 +441,7 @@ fun LyricsSettings(navController: NavController) {
                     onClick = { onLyricsScrollChange(!lyricsScroll) }
                 ) else null,
                 if (advancedMode) Material3SettingsItem(
-                    icon = painterResource(R.drawable.lyrics),
+                    icon = painterResource(R.drawable.fullscreen),
                     title = { Text(stringResource(R.string.hide_status_bar_fullscreen)) },
                     description = { Text(stringResource(R.string.hide_status_bar_fullscreen_desc)) },
                     trailingContent = {

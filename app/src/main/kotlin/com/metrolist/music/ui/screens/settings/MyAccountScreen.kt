@@ -429,8 +429,8 @@ fun MyAccountScreen(
                 ),
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.download),
-                    title = { Text("Import Music Library") },
-                    description = { Text("Import playlists and tracks from Spotify", style = MaterialTheme.typography.bodySmall) },
+                    title = { Text(stringResource(R.string.spotify_import_title)) },
+                    description = { Text(stringResource(R.string.spotify_import_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = {
                         Icon(
                             painter = painterResource(R.drawable.arrow_forward),

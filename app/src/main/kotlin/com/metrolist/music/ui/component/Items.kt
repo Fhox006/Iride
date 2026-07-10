@@ -160,7 +160,7 @@ inline fun ListItem(
     isAvailable: Boolean = true,
 ) {
     val applyHPad = LocalItemHorizontalPadding.current
-    val highlightShape = RoundedCornerShape(24.dp)
+    val highlightShape = RoundedCornerShape(ThumbnailCornerRadius)
     val hPad = if (applyHPad) 12.dp else 0.dp
     val plain = !isActive && isSelected != true
 

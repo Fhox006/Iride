@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -71,7 +72,6 @@ import kotlinx.coroutines.isActive
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
-import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.PI
 
@@ -83,8 +83,8 @@ import kotlin.math.PI
 private const val WAVE_ATTACK_MS = 350f
 private const val WAVE_RELEASE_MS = 220f
 private const val WAVE_MAX_AMP_DP = 2.2f
-private const val WAVE_DURATION_MIN_MS = 260f
-private const val WAVE_DURATION_FULL_MS = 750f
+private const val WAVE_DURATION_MIN_MS = 1000f
+private const val WAVE_DURATION_FULL_MS = 1600f
 // Attack/release are capped as a fraction of the word's own on-screen duration so a fast word
 // (short span) always ramps fully to 0 and back to 0 within its own span instead of getting cut
 // off mid-ramp when the next word starts (which read as a "jump"). Kept short in absolute terms
@@ -113,16 +113,13 @@ private const val SWEEP_FEATHER_FRACTION = 0.35f
 private const val SWEEP_FEATHER_MIN_DP = 8f
 private const val SWEEP_FEATHER_MAX_DP = 32f
 
-// Transient bloom: a soft blurred glow riding the currently-sung word, gated to long-duration
-// words (not char count) and cycling smoothly so it never sits on-screen as a static halo or
-// cuts off mid-cycle when the word ends.
+// Transient bloom: a soft blurred glow riding the currently-sung word, gated to longer words and
+// peaking mid-word so it never sits on-screen as a static halo.
 private const val BLOOM_MIN_CHARS = 6
 private const val BLOOM_MAX_CHARS = 14
 private const val BLOOM_MAX_ALPHA = 0.45f
 private const val BLOOM_MIN_RADIUS_DP = 4f
-private const val BLOOM_MAX_RADIUS_DP = 10f
-private const val BLOOM_DURATION_THRESHOLD_MS = 1800L
-private const val BLOOM_CYCLE_DURATION_MS = 1200L
+private const val BLOOM_MAX_RADIUS_DP = 16f
 
 private fun String.containsRtl(): Boolean {
     for (c in this) {
@@ -184,6 +181,7 @@ internal fun LyricsLine(
     val itemModifier = modifier
         .fillMaxWidth()
         .onSizeChanged { onSizeChanged(it.height) }
+        .clip(RoundedCornerShape(8.dp))
         .combinedClickable(
             onClick = onClick,
             onLongClick = onLongClick
@@ -594,9 +592,13 @@ private fun WordLevelLyrics(
                 if (wIdx == -1) continue
                 val b = layoutResult.getBoundingBox(clusterCharOffsets[k])
                 val bb = bounds[wIdx]
-                if (b.left < bb[0]) bb[0] = b.left
+                // Bidi/mixed-direction runs (multi-speaker lines) can return b.left > b.right;
+                // normalize before tracking min/max or wordBoundsPx ends up with left > right.
+                val bLeft = minOf(b.left, b.right)
+                val bRight = maxOf(b.left, b.right)
+                if (bLeft < bb[0]) bb[0] = bLeft
                 if (b.top < bb[1]) bb[1] = b.top
-                if (b.right > bb[2]) bb[2] = b.right
+                if (bRight > bb[2]) bb[2] = bRight
                 if (b.bottom > bb[3]) bb[3] = b.bottom
             }
             bounds
@@ -607,20 +609,12 @@ private fun WordLevelLyrics(
         fun bloomIntensity(idx: Int): Float {
             if (idx == -1) return 0f
             val originalWord = words[effectiveToOriginalIdx[idx]]
-            val (s, e) = remappedWordTimesMs[idx]
-            val wordDuration = e - s
-            // Bloom only fires for sustained (long-duration) words, not by character count.
-            if (wordDuration <= BLOOM_DURATION_THRESHOLD_MS) return 0f
             val len = originalWord.text.length
+            if (len < BLOOM_MIN_CHARS) return 0f
             val lengthFactor = ((len - BLOOM_MIN_CHARS).toFloat() / (BLOOM_MAX_CHARS - BLOOM_MIN_CHARS)).coerceIn(0f, 1f)
-            // Run whole cycles within the word's own duration so the glow is always at its
-            // trough (intensity 0) at word start and word end - no jump/stutter on transition.
-            val cycles = max(1, (wordDuration / BLOOM_CYCLE_DURATION_MS).toInt())
-            val totalDurationMs = BLOOM_CYCLE_DURATION_MS * cycles
-            val elapsed = (smoothPosition - s).coerceIn(0L, totalDurationMs)
-            val fraction = elapsed.toFloat() / totalDurationMs.toFloat()
-            val cyclePhase = (fraction * cycles) % 1f
-            val shape = sin(PI.toFloat() * cyclePhase).coerceIn(0f, 1f)
+            val (s, e) = remappedWordTimesMs[idx]
+            val progress = ((smoothPosition - s).toFloat() / (e - s).coerceAtLeast(1)).coerceIn(0f, 1f)
+            val shape = sin(PI.toFloat() * progress).coerceIn(0f, 1f)
             return (0.35f + 0.65f * lengthFactor) * shape
         }
 
@@ -693,8 +687,8 @@ private fun WordLevelLyrics(
                             for (i in 0 until clusterCount) {
                                 if (wordIdxMap[i] == wIdx) {
                                     val bounds = layoutResult.getBoundingBox(clusterCharOffsets[i])
-                                    left = minOf(left, bounds.left)
-                                    right = maxOf(right, bounds.right)
+                                    left = minOf(left, bounds.left, bounds.right)
+                                    right = maxOf(right, bounds.left, bounds.right)
                                     top = minOf(top, bounds.top)
                                     bottom = maxOf(bottom, bounds.bottom)
                                     found = true
@@ -732,7 +726,9 @@ private fun WordLevelLyrics(
                         val hasDescender = graphemeClusters[i].any { c -> c.lowercaseChar() in "gjpqy" }
 
                         if (wordIdx == -1) {
-                            clipRect(left = charBounds.left, top = charBounds.top, right = charBounds.right, bottom = charBounds.bottom + (if (hasDescender) descentPadPx else 0f)) {
+                            val unmappedLeft = minOf(charBounds.left, charBounds.right)
+                            val unmappedRight = maxOf(charBounds.left, charBounds.right)
+                            clipRect(left = unmappedLeft, top = charBounds.top, right = unmappedRight, bottom = charBounds.bottom + (if (hasDescender) descentPadPx else 0f)) {
                                 drawText(layoutResult, color = lineColor.copy(alpha = focusedAlpha))
                             }
                             continue
@@ -786,8 +782,10 @@ private fun WordLevelLyrics(
                         val cTop = charBounds.top + waveOffset
                         val cBottom = charBounds.bottom + (if (hasDescender) descentPadPx else 0f) + waveOffset
 
-                        val left = charBounds.left
-                        val right = charBounds.right
+                        // Bidi/mixed-direction runs (e.g. multi-speaker lines) can return a
+                        // bounding box with left > right; normalize or coerceIn below throws.
+                        val left = minOf(charBounds.left, charBounds.right)
+                        val right = maxOf(charBounds.left, charBounds.right)
 
                         if (isWordSung) {
                             // Word already fully sung: no feather tail, stays solid so it never

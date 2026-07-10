@@ -101,6 +101,7 @@ fun CollapsingScreenHeader(
     keyboardController: SoftwareKeyboardController?,
     navigationIcon: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
+    transparentBackground: Boolean = false,
 ) {
     val density = LocalDensity.current
     val largeTitleHeightPx = with(density) { CollapsingHeaderLargeTitleHeight.toPx() }
@@ -117,7 +118,11 @@ fun CollapsingScreenHeader(
     val totalHeightDp = CollapsingHeaderSmallBarHeight + CollapsingHeaderLargeTitleHeight
 
     Surface(
-        color = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
+        color = when {
+            transparentBackground -> Color.Transparent
+            pureBlack -> Color.Black
+            else -> MaterialTheme.colorScheme.background
+        },
         modifier = Modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.statusBars)

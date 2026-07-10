@@ -88,6 +88,7 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalIsPlayerExpanded
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.SearchSource
 import com.metrolist.music.constants.SearchSourceKey
@@ -138,6 +139,7 @@ fun SearchScreen(
         }
     }
 
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     var searchSource by rememberEnumPreference(SearchSourceKey, SearchSource.ONLINE)
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue())
@@ -191,6 +193,7 @@ fun SearchScreen(
                 onSearch = { handleSearch(query.text) },
                 onClear = { query = TextFieldValue("") },
                 pureBlack = pureBlack,
+                transparentBackground = mainTopGradient,
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -201,7 +204,13 @@ fun SearchScreen(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
+                .background(
+                    when {
+                        pureBlack -> Color.Black
+                        mainTopGradient -> Color.Transparent
+                        else -> MaterialTheme.colorScheme.background
+                    },
+                ),
         ) {
             when (searchSource) {
                 SearchSource.LOCAL -> {
@@ -273,6 +282,7 @@ private fun SearchCollapsingHeader(
     onSearch: () -> Unit,
     onClear: () -> Unit,
     pureBlack: Boolean,
+    transparentBackground: Boolean = false,
 ) {
     val density = LocalDensity.current
     val largeTitleHeightPx = with(density) { LargeTitleHeightDp.toPx() }
@@ -296,7 +306,11 @@ private fun SearchCollapsingHeader(
     )
 
     Surface(
-        color = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
+        color = when {
+            transparentBackground -> Color.Transparent
+            pureBlack -> Color.Black
+            else -> MaterialTheme.colorScheme.background
+        },
         modifier = Modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.statusBars)

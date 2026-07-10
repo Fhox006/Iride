@@ -252,7 +252,8 @@ internal fun LyricsColorPickerDialog(
     thumbnailUrl: String?,
     lyricsTextPosition: LyricsPosition,
     onDismiss: () -> Unit,
-    onShare: (backgroundColor: Color, textColor: Color, secondaryTextColor: Color, style: LyricsBackgroundStyle) -> Unit
+    onShare: (backgroundColor: Color, textColor: Color, secondaryTextColor: Color, style: LyricsBackgroundStyle) -> Unit,
+    onCopyAsImage: (backgroundColor: Color, textColor: Color, secondaryTextColor: Color, style: LyricsBackgroundStyle) -> Unit = { _, _, _, _ -> }
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -303,12 +304,23 @@ internal fun LyricsColorPickerDialog(
     }
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
-        Card(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+        Card(
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
+            modifier = Modifier.fillMaxWidth().padding(20.dp)
+        ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.verticalScroll(rememberScrollState()).padding(20.dp)
             ) {
-                Text("Share lyrics", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Text(
+                    stringResource(R.string.share_as_image),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
                 Spacer(Modifier.height(12.dp))
 
                 Box(
@@ -385,12 +397,24 @@ internal fun LyricsColorPickerDialog(
 
                 Spacer(Modifier.height(24.dp))
 
-                Button(
-                    onClick = { onShare(previewBackgroundColor, previewTextColor, previewSecondaryTextColor, bgStyle) },
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(painterResource(R.drawable.upload), null, Modifier.size(24.dp))
+                    FilledTonalButton(
+                        onClick = { onCopyAsImage(previewBackgroundColor, previewTextColor, previewSecondaryTextColor, bgStyle) },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(50)
+                    ) {
+                        Icon(painterResource(R.drawable.content_copy), null, Modifier.size(20.dp))
+                    }
+                    Button(
+                        onClick = { onShare(previewBackgroundColor, previewTextColor, previewSecondaryTextColor, bgStyle) },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(50)
+                    ) {
+                        Icon(painterResource(R.drawable.share), null, Modifier.size(20.dp))
+                    }
                 }
             }
         }

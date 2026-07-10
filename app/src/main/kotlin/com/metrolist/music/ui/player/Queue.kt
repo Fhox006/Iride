@@ -1287,6 +1287,15 @@ private fun PlayerQueueButton(
     }
 }
 
+// A single reorderable list backs the "recently played", queue, and autoplay sections of
+// InlineQueuePanel, so a history song can be dragged down into the real queue, and an
+// autoplay suggestion can be dragged up into it, dropped straight at the position it lands on.
+private sealed class QueueSlot(val key: Any) {
+    class History(val metadata: MediaMetadata) : QueueSlot("inline_history_${metadata.id}")
+    class QueueEntry(val window: Timeline.Window) : QueueSlot(window.uid.hashCode())
+    class Automix(val item: androidx.media3.common.MediaItem) : QueueSlot("inline_automix_${item.mediaId}")
+}
+
 @SuppressLint("UnrememberedMutableState")
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -1297,6 +1306,7 @@ fun InlineQueuePanel(
     iconButtonColor: Color,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    openNonce: Int = 0,
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -1312,7 +1322,6 @@ fun InlineQueuePanel(
     val queueTitle by playerConnection.queueTitle.collectAsState()
     val queueWindows by playerConnection.queueWindows.collectAsState()
     val automix by playerConnection.service.automixItems.collectAsState()
-    val mutableQueueWindows = remember { mutableStateListOf<Timeline.Window>() }
 
     val listenTogetherManager = LocalListenTogetherManager.current
     val listenTogetherRoleState = listenTogetherManager?.role?.collectAsState(initial = com.metrolist.music.listentogether.RoomRole.NONE)
@@ -1359,9 +1368,9 @@ fun InlineQueuePanel(
     }
 
     val lazyListState = rememberLazyListState()
-    var dragInfo by remember { mutableStateOf<Pair<Int, Int>?>(null) }
 
-    // History shown inline above queue — never mutates the player queue
+    // History shown inline above queue, draggable like a real queue item —
+    // dropping one past the divider promotes it into the real player queue.
     var historyItems by remember { mutableStateOf<List<MediaMetadata>>(emptyList()) }
     var historyPageOffset by remember { mutableStateOf(0) }
     var isLoadingHistory by remember { mutableStateOf(false) }
@@ -1397,6 +1406,19 @@ fun InlineQueuePanel(
         }
     }
 
+    // The moment the playing song changes (skip, auto-advance, jump-ahead...), drop the
+    // one that just finished into the history list immediately rather than waiting for
+    // the next DB reload — the new current song is always the first item below it.
+    val currentMediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    var lastKnownMetadata by remember { mutableStateOf(currentMediaMetadata) }
+    LaunchedEffect(currentMediaMetadata?.id) {
+        val previous = lastKnownMetadata
+        if (previous != null && previous.id != currentMediaMetadata?.id && historyItems.none { it.id == previous.id }) {
+            historyItems = historyItems + previous
+        }
+        lastKnownMetadata = currentMediaMetadata
+    }
+
     val dragScrollZone = LocalConfiguration.current.screenHeightDp.dp * 0.15f
     val dragAutoScroller = rememberScroller(
         scrollableState = lazyListState,
@@ -1404,6 +1426,12 @@ fun InlineQueuePanel(
         // slow it to ~25% of the library default (75% slower).
         pixelAmountProvider = { lazyListState.layoutInfo.viewportSize.height * 0.0125f },
     )
+    // Single reorderable list backing both sections. History slots may move freely,
+    // including past the divider into the queue zone (that's how a recent song gets
+    // promoted); queue slots are clamped so they can never move above the divider.
+    val combinedList = remember { mutableStateListOf<QueueSlot>() }
+    var draggedSlotKey by remember { mutableStateOf<Any?>(null) }
+
     val reorderableState = rememberReorderableLazyListState(
         lazyListState = lazyListState,
         scrollThresholdPadding = WindowInsets.systemBars
@@ -1411,49 +1439,135 @@ fun InlineQueuePanel(
             .asPaddingValues(),
         scroller = dragAutoScroller,
     ) { from, to ->
-        // spacer(1) + historyItems + divider(1) = queue starts here
-        val queueStart = historyItems.size + 2
-        val cur = dragInfo
-        dragInfo = if (cur == null) from.index to to.index else cur.first to to.index
-        val safeFrom = (from.index - queueStart).coerceIn(0, mutableQueueWindows.lastIndex)
-        val safeTo = (to.index - queueStart).coerceIn(0, mutableQueueWindows.lastIndex)
-        mutableQueueWindows.move(safeFrom, safeTo)
+        draggedSlotKey = from.key
+        val fromIdx = combinedList.indexOfFirst { it.key == from.key }
+        val toIdxRaw = combinedList.indexOfFirst { it.key == to.key }
+        if (fromIdx != -1 && toIdxRaw != -1) {
+            val moving = combinedList[fromIdx]
+            val firstQueueIdx = combinedList.indexOfFirst { it is QueueSlot.QueueEntry }
+                .let { if (it == -1) combinedList.size else it }
+            val automixStartIdx = combinedList.indexOfFirst { it is QueueSlot.Automix }
+                .let { if (it == -1) combinedList.size else it }
+            val toIdx = when (moving) {
+                // Can move within history, or down into the queue zone (promotion) —
+                // never past the autoplay divider.
+                is QueueSlot.History -> toIdxRaw.coerceAtMost((automixStartIdx - 1).coerceAtLeast(0))
+                // Clamped to the queue zone — can't cross into history above or autoplay below.
+                is QueueSlot.QueueEntry -> toIdxRaw.coerceIn(firstQueueIdx, (automixStartIdx - 1).coerceAtLeast(firstQueueIdx))
+                // Can move within autoplay, or up into the queue zone (promotion) —
+                // never above the first queue entry.
+                is QueueSlot.Automix -> toIdxRaw.coerceAtLeast(firstQueueIdx)
+            }
+            if (fromIdx != toIdx) combinedList.move(fromIdx, toIdx)
+        }
     }
 
     LaunchedEffect(reorderableState.isAnyItemDragging) {
         if (!reorderableState.isAnyItemDragging) {
-            dragInfo?.let { (from, to) ->
-                val queueStart = historyItems.size + 2
-                val safeFrom = (from - queueStart).coerceIn(0, queueWindows.lastIndex)
-                val safeTo = (to - queueStart).coerceIn(0, queueWindows.lastIndex)
-                if (!playerConnection.player.shuffleModeEnabled) {
-                    playerConnection.player.moveMediaItem(safeFrom, safeTo)
-                } else {
-                    playerConnection.player.setShuffleOrder(
-                        DefaultShuffleOrder(
-                            queueWindows.map { it.firstPeriodIndex }.toMutableList()
-                                .move(safeFrom, safeTo).toIntArray(),
-                            System.currentTimeMillis(),
-                        ),
-                    )
+            val key = draggedSlotKey
+            draggedSlotKey = null
+            val idx = key?.let { k -> combinedList.indexOfFirst { it.key == k } } ?: -1
+            if (idx != -1) {
+                // Already-played windows before currentWindowIndex are hidden from the
+                // visible queue section, so visible/relative positions need this offset
+                // added back to land on the right absolute index in the real timeline.
+                val hiddenBefore = currentWindowIndex.coerceAtLeast(0)
+                when (val slot = combinedList[idx]) {
+                    is QueueSlot.History -> {
+                        val firstQueueIdx = combinedList.indexOfFirst { it is QueueSlot.QueueEntry }
+                            .let { if (it == -1) combinedList.size else it }
+                        if (idx < firstQueueIdx) {
+                            // Still above the divider — cosmetic reorder of the history list.
+                            historyItems = combinedList.filterIsInstance<QueueSlot.History>().map { it.metadata }
+                        } else {
+                            // Dropped into the queue zone — promote it to a real queue item.
+                            val insertionIndex = combinedList.take(idx).count { it is QueueSlot.QueueEntry }
+                            playerConnection.player.addMediaItem(insertionIndex + hiddenBefore, slot.metadata.toMediaItem())
+                            historyItems = historyItems.filterNot { it.id == slot.metadata.id }
+                        }
+                    }
+
+                    is QueueSlot.QueueEntry -> {
+                        val safeFrom = queueWindows.indexOfFirst { it.uid == slot.window.uid }
+                        val safeTo = combinedList
+                            .filterIsInstance<QueueSlot.QueueEntry>()
+                            .indexOfFirst { it.window.uid == slot.window.uid } + hiddenBefore
+                        if (safeFrom != -1 && safeFrom != safeTo) {
+                            if (!playerConnection.player.shuffleModeEnabled) {
+                                playerConnection.player.moveMediaItem(safeFrom, safeTo)
+                            } else {
+                                playerConnection.player.setShuffleOrder(
+                                    DefaultShuffleOrder(
+                                        queueWindows.map { it.firstPeriodIndex }.toMutableList()
+                                            .move(safeFrom, safeTo).toIntArray(),
+                                        System.currentTimeMillis(),
+                                    ),
+                                )
+                            }
+                        }
+                    }
+
+                    is QueueSlot.Automix -> {
+                        val automixStartIdxNow = combinedList.indexOfFirst { it is QueueSlot.Automix }
+                            .let { if (it == -1) combinedList.size else it }
+                        if (idx < automixStartIdxNow) {
+                            // Dropped above the autoplay divider — promote it into the real queue.
+                            val insertionIndex = combinedList.take(idx).count { it is QueueSlot.QueueEntry }
+                            playerConnection.player.addMediaItem(insertionIndex + hiddenBefore, slot.item)
+                            playerConnection.service.automixItems.value =
+                                playerConnection.service.automixItems.value.filterNot { it.mediaId == slot.item.mediaId }
+                        }
+                        // Still within the autoplay section — order isn't persisted; combinedList
+                        // resyncs from automixItems on the next recomposition anyway.
+                    }
                 }
-                dragInfo = null
             }
         }
     }
 
-    LaunchedEffect(queueWindows) {
-        mutableQueueWindows.apply { clear(); addAll(queueWindows) }
+    LaunchedEffect(queueWindows, currentWindowIndex, historyItems, automix) {
+        if (!reorderableState.isAnyItemDragging) {
+            // Hide already-played windows from the queue section — the current song is
+            // always the first entry below the divider, never buried mid-list.
+            val visibleQueueWindows = if (currentWindowIndex in queueWindows.indices) {
+                queueWindows.drop(currentWindowIndex)
+            } else {
+                queueWindows
+            }
+            combinedList.apply {
+                clear()
+                addAll(historyItems.map { QueueSlot.History(it) })
+                addAll(visibleQueueWindows.map { QueueSlot.QueueEntry(it) })
+                addAll(automix.map { QueueSlot.Automix(it) })
+            }
+        }
     }
 
-    // Scroll to divider on open so "ascoltati di recente" is always visible at top
-    LaunchedEffect(Unit) {
-        triggerHistoryLoad()
-        kotlinx.coroutines.delay(80)
-        // Layout: index 0 = spacer, index 1..historyItems.size = history items, index historyItems.size+1 = divider.
-        // If no history loaded yet, divider is at index 1. Scroll to it so user always sees it.
-        val dividerIndex = (1 + historyItems.size).coerceAtLeast(1)
-        lazyListState.scrollToItem(dividerIndex)
+    // Center the currently playing song every time the queue is (re-)opened — keyed on
+    // openNonce rather than Unit so this fires again even if the panel stayed composed.
+    // History is intentionally NOT eagerly preloaded here anymore: doing so used to prepend
+    // items above the current song right after the initial scroll landed, shoving the
+    // playing song down out of view instead of keeping it centered at the top.
+    LaunchedEffect(openNonce) {
+        // Layout: index 0 = spacer, then history items (none loaded yet on a fresh open),
+        // then the divider row, then the current song as the first queue entry.
+        val targetIndex = historyItems.size + 2
+        val itemInfo = lazyListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == targetIndex }
+        if (itemInfo == null) {
+            lazyListState.scrollToItem(maxOf(0, targetIndex - 3))
+        }
+        val updatedItem = lazyListState.layoutInfo.visibleItemsInfo
+            .firstOrNull { it.index == targetIndex }
+        val viewportCenter = lazyListState.layoutInfo.viewportSize.height / 2
+        val scrollTarget = ((updatedItem?.offset ?: 0) - viewportCenter
+            + (updatedItem?.size ?: 0) / 2).toFloat()
+        lazyListState.animateScrollBy(
+            value = scrollTarget,
+            animationSpec = tween(
+                durationMillis = 400,
+                easing = EaseInOut,
+            ),
+        )
     }
 
     // Load history when user scrolls near top of list
@@ -1631,54 +1745,9 @@ fun InlineQueuePanel(
             ) {
                 item(key = "inline_spacer_top") { Spacer(Modifier.height(4.dp)) }
 
-                // History items — read-only, shown above queue like Apple Music
-                itemsIndexed(
-                    items = historyItems,
-                    key = { _, item -> "history_${item.id}" },
-                ) { _, historyItem ->
-                    MediaMetadataListItem(
-                        mediaMetadata = historyItem,
-                        isActive = false,
-                        isPlaying = false,
-                        trailingContent = {},
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .alpha(0.62f)
-                            .combinedClickable(
-                                onClick = {
-                                    menuState.show {
-                                        QueueMenu(
-                                            mediaMetadata = historyItem,
-                                            navController = navController,
-                                            playerBottomSheetState = playerBottomSheetState,
-                                            onShowDetailsDialog = {
-                                                bottomSheetPageState.show { ShowMediaInfo(historyItem.id) }
-                                            },
-                                            onShowSleepTimerDialog = { showSleepTimerDialog = true },
-                                            onDismiss = menuState::dismiss,
-                                        )
-                                    }
-                                },
-                                onLongClick = {
-                                    menuState.show {
-                                        QueueMenu(
-                                            mediaMetadata = historyItem,
-                                            navController = navController,
-                                            playerBottomSheetState = playerBottomSheetState,
-                                            onShowDetailsDialog = {
-                                                bottomSheetPageState.show { ShowMediaInfo(historyItem.id) }
-                                            },
-                                            onShowSleepTimerDialog = { showSleepTimerDialog = true },
-                                            onDismiss = menuState::dismiss,
-                                        )
-                                    }
-                                },
-                            ),
-                    )
-                }
-
-                // Inline divider — always visible, Apple Music style
-                item(key = "queue_section_divider") {
+                // Recently played + queue — one reorderable list. The divider marks the
+                // boundary and is (re-)rendered at whatever the current split is.
+                val dividerRow: @Composable () -> Unit = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -1692,9 +1761,9 @@ fun InlineQueuePanel(
                         Text(
                             text = when {
                                 isLoadingHistory -> "• • •"
-                                historyItems.isEmpty() -> "scorri su per la cronologia"
-                                hasMoreHistory -> "ascoltati di recente  ↑"
-                                else -> "ascoltati di recente"
+                                historyItems.isEmpty() -> stringResource(R.string.queue_scroll_for_history)
+                                hasMoreHistory -> stringResource(R.string.queue_recently_played_more)
+                                else -> stringResource(R.string.queue_recently_played)
                             },
                             style = MaterialTheme.typography.labelSmall,
                             color = textButtonColor.copy(alpha = 0.38f),
@@ -1707,199 +1776,276 @@ fun InlineQueuePanel(
                     }
                 }
 
-                itemsIndexed(
-                    items = mutableQueueWindows,
-                    key = { _, item -> item.uid.hashCode() },
-                ) { index, window ->
-                    ReorderableItem(
-                        state = reorderableState,
-                        key = window.uid.hashCode(),
-                    ) {
-                        val currentItem by rememberUpdatedState(window)
-                        val isActive = window.uid == currentPlayingUid
-                        val dismissBoxState = rememberSwipeToDismissBoxState(
-                            positionalThreshold = { totalDistance -> totalDistance },
-                        )
-                        var processedDismiss by remember { mutableStateOf(false) }
-                        val removedSongMsg = stringResource(
-                            R.string.removed_song_from_playlist,
-                            currentItem.mediaItem.metadata?.title ?: "",
-                        )
-                        val undoStr = stringResource(R.string.undo)
+                val firstQueueSlotIndex = combinedList.indexOfFirst { it is QueueSlot.QueueEntry }
+                    .let { if (it == -1) combinedList.size else it }
+                val automixStartIndex = combinedList.indexOfFirst { it is QueueSlot.Automix }
+                    .let { if (it == -1) combinedList.size else it }
 
-                        LaunchedEffect(dismissBoxState.currentValue) {
-                            val dv = dismissBoxState.currentValue
-                            if (!processedDismiss && !isListenTogetherGuest && (
-                                        dv == SwipeToDismissBoxValue.StartToEnd || dv == SwipeToDismissBoxValue.EndToStart
-                                        )) {
-                                processedDismiss = true
-                                playerConnection.player.removeMediaItem(currentItem.firstPeriodIndex)
-                                dismissJob?.cancel()
-                                dismissJob = coroutineScope.launch {
-                                    val result = snackbarHostState.showSnackbar(
-                                        message = removedSongMsg,
-                                        actionLabel = undoStr,
-                                        duration = SnackbarDuration.Short,
+                combinedList.forEachIndexed { slotIdx, slot ->
+                    if (slotIdx == firstQueueSlotIndex) {
+                        item(key = "queue_section_divider") { dividerRow() }
+                    }
+                    if (slotIdx == automixStartIndex) {
+                        item(key = "inline_automix_divider") {
+                            Column(modifier = Modifier.animateItem()) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+                                )
+                                Text(
+                                    text = stringResource(R.string.queue_autoplay),
+                                    modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = textButtonColor.copy(alpha = 0.7f),
+                                )
+                            }
+                        }
+                    }
+
+                    item(key = slot.key) {
+                        ReorderableItem(
+                            state = reorderableState,
+                            key = slot.key,
+                        ) {
+                            when (slot) {
+                                is QueueSlot.History -> {
+                                    val historyItem = slot.metadata
+                                    MediaMetadataListItem(
+                                        mediaMetadata = historyItem,
+                                        isActive = false,
+                                        isPlaying = false,
+                                        trailingContent = {
+                                            if (!isListenTogetherGuest) {
+                                                IconButton(
+                                                    onClick = {
+                                                        menuState.show {
+                                                            QueueMenu(
+                                                                mediaMetadata = historyItem,
+                                                                navController = navController,
+                                                                playerBottomSheetState = playerBottomSheetState,
+                                                                onShowDetailsDialog = {
+                                                                    bottomSheetPageState.show { ShowMediaInfo(historyItem.id) }
+                                                                },
+                                                                onShowSleepTimerDialog = { showSleepTimerDialog = true },
+                                                                onDismiss = menuState::dismiss,
+                                                            )
+                                                        }
+                                                    },
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.more_vert),
+                                                        contentDescription = null,
+                                                    )
+                                                }
+                                                IconButton(
+                                                    onClick = {},
+                                                    modifier = Modifier.draggableHandle(),
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.drag_handle),
+                                                        contentDescription = null,
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .animateItem()
+                                            .combinedClickable(
+                                                onClick = {
+                                                    menuState.show {
+                                                        QueueMenu(
+                                                            mediaMetadata = historyItem,
+                                                            navController = navController,
+                                                            playerBottomSheetState = playerBottomSheetState,
+                                                            onShowDetailsDialog = {
+                                                                bottomSheetPageState.show { ShowMediaInfo(historyItem.id) }
+                                                            },
+                                                            onShowSleepTimerDialog = { showSleepTimerDialog = true },
+                                                            onDismiss = menuState::dismiss,
+                                                        )
+                                                    }
+                                                },
+                                                onLongClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                },
+                                            ),
                                     )
-                                    if (result == SnackbarResult.ActionPerformed) {
-                                        playerConnection.player.addMediaItem(currentItem.mediaItem)
-                                        playerConnection.player.moveMediaItem(
-                                            mutableQueueWindows.size,
-                                            currentItem.firstPeriodIndex,
+                                }
+
+                                is QueueSlot.QueueEntry -> {
+                                    val window = slot.window
+                                    val currentItem by rememberUpdatedState(window)
+                                    val isActive = window.uid == currentPlayingUid
+                                    val dismissBoxState = rememberSwipeToDismissBoxState(
+                                        positionalThreshold = { totalDistance -> totalDistance },
+                                    )
+                                    var processedDismiss by remember { mutableStateOf(false) }
+                                    val removedSongMsg = stringResource(
+                                        R.string.removed_song_from_playlist,
+                                        currentItem.mediaItem.metadata?.title ?: "",
+                                    )
+                                    val undoStr = stringResource(R.string.undo)
+
+                                    LaunchedEffect(dismissBoxState.currentValue) {
+                                        val dv = dismissBoxState.currentValue
+                                        if (!processedDismiss && !isListenTogetherGuest && (
+                                                    dv == SwipeToDismissBoxValue.StartToEnd || dv == SwipeToDismissBoxValue.EndToStart
+                                                    )) {
+                                            processedDismiss = true
+                                            playerConnection.player.removeMediaItem(currentItem.firstPeriodIndex)
+                                            dismissJob?.cancel()
+                                            dismissJob = coroutineScope.launch {
+                                                val result = snackbarHostState.showSnackbar(
+                                                    message = removedSongMsg,
+                                                    actionLabel = undoStr,
+                                                    duration = SnackbarDuration.Short,
+                                                )
+                                                if (result == SnackbarResult.ActionPerformed) {
+                                                    playerConnection.player.addMediaItem(currentItem.mediaItem)
+                                                    playerConnection.player.moveMediaItem(
+                                                        playerConnection.player.mediaItemCount - 1,
+                                                        currentItem.firstPeriodIndex,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        if (dv == SwipeToDismissBoxValue.Settled) processedDismiss = false
+                                    }
+
+                                    SwipeToDismissBox(
+                                        state = dismissBoxState,
+                                        backgroundContent = {},
+                                    ) {
+                                        MediaMetadataListItem(
+                                            mediaMetadata = window.mediaItem.metadata!!,
+                                            isActive = isActive,
+                                            isPlaying = isPlaying && isActive,
+                                            trailingContent = {
+                                                if (!isListenTogetherGuest) {
+                                                    IconButton(
+                                                        onClick = {
+                                                            menuState.show {
+                                                                QueueMenu(
+                                                                    mediaMetadata = window.mediaItem.metadata!!,
+                                                                    navController = navController,
+                                                                    playerBottomSheetState = playerBottomSheetState,
+                                                                    onShowDetailsDialog = {
+                                                                        window.mediaItem.mediaId.let {
+                                                                            bottomSheetPageState.show { ShowMediaInfo(it) }
+                                                                        }
+                                                                    },
+                                                                    onShowSleepTimerDialog = { showSleepTimerDialog = true },
+                                                                    onDismiss = menuState::dismiss,
+                                                                )
+                                                            }
+                                                        },
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(R.drawable.more_vert),
+                                                            contentDescription = null,
+                                                        )
+                                                    }
+                                                    IconButton(
+                                                        onClick = {},
+                                                        modifier = Modifier.draggableHandle(),
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(R.drawable.drag_handle),
+                                                            contentDescription = null,
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .animateItem()
+                                                .combinedClickable(
+                                                    onClick = {
+                                                        if (!isListenTogetherGuest) {
+                                                            if (isActive) {
+                                                                if (isCasting) {
+                                                                    if (castIsPlaying) castHandler?.pause() else castHandler?.play()
+                                                                } else {
+                                                                    playerConnection.togglePlayPause()
+                                                                }
+                                                            } else {
+                                                                if (isCasting) {
+                                                                    val navigated = castHandler?.navigateToMediaIfInQueue(window.mediaItem.mediaId) ?: false
+                                                                    if (!navigated) playerConnection.player.seekToDefaultPosition(window.firstPeriodIndex)
+                                                                } else {
+                                                                    playerConnection.player.seekToDefaultPosition(window.firstPeriodIndex)
+                                                                    playerConnection.player.playWhenReady = true
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    onLongClick = {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    },
+                                                ),
                                         )
                                     }
                                 }
-                            }
-                            if (dv == SwipeToDismissBoxValue.Settled) processedDismiss = false
-                        }
 
-                        SwipeToDismissBox(
-                            state = dismissBoxState,
-                            backgroundContent = {},
-                        ) {
-                            MediaMetadataListItem(
-                                mediaMetadata = window.mediaItem.metadata!!,
-                                isActive = isActive,
-                                isPlaying = isPlaying && isActive,
-                                trailingContent = {
-                                    if (!isListenTogetherGuest) {
-                                        IconButton(
-                                            onClick = {
-                                                menuState.show {
-                                                    QueueMenu(
-                                                        mediaMetadata = window.mediaItem.metadata!!,
-                                                        navController = navController,
-                                                        playerBottomSheetState = playerBottomSheetState,
-                                                        onShowDetailsDialog = {
-                                                            window.mediaItem.mediaId.let {
-                                                                bottomSheetPageState.show { ShowMediaInfo(it) }
-                                                            }
-                                                        },
-                                                        onShowSleepTimerDialog = { showSleepTimerDialog = true },
-                                                        onDismiss = menuState::dismiss,
+                                is QueueSlot.Automix -> {
+                                    val item = slot.item
+                                    MediaMetadataListItem(
+                                        mediaMetadata = item.metadata!!,
+                                        isActive = false,
+                                        isPlaying = false,
+                                        trailingContent = {
+                                            if (!isListenTogetherGuest) {
+                                                IconButton(
+                                                    onClick = {
+                                                        menuState.show {
+                                                            QueueMenu(
+                                                                mediaMetadata = item.metadata!!,
+                                                                navController = navController,
+                                                                playerBottomSheetState = playerBottomSheetState,
+                                                                onShowDetailsDialog = {
+                                                                    item.mediaId.let {
+                                                                        bottomSheetPageState.show { ShowMediaInfo(it) }
+                                                                    }
+                                                                },
+                                                                onShowSleepTimerDialog = { showSleepTimerDialog = true },
+                                                                onDismiss = menuState::dismiss,
+                                                            )
+                                                        }
+                                                    },
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.more_vert),
+                                                        contentDescription = null,
                                                     )
                                                 }
-                                            },
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.more_vert),
-                                                contentDescription = null,
-                                            )
-                                        }
-                                        IconButton(
-                                            onClick = {},
-                                            modifier = Modifier.draggableHandle(),
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.drag_handle),
-                                                contentDescription = null,
-                                            )
-                                        }
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .animateItem()
-                                    .combinedClickable(
-                                        onClick = {
-                                            if (!isListenTogetherGuest) {
-                                                if (index == currentWindowIndex) {
-                                                    if (isCasting) {
-                                                        if (castIsPlaying) castHandler?.pause() else castHandler?.play()
-                                                    } else {
-                                                        playerConnection.togglePlayPause()
-                                                    }
-                                                } else {
-                                                    if (isCasting) {
-                                                        val navigated = castHandler?.navigateToMediaIfInQueue(window.mediaItem.mediaId) ?: false
-                                                        if (!navigated) playerConnection.player.seekToDefaultPosition(window.firstPeriodIndex)
-                                                    } else {
-                                                        playerConnection.player.seekToDefaultPosition(window.firstPeriodIndex)
-                                                        playerConnection.player.playWhenReady = true
-                                                    }
+                                                IconButton(
+                                                    onClick = {},
+                                                    modifier = Modifier.draggableHandle(),
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.drag_handle),
+                                                        contentDescription = null,
+                                                    )
                                                 }
                                             }
                                         },
-                                        onLongClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        },
-                                    ),
-                            )
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .animateItem()
+                                            .combinedClickable(
+                                                onClick = {},
+                                                onLongClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                },
+                                            ),
+                                    )
+                                }
+                            }
                         }
                     }
                 }
-
-                // Similar songs (automix) section
-                if (automix.isNotEmpty()) {
-                    item(key = "inline_automix_divider") {
-                        HorizontalDivider(
-                            modifier = Modifier
-                                .padding(vertical = 8.dp, horizontal = 4.dp)
-                                .animateItem(),
-                        )
-                        Text(
-                            text = stringResource(R.string.similar_content),
-                            modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = textButtonColor.copy(alpha = 0.7f),
-                        )
-                    }
-
-                    itemsIndexed(
-                        items = automix,
-                        key = { _, it -> it.mediaId },
-                    ) { automixIndex, item ->
-                        Row(horizontalArrangement = Arrangement.Center) {
-                            MediaMetadataListItem(
-                                mediaMetadata = item.metadata!!,
-                                trailingContent = {
-                                    if (!isListenTogetherGuest) {
-                                        IconButton(
-                                            onClick = {
-                                                playerConnection.service.playNextAutomix(item, automixIndex)
-                                            },
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.playlist_play),
-                                                contentDescription = null,
-                                            )
-                                        }
-                                        IconButton(
-                                            onClick = {
-                                                playerConnection.service.addToQueueAutomix(item, automixIndex)
-                                            },
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.queue_music),
-                                                contentDescription = null,
-                                            )
-                                        }
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .combinedClickable(
-                                        onClick = {},
-                                        onLongClick = {
-                                            menuState.show {
-                                                QueueMenu(
-                                                    mediaMetadata = item.metadata!!,
-                                                    navController = navController,
-                                                    playerBottomSheetState = playerBottomSheetState,
-                                                    onShowDetailsDialog = {
-                                                        item.mediaId.let {
-                                                            bottomSheetPageState.show { ShowMediaInfo(it) }
-                                                        }
-                                                    },
-                                                    onShowSleepTimerDialog = { showSleepTimerDialog = true },
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-                                        },
-                                    ).animateItem(),
-                            )
-                        }
-                    }
+                if (firstQueueSlotIndex == combinedList.size) {
+                    item(key = "queue_section_divider") { dividerRow() }
                 }
             }
 

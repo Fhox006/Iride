@@ -212,7 +212,7 @@ fun AboutScreen(
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                         ) {
                             Text(
-                                text = "First release soon",
+                                text = stringResource(R.string.about_release_badge),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary,
@@ -272,7 +272,7 @@ fun AboutScreen(
                             letterSpacing = (-0.5).sp
                         )
                         Text(
-                            text = "Creator of Iride",
+                            text = stringResource(R.string.about_creator_role),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.SemiBold
@@ -289,7 +289,7 @@ fun AboutScreen(
         Spacer(Modifier.height(32.dp))
 
         Material3SettingsGroup(
-            title = "Special thanks",
+            title = stringResource(R.string.credits_special_thanks),
             items = listOf(
                 Material3SettingsItem(
                     leadingContent = {
@@ -301,7 +301,7 @@ fun AboutScreen(
                         )
                     },
                     title = { Text(text = specialThanks.name, fontWeight = FontWeight.SemiBold) },
-                    description = { Text("Special thanks") },
+                    description = { Text(stringResource(R.string.credits_special_thanks)) },
                     trailingContent = {
                         Icon(
                             painter = painterResource(R.drawable.github),

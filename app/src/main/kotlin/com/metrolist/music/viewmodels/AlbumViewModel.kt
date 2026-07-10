@@ -40,6 +40,7 @@ constructor(
             .albumWithSongs(albumId)
             .stateIn(viewModelScope, SharingStarted.Eagerly, null)
     var otherVersions = MutableStateFlow<List<AlbumItem>>(emptyList())
+    var similarAlbums = MutableStateFlow<List<AlbumItem>>(emptyList())
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading = _isLoading.asStateFlow()
@@ -68,6 +69,7 @@ constructor(
                         .onSuccess { albumPage ->
                             playlistId.value = albumPage.album.playlistId
                             otherVersions.value = albumPage.otherVersions
+                            similarAlbums.value = albumPage.similarAlbums
                             database.transaction {
                                 if (album == null) {
                                     insert(albumPage)

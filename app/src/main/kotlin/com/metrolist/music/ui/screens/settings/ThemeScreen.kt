@@ -88,10 +88,11 @@ import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableDynamicIconKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
-import com.metrolist.music.constants.IrideStyleKey
+import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.PureBlackMiniPlayerKey
 import com.metrolist.music.constants.SelectedThemeColorKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.theme.DefaultThemeColor
@@ -154,7 +155,8 @@ fun ThemeScreen(
         onPureBlackChangeRaw(enabled)
         onPureBlackMiniPlayerChange(enabled)
     }
-    val (irideStyle, onIrideStyleChange) = rememberPreference(IrideStyleKey, defaultValue = false)
+    val (newIrideUi, onNewIrideUiChange) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (mainTopGradient, onMainTopGradientChange) = rememberPreference(MainTopGradientKey, defaultValue = false)
     val (selectedThemeColorInt, onSelectedThemeColorChange) = rememberPreference(
         SelectedThemeColorKey,
         DefaultThemeColor.toArgb()
@@ -207,8 +209,10 @@ fun ThemeScreen(
             dynamicTheme = dynamicTheme,
             onDynamicThemeChange = onDynamicThemeChange,
             isUsingCustomColor = isUsingCustomColor,
-            irideStyle = irideStyle,
-            onIrideStyleChange = onIrideStyleChange
+            newIrideUi = newIrideUi,
+            onNewIrideUiChange = onNewIrideUiChange,
+            mainTopGradient = mainTopGradient,
+            onMainTopGradientChange = onMainTopGradientChange
         )
     } else {
         PortraitThemeLayout(
@@ -226,8 +230,10 @@ fun ThemeScreen(
             dynamicTheme = dynamicTheme,
             onDynamicThemeChange = onDynamicThemeChange,
             isUsingCustomColor = isUsingCustomColor,
-            irideStyle = irideStyle,
-            onIrideStyleChange = onIrideStyleChange
+            newIrideUi = newIrideUi,
+            onNewIrideUiChange = onNewIrideUiChange,
+            mainTopGradient = mainTopGradient,
+            onMainTopGradientChange = onMainTopGradientChange
         )
     }
 
@@ -260,8 +266,10 @@ fun PortraitThemeLayout(
     dynamicTheme: Boolean = false,
     onDynamicThemeChange: (Boolean) -> Unit = {},
     isUsingCustomColor: Boolean = false,
-    irideStyle: Boolean = false,
-    onIrideStyleChange: (Boolean) -> Unit = {}
+    newIrideUi: Boolean = false,
+    onNewIrideUiChange: (Boolean) -> Unit = {},
+    mainTopGradient: Boolean = false,
+    onMainTopGradientChange: (Boolean) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -300,8 +308,10 @@ fun PortraitThemeLayout(
             dynamicTheme = dynamicTheme,
             onDynamicThemeChange = onDynamicThemeChange,
             isUsingCustomColor = isUsingCustomColor,
-            irideStyle = irideStyle,
-            onIrideStyleChange = onIrideStyleChange
+            newIrideUi = newIrideUi,
+            onNewIrideUiChange = onNewIrideUiChange,
+            mainTopGradient = mainTopGradient,
+            onMainTopGradientChange = onMainTopGradientChange
         )
 
         Spacer(modifier = Modifier.height(120.dp))
@@ -324,8 +334,10 @@ fun LandscapeThemeLayout(
     dynamicTheme: Boolean = false,
     onDynamicThemeChange: (Boolean) -> Unit = {},
     isUsingCustomColor: Boolean = false,
-    irideStyle: Boolean = false,
-    onIrideStyleChange: (Boolean) -> Unit = {}
+    newIrideUi: Boolean = false,
+    onNewIrideUiChange: (Boolean) -> Unit = {},
+    mainTopGradient: Boolean = false,
+    onMainTopGradientChange: (Boolean) -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -375,8 +387,10 @@ fun LandscapeThemeLayout(
                 dynamicTheme = dynamicTheme,
                 onDynamicThemeChange = onDynamicThemeChange,
                 isUsingCustomColor = isUsingCustomColor,
-                irideStyle = irideStyle,
-                onIrideStyleChange = onIrideStyleChange
+                newIrideUi = newIrideUi,
+                onNewIrideUiChange = onNewIrideUiChange,
+                mainTopGradient = mainTopGradient,
+                onMainTopGradientChange = onMainTopGradientChange
             )
 
             Spacer(modifier = Modifier.height(80.dp))
@@ -399,10 +413,12 @@ fun ThemeControls(
     dynamicTheme: Boolean = false,
     onDynamicThemeChange: (Boolean) -> Unit = {},
     isUsingCustomColor: Boolean = false,
-    irideStyle: Boolean = false,
-    onIrideStyleChange: (Boolean) -> Unit = {}
+    newIrideUi: Boolean = false,
+    onNewIrideUiChange: (Boolean) -> Unit = {},
+    mainTopGradient: Boolean = false,
+    onMainTopGradientChange: (Boolean) -> Unit = {}
 ) {
-    // ── Iride Style BETA ──────────────────────────────────────────────
+    // ── New Iride Ui ───────────────────────────────────────────────────
     Spacer(modifier = Modifier.height(16.dp))
 
     Card(
@@ -411,7 +427,7 @@ fun ThemeControls(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (irideStyle)
+            containerColor = if (newIrideUi)
                 MaterialTheme.colorScheme.primaryContainer
             else
                 MaterialTheme.colorScheme.surfaceContainerHigh
@@ -427,26 +443,26 @@ fun ThemeControls(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.iride_style_beta),
+                    text = stringResource(R.string.top_navigation_bar),
                     style = MaterialTheme.typography.titleMedium,
-                    color = if (irideStyle)
+                    color = if (newIrideUi)
                         MaterialTheme.colorScheme.onPrimaryContainer
                     else
                         MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = stringResource(R.string.iride_style_beta_desc),
+                    text = stringResource(R.string.top_navigation_bar_desc),
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (irideStyle)
+                    color = if (newIrideUi)
                         MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     else
                         MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Switch(
-                checked = irideStyle,
-                onCheckedChange = onIrideStyleChange,
+                checked = newIrideUi,
+                onCheckedChange = onNewIrideUiChange,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                     checkedTrackColor = MaterialTheme.colorScheme.primary
@@ -454,7 +470,69 @@ fun ThemeControls(
                 thumbContent = {
                     Icon(
                         painter = painterResource(
-                            if (irideStyle) R.drawable.check else R.drawable.close
+                            if (newIrideUi) R.drawable.check else R.drawable.close
+                        ),
+                        contentDescription = null,
+                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                    )
+                }
+            )
+        }
+    }
+
+    // ── Main screens top gradient ───────────────────────────────────────
+    Spacer(modifier = Modifier.height(16.dp))
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (mainTopGradient)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.main_top_gradient),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (mainTopGradient)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = stringResource(R.string.main_top_gradient_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (mainTopGradient)
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = mainTopGradient,
+                onCheckedChange = onMainTopGradientChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary
+                ),
+                thumbContent = {
+                    Icon(
+                        painter = painterResource(
+                            if (mainTopGradient) R.drawable.check else R.drawable.close
                         ),
                         contentDescription = null,
                         modifier = Modifier.size(SwitchDefaults.IconSize)

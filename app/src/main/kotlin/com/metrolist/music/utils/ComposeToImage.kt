@@ -26,6 +26,7 @@ import android.text.StaticLayout
 import android.text.TextPaint
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.withClip
@@ -72,24 +73,34 @@ object ComposeToImage {
             val mainTextColor = textColor ?: defaultTextColor
             val secondaryTxtColor = secondaryTextColor ?: defaultSecondaryTextColor
 
+            // Use the app's Inter font (same family as LyricsImageCard's live preview) so the
+            // exported PNG matches what the user sees in the share dialog, instead of silently
+            // falling back to the system default typeface.
+            val interRegular = try {
+                ResourcesCompat.getFont(context, R.font.inter_variable)
+            } catch (_: Exception) {
+                null
+            } ?: Typeface.DEFAULT
+            val interBold = Typeface.create(interRegular, Typeface.BOLD)
+
             // --- Paint Setup ---
             val titlePaint = TextPaint().apply {
                 color = mainTextColor
                 textSize = 80f
-                typeface = Typeface.DEFAULT_BOLD
+                typeface = interBold
                 isAntiAlias = true
             }
 
             val artistPaint = TextPaint().apply {
                 color = secondaryTxtColor
                 textSize = 60f
-                typeface = Typeface.DEFAULT
+                typeface = interRegular
                 isAntiAlias = true
             }
 
             val lyricsPaint = TextPaint().apply {
                 color = mainTextColor
-                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                typeface = interBold
                 isAntiAlias = true
                 textSize = when {
                     lyrics.length < 80 -> 110f
@@ -101,7 +112,7 @@ object ComposeToImage {
             val appNamePaint = TextPaint().apply {
                 color = secondaryTxtColor
                 textSize = 54f
-                typeface = Typeface.DEFAULT_BOLD
+                typeface = interBold
                 isAntiAlias = true
             }
 

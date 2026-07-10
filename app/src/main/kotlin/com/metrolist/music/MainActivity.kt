@@ -86,6 +86,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -108,6 +109,7 @@ import androidx.core.util.Consumer
 import androidx.core.view.WindowCompat
 import androidx.datastore.preferences.core.edit
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.coroutineScope
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
@@ -147,11 +149,15 @@ import com.metrolist.music.constants.PauseListenHistoryKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.PreferredLyricsProvider
 import com.metrolist.music.constants.PreferredLyricsProviderKey
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.SYSTEM_DEFAULT
 import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.constants.SimpMusicMigrationDoneKey
 import com.metrolist.music.constants.SlimNavBarKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
 import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
 import com.metrolist.music.constants.VisitorDataKey
@@ -165,7 +171,10 @@ import com.metrolist.music.playback.MusicService
 import com.metrolist.music.playback.MusicService.MusicBinder
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.YouTubeQueue
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.AppNavigationRail
+import com.metrolist.music.ui.component.TopNavigationBar
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.DebugBubble
 import com.metrolist.music.ui.component.FloatingPill
 import com.metrolist.music.ui.component.FloatingPillBottomSpacing
@@ -202,6 +211,7 @@ import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -555,6 +565,15 @@ class MainActivity : ComponentActivity() {
                 pureBlackEnabled && useDarkTheme
             }
 
+        val mainTopGradientEnabled by rememberPreference(MainTopGradientKey, defaultValue = false)
+        val playerBackgroundStyle by rememberEnumPreference(
+            PlayerBackgroundStyleKey,
+            defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+        )
+        val topGradientMediaMetadata by remember(playerConnection) {
+            playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+        }.collectAsStateWithLifecycle()
+
         val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = DefaultThemeColor.toArgb())
         val selectedThemeColor = Color(selectedThemeColorInt)
 
@@ -688,6 +707,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
+                val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
                 val (useNewMiniPlayerDesign) = rememberPreference(UseNewMiniPlayerDesignKey, defaultValue = true)
                 val defaultOpenTab =
                     remember {
@@ -752,11 +772,24 @@ class MainActivity : ComponentActivity() {
 
                 val showRail = isLandscape && !inSearchScreen
 
+                val showTopGradientTarget = mainTopGradientEnabled && !pureBlack &&
+                    currentRoute in setOf(
+                        Screens.Home.route,
+                        Screens.Library.route,
+                        Screens.Search.route,
+                        Screens.News.route,
+                    )
+                val topGradientAlpha by animateFloatAsState(
+                    targetValue = if (showTopGradientTarget) 1f else 0f,
+                    animationSpec = tween(400),
+                    label = "topGradientVisibility",
+                )
+
                 val playerBottomSheetState =
                     rememberBottomSheetState(
                         dismissedBound = 0.dp,
                         collapsedBound = if (!showRail) {
-                            bottomInset + (if (isTopLevelRoute) FloatingPillHeight else MiniPlayerHeight) + FloatingPillBottomSpacing
+                            bottomInset + (if (isTopLevelRoute && !topNavigationBarEnabled) FloatingPillHeight else MiniPlayerHeight) + FloatingPillBottomSpacing
                         } else {
                             bottomInset + MiniPlayerHeight
                         },
@@ -766,11 +799,11 @@ class MainActivity : ComponentActivity() {
                 val userDismissedPlayer = remember { mutableStateOf(false) }
 
                 val playerAwareWindowInsets =
-                    remember(bottomInset, showRail, isTopLevelRoute, playerBottomSheetState.isDismissed) {
+                    remember(bottomInset, showRail, isTopLevelRoute, topNavigationBarEnabled, playerBottomSheetState.isDismissed) {
                         var bottom = bottomInset
                         if (!showRail) {
                             // FloatingPill always occupies space at the bottom
-                            bottom += (if (isTopLevelRoute) FloatingPillHeight else MiniPlayerHeight) + FloatingPillBottomSpacing
+                            bottom += (if (isTopLevelRoute && !topNavigationBarEnabled) FloatingPillHeight else MiniPlayerHeight) + FloatingPillBottomSpacing
                         } else {
                             if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight
                         }
@@ -990,39 +1023,48 @@ class MainActivity : ComponentActivity() {
                     Scaffold(
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
-                            AnimatedVisibility(
-                                visible = shouldShowTopBar,
-                                enter = fadeIn(animationSpec = tween(durationMillis = 600, easing = EaseInOut)),
-                                exit = fadeOut(animationSpec = tween(durationMillis = 500, easing = EaseInOut)),
-                            ) {
-                                Row {
-                                    TopAppBar(
-                                        title = {
-                                            Text(
-                                                text = currentTitleRes?.let { stringResource(it) } ?: "",
-                                                style = MaterialTheme.typography.titleLarge,
-                                            )
-                                        },
-                                        actions = {},
-                                        scrollBehavior = topAppBarScrollBehavior,
-                                        colors =
-                                            TopAppBarDefaults.topAppBarColors(
-                                                containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
-                                                scrolledContainerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
-                                                titleContentColor = MaterialTheme.colorScheme.onSurface,
-                                                actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            ),
-                                        modifier =
-                                            Modifier.windowInsetsPadding(
-                                                if (showRail) {
-                                                    WindowInsets(left = NavigationBarHeight)
-                                                        .add(cutoutInsets.only(WindowInsetsSides.Start))
-                                                } else {
-                                                    cutoutInsets.only(WindowInsetsSides.Start + WindowInsetsSides.End)
-                                                },
-                                            ),
+                            Column {
+                                if (topNavigationBarEnabled && !showRail && isTopLevelRoute && currentRoute != "wrapped" && currentRoute != "onboarding") {
+                                    TopNavigationBar(
+                                        navigationItems = navigationItems,
+                                        currentRoute = currentRoute,
+                                        onItemClick = onNavItemClick,
                                     )
+                                }
+                                AnimatedVisibility(
+                                    visible = shouldShowTopBar,
+                                    enter = fadeIn(animationSpec = tween(durationMillis = 600, easing = EaseInOut)),
+                                    exit = fadeOut(animationSpec = tween(durationMillis = 500, easing = EaseInOut)),
+                                ) {
+                                    Row {
+                                        TopAppBar(
+                                            title = {
+                                                Text(
+                                                    text = currentTitleRes?.let { stringResource(it) } ?: "",
+                                                    style = MaterialTheme.typography.titleLarge,
+                                                )
+                                            },
+                                            actions = {},
+                                            scrollBehavior = topAppBarScrollBehavior,
+                                            colors =
+                                                TopAppBarDefaults.topAppBarColors(
+                                                    containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
+                                                    scrolledContainerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
+                                                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                                                    actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                ),
+                                            modifier =
+                                                Modifier.windowInsetsPadding(
+                                                    if (showRail) {
+                                                        WindowInsets(left = NavigationBarHeight)
+                                                            .add(cutoutInsets.only(WindowInsetsSides.Start))
+                                                    } else {
+                                                        cutoutInsets.only(WindowInsetsSides.Start + WindowInsetsSides.End)
+                                                    },
+                                                ),
+                                        )
+                                    }
                                 }
                             }
                         },
@@ -1089,6 +1131,16 @@ class MainActivity : ComponentActivity() {
                                 Modifier
                                     .weight(1f),
                             ) {
+                                // Mounted once, persistently, so its animation clocks never
+                                // restart when switching tabs — only alpha changes.
+                                TopScreenGradientBackground(
+                                    mediaMetadata = topGradientMediaMetadata,
+                                    playerBackground = playerBackgroundStyle,
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .graphicsLayer { alpha = topGradientAlpha },
+                                )
+
                                 val onboardingCompleted = remember { dataStore[OnboardingCompletedKey] ?: false }
 
                                 // NavHost with animations (Material 3 Expressive style)
@@ -1214,6 +1266,7 @@ class MainActivity : ComponentActivity() {
                             accountImageUrl = accountImageUrl,
                             pureBlack = pureBlack,
                             slimNav = slimNav,
+                            showNavRow = !topNavigationBarEnabled,
                             onPlayerExpand = { userDismissedPlayer.value = false },
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)

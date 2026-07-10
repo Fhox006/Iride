@@ -25,7 +25,7 @@ import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
-import com.metrolist.music.constants.IrideStyleKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -57,29 +57,29 @@ fun IrideTheme(
         )
     }
 
-    val (irideStyle, _) = rememberPreference(IrideStyleKey, defaultValue = false)
+    val (newIrideUi, _) = rememberPreference(TopNavigationBarKey, defaultValue = false)
 
-    val colorScheme = remember(irideStyle, baseColorScheme, pureBlack, darkTheme) {
+    val colorScheme = remember(newIrideUi, baseColorScheme, pureBlack, darkTheme) {
         when {
-            irideStyle -> baseColorScheme.copy(
-                background             = Color(0xFF25221B),
-                onBackground           = Color(0xFFE8E1D8),
-                surface                = Color(0xFF25221B),
-                onSurface              = Color(0xFFE8E1D8),
-                surfaceVariant         = Color(0xFF33302A),
-                onSurfaceVariant       = Color(0xFFCEC4B8),
-                surfaceContainerLowest = Color(0xFF1C1A14),
-                surfaceContainerLow    = Color(0xFF2D2A23),
-                surfaceContainer       = Color(0xFF322F27),
-                surfaceContainerHigh   = Color(0xFF3D392F),
-                surfaceContainerHighest= Color(0xFF48443A),
-                inverseSurface         = Color(0xFFE8E1D8),
-                inverseOnSurface       = Color(0xFF32302A),
-                outline                = Color(0xFF998F84),
-                outlineVariant         = Color(0xFF4D4840),
-                scrim                  = Color(0xFF000000),
-                surfaceBright          = Color(0xFF4A463C),
-                surfaceDim             = Color(0xFF25221B),
+            newIrideUi -> baseColorScheme.copy(
+                background             = Color.Black,
+                onBackground           = Color.White,
+                surface                = Color.Black,
+                onSurface              = Color.White,
+                surfaceVariant         = Color(0xFF1A1A1A),
+                onSurfaceVariant       = Color(0xFFCCCCCC),
+                surfaceContainerLowest = Color.Black,
+                surfaceContainerLow    = Color(0xFF0D0D0D),
+                surfaceContainer       = Color(0xFF121212),
+                surfaceContainerHigh   = Color(0xFF1E1E1E),
+                surfaceContainerHighest= Color(0xFF282828),
+                inverseSurface         = Color.White,
+                inverseOnSurface       = Color.Black,
+                outline                = Color(0xFF8A8A8A),
+                outlineVariant         = Color(0xFF3A3A3A),
+                scrim                  = Color.Black,
+                surfaceBright          = Color(0xFF2C2C2C),
+                surfaceDim             = Color.Black,
             )
             darkTheme && pureBlack -> baseColorScheme.pureBlack(true)
             else -> baseColorScheme

@@ -44,7 +44,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.metrolist.innertube.pages.CommentItem
-import com.metrolist.innertube.pages.CommentSortOrder
 import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.music.R
 import com.metrolist.music.constants.InnerTubeCookieKey
@@ -64,8 +63,6 @@ fun CommentsPanel(
 ) {
     val status by commentsViewModel.status.collectAsStateWithLifecycle()
     val comments by commentsViewModel.comments.collectAsStateWithLifecycle()
-    val commentsCountText by commentsViewModel.commentsCountText.collectAsStateWithLifecycle()
-    val sortOrder by commentsViewModel.sortOrder.collectAsStateWithLifecycle()
     val isLoadingMore by commentsViewModel.isLoadingMore.collectAsStateWithLifecycle()
     val isPosting by commentsViewModel.isPosting.collectAsStateWithLifecycle()
     val postError by commentsViewModel.postError.collectAsStateWithLifecycle()
@@ -95,41 +92,8 @@ fun CommentsPanel(
 
     InlinePlayerPageFrame(
         modifier = modifier,
-        pills = {
-            PlayerPill(
-                icon = R.drawable.close,
-                isActive = false,
-                textButtonColor = textButtonColor,
-                iconButtonColor = iconButtonColor,
-                modifier = Modifier.weight(1f),
-                onClick = onClose,
-            )
-            PlayerPill(
-                icon = R.drawable.comment,
-                isActive = false,
-                text = commentsCountText
-                    ?: stringResource(id = R.string.comments),
-                textButtonColor = textButtonColor,
-                iconButtonColor = iconButtonColor,
-                modifier = Modifier.weight(2f),
-                onClick = {},
-            )
-            PlayerPill(
-                icon = R.drawable.refresh,
-                isActive = sortOrder == CommentSortOrder.NEWEST,
-                text = stringResource(
-                    id = if (sortOrder == CommentSortOrder.TOP) R.string.comments_sort_top else R.string.comments_sort_newest,
-                ),
-                textButtonColor = textButtonColor,
-                iconButtonColor = iconButtonColor,
-                modifier = Modifier.weight(2f),
-                onClick = {
-                    commentsViewModel.changeSort(
-                        if (sortOrder == CommentSortOrder.TOP) CommentSortOrder.NEWEST else CommentSortOrder.TOP,
-                    )
-                },
-            )
-        },
+        isFullScreen = true,
+        pills = {},
         content = {
             Column(modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.weight(1f)) {

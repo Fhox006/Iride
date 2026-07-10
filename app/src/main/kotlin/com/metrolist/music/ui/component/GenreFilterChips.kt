@@ -85,6 +85,13 @@ data class GenreFilterState(
 // keeps it calm while genres are still being resolved in the background.
 private const val PILL_SNAPSHOT_INTERVAL_MS = 3000L
 
+// When genres still need fetching, wait a beat before showing the shimmer
+// placeholder — most navigations settle fast enough that skipping straight to
+// pills (or nothing) looks calmer than a placeholder that flashes for a few
+// frames. Only applies when nothing is cached yet; if all songs already have
+// genres, pills render on the very next frame with no delay at all.
+private const val INITIAL_PILL_RENDER_DELAY_MS = 400L
+
 /**
  * Fetches genre/style tags for [songs] from [GenreProvider] (no genre data
  * exists anywhere else in Iride) and exposes selection/filter state for
@@ -108,6 +115,7 @@ fun rememberGenreFilter(songs: List<GenreSongInfo>): GenreFilterState {
             return@LaunchedEffect
         }
 
+        delay(INITIAL_PILL_RENDER_DELAY_MS)
         isLoading = true
         val semaphore = Semaphore(4)
         val fetchJob =

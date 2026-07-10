@@ -295,6 +295,7 @@ fun SettingsScreen(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.person),
                     title = { Text(stringResource(R.string.my_account)) },
+                    description = { Text(stringResource(R.string.settings_account_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = {
                         Icon(
                             painter = painterResource(R.drawable.arrow_forward),
@@ -310,41 +311,50 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ── Preferenze ────────────────────────────────────────────────────
+        val arrowIcon = painterResource(R.drawable.arrow_forward)
+
+        // ── Preferences ───────────────────────────────────────────────────
         Material3SettingsGroup(
             items = listOf(
                 Material3SettingsItem(
-                    icon = painterResource(R.drawable.music_note),
-                    title = { Text(stringResource(R.string.music_settings)) },
-                    description = { Text(stringResource(R.string.music_settings_desc), style = MaterialTheme.typography.bodySmall) },
-                    trailingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_forward),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    onClick = { navController.navigate("settings/music") }
+                    icon = painterResource(R.drawable.palette),
+                    title = { Text(stringResource(R.string.appearance)) },
+                    description = { Text(stringResource(R.string.settings_appearance_desc), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
+                    onClick = { navController.navigate("settings/appearance") }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.play),
+                    title = { Text(stringResource(R.string.playback)) },
+                    description = { Text(stringResource(R.string.settings_playback_desc), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
+                    onClick = { navController.navigate("settings/player") }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.language),
+                    title = { Text(stringResource(R.string.content)) },
+                    description = { Text(stringResource(R.string.settings_content_desc), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
+                    onClick = { navController.navigate("settings/content") }
                 ),
             )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        val arrowIcon = painterResource(R.drawable.arrow_forward)
-
         Material3SettingsGroup(
             items = listOfNotNull(
                 Material3SettingsItem(
-                    icon = painterResource(R.drawable.restore),
+                    icon = painterResource(R.drawable.storage),
                     title = { Text(stringResource(R.string.app_management_backup)) },
+                    description = { Text(stringResource(R.string.settings_storage_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
                     onClick = { navController.navigate("settings/backup_restore") }
                 ),
                 if (hasAndroidAuto && advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.ic_android_auto),
                     title = { Text(stringResource(R.string.android_auto)) },
+                    description = { Text(stringResource(R.string.android_auto_settings_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
                     onClick = { navController.navigate("settings/android_auto") }
                 ) else null,

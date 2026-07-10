@@ -85,6 +85,7 @@
 
     <!-- Album screen -->
     <string name="other_versions">Other versions</string>
+    <string name="similar_albums">You might also like</string>
 
     <!-- Playlist -->
     <string name="liked_songs">Songs</string>
@@ -307,6 +308,10 @@
     <string name="audio_quality_high">High</string>
     <string name="audio_quality_low">Low</string>
     <string name="queue">Queue</string>
+    <string name="queue_recently_played">Recently played</string>
+    <string name="queue_recently_played_more">Recently played  ↑</string>
+    <string name="queue_scroll_for_history">Scroll up for history</string>
+    <string name="queue_autoplay">Automatic playback</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>
     <string name="auto_load_more">Auto load more songs</string>
@@ -347,6 +352,7 @@
     <string name="enable_lrclib">Enable LrcLib lyrics provider</string>
     <string name="enable_kugou">Enable KuGou lyrics provider</string>
     <string name="hide_explicit">Hide explicit content</string>
+    <string name="hide_explicit_desc">Remove explicit songs from search and browse results</string>
     <string name="show_explicit_badge">Show explicit badge</string>
     <string name="show_explicit_badge_desc">Show the \"E\" icon for explicit songs</string>
 
@@ -397,6 +403,6 @@
     <string name="clear_resolved_track_cache_dialog">Do you really want to clear the resolved track cache? This will force the app to re-search for audio versions of videos.</string>
     <string name="searching_synced_lyrics">Searching for synced lyrics…</string>
 
-    <string name="iride_style_beta">Iride Style BETA</string>
-    <string name="iride_style_beta_desc">Custom warm dark palette with fixed #25221B background</string>
+    <string name="main_top_gradient">Top gradient on main screens</string>
+    <string name="main_top_gradient_desc">Shows the current song\'s player gradient, subtly blended, behind the top of Home, Library, Search and News</string>
 </resources>

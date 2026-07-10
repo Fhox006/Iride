@@ -340,20 +340,12 @@ fun ExperimentalLyrics(
     var showDebugOverlay by remember { mutableStateOf(false) }
     var geminiSetupCompleted by rememberPreference(GeminiSetupCompletedKey, false)
 
-    LaunchedEffect(
-        lines,
-        aiProvider,
-        openRouterApiKey,
-        deeplApiKey,
-        openRouterBaseUrl,
-        openRouterModel,
-        translateLanguage,
-        translateMode,
-        deeplFormality,
-        aiSystemPrompt,
-        currentSong,
-        database
-    ) {
+    // Kept alive for the whole composition lifetime (LaunchedEffect(Unit)) so the
+    // manualTrigger SharedFlow always has an active collector. Restarting this effect
+    // whenever a pref changed used to unsubscribe/resubscribe, and any click that landed
+    // in that gap was silently lost (replay = 0). Reads below go through delegated
+    // State getters, so they still see the latest values at collection time.
+    LaunchedEffect(Unit) {
         LyricsTranslationHelper.manualTrigger.collectLatest {
             val effectiveApiKey = if (aiProvider == "DeepL") deeplApiKey else openRouterApiKey
             if (showLyrics && lines.isNotEmpty() && effectiveApiKey.isNotBlank()) {
@@ -377,6 +369,14 @@ fun ExperimentalLyrics(
             } else if (effectiveApiKey.isBlank()) {
                 showApiSetupDialog = true
             }
+        }
+    }
+
+    // Translation failed (bad key, quota, network, wrong model/URL...): reopen the setup
+    // dialog so the user can fix the config instead of getting a transient error card only.
+    LaunchedEffect(translationStatus) {
+        if (translationStatus is LyricsTranslationHelper.TranslationStatus.Error) {
+            showApiSetupDialog = true
         }
     }
 
@@ -951,44 +951,40 @@ fun ExperimentalLyrics(
                     enter = slideInVertically { -it } + fadeIn(),
                     exit = slideOutVertically { -it } + fadeOut(),
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .height(42.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(if (anySelected) expressiveAccent.copy(alpha = 0.15f) else Color.Transparent)
-                                .border(1.dp, expressiveAccent.copy(alpha = if (anySelected) 0.6f else 0.25f), RoundedCornerShape(50))
-                                .clickable(enabled = anySelected) {
-                                    val text = selectedIndices.sorted().mapNotNull { lines.getOrNull(it)?.text }.joinToString("\n")
-                                    if (text.isNotBlank()) {
-                                        shareDialogData = Triple(text, mediaMetadata?.title ?: "", mediaMetadata?.artists?.joinToString { it.name } ?: "")
-                                        showShareDialog = true
-                                    }
-                                    isSelectionModeActive = false
-                                    selectedIndices.clear()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp)
+                            .height(42.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(if (anySelected) expressiveAccent else Color.Transparent)
+                            .border(1.dp, expressiveAccent.copy(alpha = if (anySelected) 0.35f else 0.2f), RoundedCornerShape(50))
+                            .clickable(enabled = anySelected) {
+                                val text = selectedIndices.sorted().mapNotNull { lines.getOrNull(it)?.text }.joinToString("\n")
+                                if (text.isNotBlank()) {
+                                    shareDialogData = Triple(text, mediaMetadata?.title ?: "", mediaMetadata?.artists?.joinToString { it.name } ?: "")
+                                    showShareDialog = true
                                 }
-                                .padding(horizontal = 20.dp),
-                            contentAlignment = Alignment.Center,
+                                isSelectionModeActive = false
+                                selectedIndices.clear()
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.arrow_upward),
-                                    contentDescription = null,
-                                    tint = expressiveAccent.copy(alpha = if (anySelected) 0.9f else 0.4f),
-                                    modifier = Modifier.size(17.dp),
-                                )
-                                Text(
-                                    text = stringResource(R.string.share_as_image),
-                                    color = expressiveAccent.copy(alpha = if (anySelected) 0.9f else 0.4f),
-                                    style = MaterialTheme.typography.labelMedium,
-                                )
-                            }
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_upward),
+                                contentDescription = null,
+                                tint = if (anySelected) iconButtonColor else expressiveAccent.copy(alpha = 0.4f),
+                                modifier = Modifier.size(17.dp),
+                            )
+                            Text(
+                                text = stringResource(R.string.share_as_image),
+                                color = if (anySelected) iconButtonColor else expressiveAccent.copy(alpha = 0.4f),
+                                style = MaterialTheme.typography.labelMedium,
+                            )
                         }
                     }
                 }
@@ -1301,6 +1297,31 @@ fun ExperimentalLyrics(
 
         if (showColorPickerDialog && shareDialogData != null) {
             val (txt, title, arts) = shareDialogData!!
+
+            suspend fun renderLyricsImage(
+                bgColor: Color,
+                textColor: Color,
+                secTextColor: Color,
+                style: LyricsBackgroundStyle,
+            ) = ComposeToImage.createLyricsImage(
+                context,
+                mediaMetadata?.thumbnailUrl,
+                title,
+                arts,
+                txt,
+                configuration.screenWidthDp * density.density.toInt(),
+                configuration.screenHeightDp * density.density.toInt(),
+                bgColor.toArgb(),
+                style,
+                textColor.toArgb(),
+                secTextColor.toArgb(),
+                when (lyricsTextPosition) {
+                    LyricsPosition.LEFT -> Layout.Alignment.ALIGN_NORMAL
+                    LyricsPosition.CENTER -> Layout.Alignment.ALIGN_CENTER
+                    else -> Layout.Alignment.ALIGN_OPPOSITE
+                }
+            )
+
             LyricsColorPickerDialog(
                 txt = txt,
                 title = title,
@@ -1313,34 +1334,30 @@ fun ExperimentalLyrics(
                     showProgressDialog = true
                     scope.launch {
                         try {
-                            val image = ComposeToImage.createLyricsImage(
-                                context,
-                                mediaMetadata?.thumbnailUrl,
-                                title,
-                                arts,
-                                txt,
-                                configuration.screenWidthDp * density.density.toInt(),
-                                configuration.screenHeightDp * density.density.toInt(),
-                                bgColor.toArgb(),
-                                when (style) {
-                                    LyricsBackgroundStyle.SOLID -> LyricsBackgroundStyle.SOLID
-                                    LyricsBackgroundStyle.BLUR -> LyricsBackgroundStyle.BLUR
-                                    LyricsBackgroundStyle.GRADIENT -> LyricsBackgroundStyle.GRADIENT
-                                },
-                                textColor.toArgb(),
-                                secTextColor.toArgb(),
-                                when (lyricsTextPosition) {
-                                    LyricsPosition.LEFT -> Layout.Alignment.ALIGN_NORMAL
-                                    LyricsPosition.CENTER -> Layout.Alignment.ALIGN_CENTER
-                                    else -> Layout.Alignment.ALIGN_OPPOSITE
-                                }
-                            )
+                            val image = renderLyricsImage(bgColor, textColor, secTextColor, style)
                             val uri = ComposeToImage.saveBitmapAsFile(context, image, "lyrics${System.currentTimeMillis()}")
                             context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                                 type = "image/png"
                                 putExtra(Intent.EXTRA_STREAM, uri)
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }, "Share lyrics"))
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Failed to create image: ${e.message}", Toast.LENGTH_SHORT).show()
+                        } finally {
+                            showProgressDialog = false
+                        }
+                    }
+                },
+                onCopyAsImage = { bgColor, textColor, secTextColor, style ->
+                    showColorPickerDialog = false
+                    showProgressDialog = true
+                    scope.launch {
+                        try {
+                            val image = renderLyricsImage(bgColor, textColor, secTextColor, style)
+                            val uri = ComposeToImage.saveBitmapAsFile(context, image, "lyrics${System.currentTimeMillis()}")
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newUri(context.contentResolver, "Lyrics image", uri))
+                            Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
                         } catch (e: Exception) {
                             Toast.makeText(context, "Failed to create image: ${e.message}", Toast.LENGTH_SHORT).show()
                         } finally {

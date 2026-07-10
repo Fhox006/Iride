@@ -100,10 +100,10 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.DarkModeKey
-import com.metrolist.music.constants.IrideStyleKey
 import com.metrolist.music.constants.MiniPlayerBackgroundStyle
 import com.metrolist.music.constants.MiniPlayerBackgroundStyleKey
 import com.metrolist.music.constants.MiniPlayerHeight
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.listentogether.ListenTogetherManager
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.CastConnectionHandler
@@ -225,6 +225,7 @@ fun FloatingPill(
     accountImageUrl: String?,
     pureBlack: Boolean = false,
     slimNav: Boolean = false,
+    showNavRow: Boolean = true,
     onPlayerExpand: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -236,7 +237,7 @@ fun FloatingPill(
                 currentRoute.startsWith("search/")
     }
 
-    val targetPillHeight = if (isTopLevelRoute) FloatingPillHeight else MiniPlayerHeight
+    val targetPillHeight = if (showNavRow && isTopLevelRoute) FloatingPillHeight else MiniPlayerHeight
     var hasInitialized by remember { mutableStateOf(false) }
     val animatedPillHeight by animateDpAsState(
         targetValue = targetPillHeight,
@@ -253,15 +254,10 @@ fun FloatingPill(
             .padding(bottom = FloatingPillBottomSpacing)
             .padding(horizontal = 12.dp)
             .height(animatedPillHeight)
-            .clip(SquircleShape(radius = 24.dp, cornerSmoothing = 0.48f))
-            .graphicsLayer {
-                // Lift the pill upward as it expands so bottom stays anchored
-                // Expand Delta is now 0 as it doesn't expand
-                translationY = 0f
-            },
+            .clip(SquircleShape(radius = 24.dp, cornerSmoothing = 0.48f)),
     ) {
         if (playerConnection == null) {
-            PillShimmerSkeleton(isTopLevelRoute = isTopLevelRoute)
+            PillShimmerSkeleton(isTopLevelRoute = isTopLevelRoute && showNavRow)
         } else {
             PillContent(
                 navigationItems = navigationItems,
@@ -271,6 +267,7 @@ fun FloatingPill(
                 onSearchLongClick = onSearchLongClick,
                 accountImageUrl = accountImageUrl,
                 isTopLevelRoute = isTopLevelRoute,
+                showNavRow = showNavRow,
                 animatedHeight = animatedPillHeight,
                 pureBlack = pureBlack,
                 slimNav = slimNav,
@@ -303,6 +300,7 @@ private fun PillContent(
     onSearchLongClick: () -> Unit,
     accountImageUrl: String?,
     isTopLevelRoute: Boolean,
+    showNavRow: Boolean,
     animatedHeight: Dp,
     pureBlack: Boolean,
     slimNav: Boolean,
@@ -313,7 +311,7 @@ private fun PillContent(
         MiniPlayerBackgroundStyleKey,
         defaultValue = MiniPlayerBackgroundStyle.DEFAULT,
     )
-    val (irideStyle, _) = rememberPreference(IrideStyleKey, defaultValue = false)
+    val (newIrideUi, _) = rememberPreference(TopNavigationBarKey, defaultValue = false)
     val context = LocalContext.current
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
     val isSystemInDarkTheme = isSystemInDarkTheme()
@@ -385,7 +383,7 @@ private fun PillContent(
         miniPlayerBackground
     }
 
-    val irideDefaultActive = irideStyle && effectiveBackground == MiniPlayerBackgroundStyle.DEFAULT
+    val irideDefaultActive = newIrideUi && effectiveBackground == MiniPlayerBackgroundStyle.DEFAULT
     val backgroundColor = when {
         irideDefaultActive -> MaterialTheme.colorScheme.primaryContainer
         else -> when (effectiveBackground) {
@@ -512,7 +510,7 @@ private fun PillContent(
 
                 // ── BOTTOM ROW: nav buttons, visible only on top-level routes ──
                 AnimatedVisibility(
-                    visible = isTopLevelRoute,
+                    visible = showNavRow && isTopLevelRoute,
                     enter = fadeIn(tween(300)) + slideInVertically(tween(320), initialOffsetY = { it }),
                     exit = fadeOut(tween(250)) + slideOutVertically(tween(280), targetOffsetY = { it }),
                 ) {

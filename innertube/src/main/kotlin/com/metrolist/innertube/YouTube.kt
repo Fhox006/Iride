@@ -308,17 +308,29 @@ object YouTube {
                 thumbnail = response.contents.twoColumnBrowseResultsRenderer.tabs.firstOrNull()?.tabRenderer?.content?.sectionListRenderer?.contents?.firstOrNull()?.musicResponsiveHeaderRenderer?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.lastOrNull()?.url!!,
                 explicit = false, // TODO: Extract explicit badge for albums from YouTube response
             )
+            // Secondary contents: index 0 is the tracklist shelf, followed by zero, one, or
+            // two carousels ("Other versions" and "You might also like"). "Other versions"
+            // is only present when it actually exists, so its position shifts — it can't be
+            // assumed to be at a fixed index. When both carousels exist, "Other versions"
+            // comes first and "You might also like" comes last; when only one carousel is
+            // present, it's always "You might also like".
+            val carousels = response.contents.twoColumnBrowseResultsRenderer.secondaryContents
+                ?.sectionListRenderer?.contents
+                ?.drop(1)
+                ?.mapNotNull { it.musicCarouselShelfRenderer }
+                .orEmpty()
+
+            fun List<MusicCarouselShelfRenderer.Content>.toAlbumItems() =
+                mapNotNull { it.musicTwoRowItemRenderer }
+                    .mapNotNull(NewReleaseAlbumPage::fromMusicTwoRowItemRenderer)
+
             return@runCatching AlbumPage(
                 album = albumItem,
                 songs = if (withSongs) albumSongs(
                     playlistId, albumItem
                 ).getOrThrow() else emptyList(),
-                otherVersions = response.contents.twoColumnBrowseResultsRenderer.secondaryContents?.sectionListRenderer?.contents?.getOrNull(
-                    1
-                )?.musicCarouselShelfRenderer?.contents
-                    ?.mapNotNull { it.musicTwoRowItemRenderer }
-                    ?.mapNotNull(NewReleaseAlbumPage::fromMusicTwoRowItemRenderer)
-                    .orEmpty()
+                otherVersions = if (carousels.size >= 2) carousels[0].contents.toAlbumItems() else emptyList(),
+                similarAlbums = carousels.lastOrNull()?.contents?.toAlbumItems().orEmpty()
             )
         }
     }
@@ -1692,10 +1704,10 @@ object YouTube {
         put(0x18, 0x06)
         put(0x32, 0x27)
         put(0x22, 0x11)
-        put(0x22, 0x0B); put(videoIdBytes)
-        put(0x30, 0x00)
+        put(0x12, 0x0B); put(videoIdBytes)
+        put(0x30, 0x01)
         put(0x78, 0x02)
-        put(0x30, 0x00)
+        put(0x38, 0x01)
         put(0x42, 0x10); put(sectionBytes)
         return kotlin.io.encoding.Base64.Default.encode(bytes.toByteArray())
     }

@@ -772,6 +772,7 @@ fun ContentSettings(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.explicit),
                     title = { Text(stringResource(R.string.hide_explicit)) },
+                    description = { Text(stringResource(R.string.hide_explicit_desc)) },
                     trailingContent = {
                         Switch(
                             checked = hideExplicit,
@@ -790,7 +791,7 @@ fun ContentSettings(
                     onClick = { onHideExplicitChange(!hideExplicit) }
                 ),
                 Material3SettingsItem(
-                    icon = painterResource(R.drawable.explicit),
+                    icon = painterResource(R.drawable.eye),
                     title = { Text(stringResource(R.string.show_explicit_badge)) },
                     description = { Text(stringResource(R.string.show_explicit_badge_desc)) },
                     trailingContent = {

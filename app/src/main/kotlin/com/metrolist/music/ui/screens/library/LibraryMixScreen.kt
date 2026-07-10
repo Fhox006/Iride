@@ -86,6 +86,7 @@ import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.LibraryView
 import com.metrolist.music.constants.LibraryViewType
+import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.MixSortDescendingKey
 import com.metrolist.music.constants.MixSortType
 import com.metrolist.music.constants.MixSortTypeKey
@@ -149,6 +150,7 @@ fun LibraryMixScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     var viewType by rememberEnumPreference(MixViewTypeKey, LibraryViewType.GRID)
     val (sortType, onSortTypeChange) =
         rememberEnumPreference(
@@ -499,6 +501,7 @@ fun LibraryMixScreen(
                         }
                     }
                 },
+                transparentBackground = mainTopGradient,
             )
         },
         containerColor = Color.Transparent,
@@ -508,7 +511,13 @@ fun LibraryMixScreen(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+                    .background(
+                        when {
+                            pureBlack -> Color.Black
+                            mainTopGradient -> Color.Transparent
+                            else -> MaterialTheme.colorScheme.background
+                        },
+                    )
                     .padding(paddingValues)
                     .alpha(contentAlpha.value),
         ) {
@@ -529,7 +538,6 @@ fun LibraryMixScreen(
                                     CategoriesContent(
                                         navController = navController,
                                         showUploads = uploadedSongs.isNotEmpty(),
-                                        showCache = showCached,
                                         isOffline = !displayedFilter,
                                     )
                                 }
@@ -716,7 +724,6 @@ fun LibraryMixScreen(
                                     CategoriesContent(
                                         navController = navController,
                                         showUploads = uploadedSongs.isNotEmpty(),
-                                        showCache = showCached,
                                         isOffline = !displayedFilter,
                                     )
                                 }
@@ -1010,7 +1017,6 @@ private data class CategoryItem(
 private fun CategoriesContent(
     navController: NavController,
     showUploads: Boolean,
-    showCache: Boolean,
     isOffline: Boolean,
 ) {
     val albumsStr = stringResource(R.string.albums)
@@ -1019,13 +1025,13 @@ private fun CategoriesContent(
     val cacheStr = stringResource(R.string.cache)
     val uploadedStr = stringResource(R.string.filter_uploaded)
 
-    val items = remember(isOffline, showUploads, showCache, albumsStr, artistsStr, playlistsStr, cacheStr, uploadedStr) {
+    val items = remember(isOffline, showUploads, albumsStr, artistsStr, playlistsStr, cacheStr, uploadedStr) {
         buildList {
             add(CategoryItem(playlistsStr, R.drawable.queue_music, if (isOffline) "library_playlists_offline" else "library_playlists"))
             add(CategoryItem(albumsStr, R.drawable.album, if (isOffline) "library_albums_offline" else "library_albums"))
             add(CategoryItem(artistsStr, R.drawable.artist, if (isOffline) "library_artists_offline" else "library_artists"))
             add(CategoryItem("All Tracks", R.drawable.library_music, if (isOffline) "library_songs_offline" else "library_songs"))
-            if (isOffline && showCache) add(CategoryItem(cacheStr, R.drawable.cached, "cache_playlist/cached"))
+            if (isOffline) add(CategoryItem(cacheStr, R.drawable.cached, "cache_playlist/cached"))
             if (isOffline && showUploads) add(CategoryItem(uploadedStr, R.drawable.upload, "auto_playlist/uploaded"))
         }
     }

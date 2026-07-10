@@ -117,6 +117,7 @@ import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.HideExplicitKey
+import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.AccountNameKey
@@ -238,6 +239,7 @@ fun HomeScreen(
     val accountImageUrl: String? = accountImageUrlFlow ?: accountPhotoUrlPref.takeIf { it.isNotEmpty() }
     val accountAvatarUrl = if (isLoggedIn) accountImageUrl else null
 
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val hideExplicit by rememberPreference(HideExplicitKey, defaultValue = false)
     val hideVideoSongs by rememberPreference(HideVideoSongsKey, defaultValue = false)
     val hideYoutubeShorts by rememberPreference(HideYoutubeShortsKey, defaultValue = false)
@@ -305,10 +307,11 @@ fun HomeScreen(
             scrollBehavior = scrollBehavior,
             accountImageUrl = accountAvatarUrl,
             onAccountClick = { navController.navigate("settings") },
+            transparentBackground = mainTopGradient,
         )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = if (mainTopGradient) Color.Transparent else MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -1329,6 +1332,7 @@ private fun HomeCollapsingHeader(
     scrollBehavior: TopAppBarScrollBehavior,
     accountImageUrl: String?,
     onAccountClick: () -> Unit,
+    transparentBackground: Boolean = false,
 ) {
     val density = LocalDensity.current
     val largeTitleHeightPx = with(density) { HomeLargeTitleHeightDp.toPx() }
@@ -1344,7 +1348,7 @@ private fun HomeCollapsingHeader(
     val statusBarHeightDp = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     Surface(
-        color = MaterialTheme.colorScheme.background,
+        color = if (transparentBackground) Color.Transparent else MaterialTheme.colorScheme.background,
         modifier = Modifier
             .fillMaxWidth()
             .height(totalHeightDp + statusBarHeightDp + with(density) { scrollBehavior.state.heightOffset.toDp() }),

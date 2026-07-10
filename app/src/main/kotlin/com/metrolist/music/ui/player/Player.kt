@@ -267,6 +267,12 @@ fun BottomSheetPlayer(
         mutableStateOf(false)
     }
 
+    // Bumped every time the queue is opened, so InlineQueuePanel always resets its
+    // scroll back to the current song regardless of whether it stayed composed.
+    var queueOpenNonce by rememberSaveable {
+        mutableStateOf(0)
+    }
+
     var showComments by rememberSaveable {
         mutableStateOf(false)
     }
@@ -1966,6 +1972,7 @@ fun BottomSheetPlayer(
                                                 textButtonColor = textButtonColor,
                                                 iconButtonColor = iconButtonColor,
                                                 onClose = { showQueue = false },
+                                                openNonce = queueOpenNonce,
                                             )
                                         "comments" ->
                                             CommentsPanel(
@@ -2110,6 +2117,7 @@ fun BottomSheetPlayer(
                                                 textButtonColor = textButtonColor,
                                                 iconButtonColor = iconButtonColor,
                                                 onClose = { showQueue = false },
+                                                openNonce = queueOpenNonce,
                                             )
                                         "comments" ->
                                             CommentsPanel(
@@ -2200,6 +2208,7 @@ fun BottomSheetPlayer(
                     if (showQueue) {
                         showInlineLyrics = false
                         showComments = false
+                        queueOpenNonce++
                     }
                 },
                 onToggleComments = {
