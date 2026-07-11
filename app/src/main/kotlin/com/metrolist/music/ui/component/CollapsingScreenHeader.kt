@@ -102,9 +102,13 @@ fun CollapsingScreenHeader(
     navigationIcon: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
     transparentBackground: Boolean = false,
+    // New Iride UI: the animated large-title area is redundant with the persistent
+    // TopNavigationBar tabs bar above it, so it collapses away to just the small,
+    // fixed toolbar row (trailingContent stays visible there, never fades).
+    hideTitle: Boolean = false,
 ) {
     val density = LocalDensity.current
-    val largeTitleHeightPx = with(density) { CollapsingHeaderLargeTitleHeight.toPx() }
+    val largeTitleHeightPx = if (hideTitle) 0f else with(density) { CollapsingHeaderLargeTitleHeight.toPx() }
 
     // Tell the scroll behavior how much height it can collapse
     SideEffect {
@@ -114,8 +118,8 @@ fun CollapsingScreenHeader(
     }
 
     // fraction: 0f = fully expanded, 1f = fully collapsed
-    val fraction = scrollBehavior.state.collapsedFraction
-    val totalHeightDp = CollapsingHeaderSmallBarHeight + CollapsingHeaderLargeTitleHeight
+    val fraction = if (hideTitle) 0f else scrollBehavior.state.collapsedFraction
+    val totalHeightDp = CollapsingHeaderSmallBarHeight + (if (hideTitle) 0.dp else CollapsingHeaderLargeTitleHeight)
 
     Surface(
         color = when {
@@ -138,7 +142,7 @@ fun CollapsingScreenHeader(
                         .height(CollapsingHeaderSmallBarHeight)
                         .padding(start = 4.dp)
                         .graphicsLayer {
-                            translationY = lerpFloat(
+                            translationY = if (hideTitle) 0f else lerpFloat(
                                 with(density) { (CollapsingHeaderLargeTitleHeight - 12.dp).toPx() },
                                 0f,
                                 fraction,
@@ -157,44 +161,47 @@ fun CollapsingScreenHeader(
                     .height(CollapsingHeaderSmallBarHeight)
                     .padding(start = if (navigationIcon != null) 52.dp else 12.dp, end = 12.dp)
                     .graphicsLayer {
-                        translationY = lerpFloat(
+                        translationY = if (hideTitle) 0f else lerpFloat(
                             with(density) { (CollapsingHeaderLargeTitleHeight - 12.dp).toPx() },
                             0f,
                             fraction,
                         )
                     },
-                contentAlignment = Alignment.CenterStart,
+                contentAlignment = if (hideTitle) Alignment.CenterEnd else Alignment.CenterStart,
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
                 ) {
-                    // Large title — scales down as the header collapses
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.displaySmall.copy(
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        maxLines = 1,
-                        modifier = Modifier
-                            .weight(1f)
-                            .graphicsLayer {
-                                val targetScale = 0.61f
-                                val scale = lerpFloat(1f, targetScale, fraction)
-                                scaleX = scale
-                                scaleY = scale
-                                transformOrigin = TransformOrigin(0f, 0.5f)
-                                alpha = lerpFloat(1f, 0.95f, fraction)
-                            },
-                    )
+                    // Large title — scales down as the header collapses. Hidden entirely in the
+                    // New Iride UI, where the TopNavigationBar tabs bar already shows above.
+                    if (!hideTitle) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.displaySmall.copy(
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            maxLines = 1,
+                            modifier = Modifier
+                                .weight(1f)
+                                .graphicsLayer {
+                                    val targetScale = 0.61f
+                                    val scale = lerpFloat(1f, targetScale, fraction)
+                                    scaleX = scale
+                                    scaleY = scale
+                                    transformOrigin = TransformOrigin(0f, 0.5f)
+                                    alpha = lerpFloat(1f, 0.95f, fraction)
+                                },
+                        )
+                    }
 
-                    // Optional trailing slot — fades out during collapse
+                    // Optional trailing slot — fades out during collapse, always fully visible
+                    // (fixed position) when the title is hidden.
                     if (trailingContent != null) {
                         Box(
                             modifier = Modifier
                                 .graphicsLayer {
-                                    // Fade out in the first half of the collapse
-                                    alpha = (1f - fraction * 2f).coerceIn(0f, 1f)
+                                    alpha = if (hideTitle) 1f else (1f - fraction * 2f).coerceIn(0f, 1f)
                                 }
                                 .padding(bottom = 4.dp),
                         ) {

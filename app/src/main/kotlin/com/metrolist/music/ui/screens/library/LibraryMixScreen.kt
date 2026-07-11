@@ -72,7 +72,9 @@ import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -95,6 +97,7 @@ import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
 import com.metrolist.music.constants.ShowUploadedPlaylistKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Artist
@@ -112,6 +115,8 @@ import com.metrolist.music.ui.component.LibraryAlbumListItem
 import com.metrolist.music.ui.component.LibraryPlaylistListItem
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.CollapsingScreenHeader
+import com.metrolist.music.ui.component.IrideSegmentedToggle
+import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
@@ -151,6 +156,11 @@ fun LibraryMixScreen(
 
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavBarController = com.metrolist.music.LocalTopNavBarController.current
+    // New Iride UI: sections start flush with the "Library" label in TopNavigationBar (20dp),
+    // instead of the classic UI's 12dp — mirrors HomeScreen's irideStart.
+    val irideStart = if (topNavigationBarEnabled) 20.dp else 12.dp
     var viewType by rememberEnumPreference(MixViewTypeKey, LibraryViewType.GRID)
     val (sortType, onSortTypeChange) =
         rememberEnumPreference(
@@ -419,6 +429,18 @@ fun LibraryMixScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
+          Column {
+            // New Iride UI: rendered here (inside this screen's own Scaffold) instead of relying on
+            // MainActivity's persistent copy, so this screen's own paddingValues correctly reserve
+            // space for it — see the "library" exclusion in MainActivity's outer topBar condition.
+            if (topNavigationBarEnabled && topNavBarController != null) {
+                TopNavigationBar(
+                    navigationItems = topNavBarController.navigationItems,
+                    currentRoute = topNavBarController.currentRoute,
+                    onItemClick = topNavBarController.onItemClick,
+                    containerColor = if (mainTopGradient) Color.Transparent else MaterialTheme.colorScheme.background,
+                )
+            }
             CollapsingScreenHeader(
                 title = if (isLibraryFilter)
                     stringResource(R.string.filter_library)
@@ -432,77 +454,91 @@ fun LibraryMixScreen(
                 onSearchQueryChange = viewModel::updateSearchQuery,
                 keyboardController = keyboardController,
                 trailingContent = {
-                    val btnSize = 40.dp
-                    val iconSize = 20.dp
-                    val indicatorSize = 36.dp
-                    val indicatorOffset by animateDpAsState(
-                        targetValue = if (isLibraryFilter) 2.dp else 42.dp,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium,
-                        ),
-                        label = "libraryFilterIndicator",
-                    )
-                    Box(
-                        modifier = Modifier
-                            .width(btnSize * 2)
-                            .height(btnSize)
-                            .clip(RoundedCornerShape(btnSize / 2))
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                    ) {
+                    if (topNavigationBarEnabled) {
+                        IrideSegmentedToggle(
+                            options = listOf(
+                                true to stringResource(R.string.filter_library),
+                                false to stringResource(R.string.filter_downloaded),
+                            ),
+                            selected = isLibraryFilter,
+                            enabled = fraction < 0.05f,
+                            onSelect = { value -> if (value != isLibraryFilter) onFilterToggle() },
+                        )
+                    } else {
+                        val btnSize = 40.dp
+                        val iconSize = 20.dp
+                        val indicatorSize = 36.dp
+                        val indicatorOffset by animateDpAsState(
+                            targetValue = if (isLibraryFilter) 2.dp else 42.dp,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium,
+                            ),
+                            label = "libraryFilterIndicator",
+                        )
                         Box(
                             modifier = Modifier
-                                .offset(x = indicatorOffset, y = 2.dp)
-                                .size(indicatorSize)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.secondaryContainer),
-                        )
-                        Row(modifier = Modifier.fillMaxSize()) {
+                                .width(btnSize * 2)
+                                .height(btnSize)
+                                .clip(RoundedCornerShape(btnSize / 2))
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                        ) {
                             Box(
                                 modifier = Modifier
-                                    .size(btnSize)
-                                    .clickable(
-                                        enabled = fraction < 0.05f,
-                                        indication = null,
-                                        interactionSource = remember { MutableInteractionSource() },
-                                    ) { if (!isLibraryFilter) onFilterToggle() },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.bookmark_outlined),
-                                    contentDescription = null,
-                                    tint = if (isLibraryFilter)
-                                        MaterialTheme.colorScheme.onSecondaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(iconSize),
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .size(btnSize)
-                                    .clickable(
-                                        enabled = fraction < 0.05f,
-                                        indication = null,
-                                        interactionSource = remember { MutableInteractionSource() },
-                                    ) { if (isLibraryFilter) onFilterToggle() },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.download),
-                                    contentDescription = null,
-                                    tint = if (!isLibraryFilter)
-                                        MaterialTheme.colorScheme.onSecondaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(iconSize),
-                                )
+                                    .offset(x = indicatorOffset, y = 2.dp)
+                                    .size(indicatorSize)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                            )
+                            Row(modifier = Modifier.fillMaxSize()) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(btnSize)
+                                        .clickable(
+                                            enabled = fraction < 0.05f,
+                                            indication = null,
+                                            interactionSource = remember { MutableInteractionSource() },
+                                        ) { if (!isLibraryFilter) onFilterToggle() },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.bookmark_outlined),
+                                        contentDescription = null,
+                                        tint = if (isLibraryFilter)
+                                            MaterialTheme.colorScheme.onSecondaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(iconSize),
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(btnSize)
+                                        .clickable(
+                                            enabled = fraction < 0.05f,
+                                            indication = null,
+                                            interactionSource = remember { MutableInteractionSource() },
+                                        ) { if (isLibraryFilter) onFilterToggle() },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.download),
+                                        contentDescription = null,
+                                        tint = if (!isLibraryFilter)
+                                            MaterialTheme.colorScheme.onSecondaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(iconSize),
+                                    )
+                                }
                             }
                         }
                     }
                 },
                 transparentBackground = mainTopGradient,
+                hideTitle = topNavigationBarEnabled,
             )
+          }
         },
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
@@ -528,8 +564,8 @@ fun LibraryMixScreen(
                             LazyColumn(
                                 state = lazyListState,
                                 contentPadding = PaddingValues(
-                                    start = 12.dp,
-                                    end = 12.dp,
+                                    start = irideStart,
+                                    end = irideStart,
                                     top = 0.dp,
                                     bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
                                 ),
@@ -539,6 +575,7 @@ fun LibraryMixScreen(
                                         navController = navController,
                                         showUploads = uploadedSongs.isNotEmpty(),
                                         isOffline = !displayedFilter,
+                                        useIrideStyle = topNavigationBarEnabled,
                                     )
                                 }
 
@@ -546,7 +583,17 @@ fun LibraryMixScreen(
                                     item(key = "recently_added_label", contentType = CONTENT_TYPE_HEADER) {
                                         Text(
                                             text = if (displayedFilter) "Recently Added" else "Recently Downloaded",
-                                            style = MaterialTheme.typography.headlineMedium,
+                                            style = if (topNavigationBarEnabled) {
+                                                MaterialTheme.typography.labelLarge.copy(
+                                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                                    fontSize = 13.sp,
+                                                    letterSpacing = 0.2.sp,
+                                                )
+                                            } else {
+                                                MaterialTheme.typography.headlineMedium
+                                            },
+                                            fontWeight = if (topNavigationBarEnabled) FontWeight.SemiBold else FontWeight.Normal,
+                                            color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.onSurface,
                                             modifier = Modifier.padding(vertical = 12.dp),
                                         )
                                     }
@@ -559,6 +606,7 @@ fun LibraryMixScreen(
                                             onSortDescendingChange = onSortDescendingChange,
                                             viewType = viewType,
                                             onViewTypeChange = { viewType = it },
+                                            useIrideStyle = topNavigationBarEnabled,
                                         )
                                     }
                                 }
@@ -709,8 +757,8 @@ fun LibraryMixScreen(
                                         minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
                                     ),
                                 contentPadding = PaddingValues(
-                                    start = 12.dp,
-                                    end = 12.dp,
+                                    start = irideStart,
+                                    end = irideStart,
                                     top = 0.dp,
                                     bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
                                 ),
@@ -725,6 +773,7 @@ fun LibraryMixScreen(
                                         navController = navController,
                                         showUploads = uploadedSongs.isNotEmpty(),
                                         isOffline = !displayedFilter,
+                                        useIrideStyle = topNavigationBarEnabled,
                                     )
                                 }
 
@@ -736,7 +785,17 @@ fun LibraryMixScreen(
                                     ) {
                                         Text(
                                             text = if (displayedFilter) "Recently Added" else "Recently Downloaded",
-                                            style = MaterialTheme.typography.headlineMedium,
+                                            style = if (topNavigationBarEnabled) {
+                                                MaterialTheme.typography.labelLarge.copy(
+                                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                                    fontSize = 13.sp,
+                                                    letterSpacing = 0.2.sp,
+                                                )
+                                            } else {
+                                                MaterialTheme.typography.headlineMedium
+                                            },
+                                            fontWeight = if (topNavigationBarEnabled) FontWeight.SemiBold else FontWeight.Normal,
+                                            color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.onSurface,
                                             modifier = Modifier.padding(vertical = 12.dp),
                                         )
                                     }
@@ -753,6 +812,7 @@ fun LibraryMixScreen(
                                             onSortDescendingChange = onSortDescendingChange,
                                             viewType = viewType,
                                             onViewTypeChange = { viewType = it },
+                                            useIrideStyle = topNavigationBarEnabled,
                                         )
                                     }
                                 }
@@ -1018,6 +1078,7 @@ private fun CategoriesContent(
     navController: NavController,
     showUploads: Boolean,
     isOffline: Boolean,
+    useIrideStyle: Boolean = false,
 ) {
     val albumsStr = stringResource(R.string.albums)
     val artistsStr = stringResource(R.string.artists)
@@ -1048,24 +1109,38 @@ private fun CategoriesContent(
                 Icon(
                     painter = painterResource(item.icon),
                     contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(if (useIrideStyle) 20.dp else 24.dp),
+                    tint = if (useIrideStyle) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.width(12.dp))
                 Text(
                     text = item.label,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = if (useIrideStyle) {
+                        MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            fontSize = 14.sp,
+                            letterSpacing = 0.2.sp,
+                        )
+                    } else {
+                        MaterialTheme.typography.bodyLarge
+                    },
+                    fontWeight = if (useIrideStyle) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (useIrideStyle) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                 )
                 Icon(
                     painter = painterResource(R.drawable.navigate_next),
                     contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(if (useIrideStyle) 18.dp else 24.dp),
+                    tint = if (useIrideStyle) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                color = if (useIrideStyle) {
+                    Color.White.copy(alpha = 0.08f)
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                },
             )
         }
     }

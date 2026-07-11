@@ -7,6 +7,7 @@ package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,20 +15,28 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 
 @Composable
@@ -38,6 +47,9 @@ fun NavigationTitle(
     thumbnail: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     onPlayAllClick: (() -> Unit)? = null,
+    useIrideStyle: Boolean = false,
+    collapsed: Boolean = false,
+    onCollapseToggle: (() -> Unit)? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -47,7 +59,14 @@ fun NavigationTitle(
             .clickable(enabled = onClick != null) {
                 onClick?.invoke()
             }
-            .padding(horizontal = 12.dp, vertical = 12.dp)
+            .padding(
+                start = if (useIrideStyle) 20.dp else 12.dp,
+                end = if (useIrideStyle) 20.dp else 12.dp,
+                // Iride style: keep spacing from the section above (top) but pull the content
+                // right below this title much closer (bottom) instead of matching top/bottom.
+                top = if (useIrideStyle) 26.dp else 12.dp,
+                bottom = if (useIrideStyle) 2.dp else 12.dp,
+            )
     ) {
         thumbnail?.invoke()
 
@@ -65,34 +84,75 @@ fun NavigationTitle(
 
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
+                style = if (useIrideStyle) {
+                    MaterialTheme.typography.labelLarge.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 13.sp,
+                        letterSpacing = (-0.1).sp,
+                    )
+                } else {
+                    MaterialTheme.typography.titleLarge
+                },
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
+                color = if (useIrideStyle) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.primary,
                 overflow = TextOverflow.Ellipsis,
                 maxLines = 1,
             )
         }
 
         onPlayAllClick?.let { playAllClick ->
-            OutlinedButton(
-                onClick = playAllClick,
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
-                ),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
-                modifier = Modifier
-                    .height(24.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.play_all),
-                    style = MaterialTheme.typography.labelSmall
+            if (useIrideStyle) {
+                Icon(
+                    painter = painterResource(R.drawable.play),
+                    contentDescription = stringResource(R.string.play_all),
+                    tint = Color.White.copy(alpha = 0.35f),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = playAllClick,
+                        ),
                 )
+            } else {
+                OutlinedButton(
+                    onClick = playAllClick,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                    modifier = Modifier
+                        .height(24.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.play_all),
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
             }
         }
 
-        if (onClick != null) {
+        if (useIrideStyle && onCollapseToggle != null) {
+            val rotation by animateFloatAsState(
+                targetValue = if (collapsed) 180f else 0f,
+                label = "collapseArrowRotation",
+            )
+            Icon(
+                painter = painterResource(R.drawable.expand_more),
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.35f),
+                modifier = Modifier
+                    .size(18.dp)
+                    .graphicsLayer { rotationZ = rotation }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onCollapseToggle,
+                    ),
+            )
+        } else if (onClick != null) {
             Icon(
                 painter = painterResource(R.drawable.arrow_forward),
                 contentDescription = null,

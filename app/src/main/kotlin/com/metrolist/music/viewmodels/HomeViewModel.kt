@@ -45,7 +45,9 @@ import com.metrolist.music.constants.HeroCarouselEnabledKey
 import com.metrolist.music.constants.SeenNewReleaseFirstIdsKey
 import com.metrolist.music.constants.RandomizeHomeOrderKey
 import com.metrolist.music.constants.ShowWrappedCardKey
+import com.metrolist.music.discovery.AlbumRecommendationsGenerator
 import com.metrolist.music.discovery.HeroCarouselGenerator
+import com.metrolist.music.models.DischiPerTeItem
 import com.metrolist.music.models.HeroCarouselItem
 import com.metrolist.music.constants.SpeedDialSnapshotKey
 import com.metrolist.music.constants.WrappedSeenKey
@@ -189,6 +191,10 @@ class HomeViewModel @Inject constructor(
     val heroCarouselItems = MutableStateFlow<List<HeroCarouselItem>>(emptyList())
 
     private val heroCarouselGenerator = HeroCarouselGenerator(database)
+
+    val dischiPerTe = MutableStateFlow<List<DischiPerTeItem>?>(null)
+
+    private val albumRecommendationsGenerator = AlbumRecommendationsGenerator(database)
 
     private fun defaultHeroCarouselSeed() =
         LocalDate.now().toEpochDay() xor context.packageName.hashCode().toLong()
@@ -652,14 +658,26 @@ class HomeViewModel @Inject constructor(
     private var dailyDiscoverLaunchJob: kotlinx.coroutines.Job? = null
     private var communityPlaylistsLaunchJob: kotlinx.coroutines.Job? = null
     private var similarRecommendationsLaunchJob: kotlinx.coroutines.Job? = null
+    private var dischiPerTeLaunchJob: kotlinx.coroutines.Job? = null
     private var phase2DailyDiscoverDone = false
     private var phase2CommunityDone = false
     private var phase2SimilarDone = false
+    private var phase2DischiPerTeDone = false
 
     private fun checkPhase2Complete() {
-        if (phase2DailyDiscoverDone && phase2CommunityDone && phase2SimilarDone) {
+        if (phase2DailyDiscoverDone && phase2CommunityDone && phase2SimilarDone && phase2DischiPerTeDone) {
             phase2Complete.value = true
         }
+    }
+
+    private suspend fun getDischiPerTe() {
+        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+        dischiPerTe.value = albumRecommendationsGenerator.generate(
+            explorePage = explorePage.value,
+            hideExplicit = hideExplicit,
+            seed = System.currentTimeMillis(),
+        )
+        HomeCache.dischiPerTe = dischiPerTe.value
     }
 
     private suspend fun getDailyDiscover() {
@@ -955,6 +973,15 @@ class HomeViewModel @Inject constructor(
                     checkPhase2Complete()
                 }
             }
+            sectionId == "dischi_per_te" && dischiPerTeLaunchJob == null -> {
+                dischiPerTeLaunchJob = viewModelScope.launch(Dispatchers.IO) {
+                    phase1Complete.filter { it }.first()
+                    kotlinx.coroutines.delay(1500L)
+                    getDischiPerTe()
+                    phase2DischiPerTeDone = true
+                    checkPhase2Complete()
+                }
+            }
         }
     }
 
@@ -967,9 +994,11 @@ class HomeViewModel @Inject constructor(
         phase2DailyDiscoverDone = false
         phase2CommunityDone = false
         phase2SimilarDone = false
+        phase2DischiPerTeDone = false
         dailyDiscoverLaunchJob?.cancel(); dailyDiscoverLaunchJob = null
         communityPlaylistsLaunchJob?.cancel(); communityPlaylistsLaunchJob = null
         similarRecommendationsLaunchJob?.cancel(); similarRecommendationsLaunchJob = null
+        dischiPerTeLaunchJob?.cancel(); dischiPerTeLaunchJob = null
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
         val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
@@ -1328,12 +1357,14 @@ class HomeViewModel @Inject constructor(
                 similarRecommendations.value = HomeCache.similarRecommendations
                 dailyDiscover.value = HomeCache.dailyDiscover
                 communityPlaylists.value = HomeCache.communityPlaylists
+                dischiPerTe.value = HomeCache.dischiPerTe
                 isPhase1Complete.value = true
                 phase1Complete.value = true
                 phase2Complete.value = true
                 phase2DailyDiscoverDone = true
                 phase2CommunityDone = true
                 phase2SimilarDone = true
+                phase2DischiPerTeDone = true
                 isLoading.value = false
             } else {
                 load()

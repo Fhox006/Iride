@@ -113,6 +113,7 @@ import com.metrolist.music.constants.SmallGridThumbnailHeight
 import com.metrolist.music.constants.SquareVideoThumbnailKey
 import com.metrolist.music.constants.SwipeToSongKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.Playlist
@@ -343,14 +344,17 @@ fun GridItem(
     size: Dp = currentGridThumbnailHeight(),
 ) {
     val applyHPad = LocalItemHorizontalPadding.current
+    // New Iride UI: tiles sit closer together laterally than the classic UI's 8dp gap.
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val hPad = if (applyHPad) (if (topNavigationBarEnabled) 4.dp else 8.dp) else 0.dp
     Column(
         modifier = if (fillMaxWidth) {
             modifier
-                .padding(horizontal = if (applyHPad) 8.dp else 0.dp, vertical = 4.dp)
+                .padding(horizontal = hPad, vertical = 4.dp)
                 .fillMaxWidth()
         } else {
             modifier
-                .padding(horizontal = if (applyHPad) 8.dp else 0.dp, vertical = 4.dp)
+                .padding(horizontal = hPad, vertical = 4.dp)
                 .width(size * thumbnailRatio)
         }
     ) {
@@ -577,11 +581,12 @@ fun SongGridItem(
     thumbnailContent = {
         val gridHeight = currentGridThumbnailHeight()
         val squircleRadius = maxWidth * 0.06f
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
         ItemThumbnail(
             thumbnailUrl = song.song.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f),
+            shape = if (topNavigationBarEnabled) RoundedCornerShape(5.dp) else SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f),
             modifier = Modifier.size(gridHeight)
         )
         if (!isActive) {
@@ -802,12 +807,13 @@ fun AlbumGridItem(
         val playerConnection = LocalPlayerConnection.current ?: return@GridItem
         val scope = rememberCoroutineScope()
         val squircleRadius = maxWidth * 0.06f
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
 
         ItemThumbnail(
             thumbnailUrl = album.album.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f),
+            shape = if (topNavigationBarEnabled) RoundedCornerShape(5.dp) else SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f),
         )
 
         if (showPlayButton) {
@@ -989,6 +995,7 @@ fun PlaylistGridItem(
     thumbnailContent = {
         val width = maxWidth
         val squircleRadius = maxWidth * 0.06f
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
         PlaylistThumbnail(
             thumbnails = playlist.thumbnails,
             size = width,
@@ -1015,7 +1022,7 @@ fun PlaylistGridItem(
                     )
                 }
             },
-            shape = SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f)
+            shape = if (topNavigationBarEnabled) RoundedCornerShape(5.dp) else SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f)
         )
     },
     fillMaxWidth = fillMaxWidth,
@@ -1245,6 +1252,7 @@ fun YouTubeGridItem(
         val playerConnection = LocalPlayerConnection.current ?: return@GridItem
         val scope = rememberCoroutineScope()
         val squircleRadius = maxWidth * 0.06f
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
 
         ItemThumbnail(
             thumbnailUrl = item.thumbnail,
@@ -1254,6 +1262,7 @@ fun YouTubeGridItem(
                 item is ArtistItem -> CircleShape
                 // Non-square thumbnails (e.g. 16:9 videos) don't suit a squircle
                 effectiveThumbnailRatio != 1f -> RoundedCornerShape(thumbnailCornerRadius)
+                topNavigationBarEnabled -> RoundedCornerShape(5.dp)
                 else -> SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f)
             },
         )

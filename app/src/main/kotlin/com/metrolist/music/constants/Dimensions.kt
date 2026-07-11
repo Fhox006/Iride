@@ -25,6 +25,17 @@ val MiniPlayerBottomSpacing = 8.dp // Space between MiniPlayer and NavigationBar
 val QueuePeekHeight = 64.dp
 val AppBarHeight = 64.dp
 
+// New Iride UI: height of app content always kept visible at the top of the screen even when the
+// player "curtain" is dragged to its maximum extent, so the app is never fully covered.
+val AppPeekHeight = 120.dp
+
+// New Iride UI (curtain mode): extra height added on top of the mini player bar's own height when
+// reserving the collapsed curtain gap, so the app layer's rounded bottom corners have some curtain
+// background above the mini player content to show against instead of touching it edge-to-edge.
+// Matches the 28dp radius of the app layer's own RoundedCornerShape (see MainActivity's Scaffold
+// modifier) — anything smaller leaves part of the corner curve uncovered by curtain background.
+val CurtainCornerRevealHeight = 28.dp
+
 val ListItemHeight = 58.dp
 val SuggestionItemHeight = 56.dp
 val SearchFilterHeight = 48.dp

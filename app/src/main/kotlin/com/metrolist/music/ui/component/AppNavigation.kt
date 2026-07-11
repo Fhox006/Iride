@@ -10,6 +10,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
@@ -329,15 +331,18 @@ fun TopNavigationBar(
     navigationItems: List<Screens>,
     currentRoute: String?,
     onItemClick: (Screens, Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    containerColor: Color = Color.Black,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.Black)
+            .background(containerColor)
             .statusBarsPadding()
-            .height(56.dp)
-            .padding(horizontal = 20.dp),
+            .padding(top = 10.dp)
+            .height(64.dp)
+            .horizontalScroll(rememberScrollState())
+            .padding(start = 20.dp, end = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         navigationItems.forEach { screen ->
@@ -352,19 +357,23 @@ fun TopNavigationBar(
                     TextStyle(
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
+                        fontSize = 20.sp,
+                        letterSpacing = (-0.1).sp,
                         color = Color.White
                     )
                 } else {
                     TextStyle(
-                        fontFamily = FontFamily.SansSerif,
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 16.sp,
-                        color = Color.White.copy(alpha = 0.45f)
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        letterSpacing = (-0.1).sp,
+                        color = Color.White.copy(alpha = 0.35f)
                     )
                 },
+                maxLines = 1,
+                softWrap = false,
                 modifier = Modifier
-                    .padding(end = 24.dp)
+                    .padding(end = 20.dp)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null

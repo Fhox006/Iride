@@ -53,22 +53,24 @@ fun <T> LibrarySortRow(
     onViewTypeChange: (LibraryViewType) -> Unit = {},
     showDescending: Boolean = true,
     modifier: Modifier = Modifier,
+    useIrideStyle: Boolean = false,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     val currentLabel = sortOptions.firstOrNull { it.first == currentSort }?.second ?: ""
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (useIrideStyle) 12.dp else 4.dp),
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 6.dp),
+            .padding(horizontal = if (useIrideStyle) 0.dp else 4.dp, vertical = 6.dp),
     ) {
         Box {
             SortMenuChip(
                 label = currentLabel,
                 expanded = menuExpanded,
                 onClick = { menuExpanded = true },
+                useIrideStyle = useIrideStyle,
             )
             DropdownMenu(
                 expanded = menuExpanded,
@@ -100,6 +102,7 @@ fun <T> LibrarySortRow(
             SortDirectionButton(
                 descending = sortDescending,
                 onClick = { onSortDescendingChange(!sortDescending) },
+                useIrideStyle = useIrideStyle,
             )
         }
 
@@ -108,6 +111,7 @@ fun <T> LibrarySortRow(
             LibraryViewTypeButton(
                 viewType = viewType,
                 onViewTypeChange = onViewTypeChange,
+                useIrideStyle = useIrideStyle,
             )
         }
     }
@@ -118,12 +122,47 @@ private fun SortMenuChip(
     label: String,
     expanded: Boolean,
     onClick: () -> Unit,
+    useIrideStyle: Boolean = false,
 ) {
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         animationSpec = tween(200),
         label = "sortMenuArrow",
     )
+
+    if (useIrideStyle) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier
+                .height(32.dp)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = onClick,
+                ),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                ),
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Icon(
+                painter = painterResource(R.drawable.expand_more),
+                contentDescription = null,
+                tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.5f),
+                modifier = Modifier
+                    .size(16.dp)
+                    .graphicsLayer { rotationZ = arrowRotation },
+            )
+        }
+        return
+    }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -162,12 +201,36 @@ private fun SortDirectionButton(
     descending: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    useIrideStyle: Boolean = false,
 ) {
     val rotation by animateFloatAsState(
         targetValue = if (descending) 0f else 180f,
         animationSpec = tween(220),
         label = "sortDirection",
     )
+
+    if (useIrideStyle) {
+        Box(
+            modifier = modifier
+                .size(32.dp)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = onClick,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.arrow_downward),
+                contentDescription = stringResource(if (descending) R.string.sort_descending else R.string.sort_ascending),
+                tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.75f),
+                modifier = Modifier
+                    .size(18.dp)
+                    .graphicsLayer { rotationZ = rotation },
+            )
+        }
+        return
+    }
 
     Box(
         modifier = modifier
@@ -198,7 +261,40 @@ fun LibraryViewTypeButton(
     onViewTypeChange: (LibraryViewType) -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = 32.dp,
+    useIrideStyle: Boolean = false,
 ) {
+    if (useIrideStyle) {
+        Box(
+            modifier = modifier
+                .size(size)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                ) { onViewTypeChange(viewType.toggle()) },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(
+                    when (viewType) {
+                        LibraryViewType.LIST -> R.drawable.list
+                        LibraryViewType.GRID -> R.drawable.grid_view
+                        LibraryViewType.GRID_WIDE -> R.drawable.grid_view_3
+                    },
+                ),
+                contentDescription = stringResource(
+                    when (viewType) {
+                        LibraryViewType.LIST -> R.string.switch_to_grid_view
+                        LibraryViewType.GRID -> R.string.switch_to_wide_grid_view
+                        LibraryViewType.GRID_WIDE -> R.string.switch_to_list_view
+                    },
+                ),
+                tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.75f),
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        return
+    }
+
     Box(
         modifier = modifier
             .size(size)

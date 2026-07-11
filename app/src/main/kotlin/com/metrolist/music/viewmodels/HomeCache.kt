@@ -4,6 +4,7 @@ import com.metrolist.innertube.pages.ExplorePage
 import com.metrolist.innertube.pages.HomePage
 import com.metrolist.music.db.entities.LocalItem
 import com.metrolist.music.db.entities.Song
+import com.metrolist.music.models.DischiPerTeItem
 import com.metrolist.music.models.SimilarRecommendation
 
 object HomeCache {
@@ -14,11 +15,12 @@ object HomeCache {
     var similarRecommendations: List<SimilarRecommendation>? = null
     var dailyDiscover: List<DailyDiscoverItem>? = null
     var communityPlaylists: List<CommunityPlaylistItem>? = null
+    var dischiPerTe: List<DischiPerTeItem>? = null
     var explorePage: ExplorePage? = null
     var lastLoadedAt: Long = 0L
     private const val CACHE_TTL_MS = 15 * 60 * 1000L
     fun isStale() = System.currentTimeMillis() - lastLoadedAt > CACHE_TTL_MS
-    fun clear() { 
+    fun clear() {
         homePage = null
         quickPicks = null
         keepListening = null
@@ -26,7 +28,8 @@ object HomeCache {
         similarRecommendations = null
         dailyDiscover = null
         communityPlaylists = null
+        dischiPerTe = null
         explorePage = null
-        lastLoadedAt = 0L 
+        lastLoadedAt = 0L
     }
 }

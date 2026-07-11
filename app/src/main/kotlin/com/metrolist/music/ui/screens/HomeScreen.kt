@@ -41,6 +41,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -52,6 +53,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -126,6 +128,7 @@ import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.SmallGridThumbnailHeight
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.LocalItem
@@ -141,6 +144,8 @@ import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
+import com.metrolist.music.ui.component.TopNavigationBar
+import com.metrolist.music.LocalTopNavBarController
 import com.metrolist.music.ui.component.RandomizeGridItem
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.SongGridItem
@@ -176,12 +181,29 @@ import com.metrolist.innertube.utils.completed
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.models.HeroCarouselItem
+import com.metrolist.music.models.DischiPerTeItem
 import com.metrolist.music.db.entities.PlaylistSongMap
 import com.metrolist.music.utils.SyncState
 import com.metrolist.music.viewmodels.CommunityPlaylistItem
+import kotlin.random.Random
 
 private val HomeLargeTitleHeightDp = 80.dp
 private val HomeSmallTitleBarHeightDp = 56.dp
+
+// New Iride UI: collapses a section's body while keeping its NavigationTitle row visible.
+@Composable
+private fun IrideCollapsibleSection(
+    collapsed: Boolean,
+    content: @Composable () -> Unit,
+) {
+    AnimatedVisibility(
+        visible = !collapsed,
+        enter = expandVertically(animationSpec = tween(220)) + fadeIn(tween(180)),
+        exit = shrinkVertically(animationSpec = tween(220)) + fadeOut(tween(140)),
+    ) {
+        content()
+    }
+}
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class,
     androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
@@ -222,6 +244,7 @@ fun HomeScreen(
     val dailyDiscover by viewModel.dailyDiscover.collectAsStateWithLifecycle()
     val accountPlaylists by viewModel.accountPlaylists.collectAsStateWithLifecycle()
     val similarRecommendations by viewModel.similarRecommendations.collectAsStateWithLifecycle()
+    val dischiPerTe by viewModel.dischiPerTe.collectAsStateWithLifecycle()
     val homePage by viewModel.homePage.collectAsStateWithLifecycle()
     val phase1Complete by viewModel.phase1Complete.collectAsStateWithLifecycle()
     val isHeroCarouselEnabled by viewModel.isHeroCarouselEnabled.collectAsStateWithLifecycle()
@@ -240,6 +263,25 @@ fun HomeScreen(
     val accountAvatarUrl = if (isLoggedIn) accountImageUrl else null
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavBarController = LocalTopNavBarController.current
+    // New Iride UI: sections start flush with the "Home" label in TopNavigationBar (20dp),
+    // instead of the classic UI's 12dp.
+    val irideStart = if (topNavigationBarEnabled) 20.dp else 12.dp
+    // The shared ListItem/GridItem components (SongListItem, YouTubeGridItem, etc.) each carry
+    // their own built-in horizontal inset on top of whatever contentPadding their row/grid gets —
+    // 12dp row padding + 4dp thumbnail box for ListItem-based items, 8dp column padding for
+    // GridItem-based items. That's on purpose (it's also what creates the gap between adjacent
+    // items in these horizontal carousels) but it means using irideStart as contentPadding here
+    // pushes the item's actual visual thumbnail further right than the title text above it.
+    // Subtracting the item's own inset keeps the first thumbnail flush with the title without
+    // touching those shared components (used everywhere, not just this screen) or losing the
+    // item-to-item spacing.
+    val irideListItemStart = if (topNavigationBarEnabled) 4.dp else irideStart
+    val irideGridItemStart = if (topNavigationBarEnabled) 12.dp else irideStart
+    // New Iride UI: thumbnails in NavigationTitle (e.g. "Similar to <artist>") shrink to sit
+    // inline with the label/title text stack instead of towering over it.
+    val irideTitleThumbSize = if (topNavigationBarEnabled) 22.dp else ListThumbnailSize
     val hideExplicit by rememberPreference(HideExplicitKey, defaultValue = false)
     val hideVideoSongs by rememberPreference(HideVideoSongsKey, defaultValue = false)
     val hideYoutubeShorts by rememberPreference(HideYoutubeShortsKey, defaultValue = false)
@@ -271,14 +313,34 @@ fun HomeScreen(
         }
     }
 
+    // New Iride UI: per-section collapse state (session-only, not persisted).
+    val collapsedSections = remember { androidx.compose.runtime.mutableStateMapOf<String, Boolean>() }
+    fun isSectionCollapsed(key: String) = collapsedSections[key] == true
+    fun toggleSection(key: String) { collapsedSections[key] = !isSectionCollapsed(key) }
+
     val quickPicksLazyGridState = rememberLazyGridState()
     val forgottenFavoritesLazyGridState = rememberLazyGridState()
-    LaunchedEffect(quickPicks) { quickPicksLazyGridState.scrollToItem(0) }
-    LaunchedEffect(forgottenFavorites) { forgottenFavoritesLazyGridState.scrollToItem(0) }
+    LaunchedEffect(quickPicks) {
+        if (quickPicksLazyGridState.firstVisibleItemIndex != 0) quickPicksLazyGridState.scrollToItem(0)
+    }
+    LaunchedEffect(forgottenFavorites) {
+        if (forgottenFavoritesLazyGridState.firstVisibleItemIndex != 0) forgottenFavoritesLazyGridState.scrollToItem(0)
+    }
 
     val scope = rememberCoroutineScope()
     var randomizeJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val lazyListState = rememberLazyListState()
+
+    // "Dischi scelti per te" doesn't always sit right below the mood pills — most of the
+    // time it does, but every so often it lands further down the feed instead, so the
+    // layout doesn't feel too predictable. Picked once per screen visit.
+    val dischiPerTePosition = remember {
+        if (Random.nextInt(100) < 55) {
+            "after_mood"
+        } else {
+            listOf("after_keep_listening", "after_forgotten_favorites", "after_daily_discover", "after_community").random()
+        }
+    }
 
     LaunchedEffect(Unit) {
         snapshotFlow {
@@ -295,6 +357,7 @@ fun HomeScreen(
         viewModel.onSectionBecameVisible("daily_discover")
         viewModel.onSectionBecameVisible("from_the_community")
         viewModel.onSectionBecameVisible("similar_recommendation_0")
+        viewModel.onSectionBecameVisible("dischi_per_te")
     }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
@@ -303,14 +366,27 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            HomeCollapsingHeader(
-            scrollBehavior = scrollBehavior,
-            accountImageUrl = accountAvatarUrl,
-            onAccountClick = { navController.navigate("settings") },
-            transparentBackground = mainTopGradient,
-        )
+            if (!topNavigationBarEnabled) {
+                HomeCollapsingHeader(
+                    scrollBehavior = scrollBehavior,
+                    accountImageUrl = accountAvatarUrl,
+                    onAccountClick = { navController.navigate("settings") },
+                    transparentBackground = mainTopGradient,
+                )
+            }
         },
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        // Only wire up the collapsing-header nested scroll when the header is actually rendered.
+        // When the New Iride UI top nav bar is enabled, HomeCollapsingHeader never composes, so its
+        // SideEffect never bounds scrollBehavior.state.heightOffsetLimit — it stays at Compose's
+        // default (-Float.MAX_VALUE), and exitUntilCollapsedScrollBehavior's onPreScroll then
+        // consumes every upward scroll gesture trying to collapse a header that isn't there,
+        // leaving nothing for the LazyColumn below. This is why the list appeared stuck/unscrollable
+        // only in New UI mode, while LibraryMixScreen (whose header always renders) never had it.
+        modifier = if (!topNavigationBarEnabled) {
+            Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+        } else {
+            Modifier
+        },
         containerColor = if (mainTopGradient) Color.Transparent else MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
@@ -488,6 +564,52 @@ fun HomeScreen(
                 )
             }
 
+            val dischiPerTeGridItem: @Composable (DischiPerTeItem) -> Unit = { discItem ->
+                when (discItem) {
+                    is DischiPerTeItem.Local -> {
+                        val album = discItem.album
+                        AlbumGridItem(
+                            album = album,
+                            isActive = album.id == mediaMetadata?.album?.id,
+                            isPlaying = isPlaying,
+                            coroutineScope = scope,
+                            size = currentGridHeight,
+                            modifier = Modifier.combinedClickable(
+                                onClick = { navController.navigate("album/${album.id}") },
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    menuState.show {
+                                        AlbumMenu(originalAlbum = album, navController = navController, onDismiss = menuState::dismiss)
+                                    }
+                                },
+                            ),
+                        )
+                    }
+                    is DischiPerTeItem.Remote -> ytGridItem(discItem.item, null)
+                }
+            }
+
+            val dischiPerTeSection: LazyListScope.() -> Unit = {
+                dischiPerTe?.takeIf { it.isNotEmpty() }?.let { discs ->
+                    item(key = "dischi_per_te_title") {
+                        NavigationTitle(
+                            title = stringResource(R.string.discs_for_you),
+                            modifier = Modifier.animateItem(),
+                            useIrideStyle = topNavigationBarEnabled,
+                            collapsed = isSectionCollapsed("dischi_per_te"),
+                            onCollapseToggle = { toggleSection("dischi_per_te") },
+                        )
+                    }
+                    item(key = "dischi_per_te_list") {
+                        IrideCollapsibleSection(collapsed = isSectionCollapsed("dischi_per_te")) {
+                            LazyRow(contentPadding = PaddingValues(horizontal = irideGridItemStart), modifier = Modifier.animateItem()) {
+                                items(discs, key = { "dischi_per_te_${it.id}" }) { discItem -> dischiPerTeGridItem(discItem) }
+                            }
+                        }
+                    }
+                }
+            }
+
             LazyColumn(
                 state = lazyListState,
                 contentPadding = PaddingValues(
@@ -496,6 +618,17 @@ fun HomeScreen(
                 ),
                 modifier = Modifier.fillMaxSize(),
             ) {
+                if (topNavigationBarEnabled && topNavBarController != null) {
+                    item(key = "top_nav_bar") {
+                        TopNavigationBar(
+                            navigationItems = topNavBarController.navigationItems,
+                            currentRoute = topNavBarController.currentRoute,
+                            onItemClick = topNavBarController.onItemClick,
+                            modifier = Modifier.animateItem(),
+                            containerColor = if (mainTopGradient) Color.Transparent else MaterialTheme.colorScheme.background,
+                        )
+                    }
+                }
                 item(key = "beta_banner") {
                     AnimatedVisibility(
                         visible = betaBannerDismissedVersion != BuildConfig.VERSION_NAME,
@@ -806,7 +939,7 @@ fun HomeScreen(
                         }
                 }
 
-                if (speedDialItems.isNotEmpty() && !deferSpeedDialToBottom) {
+                if (speedDialItems.isNotEmpty() && !deferSpeedDialToBottom && !topNavigationBarEnabled) {
                     item(key = "speed_dial_list") {
                         speedDialContent()
                     }
@@ -826,56 +959,61 @@ fun HomeScreen(
                                 onPlayAllClick = if (!isListenTogetherGuest) {
                                     { playerConnection?.playQueue(ListQueue(title = title, items = filteredQp.map { it.toMediaItem() })) }
                                 } else null,
+                                useIrideStyle = topNavigationBarEnabled,
+                                collapsed = isSectionCollapsed("quick_picks"),
+                                onCollapseToggle = { toggleSection("quick_picks") },
                             )
                         }
                         item(key = "quick_picks_list") {
-                            LazyHorizontalGrid(
-                                state = quickPicksLazyGridState,
-                                rows = GridCells.Fixed(4),
-                                flingBehavior = rememberSnapFlingBehavior(quickPicksSnapLayoutInfoProvider),
-                                contentPadding = PaddingValues(horizontal = 12.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(ListItemHeight * 4)
-                                    .animateItem(),
-                            ) {
-                                items(items = filteredQp, key = { "home_quickpick_${it.id}" }) { originalSong ->
-                                    val song by database.song(originalSong.id).collectAsStateWithLifecycle(initialValue = originalSong)
-                                    val currentSong = song ?: originalSong
-                                    SongListItem(
-                                        song = currentSong,
-                                        isActive = currentSong.id == mediaMetadata?.id,
-                                        isPlaying = isPlaying,
-                                        isSwipeable = false,
-                                        trailingContent = {
-                                            IconButton(onClick = {
-                                                menuState.show {
-                                                    SongMenu(originalSong = currentSong, navController = navController, onDismiss = menuState::dismiss)
-                                                }
-                                            }) { Icon(painter = painterResource(R.drawable.more_vert), contentDescription = null) }
-                                        },
-                                        modifier = Modifier
-                                            .width(horizontalLazyGridItemWidth)
-                                            .combinedClickable(
-                                                onClick = {
-                                                    if (!isListenTogetherGuest) {
-                                                        if (currentSong.id == mediaMetadata?.id) playerConnection?.togglePlayPause()
-                                                        else playerConnection?.playQueue(
-                                                            YouTubeQueue(
-                                                                WatchEndpoint(videoId = currentSong.id),
-                                                                currentSong.toMediaMetadata(),
-                                                            )
-                                                        )
-                                                    }
-                                                },
-                                                onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            IrideCollapsibleSection(collapsed = isSectionCollapsed("quick_picks")) {
+                                LazyHorizontalGrid(
+                                    state = quickPicksLazyGridState,
+                                    rows = GridCells.Fixed(4),
+                                    flingBehavior = rememberSnapFlingBehavior(quickPicksSnapLayoutInfoProvider),
+                                    contentPadding = PaddingValues(horizontal = irideListItemStart),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(ListItemHeight * 4)
+                                        .animateItem(),
+                                ) {
+                                    items(items = filteredQp, key = { "home_quickpick_${it.id}" }) { originalSong ->
+                                        val song by database.song(originalSong.id).collectAsStateWithLifecycle(initialValue = originalSong)
+                                        val currentSong = song ?: originalSong
+                                        SongListItem(
+                                            song = currentSong,
+                                            isActive = currentSong.id == mediaMetadata?.id,
+                                            isPlaying = isPlaying,
+                                            isSwipeable = false,
+                                            trailingContent = {
+                                                IconButton(onClick = {
                                                     menuState.show {
                                                         SongMenu(originalSong = currentSong, navController = navController, onDismiss = menuState::dismiss)
                                                     }
-                                                },
-                                            ),
-                                    )
+                                                }) { Icon(painter = painterResource(R.drawable.more_vert), contentDescription = null) }
+                                            },
+                                            modifier = Modifier
+                                                .width(horizontalLazyGridItemWidth)
+                                                .combinedClickable(
+                                                    onClick = {
+                                                        if (!isListenTogetherGuest) {
+                                                            if (currentSong.id == mediaMetadata?.id) playerConnection?.togglePlayPause()
+                                                            else playerConnection?.playQueue(
+                                                                YouTubeQueue(
+                                                                    WatchEndpoint(videoId = currentSong.id),
+                                                                    currentSong.toMediaMetadata(),
+                                                                )
+                                                            )
+                                                        }
+                                                    },
+                                                    onLongClick = {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        menuState.show {
+                                                            SongMenu(originalSong = currentSong, navController = navController, onDismiss = menuState::dismiss)
+                                                        }
+                                                    },
+                                                ),
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -886,12 +1024,16 @@ fun HomeScreen(
                 if (isLoggedIn) {
                     item(key = "your_mood_title") {
                         NavigationTitle(
-                            title = "Your Mood",
+                            title = "Mood & Playlists for You",
                             modifier = Modifier.animateItem(),
+                            useIrideStyle = topNavigationBarEnabled,
+                            collapsed = isSectionCollapsed("your_mood"),
+                            onCollapseToggle = { toggleSection("your_mood") },
                         )
                     }
 
                     item(key = "your_mood_section") {
+                      IrideCollapsibleSection(collapsed = isSectionCollapsed("your_mood")) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -903,8 +1045,9 @@ fun HomeScreen(
                                     currentValue = selectedMoodCategory,
                                     onValueUpdate = { if (it != null) selectedMoodCategory = it },
                                     chipHeight = 40.dp,
-                                    horizontalPadding = 12.dp,
+                                    horizontalPadding = irideStart,
                                     labelStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp),
+                                    useIrideStyle = topNavigationBarEnabled,
                                 )
                             }
 
@@ -925,13 +1068,14 @@ fun HomeScreen(
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(24.dp),
                                             strokeWidth = 2.dp,
+                                            color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.6f) else ProgressIndicatorDefaults.circularColor,
                                         )
                                     }
                                 } else {
                                     LazyRow(
                                         state = moodMixesState,
-                                        contentPadding = PaddingValues(horizontal = 12.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        contentPadding = PaddingValues(horizontal = irideGridItemStart),
+                                        horizontalArrangement = Arrangement.spacedBy(if (topNavigationBarEnabled) 4.dp else 12.dp),
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .padding(top = 10.dp, bottom = 4.dp)
@@ -976,36 +1120,50 @@ fun HomeScreen(
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(24.dp),
                                             strokeWidth = 2.dp,
+                                            color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.6f) else ProgressIndicatorDefaults.circularColor,
                                         )
                                     }
                                 }
                             }
                         }
+                      }
                     }
                 }
+
+                if (dischiPerTePosition == "after_mood") dischiPerTeSection()
 
                 // ── Other sections (appear as data arrives, no stagger) ──────
                 keepListening?.takeIf { it.isNotEmpty() }?.let { kl ->
                     item(key = "keep_listening_title") {
-                        NavigationTitle(title = stringResource(R.string.keep_listening), modifier = Modifier.animateItem())
+                        NavigationTitle(
+                            title = stringResource(R.string.keep_listening),
+                            modifier = Modifier.animateItem(),
+                            useIrideStyle = topNavigationBarEnabled,
+                            collapsed = isSectionCollapsed("keep_listening"),
+                            onCollapseToggle = { toggleSection("keep_listening") },
+                        )
                     }
                     item(key = "keep_listening_list") {
-                        val rows = if (kl.size > 6) 2 else 1
-                        LazyHorizontalGrid(
-                            state = rememberLazyGridState(),
-                            rows = GridCells.Fixed(rows),
-                            contentPadding = PaddingValues(horizontal = 12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(currentGridHeight * rows + 56.dp * rows)
-                                .animateItem(),
-                        ) {
-                            items(kl) { localGridItem(it) }
+                        IrideCollapsibleSection(collapsed = isSectionCollapsed("keep_listening")) {
+                            val rows = if (kl.size > 6) 2 else 1
+                            LazyHorizontalGrid(
+                                state = rememberLazyGridState(),
+                                rows = GridCells.Fixed(rows),
+                                contentPadding = PaddingValues(horizontal = irideGridItemStart),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(currentGridHeight * rows + 56.dp * rows)
+                                    .animateItem(),
+                            ) {
+                                items(kl) { localGridItem(it) }
+                            }
                         }
                     }
                 }
 
-                if (speedDialItems.isNotEmpty() && deferSpeedDialToBottom) {
+                if (dischiPerTePosition == "after_keep_listening") dischiPerTeSection()
+
+                if (speedDialItems.isNotEmpty() && deferSpeedDialToBottom && !topNavigationBarEnabled) {
                     item(key = "speed_dial_list") {
                         speedDialContent()
                     }
@@ -1020,55 +1178,62 @@ fun HomeScreen(
                             onPlayAllClick = if (!isListenTogetherGuest) {
                                 { playerConnection?.playQueue(ListQueue(title = title, items = ff.distinctBy { it.id }.map { it.toMediaItem() })) }
                             } else null,
+                            useIrideStyle = topNavigationBarEnabled,
+                            collapsed = isSectionCollapsed("forgotten_favorites"),
+                            onCollapseToggle = { toggleSection("forgotten_favorites") },
                         )
                     }
                     item(key = "forgotten_favorites_list") {
-                        val rows = min(4, ff.size)
-                        LazyHorizontalGrid(
-                            state = forgottenFavoritesLazyGridState,
-                            rows = GridCells.Fixed(rows),
-                            contentPadding = PaddingValues(horizontal = 12.dp),
-                            flingBehavior = rememberSnapFlingBehavior(forgottenFavoritesSnapLayoutInfoProvider),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(ListItemHeight * rows)
-                                .animateItem(),
-                        ) {
-                            items(items = ff.distinctBy { it.id }, key = { "home_forgotten_${it.id}" }) { song ->
-                                SongListItem(
-                                    song = song,
-                                    isActive = song.id == mediaMetadata?.id,
-                                    isPlaying = isPlaying,
-                                    isSwipeable = false,
-                                    trailingContent = {
-                                        IconButton(onClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            menuState.show {
-                                                SongMenu(originalSong = song, navController = navController, onDismiss = menuState::dismiss)
-                                            }
-                                        }) { Icon(painter = painterResource(R.drawable.more_vert), contentDescription = null) }
-                                    },
-                                    modifier = Modifier
-                                        .width(horizontalLazyGridItemWidth)
-                                        .combinedClickable(
-                                            onClick = {
-                                                if (!isListenTogetherGuest) {
-                                                    if (song.id == mediaMetadata?.id) playerConnection?.togglePlayPause()
-                                                    else playerConnection?.startRadioForSong(song.toMediaMetadata())
-                                                }
-                                            },
-                                            onLongClick = {
+                        IrideCollapsibleSection(collapsed = isSectionCollapsed("forgotten_favorites")) {
+                            val rows = min(4, ff.size)
+                            LazyHorizontalGrid(
+                                state = forgottenFavoritesLazyGridState,
+                                rows = GridCells.Fixed(rows),
+                                contentPadding = PaddingValues(horizontal = irideListItemStart),
+                                flingBehavior = rememberSnapFlingBehavior(forgottenFavoritesSnapLayoutInfoProvider),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(ListItemHeight * rows)
+                                    .animateItem(),
+                            ) {
+                                items(items = ff.distinctBy { it.id }, key = { "home_forgotten_${it.id}" }) { song ->
+                                    SongListItem(
+                                        song = song,
+                                        isActive = song.id == mediaMetadata?.id,
+                                        isPlaying = isPlaying,
+                                        isSwipeable = false,
+                                        trailingContent = {
+                                            IconButton(onClick = {
                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                 menuState.show {
                                                     SongMenu(originalSong = song, navController = navController, onDismiss = menuState::dismiss)
                                                 }
-                                            },
-                                        ),
-                                )
+                                            }) { Icon(painter = painterResource(R.drawable.more_vert), contentDescription = null) }
+                                        },
+                                        modifier = Modifier
+                                            .width(horizontalLazyGridItemWidth)
+                                            .combinedClickable(
+                                                onClick = {
+                                                    if (!isListenTogetherGuest) {
+                                                        if (song.id == mediaMetadata?.id) playerConnection?.togglePlayPause()
+                                                        else playerConnection?.startRadioForSong(song.toMediaMetadata())
+                                                    }
+                                                },
+                                                onLongClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    menuState.show {
+                                                        SongMenu(originalSong = song, navController = navController, onDismiss = menuState::dismiss)
+                                                    }
+                                                },
+                                            ),
+                                    )
+                                }
                             }
                         }
                     }
                 }
+
+                if (dischiPerTePosition == "after_forgotten_favorites") dischiPerTeSection()
 
                 accountPlaylists?.takeIf { it.isNotEmpty() }?.let { apl ->
                     item(key = "account_playlists_title") {
@@ -1088,24 +1253,29 @@ fun HomeScreen(
                                         error = painterResource(R.drawable.person),
                                         contentDescription = null,
                                         contentScale = ContentScale.Crop,
-                                        modifier = Modifier.size(ListThumbnailSize).clip(CircleShape),
+                                        modifier = Modifier.size(irideTitleThumbSize).clip(CircleShape),
                                     )
                                 } else {
                                     Icon(
                                         painter = painterResource(R.drawable.person),
                                         contentDescription = null,
-                                        modifier = Modifier.size(ListThumbnailSize),
+                                        modifier = Modifier.size(irideTitleThumbSize),
                                     )
                                 }
                             },
                             onClick = { navController.navigate("account") },
                             modifier = Modifier.animateItem(),
+                            useIrideStyle = topNavigationBarEnabled,
+                            collapsed = isSectionCollapsed("account_playlists"),
+                            onCollapseToggle = { toggleSection("account_playlists") },
                         )
                     }
                     item(key = "account_playlists_list") {
-                        LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), modifier = Modifier.animateItem()) {
-                            items(items = apl.distinctBy { it.id }, key = { "home_account_playlist_${it.id}" }) { ap ->
-                                ytGridItem(ap, null)
+                        IrideCollapsibleSection(collapsed = isSectionCollapsed("account_playlists")) {
+                            LazyRow(contentPadding = PaddingValues(horizontal = irideGridItemStart), modifier = Modifier.animateItem()) {
+                                items(items = apl.distinctBy { it.id }, key = { "home_account_playlist_${it.id}" }) { ap ->
+                                    ytGridItem(ap, null)
+                                }
                             }
                         }
                     }
@@ -1120,89 +1290,106 @@ fun HomeScreen(
                                 val items = discoverList.mapNotNull { (it.recommendation as? SongItem)?.toMediaMetadata() }
                                 if (items.isNotEmpty()) playerConnection?.playQueue(ListQueue(title = title, items = items.map { it.toMediaItem() }))
                             },
+                            useIrideStyle = topNavigationBarEnabled,
+                            collapsed = isSectionCollapsed("daily_discover"),
+                            onCollapseToggle = { toggleSection("daily_discover") },
                         )
                     }
                     item(key = "daily_discover_content") {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().height(340.dp).padding(horizontal = 12.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            val carouselState = androidx.compose.material3.carousel.rememberCarouselState { discoverList.size }
-                            androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel(
-                                state = carouselState,
-                                preferredItemWidth = 320.dp,
-                                itemSpacing = 16.dp,
-                                modifier = Modifier.fillMaxWidth().height(320.dp),
-                            ) { i ->
-                                val ddItem = discoverList[i]
-                                DailyDiscoverCard(
-                                    dailyDiscover = ddItem,
-                                    onClick = {
-                                        if (!isListenTogetherGuest) {
-                                            val song = ddItem.recommendation as? SongItem
-                                            val meta = song?.toMediaMetadata()
-                                            if (meta != null) playerConnection?.playQueue(
-                                                YouTubeQueue(song.endpoint ?: WatchEndpoint(videoId = song.id), meta)
-                                            )
-                                        }
-                                    },
-                                    navController = navController,
-                                    modifier = Modifier.maskClip(MaterialTheme.shapes.extraLarge),
-                                )
+                        IrideCollapsibleSection(collapsed = isSectionCollapsed("daily_discover")) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(340.dp).padding(horizontal = irideStart),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                val carouselState = androidx.compose.material3.carousel.rememberCarouselState { discoverList.size }
+                                androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel(
+                                    state = carouselState,
+                                    preferredItemWidth = 320.dp,
+                                    itemSpacing = 16.dp,
+                                    modifier = Modifier.fillMaxWidth().height(320.dp),
+                                ) { i ->
+                                    val ddItem = discoverList[i]
+                                    DailyDiscoverCard(
+                                        dailyDiscover = ddItem,
+                                        onClick = {
+                                            if (!isListenTogetherGuest) {
+                                                val song = ddItem.recommendation as? SongItem
+                                                val meta = song?.toMediaMetadata()
+                                                if (meta != null) playerConnection?.playQueue(
+                                                    YouTubeQueue(song.endpoint ?: WatchEndpoint(videoId = song.id), meta)
+                                                )
+                                            }
+                                        },
+                                        navController = navController,
+                                        modifier = Modifier.maskClip(MaterialTheme.shapes.extraLarge),
+                                    )
+                                }
                             }
                         }
                     }
                 }
 
+                if (dischiPerTePosition == "after_daily_discover") dischiPerTeSection()
+
                 communityPlaylists?.takeIf { it.isNotEmpty() }?.let { playlists ->
                     item(key = "community_playlists_title") {
-                        NavigationTitle(title = stringResource(R.string.from_the_community), modifier = Modifier.animateItem())
+                        NavigationTitle(
+                            title = stringResource(R.string.from_the_community),
+                            modifier = Modifier.animateItem(),
+                            useIrideStyle = topNavigationBarEnabled,
+                            collapsed = isSectionCollapsed("community_playlists"),
+                            onCollapseToggle = { toggleSection("community_playlists") },
+                        )
                     }
                     item(key = "community_playlists_content") {
-                        val chunked = playlists.chunked(2)
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp)
-                                .animateItem(),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            chunked.forEach { rowItems ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                ) {
-                                    rowItems.forEach { cpItem ->
-                                        PlaylistGridItem(
-                                            playlist = Playlist(
-                                                playlist = PlaylistEntity(
-                                                    id = cpItem.playlist.id.removePrefix("VL"),
-                                                    name = cpItem.playlist.title,
-                                                    browseId = cpItem.playlist.id.removePrefix("VL"),
-                                                    thumbnailUrl = cpItem.playlist.thumbnail,
+                        IrideCollapsibleSection(collapsed = isSectionCollapsed("community_playlists")) {
+                            val chunked = playlists.chunked(2)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = irideGridItemStart)
+                                    .animateItem(),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                chunked.forEach { rowItems ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        rowItems.forEach { cpItem ->
+                                            PlaylistGridItem(
+                                                playlist = Playlist(
+                                                    playlist = PlaylistEntity(
+                                                        id = cpItem.playlist.id.removePrefix("VL"),
+                                                        name = cpItem.playlist.title,
+                                                        browseId = cpItem.playlist.id.removePrefix("VL"),
+                                                        thumbnailUrl = cpItem.playlist.thumbnail,
+                                                    ),
+                                                    songCount = 0,
+                                                    songThumbnails = emptyList(),
                                                 ),
-                                                songCount = 0,
-                                                songThumbnails = emptyList(),
-                                            ),
-                                            fillMaxWidth = true,
-                                            autoPlaylist = false,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .combinedClickable(
-                                                    onClick = {
-                                                        navController.navigate("online_playlist/${cpItem.playlist.id.removePrefix("VL")}")
-                                                    },
-                                                ),
-                                        )
-                                    }
-                                    if (rowItems.size == 1) {
-                                        Spacer(modifier = Modifier.weight(1f))
+                                                fillMaxWidth = true,
+                                                autoPlaylist = false,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .combinedClickable(
+                                                        onClick = {
+                                                            navController.navigate("online_playlist/${cpItem.playlist.id.removePrefix("VL")}")
+                                                        },
+                                                    ),
+                                            )
+                                        }
+                                        if (rowItems.size == 1) {
+                                            Spacer(modifier = Modifier.weight(1f))
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
+
+                if (dischiPerTePosition == "after_community") dischiPerTeSection()
 
                 similarRecommendations?.forEachIndexed { index, rec ->
                     item(key = "similar_to_title_$index") {
@@ -1212,7 +1399,7 @@ fun HomeScreen(
                             thumbnail = rec.title.thumbnailUrl?.let { thumbUrl ->
                                 {
                                     val shape = if (rec.title is Artist) CircleShape else MaterialTheme.shapes.extraLarge
-                                    AsyncImage(model = thumbUrl, contentDescription = null, modifier = Modifier.size(ListThumbnailSize).clip(shape))
+                                    AsyncImage(model = thumbUrl, contentDescription = null, modifier = Modifier.size(irideTitleThumbSize).clip(shape))
                                 }
                             },
                             onClick = {
@@ -1224,11 +1411,16 @@ fun HomeScreen(
                                 }
                             },
                             modifier = Modifier.animateItem(),
+                            useIrideStyle = topNavigationBarEnabled,
+                            collapsed = isSectionCollapsed("similar_to_$index"),
+                            onCollapseToggle = { toggleSection("similar_to_$index") },
                         )
                     }
                     item(key = "similar_to_list_$index") {
-                        LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), modifier = Modifier.animateItem()) {
-                            items(rec.items) { recItem -> ytGridItem(recItem, null) }
+                        IrideCollapsibleSection(collapsed = isSectionCollapsed("similar_to_$index")) {
+                            LazyRow(contentPadding = PaddingValues(horizontal = irideGridItemStart), modifier = Modifier.animateItem()) {
+                                items(rec.items) { recItem -> ytGridItem(recItem, null) }
+                            }
                         }
                     }
                 }
@@ -1247,7 +1439,7 @@ fun HomeScreen(
                                     {
                                         val shape = if (sectionData.endpoint?.isArtistEndpoint == true) CircleShape
                                         else MaterialTheme.shapes.extraLarge
-                                        AsyncImage(model = thumbUrl, contentDescription = null, modifier = Modifier.size(ListThumbnailSize).clip(shape))
+                                        AsyncImage(model = thumbUrl, contentDescription = null, modifier = Modifier.size(irideTitleThumbSize).clip(shape))
                                     }
                                 },
                                 onClick = sectionData.endpoint?.let { ep ->
@@ -1267,54 +1459,61 @@ fun HomeScreen(
                                     }
                                 } else null,
                                 modifier = Modifier.animateItem(),
+                                useIrideStyle = topNavigationBarEnabled,
+                                collapsed = isSectionCollapsed("home_section_$index"),
+                                onCollapseToggle = { toggleSection("home_section_$index") },
                             )
                         }
 
                         if (isSongsOnly) {
                             item(key = "home_section_list_$index") {
-                                LazyHorizontalGrid(
-                                    state = rememberLazyGridState(),
-                                    rows = GridCells.Fixed(4),
-                                    contentPadding = PaddingValues(horizontal = 12.dp),
-                                    modifier = Modifier.fillMaxWidth().height(ListItemHeight * 4).animateItem(),
-                                ) {
-                                    items(items = sectionSongs.distinctBy { it.id }, key = { "home_section_${index}_song_${it.id}" }) { song ->
-                                        YouTubeListItem(
-                                            item = song,
-                                            isActive = song.id == mediaMetadata?.id,
-                                            isPlaying = isPlaying,
-                                            isSwipeable = false,
-                                            trailingContent = {
-                                                IconButton(onClick = {
-                                                    menuState.show {
-                                                        YouTubeSongMenu(song = song, navController = navController, onDismiss = menuState::dismiss)
-                                                    }
-                                                }) { Icon(painter = painterResource(R.drawable.more_vert), contentDescription = null) }
-                                            },
-                                            modifier = Modifier
-                                                .width(horizontalLazyGridItemWidth)
-                                                .combinedClickable(
-                                                    onClick = {
-                                                        if (!isListenTogetherGuest) playerConnection?.playQueue(
-                                                            YouTubeQueue(song.endpoint ?: WatchEndpoint(videoId = song.id), song.toMediaMetadata())
-                                                        )
-                                                    },
-                                                    onLongClick = {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                IrideCollapsibleSection(collapsed = isSectionCollapsed("home_section_$index")) {
+                                    LazyHorizontalGrid(
+                                        state = rememberLazyGridState(),
+                                        rows = GridCells.Fixed(4),
+                                        contentPadding = PaddingValues(horizontal = irideListItemStart),
+                                        modifier = Modifier.fillMaxWidth().height(ListItemHeight * 4).animateItem(),
+                                    ) {
+                                        items(items = sectionSongs.distinctBy { it.id }, key = { "home_section_${index}_song_${it.id}" }) { song ->
+                                            YouTubeListItem(
+                                                item = song,
+                                                isActive = song.id == mediaMetadata?.id,
+                                                isPlaying = isPlaying,
+                                                isSwipeable = false,
+                                                trailingContent = {
+                                                    IconButton(onClick = {
                                                         menuState.show {
                                                             YouTubeSongMenu(song = song, navController = navController, onDismiss = menuState::dismiss)
                                                         }
-                                                    },
-                                                ),
-                                        )
+                                                    }) { Icon(painter = painterResource(R.drawable.more_vert), contentDescription = null) }
+                                                },
+                                                modifier = Modifier
+                                                    .width(horizontalLazyGridItemWidth)
+                                                    .combinedClickable(
+                                                        onClick = {
+                                                            if (!isListenTogetherGuest) playerConnection?.playQueue(
+                                                                YouTubeQueue(song.endpoint ?: WatchEndpoint(videoId = song.id), song.toMediaMetadata())
+                                                            )
+                                                        },
+                                                        onLongClick = {
+                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            menuState.show {
+                                                                YouTubeSongMenu(song = song, navController = navController, onDismiss = menuState::dismiss)
+                                                            }
+                                                        },
+                                                    ),
+                                            )
+                                        }
                                     }
                                 }
                             }
                         } else {
                             item(key = "home_section_list_$index") {
-                                LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), modifier = Modifier.animateItem()) {
-                                    items(items = sectionData.items.distinctBy { it.id }, key = { "home_section_${index}_item_${it.id}" }) { secItem ->
-                                        ytGridItem(secItem, null)
+                                IrideCollapsibleSection(collapsed = isSectionCollapsed("home_section_$index")) {
+                                    LazyRow(contentPadding = PaddingValues(horizontal = irideGridItemStart), modifier = Modifier.animateItem()) {
+                                        items(items = sectionData.items.distinctBy { it.id }, key = { "home_section_${index}_item_${it.id}" }) { secItem ->
+                                            ytGridItem(secItem, null)
+                                        }
                                     }
                                 }
                             }

@@ -56,6 +56,8 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
+import com.metrolist.music.constants.TopNavigationBarKey
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.db.entities.PodcastEntity
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.FloatingPillBottomSpacing
@@ -94,6 +96,7 @@ fun AccountScreen(
     val podcastChannels by viewModel.podcastChannels.collectAsState()
     val selectedContentType by viewModel.selectedContentType.collectAsState()
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
 
     // Retry loading if data is still null when screen opens (e.g. previous attempt failed).
     // Checked per-field (OR, not AND) because under a degraded connection some requests
@@ -126,9 +129,17 @@ fun AccountScreen(
     ) { paddingValues ->
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
-            contentPadding = LocalPlayerAwareWindowInsets.current
-                .add(WindowInsets(bottom = FloatingPillHeight + FloatingPillBottomSpacing))
-                .asPaddingValues(),
+            contentPadding = (
+                if (topNavigationBarEnabled) {
+                    // New Iride UI: the app layer's own box is already shortened to leave room
+                    // for the player curtain — adding extra bottom space here would just waste
+                    // scroll room, not avoid any real overlap.
+                    LocalPlayerAwareWindowInsets.current
+                } else {
+                    LocalPlayerAwareWindowInsets.current
+                        .add(WindowInsets(bottom = FloatingPillHeight + FloatingPillBottomSpacing))
+                }
+            ).asPaddingValues(),
             modifier = Modifier.padding(paddingValues),
         ) {
         item(span = { GridItemSpan(maxLineSpan) }) {

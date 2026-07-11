@@ -117,6 +117,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -172,7 +173,10 @@ import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerButtonsStyle
 import com.metrolist.music.constants.PlayerButtonsStyleKey
+import com.metrolist.music.constants.AppPeekHeight
+import com.metrolist.music.constants.CurtainCornerRevealHeight
 import com.metrolist.music.constants.MiniPlayerHeight
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.constants.PlayerHorizontalPadding
 import com.metrolist.music.constants.QueuePeekHeight
 import com.metrolist.music.constants.SleepTimerDefaultKey
@@ -198,6 +202,8 @@ import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.Lyrics
 import com.metrolist.music.ui.component.LyricsPillController
+import com.metrolist.music.ui.component.PillPlayerRow
+import com.metrolist.music.ui.component.PillProgressState
 import com.metrolist.music.ui.component.PlayerSliderTrack
 import com.metrolist.music.ui.component.ResizableIconButton
 import com.metrolist.music.ui.component.SquigglySlider
@@ -237,6 +243,10 @@ fun BottomSheetPlayer(
     modifier: Modifier = Modifier,
     pureBlack: Boolean,
     showPeekContent: Boolean = true,
+    // New Iride UI bridge: shared with IrideMiniPlayerBridgeOverlay (rendered by the caller on top
+    // of everything) so the cover/title-artist/top-bar can morph between this collapsed peek and
+    // the expanded IrideMp3PlayerContent instead of cross-fading duplicates. Null outside curtain mode.
+    bridgeState: IrideBridgeState? = null,
 ) {
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -258,6 +268,10 @@ fun BottomSheetPlayer(
     val (hideStatusBarOnFullscreen) = rememberPreference(HideStatusBarOnFullscreenKey, false)
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
     val (enableComments) = rememberPreference(EnableCommentsKey, false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    // New Iride UI: the player becomes a fixed curtain layer behind the app (portrait/top-level
+    // only — the landscape rail's MiniPlayer peek stays untouched regardless of this toggle).
+    val curtainMode = topNavigationBarEnabled && !showPeekContent
 
     var showInlineLyrics by rememberSaveable {
         mutableStateOf(false)
@@ -852,27 +866,64 @@ fun BottomSheetPlayer(
         )
 
     val bottomSheetBackgroundColor =
-        when (playerBackground) {
-            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT, PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> {
-                MaterialTheme.colorScheme.surfaceContainer
-            }
-
-            else -> {
-                if (useBlackBackground) {
-                    Color.Black
-                } else {
+        if (topNavigationBarEnabled) {
+            // New Iride UI (MP3 player) owns its own dark background end-to-end; never let the
+            // lighter Material surfaceContainer peek through around its edges/insets.
+            Color(0xFF0D0D0F)
+        } else {
+            when (playerBackground) {
+                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT, PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> {
                     MaterialTheme.colorScheme.surfaceContainer
+                }
+
+                else -> {
+                    if (useBlackBackground) {
+                        Color.Black
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainer
+                    }
                 }
             }
         }
 
     val backgroundAlpha = state.progress.coerceIn(0f, 1f)
 
+    val onSheetDismiss: (() -> Unit)? =
+        if (!isListenTogetherGuest) {
+            {
+                playerConnection.service.clearAutomix()
+                playerConnection.player.stop()
+                playerConnection.player.clearMediaItems()
+            }
+        } else {
+            null
+        }
+
     BottomSheet(
         state = state,
         modifier = modifier,
-        clickableHeight = MiniPlayerHeight,
-        background = {
+        clickableHeight = if (curtainMode) state.collapsedBound else MiniPlayerHeight,
+        selfPositions = !curtainMode,
+        // Content starts CurtainCornerRevealHeight above AppPeekHeight (not exactly at it) so the
+        // expanded player's own background reaches up into the strip the app layer's rounded
+        // corner cuts into when fully expanded — otherwise that strip has nothing curtain-colored
+        // behind it. IrideMp3PlayerContent pads its inner content back down by the same amount so
+        // the visible layout doesn't shift.
+        contentTopPadding = if (curtainMode) (AppPeekHeight - CurtainCornerRevealHeight).coerceAtLeast(0.dp) else 0.dp,
+        backgroundAlwaysOpaque = curtainMode,
+        background = background@{
+            // New Iride UI: only the app and the curtain player should ever be visible here — the
+            // classic gradient/blur backgrounds belong to the old (non-curtain) player and must
+            // stay off, otherwise they show through the app's corner-reveal strip as a mismatched
+            // "ghost" layer during expand/collapse.
+            if (curtainMode) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(IrideMp3BackgroundColor),
+                )
+                return@background
+            }
             Box(
                 modifier =
                     Modifier
@@ -978,18 +1029,63 @@ fun BottomSheetPlayer(
                 }
             }
         },
-        onDismiss =
-            if (!isListenTogetherGuest) {
-                {
-                    playerConnection.service.clearAutomix()
-                    playerConnection.player.stop()
-                    playerConnection.player.clearMediaItems()
-                }
-            } else {
-                null
-            },
+        onDismiss = onSheetDismiss,
         collapsedContent = {
-            if (showPeekContent) {
+            if (curtainMode) {
+                val pillProgressState = remember(positionState, durationState) {
+                    PillProgressState(positionState, durationState)
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(bottomSheetBackgroundColor),
+                ) {
+                    // Info row pinned to the bottom, with the reserved CurtainCornerRevealHeight
+                    // gap left empty above the handle — that's the strip the app layer's rounded
+                    // corner cuts into, so it must stay plain curtain-colored background, not UI.
+                    // windowInsetsPadding lifts the row above the system nav bar — without it the
+                    // row sat flush against the physical bottom edge (under/behind the nav bar),
+                    // and the whole bottomInset share of collapsedBound piled up as dead space
+                    // above the handle instead, hiding the corner-reveal strip behind the nav bar.
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .align(Alignment.BottomStart)
+                            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom)),
+                        verticalArrangement = Arrangement.Bottom,
+                    ) {
+                        // The drag-handle indicator used to live here as a static Box, but it
+                        // disappeared once the sheet started expanding (this whole collapsedContent
+                        // fades out by ~25% progress). It's now drawn by IrideCurtainHandleOverlay
+                        // in MainActivity instead, which stays visible the whole way and glides up
+                        // to the top of the screen as the player opens, so the curtain's drag
+                        // affordance never vanishes mid-gesture.
+                        PillPlayerRow(
+                            progressState = pillProgressState,
+                            displayMetadata = mediaMetadata ?: MediaMetadata(
+                                id = "",
+                                title = "Tap a track to start listening",
+                                artists = emptyList(),
+                                duration = 0,
+                            ),
+                            favoriteSongId = mediaMetadata?.id,
+                            playbackState = playbackState,
+                            canSkipNext = canSkipNext,
+                            isCasting = isCasting,
+                            castHandler = castHandler,
+                            playerConnection = playerConnection,
+                            listenTogetherManager = listenTogetherManager,
+                            primaryColor = MaterialTheme.colorScheme.primary,
+                            outlineColor = MaterialTheme.colorScheme.outline,
+                            onSurfaceColor = MaterialTheme.colorScheme.onSurface,
+                            errorColor = MaterialTheme.colorScheme.error,
+                            onExpandClick = { state.expandSoft() },
+                            onArtPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniArt = r } },
+                            onInfoPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniInfo = r } },
+                        )
+                    }
+                }
+            } else if (showPeekContent) {
                 MiniPlayer(
                     positionState = positionState,
                     durationState = durationState,
@@ -2024,7 +2120,62 @@ fun BottomSheetPlayer(
                 }
             }
 
-            else -> {
+            else -> if (topNavigationBarEnabled) {
+                val isEpisode = currentSong?.song?.isEpisode == true
+                val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
+
+                mediaMetadata?.let {
+                    IrideMp3PlayerContent(
+                        mediaMetadata = it,
+                        position = sliderPosition ?: effectivePosition,
+                        duration = duration,
+                        isPlaying = effectiveIsPlaying,
+                        isFavorite = isFavorite,
+                        onPlayPauseClick = {
+                            if (isListenTogetherGuest) {
+                                playerConnection.toggleMute()
+                            } else if (isCasting) {
+                                if (castIsPlaying) castHandler?.pause() else castHandler?.play()
+                            } else if (playbackState == STATE_ENDED) {
+                                playerConnection.player.seekTo(0, 0)
+                                playerConnection.player.playWhenReady = true
+                            } else {
+                                playerConnection.togglePlayPause()
+                            }
+                        },
+                        onPreviousClick = { if (!isListenTogetherGuest) playerConnection.seekToPrevious() },
+                        onNextClick = { if (!isListenTogetherGuest) playerConnection.seekToNext() },
+                        onFavoriteClick = { playerConnection.service.toggleLike() },
+                        onSeek = { fraction ->
+                            if (!isListenTogetherGuest && duration > 0) {
+                                val seekPosition = (duration * fraction).toLong()
+                                playerConnection.player.seekTo(seekPosition)
+                                position = seekPosition
+                                lastManualSeekTime = System.currentTimeMillis()
+                            }
+                        },
+                        onArtistClick = { artistId ->
+                            if (artistId.isNotBlank()) {
+                                navController.navigate("artist/$artistId")
+                                state.collapseSoft()
+                            }
+                        },
+                        // Just the raw nav-bar inset — using state.collapsedBound here (as before)
+                        // baked in the whole collapsed miniplayer strip's height (MiniPlayerHeight +
+                        // FloatingPillBottomSpacing + the curtain corner reveal, on top of the inset)
+                        // as permanent bottom padding for the *expanded* content's control row, even
+                        // though that collapsed strip isn't on screen anymore once the player is
+                        // actually open. That left a dead gap at the true bottom of the screen —
+                        // exactly MiniPlayerHeight-ish tall — that only the collapsed peek content
+                        // ever used.
+                        bottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
+                        cornerRevealHeight = if (curtainMode) CurtainCornerRevealHeight else 0.dp,
+                        bridgeState = bridgeState,
+                        modifier = Modifier
+                            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
+                    )
+                }
+            } else {
                 val bottomPadding by animateDpAsState(
                     targetValue = if (isFullScreen) 0.dp else queueSheetState.collapsedBound,
                     label = "bottomPadding",
@@ -2196,6 +2347,7 @@ fun BottomSheetPlayer(
                 isQueueActive = showQueue,
                 isCommentsActive = showComments,
                 isCommentsFeatureEnabled = enableComments,
+                hideCollapsedControls = topNavigationBarEnabled,
                 onToggleLyrics = {
                     showInlineLyrics = !showInlineLyrics
                     if (showInlineLyrics) {

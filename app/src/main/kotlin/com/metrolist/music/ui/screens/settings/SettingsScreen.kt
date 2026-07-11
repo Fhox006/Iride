@@ -10,6 +10,7 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +18,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -37,9 +40,11 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -51,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 
@@ -72,6 +78,8 @@ import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.constants.TopNavigationBarKey
+import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
@@ -169,6 +177,55 @@ fun SettingsScreen(
 
     val (advancedMode, onAdvancedModeChange) = rememberPreference(AdvancedModeKey, false)
     var showAdvancedMenu by remember { mutableStateOf(false) }
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        snapAnimationSpec = tween(durationMillis = 200),
+    )
+    val advancedMenuButton: @Composable () -> Unit = {
+        Box {
+            IconButton(
+                onClick = { showAdvancedMenu = true },
+                onLongClick = {}
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.more_vert),
+                    contentDescription = stringResource(R.string.advanced_mode)
+                )
+            }
+            DropdownMenu(
+                expanded = showAdvancedMenu,
+                onDismissRequest = { showAdvancedMenu = false },
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(
+                                if (advancedMode) R.string.disable_advanced_settings
+                                else R.string.enable_advanced_settings
+                            ),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    },
+                    onClick = {
+                        onAdvancedModeChange(!advancedMode)
+                        showAdvancedMenu = false
+                    }
+                )
+            }
+        }
+    }
+    val backNavigationIcon: @Composable () -> Unit = {
+        IconButton(
+            onClick = navController::navigateUp,
+            onLongClick = navController::backToMain,
+        ) {
+            Icon(
+                painterResource(R.drawable.arrow_back),
+                contentDescription = null,
+            )
+        }
+    }
 
     val (accountEmail, _) = rememberPreference(AccountEmailKey, "")
     val (accountChannelHandle, _) = rememberPreference(AccountChannelHandleKey, "")
@@ -185,8 +242,41 @@ fun SettingsScreen(
     val accountImageUrl: String? = accountImageUrlFlow ?: accountPhotoUrlPref.takeIf { it.isNotEmpty() }
 
     // ── Screen ────────────────────────────────────────────────────────────
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            if (topNavigationBarEnabled) {
+                // New Iride UI: a plain page like Home/Library/Search, not a separate
+                // panel — same collapsing header, hidden title (TopNavigationBar tabs
+                // already show "Account" above), easy to scroll.
+                CollapsingScreenHeader(
+                    title = stringResource(R.string.account),
+                    scrollBehavior = scrollBehavior,
+                    pureBlack = false,
+                    isSearchActive = false,
+                    onSearchActiveChange = {},
+                    searchQuery = "",
+                    onSearchQueryChange = {},
+                    keyboardController = null,
+                    navigationIcon = backNavigationIcon,
+                    trailingContent = advancedMenuButton,
+                    hideTitle = true,
+                )
+            } else {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.account)) },
+                    navigationIcon = backNavigationIcon,
+                    actions = { advancedMenuButton() }
+                )
+            }
+        },
+        containerColor = if (topNavigationBarEnabled) Color.Transparent else MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0),
+    ) { paddingValues ->
     Column(
         Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
             .windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(
                     WindowInsetsSides.Horizontal
@@ -195,12 +285,6 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
     ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top)
-            )
-        )
-
         // ── Account section ──────────────────────────────────────────────
         Column(
             modifier = Modifier
@@ -377,53 +461,5 @@ fun SettingsScreen(
             )
         )
     }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.account)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
-        actions = {
-            Box {
-                IconButton(
-                    onClick = { showAdvancedMenu = true },
-                    onLongClick = {}
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = stringResource(R.string.advanced_mode)
-                    )
-                }
-                DropdownMenu(
-                    expanded = showAdvancedMenu,
-                    onDismissRequest = { showAdvancedMenu = false },
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = stringResource(
-                                    if (advancedMode) R.string.disable_advanced_settings
-                                    else R.string.enable_advanced_settings
-                                ),
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        },
-                        onClick = {
-                            onAdvancedModeChange(!advancedMode)
-                            showAdvancedMenu = false
-                        }
-                    )
-                }
-            }
-        }
-    )
+    }
 }

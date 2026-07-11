@@ -10,7 +10,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
@@ -23,6 +22,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -63,15 +64,33 @@ fun BottomSheet(
     collapsedContent: @Composable BoxScope.() -> Unit,
     isExpandable: Boolean = true,
     clickableHeight: Dp = state.collapsedBound,
+    // When false, this composable never moves/clips itself (used for the "curtain" player layer
+    // that stays fixed behind the app content — the app layer does the moving instead) and does
+    // not attach its own drag gesture (the caller attaches it to the visible peek content instead).
+    selfPositions: Boolean = true,
+    // Reserves space at the top of the expanded [content] — used in New Iride UI mode where the
+    // player is a fixed full-screen layer but its content must start below AppPeekHeight (the
+    // app-layer sliver that always stays visible at the top, since the player itself never moves).
+    contentTopPadding: Dp = 0.dp,
+    // When true, [background] is drawn fully opaque at every drag position instead of fading in
+    // over the first ~10-61% of progress. Used by the New Iride UI curtain player: its collapsed
+    // peek content already paints the same dark background, so the generic fade-in left a gap at
+    // low progress where nothing was drawn yet — briefly showing raw black instead of the curtain's
+    // own color and reading as a mismatched, separate background peeking through at the seam.
+    backgroundAlwaysOpaque: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
-    
+
     Box(
         modifier = modifier
             .graphicsLayer {
-                // background fades during about 10%-61% progress
-                alpha = (1.4f * (state.progress.coerceAtLeast(0.1f) - 0.1f).pow(0.5f)).coerceIn(0f, 1f)
+                // background fades during about 10%-61% progress (unless backgroundAlwaysOpaque)
+                alpha = if (backgroundAlwaysOpaque) {
+                    1f
+                } else {
+                    (1.4f * (state.progress.coerceAtLeast(0.1f) - 0.1f).pow(0.5f)).coerceIn(0f, 1f)
+                }
             }
             .fillMaxSize(),
         content = background
@@ -81,10 +100,11 @@ fun BottomSheet(
             .fillMaxSize()
             // Use graphicsLayer for offset to ensure hardware acceleration and 120Hz support
             .graphicsLayer {
-                val y = (state.expandedBound - state.value)
-                    .toPx()
-                    .coerceAtLeast(0f)
-                translationY = y
+                if (selfPositions) {
+                    translationY = (state.expandedBound - state.value)
+                        .toPx()
+                        .coerceAtLeast(0f)
+                }
             }
             .pointerInput(state, isExpandable) {
                 if (!isExpandable) return@pointerInput
@@ -107,9 +127,11 @@ fun BottomSheet(
                 )
             }
             .graphicsLayer {
-                val cornerRadius = if (!state.isExpanded) 16.dp.toPx() else 0f
-                shape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
-                clip = true
+                if (selfPositions) {
+                    val cornerRadius = if (!state.isExpanded) 16.dp.toPx() else 0f
+                    shape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
+                    clip = true
+                }
             }
     ) {
         if (!state.isCollapsed && !state.isDismissed) {
@@ -121,6 +143,7 @@ fun BottomSheet(
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(top = contentTopPadding)
                     .graphicsLayer {
                         alpha = ((state.progress - 0.15f) * 4).coerceIn(0f, 1f)
                     },
@@ -134,7 +157,14 @@ fun BottomSheet(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(state.collapsedBound),
+                    .height(state.collapsedBound)
+                    .then(
+                        // When the sheet doesn't self-translate (curtain mode), this Box would
+                        // otherwise sit at the top of the full-screen container (Box's default
+                        // TopStart alignment) instead of at the bottom where the visible "gap" the
+                        // app layer leaves actually is.
+                        if (!selfPositions) Modifier.align(Alignment.BottomStart) else Modifier
+                    ),
             ) {
                 Box(
                     modifier = Modifier
@@ -203,11 +233,11 @@ class BottomSheetState(
     }
 
     private fun collapse() {
-        collapse(SpringSpec())
+        collapse(spring(stiffness = Spring.StiffnessMediumLow))
     }
 
     private fun expand() {
-        expand(SpringSpec())
+        expand(spring(stiffness = Spring.StiffnessMediumLow))
     }
 
     fun collapseSoft() {
@@ -331,6 +361,12 @@ fun rememberBottomSheetState(
     expandedBound: Dp,
     collapsedBound: Dp = dismissedBound,
     initialAnchor: Int = dismissedAnchor,
+    // When true, an interactive drag can never pull the sheet below collapsedBound — no swipe-to-
+    // dismiss-by-dragging. Used by the New Iride UI curtain player: dragging down past the collapsed
+    // mini player used to shrink it away and silently stop playback, reading as "throwing the song
+    // away" instead of just refusing to close further. Opening (drag up) is untouched, and dismiss()
+    // can still be invoked programmatically (e.g. an explicit close action) regardless of this flag.
+    preventDismissDrag: Boolean = false,
 ): BottomSheetState {
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
@@ -372,7 +408,8 @@ fun rememberBottomSheetState(
         BottomSheetState(
             draggableState = DraggableState { delta ->
                 coroutineScope.launch {
-                    animatable.snapTo(animatable.value - with(density) { delta.toDp() })
+                    val target = animatable.value - with(density) { delta.toDp() }
+                    animatable.snapTo(if (preventDismissDrag) target.coerceAtLeast(collapsedBound) else target)
                 }
             },
             onAnchorChanged = { previousAnchor = it },

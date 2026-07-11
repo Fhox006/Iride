@@ -92,9 +92,11 @@ import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.SearchSource
 import com.metrolist.music.constants.SearchSourceKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.HideOnScrollFAB
+import com.metrolist.music.ui.component.IrideSegmentedToggle
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
@@ -140,6 +142,7 @@ fun SearchScreen(
     }
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
     var searchSource by rememberEnumPreference(SearchSourceKey, SearchSource.ONLINE)
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue())
@@ -194,6 +197,7 @@ fun SearchScreen(
                 onClear = { query = TextFieldValue("") },
                 pureBlack = pureBlack,
                 transparentBackground = mainTopGradient,
+                hideTitle = topNavigationBarEnabled,
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -283,9 +287,13 @@ private fun SearchCollapsingHeader(
     onClear: () -> Unit,
     pureBlack: Boolean,
     transparentBackground: Boolean = false,
+    // New Iride UI: the animated large "Search" title is redundant with the persistent
+    // TopNavigationBar tabs bar above it, so it collapses away — only the source-toggle
+    // pill and the search box stay, both at a fixed (non-scroll-animated) position.
+    hideTitle: Boolean = false,
 ) {
     val density = LocalDensity.current
-    val largeTitleHeightPx = with(density) { LargeTitleHeightDp.toPx() }
+    val largeTitleHeightPx = if (hideTitle) 0f else with(density) { LargeTitleHeightDp.toPx() }
 
     SideEffect {
         if (scrollBehavior.state.heightOffsetLimit != -largeTitleHeightPx) {
@@ -293,8 +301,8 @@ private fun SearchCollapsingHeader(
         }
     }
 
-    val fraction = scrollBehavior.state.collapsedFraction
-    val totalHeightDp = SmallTitleBarHeightDp + LargeTitleHeightDp + SearchBoxHeightDp + 12.dp
+    val fraction = if (hideTitle) 0f else scrollBehavior.state.collapsedFraction
+    val totalHeightDp = SmallTitleBarHeightDp + (if (hideTitle) 0.dp else LargeTitleHeightDp) + SearchBoxHeightDp + 12.dp
 
     val indicatorOffset by animateDpAsState(
         targetValue = if (searchSource == SearchSource.ONLINE) 2.dp else 42.dp,
@@ -326,12 +334,12 @@ private fun SearchCollapsingHeader(
                     .graphicsLayer {
                         // Move from Large position to Small position
                         // Expanded: below SmallTitleBar. Collapsed: at 0.
-                        translationY = lerpFloat(with(density) { (LargeTitleHeightDp - 12.dp).toPx() }, 0f, fraction)
+                        translationY = if (hideTitle) 0f else lerpFloat(with(density) { (LargeTitleHeightDp - 12.dp).toPx() }, 0f, fraction)
                     },
-                contentAlignment = Alignment.CenterStart
+                contentAlignment = if (hideTitle) Alignment.CenterEnd else Alignment.CenterStart
             ) {
-                val pillAlpha = (1f - fraction * 2f).coerceIn(0f, 1f)
-                val pillEnabled = fraction < 0.05f
+                val pillAlpha = if (hideTitle) 1f else (1f - fraction * 2f).coerceIn(0f, 1f)
+                val pillEnabled = hideTitle || fraction < 0.05f
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
@@ -339,75 +347,91 @@ private fun SearchCollapsingHeader(
                 ) {
                     val searchStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold)
 
-                    Text(
-                        text = stringResource(R.string.search),
-                        style = searchStyle,
-                        maxLines = 1,
-                        modifier = Modifier.graphicsLayer {
-                            val targetScale = 0.61f
-                            val scale = lerpFloat(1f, targetScale, fraction)
-                            scaleX = scale
-                            scaleY = scale
-                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
-                            },
+                    if (!hideTitle) {
+                        Text(
+                            text = stringResource(R.string.search),
+                            style = searchStyle,
+                            maxLines = 1,
+                            modifier = Modifier.graphicsLayer {
+                                val targetScale = 0.61f
+                                val scale = lerpFloat(1f, targetScale, fraction)
+                                scaleX = scale
+                                scaleY = scale
+                                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
+                                },
 
-                    )
-                    Box(
-                        modifier = Modifier
-                            .alpha(pillAlpha)
-                            .padding(bottom = 4.dp)
-                            .width(80.dp)
-                            .height(40.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                    ) {
+                        )
+                    }
+                    if (hideTitle) {
+                        Box(modifier = Modifier.alpha(pillAlpha).padding(bottom = 4.dp)) {
+                            IrideSegmentedToggle(
+                                options = listOf(
+                                    SearchSource.ONLINE to stringResource(R.string.online),
+                                    SearchSource.LOCAL to stringResource(R.string.filter_library),
+                                ),
+                                selected = searchSource,
+                                enabled = pillEnabled,
+                                onSelect = { value -> if (value != searchSource) onSearchSourceToggle() },
+                            )
+                        }
+                    } else {
                         Box(
                             modifier = Modifier
-                                .offset(x = indicatorOffset, y = 2.dp)
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.secondaryContainer),
-                        )
-                        Row(modifier = Modifier.fillMaxSize()) {
+                                .alpha(pillAlpha)
+                                .padding(bottom = 4.dp)
+                                .width(80.dp)
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                        ) {
                             Box(
                                 modifier = Modifier
-                                    .size(40.dp)
-                                    .clickable(
-                                        enabled = pillEnabled,
-                                        indication = null,
-                                        interactionSource = remember { MutableInteractionSource() },
-                                    ) { if (searchSource != SearchSource.ONLINE) onSearchSourceToggle() },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.language),
-                                    contentDescription = null,
-                                    tint = if (searchSource == SearchSource.ONLINE)
-                                        MaterialTheme.colorScheme.onSecondaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clickable(
-                                        enabled = pillEnabled,
-                                        indication = null,
-                                        interactionSource = remember { MutableInteractionSource() },
-                                    ) { if (searchSource != SearchSource.LOCAL) onSearchSourceToggle() },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.bookmark_outlined),
-                                    contentDescription = null,
-                                    tint = if (searchSource == SearchSource.LOCAL)
-                                        MaterialTheme.colorScheme.onSecondaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp),
-                                )
+                                    .offset(x = indicatorOffset, y = 2.dp)
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                            )
+                            Row(modifier = Modifier.fillMaxSize()) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clickable(
+                                            enabled = pillEnabled,
+                                            indication = null,
+                                            interactionSource = remember { MutableInteractionSource() },
+                                        ) { if (searchSource != SearchSource.ONLINE) onSearchSourceToggle() },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.language),
+                                        contentDescription = null,
+                                        tint = if (searchSource == SearchSource.ONLINE)
+                                            MaterialTheme.colorScheme.onSecondaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clickable(
+                                            enabled = pillEnabled,
+                                            indication = null,
+                                            interactionSource = remember { MutableInteractionSource() },
+                                        ) { if (searchSource != SearchSource.LOCAL) onSearchSourceToggle() },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.bookmark_outlined),
+                                        contentDescription = null,
+                                        tint = if (searchSource == SearchSource.LOCAL)
+                                            MaterialTheme.colorScheme.onSecondaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
                             }
                         }
                     }
@@ -418,8 +442,10 @@ private fun SearchCollapsingHeader(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .graphicsLayer { 
-                        val startOffset = with(density) { (SmallTitleBarHeightDp + LargeTitleHeightDp).toPx() }
+                    .graphicsLayer {
+                        val startOffset = with(density) {
+                            (SmallTitleBarHeightDp + (if (hideTitle) 0.dp else LargeTitleHeightDp)).toPx()
+                        }
                         translationY = startOffset + scrollBehavior.state.heightOffset
                     }
                     .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp)

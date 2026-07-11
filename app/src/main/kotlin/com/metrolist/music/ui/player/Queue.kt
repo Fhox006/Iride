@@ -184,6 +184,7 @@ fun Queue(
     isCommentsActive: Boolean = false,
     isCommentsFeatureEnabled: Boolean = false,
     onToggleComments: () -> Unit = {},
+    hideCollapsedControls: Boolean = false,
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -310,7 +311,10 @@ fun Queue(
             )
         },
         collapsedContent = {
-            if (useNewPlayerDesign) {
+            if (hideCollapsedControls) {
+                // New Iride UI (MP3 player) has its own lyrics/queue/favorite controls —
+                // showing this peek row too would duplicate them.
+            } else if (useNewPlayerDesign) {
                 // New design
                 Row(
                     horizontalArrangement = Arrangement.SpaceEvenly,

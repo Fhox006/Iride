@@ -18,7 +18,11 @@ import androidx.compose.animation.shrinkOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -47,11 +51,15 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
 import com.metrolist.music.ui.screens.OptionStats
@@ -68,7 +76,53 @@ fun <E> ChipsRow(
     chipHeight: androidx.compose.ui.unit.Dp = 32.dp,
     horizontalPadding: androidx.compose.ui.unit.Dp = 12.dp,
     labelStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.labelLarge,
+    useIrideStyle: Boolean = false,
 ) {
+    if (useIrideStyle) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Spacer(Modifier.width(horizontalPadding))
+
+            val density = LocalDensity.current
+
+            chips.forEach { (value, label) ->
+                val isSelected = currentValue == value
+                var textWidthPx by remember(value) { mutableStateOf(0) }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { onValueUpdate(value) }
+                        .padding(vertical = 6.dp),
+                ) {
+                    Text(
+                        text = label,
+                        style = labelStyle,
+                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.35f),
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        modifier = Modifier.onSizeChanged { textWidthPx = it.width },
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .height(2.dp)
+                            .width(with(density) { textWidthPx.toDp() })
+                            .background(if (isSelected) Color.White else Color.Transparent),
+                    )
+                }
+                Spacer(Modifier.width(20.dp))
+            }
+        }
+        return
+    }
+
     Row(
         modifier =
         modifier
@@ -104,6 +158,57 @@ fun <E> ChipsRow(
             )
 
             Spacer(Modifier.width(8.dp))
+        }
+    }
+}
+
+/**
+ * Compact two-or-more-option pill switcher in the New Iride UI style: small underlined
+ * text labels side by side, no background capsule so options never visually overlap.
+ * Meant for header trailing slots (library saved/downloaded, search online/library, ...).
+ */
+@Composable
+fun <E> IrideSegmentedToggle(
+    options: List<Pair<E, String>>,
+    selected: E,
+    onSelect: (E) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    spacing: androidx.compose.ui.unit.Dp = 16.dp,
+) {
+    val density = LocalDensity.current
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        options.forEachIndexed { index, (value, label) ->
+            val isSelected = selected == value
+            var textWidthPx by remember(value) { mutableStateOf(0) }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .clickable(
+                        enabled = enabled,
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { onSelect(value) },
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.35f),
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    modifier = Modifier.onSizeChanged { textWidthPx = it.width },
+                )
+                Spacer(Modifier.height(3.dp))
+                Box(
+                    modifier = Modifier
+                        .height(2.dp)
+                        .width(with(density) { textWidthPx.toDp() })
+                        .background(if (isSelected) Color.White else Color.Transparent),
+                )
+            }
+            if (index != options.lastIndex) Spacer(Modifier.width(spacing))
         }
     }
 }

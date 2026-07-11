@@ -30,6 +30,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -43,6 +46,7 @@ import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -83,9 +87,13 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -112,8 +120,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.coroutineScope
 import androidx.lifecycle.lifecycleScope
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -128,6 +134,8 @@ import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.music.constants.AppBarHeight
+import com.metrolist.music.constants.AppPeekHeight
+import com.metrolist.music.constants.CurtainCornerRevealHeight
 import com.metrolist.music.constants.AppLanguageKey
 import com.metrolist.music.constants.CheckForUpdatesKey
 import com.metrolist.music.constants.DarkModeKey
@@ -187,6 +195,8 @@ import com.metrolist.music.ui.component.rememberBottomSheetState
 import com.metrolist.music.ui.component.shimmer.ShimmerTheme
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.player.BottomSheetPlayer
+import com.metrolist.music.ui.player.IrideBridgeState
+import com.metrolist.music.ui.player.IrideMiniPlayerBridgeOverlay
 import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.screens.NavigationBuilder
 import com.metrolist.music.ui.screens.settings.DarkMode
@@ -699,15 +709,29 @@ class MainActivity : ComponentActivity() {
 
                 val (listenTogetherInTopBar) = rememberPreference(ListenTogetherInTopBarKey, defaultValue = true)
                 val (showNewsTab) = rememberPreference(ShowNewsTabKey, defaultValue = false)
+                val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
+                val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
                 val navigationItems =
-                    remember(listenTogetherInTopBar, showNewsTab) {
-                        Screens.MainScreens.filter {
+                    remember(listenTogetherInTopBar, showNewsTab, topNavigationBarEnabled) {
+                        val filtered = Screens.MainScreens.filter {
                             (it != Screens.ListenTogether || !listenTogetherInTopBar) &&
                                 (it != Screens.News || showNewsTab)
                         }
+                        // New Iride UI: Home, Library, Search, then Account last.
+                        if (topNavigationBarEnabled) {
+                            filtered.sortedBy { screen ->
+                                when (screen) {
+                                    Screens.Home -> 0
+                                    Screens.Library -> 1
+                                    Screens.Search -> 2
+                                    Screens.Account -> 4
+                                    else -> 3
+                                }
+                            }
+                        } else {
+                            filtered
+                        }
                     }
-                val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
-                val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
                 val (useNewMiniPlayerDesign) = rememberPreference(UseNewMiniPlayerDesignKey, defaultValue = true)
                 val defaultOpenTab =
                     remember {
@@ -772,6 +796,10 @@ class MainActivity : ComponentActivity() {
 
                 val showRail = isLandscape && !inSearchScreen
 
+                // New Iride UI: the player becomes a fixed curtain layer behind the whole app
+                // (portrait/top-level only — the landscape rail's MiniPlayer peek is untouched).
+                val curtainMode = topNavigationBarEnabled && !showRail
+
                 val showTopGradientTarget = mainTopGradientEnabled && !pureBlack &&
                     currentRoute in setOf(
                         Screens.Home.route,
@@ -789,19 +817,41 @@ class MainActivity : ComponentActivity() {
                     rememberBottomSheetState(
                         dismissedBound = 0.dp,
                         collapsedBound = if (!showRail) {
-                            bottomInset + (if (isTopLevelRoute && !topNavigationBarEnabled) FloatingPillHeight else MiniPlayerHeight) + FloatingPillBottomSpacing
+                            bottomInset + (if (isTopLevelRoute && !topNavigationBarEnabled) FloatingPillHeight else MiniPlayerHeight) + FloatingPillBottomSpacing +
+                                (if (curtainMode) CurtainCornerRevealHeight else 0.dp)
                         } else {
                             bottomInset + MiniPlayerHeight
                         },
-                        expandedBound = maxHeight,
+                        // New Iride UI: the player "curtain" can never cover the whole screen — a
+                        // sliver (AppPeekHeight) of app content stays visible at the top always.
+                        // Only applies where the curtain mechanism is actually engaged (portrait) —
+                        // landscape/rail mode keeps the old self-positioning full-expand behavior.
+                        expandedBound = if (curtainMode) maxHeight - AppPeekHeight else maxHeight,
+                        preventDismissDrag = curtainMode,
                     )
 
-                val userDismissedPlayer = remember { mutableStateOf(false) }
+                // The curtain only actually covers anything while a track is loaded (collapsed or
+                // expanded). When dismissed (no track — e.g. on cold app start), it isn't mounted
+                // at all, so nothing must reserve its space either: Scaffold takes the full height
+                // and FloatingPill becomes the visible bottom bar instead, exactly like the classic
+                // (non-curtain) UI already does when there's nothing playing.
+                val curtainActive = curtainMode && !playerBottomSheetState.isDismissed
+
+                // New Iride UI bridge: shared between BottomSheetPlayer (which reports the mini
+                // and expanded rects of the cover art) and IrideMiniPlayerBridgeOverlay (which
+                // draws a single moving cover, behind the app, between the two) — see
+                // IrideMp3Player.kt for the full explanation.
+                val irideBridgeState = remember { IrideBridgeState() }
 
                 val playerAwareWindowInsets =
-                    remember(bottomInset, showRail, isTopLevelRoute, topNavigationBarEnabled, playerBottomSheetState.isDismissed) {
+                    remember(bottomInset, showRail, isTopLevelRoute, topNavigationBarEnabled, curtainActive, playerBottomSheetState.isDismissed) {
                         var bottom = bottomInset
-                        if (!showRail) {
+                        if (curtainActive) {
+                            // The app layer's own box is already shortened by collapsedBound (see
+                            // Scaffold's modifier below) — screens never overlap the player here,
+                            // so no extra bottom padding is needed at all.
+                            bottom = 0.dp
+                        } else if (!showRail) {
                             // FloatingPill always occupies space at the bottom
                             bottom += (if (isTopLevelRoute && !topNavigationBarEnabled) FloatingPillHeight else MiniPlayerHeight) + FloatingPillBottomSpacing
                         } else {
@@ -863,40 +913,22 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // Reacts continuously to the actual current-track state instead of checking it once
+                // at connection time — the saved queue is restored asynchronously by MusicService
+                // (it waits for playerInitialized, then calls playQueue), so currentMediaItem is
+                // still null at the instant playerConnection binds on a cold start. A one-shot check
+                // here used to latch the sheet as "user-dismissed" before the restore completed,
+                // leaving the New Iride UI stuck on the classic layout until manually toggled.
                 LaunchedEffect(playerConnection) {
-                    val player = playerConnection?.player ?: return@LaunchedEffect
-                    if (player.currentMediaItem == null) {
-                        if (!playerBottomSheetState.isDismissed) {
-                            playerBottomSheetState.dismiss()
-                        }
-                        userDismissedPlayer.value = true
-                    } else {
-                        if (playerBottomSheetState.isDismissed && !userDismissedPlayer.value) {
+                    val connection = playerConnection ?: return@LaunchedEffect
+                    connection.mediaMetadata.collectLatest { metadata ->
+                        if (metadata == null) {
+                            if (!playerBottomSheetState.isDismissed) {
+                                playerBottomSheetState.dismiss()
+                            }
+                        } else if (playerBottomSheetState.isDismissed) {
                             playerBottomSheetState.collapseSoft()
                         }
-                    }
-                }
-
-                DisposableEffect(playerConnection, playerBottomSheetState) {
-                    val player = playerConnection?.player ?: return@DisposableEffect onDispose { }
-                    val listener =
-                        object : Player.Listener {
-                            override fun onMediaItemTransition(
-                                mediaItem: MediaItem?,
-                                reason: Int,
-                            ) {
-                                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED &&
-                                    mediaItem != null &&
-                                    playerBottomSheetState.isDismissed &&
-                                    !userDismissedPlayer.value
-                                ) {
-                                    playerBottomSheetState.collapseSoft()
-                                }
-                            }
-                        }
-                    player.addListener(listener)
-                    onDispose {
-                        player.removeListener(listener)
                     }
                 }
 
@@ -1019,16 +1051,49 @@ class MainActivity : ComponentActivity() {
                     LocalShimmerTheme provides ShimmerTheme,
                     LocalSyncUtils provides syncUtils,
                     LocalListenTogetherManager provides listenTogetherManager,
+                    LocalTopNavBarController provides TopNavBarController(
+                        navigationItems = navigationItems,
+                        currentRoute = currentRoute,
+                        onItemClick = onNavItemClick,
+                    ),
                 ) {
+                    // New Iride UI: player "curtain" mounted first (behind everything) as a fixed,
+                    // full-screen layer. The app content below (Scaffold) sits on top of it and
+                    // translates up on drag to reveal it — the curtain itself never moves.
+                    if (curtainActive && currentRoute != "wrapped") {
+                        BottomSheetPlayer(
+                            state = playerBottomSheetState,
+                            navController = navController,
+                            pureBlack = pureBlack,
+                            showPeekContent = showRail,
+                            bridgeState = if (curtainMode) irideBridgeState else null,
+                        )
+
+                        // New Iride UI: draws the single moving cover on top of the curtain but
+                        // still *behind* the app (Scaffold, declared right below) — it morphs
+                        // between the collapsed and expanded cover position/size without ever
+                        // needing to draw over the app itself.
+                        IrideMiniPlayerBridgeOverlay(
+                            bridgeState = irideBridgeState,
+                            sheetProgress = playerBottomSheetState.progress,
+                        )
+                    }
+
                     Scaffold(
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
                             Column {
-                                if (topNavigationBarEnabled && !showRail && isTopLevelRoute && currentRoute != "wrapped" && currentRoute != "onboarding") {
+                                // "library" is excluded here for the same reason as "home": it renders its own
+                                // copy of TopNavigationBar inside its own Scaffold (see LibraryMixScreen), so its
+                                // paddingValues correctly reserve space for it. Rendering it a second time here —
+                                // pinned in this outer Scaffold, whose content Row never applies this topBar's
+                                // paddingValues — would draw a duplicate copy on top of Library's own content.
+                                if (topNavigationBarEnabled && !showRail && isTopLevelRoute && currentRoute != "wrapped" && currentRoute != "onboarding" && currentRoute != "home" && currentRoute != "library") {
                                     TopNavigationBar(
                                         navigationItems = navigationItems,
                                         currentRoute = currentRoute,
                                         onItemClick = onNavItemClick,
+                                        containerColor = if (mainTopGradientEnabled) Color.Transparent else MaterialTheme.colorScheme.background,
                                     )
                                 }
                                 AnimatedVisibility(
@@ -1069,7 +1134,7 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         bottomBar = {
-                            if (currentRoute != "wrapped" && !playerBottomSheetState.isDismissed) {
+                            if (!curtainMode && currentRoute != "wrapped" && !playerBottomSheetState.isDismissed) {
                                 BottomSheetPlayer(
                                     state = playerBottomSheetState,
                                     navController = navController,
@@ -1079,9 +1144,88 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
+                            if (curtainActive) {
+                                // App layer: fixed height (leaves a collapsedBound-tall gap at the
+                                // bottom where the curtain peeks through), rounded bottom corners,
+                                // translates up (never scales/shrinks) as the curtain is dragged —
+                                // capped so AppPeekHeight always stays visible at the top.
+                                // The app content itself dissolves to black as the curtain expands
+                                // (drawn inside this same clipped graphicsLayer, so the rounded
+                                // corners fade correctly too) instead of a separate black panel on
+                                // top — there's no second layer to composite.
+                                Modifier
+                                    .align(Alignment.TopStart)
+                                    .fillMaxWidth()
+                                    // Extends past collapsedBound by CurtainCornerRevealHeight so
+                                    // the app layer's bottom edge lands flush with the collapsed
+                                    // curtain's drag handle instead of leaving a bare curtain-
+                                    // colored strip above it (collapsedBound reserves that strip
+                                    // for the corner curve, but the curve itself only eats into the
+                                    // far left/right edges — the centered handle is never under it).
+                                    .height(maxHeight - playerBottomSheetState.collapsedBound + CurtainCornerRevealHeight)
+                                    .graphicsLayer {
+                                        shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
+                                        clip = true
+                                        translationY = -(playerBottomSheetState.value - playerBottomSheetState.collapsedBound)
+                                            .coerceAtLeast(0.dp)
+                                            .toPx()
+                                    }
+                                    // Stroke only the bottom rounded edge (boundary against the
+                                    // curtain) — a plain Modifier.border traces the shape's whole
+                                    // outline, which would draw a visible line across the top and
+                                    // sides too (those corners are square, but the outline is still
+                                    // a closed rect there), leaving a border around the entire app
+                                    // frame instead of just where it meets the player.
+                                    .drawWithContent {
+                                        drawContent()
+                                        val dissolve = playerBottomSheetState.progress.coerceIn(0f, 1f)
+                                        if (dissolve > 0f) {
+                                            drawRect(Color.Black, alpha = dissolve)
+                                        }
+                                        // Inset the traced edge inward by a full stroke width so the
+                                        // whole stroke sits inside the clipped shape instead of being
+                                        // centered on the clip boundary itself (which would clip away
+                                        // its outer half and leave only a faint sliver visible).
+                                        val strokeWidthPx = 1.5.dp.toPx()
+                                        val inset = strokeWidthPx
+                                        val r = (28.dp.toPx() - inset).coerceAtLeast(0f)
+                                        val bottomEdge = Path().apply {
+                                            moveTo(inset, size.height - inset - r)
+                                            arcTo(
+                                                rect = Rect(inset, size.height - inset - 2 * r, inset + 2 * r, size.height - inset),
+                                                startAngleDegrees = 180f,
+                                                sweepAngleDegrees = -90f,
+                                                forceMoveTo = false,
+                                            )
+                                            lineTo(size.width - inset - r, size.height - inset)
+                                            arcTo(
+                                                rect = Rect(size.width - inset - 2 * r, size.height - inset - 2 * r, size.width - inset, size.height - inset),
+                                                startAngleDegrees = 90f,
+                                                sweepAngleDegrees = -90f,
+                                                forceMoveTo = false,
+                                            )
+                                        }
+                                        // Bell-curve alpha (0 at rest collapsed, 0 at rest expanded,
+                                        // peaks mid-drag) instead of a constant value — a fixed alpha
+                                        // stroke sitting on top of a background that's dissolving to
+                                        // black read as an abrupt hard edge that never went away. This
+                                        // way the seam materializes and dematerializes gradually,
+                                        // blending into the curtain instead of cutting into it.
+                                        val borderAlpha = 0.16f * kotlin.math.sin((Math.PI * dissolve).toFloat()).coerceIn(0f, 1f)
+                                        if (borderAlpha > 0f) {
+                                            drawPath(
+                                                path = bottomEdge,
+                                                color = Color.White.copy(alpha = borderAlpha),
+                                                style = Stroke(width = strokeWidthPx),
+                                            )
+                                        }
+                                    }
+                                    .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
+                            } else {
+                                Modifier
+                                    .fillMaxSize()
+                                    .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
+                            },
                     ) {
                         Row(Modifier.fillMaxSize()) {
                             val onRailItemClick: (Screens, Boolean) -> Unit =
@@ -1246,6 +1390,59 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // New Iride UI: the app-layer sliver (AppPeekHeight) that stays visible at the
+                    // top while the curtain player is expanded is not really usable as an app
+                    // screen (it's just the translated bottom edge of the app content, already
+                    // dissolving to black via the Scaffold's own drawWithContent above) — dragging
+                    // already collapses it, but a plain tap there used to fall through to whatever
+                    // app content happened to be underneath instead of collapsing the player. This
+                    // catcher is purely a hit target (no drawing of its own) so a tap here reliably
+                    // collapses the player instead of hitting whatever's underneath.
+                    // Only mounted while actually expanded: a disabled Modifier.clickable still
+                    // registers a pointer input node and swallows taps meant for whatever's
+                    // beneath it (here, TopNavigationBar's nav buttons, which live inside this
+                    // same top AppPeekHeight strip) even though its onClick never fires — so
+                    // gating via the composable's presence, not just `enabled`, is required.
+                    if (curtainActive && !playerBottomSheetState.isCollapsed) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .fillMaxWidth()
+                                .height(AppPeekHeight)
+                                .zIndex(1f)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = { playerBottomSheetState.collapseSoft() },
+                                ),
+                        )
+                    }
+
+                    // New Iride UI: drag-handle indicator for the curtain player. Drawn on its own
+                    // layer above the app content (zIndex) instead of inside the curtain's own
+                    // collapsedContent, because that content sits *behind* the app layer and fades
+                    // out by ~25% drag progress — the handle used to vanish mid-gesture right when
+                    // the user most needed the "this is a drag handle" affordance. Staying mounted
+                    // for the whole curtainActive lifetime and gliding linearly (matching the sheet's
+                    // own 1:1 drag progress, no easing) from its collapsed spot up to just under the
+                    // app-peek sliver means it reads as functional in both drag directions — pulling
+                    // it down from the top closes the player exactly like pulling it up opens it.
+                    if (curtainActive) {
+                        val handleProgress = playerBottomSheetState.progress.coerceIn(0f, 1f)
+                        val collapsedHandleY = maxHeight - playerBottomSheetState.collapsedBound + 10.dp
+                        val expandedHandleY = AppPeekHeight + 8.dp
+                        val handleY = collapsedHandleY + (expandedHandleY - collapsedHandleY) * handleProgress
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .offset(y = handleY)
+                                .zIndex(1f)
+                                .size(width = 36.dp, height = 4.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(Color.White.copy(alpha = 0.35f)),
+                        )
+                    }
+
                     BottomSheetMenu(
                         state = LocalMenuState.current,
                         modifier = Modifier.align(Alignment.BottomCenter),
@@ -1256,7 +1453,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
 
-                    if (!showRail && currentRoute != "wrapped" && currentRoute != "onboarding") {
+                    if (!curtainActive && !showRail && currentRoute != "wrapped" && currentRoute != "onboarding") {
                         FloatingPill(
                             navigationItems = navigationItems,
                             currentRoute = currentRoute,
@@ -1267,7 +1464,6 @@ class MainActivity : ComponentActivity() {
                             pureBlack = pureBlack,
                             slimNav = slimNav,
                             showNavRow = !topNavigationBarEnabled,
-                            onPlayerExpand = { userDismissedPlayer.value = false },
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .zIndex(1f)
@@ -1481,3 +1677,10 @@ val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No Downl
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }
 val LocalListenTogetherManager = staticCompositionLocalOf<com.metrolist.music.listentogether.ListenTogetherManager?> { null }
 val LocalIsPlayerExpanded = compositionLocalOf { false }
+
+data class TopNavBarController(
+    val navigationItems: List<Screens>,
+    val currentRoute: String?,
+    val onItemClick: (Screens, Boolean) -> Unit,
+)
+val LocalTopNavBarController = compositionLocalOf<TopNavBarController?> { null }

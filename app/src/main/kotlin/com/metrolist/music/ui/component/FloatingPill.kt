@@ -60,9 +60,11 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -108,6 +110,7 @@ import com.metrolist.music.listentogether.ListenTogetherManager
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.CastConnectionHandler
 import com.metrolist.music.playback.PlayerConnection
+import com.metrolist.music.ui.player.irideReportRect
 import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.theme.PlayerColorExtractor
@@ -132,7 +135,7 @@ val FloatingPillHeight = MiniPlayerHeight + NavRowHeight  // 64 + 56 = 120dp
 val FloatingPillBottomSpacing = 12.dp
 
 @Stable
-private class PillProgressState(
+class PillProgressState(
     private val positionState: MutableLongState,
     private val durationState: MutableLongState,
 ) {
@@ -436,77 +439,25 @@ private fun PillContent(
 
             Column(modifier = Modifier.fillMaxWidth()) {
                 // ── TOP ROW: player (height = MiniPlayerHeight, fully clickable → open player) ──
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(MiniPlayerHeight)
-                        .clickable {
-                            playerBottomSheetState.expandSoft()
-                            onPlayerExpand?.invoke()
-                        },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 8.dp, vertical = 8.dp),
-                    ) {
-                        PillPlayButton(
-                            progressState = progressState,
-                            mediaMetadata = effectiveMetadata,
-                            primaryColor = primaryColor,
-                            outlineColor = outlineColor,
-                        )
-
-                        Spacer(Modifier.width(16.dp))
-
-                        PillSongInfo(
-                            mediaMetadata = effectiveMetadata,
-                            onSurfaceColor = onSurfaceColor,
-                            errorColor = errorColor,
-                            modifier = Modifier.weight(1f),
-                        )
-
-                        Spacer(Modifier.width(8.dp))
-
-                        if (isCasting) {
-                            Icon(
-                                painter = painterResource(R.drawable.cast_connected),
-                                contentDescription = null,
-                                tint = primaryColor,
-                                modifier = Modifier.size(20.dp),
-                            )
-                            Spacer(Modifier.width(8.dp))
-                        }
-
-                        mediaMetadata?.let {
-                            PillFavoriteButton(
-                                songId = it.id,
-                                onSurfaceColor = onSurfaceColor,
-                                playerConnection = playerConnection,
-                            )
-                        }
-
-                        Spacer(Modifier.width(4.dp))
-
-                        PillPlayPauseButton(
-                            playbackState = playbackState,
-                            isCasting = isCasting,
-                            castHandler = castHandler,
-                            playerConnection = playerConnection,
-                            listenTogetherManager = listenTogetherManager,
-                            onSurfaceColor = onSurfaceColor,
-                        )
-
-                        PillSkipNextButton(
-                            canSkipNext = canSkipNext,
-                            playerConnection = playerConnection,
-                            listenTogetherManager = listenTogetherManager,
-                            onSurfaceColor = onSurfaceColor,
-                        )
-                    }
-                }
+                PillPlayerRow(
+                    progressState = progressState,
+                    displayMetadata = effectiveMetadata,
+                    favoriteSongId = mediaMetadata?.id,
+                    playbackState = playbackState,
+                    canSkipNext = canSkipNext,
+                    isCasting = isCasting,
+                    castHandler = castHandler,
+                    playerConnection = playerConnection,
+                    listenTogetherManager = listenTogetherManager,
+                    primaryColor = primaryColor,
+                    outlineColor = outlineColor,
+                    onSurfaceColor = onSurfaceColor,
+                    errorColor = errorColor,
+                    onExpandClick = {
+                        playerBottomSheetState.expandSoft()
+                        onPlayerExpand?.invoke()
+                    },
+                )
 
                 // ── BOTTOM ROW: nav buttons, visible only on top-level routes ──
                 AnimatedVisibility(
@@ -539,6 +490,111 @@ private fun PillContent(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * The pill's top row (thumbnail/progress ring, title/artist, cast icon, favorite, play/pause,
+ * skip-next) extracted so it can be reused both by the floating [FloatingPill] (old UI) and by the
+ * New Iride UI's player-curtain peek slot, which pins this row to the bottom of the screen instead
+ * of floating it — the drag-to-expand gesture in that case is attached by the caller, not here;
+ * this composable only handles tap-to-expand via [onExpandClick].
+ */
+@Composable
+fun PillPlayerRow(
+    progressState: PillProgressState,
+    displayMetadata: MediaMetadata,
+    favoriteSongId: String?,
+    playbackState: Int,
+    canSkipNext: Boolean,
+    isCasting: Boolean,
+    castHandler: CastConnectionHandler?,
+    playerConnection: PlayerConnection,
+    listenTogetherManager: ListenTogetherManager?,
+    primaryColor: Color,
+    outlineColor: Color,
+    onSurfaceColor: Color,
+    errorColor: Color,
+    onExpandClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    // New Iride UI bridge: when set, the cover art below reports its on-screen rect here and hides
+    // itself instead of drawing — IrideMiniPlayerBridgeOverlay morphs a single moving copy between
+    // this collapsed position and the expanded player's cover, rather than cross-fading two
+    // duplicates. Play/pause, skip and favorite are left alone and keep cross-fading.
+    onArtPositioned: ((Rect) -> Unit)? = null,
+    // Same idea as [onArtPositioned] but for the title/artist block — lets the bridge overlay morph
+    // the text (and cross-fade its font) between this collapsed position and the expanded player's.
+    onInfoPositioned: ((Rect) -> Unit)? = null,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(MiniPlayerHeight)
+            .clickable { onExpandClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+        ) {
+            PillPlayButton(
+                progressState = progressState,
+                mediaMetadata = displayMetadata,
+                primaryColor = primaryColor,
+                outlineColor = outlineColor,
+                onArtPositioned = onArtPositioned,
+            )
+
+            Spacer(Modifier.width(16.dp))
+
+            PillSongInfo(
+                mediaMetadata = displayMetadata,
+                onSurfaceColor = onSurfaceColor,
+                errorColor = errorColor,
+                onInfoPositioned = onInfoPositioned,
+                modifier = Modifier.weight(1f),
+            )
+
+            Spacer(Modifier.width(8.dp))
+
+            if (isCasting) {
+                Icon(
+                    painter = painterResource(R.drawable.cast_connected),
+                    contentDescription = null,
+                    tint = primaryColor,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+
+            favoriteSongId?.let {
+                PillFavoriteButton(
+                    songId = it,
+                    onSurfaceColor = onSurfaceColor,
+                    playerConnection = playerConnection,
+                )
+            }
+
+            Spacer(Modifier.width(4.dp))
+
+            PillPlayPauseButton(
+                playbackState = playbackState,
+                isCasting = isCasting,
+                castHandler = castHandler,
+                playerConnection = playerConnection,
+                listenTogetherManager = listenTogetherManager,
+                onSurfaceColor = onSurfaceColor,
+            )
+
+            PillSkipNextButton(
+                canSkipNext = canSkipNext,
+                playerConnection = playerConnection,
+                listenTogetherManager = listenTogetherManager,
+                onSurfaceColor = onSurfaceColor,
+            )
         }
     }
 }
@@ -635,6 +691,7 @@ private fun PillPlayButton(
     mediaMetadata: MediaMetadata,
     primaryColor: Color,
     outlineColor: Color,
+    onArtPositioned: ((Rect) -> Unit)? = null,
 ) {
     val trackColor = outlineColor.copy(alpha = 0.2f)
     val strokeWidth = 3.dp
@@ -654,6 +711,13 @@ private fun PillPlayButton(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(44.dp)
+                .then(
+                    if (onArtPositioned != null) {
+                        Modifier.irideReportRect(onArtPositioned).alpha(0f)
+                    } else {
+                        Modifier
+                    },
+                )
                 .clip(imageShape)
                 .border(1.dp, outlineColor.copy(alpha = 0.3f), imageShape),
         ) {
@@ -674,10 +738,21 @@ private fun PillSongInfo(
     onSurfaceColor: Color,
     errorColor: Color,
     modifier: Modifier = Modifier,
+    onInfoPositioned: ((Rect) -> Unit)? = null,
 ) {
     val error by LocalPlayerConnection.current?.error?.collectAsState() ?: remember { mutableStateOf(null) }
 
-    Column(modifier = modifier, verticalArrangement = Arrangement.Center) {
+    Column(
+        modifier = modifier
+            .then(
+                if (onInfoPositioned != null) {
+                    Modifier.irideReportRect(onInfoPositioned).alpha(0f)
+                } else {
+                    Modifier
+                },
+            ),
+        verticalArrangement = Arrangement.Center,
+    ) {
         Text(
             text = mediaMetadata.title,
             color = onSurfaceColor,

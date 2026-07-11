@@ -265,6 +265,7 @@
     <string name="theme">Tema</string>
     <string name="player">Lettore</string>
     <string name="forgotten_favorites">Preferiti dimenticati</string>
+    <string name="discs_for_you">Dischi scelti per te</string>
     <string name="similar_to">Simile a</string>
     <string name="add_anyway">Aggiungere comunque</string>
     <string name="remove_download_playlist_confirm">Vuoi davvero rimuovere tutti i brani della playlist \"%s\" dalla memoria dei Brani Scaricati?</string>
