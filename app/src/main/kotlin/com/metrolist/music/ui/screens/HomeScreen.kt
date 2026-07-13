@@ -140,6 +140,7 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AlbumGridItem
+import com.metrolist.music.ui.component.VinylPeekFraction
 import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.LocalMenuState
@@ -236,6 +237,7 @@ fun HomeScreen(
         derivedStateOf { pinnedSpeedDialItems.map { it.id }.toSet() }
     }
     val isRandomizing by viewModel.isRandomizing.collectAsStateWithLifecycle()
+    val regeneratingSections by viewModel.regeneratingSections.collectAsStateWithLifecycle()
 
     val quickPicks by viewModel.quickPicks.collectAsStateWithLifecycle()
     val keepListening by viewModel.keepListening.collectAsStateWithLifecycle()
@@ -270,15 +272,18 @@ fun HomeScreen(
     val irideStart = if (topNavigationBarEnabled) 20.dp else 12.dp
     // The shared ListItem/GridItem components (SongListItem, YouTubeGridItem, etc.) each carry
     // their own built-in horizontal inset on top of whatever contentPadding their row/grid gets —
-    // 12dp row padding + 4dp thumbnail box for ListItem-based items, 8dp column padding for
-    // GridItem-based items. That's on purpose (it's also what creates the gap between adjacent
-    // items in these horizontal carousels) but it means using irideStart as contentPadding here
-    // pushes the item's actual visual thumbnail further right than the title text above it.
-    // Subtracting the item's own inset keeps the first thumbnail flush with the title without
-    // touching those shared components (used everywhere, not just this screen) or losing the
-    // item-to-item spacing.
+    // 12dp row padding + 4dp thumbnail box for ListItem-based items, and (in New Iride UI) 4dp
+    // column padding for GridItem-based items — see GridItem's own `hPad` in Items.kt, which is
+    // 4dp when the New Iride UI top nav is enabled, 8dp otherwise. That's on purpose (it's also
+    // what creates the gap between adjacent items in these horizontal carousels) but it means
+    // using irideStart as contentPadding here pushes the item's actual visual thumbnail further
+    // right than the title text above it. Subtracting the item's own inset keeps the first
+    // thumbnail flush with the title without touching those shared components (used everywhere,
+    // not just this screen) or losing the item-to-item spacing. This previously subtracted the
+    // classic UI's 8dp GridItem inset even in New Iride UI mode (where it's actually 4dp),
+    // leaving grid covers sitting 4dp left of the title text above them.
     val irideListItemStart = if (topNavigationBarEnabled) 4.dp else irideStart
-    val irideGridItemStart = if (topNavigationBarEnabled) 12.dp else irideStart
+    val irideGridItemStart = if (topNavigationBarEnabled) 16.dp else irideStart
     // New Iride UI: thumbnails in NavigationTitle (e.g. "Similar to <artist>") shrink to sit
     // inline with the label/title text stack instead of towering over it.
     val irideTitleThumbSize = if (topNavigationBarEnabled) 22.dp else ListThumbnailSize
@@ -486,7 +491,7 @@ fun HomeScreen(
                 }
             }
 
-            val ytGridItem: @Composable (YTItem, androidx.compose.ui.unit.Dp?) -> Unit = { item, sizeOverride ->
+            val ytGridItem: @Composable (YTItem, androidx.compose.ui.unit.Dp?, Boolean) -> Unit = { item, sizeOverride, dischiPerTeStyle ->
                 val size = sizeOverride ?: if (item.isMixtape) 180.dp else currentGridHeight
                 YouTubeGridItem(
                     item = item,
@@ -494,6 +499,8 @@ fun HomeScreen(
                     isPlaying = isPlaying,
                     coroutineScope = scope,
                     thumbnailRatio = 1f,
+                    showPlayButton = !dischiPerTeStyle,
+                    showVinylEffect = dischiPerTeStyle,
                     size = size,
                     modifier = Modifier.combinedClickable(
                         onClick = {
@@ -574,6 +581,8 @@ fun HomeScreen(
                             isPlaying = isPlaying,
                             coroutineScope = scope,
                             size = currentGridHeight,
+                            showPlayButton = !topNavigationBarEnabled,
+                            showVinylEffect = topNavigationBarEnabled,
                             modifier = Modifier.combinedClickable(
                                 onClick = { navController.navigate("album/${album.id}") },
                                 onLongClick = {
@@ -585,7 +594,7 @@ fun HomeScreen(
                             ),
                         )
                     }
-                    is DischiPerTeItem.Remote -> ytGridItem(discItem.item, null)
+                    is DischiPerTeItem.Remote -> ytGridItem(discItem.item, null, topNavigationBarEnabled)
                 }
             }
 
@@ -595,6 +604,8 @@ fun HomeScreen(
                         NavigationTitle(
                             title = stringResource(R.string.discs_for_you),
                             modifier = Modifier.animateItem(),
+                            onRefreshClick = { viewModel.regenerateDischiPerTe() },
+                            isRefreshing = "dischi_per_te" in regeneratingSections,
                             useIrideStyle = topNavigationBarEnabled,
                             collapsed = isSectionCollapsed("dischi_per_te"),
                             onCollapseToggle = { toggleSection("dischi_per_te") },
@@ -602,7 +613,14 @@ fun HomeScreen(
                     }
                     item(key = "dischi_per_te_list") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("dischi_per_te")) {
-                            LazyRow(contentPadding = PaddingValues(horizontal = irideGridItemStart), modifier = Modifier.animateItem()) {
+                            // Extra gap reserves room for the vinyl disc peeking out of each
+                            // album cover (New Iride UI only) so it never overlaps the next card.
+                            val dischiPerTeSpacing = if (topNavigationBarEnabled) currentGridHeight * VinylPeekFraction else 0.dp
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = irideGridItemStart),
+                                horizontalArrangement = Arrangement.spacedBy(dischiPerTeSpacing),
+                                modifier = Modifier.animateItem(),
+                            ) {
                                 items(discs, key = { "dischi_per_te_${it.id}" }) { discItem -> dischiPerTeGridItem(discItem) }
                             }
                         }
@@ -959,6 +977,8 @@ fun HomeScreen(
                                 onPlayAllClick = if (!isListenTogetherGuest) {
                                     { playerConnection?.playQueue(ListQueue(title = title, items = filteredQp.map { it.toMediaItem() })) }
                                 } else null,
+                                onRefreshClick = { viewModel.regenerateQuickPicks() },
+                                isRefreshing = "quick_picks" in regeneratingSections,
                                 useIrideStyle = topNavigationBarEnabled,
                                 collapsed = isSectionCollapsed("quick_picks"),
                                 onCollapseToggle = { toggleSection("quick_picks") },
@@ -1274,7 +1294,7 @@ fun HomeScreen(
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("account_playlists")) {
                             LazyRow(contentPadding = PaddingValues(horizontal = irideGridItemStart), modifier = Modifier.animateItem()) {
                                 items(items = apl.distinctBy { it.id }, key = { "home_account_playlist_${it.id}" }) { ap ->
-                                    ytGridItem(ap, null)
+                                    ytGridItem(ap, null, false)
                                 }
                             }
                         }
@@ -1290,6 +1310,8 @@ fun HomeScreen(
                                 val items = discoverList.mapNotNull { (it.recommendation as? SongItem)?.toMediaMetadata() }
                                 if (items.isNotEmpty()) playerConnection?.playQueue(ListQueue(title = title, items = items.map { it.toMediaItem() }))
                             },
+                            onRefreshClick = { viewModel.regenerateDailyDiscover() },
+                            isRefreshing = "daily_discover" in regeneratingSections,
                             useIrideStyle = topNavigationBarEnabled,
                             collapsed = isSectionCollapsed("daily_discover"),
                             onCollapseToggle = { toggleSection("daily_discover") },
@@ -1336,6 +1358,8 @@ fun HomeScreen(
                         NavigationTitle(
                             title = stringResource(R.string.from_the_community),
                             modifier = Modifier.animateItem(),
+                            onRefreshClick = { viewModel.regenerateCommunityPlaylists() },
+                            isRefreshing = "community_playlists" in regeneratingSections,
                             useIrideStyle = topNavigationBarEnabled,
                             collapsed = isSectionCollapsed("community_playlists"),
                             onCollapseToggle = { toggleSection("community_playlists") },
@@ -1410,6 +1434,8 @@ fun HomeScreen(
                                     is Playlist -> {}
                                 }
                             },
+                            onRefreshClick = { viewModel.regenerateSimilarRecommendations() },
+                            isRefreshing = "similar_recommendations" in regeneratingSections,
                             modifier = Modifier.animateItem(),
                             useIrideStyle = topNavigationBarEnabled,
                             collapsed = isSectionCollapsed("similar_to_$index"),
@@ -1419,7 +1445,7 @@ fun HomeScreen(
                     item(key = "similar_to_list_$index") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("similar_to_$index")) {
                             LazyRow(contentPadding = PaddingValues(horizontal = irideGridItemStart), modifier = Modifier.animateItem()) {
-                                items(rec.items) { recItem -> ytGridItem(recItem, null) }
+                                items(rec.items) { recItem -> ytGridItem(recItem, null, false) }
                             }
                         }
                     }
@@ -1512,7 +1538,7 @@ fun HomeScreen(
                                 IrideCollapsibleSection(collapsed = isSectionCollapsed("home_section_$index")) {
                                     LazyRow(contentPadding = PaddingValues(horizontal = irideGridItemStart), modifier = Modifier.animateItem()) {
                                         items(items = sectionData.items.distinctBy { it.id }, key = { "home_section_${index}_item_${it.id}" }) { secItem ->
-                                            ytGridItem(secItem, null)
+                                            ytGridItem(secItem, null, false)
                                         }
                                     }
                                 }

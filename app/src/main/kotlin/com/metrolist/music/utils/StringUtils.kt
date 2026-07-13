@@ -48,3 +48,10 @@ fun joinByBullet(vararg str: String?) =
         .filterNot {
             it.isNullOrEmpty()
         }.joinToString(separator = " • ")
+
+/** Same as [joinByBullet] but with a "*" separator, e.g. for "Artist * Year" subtitles. */
+fun joinByStar(vararg str: String?) =
+    str
+        .filterNot {
+            it.isNullOrEmpty()
+        }.joinToString(separator = " * ")

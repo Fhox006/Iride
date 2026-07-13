@@ -54,6 +54,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -72,6 +73,12 @@ private data class NavItemState(
 internal fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {
     if (currentRoute == null) return false
     if (currentRoute == screenRoute) return true
+
+    // New Iride UI: the Account tab's own route stays "settings" (Screens.Account.route,
+    // shared with classic mode), but the tab may actually navigate to "account"
+    // (AccountScreen) instead — see MainActivity's onNavItemClick/onRailItemClick.
+    if (screenRoute == "settings" && currentRoute == "account") return true
+
     if (navigationItems.any { it.route == screenRoute } &&
         currentRoute.startsWith("$screenRoute/")) return true
 
@@ -333,6 +340,10 @@ fun TopNavigationBar(
     onItemClick: (Screens, Boolean) -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = Color.Black,
+    // Callers whose own scrollable container already reserves horizontal inset (e.g. Library's
+    // LazyColumn contentPadding) must pass 0.dp here — otherwise this bar's own inset stacks on
+    // top of the container's, pushing it further right than every other item in that list.
+    horizontalPadding: Dp = 20.dp,
 ) {
     Row(
         modifier = modifier
@@ -342,7 +353,7 @@ fun TopNavigationBar(
             .padding(top = 10.dp)
             .height(64.dp)
             .horizontalScroll(rememberScrollState())
-            .padding(start = 20.dp, end = 20.dp),
+            .padding(start = horizontalPadding, end = horizontalPadding),
         verticalAlignment = Alignment.CenterVertically
     ) {
         navigationItems.forEach { screen ->

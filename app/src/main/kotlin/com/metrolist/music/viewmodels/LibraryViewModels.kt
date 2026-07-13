@@ -31,7 +31,6 @@ import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.LibraryFilter
-import com.metrolist.music.constants.LibraryView
 import com.metrolist.music.constants.PlaylistSortDescendingKey
 import com.metrolist.music.constants.PlaylistSortType
 import com.metrolist.music.constants.PlaylistSortTypeKey
@@ -424,6 +423,9 @@ constructor(
     var downloadedAlbums = database
         .albumsDownloadedByDateDesc()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val downloadedPlaylistIds = database.playlistIdsWithDownloadedSongs()
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
     var playlists = context.dataStore.data
         .map { it[HideYoutubeShortsKey] ?: false }
         .distinctUntilChanged()
@@ -636,6 +638,4 @@ class LibraryViewModel
 constructor() : ViewModel() {
     private val curScreen = mutableStateOf(LibraryFilter.LIBRARY)
     val filter: MutableState<LibraryFilter> = curScreen
-
-    val currentView: MutableState<LibraryView> = mutableStateOf(LibraryView.LIBRARY)
 }

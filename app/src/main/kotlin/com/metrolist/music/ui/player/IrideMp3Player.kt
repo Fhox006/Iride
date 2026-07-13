@@ -502,6 +502,12 @@ fun IrideMiniPlayerBridgeOverlay(
     val eased = sheetProgress.coerceIn(0f, 1f)
     var rootOffset by remember { mutableStateOf(Offset.Zero) }
 
+    // Text takes the second half of the drag (IrideCoverTextSplit -> 1), staying put at its mini
+    // position until the cover has already landed. Linear (plain lerp, no easing). The cover itself
+    // keeps the full 0 -> 1 range (see BridgedElement below) — only the text is held back, so it
+    // never crosses paths with the cover mid-drag.
+    val textProgress = ((eased - IrideCoverTextSplit) / (1f - IrideCoverTextSplit)).coerceIn(0f, 1f)
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -533,11 +539,14 @@ fun IrideMiniPlayerBridgeOverlay(
                 start = infoStart,
                 end = infoEnd,
                 rootOffset = rootOffset,
-                progress = eased,
+                progress = textProgress,
             )
         }
     }
 }
+
+// Fraction of the drag before the text starts moving — see the comment where this is used.
+private const val IrideCoverTextSplit = 0.5f
 
 /**
  * Moves the title/artist block between the collapsed miniplayer and expanded player positions —
@@ -569,7 +578,10 @@ private fun BridgedInfoBlock(
             .offset { IntOffset(left.roundToInt(), top.roundToInt()) }
             .width(with(density) { width.toDp() }),
     ) {
-        Box {
+        // No crossfade: mini (Inter) font holds for the whole move, swapped for the expanded
+        // (Monospace) font only on the last frame (progress == 1) — a blended crossfade between two
+        // different font families reads as a garbled double-exposure mid-transition.
+        if (progress < 1f) {
             Text(
                 text = metadata.title,
                 color = miniTitleColor,
@@ -578,17 +590,16 @@ private fun BridgedInfoBlock(
                 fontSize = lerpTextUnit(14.sp, 16.sp, progress),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.alpha(1f - progress),
             )
+        } else {
             Text(
                 text = metadata.title,
                 color = Color.White,
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = lerpTextUnit(14.sp, 16.sp, progress),
+                fontSize = 16.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.alpha(progress),
             )
         }
         if (metadata.artists.any { it.name.isNotBlank() }) {

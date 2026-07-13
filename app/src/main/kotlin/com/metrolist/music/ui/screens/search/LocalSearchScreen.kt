@@ -20,9 +20,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
@@ -46,10 +48,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.CONTENT_TYPE_LIST
 import com.metrolist.music.constants.ListItemHeight
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.Playlist
@@ -64,6 +71,7 @@ import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistListItem
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.menu.SongMenu
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LocalFilter
 import com.metrolist.music.viewmodels.LocalSearchViewModel
 import kotlinx.coroutines.flow.drop
@@ -76,6 +84,10 @@ fun LocalSearchScreen(
     onDismiss: () -> Unit,
     isFromCache: Boolean = false,
     pureBlack: Boolean,
+    // New Iride UI: leading scrollable item (TopNavigationBar + search box) — see SearchScreen,
+    // which renders this in place of its own pinned header so it scrolls away with the rest of the
+    // list instead of staying fixed on top, exactly like HomeScreen.
+    header: (@Composable () -> Unit)? = null,
     viewModel: LocalSearchViewModel = hiltViewModel(),
 ) {
     val queueSearchedSongsStr = stringResource(R.string.queue_searched_songs)
@@ -88,6 +100,9 @@ fun LocalSearchScreen(
 
     val searchFilter by viewModel.filter.collectAsState()
     val result by viewModel.result.collectAsState()
+
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
 
     val lazyListState = rememberLazyListState()
 
@@ -106,21 +121,7 @@ fun LocalSearchScreen(
     val configuration = LocalWindowInfo.current
     val isLandscape = configuration.containerSize.width > configuration.containerSize.height
 
-    Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
-                .let { base ->
-                    if (isLandscape) {
-                        base.windowInsetsPadding(
-                            WindowInsets.systemBars.only(WindowInsetsSides.Horizontal),
-                        )
-                    } else {
-                        base
-                    }
-                },
-    ) {
+    val chipsRow: @Composable () -> Unit = {
         ChipsRow(
             chips =
                 listOf(
@@ -132,7 +133,82 @@ fun LocalSearchScreen(
                 ),
             currentValue = searchFilter,
             onValueUpdate = { viewModel.filter.value = it },
+            horizontalPadding = if (topNavigationBarEnabled) 20.dp else 12.dp,
+            useIrideStyle = topNavigationBarEnabled,
         )
+    }
+
+    if (header != null) {
+        // New Iride UI: no pinned chrome at all — the header and the filter chips scroll away
+        // together with the results, exactly like HomeScreen, instead of the classic UI's
+        // pinned ChipsRow above a separately-scrolling result list.
+        LazyColumn(
+            state = lazyListState,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        when {
+                            pureBlack -> Color.Black
+                            mainTopGradient -> Color.Transparent
+                            else -> MaterialTheme.colorScheme.background
+                        },
+                    )
+                    .let { base ->
+                        if (isLandscape) {
+                            base.windowInsetsPadding(
+                                WindowInsets.systemBars.only(WindowInsetsSides.Horizontal),
+                            )
+                        } else {
+                            base
+                        }
+                    },
+            contentPadding =
+                WindowInsets.systemBars
+                    .only(WindowInsetsSides.Bottom)
+                    .asPaddingValues(),
+        ) {
+            item(key = "search_header") { header() }
+            item(key = "local_search_chips") { chipsRow() }
+            localSearchResultItems(
+                result = result,
+                navController = navController,
+                menuState = menuState,
+                onDismiss = onDismiss,
+                isFromCache = isFromCache,
+                isPlaying = isPlaying,
+                mediaMetadata = mediaMetadata,
+                queueSearchedSongsStr = queueSearchedSongsStr,
+                onFilterChange = { viewModel.filter.value = it },
+                playerConnection = playerConnection,
+                useIrideStyle = topNavigationBarEnabled,
+            )
+        }
+        return
+    }
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(
+                    when {
+                        pureBlack -> Color.Black
+                        mainTopGradient -> Color.Transparent
+                        else -> MaterialTheme.colorScheme.background
+                    },
+                )
+                .let { base ->
+                    if (isLandscape) {
+                        base.windowInsetsPadding(
+                            WindowInsets.systemBars.only(WindowInsetsSides.Horizontal),
+                        )
+                    } else {
+                        base
+                    }
+                },
+    ) {
+        chipsRow()
 
         LazyColumn(
             state = lazyListState,
@@ -142,6 +218,36 @@ fun LocalSearchScreen(
                     .only(WindowInsetsSides.Bottom)
                     .asPaddingValues(),
         ) {
+            localSearchResultItems(
+                result = result,
+                navController = navController,
+                menuState = menuState,
+                onDismiss = onDismiss,
+                isFromCache = isFromCache,
+                isPlaying = isPlaying,
+                mediaMetadata = mediaMetadata,
+                queueSearchedSongsStr = queueSearchedSongsStr,
+                onFilterChange = { viewModel.filter.value = it },
+                playerConnection = playerConnection,
+                useIrideStyle = topNavigationBarEnabled,
+            )
+        }
+    }
+}
+
+private fun LazyListScope.localSearchResultItems(
+    result: com.metrolist.music.viewmodels.LocalSearchResult,
+    navController: NavController,
+    menuState: com.metrolist.music.ui.component.MenuState,
+    onDismiss: () -> Unit,
+    isFromCache: Boolean,
+    isPlaying: Boolean,
+    mediaMetadata: com.metrolist.music.models.MediaMetadata?,
+    queueSearchedSongsStr: String,
+    onFilterChange: (LocalFilter) -> Unit,
+    playerConnection: com.metrolist.music.playback.PlayerConnection,
+    useIrideStyle: Boolean = false,
+) {
             result.map.forEach { (filter, items) ->
                 if (result.filter == LocalFilter.ALL) {
                     item(key = filter) {
@@ -152,8 +258,11 @@ fun LocalSearchScreen(
                                 Modifier
                                     .fillMaxWidth()
                                     .height(ListItemHeight)
-                                    .clickable { viewModel.filter.value = filter }
-                                    .padding(start = 12.dp, end = 18.dp),
+                                    .clickable { onFilterChange(filter) }
+                                    .padding(
+                                        start = if (useIrideStyle) 20.dp else 12.dp,
+                                        end = if (useIrideStyle) 20.dp else 18.dp,
+                                    ),
                         ) {
                             Text(
                                 text =
@@ -166,13 +275,25 @@ fun LocalSearchScreen(
                                             LocalFilter.ALL -> error("")
                                         },
                                     ),
-                                style = MaterialTheme.typography.titleLarge,
+                                style = if (useIrideStyle) {
+                                    MaterialTheme.typography.labelLarge.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 13.sp,
+                                        letterSpacing = (-0.1).sp,
+                                    )
+                                } else {
+                                    MaterialTheme.typography.titleLarge
+                                },
+                                fontWeight = if (useIrideStyle) FontWeight.Bold else FontWeight.Normal,
+                                color = if (useIrideStyle) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.weight(1f),
                             )
 
                             Icon(
                                 painter = painterResource(R.drawable.navigate_next),
                                 contentDescription = null,
+                                tint = if (useIrideStyle) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(if (useIrideStyle) 18.dp else 24.dp),
                             )
                         }
                     }
@@ -298,6 +419,4 @@ fun LocalSearchScreen(
                     )
                 }
             }
-        }
-    }
 }

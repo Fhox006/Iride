@@ -41,9 +41,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,18 +55,23 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalTopNavBarController
 import com.metrolist.music.R
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.db.entities.PodcastEntity
 import com.metrolist.music.ui.component.ChipsRow
+import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.FloatingPillBottomSpacing
 import com.metrolist.music.ui.component.FloatingPillHeight
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
@@ -97,6 +105,10 @@ fun AccountScreen(
     val selectedContentType by viewModel.selectedContentType.collectAsState()
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
     val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val topNavBarController = LocalTopNavBarController.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     // Retry loading if data is still null when screen opens (e.g. previous attempt failed).
     // Checked per-field (OR, not AND) because under a degraded connection some requests
@@ -107,6 +119,93 @@ fun AccountScreen(
         if (playlists == null || albums == null || artists == null) {
             viewModel.refresh()
         }
+    }
+
+    // New Iride UI: this screen is the "Account" tab's own top-level destination (see
+    // MainActivity's onNavItemClick, which routes Screens.Account here instead of "settings" when
+    // the New Iride UI is on) — styled and structured exactly like Home/LibraryMixScreen: no
+    // pinned bar at all, TopNavigationBar is just the first scrollable item, so it scrolls away
+    // together with the rest of the page instead of staying fixed on top of it. Real app settings
+    // are still one tap away via the gear icon next to the filter chips below.
+    if (topNavigationBarEnabled) {
+        Scaffold(
+            topBar = {},
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0),
+        ) { paddingValues ->
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
+                contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .background(
+                        when {
+                            pureBlack -> Color.Black
+                            mainTopGradient -> Color.Transparent
+                            else -> MaterialTheme.colorScheme.background
+                        },
+                    ),
+            ) {
+                if (topNavBarController != null) {
+                    item(key = "top_nav_bar", span = { GridItemSpan(maxLineSpan) }) {
+                        TopNavigationBar(
+                            navigationItems = topNavBarController.navigationItems,
+                            currentRoute = topNavBarController.currentRoute,
+                            onItemClick = topNavBarController.onItemClick,
+                            containerColor = if (mainTopGradient) Color.Transparent else MaterialTheme.colorScheme.background,
+                        )
+                    }
+                }
+
+                item(key = "account_filter_row", span = { GridItemSpan(maxLineSpan) }) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 4.dp),
+                    ) {
+                        ChipsRow(
+                            chips =
+                                listOf(
+                                    AccountContentType.PLAYLISTS to stringResource(R.string.filter_playlists),
+                                    AccountContentType.ALBUMS to stringResource(R.string.filter_albums),
+                                    AccountContentType.ARTISTS to stringResource(R.string.filter_artists),
+                                    AccountContentType.PODCASTS to stringResource(R.string.filter_podcasts),
+                                ),
+                            currentValue = selectedContentType,
+                            onValueUpdate = { viewModel.setSelectedContentType(it) },
+                            useIrideStyle = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(
+                            painter = painterResource(R.drawable.settings),
+                            contentDescription = stringResource(R.string.settings),
+                            tint = Color.White.copy(alpha = 0.6f),
+                            modifier = Modifier
+                                .padding(start = 12.dp)
+                                .size(20.dp)
+                                .clickable { navController.navigate("settings") },
+                        )
+                    }
+                }
+
+                AccountContentGridItems(
+                    navController = navController,
+                    menuState = menuState,
+                    haptic = haptic,
+                    coroutineScope = coroutineScope,
+                    selectedContentType = selectedContentType,
+                    playlists = playlists,
+                    albums = albums,
+                    artists = artists,
+                    rdpnPlaylist = rdpnPlaylist,
+                    sePlaylist = sePlaylist,
+                    podcastPlaylists = podcastPlaylists,
+                    podcastChannels = podcastChannels,
+                )
+            }
+        }
+        return
     }
 
     Scaffold(
@@ -129,17 +228,10 @@ fun AccountScreen(
     ) { paddingValues ->
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
-            contentPadding = (
-                if (topNavigationBarEnabled) {
-                    // New Iride UI: the app layer's own box is already shortened to leave room
-                    // for the player curtain — adding extra bottom space here would just waste
-                    // scroll room, not avoid any real overlap.
-                    LocalPlayerAwareWindowInsets.current
-                } else {
-                    LocalPlayerAwareWindowInsets.current
-                        .add(WindowInsets(bottom = FloatingPillHeight + FloatingPillBottomSpacing))
-                }
-            ).asPaddingValues(),
+            contentPadding =
+                LocalPlayerAwareWindowInsets.current
+                    .add(WindowInsets(bottom = FloatingPillHeight + FloatingPillBottomSpacing))
+                    .asPaddingValues(),
             modifier = Modifier.padding(paddingValues),
         ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
@@ -156,6 +248,43 @@ fun AccountScreen(
             )
         }
 
+        AccountContentGridItems(
+            navController = navController,
+            menuState = menuState,
+            haptic = haptic,
+            coroutineScope = coroutineScope,
+            selectedContentType = selectedContentType,
+            playlists = playlists,
+            albums = albums,
+            artists = artists,
+            rdpnPlaylist = rdpnPlaylist,
+            sePlaylist = sePlaylist,
+            podcastPlaylists = podcastPlaylists,
+            podcastChannels = podcastChannels,
+        )
+        }
+    }
+}
+
+/**
+ * The actual account-content grid items (playlists/albums/artists/podcasts), shared between the
+ * New Iride UI branch and the classic push-navigation branch of [AccountScreen] above — only the
+ * surrounding chrome (top bar style) differs between the two.
+ */
+private fun androidx.compose.foundation.lazy.grid.LazyGridScope.AccountContentGridItems(
+    navController: NavController,
+    menuState: com.metrolist.music.ui.component.MenuState,
+    haptic: androidx.compose.ui.hapticfeedback.HapticFeedback,
+    coroutineScope: kotlinx.coroutines.CoroutineScope,
+    selectedContentType: AccountContentType,
+    playlists: List<com.metrolist.innertube.models.PlaylistItem>?,
+    albums: List<com.metrolist.innertube.models.AlbumItem>?,
+    artists: List<com.metrolist.innertube.models.ArtistItem>?,
+    rdpnPlaylist: com.metrolist.innertube.models.PlaylistItem?,
+    sePlaylist: com.metrolist.innertube.models.PlaylistItem?,
+    podcastPlaylists: List<PodcastEntity>,
+    podcastChannels: List<com.metrolist.innertube.models.ArtistItem>,
+) {
         when (selectedContentType) {
             AccountContentType.PLAYLISTS -> {
                 items(
@@ -366,8 +495,6 @@ fun AccountScreen(
                 }
             }
         }
-        }
-    }
 }
 
 @Composable

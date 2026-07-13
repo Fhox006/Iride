@@ -86,7 +86,6 @@ import com.metrolist.music.constants.CONTENT_TYPE_PLAYLIST
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
-import com.metrolist.music.constants.LibraryView
 import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.MixSortDescendingKey
@@ -142,8 +141,6 @@ import java.util.UUID
 @Composable
 fun LibraryMixScreen(
     navController: NavController,
-    currentView: LibraryView = LibraryView.LIBRARY,
-    onViewChange: (LibraryView) -> Unit = {},
     viewModel: LibraryMixViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
@@ -268,52 +265,61 @@ fun LibraryMixScreen(
     val playlist = viewModel.playlists.collectAsState()
     val uploadedSongs by viewModel.uploadedSongs.collectAsState()
     val downloadedAlbums by viewModel.downloadedAlbums.collectAsState()
+    val downloadedPlaylistIds by viewModel.downloadedPlaylistIds.collectAsState()
     val locale = LocalLocale.current.platformLocale
     val collator = remember(locale) {
         Collator.getInstance(locale).apply {
             strength = Collator.PRIMARY
         }
     }
-    var allItems = if (!isLibraryFilter) {
-        downloadedAlbums
+    // "Scaricati" shows everything actually downloaded (albums, songs, playlists that contain a
+    // downloaded song) instead of just downloaded albums, so it reads as a real filter of the same
+    // library rather than a near-empty, unrelated mini-view when the pill is toggled.
+    val base = if (!isLibraryFilter) {
+        val downloadedSongs = songs.value.filter { it.isDownloaded }
+        val downloadedPlaylists = playlist.value.filter { it.id in downloadedPlaylistIds }
+        downloadedAlbums + downloadedSongs + downloadedPlaylists
     } else {
         val likedEntry = if (lastLikedDate != null) listOf(likedPlaylist) else emptyList()
-        val base = albums.value + artist.value + playlist.value + likedEntry
-        when (sortType) {
-            MixSortType.CREATE_DATE -> {
-                base.sortedBy { item ->
-                    when (item) {
-                        is Album -> item.album.bookmarkedAt
-                        is Artist -> item.artist.bookmarkedAt
-                        is Playlist -> item.playlist.createdAt
-                        else -> LocalDateTime.now()
-                    }
-                }
-            }
-            MixSortType.NAME -> {
-                base.sortedWith(
-                    compareBy(collator) { item ->
-                        when (item) {
-                            is Album -> item.album.title
-                            is Artist -> item.artist.name
-                            is Playlist -> item.playlist.name
-                            else -> ""
-                        }
-                    },
-                )
-            }
-            MixSortType.LAST_UPDATED -> {
-                base.sortedBy { item ->
-                    when (item) {
-                        is Album -> item.album.lastUpdateTime
-                        is Artist -> item.artist.lastUpdateTime
-                        is Playlist -> item.playlist.lastUpdateTime
-                        else -> LocalDateTime.now()
-                    }
-                }
-            }
-        }.reversed(sortDescending)
+        albums.value + artist.value + playlist.value + likedEntry
     }
+    var allItems = when (sortType) {
+        MixSortType.CREATE_DATE -> {
+            base.sortedBy { item ->
+                when (item) {
+                    is Album -> item.album.bookmarkedAt
+                    is Artist -> item.artist.bookmarkedAt
+                    is Playlist -> item.playlist.createdAt
+                    is Song -> item.song.dateDownload ?: item.song.inLibrary ?: LocalDateTime.now()
+                    else -> LocalDateTime.now()
+                }
+            }
+        }
+        MixSortType.NAME -> {
+            base.sortedWith(
+                compareBy(collator) { item ->
+                    when (item) {
+                        is Album -> item.album.title
+                        is Artist -> item.artist.name
+                        is Playlist -> item.playlist.name
+                        is Song -> item.song.title
+                        else -> ""
+                    }
+                },
+            )
+        }
+        MixSortType.LAST_UPDATED -> {
+            base.sortedBy { item ->
+                when (item) {
+                    is Album -> item.album.lastUpdateTime
+                    is Artist -> item.artist.lastUpdateTime
+                    is Playlist -> item.playlist.lastUpdateTime
+                    is Song -> item.song.dateDownload ?: item.song.inLibrary ?: LocalDateTime.now()
+                    else -> LocalDateTime.now()
+                }
+            }
+        }
+    }.reversed(sortDescending)
 
     val searchableItems = if (normalizedQuery.isBlank()) allItems else allItems + songs.value
 
@@ -427,20 +433,17 @@ fun LibraryMixScreen(
     val onFilterToggle = { isLibraryFilter = !isLibraryFilter }
 
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = if (!topNavigationBarEnabled) {
+            Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+        } else {
+            Modifier
+        },
         topBar = {
-          Column {
-            // New Iride UI: rendered here (inside this screen's own Scaffold) instead of relying on
-            // MainActivity's persistent copy, so this screen's own paddingValues correctly reserve
-            // space for it — see the "library" exclusion in MainActivity's outer topBar condition.
-            if (topNavigationBarEnabled && topNavBarController != null) {
-                TopNavigationBar(
-                    navigationItems = topNavBarController.navigationItems,
-                    currentRoute = topNavBarController.currentRoute,
-                    onItemClick = topNavBarController.onItemClick,
-                    containerColor = if (mainTopGradient) Color.Transparent else MaterialTheme.colorScheme.background,
-                )
-            }
+          // New Iride UI: no pinned header here at all — TopNavigationBar and the library/downloaded
+          // toggle are rendered as regular scrollable items in the content below instead (see the
+          // "library" exclusion in MainActivity's outer topBar condition), so they scroll away
+          // together with the rest of the page exactly like HomeScreen's own copy.
+          if (!topNavigationBarEnabled) {
             CollapsingScreenHeader(
                 title = if (isLibraryFilter)
                     stringResource(R.string.filter_library)
@@ -454,17 +457,6 @@ fun LibraryMixScreen(
                 onSearchQueryChange = viewModel::updateSearchQuery,
                 keyboardController = keyboardController,
                 trailingContent = {
-                    if (topNavigationBarEnabled) {
-                        IrideSegmentedToggle(
-                            options = listOf(
-                                true to stringResource(R.string.filter_library),
-                                false to stringResource(R.string.filter_downloaded),
-                            ),
-                            selected = isLibraryFilter,
-                            enabled = fraction < 0.05f,
-                            onSelect = { value -> if (value != isLibraryFilter) onFilterToggle() },
-                        )
-                    } else {
                         val btnSize = 40.dp
                         val iconSize = 20.dp
                         val indicatorSize = 36.dp
@@ -533,10 +525,9 @@ fun LibraryMixScreen(
                                 }
                             }
                         }
-                    }
                 },
                 transparentBackground = mainTopGradient,
-                hideTitle = topNavigationBarEnabled,
+                hideTitle = false,
             )
           }
         },
@@ -570,6 +561,34 @@ fun LibraryMixScreen(
                                     bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
                                 ),
                             ) {
+                                if (topNavigationBarEnabled && topNavBarController != null) {
+                                    item(key = "top_nav_bar") {
+                                        TopNavigationBar(
+                                            navigationItems = topNavBarController.navigationItems,
+                                            currentRoute = topNavBarController.currentRoute,
+                                            onItemClick = topNavBarController.onItemClick,
+                                            modifier = Modifier.animateItem(),
+                                            containerColor = if (mainTopGradient) Color.Transparent else MaterialTheme.colorScheme.background,
+                                            // The LazyColumn below already reserves irideStart as its own
+                                            // start/end contentPadding — this bar's default 20dp would
+                                            // otherwise stack on top of it, unlike HomeScreen's copy
+                                            // (whose LazyColumn has no horizontal contentPadding at all).
+                                            horizontalPadding = 0.dp,
+                                        )
+                                    }
+                                    item(key = "library_filter_toggle") {
+                                        Row(modifier = Modifier.padding(top = 8.dp, bottom = 4.dp).animateItem()) {
+                                            IrideSegmentedToggle(
+                                                options = listOf(
+                                                    true to stringResource(R.string.filter_library),
+                                                    false to stringResource(R.string.filter_downloaded),
+                                                ),
+                                                selected = isLibraryFilter,
+                                                onSelect = { value -> if (value != isLibraryFilter) onFilterToggle() },
+                                            )
+                                        }
+                                    }
+                                }
                                 item(key = "categories") {
                                     CategoriesContent(
                                         navController = navController,
@@ -752,10 +771,13 @@ fun LibraryMixScreen(
                         LibraryViewType.GRID, LibraryViewType.GRID_WIDE -> {
                             LazyVerticalGrid(
                                 state = lazyGridState,
-                                columns =
+                                columns = if (viewType == LibraryViewType.GRID_WIDE) {
+                                    GridCells.Fixed(3)
+                                } else {
                                     GridCells.Adaptive(
                                         minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
-                                    ),
+                                    )
+                                },
                                 contentPadding = PaddingValues(
                                     start = irideStart,
                                     end = irideStart,
@@ -765,6 +787,30 @@ fun LibraryMixScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
+                                if (topNavigationBarEnabled && topNavBarController != null) {
+                                    item(key = "top_nav_bar", span = { GridItemSpan(maxLineSpan) }) {
+                                        TopNavigationBar(
+                                            navigationItems = topNavBarController.navigationItems,
+                                            currentRoute = topNavBarController.currentRoute,
+                                            onItemClick = topNavBarController.onItemClick,
+                                            modifier = Modifier.animateItem(),
+                                            containerColor = if (mainTopGradient) Color.Transparent else MaterialTheme.colorScheme.background,
+                                            horizontalPadding = 0.dp,
+                                        )
+                                    }
+                                    item(key = "library_filter_toggle", span = { GridItemSpan(maxLineSpan) }) {
+                                        Row(modifier = Modifier.padding(top = 8.dp, bottom = 4.dp).animateItem()) {
+                                            IrideSegmentedToggle(
+                                                options = listOf(
+                                                    true to stringResource(R.string.filter_library),
+                                                    false to stringResource(R.string.filter_downloaded),
+                                                ),
+                                                selected = isLibraryFilter,
+                                                onSelect = { value -> if (value != isLibraryFilter) onFilterToggle() },
+                                            )
+                                        }
+                                    }
+                                }
                                 item(
                                     key = "categories",
                                     span = { GridItemSpan(maxLineSpan) },

@@ -88,6 +88,10 @@ val CollapsingHeaderLargeTitleHeight = 80.dp
 // Height of the small collapsed toolbar row
 val CollapsingHeaderSmallBarHeight = 56.dp
 
+// New Iride UI (hideTitle): compact bar height used when there's no title to make room for, just a
+// small trailing toggle — tight enough to not leave a dead band under TopNavigationBar.
+val CollapsingHeaderCompactBarHeight = 40.dp
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollapsingScreenHeader(
@@ -119,7 +123,12 @@ fun CollapsingScreenHeader(
 
     // fraction: 0f = fully expanded, 1f = fully collapsed
     val fraction = if (hideTitle) 0f else scrollBehavior.state.collapsedFraction
-    val totalHeightDp = CollapsingHeaderSmallBarHeight + (if (hideTitle) 0.dp else CollapsingHeaderLargeTitleHeight)
+    // New Iride UI (hideTitle): this bar carries nothing but the small trailing toggle — the large
+    // title never shows and TopNavigationBar above already fills the "tab bar" role — so it uses a
+    // tighter height than the classic small toolbar row instead of leaving the toggle floating in a
+    // mostly-empty 56dp band right below TopNavigationBar.
+    val barHeight = if (hideTitle) CollapsingHeaderCompactBarHeight else CollapsingHeaderSmallBarHeight
+    val totalHeightDp = barHeight + (if (hideTitle) 0.dp else CollapsingHeaderLargeTitleHeight)
 
     Surface(
         color = when {
@@ -139,7 +148,7 @@ fun CollapsingScreenHeader(
                 Box(
                     modifier = Modifier
                         .width(56.dp)
-                        .height(CollapsingHeaderSmallBarHeight)
+                        .height(barHeight)
                         .padding(start = 4.dp)
                         .graphicsLayer {
                             translationY = if (hideTitle) 0f else lerpFloat(

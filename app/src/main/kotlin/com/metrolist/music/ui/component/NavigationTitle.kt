@@ -17,7 +17,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +52,8 @@ fun NavigationTitle(
     thumbnail: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     onPlayAllClick: (() -> Unit)? = null,
+    onRefreshClick: (() -> Unit)? = null,
+    isRefreshing: Boolean = false,
     useIrideStyle: Boolean = false,
     collapsed: Boolean = false,
     onCollapseToggle: (() -> Unit)? = null,
@@ -132,6 +139,35 @@ fun NavigationTitle(
                     )
                 }
             }
+        }
+
+        onRefreshClick?.let { refreshClick ->
+            val rotation = if (isRefreshing) {
+                val infiniteTransition = rememberInfiniteTransition(label = "refreshRotation")
+                val angle by infiniteTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 360f,
+                    animationSpec = infiniteRepeatable(animation = tween(800, easing = LinearEasing)),
+                    label = "refreshRotationAngle",
+                )
+                angle
+            } else {
+                0f
+            }
+            Icon(
+                painter = painterResource(R.drawable.refresh),
+                contentDescription = stringResource(R.string.refresh),
+                tint = if (useIrideStyle) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .size(20.dp)
+                    .graphicsLayer { rotationZ = rotation }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = !isRefreshing,
+                        onClick = refreshClick,
+                    ),
+            )
         }
 
         if (useIrideStyle && onCollapseToggle != null) {

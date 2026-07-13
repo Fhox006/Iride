@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
@@ -55,7 +56,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -63,6 +66,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
 import com.metrolist.music.ui.screens.OptionStats
+import kotlin.math.roundToInt
 
 @Composable
 fun <E> ChipsRow(
@@ -166,6 +170,10 @@ fun <E> ChipsRow(
  * Compact two-or-more-option pill switcher in the New Iride UI style: small underlined
  * text labels side by side, no background capsule so options never visually overlap.
  * Meant for header trailing slots (library saved/downloaded, search online/library, ...).
+ *
+ * The underline is a single shared indicator that glides smoothly from one label to the other on
+ * selection change (position + width both spring-animated) instead of each label independently
+ * popping its own static underline on/off, which used to read as an abrupt, un-animated flicker.
  */
 @Composable
 fun <E> IrideSegmentedToggle(
@@ -177,38 +185,51 @@ fun <E> IrideSegmentedToggle(
     spacing: androidx.compose.ui.unit.Dp = 16.dp,
 ) {
     val density = LocalDensity.current
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        options.forEachIndexed { index, (value, label) ->
-            val isSelected = selected == value
-            var textWidthPx by remember(value) { mutableStateOf(0) }
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .clickable(
-                        enabled = enabled,
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) { onSelect(value) },
-            ) {
+    // index -> (x offset, width), both in px, relative to the shared Row — reported by each label
+    // so the indicator below knows where to glide to.
+    val labelBoundsPx = remember { androidx.compose.runtime.mutableStateMapOf<Int, Pair<Float, Float>>() }
+    val selectedIndex = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
+    val targetBounds = labelBoundsPx[selectedIndex]
+    val indicatorAnimSpec = androidx.compose.animation.core.spring<Float>(
+        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
+    )
+    val indicatorX by animateFloatAsState(targetBounds?.first ?: 0f, indicatorAnimSpec, label = "irideSegmentedIndicatorX")
+    val indicatorWidth by animateFloatAsState(targetBounds?.second ?: 0f, indicatorAnimSpec, label = "irideSegmentedIndicatorWidth")
+
+    Column(modifier = modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            options.forEachIndexed { index, (value, label) ->
+                val isSelected = selected == value
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelMedium,
                     color = if (isSelected) Color.White else Color.White.copy(alpha = 0.35f),
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    modifier = Modifier.onSizeChanged { textWidthPx = it.width },
+                    modifier = Modifier
+                        .clickable(
+                            enabled = enabled,
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { onSelect(value) }
+                        .onGloballyPositioned { coords ->
+                            labelBoundsPx[index] = coords.positionInParent().x to coords.size.width.toFloat()
+                        },
                 )
-                Spacer(Modifier.height(3.dp))
+                if (index != options.lastIndex) Spacer(Modifier.width(spacing))
+            }
+        }
+        Spacer(Modifier.height(3.dp))
+        Box(Modifier.fillMaxWidth().height(2.dp)) {
+            if (targetBounds != null) {
                 Box(
                     modifier = Modifier
+                        .offset { androidx.compose.ui.unit.IntOffset(indicatorX.roundToInt(), 0) }
+                        .width(with(density) { indicatorWidth.toDp() })
                         .height(2.dp)
-                        .width(with(density) { textWidthPx.toDp() })
-                        .background(if (isSelected) Color.White else Color.Transparent),
+                        .background(Color.White),
                 )
             }
-            if (index != options.lastIndex) Spacer(Modifier.width(spacing))
         }
     }
 }

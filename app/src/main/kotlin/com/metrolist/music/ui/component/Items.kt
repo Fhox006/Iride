@@ -17,6 +17,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -59,7 +60,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -123,6 +126,7 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.queues.LocalAlbumRadio
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.joinByBullet
+import com.metrolist.music.utils.joinByStar
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -139,6 +143,72 @@ import kotlin.math.roundToInt
 const val ActiveBoxAlpha = 0.6f
 
 val LocalItemHorizontalPadding = compositionLocalOf { true }
+
+/**
+ * Fraction of the album thumbnail's width that the vinyl disc behind it (see [VinylPeekDisc])
+ * is allowed to peek out on the right. Callers that add extra spacing between grid items to
+ * host the effect (e.g. the "dischi per te" row) must reserve at least this much width, or the
+ * peeking disc will overlap the next card's cover.
+ */
+const val VinylPeekFraction = 0.28f
+
+/**
+ * A vinyl record, printed with the album's own cover art, sitting behind an album square and
+ * peeking out on its right edge — used to visually tell albums apart from playlists in the
+ * Iride New UI "dischi per te" row. Draw this *before* the square album [ItemThumbnail] in the
+ * same Box so the square covers the hidden portion of the disc.
+ */
+@Composable
+private fun VinylPeekDisc(
+    thumbnailUrl: String?,
+    size: Dp,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .shadow(elevation = 3.dp, shape = CircleShape, clip = false)
+            .clip(CircleShape)
+            .background(Color.Black)
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(thumbnailUrl?.resize(300, 300))
+                .crossfade(true)
+                .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(0.92f)
+        )
+        // Concentric grooves for a realistic record texture.
+        for (ring in 1..4) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxSize(1f - ring * 0.16f)
+                    .border(width = 0.6.dp, color = Color.Black.copy(alpha = 0.35f), shape = CircleShape)
+            )
+        }
+        // Center label.
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxSize(0.24f)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.55f))
+        )
+        // Spindle hole.
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxSize(0.045f)
+                .clip(CircleShape)
+                .background(Color.Black)
+        )
+    }
+}
 
 @Composable
 fun currentGridThumbnailHeight(): Dp {
@@ -780,6 +850,7 @@ fun AlbumGridItem(
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
     showPlayButton: Boolean = true,
+    showVinylEffect: Boolean = false,
     size: Dp = currentGridThumbnailHeight(),
 ) = GridItem(
     title = {
@@ -794,7 +865,7 @@ fun AlbumGridItem(
     },
     subtitle = {
         Text(
-            text = album.artists.joinToString { it.name },
+            text = joinByStar(album.artists.joinToString { it.name }, album.album.year?.toString()),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 2,
@@ -808,6 +879,16 @@ fun AlbumGridItem(
         val scope = rememberCoroutineScope()
         val squircleRadius = maxWidth * 0.06f
         val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+
+        if (showVinylEffect) {
+            VinylPeekDisc(
+                thumbnailUrl = album.album.thumbnailUrl,
+                size = maxWidth,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(x = maxWidth * VinylPeekFraction)
+            )
+        }
 
         ItemThumbnail(
             thumbnailUrl = album.album.thumbnailUrl,
@@ -1195,6 +1276,7 @@ fun YouTubeGridItem(
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
     showPlayButton: Boolean = true,
+    showVinylEffect: Boolean = false,
     size: Dp = currentGridThumbnailHeight(),
     showTitle: Boolean = true,
 ) {
@@ -1230,7 +1312,7 @@ fun YouTubeGridItem(
                     joinByBullet(item.artists.joinToString { it.name }, makeTimeString(durationSec?.times(1000L)))
                 }
             }
-            is AlbumItem -> joinByBullet(item.artists?.joinToString { it.name }, item.year?.toString())
+            is AlbumItem -> joinByStar(item.artists?.joinToString { it.name }, item.year?.toString())
             is ArtistItem -> null
             is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)
             is PodcastItem -> joinByBullet(item.author?.name, item.episodeCountText)
@@ -1253,6 +1335,16 @@ fun YouTubeGridItem(
         val scope = rememberCoroutineScope()
         val squircleRadius = maxWidth * 0.06f
         val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+
+        if (showVinylEffect && item is AlbumItem) {
+            VinylPeekDisc(
+                thumbnailUrl = item.thumbnail,
+                size = maxWidth,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(x = maxWidth * VinylPeekFraction)
+            )
+        }
 
         ItemThumbnail(
             thumbnailUrl = item.thumbnail,

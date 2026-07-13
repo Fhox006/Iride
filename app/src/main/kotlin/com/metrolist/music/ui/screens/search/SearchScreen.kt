@@ -97,6 +97,7 @@ import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IrideSegmentedToggle
+import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
@@ -180,11 +181,18 @@ fun SearchScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         snapAnimationSpec = tween(durationMillis = 200),
     )
+    val topNavBarController = com.metrolist.music.LocalTopNavBarController.current
 
-    Scaffold(
-        topBar = {
-            SearchCollapsingHeader(
-                scrollBehavior = scrollBehavior,
+    // New Iride UI: extracted so it can be handed to LocalSearchScreen/OnlineSearchScreen as a
+    // leading scrollable item below instead of living in this Scaffold's pinned topBar — it then
+    // scrolls away together with the rest of the list, exactly like HomeScreen's own copy of
+    // TopNavigationBar (see the "search" exclusion in MainActivity's outer topBar condition).
+    val irideHeader: (@Composable () -> Unit)? = if (topNavigationBarEnabled && topNavBarController != null) {
+        {
+            SearchScrollableHeader(
+                navigationItems = topNavBarController.navigationItems,
+                currentRoute = topNavBarController.currentRoute,
+                onItemClick = topNavBarController.onItemClick,
                 query = query,
                 onQueryChange = { query = it },
                 searchSource = searchSource,
@@ -197,10 +205,38 @@ fun SearchScreen(
                 onClear = { query = TextFieldValue("") },
                 pureBlack = pureBlack,
                 transparentBackground = mainTopGradient,
-                hideTitle = topNavigationBarEnabled,
             )
+        }
+    } else {
+        null
+    }
+
+    Scaffold(
+        topBar = {
+            if (!topNavigationBarEnabled) {
+                SearchCollapsingHeader(
+                    scrollBehavior = scrollBehavior,
+                    query = query,
+                    onQueryChange = { query = it },
+                    searchSource = searchSource,
+                    onSearchSourceToggle = {
+                        searchSource = if (searchSource == SearchSource.ONLINE) SearchSource.LOCAL else SearchSource.ONLINE
+                    },
+                    focusRequester = focusRequester,
+                    onFocusChanged = { isFocused = it.isFocused },
+                    onSearch = { handleSearch(query.text) },
+                    onClear = { query = TextFieldValue("") },
+                    pureBlack = pureBlack,
+                    transparentBackground = mainTopGradient,
+                    hideTitle = false,
+                )
+            }
         },
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = if (!topNavigationBarEnabled) {
+            Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+        } else {
+            Modifier
+        },
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
@@ -223,6 +259,7 @@ fun SearchScreen(
                         navController = navController,
                         onDismiss = { navController.navigateUp() },
                         pureBlack = pureBlack,
+                        header = irideHeader,
                     )
                 }
                 SearchSource.ONLINE -> {
@@ -234,6 +271,7 @@ fun SearchScreen(
                         onDismiss = { /* stay on page */ },
                         pureBlack = pureBlack,
                         isFocused = isFocused,
+                        header = irideHeader,
                     )
                 }
             }
@@ -270,6 +308,109 @@ fun SearchScreen(
             focusManager.clearFocus()
         }
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+}
+
+/**
+ * New Iride UI: flat, non-collapsing replacement for [SearchCollapsingHeader] — TopNavigationBar,
+ * the online/library source toggle and the search box, all fully visible at all times (no
+ * scroll-driven animation), meant to be embedded as the leading item of the scrollable list
+ * instead of pinned in a Scaffold topBar. See SearchScreen's `irideHeader`.
+ */
+@Composable
+private fun SearchScrollableHeader(
+    navigationItems: List<com.metrolist.music.ui.screens.Screens>,
+    currentRoute: String?,
+    onItemClick: (com.metrolist.music.ui.screens.Screens, Boolean) -> Unit,
+    query: TextFieldValue,
+    onQueryChange: (TextFieldValue) -> Unit,
+    searchSource: SearchSource,
+    onSearchSourceToggle: () -> Unit,
+    focusRequester: FocusRequester,
+    onFocusChanged: (FocusState) -> Unit,
+    onSearch: () -> Unit,
+    onClear: () -> Unit,
+    pureBlack: Boolean,
+    transparentBackground: Boolean,
+) {
+    Column {
+        TopNavigationBar(
+            navigationItems = navigationItems,
+            currentRoute = currentRoute,
+            onItemClick = onItemClick,
+            containerColor = if (transparentBackground) Color.Transparent else MaterialTheme.colorScheme.background,
+        )
+
+        Box(modifier = Modifier.padding(start = 20.dp, top = 8.dp, bottom = 8.dp)) {
+            IrideSegmentedToggle(
+                options = listOf(
+                    SearchSource.ONLINE to stringResource(R.string.online),
+                    SearchSource.LOCAL to stringResource(R.string.filter_library),
+                ),
+                selected = searchSource,
+                onSelect = { value -> if (value != searchSource) onSearchSourceToggle() },
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                .height(SearchBoxHeightDp)
+                .clip(RoundedCornerShape(26.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 16.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(focusRequester)
+                        .onFocusChanged(onFocusChanged),
+                    textStyle = TextStyle(
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 16.sp,
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    singleLine = true,
+                    decorationBox = { innerTextField ->
+                        if (query.text.isEmpty()) {
+                            Text(
+                                text = stringResource(
+                                    when (searchSource) {
+                                        SearchSource.LOCAL -> R.string.search_library
+                                        SearchSource.ONLINE -> R.string.search_yt_music
+                                    },
+                                ),
+                                style = TextStyle(
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    fontSize = 16.sp,
+                                ),
+                            )
+                        }
+                        innerTextField()
+                    },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                )
+
+                if (query.text.isNotEmpty()) {
+                    IconButton(onClick = onClear) {
+                        Icon(
+                            painter = painterResource(R.drawable.close),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

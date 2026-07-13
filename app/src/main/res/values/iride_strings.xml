@@ -784,6 +784,7 @@
     <string name="no_match_found">No match found</string>
     <string name="recognition_error">Recognition error</string>
     <string name="try_again">Try again</string>
+    <string name="refresh">Refresh</string>
     <string name="recognition_history">Recognition history</string>
     <string name="clear_recognition_history">Clear recognition history</string>
     <string name="clear_recognition_history_confirm">Are you sure you want to clear all recognition history?</string>

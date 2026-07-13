@@ -76,24 +76,58 @@ fun <T> LibrarySortRow(
                 expanded = menuExpanded,
                 onDismissRequest = { menuExpanded = false },
                 shape = RoundedCornerShape(16.dp),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                containerColor = if (useIrideStyle) {
+                    androidx.compose.ui.graphics.Color(0xFF111111)
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                },
             ) {
                 sortOptions.forEach { (type, label) ->
                     val isSelected = type == currentSort
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.bodyMedium,
-                                textDecoration = if (isSelected) TextDecoration.Underline
-                                                 else TextDecoration.None,
-                            )
-                        },
-                        onClick = {
-                            onSortChange(type)
-                            menuExpanded = false
-                        },
-                    )
+                    if (useIrideStyle) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    ),
+                                    fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.SemiBold
+                                                 else androidx.compose.ui.text.font.FontWeight.Normal,
+                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = if (isSelected) 0.95f else 0.7f),
+                                )
+                            },
+                            trailingIcon = if (isSelected) {
+                                {
+                                    Icon(
+                                        painter = painterResource(R.drawable.check),
+                                        contentDescription = null,
+                                        tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            } else null,
+                            onClick = {
+                                onSortChange(type)
+                                menuExpanded = false
+                            },
+                        )
+                    } else {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textDecoration = if (isSelected) TextDecoration.Underline
+                                                     else TextDecoration.None,
+                                )
+                            },
+                            onClick = {
+                                onSortChange(type)
+                                menuExpanded = false
+                            },
+                        )
+                    }
                 }
             }
         }

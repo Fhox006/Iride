@@ -121,6 +121,9 @@ class HomeViewModel @Inject constructor(
 
     val isRefreshing = MutableStateFlow(false)
     val isLoading = MutableStateFlow(false)
+    // Section ids currently being manually regenerated via the section's own refresh button
+    // (e.g. "quick_picks", "dischi_per_te") — drives the spinning refresh icon per section.
+    val regeneratingSections = MutableStateFlow<Set<String>>(emptySet())
     val isRandomizing = MutableStateFlow(false)
     val isPhase1Complete = MutableStateFlow(false)
     val phase1Complete = MutableStateFlow(false)
@@ -936,6 +939,85 @@ class HomeViewModel @Inject constructor(
         allYtItems.value = similarRecommendations.value?.flatMap { it.items }.orEmpty() +
                 homePage.value?.sections?.flatMap { it.items }.orEmpty()
         HomeCache.similarRecommendations = similarRecommendations.value
+    }
+
+    /**
+     * Re-runs a section's generator a few times, retrying while the result is empty or
+     * identical (by id) to what was already on screen — so tapping refresh never leaves
+     * the user staring at the same cards, and never clears a section down to nothing.
+     */
+    private suspend fun regenerateSection(
+        key: String,
+        currentIds: () -> Set<String>,
+        generate: suspend () -> Unit,
+    ) {
+        if (key in regeneratingSections.value) return
+        regeneratingSections.value += key
+        try {
+            val previousIds = currentIds()
+            var attempt = 0
+            while (attempt < 3) {
+                generate()
+                val newIds = currentIds()
+                if (newIds.isNotEmpty() && newIds != previousIds) break
+                attempt++
+            }
+        } finally {
+            regeneratingSections.value -= key
+        }
+    }
+
+    fun regenerateQuickPicks() {
+        viewModelScope.launch(Dispatchers.IO) {
+            regenerateSection(
+                key = "quick_picks",
+                currentIds = { quickPicks.value?.map { it.id }?.toSet().orEmpty() },
+                generate = { getQuickPicks() },
+            )
+            HomeCache.quickPicks = quickPicks.value
+        }
+    }
+
+    fun regenerateDischiPerTe() {
+        viewModelScope.launch(Dispatchers.IO) {
+            regenerateSection(
+                key = "dischi_per_te",
+                currentIds = { dischiPerTe.value?.map { it.id }?.toSet().orEmpty() },
+                generate = { getDischiPerTe() },
+            )
+        }
+    }
+
+    fun regenerateCommunityPlaylists() {
+        viewModelScope.launch(Dispatchers.IO) {
+            regenerateSection(
+                key = "community_playlists",
+                currentIds = { communityPlaylists.value?.map { it.playlist.id }?.toSet().orEmpty() },
+                generate = { getCommunityPlaylists() },
+            )
+            HomeCache.communityPlaylists = communityPlaylists.value
+        }
+    }
+
+    fun regenerateDailyDiscover() {
+        viewModelScope.launch(Dispatchers.IO) {
+            regenerateSection(
+                key = "daily_discover",
+                currentIds = { dailyDiscover.value?.map { it.recommendation.id }?.toSet().orEmpty() },
+                generate = { getDailyDiscover() },
+            )
+            HomeCache.dailyDiscover = dailyDiscover.value
+        }
+    }
+
+    fun regenerateSimilarRecommendations() {
+        viewModelScope.launch(Dispatchers.IO) {
+            regenerateSection(
+                key = "similar_recommendations",
+                currentIds = { similarRecommendations.value?.flatMap { it.items }?.map { it.id }?.toSet().orEmpty() },
+                generate = { getSimilarRecommendations() },
+            )
+        }
     }
 
     fun onSectionBecameVisible(sectionId: String) {

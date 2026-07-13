@@ -485,6 +485,7 @@
     <string name="map_csv_columns">Mappa colonne CSV</string>
     <string name="column_label">Colonna %d</string>
     <string name="try_again">Riprova</string>
+    <string name="refresh">Aggiorna</string>
     <string name="recognition_history">Cronologia riconoscimenti</string>
     <string name="song_title_column">Colonna titolo brano</string>
     <string name="recently_converted">Recentemente convertito</string>

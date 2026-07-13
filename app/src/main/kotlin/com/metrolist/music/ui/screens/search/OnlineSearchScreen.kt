@@ -36,6 +36,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,9 +57,12 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.metrolist.innertube.models.AlbumItem
@@ -70,7 +74,9 @@ import com.metrolist.innertube.models.SongItem
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.SuggestionItemHeight
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.YouTubeListItem
@@ -79,6 +85,7 @@ import com.metrolist.music.ui.menu.YouTubeArtistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.playback.queues.YouTubeQueue
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.HomeViewModel
 import com.metrolist.music.viewmodels.OnlineSearchSuggestionViewModel
 import kotlinx.coroutines.FlowPreview
@@ -96,6 +103,10 @@ fun OnlineSearchScreen(
     onDismiss: () -> Unit,
     pureBlack: Boolean,
     isFocused: Boolean = false,
+    // New Iride UI: leading scrollable item (TopNavigationBar + search box) — see SearchScreen,
+    // which renders this in place of its own pinned header so it scrolls away with the rest of the
+    // list instead of staying fixed on top, exactly like HomeScreen.
+    header: (@Composable () -> Unit)? = null,
     viewModel: OnlineSearchSuggestionViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -111,6 +122,9 @@ fun OnlineSearchScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val viewState by viewModel.viewState.collectAsState()
     val explorePage by homeViewModel.explorePage.collectAsState()
+
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
 
     val lazyListState = rememberLazyListState()
 
@@ -140,17 +154,41 @@ fun OnlineSearchScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
+                .background(
+                    when {
+                        pureBlack -> Color.Black
+                        mainTopGradient -> Color.Transparent
+                        else -> MaterialTheme.colorScheme.background
+                    },
+                ),
     ) {
+        if (header != null) {
+            item(key = "search_header") { header() }
+        }
         if (query.isEmpty() && !isFocused) {
             // === EXPLORE SECTION: moods first, no history ===
             if (explorePage?.moodAndGenres?.isNotEmpty() == true) {
                 item(key = "moods_header") {
                     Text(
                         text = stringResource(R.string.mood_and_genres),
-                        style = MaterialTheme.typography.titleMedium,
+                        style = if (topNavigationBarEnabled) {
+                            MaterialTheme.typography.labelLarge.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 13.sp,
+                                letterSpacing = (-0.1).sp,
+                            )
+                        } else {
+                            MaterialTheme.typography.titleMedium
+                        },
+                        fontWeight = if (topNavigationBarEnabled) FontWeight.Bold else FontWeight.Normal,
+                        color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
-                            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
+                            .padding(
+                                start = if (topNavigationBarEnabled) 20.dp else 16.dp,
+                                end = if (topNavigationBarEnabled) 20.dp else 16.dp,
+                                top = if (topNavigationBarEnabled) 20.dp else 16.dp,
+                                bottom = if (topNavigationBarEnabled) 6.dp else 8.dp,
+                            )
                             .animateItem(),
                     )
                 }
@@ -164,9 +202,12 @@ fun OnlineSearchScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                            .padding(
+                                horizontal = if (topNavigationBarEnabled) 16.dp else 12.dp,
+                                vertical = 4.dp,
+                            )
                             .animateItem(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(if (topNavigationBarEnabled) 10.dp else 8.dp),
                     ) {
                         row.forEach { mood ->
                             SearchMoodCard(
@@ -174,6 +215,7 @@ fun OnlineSearchScreen(
                                 onClick = {
                                     navController.navigate("youtube_browse/${mood.endpoint.browseId}?params=${mood.endpoint.params}")
                                 },
+                                useIrideStyle = topNavigationBarEnabled,
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -455,6 +497,7 @@ fun OnlineSearchScreen(
 
                 item(key = "parsed_url_divider") {
                     HorizontalDivider(
+                        color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.08f) else MaterialTheme.colorScheme.outlineVariant,
                         modifier =
                             Modifier
                                 .padding(vertical = 8.dp)
@@ -481,6 +524,7 @@ fun OnlineSearchScreen(
                     },
                     modifier = Modifier.animateItem(),
                     pureBlack = pureBlack,
+                    useIrideStyle = topNavigationBarEnabled,
                 )
             }
 
@@ -497,12 +541,14 @@ fun OnlineSearchScreen(
                     },
                     modifier = Modifier.animateItem(),
                     pureBlack = pureBlack,
+                    useIrideStyle = topNavigationBarEnabled,
                 )
             }
 
             if (viewState.items.isNotEmpty() && viewState.history.size + viewState.suggestions.size > 0) {
                 item(key = "search_divider") {
                     HorizontalDivider(
+                        color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.08f) else MaterialTheme.colorScheme.outlineVariant,
                         modifier = Modifier.animateItem(),
                     )
                 }
@@ -733,7 +779,34 @@ private fun SearchMoodCard(
     title: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    useIrideStyle: Boolean = false,
 ) {
+    if (useIrideStyle) {
+        Box(
+            contentAlignment = Alignment.BottomStart,
+            modifier = modifier
+                .height(72.dp)
+                .clip(RoundedCornerShape(5.dp))
+                .background(Color.White.copy(alpha = 0.06f))
+                .clickable(onClick = onClick)
+                .padding(12.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
+                    letterSpacing = (-0.1).sp,
+                ),
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.85f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        return
+    }
+
     Box(
         contentAlignment = Alignment.BottomStart,
         modifier = modifier
@@ -763,6 +836,7 @@ fun SuggestionItem(
     onDelete: () -> Unit = {},
     onFillTextField: () -> Unit,
     pureBlack: Boolean,
+    useIrideStyle: Boolean = false,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -770,42 +844,57 @@ fun SuggestionItem(
             modifier
                 .fillMaxWidth()
                 .height(SuggestionItemHeight)
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)
+                .background(
+                    when {
+                        pureBlack -> Color.Black
+                        useIrideStyle -> Color.Transparent
+                        else -> MaterialTheme.colorScheme.surface
+                    },
+                )
                 .clickable(onClick = onClick)
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
     ) {
         Icon(
             painterResource(if (online) R.drawable.search else R.drawable.history),
             contentDescription = null,
-            modifier = Modifier.padding(horizontal = 16.dp).alpha(0.5f),
+            tint = if (useIrideStyle) Color.White.copy(alpha = 0.5f) else LocalContentColor.current,
+            modifier = Modifier.padding(horizontal = 16.dp).alpha(if (useIrideStyle) 1f else 0.5f),
         )
 
         Text(
             text = query,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            style = if (useIrideStyle) {
+                MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace, fontSize = 14.sp)
+            } else {
+                MaterialTheme.typography.bodyLarge
+            },
+            color = if (useIrideStyle) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
 
         if (!online) {
             IconButton(
                 onClick = onDelete,
-                modifier = Modifier.alpha(0.5f),
+                modifier = Modifier.alpha(if (useIrideStyle) 1f else 0.5f),
             ) {
                 Icon(
                     painter = painterResource(R.drawable.close),
                     contentDescription = null,
+                    tint = if (useIrideStyle) Color.White.copy(alpha = 0.35f) else LocalContentColor.current,
                 )
             }
         }
 
         IconButton(
             onClick = onFillTextField,
-            modifier = Modifier.alpha(0.5f),
+            modifier = Modifier.alpha(if (useIrideStyle) 1f else 0.5f),
         ) {
             Icon(
                 painter = painterResource(R.drawable.arrow_top_left),
                 contentDescription = null,
+                tint = if (useIrideStyle) Color.White.copy(alpha = 0.35f) else LocalContentColor.current,
             )
         }
     }

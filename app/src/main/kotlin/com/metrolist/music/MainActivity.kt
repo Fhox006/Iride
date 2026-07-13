@@ -789,6 +789,10 @@ class MainActivity : ComponentActivity() {
                     derivedStateOf {
                         currentRoute == null ||
                             (navigationItems.any { it.route == currentRoute } && currentRoute != "settings") ||
+                            // New Iride UI: "account" is the Account tab's real destination (see
+                            // onNavItemClick/onRailItemClick) even though Screens.Account.route
+                            // itself stays "settings" (shared with classic mode).
+                            (topNavigationBarEnabled && currentRoute == "account") ||
                             currentRoute?.startsWith("search/") == true
                     }
                 }
@@ -994,7 +998,7 @@ class MainActivity : ComponentActivity() {
                 val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
 
                 val onNavItemClick: (Screens, Boolean) -> Unit =
-                    remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState, navBackStackEntry) {
+                    remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState, navBackStackEntry, topNavigationBarEnabled) {
                         { screen: Screens, isSelected: Boolean ->
                             if (playerBottomSheetState.isExpanded) {
                                 playerBottomSheetState.collapseSoft()
@@ -1022,7 +1026,11 @@ class MainActivity : ComponentActivity() {
                                     topAppBarScrollBehavior.state.resetHeightOffset()
                                 }
                             } else {
-                                navController.navigate(screen.route) {
+                                // New Iride UI: the Account tab opens AccountScreen (its own
+                                // top-level page, styled like Home/Library) instead of the
+                                // classic push-navigation SettingsScreen.
+                                val targetRoute = if (screen == Screens.Account && topNavigationBarEnabled) "account" else screen.route
+                                navController.navigate(targetRoute) {
                                     popUpTo(navController.graph.startDestinationId) {
                                         saveState = true
                                     }
@@ -1083,12 +1091,15 @@ class MainActivity : ComponentActivity() {
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
                             Column {
-                                // "library" is excluded here for the same reason as "home": it renders its own
-                                // copy of TopNavigationBar inside its own Scaffold (see LibraryMixScreen), so its
-                                // paddingValues correctly reserve space for it. Rendering it a second time here —
-                                // pinned in this outer Scaffold, whose content Row never applies this topBar's
-                                // paddingValues — would draw a duplicate copy on top of Library's own content.
-                                if (topNavigationBarEnabled && !showRail && isTopLevelRoute && currentRoute != "wrapped" && currentRoute != "onboarding" && currentRoute != "home" && currentRoute != "library") {
+                                // "library", "search_input" and "account" are excluded here for the same
+                                // reason as "home": each renders its own copy of TopNavigationBar inside
+                                // its own Scaffold (see LibraryMixScreen, SearchScreen, AccountScreen), so
+                                // its paddingValues correctly reserve space for it and it scrolls away together with the
+                                // rest of that screen's content instead of staying pinned on top of it.
+                                // Rendering it a second time here — pinned in this outer Scaffold, whose
+                                // content Row never applies this topBar's paddingValues — would draw a
+                                // duplicate copy on top of that screen's own content.
+                                if (topNavigationBarEnabled && !showRail && isTopLevelRoute && currentRoute != "wrapped" && currentRoute != "onboarding" && currentRoute != "home" && currentRoute != "library" && currentRoute != Screens.Search.route && currentRoute != "account") {
                                     TopNavigationBar(
                                         navigationItems = navigationItems,
                                         currentRoute = currentRoute,
@@ -1170,54 +1181,16 @@ class MainActivity : ComponentActivity() {
                                             .coerceAtLeast(0.dp)
                                             .toPx()
                                     }
-                                    // Stroke only the bottom rounded edge (boundary against the
-                                    // curtain) — a plain Modifier.border traces the shape's whole
-                                    // outline, which would draw a visible line across the top and
-                                    // sides too (those corners are square, but the outline is still
-                                    // a closed rect there), leaving a border around the entire app
-                                    // frame instead of just where it meets the player.
+                                    // Dissolve the app content to black as the curtain expands. The
+                                    // seam border itself is no longer drawn here — see the unclipped
+                                    // overlay Box declared right after this Scaffold, which keeps the
+                                    // border always visible (not just mid-drag) and fully outside the
+                                    // clipped shape (not clipped away at the rounded corners).
                                     .drawWithContent {
                                         drawContent()
                                         val dissolve = playerBottomSheetState.progress.coerceIn(0f, 1f)
                                         if (dissolve > 0f) {
                                             drawRect(Color.Black, alpha = dissolve)
-                                        }
-                                        // Inset the traced edge inward by a full stroke width so the
-                                        // whole stroke sits inside the clipped shape instead of being
-                                        // centered on the clip boundary itself (which would clip away
-                                        // its outer half and leave only a faint sliver visible).
-                                        val strokeWidthPx = 1.5.dp.toPx()
-                                        val inset = strokeWidthPx
-                                        val r = (28.dp.toPx() - inset).coerceAtLeast(0f)
-                                        val bottomEdge = Path().apply {
-                                            moveTo(inset, size.height - inset - r)
-                                            arcTo(
-                                                rect = Rect(inset, size.height - inset - 2 * r, inset + 2 * r, size.height - inset),
-                                                startAngleDegrees = 180f,
-                                                sweepAngleDegrees = -90f,
-                                                forceMoveTo = false,
-                                            )
-                                            lineTo(size.width - inset - r, size.height - inset)
-                                            arcTo(
-                                                rect = Rect(size.width - inset - 2 * r, size.height - inset - 2 * r, size.width - inset, size.height - inset),
-                                                startAngleDegrees = 90f,
-                                                sweepAngleDegrees = -90f,
-                                                forceMoveTo = false,
-                                            )
-                                        }
-                                        // Bell-curve alpha (0 at rest collapsed, 0 at rest expanded,
-                                        // peaks mid-drag) instead of a constant value — a fixed alpha
-                                        // stroke sitting on top of a background that's dissolving to
-                                        // black read as an abrupt hard edge that never went away. This
-                                        // way the seam materializes and dematerializes gradually,
-                                        // blending into the curtain instead of cutting into it.
-                                        val borderAlpha = 0.16f * kotlin.math.sin((Math.PI * dissolve).toFloat()).coerceIn(0f, 1f)
-                                        if (borderAlpha > 0f) {
-                                            drawPath(
-                                                path = bottomEdge,
-                                                color = Color.White.copy(alpha = borderAlpha),
-                                                style = Stroke(width = strokeWidthPx),
-                                            )
                                         }
                                     }
                                     .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
@@ -1229,7 +1202,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Row(Modifier.fillMaxSize()) {
                             val onRailItemClick: (Screens, Boolean) -> Unit =
-                                remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState) {
+                                remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState, topNavigationBarEnabled) {
                                     { screen: Screens, isSelected: Boolean ->
                                         if (playerBottomSheetState.isExpanded) {
                                             playerBottomSheetState.collapseSoft()
@@ -1241,7 +1214,8 @@ class MainActivity : ComponentActivity() {
                                                 topAppBarScrollBehavior.state.resetHeightOffset()
                                             }
                                         } else {
-                                            navController.navigate(screen.route) {
+                                            val targetRoute = if (screen == Screens.Account && topNavigationBarEnabled) "account" else screen.route
+                                            navController.navigate(targetRoute) {
                                                 popUpTo(navController.graph.startDestinationId) {
                                                     saveState = true
                                                 }
@@ -1287,6 +1261,15 @@ class MainActivity : ComponentActivity() {
 
                                 val onboardingCompleted = remember { dataStore[OnboardingCompletedKey] ?: false }
 
+                                // New Iride UI: the Account tab navigates to "account" (AccountScreen)
+                                // instead of Screens.Account.route ("settings") — see onNavItemClick.
+                                // This keeps that route recognized as the same top-level tab for the
+                                // fade-vs-slide transition logic below.
+                                fun topLevelIndex(route: String?) =
+                                    navigationItems.indexOfFirst {
+                                        it.route == route || (it == Screens.Account && topNavigationBarEnabled && route == "account")
+                                    }
+
                                 // NavHost with animations (Material 3 Expressive style)
                                 NavHost(
                                     navController = navController,
@@ -1302,14 +1285,8 @@ class MainActivity : ComponentActivity() {
                                         },
                                     // Enter Transition - fade between tabs, slide for sub-screens
                                     enterTransition = {
-                                        val currentRouteIndex =
-                                            navigationItems.indexOfFirst {
-                                                it.route == targetState.destination.route
-                                            }
-                                        val previousRouteIndex =
-                                            navigationItems.indexOfFirst {
-                                                it.route == initialState.destination.route
-                                            }
+                                        val currentRouteIndex = topLevelIndex(targetState.destination.route)
+                                        val previousRouteIndex = topLevelIndex(initialState.destination.route)
 
                                         if (currentRouteIndex != -1 && previousRouteIndex != -1) {
                                             fadeIn(tween(200))
@@ -1321,14 +1298,8 @@ class MainActivity : ComponentActivity() {
                                     },
                                     // Exit Transition - fade between tabs, slide for sub-screens
                                     exitTransition = {
-                                        val currentRouteIndex =
-                                            navigationItems.indexOfFirst {
-                                                it.route == initialState.destination.route
-                                            }
-                                        val targetRouteIndex =
-                                            navigationItems.indexOfFirst {
-                                                it.route == targetState.destination.route
-                                            }
+                                        val currentRouteIndex = topLevelIndex(initialState.destination.route)
+                                        val targetRouteIndex = topLevelIndex(targetState.destination.route)
 
                                         if (currentRouteIndex != -1 && targetRouteIndex != -1) {
                                             fadeOut(tween(200))
@@ -1340,14 +1311,8 @@ class MainActivity : ComponentActivity() {
                                     },
                                     // Pop Enter Transition - fade between tabs
                                     popEnterTransition = {
-                                        val currentRouteIndex =
-                                            navigationItems.indexOfFirst {
-                                                it.route == targetState.destination.route
-                                            }
-                                        val previousRouteIndex =
-                                            navigationItems.indexOfFirst {
-                                                it.route == initialState.destination.route
-                                            }
+                                        val currentRouteIndex = topLevelIndex(targetState.destination.route)
+                                        val previousRouteIndex = topLevelIndex(initialState.destination.route)
 
                                         if (currentRouteIndex != -1 && previousRouteIndex != -1) {
                                             fadeIn(tween(200))
@@ -1359,14 +1324,8 @@ class MainActivity : ComponentActivity() {
                                     },
                                     // Pop Exit Transition - fade between tabs
                                     popExitTransition = {
-                                        val currentRouteIndex =
-                                            navigationItems.indexOfFirst {
-                                                it.route == initialState.destination.route
-                                            }
-                                        val targetRouteIndex =
-                                            navigationItems.indexOfFirst {
-                                                it.route == targetState.destination.route
-                                            }
+                                        val currentRouteIndex = topLevelIndex(initialState.destination.route)
+                                        val targetRouteIndex = topLevelIndex(targetState.destination.route)
 
                                         if (currentRouteIndex != -1 && targetRouteIndex != -1) {
                                             fadeOut(tween(200))
@@ -1388,6 +1347,57 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
+                    }
+
+                    // New Iride UI: the seam border between app and player, drawn as its own
+                    // unclipped layer directly on top of the app layer instead of inside its
+                    // clipped drawWithContent. Two problems that fixes: (1) a centered stroke drawn
+                    // inside a clip=true graphicsLayer has its outer half clipped away, leaving only
+                    // a faint interior sliver, and rounded corners eat into it further — pushing the
+                    // path outward here (positive outset, larger radius) puts the whole stroke
+                    // outside the app shape's true edge, so it survives the corner curve intact.
+                    // (2) the border used to fade in/out with drag progress (invisible at rest); a
+                    // constant alpha keeps it visible at all times for accessibility. Shares the
+                    // exact same height/translationY expressions as the app layer's own modifier
+                    // above so the seam it traces always lines up with the app layer's real edge.
+                    if (curtainActive) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .fillMaxWidth()
+                                .height(maxHeight - playerBottomSheetState.collapsedBound + CurtainCornerRevealHeight)
+                                .graphicsLayer {
+                                    translationY = -(playerBottomSheetState.value - playerBottomSheetState.collapsedBound)
+                                        .coerceAtLeast(0.dp)
+                                        .toPx()
+                                }
+                                .drawWithContent {
+                                    val strokeWidthPx = 1.5.dp.toPx()
+                                    val outset = strokeWidthPx / 2f
+                                    val r = 28.dp.toPx() + outset
+                                    val bottomEdge = Path().apply {
+                                        moveTo(-outset, size.height + outset - r)
+                                        arcTo(
+                                            rect = Rect(-outset, size.height + outset - 2 * r, -outset + 2 * r, size.height + outset),
+                                            startAngleDegrees = 180f,
+                                            sweepAngleDegrees = -90f,
+                                            forceMoveTo = false,
+                                        )
+                                        lineTo(size.width + outset - r, size.height + outset)
+                                        arcTo(
+                                            rect = Rect(size.width + outset - 2 * r, size.height + outset - 2 * r, size.width + outset, size.height + outset),
+                                            startAngleDegrees = 90f,
+                                            sweepAngleDegrees = -90f,
+                                            forceMoveTo = false,
+                                        )
+                                    }
+                                    drawPath(
+                                        path = bottomEdge,
+                                        color = Color.White.copy(alpha = 0.18f),
+                                        style = Stroke(width = strokeWidthPx),
+                                    )
+                                },
+                        )
                     }
 
                     // New Iride UI: the app-layer sliver (AppPeekHeight) that stays visible at the
@@ -1429,7 +1439,11 @@ class MainActivity : ComponentActivity() {
                     // it down from the top closes the player exactly like pulling it up opens it.
                     if (curtainActive) {
                         val handleProgress = playerBottomSheetState.progress.coerceIn(0f, 1f)
-                        val collapsedHandleY = maxHeight - playerBottomSheetState.collapsedBound + 10.dp
+                        // Flush with the top of the miniplayer strip (just below the app layer's
+                        // own bottom edge, which lands at collapsedBound - CurtainCornerRevealHeight)
+                        // instead of higher up inside the app layer's rounded-corner reveal zone —
+                        // the handle belongs to the miniplayer/player section, not the app section.
+                        val collapsedHandleY = maxHeight - playerBottomSheetState.collapsedBound + CurtainCornerRevealHeight + 6.dp
                         val expandedHandleY = AppPeekHeight + 8.dp
                         val handleY = collapsedHandleY + (expandedHandleY - collapsedHandleY) * handleProgress
                         Box(
