@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -44,13 +45,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -91,10 +95,12 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.HideVideoSongsKey
+import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.MiniPlayerBottomSpacing
 import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.NavigationBarHeight
 import com.metrolist.music.constants.PauseSearchHistoryKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.YouTubeQueue
@@ -150,14 +156,9 @@ fun OnlineSearchResult(
     savedStateHandle: SavedStateHandle? = null,
 ) {
     val database = LocalDatabase.current
-    val menuState = LocalMenuState.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val haptic = LocalHapticFeedback.current
-    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
-    val lazyListState = rememberLazyListState()
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -167,11 +168,6 @@ fun OnlineSearchResult(
 
     var lastHandledCount by rememberSaveable { mutableIntStateOf(0) }
     var isSearchFocused by remember { mutableStateOf(false) }
-    var smartSelected by rememberSaveable { mutableStateOf(true) }
-
-    LaunchedEffect(smartSelected) {
-        if (smartSelected) viewModel.loadSmartSearch()
-    }
 
     LaunchedEffect(scrollToTopCount) {
         if (scrollToTopCount > lastHandledCount) {
@@ -186,7 +182,11 @@ fun OnlineSearchResult(
     }
 
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
-    val hideVideoSongs by rememberPreference(HideVideoSongsKey, defaultValue = false)
+    // Restyles this route to match New Iride UI when reached from an entry point other than the
+    // Search tab itself (voice search, genre taps, ...) — the tab's own submit flow no longer
+    // navigates here when this is enabled, see SearchScreen's inline results.
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
 
     BackHandler(enabled = isSearchFocused) {
         isSearchFocused = false
@@ -223,6 +223,172 @@ fun OnlineSearchResult(
         query = TextFieldValue(decodedQuery, TextRange(decodedQuery.length))
     }
 
+    if (topNavigationBarEnabled) {
+        // New Iride UI: the search bar scrolls away together with the chips/results — no pinned
+        // chrome — so the background must be able to go transparent/gradient like Home/Library,
+        // instead of the classic UI's always-opaque background below.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    when {
+                        pureBlack -> Color.Black
+                        mainTopGradient -> Color.Transparent
+                        else -> MaterialTheme.colorScheme.background
+                    },
+                )
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
+        ) {
+            OnlineSearchResultsBody(
+                navController = navController,
+                viewModel = viewModel,
+                pureBlack = pureBlack,
+                useIrideStyle = true,
+                isSearchFocused = isSearchFocused,
+                queryText = query.text,
+                onQueryChange = { query = it },
+                onSearch = onSearch,
+                onDismissSuggestions = {
+                    isSearchFocused = false
+                    focusManager.clearFocus()
+                },
+                header = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 8.dp),
+                    ) {
+                        IconButton(onClick = { navController.navigateUp() }) {
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_back),
+                                contentDescription = stringResource(R.string.dismiss),
+                                tint = Color.White.copy(alpha = 0.6f),
+                            )
+                        }
+                        IrideSearchBox(
+                            query = query,
+                            onQueryChange = { query = it },
+                            placeholderText = stringResource(R.string.search_yt_music),
+                            focusRequester = focusRequester,
+                            onFocusChanged = { if (it.isFocused) isSearchFocused = true },
+                            onSearch = { onSearch(query.text) },
+                            onClear = { query = TextFieldValue("") },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                },
+            )
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
+        ) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = {
+                    Text(
+                        text = stringResource(R.string.search_yt_music),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                leadingIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_back),
+                            contentDescription = stringResource(R.string.dismiss),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                trailingIcon = {
+                    if (query.text.isNotEmpty()) {
+                        IconButton(onClick = { query = TextFieldValue("") }) {
+                            Icon(
+                                painter = painterResource(R.drawable.close),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSearch(query.text) }),
+                singleLine = true,
+                shape = RoundedCornerShape(28.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = if (pureBlack) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceContainerHigh,
+                    unfocusedContainerColor = if (pureBlack) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceContainerHigh,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .focusRequester(focusRequester)
+                    .onFocusChanged { if (it.isFocused) isSearchFocused = true },
+            )
+
+            OnlineSearchResultsBody(
+                modifier = Modifier.weight(1f),
+                navController = navController,
+                viewModel = viewModel,
+                pureBlack = pureBlack,
+                useIrideStyle = false,
+                isSearchFocused = isSearchFocused,
+                queryText = query.text,
+                onQueryChange = { query = it },
+                onSearch = onSearch,
+                onDismissSuggestions = {
+                    isSearchFocused = false
+                    focusManager.clearFocus()
+                },
+            )
+        }
+    }
+}
+
+/**
+ * Chips row + Smart Search/filtered results list + focus suggestion overlay + mic FAB — shared by
+ * [OnlineSearchResult] (the classic separate-route screen) and [SearchScreen]'s inline New Iride
+ * UI results view, so both stay in sync instead of maintaining two copies of this logic.
+ */
+@Composable
+fun OnlineSearchResultsBody(
+    navController: NavController,
+    viewModel: OnlineSearchViewModel,
+    pureBlack: Boolean,
+    useIrideStyle: Boolean,
+    isSearchFocused: Boolean,
+    queryText: String,
+    onQueryChange: (TextFieldValue) -> Unit,
+    onSearch: (String) -> Unit,
+    onDismissSuggestions: () -> Unit,
+    modifier: Modifier = Modifier,
+    // New Iride UI: leading scrollable item (search bar/nav) — when non-null, it and the chips
+    // row share one LazyColumn with the results, so everything scrolls away together instead of
+    // staying pinned, exactly like LocalSearchScreen/OnlineSearchScreen.
+    header: (@Composable () -> Unit)? = null,
+) {
+    val menuState = LocalMenuState.current
+    val playerConnection = LocalPlayerConnection.current ?: return
+    val haptic = LocalHapticFeedback.current
+    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+    val lazyListState = rememberLazyListState()
+
+    var smartSelected by rememberSaveable { mutableStateOf(true) }
+    LaunchedEffect(smartSelected) {
+        if (smartSelected) viewModel.loadSmartSearch()
+    }
+
+    val hideVideoSongs by rememberPreference(HideVideoSongsKey, defaultValue = false)
     LaunchedEffect(hideVideoSongs) {
         if (hideVideoSongs && viewModel.filter.value == FILTER_VIDEO) {
             viewModel.filter.value = null
@@ -235,10 +401,6 @@ fun OnlineSearchResult(
         derivedStateOf {
             searchFilter?.value?.let { viewModel.viewStateMap[it] }
         }
-    }
-
-    LaunchedEffect(Unit) {
-        viewModel.filter.value = null
     }
 
     LaunchedEffect(lazyListState) {
@@ -288,7 +450,7 @@ fun OnlineSearchResult(
                 }
             },
             modifier = Modifier
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = if (useIrideStyle) 20.dp else 16.dp)
                 .combinedClickable(
                     onClick = {
                         when (item) {
@@ -385,74 +547,96 @@ fun OnlineSearchResult(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
-            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
-    ) {
-        // Search bar
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            placeholder = {
-                Text(
-                    text = stringResource(R.string.search_yt_music),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-            leadingIcon = {
-                IconButton(onClick = { navController.navigateUp() }) {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_back),
-                        contentDescription = stringResource(R.string.dismiss),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+    // Two-column vertical grid shared by the Album and Playlist filter tabs — same card sizing
+    // language as Smart Search's carousels, but laid out as fillMaxWidth pairs (via lazy items()
+    // so paginated results keep proper recycling) instead of a fixed-size horizontal scroll, so
+    // each cover fills its half of the row instead of leaving dead space.
+    val searchResultGrid2Col: LazyListScope.(List<YTItem>) -> Unit = { rowItems ->
+        items(
+            items = rowItems.chunked(2),
+            key = { row -> "filtered_row_${row.first().id}" },
+        ) { row ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = if (useIrideStyle) 20.dp else 12.dp,
+                        vertical = 6.dp,
+                    )
+                    .animateItem(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                row.forEach { item ->
+                    YouTubeGridItem(
+                        item = item,
+                        isActive = when (item) {
+                            is SongItem -> mediaMetadata?.id == item.id
+                            is AlbumItem -> mediaMetadata?.album?.id == item.id
+                            is EpisodeItem -> mediaMetadata?.id == item.id
+                            else -> false
+                        },
+                        isPlaying = isPlaying,
+                        coroutineScope = coroutineScope,
+                        thumbnailRatio = 1f,
+                        thumbnailCornerRadius = 6.dp,
+                        showPlayButton = false,
+                        fillMaxWidth = true,
+                        modifier = Modifier
+                            .weight(1f)
+                            .combinedClickable(
+                                onClick = {
+                                    when (item) {
+                                        is SongItem -> {
+                                            if (item.id == mediaMetadata?.id) playerConnection.togglePlayPause()
+                                            else playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = item.id), item.toMediaMetadata()))
+                                        }
+                                        is AlbumItem -> navController.navigate("album/${item.id}")
+                                        is ArtistItem -> navController.navigate("artist/${item.id}")
+                                        is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
+                                        is PodcastItem -> navController.navigate("online_podcast/${item.id}")
+                                        is EpisodeItem -> {
+                                            if (item.id == mediaMetadata?.id) playerConnection.togglePlayPause()
+                                            else playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = item.id), item.toMediaMetadata()))
+                                        }
+                                    }
+                                },
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    menuState.show {
+                                        when (item) {
+                                            is SongItem -> YouTubeSongMenu(song = item, navController = navController, onDismiss = menuState::dismiss)
+                                            is AlbumItem -> YouTubeAlbumMenu(albumItem = item, navController = navController, onDismiss = menuState::dismiss)
+                                            is ArtistItem -> YouTubeArtistMenu(artist = item, onDismiss = menuState::dismiss)
+                                            is PlaylistItem -> YouTubePlaylistMenu(playlist = item, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                                            is PodcastItem -> YouTubePlaylistMenu(playlist = item.asPlaylistItem(), coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                                            is EpisodeItem -> YouTubeSongMenu(song = item.asSongItem(), navController = navController, onDismiss = menuState::dismiss)
+                                        }
+                                    }
+                                },
+                            ),
                     )
                 }
-            },
-            trailingIcon = {
-                if (query.text.isNotEmpty()) {
-                    IconButton(onClick = { query = TextFieldValue("") }) {
-                        Icon(
-                            painter = painterResource(R.drawable.close),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                if (row.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
-            },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { onSearch(query.text) }),
-            singleLine = true,
-            shape = RoundedCornerShape(28.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = if (pureBlack) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceContainerHigh,
-                unfocusedContainerColor = if (pureBlack) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceContainerHigh,
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .focusRequester(focusRequester)
-                .onFocusChanged { if (it.isFocused) isSearchFocused = true },
-        )
-
-        // Filter pills
-        val visibleChips = buildList {
-            add(SearchChipKey.Smart to stringResource(R.string.filter_smart_search))
-            add(SearchChipKey.Filter(FILTER_SONG) to stringResource(R.string.filter_songs))
-            if (!hideVideoSongs) add(SearchChipKey.Filter(FILTER_VIDEO) to stringResource(R.string.filter_videos))
-            add(SearchChipKey.Filter(FILTER_ALBUM) to stringResource(R.string.filter_albums))
-            add(SearchChipKey.Filter(FILTER_ARTIST) to stringResource(R.string.filter_artists))
-            add(SearchChipKey.Filter(FILTER_COMMUNITY_PLAYLIST) to stringResource(R.string.filter_community_playlists))
-            add(SearchChipKey.Filter(FILTER_FEATURED_PLAYLIST) to stringResource(R.string.filter_featured_playlists))
-            add(SearchChipKey.Filter(FILTER_PODCAST) to stringResource(R.string.filter_podcasts))
-            add(SearchChipKey.Filter(FILTER_EPISODE) to stringResource(R.string.filter_episodes))
-            add(SearchChipKey.Filter(FILTER_PROFILE) to stringResource(R.string.filter_profiles))
+            }
         }
+    }
 
+    // Filter pills
+    val visibleChips = buildList {
+        add(SearchChipKey.Smart to stringResource(R.string.filter_smart_search))
+        add(SearchChipKey.Filter(FILTER_SONG) to stringResource(R.string.filter_songs))
+        if (!hideVideoSongs) add(SearchChipKey.Filter(FILTER_VIDEO) to stringResource(R.string.filter_videos))
+        add(SearchChipKey.Filter(FILTER_ALBUM) to stringResource(R.string.filter_albums))
+        add(SearchChipKey.Filter(FILTER_ARTIST) to stringResource(R.string.filter_artists))
+        add(SearchChipKey.Filter(FILTER_COMMUNITY_PLAYLIST) to stringResource(R.string.filter_community_playlists))
+        add(SearchChipKey.Filter(FILTER_FEATURED_PLAYLIST) to stringResource(R.string.filter_featured_playlists))
+        add(SearchChipKey.Filter(FILTER_PODCAST) to stringResource(R.string.filter_podcasts))
+        add(SearchChipKey.Filter(FILTER_EPISODE) to stringResource(R.string.filter_episodes))
+    }
+
+    val chipsRow: @Composable () -> Unit = {
         ChipsRow(
             chips = visibleChips,
             currentValue = if (smartSelected) SearchChipKey.Smart else SearchChipKey.Filter(searchFilter),
@@ -468,142 +652,62 @@ fun OnlineSearchResult(
             },
             modifier = Modifier.fillMaxWidth(),
             containerColor = Color.Transparent,
-            horizontalPadding = 16.dp,
+            horizontalPadding = if (useIrideStyle) 20.dp else 16.dp,
+            useIrideStyle = useIrideStyle,
         )
+    }
 
-        Box(modifier = Modifier.weight(1f)) {
-            LazyColumn(
-                state = lazyListState,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (smartSelected) {
-                    // Smart Search: full per-category carousels ordered by query intent, each
-                    // backed by that category's own dedicated search (not YT's truncated
-                    // summary shelves), so nothing is capped to a handful of items.
-                    val order = viewModel.smartSearchOrder
-                    val topResult = searchSummary?.summaries?.firstOrNull()
+    // Smart Search + filtered results list content, shared by both the pinned-chrome (classic UI)
+    // and scroll-away-chrome (New Iride UI, see `header`) layouts below.
+    val resultsListContent: LazyListScope.() -> Unit = {
+            if (smartSelected) {
+                // Smart Search: full per-category carousels ordered by query intent, each
+                // backed by that category's own dedicated search (not YT's truncated
+                // summary shelves), so nothing is capped to a handful of items.
+                val order = viewModel.smartSearchOrder
+                val topResult = searchSummary?.summaries?.firstOrNull()
 
-                    if (order.isNotEmpty()) {
-                        topResult?.let { top ->
-                            item(key = "smart_top_title") {
-                                NavigationTitle(top.title)
-                            }
-                            items(
-                                items = top.items,
-                                key = { "smart_top_${it.id}" },
-                                itemContent = ytItemContent,
-                            )
+                if (order.isNotEmpty()) {
+                    topResult?.let { top ->
+                        item(key = "smart_top_title") {
+                            NavigationTitle(top.title, useIrideStyle = useIrideStyle)
                         }
-
-                        order.forEach { sectionFilter ->
-                            val page = viewModel.viewStateMap[sectionFilter.value]
-                            if (page != null && page.items.isEmpty()) return@forEach
-
-                            item(key = "smart_title_${sectionFilter.value}") {
-                                NavigationTitle(
-                                    title = stringResource(filterSectionTitleRes(sectionFilter)),
-                                    onClick = {
-                                        smartSelected = false
-                                        if (viewModel.filter.value != sectionFilter) viewModel.filter.value = sectionFilter
-                                        coroutineScope.launch { lazyListState.animateScrollToItem(0) }
-                                    },
-                                )
-                            }
-
-                            item(key = "smart_row_${sectionFilter.value}") {
-                                if (page == null) {
-                                    searchResultRowPlaceholder()
-                                } else {
-                                    searchResultRow(page.items)
-                                }
-                            }
-                        }
-
-                        val allResolved = order.all { viewModel.viewStateMap[it.value] != null }
-                        val allEmpty = allResolved && topResult == null &&
-                            order.all { viewModel.viewStateMap[it.value]?.items.isNullOrEmpty() }
-                        if (allEmpty) {
-                            item {
-                                EmptyPlaceholder(
-                                    icon = R.drawable.search,
-                                    text = stringResource(R.string.no_results_found),
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    val filteredItems = itemsPage?.items.orEmpty().distinctBy { it.id }
-                    val isPlaylistFilter = searchFilter == FILTER_COMMUNITY_PLAYLIST || searchFilter == FILTER_FEATURED_PLAYLIST
-
-                    if (isPlaylistFilter) {
-                        val chunked = filteredItems.chunked(2)
                         items(
-                            items = chunked,
-                            key = { row -> "filtered_row_${row.first().id}" },
-                        ) { row ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                                    .animateItem(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                row.forEach { item ->
-                                    YouTubeGridItem(
-                                        item = item,
-                                        isActive = false,
-                                        isPlaying = isPlaying,
-                                        coroutineScope = coroutineScope,
-                                        thumbnailRatio = 1f,
-                                        thumbnailCornerRadius = 6.dp,
-                                        showPlayButton = false,
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .combinedClickable(
-                                                onClick = {
-                                                    when (item) {
-                                                        is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
-                                                        is PodcastItem -> navController.navigate("online_podcast/${item.id}")
-                                                        else -> {}
-                                                    }
-                                                },
-                                                onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    menuState.show {
-                                                        when (item) {
-                                                            is PlaylistItem -> YouTubePlaylistMenu(playlist = item, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
-                                                            is PodcastItem -> YouTubePlaylistMenu(playlist = item.asPlaylistItem(), coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
-                                                            else -> {}
-                                                        }
-                                                    }
-                                                },
-                                            ),
-                                    )
-                                }
-                                if (row.size == 1) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
-                    } else {
-                        items(
-                            items = filteredItems,
-                            key = { "filtered_${it.id}" },
+                            items = top.items,
+                            key = { "smart_top_${it.id}" },
                             itemContent = ytItemContent,
                         )
                     }
 
-                    // Pagination shimmer
-                    if (itemsPage?.continuation != null) {
-                        item(key = "loading") {
-                            ShimmerHost {
-                                repeat(3) { ListItemPlaceHolder() }
+                    order.forEach { sectionFilter ->
+                        val page = viewModel.viewStateMap[sectionFilter.value]
+                        if (page != null && page.items.isEmpty()) return@forEach
+
+                        item(key = "smart_title_${sectionFilter.value}") {
+                            NavigationTitle(
+                                title = stringResource(filterSectionTitleRes(sectionFilter)),
+                                useIrideStyle = useIrideStyle,
+                                onClick = {
+                                    smartSelected = false
+                                    if (viewModel.filter.value != sectionFilter) viewModel.filter.value = sectionFilter
+                                    coroutineScope.launch { lazyListState.animateScrollToItem(0) }
+                                },
+                            )
+                        }
+
+                        item(key = "smart_row_${sectionFilter.value}") {
+                            if (page == null) {
+                                searchResultRowPlaceholder()
+                            } else {
+                                searchResultRow(page.items)
                             }
                         }
                     }
 
-                    // Empty state
-                    if (itemsPage?.items?.isEmpty() == true) {
+                    val allResolved = order.all { viewModel.viewStateMap[it.value] != null }
+                    val allEmpty = allResolved && topResult == null &&
+                        order.all { viewModel.viewStateMap[it.value]?.items.isNullOrEmpty() }
+                    if (allEmpty) {
                         item {
                             EmptyPlaceholder(
                                 icon = R.drawable.search,
@@ -612,36 +716,105 @@ fun OnlineSearchResult(
                         }
                     }
                 }
+            } else {
+                val filteredItems = itemsPage?.items.orEmpty().distinctBy { it.id }
+                val isGridFilter = searchFilter == FILTER_COMMUNITY_PLAYLIST ||
+                    searchFilter == FILTER_FEATURED_PLAYLIST ||
+                    searchFilter == FILTER_ALBUM
 
-                // Initial loading shimmer
-                if ((smartSelected && viewModel.smartSearchOrder.isEmpty()) ||
-                    (!smartSelected && itemsPage == null)
-                ) {
-                    item {
+                if (isGridFilter) {
+                    searchResultGrid2Col(filteredItems)
+                } else {
+                    items(
+                        items = filteredItems,
+                        key = { "filtered_${it.id}" },
+                        itemContent = ytItemContent,
+                    )
+                }
+
+                // Pagination shimmer
+                if (itemsPage?.continuation != null) {
+                    item(key = "loading") {
                         ShimmerHost {
-                            repeat(8) { ListItemPlaceHolder() }
+                            repeat(3) { ListItemPlaceHolder() }
                         }
                     }
                 }
 
-                item(key = "bottom_spacer") {
-                    Spacer(modifier = Modifier.height(MiniPlayerHeight + MiniPlayerBottomSpacing + NavigationBarHeight))
+                // Empty state
+                if (itemsPage?.items?.isEmpty() == true) {
+                    item {
+                        EmptyPlaceholder(
+                            icon = R.drawable.search,
+                            text = stringResource(R.string.no_results_found),
+                        )
+                    }
                 }
             }
 
-            // Suggestion overlay when search bar is focused
+            // Initial loading shimmer
+            if ((smartSelected && viewModel.smartSearchOrder.isEmpty()) ||
+                (!smartSelected && itemsPage == null)
+            ) {
+                item {
+                    ShimmerHost {
+                        repeat(8) { ListItemPlaceHolder() }
+                    }
+                }
+            }
+
+            item(key = "bottom_spacer") {
+                Spacer(modifier = Modifier.height(MiniPlayerHeight + MiniPlayerBottomSpacing + NavigationBarHeight))
+            }
+    }
+
+    if (header != null) {
+        // New Iride UI: header + chips share the results' LazyColumn, so the whole page scrolls
+        // as one — no chrome stays pinned — exactly like LocalSearchScreen/OnlineSearchScreen.
+        // While the search box is focused (about to run a new search) the header is instead
+        // pinned above a suggestions panel, matching the classic (non-Iride) layout below — this
+        // keeps the actual search box visible and interactive instead of the previous design,
+        // which drew an opaque suggestions overlay *on top of* the still-hidden-but-still-focused
+        // text field, making it look like typing did nothing and a second search never landed.
+        // `movableContentOf` preserves that text field's identity (and IME focus) as it moves
+        // between the LazyColumn item and the pinned Column below, instead of destroying and
+        // recreating it — which would drop focus on every focus/unfocus transition.
+        val currentHeader by rememberUpdatedState(header)
+        val movableHeader = remember { movableContentOf { currentHeader() } }
+
+        LaunchedEffect(isSearchFocused) {
+            if (!isSearchFocused) lazyListState.scrollToItem(0)
+        }
+
+        Box(modifier = modifier.fillMaxSize()) {
             if (isSearchFocused) {
-                OnlineSearchScreen(
-                    query = query.text,
-                    onQueryChange = { query = it },
-                    navController = navController,
-                    onSearch = onSearch,
-                    onDismiss = {
-                        isSearchFocused = false
-                        focusManager.clearFocus()
-                    },
-                    pureBlack = pureBlack,
-                )
+                Column(modifier = Modifier.fillMaxSize()) {
+                    movableHeader()
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
+                    ) {
+                        OnlineSearchScreen(
+                            query = queryText,
+                            onQueryChange = onQueryChange,
+                            navController = navController,
+                            onSearch = onSearch,
+                            onDismiss = onDismissSuggestions,
+                            pureBlack = pureBlack,
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    state = lazyListState,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    item(key = "search_header") { movableHeader() }
+                    item(key = "chips_row") { chipsRow() }
+                    resultsListContent()
+                }
             }
 
             HideOnScrollFAB(
@@ -649,6 +822,35 @@ fun OnlineSearchResult(
                 icon = R.drawable.mic,
                 onClick = { navController.navigate("recognition") },
             )
+        }
+    } else {
+        Column(modifier = modifier.fillMaxWidth()) {
+            chipsRow()
+
+            Box(modifier = Modifier.weight(1f)) {
+                LazyColumn(
+                    state = lazyListState,
+                    modifier = Modifier.fillMaxWidth(),
+                    content = resultsListContent,
+                )
+
+                if (isSearchFocused) {
+                    OnlineSearchScreen(
+                        query = queryText,
+                        onQueryChange = onQueryChange,
+                        navController = navController,
+                        onSearch = onSearch,
+                        onDismiss = onDismissSuggestions,
+                        pureBlack = pureBlack,
+                    )
+                }
+
+                HideOnScrollFAB(
+                    lazyListState = lazyListState,
+                    icon = R.drawable.mic,
+                    onClick = { navController.navigate("recognition") },
+                )
+            }
         }
     }
 }

@@ -404,7 +404,9 @@ private fun NewMiniPlayer(
                 NewMiniPlayerPlayButton(
                     progressState = progressState,
                     mediaMetadata = mediaMetadata,
-                    primaryColor = primaryColor,
+                    // Always white regardless of theme/background, so the progress ring stays
+                    // legible instead of blending into whatever accent color is active.
+                    primaryColor = Color.White,
                     outlineColor = outlineColor,
                     playerBottomSheetState = playerBottomSheetState,
                 )

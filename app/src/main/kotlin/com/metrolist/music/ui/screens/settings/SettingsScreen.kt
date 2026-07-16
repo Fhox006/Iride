@@ -11,7 +11,9 @@ import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,13 +35,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -62,8 +67,10 @@ import androidx.compose.ui.platform.LocalContext
 
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -71,6 +78,7 @@ import coil3.compose.AsyncImage
 import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalTopNavBarController
 import com.metrolist.music.R
 import com.metrolist.music.constants.AccountChannelHandleKey
 import com.metrolist.music.constants.AccountEmailKey
@@ -79,10 +87,10 @@ import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.TopNavigationBarKey
-import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
@@ -178,6 +186,7 @@ fun SettingsScreen(
     val (advancedMode, onAdvancedModeChange) = rememberPreference(AdvancedModeKey, false)
     var showAdvancedMenu by remember { mutableStateOf(false) }
     val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavBarController = LocalTopNavBarController.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         snapAnimationSpec = tween(durationMillis = 200),
     )
@@ -243,26 +252,13 @@ fun SettingsScreen(
 
     // ── Screen ────────────────────────────────────────────────────────────
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = if (!topNavigationBarEnabled) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier,
         topBar = {
-            if (topNavigationBarEnabled) {
-                // New Iride UI: a plain page like Home/Library/Search, not a separate
-                // panel — same collapsing header, hidden title (TopNavigationBar tabs
-                // already show "Account" above), easy to scroll.
-                CollapsingScreenHeader(
-                    title = stringResource(R.string.account),
-                    scrollBehavior = scrollBehavior,
-                    pureBlack = false,
-                    isSearchActive = false,
-                    onSearchActiveChange = {},
-                    searchQuery = "",
-                    onSearchQueryChange = {},
-                    keyboardController = null,
-                    navigationIcon = backNavigationIcon,
-                    trailingContent = advancedMenuButton,
-                    hideTitle = true,
-                )
-            } else {
+            // New Iride UI: this is the Account tab's own top-level destination — no pinned bar
+            // at all, exactly like Home/Library. TopNavigationBar is rendered as the first child
+            // of the scrollable Column below instead, so it scrolls away with the rest of the
+            // page rather than staying fixed on top of it.
+            if (!topNavigationBarEnabled) {
                 TopAppBar(
                     title = { Text(stringResource(R.string.account)) },
                     navigationIcon = backNavigationIcon,
@@ -283,15 +279,52 @@ fun SettingsScreen(
                 )
             )
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
     ) {
+        if (topNavigationBarEnabled && topNavBarController != null) {
+            TopNavigationBar(
+                navigationItems = topNavBarController.navigationItems,
+                currentRoute = topNavBarController.currentRoute,
+                onItemClick = topNavBarController.onItemClick,
+                containerColor = Color.Transparent,
+            )
+            Row(
+                horizontalArrangement = Arrangement.End,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+            ) {
+                advancedMenuButton()
+            }
+        }
+
+    Column(modifier = Modifier.padding(horizontal = if (topNavigationBarEnabled) 20.dp else 16.dp)) {
         // ── Account section ──────────────────────────────────────────────
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 24.dp),
+                .padding(vertical = if (topNavigationBarEnabled) 28.dp else 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            val avatarSize = if (topNavigationBarEnabled) 84.dp else 80.dp
+            val avatarBorder = if (topNavigationBarEnabled) {
+                Modifier.border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
+            } else {
+                Modifier
+            }
+            val avatarFallbackBg = if (topNavigationBarEnabled) {
+                Color.White.copy(alpha = 0.05f)
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            }
+            val primaryTextColor = if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.onSurface
+            val secondaryTextColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurfaceVariant
+            val fallbackIconTint = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurfaceVariant
+            val nameStyle = if (topNavigationBarEnabled) {
+                MaterialTheme.typography.titleLarge.copy(fontFamily = SpaceMonoFontFamily, letterSpacing = (-0.2).sp)
+            } else {
+                MaterialTheme.typography.titleLarge
+            }
+
             if (isLoggedIn) {
                 if (accountImageUrl != null) {
                     AsyncImage(
@@ -299,31 +332,33 @@ fun SettingsScreen(
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
-                            .size(80.dp)
+                            .size(avatarSize)
                             .clip(CircleShape)
+                            .then(avatarBorder)
                     )
                 } else {
                     Box(
                         modifier = Modifier
-                            .size(80.dp)
+                            .size(avatarSize)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                            .background(avatarFallbackBg)
+                            .then(avatarBorder),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.person),
                             contentDescription = null,
                             modifier = Modifier.size(44.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = fallbackIconTint
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 14.dp else 12.dp))
                 Text(
                     text = accountName.ifEmpty { stringResource(R.string.my_account) },
-                    style = MaterialTheme.typography.titleLarge,
+                    style = nameStyle,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = primaryTextColor
                 )
                 val handle = accountChannelHandle.takeIf { it.isNotEmpty() }
                     ?: accountEmail.takeIf { it.isNotEmpty() }
@@ -331,47 +366,63 @@ fun SettingsScreen(
                     Text(
                         text = handle,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = secondaryTextColor
                     )
                 }
             } else {
                 Box(
                     modifier = Modifier
-                        .size(80.dp)
+                        .size(avatarSize)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                        .background(avatarFallbackBg)
+                        .then(avatarBorder),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.person),
                         contentDescription = null,
                         modifier = Modifier.size(44.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = fallbackIconTint
                     )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 14.dp else 12.dp))
                 Text(
                     text = stringResource(R.string.login),
-                    style = MaterialTheme.typography.titleLarge,
+                    style = nameStyle,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = primaryTextColor
                 )
                 Text(
                     text = stringResource(R.string.sign_in_desc),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = secondaryTextColor
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { navController.navigate("login") },
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Text(stringResource(R.string.login))
+                if (topNavigationBarEnabled) {
+                    OutlinedButton(
+                        onClick = { navController.navigate("login") },
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.login),
+                            fontFamily = SpaceMonoFontFamily,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                } else {
+                    Button(
+                        onClick = { navController.navigate("login") },
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Text(stringResource(R.string.login))
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 4.dp else 8.dp))
 
         // ── My Account ────────────────────────────────────────────────────
         Material3SettingsGroup(
@@ -460,6 +511,7 @@ fun SettingsScreen(
                 LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom)
             )
         )
+    }
     }
     }
 }

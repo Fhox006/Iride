@@ -24,6 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -35,11 +36,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,10 +52,13 @@ import coil3.compose.AsyncImage
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.utils.rememberPreference
 import java.util.Locale
 
 private data class Contributor(
@@ -146,6 +152,35 @@ private fun DeveloperSocials(
     }
 }
 
+@Composable
+private fun IrideDeveloperSocials(
+    uriHandler: androidx.compose.ui.platform.UriHandler
+) {
+    Row(
+        modifier = Modifier
+            .clickable { uriHandler.openUri("https://github.com/Fhox006") }
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.github),
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = "GitHub",
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontFamily = SpaceMonoFontFamily,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.1).sp,
+            ),
+            color = Color.White
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(
@@ -153,6 +188,7 @@ fun AboutScreen(
 ) {
     val uriHandler = LocalUriHandler.current
     val windowInsets = LocalPlayerAwareWindowInsets.current
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
 
     Column(
         modifier = Modifier
@@ -170,6 +206,93 @@ fun AboutScreen(
 
         Spacer(Modifier.height(16.dp))
 
+        if (topNavigationBarEnabled) {
+            // App Header Section — bare, no card
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_logo),
+                    contentDescription = stringResource(R.string.app_name),
+                    modifier = Modifier.size(64.dp)
+                )
+
+                Spacer(Modifier.width(20.dp))
+
+                Column {
+                    val metrolistName = stringResource(R.string.metrolist)
+                        .lowercase(Locale.getDefault())
+                        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+
+                    Text(
+                        text = metrolistName,
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontFamily = SpaceMonoFontFamily,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp,
+                        ),
+                        color = Color.White
+                    )
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Text(
+                        text = "${stringResource(R.string.about_release_badge)} • ${BuildConfig.ARCHITECTURE.uppercase()}",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontFamily = SpaceMonoFontFamily,
+                            letterSpacing = 0.5.sp,
+                        ),
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White.copy(alpha = 0.5f)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(32.dp))
+
+            // Lead Developer — bare, no card
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                ContributorAvatar(
+                    avatarUrl = "",
+                    sizeDp = 96,
+                    shape = CircleShape,
+                    contentDescription = leadDeveloper.name,
+                    fallbackIconRes = R.drawable.fire
+                )
+
+                Column(
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = leadDeveloper.name,
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontFamily = SpaceMonoFontFamily,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp,
+                        ),
+                        color = Color.White,
+                        lineHeight = 34.sp
+                    )
+                    Text(
+                        text = stringResource(R.string.about_creator_role),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontFamily = SpaceMonoFontFamily,
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    IrideDeveloperSocials(uriHandler)
+                }
+            }
+
+            Spacer(Modifier.height(32.dp))
+        } else {
         // App Header Section
         ElevatedCard(
             shape = RoundedCornerShape(32.dp),
@@ -287,6 +410,7 @@ fun AboutScreen(
         }
 
         Spacer(Modifier.height(32.dp))
+        }
 
         Material3SettingsGroup(
             title = stringResource(R.string.credits_special_thanks),
@@ -331,18 +455,8 @@ fun AboutScreen(
         Spacer(Modifier.height(48.dp))
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.about)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.arrow_back),
-                    contentDescription = stringResource(R.string.cd_back),
-                )
-            }
-        }
+    SettingsBackTopBar(
+        title = stringResource(R.string.about),
+        navController = navController,
     )
 }

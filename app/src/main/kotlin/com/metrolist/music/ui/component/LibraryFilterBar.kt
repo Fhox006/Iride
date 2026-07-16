@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
 import com.metrolist.music.constants.LibraryViewType
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 
 @Composable
 fun <T> LibrarySortRow(
@@ -90,7 +91,7 @@ fun <T> LibrarySortRow(
                                 Text(
                                     text = label,
                                     style = MaterialTheme.typography.labelLarge.copy(
-                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                        fontFamily = SpaceMonoFontFamily,
                                     ),
                                     fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.SemiBold
                                                  else androidx.compose.ui.text.font.FontWeight.Normal,
@@ -179,7 +180,7 @@ private fun SortMenuChip(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium.copy(
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    fontFamily = SpaceMonoFontFamily,
                 ),
                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                 color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),

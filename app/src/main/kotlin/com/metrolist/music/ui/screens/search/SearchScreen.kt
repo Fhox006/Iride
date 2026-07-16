@@ -48,6 +48,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -98,12 +99,16 @@ import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IrideSegmentedToggle
 import com.metrolist.music.ui.component.TopNavigationBar
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import androidx.compose.ui.util.lerp as lerpFloat
+import androidx.activity.compose.BackHandler
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.metrolist.music.viewmodels.OnlineSearchViewModel
 
 private val LargeTitleHeightDp = 80.dp
 private val SmallTitleBarHeightDp = 56.dp
@@ -142,7 +147,7 @@ fun SearchScreen(
         }
     }
 
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
     var searchSource by rememberEnumPreference(SearchSourceKey, SearchSource.ONLINE)
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
@@ -150,6 +155,11 @@ fun SearchScreen(
     }
     var isFocused by remember { mutableStateOf(false) }
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
+
+    // New Iride UI: a submitted plain-text query is shown inline on this same page (chips +
+    // Smart Search + results) instead of navigating to the separate OnlineSearchResult route.
+    var submittedQuery by rememberSaveable { mutableStateOf<String?>(null) }
+    val onlineSearchResultViewModel: OnlineSearchViewModel = hiltViewModel()
 
     fun handleSearch(searchQuery: String) {
         if (searchQuery.isEmpty()) return
@@ -168,7 +178,11 @@ fun SearchScreen(
                 navController.navigate("artist/${parsedUrl.id}")
             }
             null -> {
-                navController.navigate("search/${URLEncoder.encode(searchQuery, "UTF-8")}")
+                if (topNavigationBarEnabled) {
+                    submittedQuery = searchQuery
+                } else {
+                    navController.navigate("search/${URLEncoder.encode(searchQuery, "UTF-8")}")
+                }
             }
         }
         if (!pauseSearchHistory) {
@@ -178,38 +192,60 @@ fun SearchScreen(
         }
     }
 
+    LaunchedEffect(submittedQuery) {
+        submittedQuery?.let(onlineSearchResultViewModel::search)
+    }
+
+    BackHandler(enabled = topNavigationBarEnabled && submittedQuery != null) {
+        submittedQuery = null
+    }
+
+    BackHandler(enabled = topNavigationBarEnabled && isFocused) {
+        isFocused = false
+        focusManager.clearFocus()
+    }
+
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         snapAnimationSpec = tween(durationMillis = 200),
     )
     val topNavBarController = com.metrolist.music.LocalTopNavBarController.current
 
-    // New Iride UI: extracted so it can be handed to LocalSearchScreen/OnlineSearchScreen as a
-    // leading scrollable item below instead of living in this Scaffold's pinned topBar — it then
-    // scrolls away together with the rest of the list, exactly like HomeScreen's own copy of
-    // TopNavigationBar (see the "search" exclusion in MainActivity's outer topBar condition).
-    val irideHeader: (@Composable () -> Unit)? = if (topNavigationBarEnabled && topNavBarController != null) {
-        {
-            SearchScrollableHeader(
-                navigationItems = topNavBarController.navigationItems,
-                currentRoute = topNavBarController.currentRoute,
-                onItemClick = topNavBarController.onItemClick,
-                query = query,
-                onQueryChange = { query = it },
-                searchSource = searchSource,
-                onSearchSourceToggle = {
-                    searchSource = if (searchSource == SearchSource.ONLINE) SearchSource.LOCAL else SearchSource.ONLINE
-                },
-                focusRequester = focusRequester,
-                onFocusChanged = { isFocused = it.isFocused },
-                onSearch = { handleSearch(query.text) },
-                onClear = { query = TextFieldValue("") },
-                pureBlack = pureBlack,
-                transparentBackground = mainTopGradient,
-            )
+    // New Iride UI: kept as a single movableContentOf instance (not a plain lambda) so the search
+    // box's composition — and with it, its keyboard focus/IME connection — survives moving between
+    // the pre-search screen (LocalSearchScreen/OnlineSearchScreen, below) and the post-search
+    // inline-results screen (OnlineSearchResultsBody, below). Those are two different composables
+    // at the same `if (showInlineResults)` call site: without movableContentOf, submitting a search
+    // fully disposes the old header (and its focused text field) and composes a brand new one,
+    // dropping IME focus — the field then reads as "emptied"/unresponsive and a second search
+    // can't be typed. (LocalTopNavBarController.current is re-read *inside* the movable lambda,
+    // not hoisted, so it always reflects the latest composition rather than the value from the
+    // first time this movableContentOf block ran.)
+    val irideHeaderContent = remember {
+        movableContentOf {
+            val controller = com.metrolist.music.LocalTopNavBarController.current
+            if (controller != null) {
+                SearchScrollableHeader(
+                    navigationItems = controller.navigationItems,
+                    currentRoute = controller.currentRoute,
+                    onItemClick = controller.onItemClick,
+                    query = query,
+                    onQueryChange = { query = it },
+                    searchSource = searchSource,
+                    onSearchSourceToggle = {
+                        searchSource = if (searchSource == SearchSource.ONLINE) SearchSource.LOCAL else SearchSource.ONLINE
+                    },
+                    focusRequester = focusRequester,
+                    onFocusChanged = { isFocused = it.isFocused },
+                    onSearch = { handleSearch(query.text) },
+                    onClear = { query = TextFieldValue(""); submittedQuery = null },
+                    pureBlack = pureBlack,
+                    transparentBackground = mainTopGradient,
+                )
+            }
         }
-    } else {
-        null
     }
+    val irideHeader: (@Composable () -> Unit)? =
+        if (topNavigationBarEnabled && topNavBarController != null) irideHeaderContent else null
 
     Scaffold(
         topBar = {
@@ -252,35 +288,58 @@ fun SearchScreen(
                     },
                 ),
         ) {
-            when (searchSource) {
-                SearchSource.LOCAL -> {
-                    LocalSearchScreen(
-                        query = query.text,
-                        navController = navController,
-                        onDismiss = { navController.navigateUp() },
-                        pureBlack = pureBlack,
-                        header = irideHeader,
-                    )
+            val showInlineResults = topNavigationBarEnabled && searchSource == SearchSource.ONLINE && submittedQuery != null
+            if (showInlineResults) {
+                // New Iride UI: a submitted query stays on this same page, with the header (nav
+                // tabs + source toggle + search box) as the results' own leading scrollable item —
+                // the whole page scrolls as one, exactly like LocalSearchScreen/OnlineSearchScreen.
+                OnlineSearchResultsBody(
+                    modifier = Modifier.fillMaxSize(),
+                    navController = navController,
+                    viewModel = onlineSearchResultViewModel,
+                    pureBlack = pureBlack,
+                    useIrideStyle = true,
+                    isSearchFocused = isFocused,
+                    queryText = query.text,
+                    onQueryChange = { query = it },
+                    onSearch = { handleSearch(it) },
+                    onDismissSuggestions = {
+                        isFocused = false
+                        focusManager.clearFocus()
+                    },
+                    header = irideHeader,
+                )
+            } else {
+                when (searchSource) {
+                    SearchSource.LOCAL -> {
+                        LocalSearchScreen(
+                            query = query.text,
+                            navController = navController,
+                            onDismiss = { navController.navigateUp() },
+                            pureBlack = pureBlack,
+                            header = irideHeader,
+                        )
+                    }
+                    SearchSource.ONLINE -> {
+                        OnlineSearchScreen(
+                            query = query.text,
+                            onQueryChange = { query = it },
+                            navController = navController,
+                            onSearch = { handleSearch(it) },
+                            onDismiss = { /* stay on page */ },
+                            pureBlack = pureBlack,
+                            isFocused = isFocused,
+                            header = irideHeader,
+                        )
+                    }
                 }
-                SearchSource.ONLINE -> {
-                    OnlineSearchScreen(
-                        query = query.text,
-                        onQueryChange = { query = it },
-                        navController = navController,
-                        onSearch = { handleSearch(it) },
-                        onDismiss = { /* stay on page */ },
-                        pureBlack = pureBlack,
-                        isFocused = isFocused,
-                        header = irideHeader,
-                    )
-                }
-            }
 
-            HideOnScrollFAB(
-                lazyListState = lazyListState,
-                icon = R.drawable.mic,
-                onClick = { navController.navigate("recognition") },
-            )
+                HideOnScrollFAB(
+                    lazyListState = lazyListState,
+                    icon = R.drawable.mic,
+                    onClick = { navController.navigate("recognition") },
+                )
+            }
         }
     }
 
@@ -338,7 +397,7 @@ private fun SearchScrollableHeader(
             navigationItems = navigationItems,
             currentRoute = currentRoute,
             onItemClick = onItemClick,
-            containerColor = if (transparentBackground) Color.Transparent else MaterialTheme.colorScheme.background,
+            containerColor = Color.Transparent,
         )
 
         Box(modifier = Modifier.padding(start = 20.dp, top = 8.dp, bottom = 8.dp)) {
@@ -352,62 +411,92 @@ private fun SearchScrollableHeader(
             )
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
-                .height(SearchBoxHeightDp)
-                .clip(RoundedCornerShape(26.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = 16.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                BasicTextField(
-                    value = query,
-                    onValueChange = onQueryChange,
-                    modifier = Modifier
-                        .weight(1f)
-                        .focusRequester(focusRequester)
-                        .onFocusChanged(onFocusChanged),
-                    textStyle = TextStyle(
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 16.sp,
-                    ),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    singleLine = true,
-                    decorationBox = { innerTextField ->
-                        if (query.text.isEmpty()) {
-                            Text(
-                                text = stringResource(
-                                    when (searchSource) {
-                                        SearchSource.LOCAL -> R.string.search_library
-                                        SearchSource.ONLINE -> R.string.search_yt_music
-                                    },
-                                ),
-                                style = TextStyle(
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                    fontSize = 16.sp,
-                                ),
-                            )
-                        }
-                        innerTextField()
-                    },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-                )
+        IrideSearchBox(
+            query = query,
+            onQueryChange = onQueryChange,
+            placeholderText = stringResource(
+                when (searchSource) {
+                    SearchSource.LOCAL -> R.string.search_library
+                    SearchSource.ONLINE -> R.string.search_yt_music
+                },
+            ),
+            focusRequester = focusRequester,
+            onFocusChanged = onFocusChanged,
+            onSearch = onSearch,
+            onClear = onClear,
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp),
+        )
+    }
+}
 
-                if (query.text.isNotEmpty()) {
-                    IconButton(onClick = onClear) {
-                        Icon(
-                            painter = painterResource(R.drawable.close),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface,
+/**
+ * New Iride UI: shared flat monospace/white-alpha search box, matching the look of
+ * [com.metrolist.music.ui.component.ChipsRow] / [com.metrolist.music.ui.component.NavigationTitle]
+ * / [SuggestionItem] instead of default Material text field styling. Reused by both this screen's
+ * own header and [OnlineSearchResult]'s search bar so the two look identical.
+ */
+@Composable
+fun IrideSearchBox(
+    query: TextFieldValue,
+    onQueryChange: (TextFieldValue) -> Unit,
+    placeholderText: String,
+    focusRequester: FocusRequester,
+    onFocusChanged: (FocusState) -> Unit,
+    onSearch: () -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(SearchBoxHeightDp)
+            .clip(RoundedCornerShape(5.dp))
+            .background(Color.White.copy(alpha = 0.06f)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 16.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focusRequester)
+                    .onFocusChanged(onFocusChanged),
+                textStyle = TextStyle(
+                    color = Color.White.copy(alpha = 0.95f),
+                    fontFamily = SpaceMonoFontFamily,
+                    fontSize = 15.sp,
+                ),
+                cursorBrush = SolidColor(Color.White),
+                singleLine = true,
+                decorationBox = { innerTextField ->
+                    if (query.text.isEmpty()) {
+                        Text(
+                            text = placeholderText,
+                            style = TextStyle(
+                                color = Color.White.copy(alpha = 0.5f),
+                                fontFamily = SpaceMonoFontFamily,
+                                fontSize = 15.sp,
+                            ),
                         )
                     }
+                    innerTextField()
+                },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+            )
+
+            if (query.text.isNotEmpty()) {
+                IconButton(onClick = onClear) {
+                    Icon(
+                        painter = painterResource(R.drawable.close),
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.5f),
+                    )
                 }
             }
         }

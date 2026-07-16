@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -74,6 +75,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -81,6 +84,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachIndexed
 import androidx.compose.ui.zIndex
 import androidx.media3.common.MediaItem
@@ -126,7 +130,6 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.queues.LocalAlbumRadio
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.joinByBullet
-import com.metrolist.music.utils.joinByStar
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -164,12 +167,17 @@ private fun VinylPeekDisc(
     size: Dp,
     modifier: Modifier = Modifier,
 ) {
+    // Dark charcoal, not pure black: stays a shade lighter than a black cover / black background
+    // so the disc still reads as its own shape instead of vanishing into them.
+    val vinylBase = Color(0xFF2A2A2A)
     Box(
         modifier = modifier
             .size(size)
             .shadow(elevation = 3.dp, shape = CircleShape, clip = false)
             .clip(CircleShape)
-            .background(Color.Black)
+            .background(vinylBase)
+            // Faint rim so the disc's silhouette stays visible even against a black cover.
+            .border(width = 1.dp, color = Color.White.copy(alpha = 0.12f), shape = CircleShape)
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
@@ -180,15 +188,17 @@ private fun VinylPeekDisc(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxSize()
-                .alpha(0.92f)
+                // Slightly translucent so the charcoal base tints through even on black covers.
+                .alpha(0.82f)
         )
-        // Concentric grooves for a realistic record texture.
+        // Concentric grooves for a realistic record texture. Neutral grey reads on both
+        // light and dark covers, unlike a pure black or pure white stroke would.
         for (ring in 1..4) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .fillMaxSize(1f - ring * 0.16f)
-                    .border(width = 0.6.dp, color = Color.Black.copy(alpha = 0.35f), shape = CircleShape)
+                    .border(width = 0.6.dp, color = Color.Gray.copy(alpha = 0.4f), shape = CircleShape)
             )
         }
         // Center label.
@@ -197,7 +207,8 @@ private fun VinylPeekDisc(
                 .align(Alignment.Center)
                 .fillMaxSize(0.24f)
                 .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.55f))
+                .background(vinylBase.copy(alpha = 0.85f))
+                .border(width = 0.5.dp, color = Color.White.copy(alpha = 0.18f), shape = CircleShape)
         )
         // Spindle hole.
         Box(
@@ -205,7 +216,7 @@ private fun VinylPeekDisc(
                 .align(Alignment.Center)
                 .fillMaxSize(0.045f)
                 .clip(CircleShape)
-                .background(Color.Black)
+                .background(vinylBase)
         )
     }
 }
@@ -229,11 +240,12 @@ inline fun ListItem(
     activeBackgroundColor: Color? = null,
     selectedBackgroundColor: Color? = null,
     isAvailable: Boolean = true,
+    showDivider: Boolean = true,
 ) {
     val applyHPad = LocalItemHorizontalPadding.current
     val highlightShape = RoundedCornerShape(ThumbnailCornerRadius)
     val hPad = if (applyHPad) 12.dp else 0.dp
-    val plain = !isActive && isSelected != true
+    val plain = !isActive && isSelected != true && showDivider
 
     Box(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -342,6 +354,7 @@ fun ListItem(
     isActive: Boolean = false,
     activeBackgroundColor: Color? = null,
     selectedBackgroundColor: Color? = null,
+    showDivider: Boolean = true,
 ) = ListItem(
     title = title,
     subtitle = {
@@ -363,6 +376,7 @@ fun ListItem(
     isActive = isActive,
     activeBackgroundColor = activeBackgroundColor,
     selectedBackgroundColor = selectedBackgroundColor,
+    showDivider = showDivider,
 )
 
 // merge badges and subtitle text and pass to basic list item
@@ -378,6 +392,7 @@ fun ListItem(
     isActive: Boolean = false,
     activeBackgroundColor: Color? = null,
     selectedBackgroundColor: Color? = null,
+    showDivider: Boolean = true,
 ) = ListItem(
     title = title,
     subtitle = {
@@ -400,6 +415,7 @@ fun ListItem(
     isActive = isActive,
     activeBackgroundColor = activeBackgroundColor,
     selectedBackgroundColor = selectedBackgroundColor,
+    showDivider = showDivider,
 )
 
 @Composable
@@ -539,6 +555,7 @@ fun SongListItem(
     selectedBackgroundColor: Color? = null,
     showInLibraryIcon: Boolean = false,
     trailingContent: @Composable RowScope.() -> Unit = {},
+    showDivider: Boolean = true,
 ) {
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
     AutoLinkFeaturedArtistEffect(song)
@@ -546,6 +563,7 @@ fun SongListItem(
     val content: @Composable () -> Unit = {
         val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
         ListItem(
+            showDivider = showDivider,
             title = song.song.title,
             subtitle = subtitleOverride ?: if (shouldHideDuration(song.song.duration, hideDurationForStandard)) {
                 song.orderedArtists.joinToString { it.name }
@@ -865,7 +883,7 @@ fun AlbumGridItem(
     },
     subtitle = {
         Text(
-            text = joinByStar(album.artists.joinToString { it.name }, album.album.year?.toString()),
+            text = joinByBullet(album.artists.joinToString { it.name }, album.album.year?.toString()),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 2,
@@ -1279,6 +1297,9 @@ fun YouTubeGridItem(
     showVinylEffect: Boolean = false,
     size: Dp = currentGridThumbnailHeight(),
     showTitle: Boolean = true,
+    // Used when item.artists is null/empty (always true for albums parsed off
+    // an artist's own page) so the subtitle isn't left artist-less.
+    fallbackArtistName: String? = null,
 ) {
     val squareVideoThumbnail by rememberPreference(SquareVideoThumbnailKey, defaultValue = true)
     val defaultRatio = if (item is SongItem) 16f / 9 else 1f
@@ -1312,7 +1333,11 @@ fun YouTubeGridItem(
                     joinByBullet(item.artists.joinToString { it.name }, makeTimeString(durationSec?.times(1000L)))
                 }
             }
-            is AlbumItem -> joinByStar(item.artists?.joinToString { it.name }, item.year?.toString())
+            is AlbumItem -> {
+                val artistName = item.artists?.joinToString { it.name }?.takeIf { it.isNotBlank() }
+                    ?: fallbackArtistName
+                joinByBullet(artistName, item.year?.toString())
+            }
             is ArtistItem -> null
             is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)
             is PodcastItem -> joinByBullet(item.author?.name, item.episodeCountText)
@@ -1900,6 +1925,7 @@ fun SwipeToSongBox(
     val scope = rememberCoroutineScope()
     val offset = remember { mutableFloatStateOf(0f) }
     val threshold = 300f
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
 
     val dragState = rememberDraggableState { delta ->
         offset.floatValue = (offset.floatValue + delta).coerceIn(-threshold, threshold)
@@ -1934,27 +1960,33 @@ fun SwipeToSongBox(
             val (labelRes, bg, tint, align) = if (offset.floatValue > 0)
                 Quadruple(
                     R.string.swipe_label_next,
-                    MaterialTheme.colorScheme.secondary,
-                    MaterialTheme.colorScheme.onSecondary,
+                    if (topNavigationBarEnabled) MaterialTheme.colorScheme.inverseSurface else MaterialTheme.colorScheme.secondary,
+                    if (topNavigationBarEnabled) MaterialTheme.colorScheme.inverseOnSurface else MaterialTheme.colorScheme.onSecondary,
                     Alignment.CenterStart
                 ) else
                 Quadruple(
                     R.string.swipe_label_queue,
-                    MaterialTheme.colorScheme.primary,
-                    MaterialTheme.colorScheme.onPrimary,
+                    if (topNavigationBarEnabled) MaterialTheme.colorScheme.inverseSurface else MaterialTheme.colorScheme.primary,
+                    if (topNavigationBarEnabled) MaterialTheme.colorScheme.inverseOnSurface else MaterialTheme.colorScheme.onPrimary,
                     Alignment.CenterEnd
                 )
 
+            // Fixed-size panel (matches Alpha15) — spans the full row at all times instead of
+            // growing with drag distance. The sliding content Box (drawn after this one, so it
+            // sits on top in z-order) is what actually reveals/covers it, so the panel itself —
+            // and the label inside it — never changes size or jitters while dragging.
             Box(
                 modifier = Modifier
-                    .matchParentSize()
+                    .fillMaxSize()
                     .background(bg),
                 contentAlignment = align
             ) {
                 Text(
                     text = stringResource(labelRes),
                     style = MaterialTheme.typography.labelLarge,
+                    fontFamily = if (topNavigationBarEnabled) SpaceMonoFontFamily else FontFamily.Default,
                     fontWeight = FontWeight.Black,
+                    letterSpacing = if (topNavigationBarEnabled) 0.5.sp else 0.sp,
                     color = tint,
                     modifier = Modifier.padding(horizontal = 24.dp)
                 )
@@ -1964,8 +1996,7 @@ fun SwipeToSongBox(
         Box(
             modifier = Modifier
                 .offset { IntOffset(offset.floatValue.roundToInt(), 0) }
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface),
+                .fillMaxWidth(),
             content = content
         )
     }

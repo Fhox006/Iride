@@ -33,6 +33,7 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.DiscordTokenKey
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
@@ -115,19 +116,9 @@ fun DiscordLoginScreen(navController: NavController) {
         }
     )
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.action_login)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null
-                )
-            }
-        }
+    SettingsBackTopBar(
+        title = stringResource(R.string.action_login),
+        navController = navController,
     )
 
     BackHandler(enabled = webView?.canGoBack() == true) {

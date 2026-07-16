@@ -21,6 +21,7 @@ import com.metrolist.innertube.pages.ArtistPage
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
+import com.metrolist.music.data.remote.MusicBrainzRepository
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.extensions.filterExplicit
@@ -45,12 +46,20 @@ import timber.log.Timber
 import javax.inject.Inject
 import com.metrolist.music.extensions.filterVideoSongs as filterVideoSongsLocal
 
+enum class AlbumReleaseType { ALBUM, EP, SINGLE }
+
+data class RecentAlbumInfo(
+    val album: com.metrolist.music.db.entities.Album,
+    val type: AlbumReleaseType,
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ArtistViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
     private val syncUtils: SyncUtils,
+    private val musicBrainzRepository: MusicBrainzRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     val artistId = savedStateHandle.get<String>("artistId")!!
@@ -86,6 +95,13 @@ class ArtistViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    // Precise release date for the currently computed [recentAlbum], resolved asynchronously via
+    // MusicBrainz when the local DB / YTM shelf only gave us a bare year — mirrors what
+    // AlbumViewModel already does when the user opens an album's own screen, but done proactively
+    // here since a remote-sourced recent release usually isn't in the local DB yet to trigger that.
+    private val _recentAlbumPreciseDate = MutableStateFlow<String?>(null)
+    val recentAlbumPreciseDate = _recentAlbumPreciseDate.asStateFlow()
+
     val recentAlbum = kotlinx.coroutines.flow.combine(
         snapshotFlow { artistPage },
         libraryAlbums
@@ -107,7 +123,17 @@ class ArtistViewModel @Inject constructor(
             if (date != null && date.isAfter(threeMonthsAgo)) album to date else null
         }.maxByOrNull { it.second }?.first
 
-        if (localRecent != null) return@combine localRecent
+        if (localRecent != null) {
+            // Local library entries only ever carry a songCount, never the shelf they came
+            // from — approximate the release type from track count (industry-standard-ish
+            // thresholds: 1 track = single, 2-6 = EP, 7+ = album).
+            val type = when {
+                localRecent.album.songCount <= 1 -> AlbumReleaseType.SINGLE
+                localRecent.album.songCount in 2..6 -> AlbumReleaseType.EP
+                else -> AlbumReleaseType.ALBUM
+            }
+            return@combine RecentAlbumInfo(localRecent, type)
+        }
 
         // If not in library, look at the artist page from YTM.
         // Consider every Albums/Singles/EPs shelf (not just the first match) and pick the
@@ -131,24 +157,52 @@ class ArtistViewModel @Inject constructor(
             ?: (null to null)
 
         albumItem?.let { item ->
-            val isSingle = albumSection?.title?.contains("Single", ignoreCase = true) == true ||
-                          albumSection?.title?.contains("Singol", ignoreCase = true) == true ||
-                          albumSection?.title?.contains("EP", ignoreCase = true) == true
+            val type = when {
+                albumSection?.title?.contains("Album", ignoreCase = true) == true -> AlbumReleaseType.ALBUM
+                albumSection?.title?.contains("EP", ignoreCase = true) == true -> AlbumReleaseType.EP
+                albumSection?.title?.contains("Single", ignoreCase = true) == true ||
+                    albumSection?.title?.contains("Singol", ignoreCase = true) == true -> AlbumReleaseType.SINGLE
+                else -> AlbumReleaseType.ALBUM
+            }
 
-            com.metrolist.music.db.entities.Album(
-                album = com.metrolist.music.db.entities.AlbumEntity(
-                    id = item.browseId,
-                    playlistId = item.playlistId,
-                    title = item.title,
-                    year = item.year,
-                    thumbnailUrl = item.thumbnail,
-                    explicit = item.explicit,
-                    songCount = if (isSingle) 1 else 0,
-                    duration = 0
-                )
+            RecentAlbumInfo(
+                com.metrolist.music.db.entities.Album(
+                    album = com.metrolist.music.db.entities.AlbumEntity(
+                        id = item.browseId,
+                        playlistId = item.playlistId,
+                        title = item.title,
+                        year = item.year,
+                        thumbnailUrl = item.thumbnail,
+                        explicit = item.explicit,
+                        songCount = if (type == AlbumReleaseType.SINGLE) 1 else 0,
+                        duration = 0
+                    )
+                ),
+                type,
             )
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, null)
+
+    init {
+        // The recent-album panel otherwise only ever shows a bare year (YTM's artist-page shelves
+        // don't carry a full date) — look up the exact date once we know which release is "recent"
+        // instead of leaving it stuck at year-only precision.
+        viewModelScope.launch {
+            recentAlbum.collect { info ->
+                _recentAlbumPreciseDate.value = null
+                val album = info?.album?.album ?: return@collect
+                val regex = Regex("""\d{4}-\d{2}(-\d{2})?""")
+                if (album.releaseDate != null && regex.matches(album.releaseDate)) return@collect
+                val artistName = artistPage?.artist?.title ?: libraryArtist.value?.artist?.name
+                val date = musicBrainzRepository.getAlbumReleaseDate(
+                    albumTitle = album.title,
+                    artistName = artistName,
+                    year = album.year,
+                )
+                if (date != null) _recentAlbumPreciseDate.value = date
+            }
+        }
+    }
 
     init {
         // Load artist page and reload when hide explicit setting changes

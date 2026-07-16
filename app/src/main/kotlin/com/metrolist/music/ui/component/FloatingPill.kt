@@ -527,6 +527,11 @@ fun PillPlayerRow(
     // the text (and cross-fade its font) between this collapsed position and the expanded player's.
     onInfoPositioned: ((Rect) -> Unit)? = null,
 ) {
+    // Non-null only when the caller is the New Iride UI's curtain peek row (see the doc comment
+    // above) — used to switch to the sharp icon set that matches the expanded player's wheel,
+    // without touching the classic FloatingPill's own icons.
+    val isIrideStyle = onArtPositioned != null
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -587,6 +592,7 @@ fun PillPlayerRow(
                 playerConnection = playerConnection,
                 listenTogetherManager = listenTogetherManager,
                 onSurfaceColor = onSurfaceColor,
+                useSharpIcons = isIrideStyle,
             )
 
             PillSkipNextButton(
@@ -594,6 +600,7 @@ fun PillPlayerRow(
                 playerConnection = playerConnection,
                 listenTogetherManager = listenTogetherManager,
                 onSurfaceColor = onSurfaceColor,
+                useSharpIcons = isIrideStyle,
             )
         }
     }
@@ -818,6 +825,7 @@ private fun PillPlayPauseButton(
     playerConnection: PlayerConnection,
     listenTogetherManager: ListenTogetherManager?,
     onSurfaceColor: Color,
+    useSharpIcons: Boolean = false,
 ) {
     val isPlaying by playerConnection.isPlaying.collectAsState()
     val castIsPlaying by castHandler?.castIsPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
@@ -841,8 +849,8 @@ private fun PillPlayPauseButton(
             painter = painterResource(
                 when {
                     playbackState == Player.STATE_ENDED -> R.drawable.replay
-                    effectiveIsPlaying -> R.drawable.pause
-                    else -> R.drawable.play
+                    effectiveIsPlaying -> if (useSharpIcons) R.drawable.ic_iride_pause else R.drawable.pause
+                    else -> if (useSharpIcons) R.drawable.ic_iride_play else R.drawable.play
                 },
             ),
             contentDescription = null,
@@ -858,6 +866,7 @@ private fun PillSkipNextButton(
     playerConnection: PlayerConnection,
     listenTogetherManager: ListenTogetherManager?,
     onSurfaceColor: Color,
+    useSharpIcons: Boolean = false,
 ) {
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
     IconButton(
@@ -865,7 +874,7 @@ private fun PillSkipNextButton(
         onClick = { playerConnection.seekToNext() },
     ) {
         Icon(
-            painter = painterResource(R.drawable.skip_next),
+            painter = painterResource(if (useSharpIcons) R.drawable.ic_iride_skip_next else R.drawable.skip_next),
             contentDescription = null,
             tint = if (canSkipNext && !isListenTogetherGuest) onSurfaceColor else onSurfaceColor.copy(alpha = 0.3f),
             modifier = Modifier.size(24.dp),

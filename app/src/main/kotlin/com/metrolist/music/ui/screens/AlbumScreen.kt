@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -81,13 +83,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachIndexed
 import androidx.compose.ui.util.fastForEachReversed
 import sv.lib.squircleshape.SquircleShape
@@ -113,13 +118,16 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.AlbumPlayEvent
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.LocalAlbumRadio
 /*import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground*/
+import com.metrolist.music.ui.component.AlbumVinylDisc
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.IrideOutlineIconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.SongListItem
@@ -163,6 +171,7 @@ fun AlbumScreen(
     val hasError by viewModel.hasError.collectAsStateWithLifecycle()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val hideVideoSongs by rememberPreference(key = HideVideoSongsKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
 
     val filteredSongs =
         remember(albumWithSongs, hideExplicit, hideVideoSongs) {
@@ -324,6 +333,177 @@ fun AlbumScreen(
             if (albumWithSongs != null && albumWithSongs.songs.isNotEmpty()) {
                 item(key = "album_header") {
                     val albumCoverSquircle = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
+
+                    // Shared across both layouts below.
+                    val totalDuration = albumWithSongs.songs.sumOf { it.song.duration }
+                    val releaseDate = albumWithSongs.album.releaseDate
+                    val displayDate = remember(releaseDate, albumWithSongs.album.year) {
+                        if (releaseDate == null) {
+                            albumWithSongs.album.year?.toString()
+                        } else {
+                            val parts = releaseDate.split("-")
+                            when (parts.size) {
+                                3 -> {
+                                    val y = parts[0]
+                                    val m = parts[1].toInt().toString()
+                                    val d = parts[2].toInt().toString()
+                                    "$d/$m/$y"
+                                }
+                                2 -> {
+                                    val y = parts[0]
+                                    val m = parts[1].toInt().toString()
+                                    "$m/$y"
+                                }
+                                else -> parts[0]
+                            }
+                        }
+                    }
+                    val albumGenre by produceState<String?>(initialValue = null, albumWithSongs.album.id) {
+                        val primaryArtistName = albumWithSongs.artists.firstOrNull()?.name
+                        value = GenreProvider.getGenres(
+                            albumWithSongs.album.id,
+                            albumWithSongs.album.title,
+                            primaryArtistName,
+                        ).firstOrNull()
+                    }
+                    val metadataLine = joinByBullet(
+                        albumGenre,
+                        displayDate,
+                        if (totalDuration > 0) makeReadableTimeString(totalDuration * 1000L) else null,
+                    )
+                    val isThisAlbumPlaying = isPlaying && mediaMetadata?.album?.id == albumWithSongs.album.id
+
+                    val onLikeClick: () -> Unit = {
+                        database.query {
+                            update(albumWithSongs.album.toggleLike())
+                        }
+                    }
+                    val onPlayClick: () -> Unit = {
+                        if (!isListenTogetherGuest) {
+                            playerConnection.service.getAutomix(playlistId)
+                            playerConnection.playQueue(
+                                LocalAlbumRadio(albumWithSongs),
+                            )
+                        }
+                    }
+                    val onDownloadClick: () -> Unit = {
+                        when (downloadState) {
+                            Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
+                            Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                                albumWithSongs.songs.forEach { song ->
+                                    DownloadService.sendRemoveDownload(
+                                        context,
+                                        ExoDownloadService::class.java,
+                                        song.id,
+                                        false,
+                                    )
+                                }
+                            }
+                            else -> {
+                                albumWithSongs.songs.forEach { song ->
+                                    val downloadRequest =
+                                        DownloadRequest
+                                            .Builder(song.id, song.id.toUri())
+                                            .setCustomCacheKey(song.id)
+                                            .setData(song.song.title.toByteArray())
+                                            .build()
+                                    DownloadService.sendAddDownload(
+                                        context,
+                                        ExoDownloadService::class.java,
+                                        downloadRequest,
+                                        false,
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (topNavigationBarEnabled) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp)
+                                .padding(top = 12.dp, bottom = 20.dp),
+                        ) {
+                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                AlbumVinylDisc(
+                                    thumbnailUrl = albumWithSongs.album.thumbnailUrl,
+                                    coverSize = 240.dp,
+                                    isPlaying = isThisAlbumPlaying,
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            Text(
+                                text = albumWithSongs.album.title,
+                                style = TextStyle(
+                                    fontFamily = SpaceMonoFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 20.sp,
+                                    letterSpacing = (-0.2).sp,
+                                ),
+                                color = MaterialTheme.colorScheme.onBackground,
+                                textAlign = TextAlign.Center,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                val primaryArtist = albumWithSongs.artists.firstOrNull()
+                                if (primaryArtist?.thumbnailUrl != null) {
+                                    AsyncImage(
+                                        model = primaryArtist.thumbnailUrl,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .clip(CircleShape),
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
+                                Text(
+                                    buildAnnotatedString {
+                                        albumWithSongs.artists.fastForEachIndexed { index, artist ->
+                                            val link =
+                                                LinkAnnotation.Clickable(
+                                                    tag = artist.id,
+                                                    styles = TextLinkStyles(style = SpanStyle(textDecoration = TextDecoration.None)),
+                                                ) {
+                                                    navController.navigate("artist/${artist.id}")
+                                                }
+                                            withLink(link) {
+                                                append(artist.name)
+                                            }
+                                            if (index != albumWithSongs.artists.lastIndex) {
+                                                append(", ")
+                                            }
+                                        }
+                                    },
+                                    style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = metadataLine,
+                                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            // Action buttons (like/play/download) live in the top bar now — see topBarActions.
+                        }
+                    } else {
                     Column(
                         modifier =
                             Modifier
@@ -410,45 +590,8 @@ fun AlbumScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Genre • Date • Duration - single combined row
-                        val totalDuration = albumWithSongs.songs.sumOf { it.song.duration }
-                        val releaseDate = albumWithSongs.album.releaseDate
-                        val displayDate = remember(releaseDate, albumWithSongs.album.year) {
-                            if (releaseDate == null) {
-                                albumWithSongs.album.year?.toString()
-                            } else {
-                                val parts = releaseDate.split("-")
-                                when (parts.size) {
-                                    3 -> {
-                                        val y = parts[0]
-                                        val m = parts[1].toInt().toString()
-                                        val d = parts[2].toInt().toString()
-                                        "$d/$m/$y"
-                                    }
-                                    2 -> {
-                                        val y = parts[0]
-                                        val m = parts[1].toInt().toString()
-                                        "$m/$y"
-                                    }
-                                    else -> parts[0]
-                                }
-                            }
-                        }
-                        val albumGenre by produceState<String?>(initialValue = null, albumWithSongs.album.id) {
-                            val primaryArtistName = albumWithSongs.artists.firstOrNull()?.name
-                            value = GenreProvider.getGenres(
-                                albumWithSongs.album.id,
-                                albumWithSongs.album.title,
-                                primaryArtistName,
-                            ).firstOrNull()
-                        }
-
                         Text(
-                            text = joinByBullet(
-                                albumGenre,
-                                displayDate,
-                                if (totalDuration > 0) makeReadableTimeString(totalDuration * 1000L) else null,
-                            ),
+                            text = metadataLine,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         )
@@ -466,11 +609,7 @@ fun AlbumScreen(
                         ) {
                             // Like Button - Smaller secondary button
                             Surface(
-                                onClick = {
-                                    database.query {
-                                        update(albumWithSongs.album.toggleLike())
-                                    }
-                                },
+                                onClick = onLikeClick,
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.surfaceVariant,
                                 modifier = Modifier.size(48.dp),
@@ -504,14 +643,7 @@ fun AlbumScreen(
 
                             // Play Button - Larger primary circular button
                             Surface(
-                                onClick = {
-                                    if (!isListenTogetherGuest) {
-                                        playerConnection.service.getAutomix(playlistId)
-                                        playerConnection.playQueue(
-                                            LocalAlbumRadio(albumWithSongs),
-                                        )
-                                    }
-                                },
+                                onClick = onPlayClick,
                                 color = MaterialTheme.colorScheme.primary,
                                 shape = CircleShape,
                                 modifier = Modifier.size(72.dp),
@@ -531,37 +663,7 @@ fun AlbumScreen(
 
                             // Download Button - Smaller secondary button
                             Surface(
-                                onClick = {
-                                    when (downloadState) {
-                                        Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
-                                        Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
-                                            albumWithSongs.songs.forEach { song ->
-                                                DownloadService.sendRemoveDownload(
-                                                    context,
-                                                    ExoDownloadService::class.java,
-                                                    song.id,
-                                                    false,
-                                                )
-                                            }
-                                        }
-                                        else -> {
-                                            albumWithSongs.songs.forEach { song ->
-                                                val downloadRequest =
-                                                    DownloadRequest
-                                                        .Builder(song.id, song.id.toUri())
-                                                        .setCustomCacheKey(song.id)
-                                                        .setData(song.song.title.toByteArray())
-                                                        .build()
-                                                DownloadService.sendAddDownload(
-                                                    context,
-                                                    ExoDownloadService::class.java,
-                                                    downloadRequest,
-                                                    false,
-                                                )
-                                            }
-                                        }
-                                    }
-                                },
+                                onClick = onDownloadClick,
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.surfaceVariant,
                                 modifier = Modifier.size(48.dp),
@@ -589,6 +691,7 @@ fun AlbumScreen(
                                 }
                             }
                         }
+                    }
                     }
                 }
 
@@ -858,63 +961,122 @@ fun AlbumScreen(
             }
         }
 
-    TopAppBar(
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            scrolledContainerColor = MaterialTheme.colorScheme.surface,
-            navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-            actionIconContentColor = MaterialTheme.colorScheme.onBackground,
-            titleContentColor = MaterialTheme.colorScheme.onBackground,
-        ),
-        title = {
-            if (inSelectMode) {
-                Text(pluralStringResource(R.plurals.n_selected, selection.size, selection.size))
+    // Top-bar mirrors of the header's like/play/download actions (New Iride UI only) — the header
+    // versions close over a non-null local `albumWithSongs`, these close over the nullable top-level
+    // state so they're safe to call before the album has loaded.
+    val onTopBarLikeClick: () -> Unit = {
+        albumWithSongs?.let { current ->
+            database.query {
+                update(current.album.toggleLike())
             }
-        },
-        navigationIcon = {
-            if (inSelectMode) {
-                IconButton(onClick = onExitSelectionMode) {
-                    Icon(
-                        painter = painterResource(R.drawable.close),
-                        contentDescription = null,
-                    )
+        }
+    }
+    val onTopBarPlayClick: () -> Unit = {
+        if (!isListenTogetherGuest) {
+            albumWithSongs?.let { current ->
+                playerConnection.service.getAutomix(playlistId)
+                playerConnection.playQueue(LocalAlbumRadio(current))
+            }
+        }
+    }
+    val onTopBarDownloadClick: () -> Unit = {
+        albumWithSongs?.let { current ->
+            when (downloadState) {
+                Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
+                Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                    current.songs.forEach { song ->
+                        DownloadService.sendRemoveDownload(
+                            context,
+                            ExoDownloadService::class.java,
+                            song.id,
+                            false,
+                        )
+                    }
                 }
-            } else {
-                IconButton(
-                    onClick = { navController.navigateUp() },
-                    onLongClick = { navController.backToMain() },
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_back),
-                        contentDescription = null,
-                    )
+                else -> {
+                    current.songs.forEach { song ->
+                        val downloadRequest =
+                            DownloadRequest
+                                .Builder(song.id, song.id.toUri())
+                                .setCustomCacheKey(song.id)
+                                .setData(song.song.title.toByteArray())
+                                .build()
+                        DownloadService.sendAddDownload(
+                            context,
+                            ExoDownloadService::class.java,
+                            downloadRequest,
+                            false,
+                        )
+                    }
                 }
             }
-        },
-        actions = {
-            if (inSelectMode) {
-                Checkbox(
-                    checked = selection.size == filteredSongs.size && selection.isNotEmpty(),
-                    onCheckedChange = {
-                        if (selection.size == filteredSongs.size) {
-                            selection.clear()
-                        } else {
-                            selection.clear()
-                            selection.addAll(filteredSongs.map { it.id })
-                        }
-                    },
+        }
+    }
+
+    val topBarNavigationIcon: @Composable () -> Unit = {
+        if (inSelectMode) {
+            IconButton(onClick = onExitSelectionMode) {
+                Icon(
+                    painter = painterResource(R.drawable.close),
+                    contentDescription = null,
                 )
+            }
+        } else {
+            IconButton(
+                onClick = { navController.navigateUp() },
+                onLongClick = { navController.backToMain() },
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.arrow_back),
+                    contentDescription = null,
+                )
+            }
+        }
+    }
+    val topBarActions: @Composable RowScope.() -> Unit = {
+        if (inSelectMode) {
+            Checkbox(
+                checked = selection.size == filteredSongs.size && selection.isNotEmpty(),
+                onCheckedChange = {
+                    if (selection.size == filteredSongs.size) {
+                        selection.clear()
+                    } else {
+                        selection.clear()
+                        selection.addAll(filteredSongs.map { it.id })
+                    }
+                },
+            )
+            IconButton(
+                enabled = selection.isNotEmpty(),
+                onClick = {
+                    menuState.show {
+                        SelectionSongMenu(
+                            songSelection =
+                                selection.mapNotNull { songId ->
+                                    filteredSongs.find { it.id == songId }
+                                },
+                            onDismiss = menuState::dismiss,
+                            clearAction = onExitSelectionMode,
+                        )
+                    }
+                },
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.more_vert),
+                    contentDescription = null,
+                )
+            }
+        } else {
+            val currentAlbumWithSongs = albumWithSongs
+            if (currentAlbumWithSongs != null) {
+                val albumForMenu = Album(currentAlbumWithSongs.album, currentAlbumWithSongs.artists)
                 IconButton(
-                    enabled = selection.isNotEmpty(),
                     onClick = {
                         menuState.show {
-                            SelectionSongMenu(
-                                songSelection =
-                                    selection.mapNotNull { songId ->
-                                        filteredSongs.find { it.id == songId }
-                                    },
+                            AlbumMenu(
+                                originalAlbum = albumForMenu,
+                                navController = navController,
                                 onDismiss = menuState::dismiss,
-                                clearAction = onExitSelectionMode,
                             )
                         }
                     },
@@ -924,28 +1086,81 @@ fun AlbumScreen(
                         contentDescription = null,
                     )
                 }
-            } else {
-                val currentAlbumWithSongs = albumWithSongs
-                if (currentAlbumWithSongs != null) {
-                    val albumForMenu = Album(currentAlbumWithSongs.album, currentAlbumWithSongs.artists)
-                    IconButton(
-                        onClick = {
-                            menuState.show {
-                                AlbumMenu(
-                                    originalAlbum = albumForMenu,
-                                    navController = navController,
-                                    onDismiss = menuState::dismiss,
-                                )
-                            }
-                        },
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.more_vert),
-                            contentDescription = null,
-                        )
-                    }
-                }
             }
-        },
-    )
+        }
+    }
+
+    if (topNavigationBarEnabled) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+                .statusBarsPadding()
+                .height(56.dp)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            topBarNavigationIcon()
+            Text(
+                text = if (inSelectMode) pluralStringResource(R.plurals.n_selected, selection.size, selection.size) else "",
+                style = TextStyle(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    letterSpacing = (-0.1).sp,
+                ),
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 4.dp),
+            )
+            if (!inSelectMode && albumWithSongs != null) {
+                IrideOutlineIconButton(
+                    onClick = onTopBarLikeClick,
+                    icon = if (albumWithSongs?.album?.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border,
+                    contentDescription = null,
+                    size = 40.dp,
+                    iconSize = 20.dp,
+                )
+                IrideOutlineIconButton(
+                    onClick = onTopBarPlayClick,
+                    icon = R.drawable.ic_iride_play,
+                    contentDescription = stringResource(R.string.play),
+                    size = 40.dp,
+                    iconSize = 20.dp,
+                )
+                IrideOutlineIconButton(
+                    onClick = onTopBarDownloadClick,
+                    icon = when (downloadState) {
+                        Download.STATE_COMPLETED -> R.drawable.check
+                        else -> R.drawable.arrow_downward
+                    },
+                    contentDescription = null,
+                    loading = downloadState == Download.STATE_DOWNLOADING || downloadState == Download.STATE_QUEUED,
+                    size = 40.dp,
+                    iconSize = 20.dp,
+                )
+            }
+            topBarActions()
+        }
+    } else {
+        TopAppBar(
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                scrolledContainerColor = MaterialTheme.colorScheme.surface,
+                navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                actionIconContentColor = MaterialTheme.colorScheme.onBackground,
+                titleContentColor = MaterialTheme.colorScheme.onBackground,
+            ),
+            title = {
+                if (inSelectMode) {
+                    Text(pluralStringResource(R.plurals.n_selected, selection.size, selection.size))
+                }
+            },
+            navigationIcon = topBarNavigationIcon,
+            actions = topBarActions,
+        )
+    }
 }

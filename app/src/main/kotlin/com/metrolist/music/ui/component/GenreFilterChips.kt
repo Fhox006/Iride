@@ -19,9 +19,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -41,8 +45,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.metrolist.music.constants.TopNavigationBarKey
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.utils.GenreProvider
+import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
@@ -83,14 +95,16 @@ data class GenreFilterState(
 // Pills only re-sort/reflow once per interval. Committing on every single
 // fetch result made the row constantly jump around; ticking at a fixed pace
 // keeps it calm while genres are still being resolved in the background.
-private const val PILL_SNAPSHOT_INTERVAL_MS = 3000L
+// Kept short so pills actually show up as soon as they're ready instead of
+// sitting resolved-but-hidden for seconds.
+private const val PILL_SNAPSHOT_INTERVAL_MS = 400L
 
 // When genres still need fetching, wait a beat before showing the shimmer
 // placeholder — most navigations settle fast enough that skipping straight to
 // pills (or nothing) looks calmer than a placeholder that flashes for a few
 // frames. Only applies when nothing is cached yet; if all songs already have
 // genres, pills render on the very next frame with no delay at all.
-private const val INITIAL_PILL_RENDER_DELAY_MS = 400L
+private const val INITIAL_PILL_RENDER_DELAY_MS = 120L
 
 /**
  * Fetches genre/style tags for [songs] from [GenreProvider] (no genre data
@@ -154,6 +168,7 @@ fun GenrePillsRow(
     state: GenreFilterState,
     modifier: Modifier = Modifier,
 ) {
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
     val genres = state.sortedGenres
     val showPlaceholder = genres.size <= 1 && state.isLoading
 
@@ -167,57 +182,111 @@ fun GenrePillsRow(
     ) {
         if (genres.size > 1) {
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (topNavigationBarEnabled) 20.dp else 8.dp),
                 contentPadding = PaddingValues(start = 20.dp, end = 16.dp),
             ) {
                 items(genres, key = { it }) { genre ->
                     val selected = state.selectedGenre == genre
 
-                    val containerColor by animateColorAsState(
-                        targetValue =
-                            if (selected) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                            },
-                        animationSpec = spring(stiffness = 400f),
-                        label = "genrePillColor",
-                    )
-                    val contentColor by animateColorAsState(
-                        targetValue =
-                            if (selected) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        animationSpec = spring(stiffness = 400f),
-                        label = "genrePillContentColor",
-                    )
-                    val horizontalPadding by animateDpAsState(
-                        targetValue = if (selected) 16.dp else 14.dp,
-                        animationSpec = spring(stiffness = 400f),
-                        label = "genrePillPadding",
-                    )
-
-                    Surface(
-                        onClick = { state.onSelect(genre) },
-                        shape = RoundedCornerShape(percent = 50),
-                        color = containerColor,
-                        contentColor = contentColor,
-                        modifier = Modifier.animateItem(),
-                    ) {
-                        Text(
+                    if (topNavigationBarEnabled) {
+                        UnderlinePill(
                             text = genre,
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1,
-                            modifier = Modifier.padding(horizontal = horizontalPadding, vertical = 8.dp),
+                            selected = selected,
+                            onClick = { state.onSelect(genre) },
+                            modifier = Modifier.animateItem(),
                         )
+                    } else {
+                        val containerColor by animateColorAsState(
+                            targetValue =
+                                if (selected) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                                },
+                            animationSpec = spring(stiffness = 400f),
+                            label = "genrePillColor",
+                        )
+                        val contentColor by animateColorAsState(
+                            targetValue =
+                                if (selected) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            animationSpec = spring(stiffness = 400f),
+                            label = "genrePillContentColor",
+                        )
+                        val horizontalPadding by animateDpAsState(
+                            targetValue = if (selected) 16.dp else 14.dp,
+                            animationSpec = spring(stiffness = 400f),
+                            label = "genrePillPadding",
+                        )
+
+                        Surface(
+                            onClick = { state.onSelect(genre) },
+                            shape = RoundedCornerShape(percent = 50),
+                            color = containerColor,
+                            contentColor = contentColor,
+                            modifier = Modifier.animateItem(),
+                        ) {
+                            Text(
+                                text = genre,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                modifier = Modifier.padding(horizontal = horizontalPadding, vertical = 8.dp),
+                            )
+                        }
                     }
                 }
             }
         } else {
             GenrePillsPlaceholder()
         }
+    }
+}
+
+/**
+ * Monospace pill with an underline that grows/shrinks with the text width instead of a filled
+ * background — the "sottolineato" pill look used across New Iride UI filter rows (genre pills
+ * here, queue-mode pills in IrideMp3Player). Kept as a standalone composable so both call sites
+ * share one visual instead of drifting apart.
+ */
+@Composable
+fun UnderlinePill(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val density = LocalDensity.current
+    var textWidthPx by remember(text) { mutableStateOf(0) }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { onClick() }
+            .padding(vertical = 6.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontFamily = SpaceMonoFontFamily,
+                letterSpacing = 0.5.sp,
+            ),
+            color = if (selected) Color.White else Color.White.copy(alpha = 0.55f),
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            maxLines = 1,
+            modifier = Modifier.onSizeChanged { textWidthPx = it.width },
+        )
+        Spacer(Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .height(2.dp)
+                .width(with(density) { textWidthPx.toDp() })
+                .background(if (selected) Color.White else Color.Transparent),
+        )
     }
 }
 

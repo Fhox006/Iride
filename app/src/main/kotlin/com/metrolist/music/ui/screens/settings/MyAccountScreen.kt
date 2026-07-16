@@ -1,9 +1,10 @@
-/**
+﻿/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
 package com.metrolist.music.ui.screens.settings
+import com.metrolist.music.ui.component.IrideSwitch
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -49,10 +50,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.metrolist.innertube.YouTube
@@ -65,6 +70,7 @@ import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.DataSyncIdKey
 import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.constants.UseLoginForBrowse
 import com.metrolist.music.constants.VisitorDataKey
 import com.metrolist.music.constants.YtmSyncKey
@@ -73,6 +79,7 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.InfoLabel
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
@@ -88,6 +95,7 @@ fun MyAccountScreen(
     val scope = rememberCoroutineScope()
     val accountSettingsViewModel: AccountSettingsViewModel = hiltViewModel()
 
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
     val (advancedMode, _) = rememberPreference(AdvancedModeKey, false)
     val (innerTubeCookie, onInnerTubeCookieChange) = rememberPreference(InnerTubeCookieKey, "")
     val isLoggedIn = remember(innerTubeCookie) { "SAPISID" in parseCookieString(innerTubeCookie) }
@@ -180,7 +188,7 @@ fun MyAccountScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(if (topNavigationBarEnabled) Color.Transparent else MaterialTheme.colorScheme.background)
     ) {
     Column(
         Modifier
@@ -190,7 +198,7 @@ fun MyAccountScreen(
                 )
             )
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = if (topNavigationBarEnabled) 20.dp else 16.dp)
     ) {
         Spacer(
             Modifier.windowInsetsPadding(
@@ -198,11 +206,32 @@ fun MyAccountScreen(
             )
         )
 
+        val rowIconTint: @Composable (Boolean) -> Color = { enabled ->
+            if (topNavigationBarEnabled) {
+                if (enabled) Color.White.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.5f)
+            } else if (enabled) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        }
+        val rowTextColor: @Composable (Boolean) -> Color = { enabled ->
+            if (topNavigationBarEnabled) {
+                if (enabled) Color.White else Color.White.copy(alpha = 0.5f)
+            } else if (enabled) MaterialTheme.colorScheme.onSurface
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        }
+        val rowTextStyle = if (topNavigationBarEnabled) {
+            MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontSize = 15.sp, letterSpacing = (-0.1).sp, fontWeight = FontWeight.Bold)
+        } else {
+            MaterialTheme.typography.bodyLarge
+        }
+        val rowDividerColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.07f) else MaterialTheme.colorScheme.outlineVariant
+
         // Main settings card — unified style like Appearance/Playback/Content sections
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            colors = CardDefaults.cardColors(
+                containerColor = if (topNavigationBarEnabled) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerLow
+            ),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(Modifier.fillMaxWidth()) {
@@ -222,19 +251,17 @@ fun MyAccountScreen(
                         Icon(
                             painter = painterResource(R.drawable.library_music),
                             contentDescription = null,
-                            tint = if (isLoggedIn) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                            tint = rowIconTint(isLoggedIn),
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(Modifier.width(16.dp))
                         Text(
                             text = stringResource(R.string.other_content),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (isLoggedIn) MaterialTheme.colorScheme.onSurface
-                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                            style = rowTextStyle,
+                            color = rowTextColor(isLoggedIn),
                             modifier = Modifier.weight(1f)
                         )
-                        Switch(
+                        IrideSwitch(
                             enabled = isLoggedIn,
                             checked = useLoginForBrowse,
                             onCheckedChange = {
@@ -252,7 +279,7 @@ fun MyAccountScreen(
                             }
                         )
                     }
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = rowDividerColor, modifier = Modifier.padding(horizontal = 16.dp))
                 }
 
                 // Auto sync
@@ -266,19 +293,17 @@ fun MyAccountScreen(
                     Icon(
                         painter = painterResource(R.drawable.sync),
                         contentDescription = null,
-                        tint = if (isLoggedIn) MaterialTheme.colorScheme.primary
-                               else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                        tint = rowIconTint(isLoggedIn),
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(Modifier.width(16.dp))
                     Text(
                         text = stringResource(R.string.auto_sync),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (isLoggedIn) MaterialTheme.colorScheme.onSurface
-                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                        style = rowTextStyle,
+                        color = rowTextColor(isLoggedIn),
                         modifier = Modifier.weight(1f)
                     )
-                    Switch(
+                    IrideSwitch(
                         enabled = isLoggedIn,
                         checked = ytmSync,
                         onCheckedChange = onYtmSyncChange,
@@ -296,7 +321,7 @@ fun MyAccountScreen(
 
                 // Show token (advanced only, expands inline)
                 if (advancedMode) {
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(color = rowDividerColor, modifier = Modifier.padding(horizontal = 16.dp))
 
                     Row(
                         modifier = Modifier
@@ -308,24 +333,22 @@ fun MyAccountScreen(
                         Icon(
                             painter = painterResource(R.drawable.token),
                             contentDescription = null,
-                            tint = if (isLoggedIn) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                            tint = rowIconTint(isLoggedIn),
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(Modifier.width(16.dp))
                         Column(Modifier.weight(1f)) {
                             Text(
                                 text = stringResource(R.string.show_token),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = if (isLoggedIn) MaterialTheme.colorScheme.onSurface
-                                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                style = rowTextStyle,
+                                color = rowTextColor(isLoggedIn)
                             )
                             if (isLoggedIn) {
                                 Text(
                                     text = if (showToken) stringResource(R.string.token_shown)
                                            else stringResource(R.string.token_hidden),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.4f) else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -334,8 +357,9 @@ fun MyAccountScreen(
                                 if (showToken) R.drawable.expand_less else R.drawable.expand_more
                             ),
                             contentDescription = null,
-                            tint = if (isLoggedIn) MaterialTheme.colorScheme.onSurfaceVariant
-                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                            tint = if (!isLoggedIn) rowIconTint(false)
+                                   else if (topNavigationBarEnabled) Color.White.copy(alpha = 0.35f)
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -346,7 +370,7 @@ fun MyAccountScreen(
                         exit = shrinkVertically() + fadeOut()
                     ) {
                         Column(Modifier.fillMaxWidth()) {
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                            HorizontalDivider(color = rowDividerColor, modifier = Modifier.padding(horizontal = 16.dp))
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -357,20 +381,20 @@ fun MyAccountScreen(
                                 Icon(
                                     painter = painterResource(R.drawable.edit),
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = rowIconTint(true),
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(Modifier.width(16.dp))
                                 Text(
                                     text = stringResource(R.string.advanced_login),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    style = rowTextStyle,
+                                    color = rowTextColor(true),
                                     modifier = Modifier.weight(1f)
                                 )
                                 Icon(
                                     painter = painterResource(R.drawable.arrow_forward),
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -495,19 +519,9 @@ fun MyAccountScreen(
         Spacer(modifier = Modifier.height(32.dp))
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.my_account)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
+    SettingsBackTopBar(
+        title = stringResource(R.string.my_account),
+        navController = navController,
     )
     } // Box
 }

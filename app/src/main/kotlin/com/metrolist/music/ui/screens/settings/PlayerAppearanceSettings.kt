@@ -1,9 +1,11 @@
-/**
+﻿/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
 package com.metrolist.music.ui.screens.settings
+import com.metrolist.music.ui.component.IrideSlider
+import com.metrolist.music.ui.component.IrideSwitch
 
 import android.os.Build
 import androidx.compose.foundation.border
@@ -76,6 +78,7 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.PlayerSliderTrack
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.SquigglySlider
 import com.metrolist.music.ui.component.WavySlider
 import com.metrolist.music.ui.theme.PlayerSliderColors
@@ -229,7 +232,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-                Slider(
+                IrideSlider(
                     value = tempSensitivity,
                     onValueChange = { tempSensitivity = it },
                     valueRange = 0f..1f,
@@ -417,7 +420,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         icon = painterResource(R.drawable.palette),
                         title = { Text(stringResource(R.string.new_player_design)) },
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = useNewPlayerDesign,
                                 onCheckedChange = onUseNewPlayerDesignChange,
                                 thumbContent = {
@@ -460,7 +463,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         title = { Text(stringResource(R.string.better_gradient_smooth_transition)) },
                         description = { Text(stringResource(R.string.better_gradient_smooth_transition_desc)) },
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = betterGradientSmoothTransition,
                                 onCheckedChange = onBetterGradientSmoothTransitionChange,
                                 thumbContent = {
@@ -484,7 +487,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         title = { Text(stringResource(R.string.hide_player_thumbnail)) },
                         description = { Text(stringResource(R.string.hide_player_thumbnail_desc)) },
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = hidePlayerThumbnail,
                                 onCheckedChange = onHidePlayerThumbnailChange,
                                 thumbContent = {
@@ -508,7 +511,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         title = { Text(stringResource(R.string.crop_album_art)) },
                         description = { Text(stringResource(R.string.crop_album_art_desc)) },
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = cropAlbumArt,
                                 onCheckedChange = onCropAlbumArtChange,
                                 thumbContent = {
@@ -564,7 +567,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         icon = painterResource(R.drawable.swipe),
                         title = { Text(stringResource(R.string.enable_swipe_thumbnail)) },
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = swipeThumbnail,
                                 onCheckedChange = onSwipeThumbnailChange,
                                 thumbContent = {
@@ -587,7 +590,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         title = { Text(stringResource(R.string.thumbnail_carousel_mode)) },
                         description = { Text(stringResource(R.string.thumbnail_carousel_mode_desc)) },
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = thumbnailCarouselMode,
                                 onCheckedChange = onThumbnailCarouselModeChange,
                                 thumbContent = {
@@ -610,7 +613,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         title = { Text(stringResource(R.string.enable_comments)) },
                         description = { Text(stringResource(R.string.enable_comments_desc)) },
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = enableComments,
                                 onCheckedChange = onEnableCommentsChange,
                                 thumbContent = {
@@ -661,7 +664,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         icon = painterResource(R.drawable.nav_bar),
                         title = { Text(stringResource(R.string.new_mini_player_design)) },
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = useNewMiniPlayerDesign,
                                 onCheckedChange = onUseNewMiniPlayerDesignChange,
                                 thumbContent = {
@@ -718,7 +721,7 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         icon = painterResource(R.drawable.contrast),
                         title = { Text(stringResource(R.string.pure_black_mini_player)) },
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = pureBlackMiniPlayer,
                                 onCheckedChange = onPureBlackMiniPlayerChange,
                                 thumbContent = {
@@ -741,15 +744,8 @@ fun PlayerAppearanceSettings(navController: NavController) {
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.player_appearance)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain
-            ) {
-                Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
-            }
-        }
+    SettingsBackTopBar(
+        title = stringResource(R.string.player_appearance),
+        navController = navController,
     )
 }

@@ -37,12 +37,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 
 @Composable
 fun NavigationTitle(
@@ -93,7 +93,7 @@ fun NavigationTitle(
                 text = title,
                 style = if (useIrideStyle) {
                     MaterialTheme.typography.labelLarge.copy(
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = SpaceMonoFontFamily,
                         fontSize = 13.sp,
                         letterSpacing = (-0.1).sp,
                     )
@@ -101,7 +101,7 @@ fun NavigationTitle(
                     MaterialTheme.typography.titleLarge
                 },
                 fontWeight = FontWeight.Bold,
-                color = if (useIrideStyle) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.primary,
+                color = if (useIrideStyle) Color.White.copy(alpha = 0.55f) else MaterialTheme.colorScheme.primary,
                 overflow = TextOverflow.Ellipsis,
                 maxLines = 1,
             )
@@ -112,7 +112,7 @@ fun NavigationTitle(
                 Icon(
                     painter = painterResource(R.drawable.play),
                     contentDescription = stringResource(R.string.play_all),
-                    tint = Color.White.copy(alpha = 0.35f),
+                    tint = Color.White.copy(alpha = 0.6f),
                     modifier = Modifier
                         .size(20.dp)
                         .clickable(
@@ -157,7 +157,7 @@ fun NavigationTitle(
             Icon(
                 painter = painterResource(R.drawable.refresh),
                 contentDescription = stringResource(R.string.refresh),
-                tint = if (useIrideStyle) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.primary,
+                tint = if (useIrideStyle) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .size(20.dp)
                     .graphicsLayer { rotationZ = rotation }
@@ -178,7 +178,7 @@ fun NavigationTitle(
             Icon(
                 painter = painterResource(R.drawable.expand_more),
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.35f),
+                tint = Color.White.copy(alpha = 0.6f),
                 modifier = Modifier
                     .size(18.dp)
                     .graphicsLayer { rotationZ = rotation }
@@ -192,7 +192,7 @@ fun NavigationTitle(
             Icon(
                 painter = painterResource(R.drawable.arrow_forward),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
+                tint = if (useIrideStyle) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.primary
             )
         }
     }

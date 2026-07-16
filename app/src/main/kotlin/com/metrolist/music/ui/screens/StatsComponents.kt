@@ -6,6 +6,8 @@
 package com.metrolist.music.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -14,6 +16,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,20 +24,26 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.AlbumEntity
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.SongEntity
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import com.metrolist.music.utils.rememberPreference
 import kotlin.math.min
 import kotlin.math.pow
 
@@ -119,8 +128,105 @@ fun <T> TopItemsCarousel(
     }
 }
 
+/**
+ * New Iride UI flat variant shared by [TopArtistCard]/[TopAlbumCard]/[TopSongCard]: no Card
+ * surface, transparent background, squircle-clipped thumbnail (still [CardSquircle], per the
+ * app-wide New Iride UI squircle language), monospace title/subtitle, and a minimal "#N" scrim
+ * badge instead of a filled Material colored chip so it reads as flat chrome rather than
+ * "still classic mode with a different color."
+ */
+@Composable
+private fun IrideTopItemCard(
+    rank: Int,
+    title: String,
+    subtitle: String?,
+    thumbnailUrl: String?,
+    width: Dp,
+    imageHeight: Dp,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(width)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(),
+                onClick = onClick,
+            )
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            AsyncImage(
+                model = thumbnailUrl,
+                contentDescription = title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(imageHeight)
+                    .clip(CardSquircle)
+            )
+            Box(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .background(
+                        color = Color.Black.copy(alpha = 0.55f),
+                        shape = BadgeSquircle
+                    )
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                    .align(Alignment.TopStart)
+            ) {
+                Text(
+                    text = "#$rank",
+                    style = TextStyle(
+                        fontFamily = SpaceMonoFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        letterSpacing = (-0.1).sp,
+                    ),
+                    color = Color.White,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = title,
+            style = TextStyle(
+                fontFamily = SpaceMonoFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                letterSpacing = (-0.1).sp,
+            ),
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (subtitle != null) {
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 11.sp),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
 @Composable
 fun TopArtistCard(rank: Int, artist: ArtistEntity, onClick: () -> Unit = {}) {
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    if (topNavigationBarEnabled) {
+        IrideTopItemCard(
+            rank = rank,
+            title = artist.name,
+            subtitle = null,
+            thumbnailUrl = artist.thumbnailUrl,
+            width = 160.dp,
+            imageHeight = 160.dp,
+            onClick = onClick,
+        )
+        return
+    }
     Card(
         onClick = onClick,
         shape = CardSquircle,
@@ -177,6 +283,19 @@ fun TopArtistCard(rank: Int, artist: ArtistEntity, onClick: () -> Unit = {}) {
 
 @Composable
 fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onClick: () -> Unit = {}) {
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    if (topNavigationBarEnabled) {
+        IrideTopItemCard(
+            rank = rank,
+            title = album.title,
+            subtitle = artists.joinToString(", ") { it.name },
+            thumbnailUrl = album.thumbnailUrl,
+            width = 200.dp,
+            imageHeight = 200.dp,
+            onClick = onClick,
+        )
+        return
+    }
     Card(
         onClick = onClick,
         shape = CardSquircle,
@@ -238,6 +357,19 @@ fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onC
 
 @Composable
 fun TopSongCard(rank: Int, song: SongEntity, artists: List<ArtistEntity>, onClick: () -> Unit = {}) {
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    if (topNavigationBarEnabled) {
+        IrideTopItemCard(
+            rank = rank,
+            title = song.title,
+            subtitle = artists.joinToString(", ") { it.name },
+            thumbnailUrl = song.thumbnailUrl,
+            width = 160.dp,
+            imageHeight = 160.dp,
+            onClick = onClick,
+        )
+        return
+    }
     Card(
         onClick = onClick,
         shape = CardSquircle,
@@ -299,6 +431,20 @@ fun TopSongCard(rank: Int, song: SongEntity, artists: List<ArtistEntity>, onClic
 
 @Composable
 fun SectionHeader(title: String) {
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    if (topNavigationBarEnabled) {
+        // Matches the "eyebrow" section-title idiom used across the app in New Iride UI
+        // (Material3SettingsGroup's IrideSettingsGroup title, ArtistScreen's "Information"
+        // header): small bold monospace, low-alpha white.
+        Text(
+            text = title,
+            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp, letterSpacing = (-0.1).sp),
+            fontWeight = FontWeight.Bold,
+            color = Color.White.copy(alpha = 0.55f),
+            modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp, end = 16.dp)
+        )
+        return
+    }
     Text(
         text = title,
         style = MaterialTheme.typography.titleLarge,
@@ -316,6 +462,54 @@ fun StatsDataBox(
 ) {
     val hours = totalMinutes / 60
     val minutes = totalMinutes % 60
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+
+    if (topNavigationBarEnabled) {
+        // Flattened: no primaryContainer Card, bare row of 4 tiles with hairline vertical
+        // dividers between them instead of a card boundary — mirrors IrideSettingsGroup's
+        // divider-instead-of-card-gap approach, just rotated for a horizontal row.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.listening_stats),
+                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = (-0.1).sp),
+                color = Color.White.copy(alpha = 0.55f),
+                modifier = Modifier.padding(bottom = 14.dp)
+            )
+            val items = listOf(
+                Triple(if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m", stringResource(R.string.listened), R.drawable.history),
+                Triple(totalSongs.toString(), stringResource(R.string.songs_played), R.drawable.music_note),
+                Triple(totalArtists.toString(), stringResource(R.string.artists), R.drawable.artist),
+                Triple(totalAlbums.toString(), stringResource(R.string.albums), R.drawable.album),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items.forEachIndexed { index, (value, label, iconRes) ->
+                    StatItem(
+                        value = value,
+                        label = label,
+                        iconRes = iconRes,
+                        useIrideStyle = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (index != items.lastIndex) {
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(40.dp)
+                                .background(Color.White.copy(alpha = 0.08f))
+                        )
+                    }
+                }
+            }
+        }
+        return
+    }
 
     Card(
         shape = CardSquircle,
@@ -364,7 +558,39 @@ fun StatsDataBox(
 }
 
 @Composable
-fun StatItem(value: String, label: String, iconRes: Int) {
+fun StatItem(
+    value: String,
+    label: String,
+    iconRes: Int,
+    useIrideStyle: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    if (useIrideStyle) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = modifier.padding(horizontal = 4.dp)
+        ) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.7f),
+                modifier = Modifier
+                    .size(20.dp)
+                    .padding(bottom = 6.dp)
+            )
+            Text(
+                text = value,
+                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp),
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = label.uppercase(),
+                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 10.sp, letterSpacing = 0.5.sp),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            )
+        }
+        return
+    }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.padding(horizontal = 8.dp)

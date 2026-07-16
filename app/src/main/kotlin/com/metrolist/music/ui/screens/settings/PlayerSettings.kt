@@ -1,9 +1,11 @@
-/**
+﻿/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
 package com.metrolist.music.ui.screens.settings
+import com.metrolist.music.ui.component.IrideSlider
+import com.metrolist.music.ui.component.IrideSwitch
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -80,6 +82,7 @@ import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.SleepTimerDialog
 import com.metrolist.music.ui.component.decodeDayTimes
 import com.metrolist.music.ui.component.encodeDayTimes
@@ -340,7 +343,7 @@ fun PlayerSettings(
                             ) {
                                 Column {
                                     Text(pluralStringResource(R.plurals.seconds, crossfadeDuration.toInt(), crossfadeDuration.toInt()))
-                                    Slider(
+                                    IrideSlider(
                                         value = crossfadeDuration,
                                         onValueChange = onCrossfadeDurationChange,
                                         valueRange = 1f..15f,
@@ -351,7 +354,7 @@ fun PlayerSettings(
                         }
                     },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = crossfadeEnabled,
                             onCheckedChange = onCrossfadeEnabledChange,
                             thumbContent = {
@@ -380,7 +383,7 @@ fun PlayerSettings(
                             ) {
                                 Column {
                                     Text(pluralStringResource(R.plurals.seconds, skipFadeDuration.toInt(), skipFadeDuration.toInt()))
-                                    Slider(
+                                    IrideSlider(
                                         value = skipFadeDuration,
                                         onValueChange = onSkipFadeDurationChange,
                                         valueRange = 1f..8f,
@@ -391,7 +394,7 @@ fun PlayerSettings(
                         }
                     },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = skipFade,
                             onCheckedChange = onSkipFadeChange,
                             thumbContent = {
@@ -414,7 +417,7 @@ fun PlayerSettings(
                     description = {
                         Column {
                             Text(historyDuration.roundToInt().toString())
-                            Slider(
+                            IrideSlider(
                                 value = historyDuration,
                                 onValueChange = onHistoryDurationChange,
                                 valueRange = 1f..100f
@@ -447,7 +450,7 @@ fun PlayerSettings(
                                             style = androidx.compose.material3.MaterialTheme.typography.bodySmall
                                         )
                                     }
-                                    Switch(
+                                    IrideSwitch(
                                         checked = skipSilenceInstant,
                                         onCheckedChange = onSkipSilenceInstantChange,
                                         thumbContent = {
@@ -465,7 +468,7 @@ fun PlayerSettings(
                         }
                     },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = skipSilence,
                             onCheckedChange = onSkipSilenceChange,
                             thumbContent = {
@@ -485,7 +488,7 @@ fun PlayerSettings(
                     icon = painterResource(R.drawable.volume_up),
                     title = { Text(stringResource(R.string.audio_normalization)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = audioNormalization,
                             onCheckedChange = onAudioNormalizationChange,
                             thumbContent = {
@@ -511,7 +514,7 @@ fun PlayerSettings(
                         )
                     },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = if (crossfadeEnabled) false else audioOffload,
                             onCheckedChange = onAudioOffloadChange,
                             enabled = !crossfadeEnabled,
@@ -533,7 +536,7 @@ fun PlayerSettings(
                     title = { Text(stringResource(R.string.varispeed)) },
                     description = { Text(stringResource(R.string.varispeed_description)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = varispeed,
                             onCheckedChange = onVarispeedChange,
                             thumbContent = {
@@ -556,7 +559,7 @@ fun PlayerSettings(
                         title = { Text(stringResource(R.string.google_cast)) },
                         description = { Text(stringResource(R.string.google_cast_description)) },
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = enableGoogleCast,
                                 onCheckedChange = onEnableGoogleCastChange,
                                 thumbContent = {
@@ -579,7 +582,7 @@ fun PlayerSettings(
                     title = { Text(stringResource(R.string.seek_seconds_addup)) },
                     description = { Text(stringResource(R.string.seek_seconds_addup_description)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = seekExtraSeconds,
                             onCheckedChange = onSeekExtraSeconds,
                             thumbContent = {
@@ -600,7 +603,7 @@ fun PlayerSettings(
                     title = { Text(stringResource(R.string.muzza_player_logic)) },
                     description = { Text(stringResource(R.string.muzza_player_logic_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = muzzaPlayerLogic,
                             onCheckedChange = onMuzzaPlayerLogicChange,
                             thumbContent = {
@@ -632,7 +635,7 @@ fun PlayerSettings(
                             title = { Text(stringResource(R.string.enable_automatic_sleeptimer)) },
                             description = { Text(stringResource(R.string.sleeptimer_description)) },
                             trailingContent = {
-                                Switch(
+                                IrideSwitch(
                                     checked = sleepTimerEnabled,
                                     onCheckedChange = onSleepTimerEnabledChange,
                                     thumbContent = {
@@ -655,7 +658,7 @@ fun PlayerSettings(
                             title = { Text(stringResource(R.string.sleep_timer_repeat)) },
                             description = { Text(stringResource(R.string.sleep_timer_repeat_description)) },
                             trailingContent = {
-                                Switch(
+                                IrideSwitch(
                                     checked = sleepTimerEnabled,
                                     onCheckedChange = { showSleepTimerDialog = true },
                                     thumbContent = {
@@ -678,7 +681,7 @@ fun PlayerSettings(
                             title = { Text(stringResource(R.string.sleep_timer_stop_after_current_song_title)) },
                             description = { Text(stringResource(R.string.sleep_timer_stop_after_current_song_description)) },
                             trailingContent = {
-                                Switch(
+                                IrideSwitch(
                                     checked = sleepTimerStopAfterCurrentSong,
                                     onCheckedChange = onSleepTimerStopAfterCurrentSongChange,
                                     thumbContent = {
@@ -701,7 +704,7 @@ fun PlayerSettings(
                             title = { Text(stringResource(R.string.sleep_timer_fade_out_title)) },
                             description = { Text(stringResource(R.string.sleep_timer_fade_out_description)) },
                             trailingContent = {
-                                Switch(
+                                IrideSwitch(
                                     checked = sleepTimerFadeOut,
                                     onCheckedChange = onSleepTimerFadeOutChange,
                                     thumbContent = {
@@ -737,7 +740,7 @@ fun PlayerSettings(
                     title = { Text(stringResource(R.string.persistent_queue)) },
                     description = { Text(stringResource(R.string.persistent_queue_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = persistentQueue,
                             onCheckedChange = onPersistentQueueChange,
                             thumbContent = {
@@ -758,7 +761,7 @@ fun PlayerSettings(
                     title = { Text(stringResource(R.string.auto_load_more)) },
                     description = { Text(stringResource(R.string.auto_load_more_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = autoLoadMore,
                             onCheckedChange = onAutoLoadMoreChange,
                             thumbContent = {
@@ -779,7 +782,7 @@ fun PlayerSettings(
                     title = { Text(stringResource(R.string.disable_load_more_when_repeat_all)) },
                     description = { Text(stringResource(R.string.disable_load_more_when_repeat_all_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = disableLoadMoreWhenRepeatAll,
                             onCheckedChange = onDisableLoadMoreWhenRepeatAllChange,
                             thumbContent = {
@@ -800,7 +803,7 @@ fun PlayerSettings(
                     title = { Text(stringResource(R.string.auto_download_on_like)) },
                     description = { Text(stringResource(R.string.auto_download_on_like_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = autoDownloadOnLike,
                             onCheckedChange = onAutoDownloadOnLikeChange,
                             thumbContent = {
@@ -821,7 +824,7 @@ fun PlayerSettings(
                     title = { Text(stringResource(R.string.enable_similar_content)) },
                     description = { Text(stringResource(R.string.similar_content_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = similarContentEnabled,
                             onCheckedChange = similarContentEnabledChange,
                             thumbContent = {
@@ -842,7 +845,7 @@ fun PlayerSettings(
                     title = { Text(stringResource(R.string.persistent_shuffle_title)) },
                     description = { Text(stringResource(R.string.persistent_shuffle_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = persistentShuffleAcrossQueues,
                             onCheckedChange = onPersistentShuffleAcrossQueuesChange,
                             thumbContent = {
@@ -863,7 +866,7 @@ fun PlayerSettings(
                     title = { Text(stringResource(R.string.remember_shuffle_and_repeat)) },
                     description = { Text(stringResource(R.string.remember_shuffle_and_repeat_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = rememberShuffleAndRepeat,
                             onCheckedChange = onRememberShuffleAndRepeatChange,
                             thumbContent = {
@@ -884,7 +887,7 @@ fun PlayerSettings(
                     title = { Text(stringResource(R.string.shuffle_playlist_first)) },
                     description = { Text(stringResource(R.string.shuffle_playlist_first_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = shufflePlaylistFirst,
                             onCheckedChange = onShufflePlaylistFirstChange,
                             thumbContent = {
@@ -905,7 +908,7 @@ fun PlayerSettings(
                     title = { Text(stringResource(R.string.prevent_duplicate_tracks_in_queue)) },
                     description = { Text(stringResource(R.string.prevent_duplicate_tracks_in_queue_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = preventDuplicateTracksInQueue,
                             onCheckedChange = onPreventDuplicateTracksInQueueChange,
                             thumbContent = {
@@ -926,7 +929,7 @@ fun PlayerSettings(
                     title = { Text(stringResource(R.string.auto_skip_next_on_error)) },
                     description = { Text(stringResource(R.string.auto_skip_next_on_error_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = autoSkipNextOnError,
                             onCheckedChange = onAutoSkipNextOnErrorChange,
                             thumbContent = {
@@ -955,7 +958,7 @@ fun PlayerSettings(
                     icon = painterResource(R.drawable.clear_all),
                     title = { Text(stringResource(R.string.stop_music_on_task_clear)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = stopMusicOnTaskClear,
                             onCheckedChange = onStopMusicOnTaskClearChange,
                             thumbContent = {
@@ -975,7 +978,7 @@ fun PlayerSettings(
                     icon = painterResource(R.drawable.volume_off_pause),
                     title = { Text(stringResource(R.string.pause_music_when_media_is_muted)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = pauseOnMute,
                             onCheckedChange = onPauseOnMuteChange,
                             thumbContent = {
@@ -995,7 +998,7 @@ fun PlayerSettings(
                     icon = painterResource(R.drawable.bluetooth),
                     title = { Text(stringResource(R.string.resume_on_bluetooth_connect)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = resumeOnBluetoothConnect,
                             onCheckedChange = onResumeOnBluetoothConnectChange,
                             thumbContent = {
@@ -1015,7 +1018,7 @@ fun PlayerSettings(
                     icon = painterResource(R.drawable.screenshot),
                     title = { Text(stringResource(R.string.keep_screen_on_when_player_is_expanded)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = keepScreenOn,
                             onCheckedChange = onKeepScreenOnChange,
                             thumbContent = {
@@ -1036,18 +1039,8 @@ fun PlayerSettings(
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.player_and_audio)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null
-                )
-            }
-        }
+    SettingsBackTopBar(
+        title = stringResource(R.string.player_and_audio),
+        navController = navController,
     )
 }

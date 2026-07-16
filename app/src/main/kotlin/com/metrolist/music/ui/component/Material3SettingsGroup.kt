@@ -23,11 +23,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
@@ -39,13 +41,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
+import com.metrolist.music.constants.TopNavigationBarKey
+import com.metrolist.music.utils.rememberPreference
 
 /**
  * A Material 3 Expressive style settings group component
@@ -59,6 +66,13 @@ fun Material3SettingsGroup(
     useLowContrast: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+
+    if (topNavigationBarEnabled) {
+        IrideSettingsGroup(title = title, items = items, modifier = modifier)
+        return
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -185,7 +199,7 @@ private fun Material3SettingsItemRow(
             // Title content
             ProvideTextStyle(
                 MaterialTheme.typography.titleMedium.copy(
-                    color = if (!item.enabled) 
+                    color = if (!item.enabled)
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     else
                         MaterialTheme.colorScheme.onSurface
@@ -219,6 +233,114 @@ private fun Material3SettingsItemRow(
 }
 
 /**
+ * New Iride UI variant of [Material3SettingsGroup]: flat and transparent so the animated curtain
+ * gradient shows through behind it, monospace bold white titles matching NavigationTitle /
+ * TopNavigationBar elsewhere in New Iride UI, hairline dividers between rows instead of card gaps.
+ * Swapped in automatically by [Material3SettingsGroup] when New Iride UI is on, so every settings
+ * screen built on top of it (all of them) gets this styling for free.
+ */
+@Composable
+private fun IrideSettingsGroup(
+    title: String?,
+    items: List<Material3SettingsItem>,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        title?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontFamily = SpaceMonoFontFamily,
+                    letterSpacing = (-0.1).sp,
+                ),
+                fontWeight = FontWeight.Bold,
+                color = Color.White.copy(alpha = 0.55f),
+                modifier = Modifier.padding(bottom = 6.dp, top = 4.dp)
+            )
+        }
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            items.forEachIndexed { index, item ->
+                IrideSettingsItemRow(item = item)
+                if (index != items.lastIndex) {
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IrideSettingsItemRow(item: Material3SettingsItem) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                enabled = item.enabled && item.onClick != null,
+                onClick = { item.onClick?.invoke() }
+            )
+            .alpha(if (item.enabled) 1f else 0.4f)
+            .padding(vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (item.leadingContent != null) {
+            item.leadingContent.invoke()
+            Spacer(modifier = Modifier.width(16.dp))
+        } else if (item.icon != null) {
+            val iconTint = Color.White.copy(alpha = if (item.isHighlighted) 1f else 0.85f)
+            if (item.showBadge) {
+                BadgedBox(
+                    badge = { Badge(containerColor = MaterialTheme.colorScheme.error) }
+                ) {
+                    Icon(
+                        painter = item.icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            } else {
+                Icon(
+                    painter = item.icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            ProvideTextStyle(
+                MaterialTheme.typography.bodyLarge.copy(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontSize = 15.sp,
+                    letterSpacing = (-0.1).sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+            ) {
+                item.title()
+            }
+
+            item.description?.let { desc ->
+                Spacer(modifier = Modifier.height(2.dp))
+                ProvideTextStyle(
+                    MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.6f))
+                ) {
+                    desc()
+                }
+            }
+        }
+
+        item.trailingContent?.let { trailing ->
+            Spacer(modifier = Modifier.width(8.dp))
+            trailing()
+        }
+    }
+}
+
+/**
  * A collapsible section within a settings screen.
  * Renders a styled header row that toggles visibility of [content].
  * @param title Label shown in the header row
@@ -235,8 +357,55 @@ fun ExpandableSettingsSection(
     content: @Composable () -> Unit
 ) {
     var expanded by remember { mutableStateOf(defaultExpanded) }
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
 
     Column(modifier = modifier.fillMaxWidth()) {
+        if (topNavigationBarEnabled) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (icon != null) {
+                    Icon(
+                        painter = icon,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.85f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontFamily = SpaceMonoFontFamily,
+                            fontSize = 15.sp,
+                            letterSpacing = (-0.1).sp,
+                        ),
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    if (description.isNotEmpty()) {
+                        Text(
+                            text = description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+                Icon(
+                    painter = painterResource(
+                        if (expanded) R.drawable.expand_less else R.drawable.expand_more
+                    ),
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.35f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        } else {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -317,6 +486,7 @@ fun ExpandableSettingsSection(
                     )
                 }
             }
+        }
         }
 
         AnimatedVisibility(

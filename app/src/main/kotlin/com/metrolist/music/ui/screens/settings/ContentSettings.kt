@@ -1,9 +1,11 @@
-/**
+﻿/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
 package com.metrolist.music.ui.screens.settings
+import com.metrolist.music.ui.component.IrideSlider
+import com.metrolist.music.ui.component.IrideSwitch
 
 import android.content.Intent
 import android.os.Build
@@ -92,6 +94,7 @@ import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.DraggableLyricsProviderItem
 import com.metrolist.music.ui.component.DraggableLyricsProviderList
 import com.metrolist.music.lyrics.LyricsProviderRegistry
@@ -225,7 +228,7 @@ fun ContentSettings(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(stringResource(R.string.enable_authentication))
-                        Switch(
+                        IrideSwitch(
                             checked = authEnabled,
                             onCheckedChange = {
                                 authEnabled = it
@@ -367,7 +370,7 @@ fun ContentSettings(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Switch(
+                        IrideSwitch(
                             checked = enableLrclib,
                             onCheckedChange = onEnableLrclibChange,
                             thumbContent = {
@@ -396,7 +399,7 @@ fun ContentSettings(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Switch(
+                        IrideSwitch(
                             checked = enableKugou,
                             onCheckedChange = onEnableKugouChange,
                             thumbContent = {
@@ -425,7 +428,7 @@ fun ContentSettings(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Switch(
+                        IrideSwitch(
                             checked = enableBetterLyrics,
                             onCheckedChange = onEnableBetterLyricsChange,
                             thumbContent = {
@@ -454,7 +457,7 @@ fun ContentSettings(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Switch(
+                        IrideSwitch(
                             checked = enableBetterLyricsUnison,
                             onCheckedChange = onEnableBetterLyricsUnisonChange,
                             thumbContent = {
@@ -483,7 +486,7 @@ fun ContentSettings(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Switch(
+                        IrideSwitch(
                             checked = enableBetterLyricsSillaba,
                             onCheckedChange = onEnableBetterLyricsSillabaChange,
                             thumbContent = {
@@ -512,7 +515,7 @@ fun ContentSettings(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Switch(
+                        IrideSwitch(
                             checked = enablePaxsenix,
                             onCheckedChange = onEnablePaxsenixChange,
                             thumbContent = {
@@ -541,7 +544,7 @@ fun ContentSettings(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Switch(
+                        IrideSwitch(
                             checked = enableLyricsPlus,
                             onCheckedChange = onEnableLyricsPlusChange,
                             thumbContent = {
@@ -614,7 +617,7 @@ fun ContentSettings(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(tempLength.toInt().toString())
-                    Slider(
+                    IrideSlider(
                         value = tempLength,
                         onValueChange = { tempLength = it },
                         valueRange = 1f..100f,
@@ -774,7 +777,7 @@ fun ContentSettings(
                     title = { Text(stringResource(R.string.hide_explicit)) },
                     description = { Text(stringResource(R.string.hide_explicit_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = hideExplicit,
                             onCheckedChange = onHideExplicitChange,
                             thumbContent = {
@@ -795,7 +798,7 @@ fun ContentSettings(
                     title = { Text(stringResource(R.string.show_explicit_badge)) },
                     description = { Text(stringResource(R.string.show_explicit_badge_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = showExplicitBadge,
                             onCheckedChange = onShowExplicitBadgeChange,
                             thumbContent = {
@@ -815,7 +818,7 @@ fun ContentSettings(
                     icon = painterResource(R.drawable.slow_motion_video),
                     title = { Text(stringResource(R.string.hide_video_songs)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = hideVideoSongs,
                             onCheckedChange = onHideVideoSongsChange,
                             thumbContent = {
@@ -836,7 +839,7 @@ fun ContentSettings(
                     title = { Text(stringResource(R.string.square_video_thumbnail)) },
                     description = { Text(stringResource(R.string.square_video_thumbnail_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = squareVideoThumbnail,
                             onCheckedChange = onSquareVideoThumbnailChange,
                             thumbContent = {
@@ -857,7 +860,7 @@ fun ContentSettings(
                     title = { Text(stringResource(R.string.resolve_video_songs)) },
                     description = { Text(stringResource(R.string.resolve_video_songs_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = resolveVideoSongs,
                             onCheckedChange = onResolveVideoSongsChange,
                             thumbContent = {
@@ -899,7 +902,7 @@ fun ContentSettings(
                             title = { Text(stringResource(R.string.hide_video_only_results)) },
                             description = { Text(stringResource(R.string.hide_video_only_results_desc)) },
                             trailingContent = {
-                                Switch(
+                                IrideSwitch(
                                     checked = hideVideoOnlyResults,
                                     onCheckedChange = onHideVideoOnlyResultsChange,
                                     thumbContent = {
@@ -920,7 +923,7 @@ fun ContentSettings(
                             title = { Text(stringResource(R.string.hide_videos_in_library)) },
                             description = { Text(stringResource(R.string.hide_videos_in_library_desc)) },
                             trailingContent = {
-                                Switch(
+                                IrideSwitch(
                                     checked = hideVideosInLibrary,
                                     onCheckedChange = onHideVideosInLibraryChange,
                                     thumbContent = {
@@ -948,7 +951,7 @@ fun ContentSettings(
                     icon = painterResource(R.drawable.hide_image),
                     title = { Text(stringResource(R.string.hide_youtube_shorts)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = hideYoutubeShorts,
                             onCheckedChange = onHideYoutubeShortsChange,
                             thumbContent = {
@@ -976,7 +979,7 @@ fun ContentSettings(
                     icon = painterResource(R.drawable.info),
                     title = { Text(stringResource(R.string.show_artist_description)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = showArtistDescription,
                             onCheckedChange = onShowArtistDescriptionChange,
                             thumbContent = {
@@ -996,7 +999,7 @@ fun ContentSettings(
                     icon = painterResource(R.drawable.person),
                     title = { Text(stringResource(R.string.show_artist_subscriber_count)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = showArtistSubscriberCount,
                             onCheckedChange = onShowArtistSubscriberCountChange,
                             thumbContent = {
@@ -1016,7 +1019,7 @@ fun ContentSettings(
                     icon = painterResource(R.drawable.person),
                     title = { Text(stringResource(R.string.show_artist_monthly_listeners)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = showMonthlyListeners,
                             onCheckedChange = onShowMonthlyListenersChange,
                             thumbContent = {
@@ -1081,7 +1084,7 @@ fun ContentSettings(
                                 icon = painterResource(R.drawable.wifi_proxy),
                                 title = { Text(stringResource(R.string.enable_proxy)) },
                                 trailingContent = {
-                                    Switch(
+                                    IrideSwitch(
                                         checked = proxyEnabled,
                                         onCheckedChange = onProxyEnabledChange,
                                         thumbContent = {
@@ -1182,18 +1185,8 @@ fun ContentSettings(
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.content)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        }
+    SettingsBackTopBar(
+        title = stringResource(R.string.content),
+        navController = navController,
     )
 }

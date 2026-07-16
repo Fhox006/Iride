@@ -372,7 +372,6 @@ fun OnlinePlaylistScreen(
                                                 song = songItem,
                                                 navController = navController,
                                                 onDismiss = menuState::dismiss,
-                                                showStarButton = false,
                                             )
                                         }
                                     }) {

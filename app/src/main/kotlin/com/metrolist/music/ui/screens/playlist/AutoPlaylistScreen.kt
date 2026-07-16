@@ -10,12 +10,16 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -27,6 +31,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -78,11 +83,14 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachReversed
 import androidx.compose.ui.util.fastSumBy
 import androidx.core.net.toUri
@@ -101,6 +109,7 @@ import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.SongSortDescendingKey
 import com.metrolist.music.constants.SongSortType
 import com.metrolist.music.constants.SongSortTypeKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.extensions.toMediaItem
@@ -113,6 +122,7 @@ import com.metrolist.music.ui.component.GenrePillsRow
 import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.IrideOutlineIconButton
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
@@ -122,6 +132,7 @@ import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.isScrollingUp
+import com.metrolist.music.ui.utils.prefetchThumbnails
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -172,6 +183,7 @@ fun AutoPlaylistScreen(
     }
 
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
 
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
 
@@ -493,6 +505,10 @@ fun AutoPlaylistScreen(
         }
     }
 
+    LaunchedEffect(filteredSongs) {
+        prefetchThumbnails(context, filteredSongs.map { it.song.thumbnailUrl })
+    }
+
     val state = rememberLazyListState()
 
     val isRefreshing by viewModel.isRefreshing.collectAsState()
@@ -560,6 +576,7 @@ fun AutoPlaylistScreen(
                                 onSortChange = onSortTypeChange,
                                 sortDescending = sortDescending,
                                 onSortDescendingChange = onSortDescendingChange,
+                                useIrideStyle = topNavigationBarEnabled,
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -601,7 +618,6 @@ fun AutoPlaylistScreen(
                                                     originalSong = song,
                                                     navController = navController,
                                                     onDismiss = menuState::dismiss,
-                                                    showStarButton = playlistType == PlaylistType.LIKE,
                                                 )
                                             }
                                         },
@@ -724,87 +740,156 @@ fun AutoPlaylistScreen(
             }
         }
 
-        TopAppBar(
-            title = {
-                when {
-                    inSelectMode -> {
-                        Text(
-                            text = pluralStringResource(R.plurals.n_song, selection.size, selection.size),
-                            style = MaterialTheme.typography.titleLarge,
-                        )
-                    }
-
-                    isSearching -> {
-                        TextField(
-                            value = query,
-                            onValueChange = { query = it },
-                            placeholder = {
-                                Text(
-                                    text = stringResource(R.string.search),
-                                    style = MaterialTheme.typography.titleLarge,
-                                )
-                            },
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.titleLarge,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            colors =
-                                TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent,
-                                    disabledIndicatorColor = Color.Transparent,
-                                ),
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .focusRequester(focusRequester),
-                        )
-                    }
-
-                    else -> {
-                        Text(
-                            text = playlist,
-                            style = MaterialTheme.typography.titleLarge,
-                        )
-                    }
-                }
-            },
-            navigationIcon = {
-                IconButton(
-                    onClick = {
-                        when {
-                            isSearching -> {
-                                isSearching = false
-                                query = TextFieldValue()
-                                focusManager.clearFocus()
-                            }
-
-                            inSelectMode -> {
-                                onExitSelectionMode()
-                            }
-
-                            else -> {
-                                navController.navigateUp()
-                            }
-                        }
-                    },
-                    onLongClick = {
-                        if (!isSearching && !inSelectMode) {
-                            navController.backToMain()
-                        }
-                    },
-                ) {
-                    Icon(
-                        painter =
-                            painterResource(
-                                if (inSelectMode) R.drawable.close else R.drawable.arrow_back,
-                            ),
-                        contentDescription = null,
+        val topBarTitle: @Composable () -> Unit = {
+            when {
+                inSelectMode -> {
+                    Text(
+                        text = pluralStringResource(R.plurals.n_song, selection.size, selection.size),
+                        style = if (topNavigationBarEnabled) {
+                            TextStyle(
+                                fontFamily = SpaceMonoFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                letterSpacing = (-0.1).sp,
+                            )
+                        } else {
+                            MaterialTheme.typography.titleLarge
+                        },
                     )
                 }
-            },
-            actions = {
+
+                isSearching -> {
+                    TextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = {
+                            Text(
+                                text = stringResource(R.string.search),
+                                style = MaterialTheme.typography.titleLarge,
+                            )
+                        },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.titleLarge,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        colors =
+                            TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                disabledIndicatorColor = Color.Transparent,
+                            ),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester),
+                    )
+                }
+
+                else -> {
+                    Text(
+                        text = playlist,
+                        style = if (topNavigationBarEnabled) {
+                            TextStyle(
+                                fontFamily = SpaceMonoFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                letterSpacing = (-0.1).sp,
+                            )
+                        } else {
+                            MaterialTheme.typography.titleLarge
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+        // Top-bar mirrors of the header's shuffle/play/download actions (New Iride UI only) — the
+        // header versions live in a separate composable, not reachable from the top bar.
+        val onTopBarShuffleClick: () -> Unit = {
+            playerConnection.playQueue(
+                ListQueue(
+                    title = playlist,
+                    items = songs.orEmpty().shuffled().map { it.toMediaItem() },
+                ),
+            )
+        }
+        val onTopBarPlaylistPlayClick: () -> Unit = {
+            playerConnection.playQueue(
+                ListQueue(
+                    title = playlist,
+                    items = songs.orEmpty().map { it.toMediaItem() },
+                ),
+            )
+        }
+        val onTopBarPlaylistDownloadClick: () -> Unit = {
+            when (downloadState) {
+                Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
+                Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                    songs?.forEach { song ->
+                        DownloadService.sendRemoveDownload(
+                            context,
+                            ExoDownloadService::class.java,
+                            song.song.id,
+                            false,
+                        )
+                    }
+                }
+                else -> {
+                    songs?.forEach { song ->
+                        val downloadRequest =
+                            DownloadRequest
+                                .Builder(song.song.id, song.song.id.toUri())
+                                .setCustomCacheKey(song.song.id)
+                                .setData(song.song.title.toByteArray())
+                                .build()
+                        DownloadService.sendAddDownload(
+                            context,
+                            ExoDownloadService::class.java,
+                            downloadRequest,
+                            false,
+                        )
+                    }
+                }
+            }
+        }
+
+        val topBarNavigationIcon: @Composable () -> Unit = {
+            IconButton(
+                onClick = {
+                    when {
+                        isSearching -> {
+                            isSearching = false
+                            query = TextFieldValue()
+                            focusManager.clearFocus()
+                        }
+
+                        inSelectMode -> {
+                            onExitSelectionMode()
+                        }
+
+                        else -> {
+                            navController.navigateUp()
+                        }
+                    }
+                },
+                onLongClick = {
+                    if (!isSearching && !inSelectMode) {
+                        navController.backToMain()
+                    }
+                },
+            ) {
+                Icon(
+                    painter =
+                        painterResource(
+                            if (inSelectMode) R.drawable.close else R.drawable.arrow_back,
+                        ),
+                    contentDescription = null,
+                )
+            }
+        }
+        val topBarActions: @Composable RowScope.() -> Unit = {
                 if (inSelectMode) {
                     Checkbox(
                         checked = selection.size == filteredSongs.size && selection.isNotEmpty(),
@@ -900,8 +985,58 @@ fun AutoPlaylistScreen(
                         )
                     }
                 }
-            },
-        )
+        }
+
+        if (topNavigationBarEnabled) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .statusBarsPadding()
+                    .height(56.dp)
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                topBarNavigationIcon()
+                Box(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
+                    topBarTitle()
+                }
+                if (!inSelectMode && !isSearching && !songs.isNullOrEmpty()) {
+                    IrideOutlineIconButton(
+                        onClick = onTopBarShuffleClick,
+                        icon = R.drawable.shuffle,
+                        contentDescription = stringResource(R.string.shuffle),
+                        size = 40.dp,
+                        iconSize = 20.dp,
+                    )
+                    IrideOutlineIconButton(
+                        onClick = onTopBarPlaylistPlayClick,
+                        icon = R.drawable.ic_iride_play,
+                        contentDescription = stringResource(R.string.play),
+                        size = 40.dp,
+                        iconSize = 20.dp,
+                    )
+                    IrideOutlineIconButton(
+                        onClick = onTopBarPlaylistDownloadClick,
+                        icon = when (downloadState) {
+                            Download.STATE_COMPLETED -> R.drawable.check
+                            else -> R.drawable.arrow_downward
+                        },
+                        contentDescription = null,
+                        loading = downloadState == Download.STATE_DOWNLOADING || downloadState == Download.STATE_QUEUED,
+                        size = 40.dp,
+                        iconSize = 20.dp,
+                    )
+                }
+                topBarActions()
+            }
+        } else {
+            TopAppBar(
+                title = topBarTitle,
+                navigationIcon = topBarNavigationIcon,
+                actions = topBarActions,
+            )
+        }
     }
 }
 
@@ -918,200 +1053,291 @@ private fun AutoPlaylistHeader(
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
 
-    Column(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        // Playlist Thumbnail - Large centered with shadow
-        Box(
-            modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
-        ) {
+    val metadataLine =
+        buildString {
+            append(pluralStringResource(R.plurals.n_song, songs.size, songs.size))
+            if (likeLength > 0) {
+                append(" • ")
+                append(makeTimeString(likeLength * 1000L))
+            }
+        }
+
+    val onShuffleClick: () -> Unit = {
+        playerConnection.playQueue(
+            ListQueue(
+                title = name,
+                items = songs.shuffled().map { it.toMediaItem() },
+            ),
+        )
+    }
+    val onPlaylistPlayClick: () -> Unit = {
+        playerConnection.playQueue(
+            ListQueue(
+                title = name,
+                items = songs.map { it.toMediaItem() },
+            ),
+        )
+    }
+    val onPlaylistDownloadClick: () -> Unit = {
+        when (downloadState) {
+            Download.STATE_COMPLETED -> onShowRemoveDownloadDialog()
+            Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                songs.forEach { song ->
+                    DownloadService.sendRemoveDownload(
+                        context,
+                        ExoDownloadService::class.java,
+                        song.song.id,
+                        false,
+                    )
+                }
+            }
+            else -> {
+                songs.forEach { song ->
+                    val downloadRequest =
+                        DownloadRequest
+                            .Builder(song.song.id, song.song.id.toUri())
+                            .setCustomCacheKey(song.song.id)
+                            .setData(song.song.title.toByteArray())
+                            .build()
+                    DownloadService.sendAddDownload(
+                        context,
+                        ExoDownloadService::class.java,
+                        downloadRequest,
+                        false,
+                    )
+                }
+            }
+        }
+    }
+
+    val coverContent: @Composable () -> Unit = {
+        val coverSquircle = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
+        val badgeIcon = when (playlistType) {
+            PlaylistType.LIKE -> R.drawable.star
+            PlaylistType.STARRED -> R.drawable.bookmark_filled
+            else -> null
+        }
+        if (badgeIcon != null) {
+            if (topNavigationBarEnabled) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(240.dp)
+                            .border(
+                                BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)),
+                                coverSquircle,
+                            ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(badgeIcon),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(240.dp * 0.4f),
+                    )
+                }
+            } else {
+                androidx.compose.material3.Surface(
+                    modifier =
+                        Modifier
+                            .size(240.dp)
+                            .shadow(
+                                elevation = 24.dp,
+                                shape = coverSquircle,
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                            ),
+                    shape = coverSquircle,
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        Icon(
+                            painter = painterResource(badgeIcon),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                            modifier = Modifier.size(240.dp * 0.65f),
+                        )
+                    }
+                }
+            }
+        } else {
             androidx.compose.material3.Surface(
                 modifier =
                     Modifier
                         .size(240.dp)
                         .shadow(
                             elevation = 24.dp,
-                            shape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f),
+                            shape = coverSquircle,
                             spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                         ),
-                shape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f),
-                color = if (playlistType == PlaylistType.LIKE) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.surface,
+                shape = coverSquircle,
+                color = MaterialTheme.colorScheme.surface,
             ) {
-                if (playlistType == PlaylistType.LIKE) {
+                AsyncImage(
+                    model = songs[0].song.thumbnailUrl,
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+    }
+
+    if (topNavigationBarEnabled) {
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(top = 12.dp, bottom = 20.dp),
+        ) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                coverContent()
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(
+                text = name,
+                style = TextStyle(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    letterSpacing = (-0.2).sp,
+                ),
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = metadataLine,
+                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            // Action buttons (shuffle/play/download) live in the top bar now — see topBarActions.
+        }
+    } else {
+        Column(
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // Playlist Thumbnail - Large centered with shadow
+            Box(
+                modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
+            ) {
+                coverContent()
+            }
+
+            // Playlist Name
+            Text(
+                text = name,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 32.dp),
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Metadata - Song Count • Duration
+            Text(
+                text = metadataLine,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Action Buttons Row
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Shuffle Button - Smaller secondary button
+                androidx.compose.material3.Surface(
+                    onClick = onShuffleClick,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.shuffle),
+                            contentDescription = stringResource(R.string.shuffle),
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                }
+
+                // Play Button - Larger primary circular button
+                Surface(
+                    onClick = onPlaylistPlayClick,
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    modifier = Modifier.size(72.dp),
+                ) {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.star),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                            modifier = Modifier.size(240.dp * 0.65f),
+                            painter = painterResource(R.drawable.play),
+                            contentDescription = stringResource(R.string.play),
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(32.dp),
                         )
                     }
-                } else {
-                    AsyncImage(
-                        model = songs[0].song.thumbnailUrl,
-                        contentDescription = null,
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                }
+
+                // Download Button - Smaller secondary button
+                Surface(
+                    onClick = onPlaylistDownloadClick,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Box(
                         modifier = Modifier.fillMaxSize(),
-                    )
-                }
-            }
-        }
-
-        // Playlist Name
-        Text(
-            text = name,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 32.dp),
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Metadata - Song Count • Duration
-        Text(
-            text =
-                buildString {
-                    append(pluralStringResource(R.plurals.n_song, songs.size, songs.size))
-                    if (likeLength > 0) {
-                        append(" • ")
-                        append(makeTimeString(likeLength * 1000L))
-                    }
-                },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Action Buttons Row
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Shuffle Button - Smaller secondary button
-            androidx.compose.material3.Surface(
-                onClick = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = name,
-                            items = songs.shuffled().map { it.toMediaItem() },
-                        ),
-                    )
-                },
-                shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.shuffle),
-                        contentDescription = stringResource(R.string.shuffle),
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
-
-            // Play Button - Larger primary circular button
-            Surface(
-                onClick = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = name,
-                            items = songs.map { it.toMediaItem() },
-                        ),
-                    )
-                },
-                color = MaterialTheme.colorScheme.primary,
-                shape = androidx.compose.foundation.shape.CircleShape,
-                modifier = Modifier.size(72.dp),
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.play),
-                        contentDescription = stringResource(R.string.play),
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(32.dp),
-                    )
-                }
-            }
-
-            // Download Button - Smaller secondary button
-            Surface(
-                onClick = {
-                    when (downloadState) {
-                        Download.STATE_COMPLETED -> onShowRemoveDownloadDialog()
-                        Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
-                            songs.forEach { song ->
-                                DownloadService.sendRemoveDownload(
-                                    context,
-                                    ExoDownloadService::class.java,
-                                    song.song.id,
-                                    false,
-                                )
-                            }
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        when (downloadState) {
+                            Download.STATE_COMPLETED -> Icon(
+                                painter = painterResource(R.drawable.check),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                            )
+                            Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> CircularProgressIndicator(
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(24.dp),
+                            )
+                            else -> Icon(
+                                painter = painterResource(R.drawable.arrow_downward),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                            )
                         }
-                        else -> {
-                            songs.forEach { song ->
-                                val downloadRequest =
-                                    DownloadRequest
-                                        .Builder(song.song.id, song.song.id.toUri())
-                                        .setCustomCacheKey(song.song.id)
-                                        .setData(song.song.title.toByteArray())
-                                        .build()
-                                DownloadService.sendAddDownload(
-                                    context,
-                                    ExoDownloadService::class.java,
-                                    downloadRequest,
-                                    false,
-                                )
-                            }
-                        }
-                    }
-                },
-                shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    when (downloadState) {
-                        Download.STATE_COMPLETED -> Icon(
-                            painter = painterResource(R.drawable.check),
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                        )
-                        Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> CircularProgressIndicator(
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(24.dp),
-                        )
-                        else -> Icon(
-                            painter = painterResource(R.drawable.arrow_downward),
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                        )
                     }
                 }
             }

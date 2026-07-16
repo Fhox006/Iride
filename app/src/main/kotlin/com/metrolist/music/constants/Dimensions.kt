@@ -26,8 +26,12 @@ val QueuePeekHeight = 64.dp
 val AppBarHeight = 64.dp
 
 // New Iride UI: height of app content always kept visible at the top of the screen even when the
-// player "curtain" is dragged to its maximum extent, so the app is never fully covered.
-val AppPeekHeight = 120.dp
+// player "curtain" is dragged to its maximum extent, so the app is never fully covered. Kept just
+// large enough for a comfortable tap-to-collapse target — at full expansion this strip is already
+// painted solid black (MainActivity's dissolve-to-black overlay reaches alpha 1 exactly at
+// progress 1), so growing it past that doesn't reveal more app UI, it only steals room from the
+// player.
+val AppPeekHeight = 56.dp
 
 // New Iride UI (curtain mode): extra height added on top of the mini player bar's own height when
 // reserving the collapsed curtain gap, so the app layer's rounded bottom corners have some curtain

@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -62,10 +63,13 @@ import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 import com.metrolist.music.ui.screens.OptionStats
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import kotlin.math.roundToInt
 
 @Composable
@@ -245,6 +249,7 @@ fun <Int> ChoiceChipsRow(
     onValueUpdate: (Int) -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    useIrideStyle: Boolean = false,
 ) {
     var expandIconDegree by remember { mutableFloatStateOf(0f) }
     val rotationAnimation by animateFloatAsState(
@@ -252,6 +257,136 @@ fun <Int> ChoiceChipsRow(
         animationSpec = tween(durationMillis = 400),
         label = "",
     )
+
+    if (useIrideStyle) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp)
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            var expanded by remember { mutableStateOf(false) }
+
+            Column {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) {
+                            expanded = !expanded
+                            expandIconDegree -= 180
+                        }
+                        .padding(vertical = 6.dp, horizontal = 4.dp),
+                ) {
+                    Text(
+                        text = when (selectedOption) {
+                            OptionStats.WEEKS -> stringResource(id = R.string.weeks)
+                            OptionStats.MONTHS -> stringResource(id = R.string.months)
+                            OptionStats.YEARS -> stringResource(id = R.string.years)
+                            OptionStats.CONTINUOUS -> stringResource(id = R.string.continuous)
+                        },
+                        style = TextStyle(
+                            fontFamily = SpaceMonoFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            letterSpacing = (-0.1).sp,
+                        ),
+                        color = Color.White,
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        painter = painterResource(R.drawable.expand_more),
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.6f),
+                        modifier = Modifier
+                            .size(16.dp)
+                            .graphicsLayer(rotationZ = rotationAnimation),
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = expanded,
+                    enter = expandIn() + fadeIn(),
+                    exit = shrinkOut() + fadeOut(),
+                ) {
+                    DropdownMenu(
+                        modifier = Modifier.padding(start = 12.dp),
+                        expanded = expanded,
+                        onDismissRequest = {
+                            expanded = false
+                            expandIconDegree -= 180
+                        },
+                    ) {
+                        options.forEach { option ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = option.second,
+                                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+                                    )
+                                },
+                                onClick = {
+                                    onSelectionChange(option.first)
+                                    expandIconDegree -= 180
+                                    expanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            AnimatedContent(
+                targetState = selectedOption,
+                transitionSpec = { slideInHorizontally() + fadeIn() togetherWith slideOutHorizontally() + fadeOut() },
+                label = "",
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    chips.forEach { (value, label) ->
+                        val isSelected = currentValue == value
+                        var textWidthPx by remember(value) { mutableStateOf(0) }
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) { onValueUpdate(value) }
+                                .padding(vertical = 6.dp),
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.35f),
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                modifier = Modifier.onSizeChanged { textWidthPx = it.width },
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .height(2.dp)
+                                    .width(with(LocalDensity.current) { textWidthPx.toDp() })
+                                    .background(if (isSelected) Color.White else Color.Transparent),
+                            )
+                        }
+                        Spacer(Modifier.width(16.dp))
+                    }
+                }
+            }
+        }
+        return
+    }
 
     Row(
         modifier =

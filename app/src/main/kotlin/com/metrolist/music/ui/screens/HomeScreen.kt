@@ -264,7 +264,7 @@ fun HomeScreen(
     val accountImageUrl: String? = accountImageUrlFlow ?: accountPhotoUrlPref.takeIf { it.isNotEmpty() }
     val accountAvatarUrl = if (isLoggedIn) accountImageUrl else null
 
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
     val topNavBarController = LocalTopNavBarController.current
     // New Iride UI: sections start flush with the "Home" label in TopNavigationBar (20dp),
@@ -491,7 +491,7 @@ fun HomeScreen(
                 }
             }
 
-            val ytGridItem: @Composable (YTItem, androidx.compose.ui.unit.Dp?, Boolean) -> Unit = { item, sizeOverride, dischiPerTeStyle ->
+            val ytGridItem: @Composable (YTItem, androidx.compose.ui.unit.Dp?, Boolean, String?) -> Unit = { item, sizeOverride, dischiPerTeStyle, fallbackArtistName ->
                 val size = sizeOverride ?: if (item.isMixtape) 180.dp else currentGridHeight
                 YouTubeGridItem(
                     item = item,
@@ -502,6 +502,7 @@ fun HomeScreen(
                     showPlayButton = !dischiPerTeStyle,
                     showVinylEffect = dischiPerTeStyle,
                     size = size,
+                    fallbackArtistName = fallbackArtistName,
                     modifier = Modifier.combinedClickable(
                         onClick = {
                             when (item) {
@@ -594,7 +595,7 @@ fun HomeScreen(
                             ),
                         )
                     }
-                    is DischiPerTeItem.Remote -> ytGridItem(discItem.item, null, topNavigationBarEnabled)
+                    is DischiPerTeItem.Remote -> ytGridItem(discItem.item, null, topNavigationBarEnabled, discItem.fallbackArtistName)
                 }
             }
 
@@ -643,7 +644,7 @@ fun HomeScreen(
                             currentRoute = topNavBarController.currentRoute,
                             onItemClick = topNavBarController.onItemClick,
                             modifier = Modifier.animateItem(),
-                            containerColor = if (mainTopGradient) Color.Transparent else MaterialTheme.colorScheme.background,
+                            containerColor = Color.Transparent,
                         )
                     }
                 }
@@ -1294,7 +1295,7 @@ fun HomeScreen(
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("account_playlists")) {
                             LazyRow(contentPadding = PaddingValues(horizontal = irideGridItemStart), modifier = Modifier.animateItem()) {
                                 items(items = apl.distinctBy { it.id }, key = { "home_account_playlist_${it.id}" }) { ap ->
-                                    ytGridItem(ap, null, false)
+                                    ytGridItem(ap, null, false, null)
                                 }
                             }
                         }
@@ -1445,7 +1446,7 @@ fun HomeScreen(
                     item(key = "similar_to_list_$index") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("similar_to_$index")) {
                             LazyRow(contentPadding = PaddingValues(horizontal = irideGridItemStart), modifier = Modifier.animateItem()) {
-                                items(rec.items) { recItem -> ytGridItem(recItem, null, false) }
+                                items(rec.items) { recItem -> ytGridItem(recItem, null, false, null) }
                             }
                         }
                     }
@@ -1538,7 +1539,7 @@ fun HomeScreen(
                                 IrideCollapsibleSection(collapsed = isSectionCollapsed("home_section_$index")) {
                                     LazyRow(contentPadding = PaddingValues(horizontal = irideGridItemStart), modifier = Modifier.animateItem()) {
                                         items(items = sectionData.items.distinctBy { it.id }, key = { "home_section_${index}_item_${it.id}" }) { secItem ->
-                                            ytGridItem(secItem, null, false)
+                                            ytGridItem(secItem, null, false, null)
                                         }
                                     }
                                 }

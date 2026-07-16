@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -29,6 +30,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -71,6 +73,8 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -100,6 +104,7 @@ import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.ShowArtistDescriptionKey
 import com.metrolist.music.constants.ShowArtistSubscriberCountKey
 import com.metrolist.music.constants.ShowMonthlyListenersKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.toMediaMetadata
@@ -108,6 +113,8 @@ import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AlbumGridItem
 import com.metrolist.music.ui.component.ExpandableText
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.IrideOutlineIconButton
+import com.metrolist.music.ui.component.IrideSegmentedToggle
 import com.metrolist.music.ui.component.LinkSegment
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
@@ -127,6 +134,7 @@ import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.fadingEdge
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.viewmodels.AlbumReleaseType
 import com.metrolist.music.viewmodels.ArtistViewModel
 import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.launch
@@ -164,10 +172,16 @@ fun ArtistScreen(
     val libraryAlbums by viewModel.libraryAlbums.collectAsState()
     val isChannelSubscribed by viewModel.isChannelSubscribed.collectAsState()
     val recentAlbum by viewModel.recentAlbum.collectAsState()
+    val recentAlbumPreciseDate by viewModel.recentAlbumPreciseDate.collectAsState()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val showArtistDescription by rememberPreference(key = ShowArtistDescriptionKey, defaultValue = true)
     val showArtistSubscriberCount by rememberPreference(key = ShowArtistSubscriberCountKey, defaultValue = true)
     val showMonthlyListeners by rememberPreference(key = ShowMonthlyListenersKey, defaultValue = true)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    // New Iride UI: image given a touch more height than a plain square (ratio < 1 = taller),
+    // so the cover gets slightly more room before the title starts.
+    val imageAspectRatio = if (topNavigationBarEnabled) 0.94f else 1f
+    val irideHorizontalPadding = if (topNavigationBarEnabled) 20.dp else 16.dp
 
     val albumsTitles = remember(artistPage) {
         artistPage?.sections
@@ -207,6 +221,14 @@ fun ArtistScreen(
     LaunchedEffect(libraryArtist) {
         // always show local page for local artists. Show local page remote artist when offline
         showLocal = libraryArtist?.artist?.isLocal == true
+    }
+
+    // The Online branch's header is taller (Recent Album panel) than the Library branch's — without
+    // resetting scroll, toggling away from Online while scrolled left the shorter Library layout
+    // looking like it started with a big empty top padding, since the same pixel offset now landed
+    // much further down its (shorter) content.
+    LaunchedEffect(showLocal) {
+        lazyListState.scrollToItem(0)
     }
 
     Box(
@@ -340,7 +362,7 @@ fun ArtistScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .then(if (thumbnail != null) Modifier.aspectRatio(1f) else Modifier),
+                            .then(if (thumbnail != null) Modifier.aspectRatio(imageAspectRatio) else Modifier),
                     ) {
                         // Artist Image with offset
                         if (thumbnail != null) {
@@ -348,7 +370,7 @@ fun ArtistScreen(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .aspectRatio(1f)
+                                        .aspectRatio(imageAspectRatio)
                                         .offset {
                                             IntOffset(x = 0, y = headerOffset)
                                         }
@@ -398,28 +420,57 @@ fun ArtistScreen(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 16.dp),
+                                        .padding(horizontal = irideHorizontalPadding),
                             ) {
-                                // Artist Name + source toggle pill
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.Bottom,
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                ) {
-                                    Text(
-                                        text = artistName ?: "Unknown",
-                                        style = MaterialTheme.typography.headlineLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        overflow = TextOverflow.Ellipsis,
-                                        fontSize = 32.sp,
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .padding(end = 8.dp),
-                                    )
-                                    if (libraryAlbums.isNotEmpty()) {
+                                // Artist Name
+                                Text(
+                                    text = artistName ?: "Unknown",
+                                    style = if (topNavigationBarEnabled) {
+                                        TextStyle(
+                                            fontFamily = SpaceMonoFontFamily,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 28.sp,
+                                            letterSpacing = (-0.3).sp,
+                                        )
+                                    } else {
+                                        TextStyle(
+                                            fontSize = 32.sp,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                    },
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    overflow = TextOverflow.Ellipsis,
+                                    maxLines = 2,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = if (topNavigationBarEnabled) 6.dp else 0.dp),
+                                )
+
+                                // Library/Online source toggle — Iride segmented pill in the New UI
+                                // (same component used for the library "saved/downloaded" switch),
+                                // classic dual-icon capsule otherwise. Shown whenever the artist has
+                                // any local content (songs or albums) to switch to — gating on albums
+                                // alone hid the toggle (and the library songs behind it) for artists
+                                // saved with songs but no albums.
+                                if (libraryAlbums.isNotEmpty() || librarySongs.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 10.dp else 12.dp))
+                                    if (topNavigationBarEnabled) {
+                                        IrideSegmentedToggle(
+                                            options = listOf(
+                                                false to stringResource(R.string.online),
+                                                true to stringResource(R.string.filter_library),
+                                            ),
+                                            selected = showLocal,
+                                            onSelect = { value ->
+                                                if (value != showLocal) {
+                                                    showLocal = value
+                                                    if (!value && artistPage == null) viewModel.fetchArtistsFromYTM()
+                                                }
+                                            },
+                                        )
+                                    } else {
                                         Box(
                                             modifier = Modifier
-                                                .padding(bottom = 4.dp)
                                                 .width(80.dp)
                                                 .height(40.dp)
                                                 .clip(RoundedCornerShape(20.dp))
@@ -496,24 +547,34 @@ fun ArtistScreen(
                                             .replace("ascoltatori mensili", "", ignoreCase = true)
                                             .trim()
                                     }
+                                    Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 10.dp else 8.dp))
                                     Text(
                                         text = "$cleanListeners listeners this month",
-                                        style = MaterialTheme.typography.bodySmall,
+                                        style = if (topNavigationBarEnabled) {
+                                            TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp)
+                                        } else {
+                                            MaterialTheme.typography.bodySmall
+                                        },
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
 
+                                // Action buttons (subscribe/radio/shuffle/share) live in the top bar now.
+
                                 // Recent Album Panel (YTM view only — library view already lists albums below)
                                 if (!showLocal && recentAlbum != null) {
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 14.dp else 8.dp))
                                     RecentAlbumPanel(
-                                        album = recentAlbum!!,
-                                        onClick = { navController.navigate("album/${recentAlbum!!.id}") },
+                                        album = recentAlbum!!.album,
+                                        releaseType = recentAlbum!!.type,
+                                        preciseDate = recentAlbumPreciseDate,
+                                        useMonospace = topNavigationBarEnabled,
+                                        onClick = { navController.navigate("album/${recentAlbum!!.album.id}") },
                                         onLongClick = {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             menuState.show {
                                                 AlbumMenu(
-                                                    originalAlbum = recentAlbum!!,
+                                                    originalAlbum = recentAlbum!!.album,
                                                     navController = navController,
                                                     onDismiss = menuState::dismiss,
                                                 )
@@ -523,7 +584,10 @@ fun ArtistScreen(
                                 }
                             }
                             if (!showLocal && recentAlbum != null) {
-                                Spacer(modifier = Modifier.height(16.dp))
+                                // Was a flat 16dp for both UI modes — in New Iride UI this stacked on
+                                // top of NavigationTitle's own 26dp top padding for the next section
+                                // ("Album"), leaving ~42dp of dead space between the two panels.
+                                Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 4.dp else 16.dp))
                             }
                         }
                     }
@@ -535,6 +599,7 @@ fun ArtistScreen(
                             NavigationTitle(
                                 title = stringResource(R.string.songs),
                                 modifier = Modifier.animateItem(),
+                                useIrideStyle = topNavigationBarEnabled,
                                 onClick = {
                                     navController.navigate("artist/${viewModel.artistId}/songs")
                                 },
@@ -576,6 +641,7 @@ fun ArtistScreen(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
+                                        .padding(horizontal = if (topNavigationBarEnabled) 8.dp else 0.dp)
                                         .combinedClickable(
                                             onClick = {
                                                 if (!isGuest) {
@@ -617,6 +683,7 @@ fun ArtistScreen(
                                 NavigationTitle(
                                     title = stringResource(R.string.albums),
                                     modifier = Modifier.animateItem(),
+                                    useIrideStyle = topNavigationBarEnabled,
                                     onClick = {
                                         navController.navigate("artist/${viewModel.artistId}/albums")
                                     },
@@ -626,7 +693,11 @@ fun ArtistScreen(
                             item(key = "local_albums_list") {
                                 LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(0.dp),
-                                    contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues(),
+                                    contentPadding = if (topNavigationBarEnabled) {
+                                        PaddingValues(horizontal = 20.dp)
+                                    } else {
+                                        WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues()
+                                    },
                                 ) {
                                     items(
                                         items = filteredLibraryAlbums,
@@ -690,6 +761,7 @@ fun ArtistScreen(
                                     NavigationTitle(
                                         title = section.title,
                                         modifier = Modifier.animateItem(),
+                                        useIrideStyle = topNavigationBarEnabled,
                                         onClick =
                                             section.moreEndpoint?.let {
                                                 {
@@ -731,6 +803,7 @@ fun ArtistScreen(
                                             modifier =
                                                 Modifier
                                                     .fillMaxWidth()
+                                                    .padding(horizontal = if (topNavigationBarEnabled) 8.dp else 0.dp)
                                                     .combinedClickable(
                                                         onClick = {
                                                             if (!isGuest) {
@@ -769,7 +842,11 @@ fun ArtistScreen(
                                                 section.title.contains("Performance", ignoreCase = true)
                                         LazyRow(
                                             horizontalArrangement = Arrangement.spacedBy(0.dp),
-                                            contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues(),
+                                            contentPadding = if (topNavigationBarEnabled) {
+                                                PaddingValues(horizontal = 20.dp)
+                                            } else {
+                                                WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues()
+                                            },
                                         ) {
                                             items(
                                                 items = filteredItems.distinctBy { it.id },
@@ -914,14 +991,19 @@ fun ArtistScreen(
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 16.dp)
+                                            .padding(horizontal = irideHorizontalPadding)
                                             .padding(vertical = 16.dp)
                                             .animateItem(),
                                 ) {
                                     Text(
-                                        text = "Information",
-                                        style = MaterialTheme.typography.titleLarge,
+                                        text = stringResource(R.string.information),
+                                        style = if (topNavigationBarEnabled) {
+                                            TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp, letterSpacing = (-0.1).sp)
+                                        } else {
+                                            MaterialTheme.typography.titleLarge
+                                        },
                                         fontWeight = FontWeight.Bold,
+                                        color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.55f) else MaterialTheme.colorScheme.onBackground,
                                         modifier = Modifier.padding(bottom = 16.dp),
                                     )
 
@@ -939,8 +1021,13 @@ fun ArtistScreen(
                                     if (showArtistDescription && (!description.isNullOrEmpty() || !descriptionRuns.isNullOrEmpty())) {
                                         Text(
                                             text = "Wikipedia",
-                                            style = MaterialTheme.typography.titleMedium,
+                                            style = if (topNavigationBarEnabled) {
+                                                TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp, letterSpacing = (-0.1).sp)
+                                            } else {
+                                                MaterialTheme.typography.titleMedium
+                                            },
                                             fontWeight = FontWeight.Bold,
+                                            color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.55f) else MaterialTheme.colorScheme.onBackground,
                                             modifier = Modifier.padding(bottom = 8.dp),
                                         )
 
@@ -992,9 +1079,17 @@ fun ArtistScreen(
         )
     }
 
-    TopAppBar(
-        title = { if (!transparentAppBar) Text(artistPage?.artist?.title.orEmpty()) },
-        navigationIcon = {
+    if (topNavigationBarEnabled) {
+        // New Iride UI: minimal shell — back + title + subscribe/radio/shuffle/share, all in one row.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(if (transparentAppBar) Color.Transparent else MaterialTheme.colorScheme.background)
+                .statusBarsPadding()
+                .height(56.dp)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             IconButton(
                 onClick = navController::navigateUp,
                 onLongClick = navController::backToMain,
@@ -1004,84 +1099,161 @@ fun ArtistScreen(
                     contentDescription = null,
                 )
             }
-        },
-        actions = {
-            val shareLink = artistPage?.artist?.shareLink
-            Row(
-                modifier = Modifier
-                    .padding(end = 8.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(20.dp)
-                    )
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { viewModel.toggleChannelSubscription() }
-                ) {
-                    Icon(
-                        painter = painterResource(if (isChannelSubscribed) R.drawable.favorite else R.drawable.favorite_border),
-                        contentDescription = null,
-                        tint = if (isChannelSubscribed) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-
-                if (!showLocal && !isGuest) {
-                    artistPage?.artist?.radioEndpoint?.let { radioEndpoint ->
-                        IconButton(
-                            onClick = { playerConnection.playQueue(YouTubeQueue(radioEndpoint)) }
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.radio),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    }
-
-                    artistPage?.artist?.shuffleEndpoint?.let { shuffleEndpoint ->
-                        IconButton(
-                            onClick = { playerConnection.playQueue(YouTubeQueue(shuffleEndpoint)) }
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.shuffle),
-                                contentDescription = "Shuffle",
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    }
-                }
-
-                IconButton(
-                    onClick = {
-                        shareLink?.let { link ->
-                            val sendIntent = android.content.Intent().apply {
-                                action = android.content.Intent.ACTION_SEND
-                                putExtra(android.content.Intent.EXTRA_TEXT, link)
-                                type = "text/plain"
-                            }
-                            val shareIntent = android.content.Intent.createChooser(sendIntent, null)
-                            context.startActivity(shareIntent)
-                        }
-                    }
-                ) {
-                    Icon(
-                        painterResource(R.drawable.share),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-            }
-        },
-        colors =
-            if (transparentAppBar) {
-                TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+            if (!transparentAppBar) {
+                Text(
+                    text = artistPage?.artist?.title.orEmpty(),
+                    style = TextStyle(
+                        fontFamily = SpaceMonoFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 4.dp),
+                )
             } else {
-                TopAppBarDefaults.topAppBarColors()
+                Spacer(modifier = Modifier.weight(1f))
+            }
+            val shareLinkAction = artistPage?.artist?.shareLink
+            val radioEndpointAction = artistPage?.artist?.radioEndpoint
+            val shuffleEndpointAction = artistPage?.artist?.shuffleEndpoint
+            IrideOutlineIconButton(
+                onClick = { viewModel.toggleChannelSubscription() },
+                icon = if (isChannelSubscribed) R.drawable.favorite else R.drawable.favorite_border,
+                contentDescription = stringResource(R.string.subscribe),
+                size = 40.dp,
+                iconSize = 20.dp,
+            )
+            if (!showLocal && !isGuest && radioEndpointAction != null) {
+                IrideOutlineIconButton(
+                    onClick = { playerConnection.playQueue(YouTubeQueue(radioEndpointAction)) },
+                    icon = R.drawable.radio,
+                    contentDescription = stringResource(R.string.radio),
+                    size = 40.dp,
+                    iconSize = 20.dp,
+                )
+            }
+            if (!showLocal && !isGuest && shuffleEndpointAction != null) {
+                IrideOutlineIconButton(
+                    onClick = { playerConnection.playQueue(YouTubeQueue(shuffleEndpointAction)) },
+                    icon = R.drawable.shuffle,
+                    contentDescription = stringResource(R.string.shuffle),
+                    size = 40.dp,
+                    iconSize = 20.dp,
+                )
+            }
+            if (shareLinkAction != null) {
+                IrideOutlineIconButton(
+                    onClick = {
+                        val sendIntent = android.content.Intent().apply {
+                            action = android.content.Intent.ACTION_SEND
+                            putExtra(android.content.Intent.EXTRA_TEXT, shareLinkAction)
+                            type = "text/plain"
+                        }
+                        context.startActivity(android.content.Intent.createChooser(sendIntent, null))
+                    },
+                    icon = R.drawable.share,
+                    contentDescription = stringResource(R.string.share),
+                    size = 40.dp,
+                    iconSize = 20.dp,
+                )
+            }
+        }
+    } else {
+        TopAppBar(
+            title = { if (!transparentAppBar) Text(artistPage?.artist?.title.orEmpty()) },
+            navigationIcon = {
+                IconButton(
+                    onClick = navController::navigateUp,
+                    onLongClick = navController::backToMain,
+                ) {
+                    Icon(
+                        painterResource(R.drawable.arrow_back),
+                        contentDescription = null,
+                    )
+                }
             },
-    )
+            actions = {
+                val shareLink = artistPage?.artist?.shareLink
+                Row(
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { viewModel.toggleChannelSubscription() }
+                    ) {
+                        Icon(
+                            painter = painterResource(if (isChannelSubscribed) R.drawable.favorite else R.drawable.favorite_border),
+                            contentDescription = null,
+                            tint = if (isChannelSubscribed) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+
+                    if (!showLocal && !isGuest) {
+                        artistPage?.artist?.radioEndpoint?.let { radioEndpoint ->
+                            IconButton(
+                                onClick = { playerConnection.playQueue(YouTubeQueue(radioEndpoint)) }
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.radio),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+
+                        artistPage?.artist?.shuffleEndpoint?.let { shuffleEndpoint ->
+                            IconButton(
+                                onClick = { playerConnection.playQueue(YouTubeQueue(shuffleEndpoint)) }
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.shuffle),
+                                    contentDescription = "Shuffle",
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    }
+
+                    IconButton(
+                        onClick = {
+                            shareLink?.let { link ->
+                                val sendIntent = android.content.Intent().apply {
+                                    action = android.content.Intent.ACTION_SEND
+                                    putExtra(android.content.Intent.EXTRA_TEXT, link)
+                                    type = "text/plain"
+                                }
+                                val shareIntent = android.content.Intent.createChooser(sendIntent, null)
+                                context.startActivity(shareIntent)
+                            }
+                        }
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.share),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+            },
+            colors =
+                if (transparentAppBar) {
+                    TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                } else {
+                    TopAppBarDefaults.topAppBarColors()
+                },
+        )
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -1090,62 +1262,110 @@ fun RecentAlbumPanel(
     album: Album,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    useMonospace: Boolean = false,
+    releaseType: AlbumReleaseType? = null,
+    preciseDate: String? = null,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        AsyncImage(
-            model = album.thumbnailUrl?.resize(544, 544),
-            contentDescription = null,
-            modifier = Modifier
-                .size(96.dp)
-                .clip(SquircleShape(radius = 6.dp, cornerSmoothing = 0.48f))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Eyebrow label — without it the panel used to read as an ambiguous, unlabeled
+        // album card floating in the header with no indication of what it represents.
+        // ALBUM/EP/SINGLE tag appended so it's clear what kind of release this actually is,
+        // since a single or EP looked identical to a full album otherwise.
+        val eyebrowText = stringResource(R.string.artist_latest_release).uppercase() +
+            (releaseType?.let { " • ${it.name}" } ?: "")
+        Text(
+            text = eyebrowText,
+            style = if (useMonospace) {
+                TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 11.sp, letterSpacing = 1.sp)
+            } else {
+                MaterialTheme.typography.labelMedium
+            },
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (useMonospace) 0.5f else 1f),
+            modifier = Modifier.padding(bottom = 8.dp),
         )
 
-        Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.Start
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = album.album.title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Start
+            AsyncImage(
+                model = album.thumbnailUrl?.resize(544, 544),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(if (useMonospace) 108.dp else 96.dp)
+                    .clip(SquircleShape(radius = if (useMonospace) 9.dp else 6.dp, cornerSmoothing = 0.48f))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
             )
 
-            val extendedDate = remember(album.album.releaseDate) {
-                formatExtendedDate(album.album.releaseDate)
-            }
-            // Fallback to year when full releaseDate is not available (e.g. from YTM API)
-            val displayDate = extendedDate ?: album.album.year?.toString()
-
-            if (displayDate != null) {
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.Start
+            ) {
                 Text(
-                    text = displayDate,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium,
+                    text = album.album.title,
+                    style = if (useMonospace) {
+                        TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    } else {
+                        MaterialTheme.typography.titleLarge
+                    },
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Start
                 )
-            }
 
-            if (album.album.songCount > 0) {
-                Text(
-                    text = pluralStringResource(R.plurals.n_song, album.album.songCount, album.album.songCount),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Start
-                )
+                val extendedDate = remember(album.album.releaseDate, preciseDate) {
+                    formatExtendedDate(album.album.releaseDate ?: preciseDate)
+                }
+                // Fallback to year when full releaseDate is not available (e.g. from YTM API)
+                val displayDate = extendedDate ?: album.album.year?.toString()
+
+                val metaText = listOfNotNull(
+                    displayDate,
+                    if (album.album.songCount > 0) {
+                        pluralStringResource(R.plurals.n_song, album.album.songCount, album.album.songCount)
+                    } else {
+                        null
+                    },
+                ).joinToString(" • ")
+
+                if (useMonospace) {
+                    if (metaText.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = metaText,
+                            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp),
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                            textAlign = TextAlign.Start,
+                        )
+                    }
+                } else {
+                    if (displayDate != null) {
+                        Text(
+                            text = displayDate,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Start
+                        )
+                    }
+
+                    if (album.album.songCount > 0) {
+                        Text(
+                            text = pluralStringResource(R.plurals.n_song, album.album.songCount, album.album.songCount),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Start
+                        )
+                    }
+                }
             }
         }
     }

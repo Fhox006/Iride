@@ -10,6 +10,7 @@ package com.metrolist.music.viewmodels
 import android.content.Context
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
+import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -39,8 +40,10 @@ import com.metrolist.music.constants.SongFilterKey
 import com.metrolist.music.constants.SongSortDescendingKey
 import com.metrolist.music.constants.SongSortType
 import com.metrolist.music.constants.SongSortTypeKey
+import com.metrolist.music.constants.DismissedListenedAlbumsKey
 import com.metrolist.music.constants.TopSize
 import com.metrolist.music.db.MusicDatabase
+import com.metrolist.music.discovery.AlbumRecommendationsGenerator
 import com.metrolist.music.extensions.filterExplicit
 import com.metrolist.music.extensions.filterExplicitAlbums
 import com.metrolist.music.extensions.filterVideoSongs
@@ -48,16 +51,23 @@ import com.metrolist.music.extensions.filterYoutubeShorts
 import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.extensions.toEnum
+import com.metrolist.music.models.DischiPerTeItem
 import com.metrolist.music.playback.DownloadUtil
 import com.metrolist.music.utils.PodcastRefreshTrigger
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.dataStore
+import com.metrolist.music.utils.get
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -214,7 +224,7 @@ constructor(
 class LibraryAlbumsViewModel
 @Inject
 constructor(
-    @ApplicationContext context: Context,
+    @ApplicationContext private val context: Context,
     database: MusicDatabase,
     private val syncUtils: SyncUtils,
 ) : ViewModel() {
@@ -246,6 +256,65 @@ constructor(
 
     fun sync() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedAlbums() }
+    }
+
+    // "Album consigliati" — discovery carousel, generated lazily and cached until the user
+    // asks for a fresh batch (mirrors HomeViewModel's dischi-per-te regenerate flow).
+    private val albumRecommendationsGenerator = AlbumRecommendationsGenerator(database)
+    val recommendedAlbums = MutableStateFlow<List<DischiPerTeItem>?>(null)
+
+    fun loadRecommendedAlbums() {
+        if (recommendedAlbums.value != null) return
+        viewModelScope.launch(Dispatchers.IO) { generateRecommendedAlbums() }
+    }
+
+    fun regenerateRecommendedAlbums() {
+        viewModelScope.launch(Dispatchers.IO) { generateRecommendedAlbums() }
+    }
+
+    private suspend fun generateRecommendedAlbums() {
+        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+        val explorePage = HomeCache.explorePage ?: YouTube.explore().getOrNull()?.also {
+            HomeCache.explorePage = it
+        }
+        recommendedAlbums.value = albumRecommendationsGenerator.generateForLibrary(
+            explorePage = explorePage,
+            hideExplicit = hideExplicit,
+            seed = System.currentTimeMillis(),
+            excludedAlbumIds = allAlbums.value.map { it.id }.toSet(),
+        )
+    }
+
+    // "Album ascoltati" — albums with >=2 songs played that aren't saved to the library yet,
+    // i.e. candidates the user might want to add. "Clear" only hides ids from this list (stored
+    // below), it never touches the real `event` play-history rows.
+    private val dismissedListenedAlbumIds = context.dataStore.data
+        .map { prefs ->
+            prefs[DismissedListenedAlbumsKey]?.let { json ->
+                runCatching { Json.decodeFromString<List<String>>(json) }.getOrNull()
+            }?.toSet().orEmpty()
+        }
+
+    val recentlyListenedAlbums = combine(
+        database.mostPlayedAlbums(fromTimeStamp = 0L, limit = 50),
+        allAlbums,
+        dismissedListenedAlbumIds,
+    ) { played, saved, dismissed ->
+        val savedIds = saved.map { it.id }.toSet()
+        played.filter { (it.songCountListened ?: 0) >= 2 && it.id !in savedIds && it.id !in dismissed }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    fun clearRecentlyListened() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val currentIds = recentlyListenedAlbums.value.map { it.id }.toSet()
+            if (currentIds.isEmpty()) return@launch
+            context.dataStore.edit { prefs ->
+                val existing = prefs[DismissedListenedAlbumsKey]?.let { json ->
+                    runCatching { Json.decodeFromString<List<String>>(json) }.getOrNull()
+                }.orEmpty()
+                prefs[DismissedListenedAlbumsKey] = Json.encodeToString((existing.toSet() + currentIds).toList())
+            }
+        }
     }
 
     init {

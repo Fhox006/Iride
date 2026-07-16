@@ -5,7 +5,9 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -39,6 +41,8 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.metrolist.music.constants.TopNavigationBarKey
+import com.metrolist.music.utils.rememberPreference
 
 val LocalMenuState = compositionLocalOf { MenuState() }
 
@@ -122,6 +126,7 @@ fun BottomSheetMenu(
     state: MenuState,
     background: Color = MaterialTheme.colorScheme.surface,
 ) {
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
     val focusManager = LocalFocusManager.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
@@ -132,18 +137,39 @@ fun BottomSheetMenu(
             state.isVisible = false
         },
         sheetState = sheetState,
-        containerColor = background,
-        contentColor = MaterialTheme.colorScheme.onSurface,
+        containerColor = if (topNavigationBarEnabled) Color(0xFF0A0A0A) else background,
+        contentColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface,
+        shape = if (topNavigationBarEnabled) RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp) else BottomSheetDefaults.ExpandedShape,
         dragHandle = {
             Box(
                 modifier = Modifier
                     .padding(vertical = 12.dp)
                     .size(width = 40.dp, height = 4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                    .background(
+                        if (topNavigationBarEnabled) {
+                            Color.White.copy(alpha = 0.3f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        }
+                    )
             )
         },
-        modifier = modifier.fillMaxHeight()
+        modifier = modifier
+            .then(
+                // Iride style sizes the sheet to its (short) content and draws a hairline border
+                // around it. fillMaxHeight() here would stretch that bordered surface to the full
+                // screen height, so the border traces the entire left/right screen edge instead of
+                // hugging the compact menu — classic UI keeps fillMaxHeight since it has no border.
+                if (topNavigationBarEnabled) {
+                    Modifier.border(
+                        BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                        RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                    )
+                } else {
+                    Modifier.fillMaxHeight()
+                }
+            )
     ) {
         Column(
             modifier = Modifier

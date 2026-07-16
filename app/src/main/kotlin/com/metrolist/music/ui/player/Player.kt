@@ -869,7 +869,7 @@ fun BottomSheetPlayer(
         if (topNavigationBarEnabled) {
             // New Iride UI (MP3 player) owns its own dark background end-to-end; never let the
             // lighter Material surfaceContainer peek through around its edges/insets.
-            Color(0xFF0D0D0F)
+            IrideMp3BackgroundColor
         } else {
             when (playerBackground) {
                 PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_GRADIENT, PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> {
@@ -2146,6 +2146,7 @@ fun BottomSheetPlayer(
                         onPreviousClick = { if (!isListenTogetherGuest) playerConnection.seekToPrevious() },
                         onNextClick = { if (!isListenTogetherGuest) playerConnection.seekToNext() },
                         onFavoriteClick = { playerConnection.service.toggleLike() },
+                        onRadioClick = { playerConnection.startRadioForSong(it) },
                         onSeek = { fraction ->
                             if (!isListenTogetherGuest && duration > 0) {
                                 val seekPosition = (duration * fraction).toLong()
@@ -2160,6 +2161,25 @@ fun BottomSheetPlayer(
                                 state.collapseSoft()
                             }
                         },
+                        isLyricsActive = showInlineLyrics,
+                        isQueueActive = showQueue,
+                        onLyricsClick = {
+                            showInlineLyrics = !showInlineLyrics
+                            if (showInlineLyrics) {
+                                showQueue = false
+                                showComments = false
+                            }
+                        },
+                        onQueueClick = {
+                            showQueue = !showQueue
+                            if (showQueue) {
+                                showInlineLyrics = false
+                                showComments = false
+                                queueOpenNonce++
+                            }
+                        },
+                        navController = navController,
+                        playerBottomSheetState = state,
                         // Just the raw nav-bar inset — using state.collapsedBound here (as before)
                         // baked in the whole collapsed miniplayer strip's height (MiniPlayerHeight +
                         // FloatingPillBottomSpacing + the curtain corner reveal, on top of the inset)

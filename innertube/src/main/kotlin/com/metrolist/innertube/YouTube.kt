@@ -1208,7 +1208,8 @@ object YouTube {
                         thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
                         explicit = renderer.subtitleBadges?.any {
                             it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
-                        } == true
+                        } == true,
+                        albumType = renderer.subtitle?.runs?.firstOrNull()?.text,
                     )
                 }
                 else -> null

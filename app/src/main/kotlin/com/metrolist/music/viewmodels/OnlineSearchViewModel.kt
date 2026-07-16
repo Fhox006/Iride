@@ -46,11 +46,19 @@ constructor(
     @ApplicationContext val context: Context,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
-    val query = try {
-        URLDecoder.decode(savedStateHandle.get<String>("query")!!, "UTF-8")
-    } catch (e: IllegalArgumentException) {
-        savedStateHandle.get<String>("query")!!
-    }
+    // Mutable (not just constructor-read) so the inline New Iride UI results view can reuse a
+    // single instance across multiple submitted queries via search() instead of relying on a
+    // fresh nav backstack entry (and fresh ViewModel) per query like the classic route does.
+    var query: String by mutableStateOf(
+        savedStateHandle.get<String>("query")?.let {
+            try {
+                URLDecoder.decode(it, "UTF-8")
+            } catch (e: IllegalArgumentException) {
+                it
+            }
+        } ?: "",
+    )
+        private set
     val filter = MutableStateFlow<YouTube.SearchFilter?>(null)
     var summaryPage by mutableStateOf<SearchSummaryPage?>(null)
     val viewStateMap = mutableStateMapOf<String, ItemsPage?>()
@@ -59,6 +67,7 @@ constructor(
     // as a pure query-intent signal for loadSmartSearch's ordering — so unlike the old "All"
     // tab this doesn't need every shelf enriched with extra network calls.
     private suspend fun loadSummaryPage() {
+        if (query.isBlank()) return
         if (summaryPage == null) {
             YouTube
                 .searchSummary(query)
@@ -150,6 +159,7 @@ constructor(
     }
 
     private suspend fun fetchAndStoreFilterResults(filter: YouTube.SearchFilter) {
+        if (query.isBlank()) return
         if (viewStateMap[filter.value] != null) return
         YouTube
             .search(query, filter)
@@ -181,7 +191,7 @@ constructor(
     private var smartSearchStarted = false
 
     fun loadSmartSearch() {
-        if (smartSearchStarted) return
+        if (smartSearchStarted || query.isBlank()) return
         smartSearchStarted = true
         viewModelScope.launch {
             loadSummaryPage()
@@ -190,6 +200,7 @@ constructor(
             val order = categoryPriorityOrder(topCategory)
                 .flatMap { it.toFilters() }
                 .let { filters -> if (hideVideoSongs) filters.filter { it != YouTube.SearchFilter.FILTER_VIDEO } else filters }
+                .filter { it != YouTube.SearchFilter.FILTER_PROFILE }
             smartSearchOrder = order
 
             order.forEach { sectionFilter ->
@@ -224,5 +235,20 @@ constructor(
                 searchResult.continuation
             )
         }
+    }
+
+    // Reuses this instance for a brand-new query — used by the inline New Iride UI results view,
+    // which stays on the same "search_input" screen (and thus the same ViewModel) across many
+    // submitted queries instead of getting a fresh nav backstack entry per query like the classic
+    // route does.
+    fun search(newQuery: String) {
+        if (newQuery == query) return
+        query = newQuery
+        filter.value = null
+        summaryPage = null
+        viewStateMap.clear()
+        smartSearchOrder = emptyList()
+        smartSearchStarted = false
+        viewModelScope.launch { loadSummaryPage() }
     }
 }

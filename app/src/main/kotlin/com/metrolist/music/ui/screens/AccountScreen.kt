@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -33,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -106,7 +108,7 @@ fun AccountScreen(
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
     val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val topNavBarController = LocalTopNavBarController.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -121,15 +123,51 @@ fun AccountScreen(
         }
     }
 
-    // New Iride UI: this screen is the "Account" tab's own top-level destination (see
-    // MainActivity's onNavItemClick, which routes Screens.Account here instead of "settings" when
-    // the New Iride UI is on) — styled and structured exactly like Home/LibraryMixScreen: no
-    // pinned bar at all, TopNavigationBar is just the first scrollable item, so it scrolls away
-    // together with the rest of the page instead of staying fixed on top of it. Real app settings
-    // are still one tap away via the gear icon next to the filter chips below.
+    // Reached from Home's "Your YouTube Playlists" shortcut (not part of the main tab bar) — a
+    // pushed sub-page in both classic and New Iride UI mode. In Iride mode it still gets its own
+    // TopNavigationBar so the tabs stay visible, part of the scrollable page instead of a pinned
+    // bar. Real app settings are still one tap away via the gear icon in the header. (The Account
+    // tab itself opens SettingsScreen, styled separately in SettingsScreen.kt.)
     if (topNavigationBarEnabled) {
+        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+            snapAnimationSpec = tween(durationMillis = 200),
+        )
         Scaffold(
-            topBar = {},
+            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+            topBar = {
+                Column {
+                    if (topNavBarController != null) {
+                        TopNavigationBar(
+                            navigationItems = topNavBarController.navigationItems,
+                            currentRoute = topNavBarController.currentRoute,
+                            onItemClick = topNavBarController.onItemClick,
+                            containerColor = Color.Transparent,
+                        )
+                    }
+                    CollapsingScreenHeader(
+                        title = stringResource(R.string.account_content),
+                        scrollBehavior = scrollBehavior,
+                        pureBlack = pureBlack,
+                        isSearchActive = false,
+                        onSearchActiveChange = {},
+                        searchQuery = "",
+                        onSearchQueryChange = {},
+                        keyboardController = keyboardController,
+                        trailingContent = {
+                            Icon(
+                                painter = painterResource(R.drawable.settings),
+                                contentDescription = stringResource(R.string.settings),
+                                tint = Color.White.copy(alpha = 0.6f),
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clickable { navController.navigate("settings") },
+                            )
+                        },
+                        transparentBackground = mainTopGradient,
+                        hideTitle = true,
+                    )
+                }
+            },
             containerColor = Color.Transparent,
             contentWindowInsets = WindowInsets(0),
         ) { paddingValues ->
@@ -146,47 +184,19 @@ fun AccountScreen(
                         },
                     ),
             ) {
-                if (topNavBarController != null) {
-                    item(key = "top_nav_bar", span = { GridItemSpan(maxLineSpan) }) {
-                        TopNavigationBar(
-                            navigationItems = topNavBarController.navigationItems,
-                            currentRoute = topNavBarController.currentRoute,
-                            onItemClick = topNavBarController.onItemClick,
-                            containerColor = if (mainTopGradient) Color.Transparent else MaterialTheme.colorScheme.background,
-                        )
-                    }
-                }
-
-                item(key = "account_filter_row", span = { GridItemSpan(maxLineSpan) }) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 4.dp),
-                    ) {
-                        ChipsRow(
-                            chips =
-                                listOf(
-                                    AccountContentType.PLAYLISTS to stringResource(R.string.filter_playlists),
-                                    AccountContentType.ALBUMS to stringResource(R.string.filter_albums),
-                                    AccountContentType.ARTISTS to stringResource(R.string.filter_artists),
-                                    AccountContentType.PODCASTS to stringResource(R.string.filter_podcasts),
-                                ),
-                            currentValue = selectedContentType,
-                            onValueUpdate = { viewModel.setSelectedContentType(it) },
-                            useIrideStyle = true,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Icon(
-                            painter = painterResource(R.drawable.settings),
-                            contentDescription = stringResource(R.string.settings),
-                            tint = Color.White.copy(alpha = 0.6f),
-                            modifier = Modifier
-                                .padding(start = 12.dp)
-                                .size(20.dp)
-                                .clickable { navController.navigate("settings") },
-                        )
-                    }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    ChipsRow(
+                        chips =
+                            listOf(
+                                AccountContentType.PLAYLISTS to stringResource(R.string.filter_playlists),
+                                AccountContentType.ALBUMS to stringResource(R.string.filter_albums),
+                                AccountContentType.ARTISTS to stringResource(R.string.filter_artists),
+                                AccountContentType.PODCASTS to stringResource(R.string.filter_podcasts),
+                            ),
+                        currentValue = selectedContentType,
+                        onValueUpdate = { viewModel.setSelectedContentType(it) },
+                        useIrideStyle = true,
+                    )
                 }
 
                 AccountContentGridItems(

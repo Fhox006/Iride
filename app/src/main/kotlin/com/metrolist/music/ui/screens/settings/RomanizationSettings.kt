@@ -1,9 +1,10 @@
-/**
+﻿/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
 package com.metrolist.music.ui.screens.settings
+import com.metrolist.music.ui.component.IrideSwitch
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -38,6 +39,7 @@ import com.metrolist.music.constants.LyricsRomanizeList
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 
@@ -109,7 +111,7 @@ fun RomanizationSettings(
                 Material3SettingsItem(
                     title = { Text(stringResource(R.string.lyrics_romanize_as_main)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = lyricsRomanizeAsMain,
                             onCheckedChange = onLyricsRomanizeAsMainChange,
                             thumbContent = {
@@ -128,7 +130,7 @@ fun RomanizationSettings(
                 Material3SettingsItem(
                     title = { Text(stringResource(R.string.line_by_line_option_title)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = lyricsRomanizeCyrillicByLine,
                             onCheckedChange = onLyricsRomanizeCyrillicByLineChange,
                             thumbContent = {
@@ -188,18 +190,8 @@ fun RomanizationSettings(
         )
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.lyrics_romanize_title)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        }
+    SettingsBackTopBar(
+        title = stringResource(R.string.lyrics_romanize_title),
+        navController = navController,
     )
 }

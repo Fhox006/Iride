@@ -1,9 +1,11 @@
-/**
+﻿/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
 package com.metrolist.music.ui.screens.settings
+import com.metrolist.music.ui.component.IrideSlider
+import com.metrolist.music.ui.component.IrideSwitch
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -56,6 +58,7 @@ import com.metrolist.music.ui.component.ExpandableSettingsSection
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -170,7 +173,7 @@ fun LyricsSettings(navController: NavController) {
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-                Slider(
+                IrideSlider(
                     value = tempTextSize,
                     onValueChange = { tempTextSize = it },
                     valueRange = 12f..48f,
@@ -212,7 +215,7 @@ fun LyricsSettings(navController: NavController) {
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-                Slider(
+                IrideSlider(
                     value = tempSpacing,
                     onValueChange = { tempSpacing = it },
                     valueRange = 0.8f..2.5f,
@@ -272,7 +275,7 @@ fun LyricsSettings(navController: NavController) {
                         description = { Text(stringResource(R.string.experimental_lyrics_desc)) },
                         showBadge = true,
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = experimentalLyrics,
                                 onCheckedChange = {
                                     if (!experimentalLyrics) showExperimentalLyricsBetaDialog = true
@@ -302,7 +305,7 @@ fun LyricsSettings(navController: NavController) {
                             title = { Text(stringResource(R.string.lyrics_glow_effect)) },
                             description = { Text(stringResource(R.string.lyrics_glow_effect_desc)) },
                             trailingContent = {
-                                Switch(
+                                IrideSwitch(
                                     checked = lyricsGlowEffect,
                                     onCheckedChange = onLyricsGlowEffectChange,
                                     thumbContent = {
@@ -384,7 +387,7 @@ fun LyricsSettings(navController: NavController) {
                     title = { Text(stringResource(R.string.respect_agent_positioning)) },
                     description = { Text(stringResource(R.string.respect_agent_positioning_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = respectAgentPositioning,
                             onCheckedChange = onRespectAgentPositioningChange,
                             thumbContent = {
@@ -404,7 +407,7 @@ fun LyricsSettings(navController: NavController) {
                     icon = painterResource(R.drawable.skip_next),
                     title = { Text(stringResource(R.string.lyrics_click_change)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = lyricsClick,
                             onCheckedChange = onLyricsClickChange,
                             thumbContent = {
@@ -424,7 +427,7 @@ fun LyricsSettings(navController: NavController) {
                     icon = painterResource(R.drawable.arrow_downward),
                     title = { Text(stringResource(R.string.lyrics_auto_scroll)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = lyricsScroll,
                             onCheckedChange = onLyricsScrollChange,
                             thumbContent = {
@@ -445,7 +448,7 @@ fun LyricsSettings(navController: NavController) {
                     title = { Text(stringResource(R.string.hide_status_bar_fullscreen)) },
                     description = { Text(stringResource(R.string.hide_status_bar_fullscreen_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = hideStatusBarOnFullscreen,
                             onCheckedChange = onHideStatusBarOnFullscreenChange,
                             thumbContent = {
@@ -467,15 +470,8 @@ fun LyricsSettings(navController: NavController) {
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.lyrics)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain
-            ) {
-                Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
-            }
-        }
+    SettingsBackTopBar(
+        title = stringResource(R.string.lyrics),
+        navController = navController,
     )
 }

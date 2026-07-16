@@ -1,9 +1,11 @@
-/**
+﻿/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
 package com.metrolist.music.ui.screens.settings
+import com.metrolist.music.ui.component.IrideSlider
+import com.metrolist.music.ui.component.IrideSwitch
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Column
@@ -60,6 +62,7 @@ import com.metrolist.music.ui.component.ActionPromptDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.formatFileSize
 import com.metrolist.music.utils.rememberPreference
@@ -352,7 +355,7 @@ fun StorageSettings(
                         title = { Text(stringResource(R.string.enable_song_cache)) },
                         description = { Text(stringResource(R.string.enable_song_cache_desc)) },
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = enableSongCache,
                                 onCheckedChange = onEnableSongCacheChange,
                                 thumbContent = {
@@ -383,7 +386,7 @@ fun StorageSettings(
                                         else -> formatFileSize(maxSongCacheSize * 1024 * 1024L)
                                     }
                                 )
-                                Slider(
+                                IrideSlider(
                                     value = songCacheValues.indexOf(maxSongCacheSize).toFloat(),
                                     enabled = enableSongCache,
                                     onValueChange = {
@@ -456,7 +459,7 @@ fun StorageSettings(
                                                 else -> formatFileSize(maxImageCacheSize * 1024 * 1024L)
                                             },
                                     )
-                                    Slider(
+                                    IrideSlider(
                                         value = imageCacheValues.indexOf(maxImageCacheSize).toFloat(),
                                         onValueChange = {
                                             val newValue = imageCacheValues[it.roundToInt()]
@@ -516,7 +519,7 @@ fun StorageSettings(
                                         else -> "$maxResolvedTrackCacheSize entries"
                                     }
                                 )
-                                Slider(
+                                IrideSlider(
                                     value = cacheValues.indexOf(maxResolvedTrackCacheSize).toFloat(),
                                     onValueChange = {
                                         onMaxResolvedTrackCacheSizeChange(cacheValues[it.roundToInt()])
@@ -542,18 +545,8 @@ fun StorageSettings(
             )
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.storage)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
+    SettingsBackTopBar(
+        title = stringResource(R.string.storage),
+        navController = navController,
     )
 }

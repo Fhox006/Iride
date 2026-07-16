@@ -119,7 +119,7 @@ fun NewsScreen(
     val isLoading by viewModel.isLoading.collectAsState()
 
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
 

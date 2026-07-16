@@ -19,17 +19,31 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.metrolist.music.constants.TopNavigationBarKey
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.utils.rememberPreference
 
 @Composable
 fun Material3MenuGroup(
     items: List<Material3MenuItemData>
 ) {
+    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+
+    if (newIrideUi) {
+        IrideMenuGroup(items = items)
+        return
+    }
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -54,6 +68,69 @@ fun Material3MenuGroup(
             ) {
                 Material3MenuItemRow(item = item)
             }
+        }
+    }
+}
+
+/**
+ * New Iride UI variant of [Material3MenuGroup]: flat, no cards, monospace bold white titles,
+ * hairline dividers between rows — matches [Material3SettingsGroup]'s IrideSettingsGroup.
+ */
+@Composable
+private fun IrideMenuGroup(items: List<Material3MenuItemData>) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        items.forEachIndexed { index, item ->
+            IrideMenuItemRow(item = item)
+            if (index != items.lastIndex) {
+                HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun IrideMenuItemRow(item: Material3MenuItemData) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                enabled = item.onClick != null,
+                onClick = { item.onClick?.invoke() }
+            )
+            .padding(vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        item.icon?.let { icon ->
+            icon()
+            Spacer(modifier = Modifier.width(16.dp))
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            ProvideTextStyle(
+                MaterialTheme.typography.bodyLarge.copy(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontSize = 15.sp,
+                    letterSpacing = (-0.1).sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+            ) {
+                item.title()
+            }
+
+            item.description?.let { desc ->
+                Spacer(modifier = Modifier.height(2.dp))
+                ProvideTextStyle(
+                    MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.55f))
+                ) {
+                    desc()
+                }
+            }
+        }
+
+        item.trailingContent?.let { trailing ->
+            Spacer(modifier = Modifier.width(8.dp))
+            trailing()
         }
     }
 }

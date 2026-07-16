@@ -1,5 +1,6 @@
-package com.metrolist.music.ui.screens.settings
+﻿package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.component.IrideSwitch
 import android.app.AlarmManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -316,7 +317,7 @@ private fun AlarmSwitch(
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true
 ) {
-    Switch(
+    IrideSwitch(
         checked = checked,
         onCheckedChange = onCheckedChange,
         enabled = enabled,

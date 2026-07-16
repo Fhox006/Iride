@@ -48,6 +48,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -78,7 +79,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
@@ -95,8 +98,10 @@ import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.theme.DefaultThemeColor
 import com.metrolist.music.ui.theme.IrideTheme
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.utils.IconUtils
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -156,7 +161,7 @@ fun ThemeScreen(
         onPureBlackMiniPlayerChange(enabled)
     }
     val (newIrideUi, onNewIrideUiChange) = rememberPreference(TopNavigationBarKey, defaultValue = false)
-    val (mainTopGradient, onMainTopGradientChange) = rememberPreference(MainTopGradientKey, defaultValue = false)
+    val (mainTopGradient, onMainTopGradientChange) = rememberPreference(MainTopGradientKey, defaultValue = true)
     val (selectedThemeColorInt, onSelectedThemeColorChange) = rememberPreference(
         SelectedThemeColorKey,
         DefaultThemeColor.toArgb()
@@ -237,16 +242,9 @@ fun ThemeScreen(
         )
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.settings_theme)) },
-        navigationIcon = {
-            IconButton(onClick = { navController.navigateUp() }) {
-                Icon(
-                    painter = painterResource(R.drawable.arrow_back),
-                    contentDescription = stringResource(R.string.cd_back)
-                )
-            }
-        }
+    SettingsBackTopBar(
+        title = stringResource(R.string.settings_theme),
+        navController = navController,
     )
 }
 
@@ -271,28 +269,48 @@ fun PortraitThemeLayout(
     mainTopGradient: Boolean = false,
     onMainTopGradientChange: (Boolean) -> Unit = {}
 ) {
+    // Fix: this Column used to size itself with two `weight(1f)` Spacers around a fixed-height
+    // mockup box, relying on the Column always having enough vertical room to lay everything out.
+    // In New Iride UI, enabling the "curtain" player (see MainActivity's curtainMode/curtainActive)
+    // shrinks the Scaffold's actual height by roughly `bottomInset + 76dp` whenever a track is
+    // loaded, which — combined with this screen hardcoding `innerPadding = PaddingValues(0.dp)` and
+    // never seeing that shrink — pushed the controls (mode circles / palette / switches) below the
+    // visible area with nothing to scroll to them, i.e. "the whole theme panel disappears". Landscape
+    // was never affected because its controls column already has `verticalScroll`. Fixed by making
+    // this Column scrollable too and swapping the `weight(1f)` Spacers (which don't work inside a
+    // scrollable Column — unbounded height) for fixed spacing.
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(innerPadding),
+            .padding(innerPadding)
+            .then(
+                if (newIrideUi)
+                    Modifier.windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top))
+                else Modifier
+            )
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.weight(1f))
+        if (!newIrideUi) {
+            Spacer(modifier = Modifier.height(24.dp))
 
-        Box(
-            modifier = Modifier
-                .width(120.dp)
-                .height(240.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            ThemeMockupPortrait(
-                darkMode = darkMode,
-                pureBlack = pureBlack,
-                themeColor = selectedThemeColor
-            )
+            Box(
+                modifier = Modifier
+                    .width(120.dp)
+                    .height(240.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                ThemeMockupPortrait(
+                    darkMode = darkMode,
+                    pureBlack = pureBlack,
+                    themeColor = selectedThemeColor
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+        } else {
+            Spacer(modifier = Modifier.height(16.dp))
         }
-
-        Spacer(modifier = Modifier.weight(1f))
 
         ThemeControls(
             darkMode = darkMode,
@@ -344,34 +362,46 @@ fun LandscapeThemeLayout(
             .fillMaxSize()
             .padding(innerPadding)
     ) {
-        Column(
-            modifier = Modifier
-                .weight(0.4f)
-                .fillMaxHeight()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
+        if (!newIrideUi) {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth(0.8f)
-                    .heightIn(max = 300.dp),
-                contentAlignment = Alignment.Center
+                    .weight(0.4f)
+                    .fillMaxHeight()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                ThemeMockup(
-                    darkMode = darkMode,
-                    pureBlack = pureBlack,
-                    themeColor = selectedThemeColor
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .heightIn(max = 300.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ThemeMockup(
+                        darkMode = darkMode,
+                        pureBlack = pureBlack,
+                        themeColor = selectedThemeColor
+                    )
+                }
             }
         }
 
         Column(
             modifier = Modifier
-                .weight(0.6f)
+                .weight(if (newIrideUi) 1f else 0.6f)
                 .fillMaxHeight()
+                .then(
+                    if (newIrideUi)
+                        Modifier.windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top))
+                    else Modifier
+                )
                 .verticalScroll(rememberScrollState())
-                .padding(end = 16.dp, top = 16.dp, bottom = 16.dp)
+                .padding(
+                    start = if (newIrideUi) 16.dp else 0.dp,
+                    end = 16.dp,
+                    top = 16.dp,
+                    bottom = 16.dp
+                )
         ) {
             ThemeControls(
                 darkMode = darkMode,
@@ -418,6 +448,29 @@ fun ThemeControls(
     mainTopGradient: Boolean = false,
     onMainTopGradientChange: (Boolean) -> Unit = {}
 ) {
+    if (newIrideUi) {
+        IrideThemeControls(
+            darkMode = darkMode,
+            onDarkModeChange = onDarkModeChange,
+            pureBlack = pureBlack,
+            onPureBlackChange = onPureBlackChange,
+            selectedThemeColor = selectedThemeColor,
+            onSelectedThemeColorChange = onSelectedThemeColorChange,
+            enableDynamicIcon = enableDynamicIcon,
+            onEnableDynamicIconChange = onEnableDynamicIconChange,
+            enableHighRefreshRate = enableHighRefreshRate,
+            onEnableHighRefreshRateChange = onEnableHighRefreshRateChange,
+            dynamicTheme = dynamicTheme,
+            onDynamicThemeChange = onDynamicThemeChange,
+            isUsingCustomColor = isUsingCustomColor,
+            newIrideUi = newIrideUi,
+            onNewIrideUiChange = onNewIrideUiChange,
+            mainTopGradient = mainTopGradient,
+            onMainTopGradientChange = onMainTopGradientChange
+        )
+        return
+    }
+
     // ── New Iride Ui ───────────────────────────────────────────────────
     Spacer(modifier = Modifier.height(16.dp))
 
@@ -750,6 +803,246 @@ fun ThemeControls(
                 }
             }
         }
+    }
+}
+
+/**
+ * New Iride UI variant of [ThemeControls]: bare, flat layout (no Cards) matching
+ * [Material3SettingsGroup]'s `IrideSettingsGroup`/`IrideSettingsItemRow` look elsewhere in New
+ * Iride UI — transparent rows, monospace bold white titles, hairline dividers instead of card
+ * gaps. Classic mode never calls this; [ThemeControls] branches to it and returns early.
+ */
+@Composable
+private fun IrideThemeControls(
+    darkMode: DarkMode,
+    onDarkModeChange: (DarkMode) -> Unit,
+    pureBlack: Boolean,
+    onPureBlackChange: (Boolean) -> Unit,
+    selectedThemeColor: Color,
+    onSelectedThemeColorChange: (Color) -> Unit,
+    enableDynamicIcon: Boolean,
+    onEnableDynamicIconChange: (Boolean) -> Unit,
+    enableHighRefreshRate: Boolean,
+    onEnableHighRefreshRateChange: (Boolean) -> Unit,
+    dynamicTheme: Boolean,
+    onDynamicThemeChange: (Boolean) -> Unit,
+    isUsingCustomColor: Boolean,
+    newIrideUi: Boolean,
+    onNewIrideUiChange: (Boolean) -> Unit,
+    mainTopGradient: Boolean,
+    onMainTopGradientChange: (Boolean) -> Unit
+) {
+    // ── New Iride Ui / Main screens top gradient toggles ─────────────────
+    Spacer(modifier = Modifier.height(16.dp))
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        IrideThemeToggleRow(
+            title = stringResource(R.string.top_navigation_bar),
+            description = stringResource(R.string.top_navigation_bar_desc),
+            checked = newIrideUi,
+            onCheckedChange = onNewIrideUiChange
+        )
+        HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
+        IrideThemeToggleRow(
+            title = stringResource(R.string.main_top_gradient),
+            description = stringResource(R.string.main_top_gradient_desc),
+            checked = mainTopGradient,
+            onCheckedChange = onMainTopGradientChange
+        )
+    }
+
+    Spacer(modifier = Modifier.height(24.dp))
+
+    // ── Mode circles / palette / system toggles ───────────────────────────
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            IrideThemeSectionTitle(stringResource(R.string.theme_mode))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ModeCircle(
+                    darkMode = darkMode,
+                    pureBlack = pureBlack,
+                    targetMode = DarkMode.AUTO,
+                    targetPureBlack = pureBlack,
+                    onClick = { onDarkModeChange(DarkMode.AUTO) },
+                    showIcon = true
+                )
+
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(32.dp)
+                        .background(Color.White.copy(alpha = 0.15f))
+                )
+
+                ModeCircle(
+                    darkMode = darkMode,
+                    pureBlack = pureBlack,
+                    targetMode = DarkMode.OFF,
+                    targetPureBlack = false,
+                    onClick = {
+                        onDarkModeChange(DarkMode.OFF)
+                        onPureBlackChange(false)
+                    },
+                    showIcon = false
+                )
+
+                ModeCircle(
+                    darkMode = darkMode,
+                    pureBlack = pureBlack,
+                    targetMode = DarkMode.ON,
+                    targetPureBlack = false,
+                    onClick = {
+                        onDarkModeChange(DarkMode.ON)
+                        onPureBlackChange(false)
+                    },
+                    showIcon = false
+                )
+
+                ModeCircle(
+                    darkMode = darkMode,
+                    pureBlack = pureBlack,
+                    targetMode = DarkMode.ON,
+                    targetPureBlack = true,
+                    onClick = {
+                        onDarkModeChange(DarkMode.ON)
+                        onPureBlackChange(true)
+                    },
+                    showIcon = false
+                )
+            }
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            IrideThemeSectionTitle(stringResource(R.string.color_palette))
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                contentPadding = PaddingValues(horizontal = 4.dp)
+            ) {
+                items(PaletteColors) { palette ->
+                    val isDynamicPalette = palette.seedColor == Color.Transparent
+                    val isSelected = if (isDynamicPalette) {
+                        selectedThemeColor == DefaultThemeColor
+                    } else {
+                        selectedThemeColor == palette.seedColor
+                    }
+
+                    PaletteItem(
+                        palette = palette,
+                        isSelected = isSelected,
+                        onClick = {
+                            val colorToSave = if (isDynamicPalette) DefaultThemeColor else palette.seedColor
+                            onSelectedThemeColorChange(colorToSave)
+                        }
+                    )
+                }
+            }
+        }
+
+        Column {
+            IrideThemeSectionTitle(stringResource(R.string.settings_theme))
+            Spacer(modifier = Modifier.height(4.dp))
+
+            IrideThemeToggleRow(
+                title = stringResource(R.string.enable_dynamic_icon),
+                checked = enableDynamicIcon,
+                onCheckedChange = onEnableDynamicIconChange
+            )
+            HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
+            IrideThemeToggleRow(
+                title = stringResource(R.string.enable_high_refresh_rate),
+                checked = enableHighRefreshRate,
+                onCheckedChange = onEnableHighRefreshRateChange
+            )
+            if (!isUsingCustomColor) {
+                HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
+                IrideThemeToggleRow(
+                    title = stringResource(R.string.enable_dynamic_theme),
+                    checked = dynamicTheme,
+                    onCheckedChange = onDynamicThemeChange
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun IrideThemeSectionTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium.copy(
+            fontFamily = SpaceMonoFontFamily,
+            letterSpacing = (-0.1).sp,
+        ),
+        fontWeight = FontWeight.Bold,
+        color = Color.White
+    )
+}
+
+@Composable
+private fun IrideThemeToggleRow(
+    title: String,
+    description: String? = null,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontSize = 15.sp,
+                    letterSpacing = (-0.1).sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+            )
+            description?.let { desc ->
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = desc,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.55f)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary
+            ),
+            thumbContent = {
+                Icon(
+                    painter = painterResource(if (checked) R.drawable.check else R.drawable.close),
+                    contentDescription = null,
+                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                )
+            }
+        )
     }
 }
 

@@ -192,6 +192,7 @@ import com.metrolist.music.ui.component.BottomSheetPage
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.rememberBottomSheetState
+import com.metrolist.music.ui.component.rememberDeviceCornerInfo
 import com.metrolist.music.ui.component.shimmer.ShimmerTheme
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.player.BottomSheetPlayer
@@ -575,7 +576,7 @@ class MainActivity : ComponentActivity() {
                 pureBlackEnabled && useDarkTheme
             }
 
-        val mainTopGradientEnabled by rememberPreference(MainTopGradientKey, defaultValue = false)
+        val mainTopGradientEnabled by rememberPreference(MainTopGradientKey, defaultValue = true)
         val playerBackgroundStyle by rememberEnumPreference(
             PlayerBackgroundStyleKey,
             defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
@@ -788,11 +789,11 @@ class MainActivity : ComponentActivity() {
                 val isTopLevelRoute by remember {
                     derivedStateOf {
                         currentRoute == null ||
-                            (navigationItems.any { it.route == currentRoute } && currentRoute != "settings") ||
-                            // New Iride UI: "account" is the Account tab's real destination (see
-                            // onNavItemClick/onRailItemClick) even though Screens.Account.route
-                            // itself stays "settings" (shared with classic mode).
-                            (topNavigationBarEnabled && currentRoute == "account") ||
+                            // New Iride UI: "settings" (the Account tab's real destination) is
+                            // treated as top-level too, so it gets the same fade transition and
+                            // its own scrollable TopNavigationBar copy as Home/Library/Search —
+                            // classic mode keeps it as a pushed sub-screen (back arrow, slide-in).
+                            (navigationItems.any { it.route == currentRoute } && (currentRoute != "settings" || topNavigationBarEnabled)) ||
                             currentRoute?.startsWith("search/") == true
                     }
                 }
@@ -804,13 +805,27 @@ class MainActivity : ComponentActivity() {
                 // (portrait/top-level only — the landscape rail's MiniPlayer peek is untouched).
                 val curtainMode = topNavigationBarEnabled && !showRail
 
+                // New Iride UI: the app layer's corner cut is styled after this device's own
+                // screen bezel radius (android.view.RoundedCorner, API 31+) instead of a fixed
+                // value, so it reads as a continuation of the phone's own curvature rather than
+                // an arbitrary UI shape. Not every OEM reports this accurately, so 0/unavailable
+                // falls back to a fixed default.
+                val curtainCornerInfo = rememberDeviceCornerInfo()
+                val curtainCornerRadiusStart = with(density) {
+                    curtainCornerInfo.bottomLeftRadiusPx.takeIf { it > 0f }?.toDp() ?: 28.dp
+                }
+                val curtainCornerRadiusEnd = with(density) {
+                    curtainCornerInfo.bottomRightRadiusPx.takeIf { it > 0f }?.toDp() ?: 28.dp
+                }
+
                 val showTopGradientTarget = mainTopGradientEnabled && !pureBlack &&
-                    currentRoute in setOf(
+                    (currentRoute in setOf(
                         Screens.Home.route,
                         Screens.Library.route,
                         Screens.Search.route,
                         Screens.News.route,
-                    )
+                        Screens.Account.route,
+                    ) || currentRoute?.startsWith("settings") == true)
                 val topGradientAlpha by animateFloatAsState(
                     targetValue = if (showTopGradientTarget) 1f else 0f,
                     animationSpec = tween(400),
@@ -1026,16 +1041,33 @@ class MainActivity : ComponentActivity() {
                                     topAppBarScrollBehavior.state.resetHeightOffset()
                                 }
                             } else {
-                                // New Iride UI: the Account tab opens AccountScreen (its own
-                                // top-level page, styled like Home/Library) instead of the
-                                // classic push-navigation SettingsScreen.
-                                val targetRoute = if (screen == Screens.Account && topNavigationBarEnabled) "account" else screen.route
-                                navController.navigate(targetRoute) {
+                                navController.navigate(screen.route) {
                                     popUpTo(navController.graph.startDestinationId) {
                                         saveState = true
                                     }
                                     launchSingleTop = true
                                     restoreState = true
+                                }
+
+                                // New Iride UI: each tab's title/tab-bar row lives as a plain
+                                // scrollable item inside the tab's own list (see the "library"/
+                                // "search" exclusions in this Scaffold's outer topBar condition),
+                                // so its own restored scroll offset decides whether the title is
+                                // visible after a switch. Without this, switching tabs could land
+                                // mid-scroll on one tab and at the top on another, making the title
+                                // row appear at a different height depending on which tab you came
+                                // from. Force every tab to land scrolled-to-top so the title is
+                                // always in the same spot right after switching.
+                                if (topNavigationBarEnabled) {
+                                    val newEntry = try {
+                                        navController.currentBackStackEntry
+                                    } catch (e: Exception) {
+                                        null
+                                    }
+                                    newEntry?.savedStateHandle?.set("scrollToTop", true)
+                                    coroutineScope.launch {
+                                        topAppBarScrollBehavior.state.resetHeightOffset()
+                                    }
                                 }
                             }
                         }
@@ -1091,15 +1123,15 @@ class MainActivity : ComponentActivity() {
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
                             Column {
-                                // "library", "search_input" and "account" are excluded here for the same
+                                // "library", "search_input" and "settings" are excluded here for the same
                                 // reason as "home": each renders its own copy of TopNavigationBar inside
-                                // its own Scaffold (see LibraryMixScreen, SearchScreen, AccountScreen), so
+                                // its own Scaffold (see LibraryMixScreen, SearchScreen, SettingsScreen), so
                                 // its paddingValues correctly reserve space for it and it scrolls away together with the
                                 // rest of that screen's content instead of staying pinned on top of it.
                                 // Rendering it a second time here — pinned in this outer Scaffold, whose
                                 // content Row never applies this topBar's paddingValues — would draw a
                                 // duplicate copy on top of that screen's own content.
-                                if (topNavigationBarEnabled && !showRail && isTopLevelRoute && currentRoute != "wrapped" && currentRoute != "onboarding" && currentRoute != "home" && currentRoute != "library" && currentRoute != Screens.Search.route && currentRoute != "account") {
+                                if (topNavigationBarEnabled && !showRail && isTopLevelRoute && currentRoute != "wrapped" && currentRoute != "onboarding" && currentRoute != "home" && currentRoute != "library" && currentRoute != Screens.Search.route && currentRoute != "settings") {
                                     TopNavigationBar(
                                         navigationItems = navigationItems,
                                         currentRoute = currentRoute,
@@ -1175,7 +1207,7 @@ class MainActivity : ComponentActivity() {
                                     // far left/right edges — the centered handle is never under it).
                                     .height(maxHeight - playerBottomSheetState.collapsedBound + CurtainCornerRevealHeight)
                                     .graphicsLayer {
-                                        shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
+                                        shape = RoundedCornerShape(bottomStart = curtainCornerRadiusStart, bottomEnd = curtainCornerRadiusEnd)
                                         clip = true
                                         translationY = -(playerBottomSheetState.value - playerBottomSheetState.collapsedBound)
                                             .coerceAtLeast(0.dp)
@@ -1214,13 +1246,25 @@ class MainActivity : ComponentActivity() {
                                                 topAppBarScrollBehavior.state.resetHeightOffset()
                                             }
                                         } else {
-                                            val targetRoute = if (screen == Screens.Account && topNavigationBarEnabled) "account" else screen.route
-                                            navController.navigate(targetRoute) {
+                                            navController.navigate(screen.route) {
                                                 popUpTo(navController.graph.startDestinationId) {
                                                     saveState = true
                                                 }
                                                 launchSingleTop = true
                                                 restoreState = true
+                                            }
+
+                                            // Same title-sync fix as onNavItemClick above.
+                                            if (topNavigationBarEnabled) {
+                                                val newEntry = try {
+                                                    navController.currentBackStackEntry
+                                                } catch (e: Exception) {
+                                                    null
+                                                }
+                                                newEntry?.savedStateHandle?.set("scrollToTop", true)
+                                                coroutineScope.launch {
+                                                    topAppBarScrollBehavior.state.resetHeightOffset()
+                                                }
                                             }
                                         }
                                     }
@@ -1261,14 +1305,7 @@ class MainActivity : ComponentActivity() {
 
                                 val onboardingCompleted = remember { dataStore[OnboardingCompletedKey] ?: false }
 
-                                // New Iride UI: the Account tab navigates to "account" (AccountScreen)
-                                // instead of Screens.Account.route ("settings") — see onNavItemClick.
-                                // This keeps that route recognized as the same top-level tab for the
-                                // fade-vs-slide transition logic below.
-                                fun topLevelIndex(route: String?) =
-                                    navigationItems.indexOfFirst {
-                                        it.route == route || (it == Screens.Account && topNavigationBarEnabled && route == "account")
-                                    }
+                                fun topLevelIndex(route: String?) = navigationItems.indexOfFirst { it.route == route }
 
                                 // NavHost with animations (Material 3 Expressive style)
                                 NavHost(
@@ -1374,18 +1411,19 @@ class MainActivity : ComponentActivity() {
                                 .drawWithContent {
                                     val strokeWidthPx = 1.5.dp.toPx()
                                     val outset = strokeWidthPx / 2f
-                                    val r = 28.dp.toPx() + outset
+                                    val rStart = curtainCornerRadiusStart.toPx() + outset
+                                    val rEnd = curtainCornerRadiusEnd.toPx() + outset
                                     val bottomEdge = Path().apply {
-                                        moveTo(-outset, size.height + outset - r)
+                                        moveTo(-outset, size.height + outset - rStart)
                                         arcTo(
-                                            rect = Rect(-outset, size.height + outset - 2 * r, -outset + 2 * r, size.height + outset),
+                                            rect = Rect(-outset, size.height + outset - 2 * rStart, -outset + 2 * rStart, size.height + outset),
                                             startAngleDegrees = 180f,
                                             sweepAngleDegrees = -90f,
                                             forceMoveTo = false,
                                         )
-                                        lineTo(size.width + outset - r, size.height + outset)
+                                        lineTo(size.width + outset - rEnd, size.height + outset)
                                         arcTo(
-                                            rect = Rect(size.width + outset - 2 * r, size.height + outset - 2 * r, size.width + outset, size.height + outset),
+                                            rect = Rect(size.width + outset - 2 * rEnd, size.height + outset - 2 * rEnd, size.width + outset, size.height + outset),
                                             startAngleDegrees = 90f,
                                             sweepAngleDegrees = -90f,
                                             forceMoveTo = false,

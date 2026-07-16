@@ -1,9 +1,10 @@
-/**
+﻿/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
 package com.metrolist.music.ui.screens.settings
+import com.metrolist.music.ui.component.IrideSwitch
 
 import android.app.Activity
 import android.content.Context
@@ -70,6 +71,7 @@ import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -315,7 +317,7 @@ fun InterfaceSettings(
                     title = { Text(stringResource(R.string.show_news_tab)) },
                     description = { Text(stringResource(R.string.show_news_tab_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = showNewsTab, onCheckedChange = onShowNewsTabChange,
                             thumbContent = {
                                 Icon(
@@ -361,7 +363,7 @@ fun InterfaceSettings(
                     title = { Text(stringResource(R.string.hero_carousel_title)) },
                     description = { Text(stringResource(R.string.hero_carousel_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = heroCarouselEnabled,
                             onCheckedChange = onHeroCarouselEnabledChange,
                             thumbContent = {
@@ -381,7 +383,7 @@ fun InterfaceSettings(
                     icon = painterResource(R.drawable.star),
                     title = { Text(stringResource(R.string.show_wrapped_card)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = showWrappedCard, onCheckedChange = onShowWrappedCardChange,
                             thumbContent = {
                                 Icon(
@@ -399,7 +401,7 @@ fun InterfaceSettings(
                     title = { Text(stringResource(R.string.randomize_home_order)) },
                     description = { Text(stringResource(R.string.randomize_home_order_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = randomizeHomeOrder, onCheckedChange = onRandomizeHomeOrderChange,
                             thumbContent = {
                                 Icon(
@@ -428,7 +430,7 @@ fun InterfaceSettings(
                     icon = painterResource(R.drawable.favorite),
                     title = { Text(stringResource(R.string.show_liked_playlist)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = showLikedPlaylist, onCheckedChange = onShowLikedPlaylistChange,
                             thumbContent = {
                                 Icon(
@@ -445,7 +447,7 @@ fun InterfaceSettings(
                     icon = painterResource(R.drawable.offline),
                     title = { Text(stringResource(R.string.show_downloaded_playlist)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = showDownloadedPlaylist, onCheckedChange = onShowDownloadedPlaylistChange,
                             thumbContent = {
                                 Icon(
@@ -462,7 +464,7 @@ fun InterfaceSettings(
                     icon = painterResource(R.drawable.trending_up),
                     title = { Text(stringResource(R.string.show_top_playlist)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = showTopPlaylist, onCheckedChange = onShowTopPlaylistChange,
                             thumbContent = {
                                 Icon(
@@ -479,7 +481,7 @@ fun InterfaceSettings(
                     icon = painterResource(R.drawable.cached),
                     title = { Text(stringResource(R.string.show_cached_playlist)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = showCachedPlaylist, onCheckedChange = onShowCachedPlaylistChange,
                             thumbContent = {
                                 Icon(
@@ -496,7 +498,7 @@ fun InterfaceSettings(
                     icon = painterResource(R.drawable.backup),
                     title = { Text(stringResource(R.string.show_uploaded_playlist)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = showUploadedPlaylist, onCheckedChange = onShowUploadedPlaylistChange,
                             thumbContent = {
                                 Icon(
@@ -523,7 +525,7 @@ fun InterfaceSettings(
                     icon = painterResource(R.drawable.swipe),
                     title = { Text(stringResource(R.string.swipe_song_to_add)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = swipeToSong, onCheckedChange = onSwipeToSongChange,
                             thumbContent = {
                                 Icon(
@@ -540,7 +542,7 @@ fun InterfaceSettings(
                     icon = painterResource(R.drawable.swipe),
                     title = { Text(stringResource(R.string.swipe_song_to_remove)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = swipeToRemoveSong, onCheckedChange = onSwipeToRemoveSongChange,
                             thumbContent = {
                                 Icon(
@@ -558,7 +560,7 @@ fun InterfaceSettings(
                     title = { Text(stringResource(R.string.hide_duration_standard_songs)) },
                     description = { Text(stringResource(R.string.hide_duration_standard_songs_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = hideDurationForStandard, onCheckedChange = onHideDurationForStandardChange,
                             thumbContent = {
                                 Icon(
@@ -576,7 +578,7 @@ fun InterfaceSettings(
                     title = { Text(stringResource(R.string.auto_link_featured_artists)) },
                     description = { Text(stringResource(R.string.auto_link_featured_artists_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = autoLinkFeaturedArtists, onCheckedChange = onAutoLinkFeaturedArtistsChange,
                             thumbContent = {
                                 Icon(
@@ -603,7 +605,7 @@ fun InterfaceSettings(
                     title = { Text(stringResource(R.string.better_library_beta)) },
                     description = { Text(stringResource(R.string.better_library_beta_desc)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = betterLibraryBeta,
                             onCheckedChange = onBetterLibraryBetaChange,
                             thumbContent = {
@@ -625,15 +627,8 @@ fun InterfaceSettings(
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.interface_settings)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain
-            ) {
-                Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
-            }
-        }
+    SettingsBackTopBar(
+        title = stringResource(R.string.interface_settings),
+        navController = navController,
     )
 }

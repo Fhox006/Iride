@@ -560,6 +560,12 @@ val UseLoginForBrowse = booleanPreferencesKey("useLoginForBrowse")
 val BetterLibraryBetaKey = booleanPreferencesKey("better_library_beta")
 val EnableCommentsKey = booleanPreferencesKey("enableComments")
 
+// Library Albums screen: ids the user cleared from the "recently listened" (add-candidate)
+// carousel. Non-destructive — hides the album from that list only, real listening history
+// (the `event` table) is untouched. JSON-encoded List<String>, same pattern as
+// ListenTogetherBlockedUsersKey.
+val DismissedListenedAlbumsKey = stringPreferencesKey("dismissedListenedAlbums")
+
 val LanguageCodeToName =
     mapOf(
         "af" to "Afrikaans",

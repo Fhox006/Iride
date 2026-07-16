@@ -1,9 +1,10 @@
-/**
+﻿/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
 package com.metrolist.music.ui.screens.settings.integrations
+import com.metrolist.music.ui.component.IrideSwitch
 
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
@@ -95,6 +96,7 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.InfoLabel
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.DiscordRPC
@@ -563,7 +565,7 @@ fun DiscordSettings(
                     Material3SettingsItem(
                         title = { Text(stringResource(R.string.enable_discord_rpc)) },
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = discordRPC,
                                 onCheckedChange = onDiscordRPCChange,
                                 enabled = isLoggedIn,
@@ -587,7 +589,7 @@ fun DiscordSettings(
                             Text(stringResource(R.string.discord_use_details_description))
                         },
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = useDetails,
                                 onCheckedChange = onUseDetailsChange,
                                 enabled = isLoggedIn && discordRPC,
@@ -613,7 +615,7 @@ fun DiscordSettings(
                             Text(stringResource(R.string.discord_advanced_mode_description))
                         },
                         trailingContent = {
-                            Switch(
+                            IrideSwitch(
                                 checked = advancedMode,
                                 onCheckedChange = onAdvancedModeChange,
                                 enabled = isLoggedIn && discordRPC,
@@ -719,7 +721,7 @@ fun DiscordSettings(
                                     Text(button1Text.ifEmpty { "Listen on YouTube Music" })
                                 },
                                 trailingContent = {
-                                    Switch(
+                                    IrideSwitch(
                                         checked = button1Visible,
                                         onCheckedChange = { button1Visible = it },
                                         thumbContent = {
@@ -741,7 +743,7 @@ fun DiscordSettings(
                                     Text(button2Text.ifEmpty { "Visit Metrolist" })
                                 },
                                 trailingContent = {
-                                    Switch(
+                                    IrideSwitch(
                                         checked = button2Visible,
                                         onCheckedChange = { button2Visible = it },
                                         thumbContent = {
@@ -819,19 +821,9 @@ fun DiscordSettings(
         Spacer(Modifier.height(24.dp))
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.discord_integration)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
+    SettingsBackTopBar(
+        title = stringResource(R.string.discord_integration),
+        navController = navController,
     )
 }
 

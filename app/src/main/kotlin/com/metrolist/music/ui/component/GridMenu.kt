@@ -26,19 +26,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
 import com.metrolist.music.R
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.utils.makeTimeString
+import com.metrolist.music.utils.rememberPreference
 
 val GridMenuItemHeight = 108.dp
 
@@ -85,9 +90,10 @@ fun LazyGridScope.GridMenuItem(
     onClick: () -> Unit,
 ) {
     item {
+        val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
         Column(
             modifier = modifier
-                .clip(ShapeDefaults.Large)
+                .clip(if (topNavigationBarEnabled) RoundedCornerShape(5.dp) else ShapeDefaults.Large)
                 .height(GridMenuItemHeight)
                 .clickable(
                     enabled = enabled,
@@ -105,7 +111,11 @@ fun LazyGridScope.GridMenuItem(
             )
             Text(
                 text = stringResource(title),
-                style = MaterialTheme.typography.labelLarge,
+                style = if (topNavigationBarEnabled) {
+                    MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily)
+                } else {
+                    MaterialTheme.typography.labelLarge
+                },
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 modifier = Modifier

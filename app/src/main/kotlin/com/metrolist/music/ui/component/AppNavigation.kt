@@ -5,9 +5,11 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -51,8 +53,8 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -73,12 +75,6 @@ private data class NavItemState(
 internal fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {
     if (currentRoute == null) return false
     if (currentRoute == screenRoute) return true
-
-    // New Iride UI: the Account tab's own route stays "settings" (Screens.Account.route,
-    // shared with classic mode), but the tab may actually navigate to "account"
-    // (AccountScreen) instead — see MainActivity's onNavItemClick/onRailItemClick.
-    if (screenRoute == "settings" && currentRoute == "account") return true
-
     if (navigationItems.any { it.route == screenRoute } &&
         currentRoute.startsWith("$screenRoute/")) return true
 
@@ -362,25 +358,23 @@ fun TopNavigationBar(
             }
             val currentIsSelected by rememberUpdatedState(isSelected)
 
+            // Soft fade on the title text color when its tab becomes selected, so the switch
+            // reads as a gentle settle instead of an instant color snap.
+            val titleColor by animateColorAsState(
+                targetValue = if (isSelected) Color.White else Color.White.copy(alpha = 0.55f),
+                animationSpec = tween(220),
+                label = "titleColor"
+            )
+
             Text(
                 text = stringResource(screen.titleId),
-                style = if (isSelected) {
-                    TextStyle(
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        letterSpacing = (-0.1).sp,
-                        color = Color.White
-                    )
-                } else {
-                    TextStyle(
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        letterSpacing = (-0.1).sp,
-                        color = Color.White.copy(alpha = 0.35f)
-                    )
-                },
+                style = TextStyle(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    letterSpacing = (-0.1).sp,
+                    color = titleColor
+                ),
                 maxLines = 1,
                 softWrap = false,
                 modifier = Modifier

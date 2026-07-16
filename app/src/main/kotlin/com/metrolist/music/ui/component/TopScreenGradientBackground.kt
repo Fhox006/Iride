@@ -2,6 +2,7 @@ package com.metrolist.music.ui.component
 
 import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -35,9 +36,11 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
+import com.metrolist.music.constants.BetterGradientSmoothTransitionKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.theme.PlayerColorExtractor
+import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -65,7 +68,10 @@ fun TopScreenGradientBackground(
     }
 
     val context = LocalContext.current
-    var thumbnail by remember { mutableStateOf<Bitmap?>(null) }
+    val smoothTransition by rememberPreference(BetterGradientSmoothTransitionKey, true)
+    var displayedThumbnail by remember { mutableStateOf<Bitmap?>(null) }
+    var incomingThumbnail by remember { mutableStateOf<Bitmap?>(null) }
+    val crossfadeProgress = remember { Animatable(0f) }
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
     val colorCache = remember { mutableMapOf<String, List<Color>>() }
     val fallbackColor = MaterialTheme.colorScheme.surface.toArgb()
@@ -73,31 +79,43 @@ fun TopScreenGradientBackground(
     LaunchedEffect(mediaMetadata?.id, mediaMetadata?.thumbnailUrl) {
         val url = mediaMetadata?.thumbnailUrl
         if (url == null) {
-            thumbnail = null
+            displayedThumbnail = null
+            incomingThumbnail = null
+            crossfadeProgress.snapTo(0f)
+            gradientColors = emptyList()
             return@LaunchedEffect
         }
-        withContext(Dispatchers.IO) {
+        val bitmap = withContext(Dispatchers.IO) {
             val request = ImageRequest.Builder(context)
                 .data(url)
                 .size(100, 100)
                 .allowHardware(false)
                 .build()
-            val bitmap = runCatching { context.imageLoader.execute(request) }
+            runCatching { context.imageLoader.execute(request) }
                 .getOrNull()?.image?.toBitmap()
-            withContext(Dispatchers.Main) { thumbnail = bitmap }
+        }
 
-            val id = mediaMetadata?.id
-            if (bitmap != null && id != null) {
-                val cached = colorCache[id]
-                val colors = cached ?: run {
-                    val palette = Palette.from(bitmap).maximumColorCount(8).generate()
-                    PlayerColorExtractor.extractGradientColors(palette, fallbackColor)
-                        .also { colorCache[id] = it }
-                }
-                withContext(Dispatchers.Main) { gradientColors = colors }
-            } else {
-                withContext(Dispatchers.Main) { gradientColors = emptyList() }
-            }
+        if (smoothTransition && displayedThumbnail != null && bitmap != null) {
+            crossfadeProgress.snapTo(0f)
+            incomingThumbnail = bitmap
+            crossfadeProgress.animateTo(1f, tween(700))
+            displayedThumbnail = bitmap
+            incomingThumbnail = null
+            crossfadeProgress.snapTo(0f)
+        } else {
+            displayedThumbnail = bitmap
+        }
+
+        val id = mediaMetadata?.id
+        if (bitmap != null && id != null) {
+            val cached = colorCache[id]
+            val colors = cached ?: withContext(Dispatchers.IO) {
+                val palette = Palette.from(bitmap).maximumColorCount(8).generate()
+                PlayerColorExtractor.extractGradientColors(palette, fallbackColor)
+            }.also { colorCache[id] = it }
+            gradientColors = colors
+        } else {
+            gradientColors = emptyList()
         }
     }
 
@@ -141,7 +159,9 @@ fun TopScreenGradientBackground(
             PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> {
                 Box(Modifier.fillMaxWidth().height(TopGradientHeight)) {
                     BetterAnimatedGradientBackground(
-                        thumbnail = thumbnail,
+                        thumbnail = displayedThumbnail,
+                        incomingThumbnail = incomingThumbnail,
+                        crossfadeProgress = crossfadeProgress.value,
                         modifier = Modifier.fillMaxWidth().height(TopGradientHeight),
                     )
                     // Fade the blurred art into the ordinary page background before

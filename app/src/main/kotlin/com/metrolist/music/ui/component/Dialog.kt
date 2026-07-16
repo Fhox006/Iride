@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -30,6 +32,7 @@ import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.ProvideTextStyle
@@ -47,9 +50,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -59,6 +65,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.metrolist.music.R
+import com.metrolist.music.constants.TopNavigationBarKey
+import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.delay
 
 @Composable
@@ -71,16 +79,25 @@ fun DefaultDialog(
     horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
             modifier = Modifier.padding(24.dp),
-            shape = AlertDialogDefaults.shape,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
+            shape = if (topNavigationBarEnabled) RoundedCornerShape(16.dp) else AlertDialogDefaults.shape,
+            color = if (topNavigationBarEnabled) Color(0xFF0A0A0A) else AlertDialogDefaults.containerColor,
+            tonalElevation = if (topNavigationBarEnabled) 0.dp else AlertDialogDefaults.TonalElevation,
+            border = if (topNavigationBarEnabled) androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)) else null,
         ) {
+            val iconColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.85f) else AlertDialogDefaults.iconContentColor
+            val titleColor = if (topNavigationBarEnabled) Color.White else AlertDialogDefaults.titleContentColor
+            val contentColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.85f) else LocalContentColor.current
+            val buttonColor = if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.primary
+
+            CompositionLocalProvider(LocalContentColor provides contentColor) {
             Column(
                 horizontalAlignment = horizontalAlignment,
                 modifier =
@@ -88,7 +105,7 @@ fun DefaultDialog(
                         .padding(24.dp),
             ) {
                 if (icon != null) {
-                    CompositionLocalProvider(LocalContentColor provides AlertDialogDefaults.iconContentColor) {
+                    CompositionLocalProvider(LocalContentColor provides iconColor) {
                         Box(
                             Modifier.align(Alignment.CenterHorizontally),
                         ) {
@@ -99,8 +116,17 @@ fun DefaultDialog(
                     Spacer(Modifier.height(16.dp))
                 }
                 if (title != null) {
-                    CompositionLocalProvider(LocalContentColor provides AlertDialogDefaults.titleContentColor) {
-                        ProvideTextStyle(MaterialTheme.typography.headlineSmall) {
+                    CompositionLocalProvider(LocalContentColor provides titleColor) {
+                        ProvideTextStyle(
+                            if (topNavigationBarEnabled) {
+                                MaterialTheme.typography.headlineSmall.copy(
+                                    fontFamily = SpaceMonoFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            } else {
+                                MaterialTheme.typography.headlineSmall
+                            }
+                        ) {
                             Box(
                                 // Align the title to the center when an icon is present.
                                 Modifier.align(if (icon == null) Alignment.Start else Alignment.CenterHorizontally),
@@ -121,7 +147,7 @@ fun DefaultDialog(
                     FlowRow(
                         modifier = Modifier.align(Alignment.End),
                     ) {
-                        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
+                        CompositionLocalProvider(LocalContentColor provides buttonColor) {
                             ProvideTextStyle(
                                 value = MaterialTheme.typography.labelLarge,
                             ) {
@@ -130,6 +156,7 @@ fun DefaultDialog(
                         }
                     }
                 }
+            }
             }
         }
     }
@@ -199,16 +226,21 @@ fun ListDialog(
     modifier: Modifier = Modifier,
     content: LazyListScope.() -> Unit,
 ) {
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
             modifier = Modifier.padding(24.dp),
-            shape = AlertDialogDefaults.shape,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
+            shape = if (topNavigationBarEnabled) RoundedCornerShape(16.dp) else AlertDialogDefaults.shape,
+            color = if (topNavigationBarEnabled) Color(0xFF0A0A0A) else AlertDialogDefaults.containerColor,
+            tonalElevation = if (topNavigationBarEnabled) 0.dp else AlertDialogDefaults.TonalElevation,
+            border = if (topNavigationBarEnabled) androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)) else null,
         ) {
+            val contentColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.85f) else LocalContentColor.current
+            CompositionLocalProvider(LocalContentColor provides contentColor) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier =
@@ -217,6 +249,7 @@ fun ListDialog(
                         .imePadding(),
             ) {
                 LazyColumn(content = content)
+            }
             }
         }
     }
@@ -265,6 +298,27 @@ fun TextFieldDialog(
     val legacyFieldState = remember { mutableStateOf(initialTextFieldValue) }
 
     val focusRequester = remember { FocusRequester() }
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val fieldColors = if (topNavigationBarEnabled) {
+        OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White.copy(alpha = 0.85f),
+            cursorColor = Color.White,
+            focusedBorderColor = Color.White.copy(alpha = 0.6f),
+            unfocusedBorderColor = Color.White.copy(alpha = 0.25f),
+            focusedPlaceholderColor = Color.White.copy(alpha = 0.55f),
+            unfocusedPlaceholderColor = Color.White.copy(alpha = 0.55f),
+            focusedLabelColor = Color.White.copy(alpha = 0.6f),
+            unfocusedLabelColor = Color.White.copy(alpha = 0.55f),
+        )
+    } else {
+        OutlinedTextFieldDefaults.colors()
+    }
+    val fieldTextStyle = if (topNavigationBarEnabled) {
+        LocalTextStyle.current.copy(fontFamily = SpaceMonoFontFamily)
+    } else {
+        LocalTextStyle.current
+    }
 
     LaunchedEffect(Unit) {
         if (autoFocus) {
@@ -313,7 +367,8 @@ fun TextFieldDialog(
                         placeholder = { Text(label) },
                         singleLine = singleLine,
                         maxLines = maxLines,
-                        colors = OutlinedTextFieldDefaults.colors(),
+                        colors = fieldColors,
+                        textStyle = fieldTextStyle,
                         keyboardOptions =
                             KeyboardOptions(
                                 imeAction = if (singleLine) ImeAction.Done else ImeAction.None,
@@ -353,7 +408,8 @@ fun TextFieldDialog(
                         placeholder = placeholder,
                         singleLine = singleLine,
                         maxLines = maxLines,
-                        colors = OutlinedTextFieldDefaults.colors(),
+                        colors = fieldColors,
+                        textStyle = fieldTextStyle,
                         keyboardOptions =
                             KeyboardOptions(
                                 imeAction = if (singleLine) ImeAction.Done else ImeAction.None,

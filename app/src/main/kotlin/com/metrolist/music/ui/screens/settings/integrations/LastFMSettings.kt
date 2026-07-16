@@ -1,9 +1,11 @@
-/**
+﻿/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
 package com.metrolist.music.ui.screens.settings.integrations
+import com.metrolist.music.ui.component.IrideSlider
+import com.metrolist.music.ui.component.IrideSwitch
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -69,6 +71,7 @@ import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberPreference
@@ -341,7 +344,7 @@ fun LastFMSettings(
                 Material3SettingsItem(
                     title = { Text(stringResource(R.string.enable_scrobbling)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = lastfmScrobbling,
                             onCheckedChange = onlastfmScrobblingChange,
                             enabled = isLoggedIn,
@@ -362,7 +365,7 @@ fun LastFMSettings(
                 Material3SettingsItem(
                     title = { Text(stringResource(R.string.lastfm_now_playing)) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = useNowPlaying,
                             onCheckedChange = onUseNowPlayingChange,
                             enabled = isLoggedIn && lastfmScrobbling,
@@ -384,7 +387,7 @@ fun LastFMSettings(
                     title = { Text(stringResource(R.string.last_fm_send_likes)) },
                     description = { stringResource(R.string.last_fm_send_likes_description) },
                     trailingContent = {
-                        Switch(
+                        IrideSwitch(
                             checked = useSendLikes,
                             onCheckedChange = onUseSendLikes,
                             enabled = isLoggedIn,
@@ -460,7 +463,7 @@ fun LastFMSettings(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
-                    Slider(
+                    IrideSlider(
                         value = tempMinTrackDuration.toFloat(),
                         onValueChange = { tempMinTrackDuration = it.toInt() },
                         valueRange = 10f..60f,
@@ -525,7 +528,7 @@ fun LastFMSettings(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
-                    Slider(
+                    IrideSlider(
                         value = tempScrobbleDelayPercent,
                         onValueChange = { tempScrobbleDelayPercent = it },
                         valueRange = 0.3f..0.95f,
@@ -590,7 +593,7 @@ fun LastFMSettings(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
-                    Slider(
+                    IrideSlider(
                         value = tempScrobbleDelaySeconds.toFloat(),
                         onValueChange = { tempScrobbleDelaySeconds = it.toInt() },
                         valueRange = 30f..360f,
@@ -627,18 +630,8 @@ fun LastFMSettings(
         )
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.lastfm_integration)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        }
+    SettingsBackTopBar(
+        title = stringResource(R.string.lastfm_integration),
+        navController = navController,
     )
 }

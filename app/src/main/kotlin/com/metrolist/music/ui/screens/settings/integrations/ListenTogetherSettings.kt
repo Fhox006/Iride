@@ -1,9 +1,10 @@
-/**
+﻿/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
 package com.metrolist.music.ui.screens.settings.integrations
+import com.metrolist.music.ui.component.IrideSwitch
 
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
@@ -93,6 +94,7 @@ import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IntegrationCard
 import com.metrolist.music.ui.component.IntegrationCardItem
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.ListenTogetherViewModel
@@ -430,7 +432,7 @@ fun ListenTogetherSettings(
                                 Text(stringResource(R.string.listen_together_auto_approval_joins_desc))
                             },
                             trailingContent = {
-                                Switch(
+                                IrideSwitch(
                                     checked = autoApprovalJoins,
                                     onCheckedChange = { autoApprovalJoins = it },
                                     // Only disable for guests in a room (hosts can always change)
@@ -457,7 +459,7 @@ fun ListenTogetherSettings(
                                 Text(stringResource(R.string.listen_together_auto_approval_suggestions_desc))
                             },
                             trailingContent = {
-                                Switch(
+                                IrideSwitch(
                                     checked = autoApproveSuggestions,
                                     onCheckedChange = { autoApproveSuggestions = it },
                                     // Only disable for guests in a room (hosts can always change)
@@ -484,7 +486,7 @@ fun ListenTogetherSettings(
                                 Text(stringResource(R.string.listen_together_sync_volume_desc))
                             },
                             trailingContent = {
-                                Switch(
+                                IrideSwitch(
                                     checked = syncHostVolume,
                                     onCheckedChange = { syncHostVolume = it },
                                     thumbContent = {
@@ -516,19 +518,9 @@ fun ListenTogetherSettings(
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.listen_together)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
+    SettingsBackTopBar(
+        title = stringResource(R.string.listen_together),
+        navController = navController,
     )
 }
 

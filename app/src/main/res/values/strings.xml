@@ -35,9 +35,13 @@
     <string name="forgotten_favorites">Forgotten favorites</string>
     <string name="keep_listening">Keep listening</string>
     <string name="discs_for_you">Discs picked for you</string>
+    <string name="recommended_albums">Recommended albums</string>
+    <string name="recently_listened_albums">Recently listened</string>
+    <string name="clear_recently_listened_albums">Clear</string>
     <string name="your_youtube_playlists">Your YouTube playlists</string>
     <string name="similar_to">Similar to</string>
     <string name="new_release_albums">New release albums</string>
+    <string name="artist_latest_release">Latest release</string>
 
     <!-- History -->
     <string name="today">Today</string>
@@ -59,7 +63,7 @@
 
     <!-- Search -->
     <string name="search">Search</string>
-    <string name="search_yt_music">Search YouTube Music…</string>
+    <string name="search_yt_music">Find something to play…</string>
     <string name="search_library">Search library…</string>
     <string name="online">Online</string>
     <string name="filter_library">Library</string>

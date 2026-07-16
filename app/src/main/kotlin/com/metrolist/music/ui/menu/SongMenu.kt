@@ -48,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
@@ -76,6 +77,7 @@ import com.metrolist.music.LocalSyncUtils
 import com.metrolist.music.R
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.Event
 import com.metrolist.music.db.entities.PlaylistSong
@@ -95,6 +97,7 @@ import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.utils.ShowMediaInfo
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.CachePlaylistViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -112,12 +115,12 @@ fun SongMenu(
     playlistBrowseId: String? = null,
     onDismiss: () -> Unit,
     isFromCache: Boolean = false,
-    showStarButton: Boolean = true,
     onHistoryRemoved: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
+    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = false)
     val songState = database.song(originalSong.id).collectAsState(initial = originalSong)
     val song = songState.value ?: originalSong
     val download by LocalDownloadUtil.current
@@ -427,6 +430,7 @@ fun SongMenu(
     SongListItem(
         song = song,
         badges = {},
+        showDivider = !newIrideUi,
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
             run {
@@ -488,7 +492,7 @@ fun SongMenu(
                 ) {
                     Icon(
                         painter = painterResource(if (optimisticFavorite) R.drawable.favorite else R.drawable.favorite_border),
-                        tint = if (optimisticFavorite) MaterialTheme.colorScheme.error else LocalContentColor.current,
+                        tint = if (optimisticFavorite) Color(0xFFE53E45) else LocalContentColor.current,
                         contentDescription = null,
                     )
                 }
@@ -514,9 +518,14 @@ fun SongMenu(
         },
     )
 
-    HorizontalDivider()
-
-    Spacer(modifier = Modifier.height(12.dp))
+    if (newIrideUi) {
+        Spacer(modifier = Modifier.height(6.dp))
+        HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 1.dp)
+        Spacer(modifier = Modifier.height(20.dp))
+    } else {
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(12.dp))
+    }
 
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val configuration = LocalConfiguration.current

@@ -57,7 +57,6 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
@@ -84,6 +83,7 @@ import com.metrolist.music.ui.menu.YouTubeAlbumMenu
 import com.metrolist.music.ui.menu.YouTubeArtistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.HomeViewModel
@@ -124,7 +124,7 @@ fun OnlineSearchScreen(
     val explorePage by homeViewModel.explorePage.collectAsState()
 
     val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
 
     val lazyListState = rememberLazyListState()
 
@@ -173,7 +173,7 @@ fun OnlineSearchScreen(
                         text = stringResource(R.string.mood_and_genres),
                         style = if (topNavigationBarEnabled) {
                             MaterialTheme.typography.labelLarge.copy(
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = SpaceMonoFontFamily,
                                 fontSize = 13.sp,
                                 letterSpacing = (-0.1).sp,
                             )
@@ -181,7 +181,7 @@ fun OnlineSearchScreen(
                             MaterialTheme.typography.titleMedium
                         },
                         fontWeight = if (topNavigationBarEnabled) FontWeight.Bold else FontWeight.Normal,
-                        color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.onSurface,
+                        color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.55f) else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .padding(
                                 start = if (topNavigationBarEnabled) 20.dp else 16.dp,
@@ -203,7 +203,7 @@ fun OnlineSearchScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(
-                                horizontal = if (topNavigationBarEnabled) 16.dp else 12.dp,
+                                horizontal = if (topNavigationBarEnabled) 20.dp else 12.dp,
                                 vertical = 4.dp,
                             )
                             .animateItem(),
@@ -794,7 +794,7 @@ private fun SearchMoodCard(
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = SpaceMonoFontFamily,
                     fontSize = 13.sp,
                     letterSpacing = (-0.1).sp,
                 ),
@@ -866,7 +866,7 @@ fun SuggestionItem(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = if (useIrideStyle) {
-                MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace, fontSize = 14.sp)
+                MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontSize = 14.sp)
             } else {
                 MaterialTheme.typography.bodyLarge
             },

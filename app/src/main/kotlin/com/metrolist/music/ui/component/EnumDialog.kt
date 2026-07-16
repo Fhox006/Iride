@@ -13,11 +13,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.metrolist.music.constants.TopNavigationBarKey
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.utils.rememberPreference
 
 @Composable
 fun <T> EnumDialog(
@@ -29,6 +34,8 @@ fun <T> EnumDialog(
     valueText: @Composable (T) -> String,
     valueDescription: (@Composable (T) -> String)? = null,
 ) {
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+
     ListDialog(
         onDismiss = onDismiss,
     ) {
@@ -46,6 +53,14 @@ fun <T> EnumDialog(
                 RadioButton(
                     selected = value == current,
                     onClick = null,
+                    colors = if (topNavigationBarEnabled) {
+                        RadioButtonDefaults.colors(
+                            selectedColor = Color.White,
+                            unselectedColor = Color.White.copy(alpha = 0.6f),
+                        )
+                    } else {
+                        RadioButtonDefaults.colors()
+                    },
                 )
 
                 Column(
@@ -53,12 +68,18 @@ fun <T> EnumDialog(
                 ) {
                     Text(
                         text = valueText(value),
+                        style = if (topNavigationBarEnabled) {
+                            MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily)
+                        } else {
+                            MaterialTheme.typography.bodyLarge
+                        },
+                        color = if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.onSurface,
                     )
                     if (valueDescription != null) {
                         Text(
                             text = valueDescription(value),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }

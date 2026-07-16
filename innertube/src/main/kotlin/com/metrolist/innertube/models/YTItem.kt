@@ -55,6 +55,10 @@ data class AlbumItem(
     val year: Int? = null,
     override val thumbnail: String,
     override val explicit: Boolean = false,
+    // Raw release-type label as sent by YouTube (e.g. "Album", "Single", "EP"),
+    // localized to whatever locale the request used. Only reliable signal
+    // available to tell singles/EPs apart from full albums.
+    val albumType: String? = null,
 ) : YTItem() {
     override val shareLink: String
         get() = "https://music.youtube.com/playlist?list=$playlistId"
