@@ -29,11 +29,11 @@ import androidx.compose.foundation.shape.CircleShape
 import sv.lib.squircleshape.SquircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -106,6 +106,8 @@ import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.GenrePillsRow
 import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.IrideLoadingIndicator
+import com.metrolist.music.ui.component.IrideAdaptiveTopBar
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.component.rememberGenreFilter
@@ -229,7 +231,7 @@ fun OnlinePlaylistScreen(
                                     .padding(32.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            ContainedLoadingIndicator()
+                            IrideLoadingIndicator()
                         }
                     }
                 } else if (error != null) {
@@ -391,7 +393,7 @@ fun OnlinePlaylistScreen(
                                         .padding(16.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                ContainedLoadingIndicator()
+                                IrideLoadingIndicator()
                             }
                         }
                     }
@@ -399,7 +401,7 @@ fun OnlinePlaylistScreen(
             }
         }
 
-        TopAppBar(
+        IrideAdaptiveTopBar(
             title = {
                 if (inSelectMode) {
                     Text(
@@ -409,7 +411,6 @@ fun OnlinePlaylistScreen(
                             } else {
                                 pluralStringResource(R.plurals.n_song, selection.size, selection.size)
                             },
-                        style = MaterialTheme.typography.titleLarge,
                     )
                 } else if (isSearching) {
                     TextField(
@@ -418,11 +419,11 @@ fun OnlinePlaylistScreen(
                         placeholder = {
                             Text(
                                 text = stringResource(R.string.search),
-                                style = MaterialTheme.typography.titleLarge,
+                                style = LocalTextStyle.current,
                             )
                         },
                         singleLine = true,
-                        textStyle = MaterialTheme.typography.titleLarge,
+                        textStyle = LocalTextStyle.current,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         colors =
                             TextFieldDefaults.colors(

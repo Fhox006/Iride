@@ -314,7 +314,7 @@ private fun PillContent(
         MiniPlayerBackgroundStyleKey,
         defaultValue = MiniPlayerBackgroundStyle.DEFAULT,
     )
-    val (newIrideUi, _) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (newIrideUi, _) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val context = LocalContext.current
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
     val isSystemInDarkTheme = isSystemInDarkTheme()

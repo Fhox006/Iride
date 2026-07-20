@@ -106,7 +106,7 @@ fun AccountScreen(
     val podcastChannels by viewModel.podcastChannels.collectAsState()
     val selectedContentType by viewModel.selectedContentType.collectAsState()
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val topNavBarController = LocalTopNavBarController.current

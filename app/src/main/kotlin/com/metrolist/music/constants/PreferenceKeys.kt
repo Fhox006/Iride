@@ -119,6 +119,7 @@ val CheckForUpdatesKey = booleanPreferencesKey("checkForUpdates")
 val UpdateNotificationsEnabledKey = booleanPreferencesKey("updateNotifications")
 val LastUpdateCheckTimeKey = longPreferencesKey("lastUpdateCheckTime")
 val BetaBannerDismissedVersionKey = stringPreferencesKey("betaBannerDismissedVersion")
+val NewIrideUiDisclaimerDismissedKey = booleanPreferencesKey("newIrideUiDisclaimerDismissed")
 
 val AudioQualityKey = stringPreferencesKey("audioQuality")
 
@@ -464,6 +465,7 @@ val PlayerButtonsStyleKey = stringPreferencesKey("player_buttons_style")
 val PlayerBackgroundStyleKey = stringPreferencesKey("playerBackgroundStyle")
 val BetterGradientSmoothTransitionKey = booleanPreferencesKey("betterGradientSmoothTransition")
 val MainTopGradientKey = booleanPreferencesKey("mainTopGradient")
+val AlbumTopGradientKey = booleanPreferencesKey("albumTopGradient")
 val ShowLyricsKey = booleanPreferencesKey("showLyrics")
 val LyricsTextPositionKey = stringPreferencesKey("lyricsTextPosition")
 val LyricsClickKey = booleanPreferencesKey("lyricsClick")
@@ -565,6 +567,17 @@ val EnableCommentsKey = booleanPreferencesKey("enableComments")
 // (the `event` table) is untouched. JSON-encoded List<String>, same pattern as
 // ListenTogetherBlockedUsersKey.
 val DismissedListenedAlbumsKey = stringPreferencesKey("dismissedListenedAlbums")
+
+// Library Albums screen: "Recommended Albums" section. JSON-encoded List<SuggestedAlbumEntry>
+// (id + timestamp) of albums surfaced by the last few regenerations, used to temporarily
+// deprioritize repeats without excluding them forever.
+val RecentlySuggestedAlbumsKey = stringPreferencesKey("recentlySuggestedAlbums")
+
+// Library Albums screen: "Continue Listening" section. JSON-encoded List<DismissedAlbumEntry>
+// (id + dismiss timestamp) of albums the user removed from the carousel. Only affects this
+// carousel — never touches favorites or play history. An album reappears once a fresh
+// 3-consecutive-song streak (newer than the dismiss timestamp) forms again.
+val DismissedContinueListeningAlbumsKey = stringPreferencesKey("dismissedContinueListeningAlbums")
 
 val LanguageCodeToName =
     mapOf(

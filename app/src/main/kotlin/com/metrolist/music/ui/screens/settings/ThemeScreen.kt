@@ -92,6 +92,7 @@ import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableDynamicIconKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.AlbumTopGradientKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.PureBlackMiniPlayerKey
 import com.metrolist.music.constants.SelectedThemeColorKey
@@ -160,8 +161,9 @@ fun ThemeScreen(
         onPureBlackChangeRaw(enabled)
         onPureBlackMiniPlayerChange(enabled)
     }
-    val (newIrideUi, onNewIrideUiChange) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (newIrideUi, onNewIrideUiChange) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val (mainTopGradient, onMainTopGradientChange) = rememberPreference(MainTopGradientKey, defaultValue = true)
+    val (albumTopGradient, onAlbumTopGradientChange) = rememberPreference(AlbumTopGradientKey, defaultValue = true)
     val (selectedThemeColorInt, onSelectedThemeColorChange) = rememberPreference(
         SelectedThemeColorKey,
         DefaultThemeColor.toArgb()
@@ -217,7 +219,9 @@ fun ThemeScreen(
             newIrideUi = newIrideUi,
             onNewIrideUiChange = onNewIrideUiChange,
             mainTopGradient = mainTopGradient,
-            onMainTopGradientChange = onMainTopGradientChange
+            onMainTopGradientChange = onMainTopGradientChange,
+            albumTopGradient = albumTopGradient,
+            onAlbumTopGradientChange = onAlbumTopGradientChange
         )
     } else {
         PortraitThemeLayout(
@@ -238,7 +242,9 @@ fun ThemeScreen(
             newIrideUi = newIrideUi,
             onNewIrideUiChange = onNewIrideUiChange,
             mainTopGradient = mainTopGradient,
-            onMainTopGradientChange = onMainTopGradientChange
+            onMainTopGradientChange = onMainTopGradientChange,
+            albumTopGradient = albumTopGradient,
+            onAlbumTopGradientChange = onAlbumTopGradientChange
         )
     }
 
@@ -267,7 +273,9 @@ fun PortraitThemeLayout(
     newIrideUi: Boolean = false,
     onNewIrideUiChange: (Boolean) -> Unit = {},
     mainTopGradient: Boolean = false,
-    onMainTopGradientChange: (Boolean) -> Unit = {}
+    onMainTopGradientChange: (Boolean) -> Unit = {},
+    albumTopGradient: Boolean = false,
+    onAlbumTopGradientChange: (Boolean) -> Unit = {}
 ) {
     // Fix: this Column used to size itself with two `weight(1f)` Spacers around a fixed-height
     // mockup box, relying on the Column always having enough vertical room to lay everything out.
@@ -329,7 +337,9 @@ fun PortraitThemeLayout(
             newIrideUi = newIrideUi,
             onNewIrideUiChange = onNewIrideUiChange,
             mainTopGradient = mainTopGradient,
-            onMainTopGradientChange = onMainTopGradientChange
+            onMainTopGradientChange = onMainTopGradientChange,
+            albumTopGradient = albumTopGradient,
+            onAlbumTopGradientChange = onAlbumTopGradientChange
         )
 
         Spacer(modifier = Modifier.height(120.dp))
@@ -355,7 +365,9 @@ fun LandscapeThemeLayout(
     newIrideUi: Boolean = false,
     onNewIrideUiChange: (Boolean) -> Unit = {},
     mainTopGradient: Boolean = false,
-    onMainTopGradientChange: (Boolean) -> Unit = {}
+    onMainTopGradientChange: (Boolean) -> Unit = {},
+    albumTopGradient: Boolean = false,
+    onAlbumTopGradientChange: (Boolean) -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -420,7 +432,9 @@ fun LandscapeThemeLayout(
                 newIrideUi = newIrideUi,
                 onNewIrideUiChange = onNewIrideUiChange,
                 mainTopGradient = mainTopGradient,
-                onMainTopGradientChange = onMainTopGradientChange
+                onMainTopGradientChange = onMainTopGradientChange,
+                albumTopGradient = albumTopGradient,
+                onAlbumTopGradientChange = onAlbumTopGradientChange
             )
 
             Spacer(modifier = Modifier.height(80.dp))
@@ -446,7 +460,9 @@ fun ThemeControls(
     newIrideUi: Boolean = false,
     onNewIrideUiChange: (Boolean) -> Unit = {},
     mainTopGradient: Boolean = false,
-    onMainTopGradientChange: (Boolean) -> Unit = {}
+    onMainTopGradientChange: (Boolean) -> Unit = {},
+    albumTopGradient: Boolean = false,
+    onAlbumTopGradientChange: (Boolean) -> Unit = {}
 ) {
     if (newIrideUi) {
         IrideThemeControls(
@@ -466,7 +482,9 @@ fun ThemeControls(
             newIrideUi = newIrideUi,
             onNewIrideUiChange = onNewIrideUiChange,
             mainTopGradient = mainTopGradient,
-            onMainTopGradientChange = onMainTopGradientChange
+            onMainTopGradientChange = onMainTopGradientChange,
+            albumTopGradient = albumTopGradient,
+            onAlbumTopGradientChange = onAlbumTopGradientChange
         )
         return
     }
@@ -586,6 +604,68 @@ fun ThemeControls(
                     Icon(
                         painter = painterResource(
                             if (mainTopGradient) R.drawable.check else R.drawable.close
+                        ),
+                        contentDescription = null,
+                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                    )
+                }
+            )
+        }
+    }
+
+    // ── Album screens top gradient ────────────────────────────────────────
+    Spacer(modifier = Modifier.height(16.dp))
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (albumTopGradient)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.album_top_gradient),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (albumTopGradient)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = stringResource(R.string.album_top_gradient_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (albumTopGradient)
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = albumTopGradient,
+                onCheckedChange = onAlbumTopGradientChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary
+                ),
+                thumbContent = {
+                    Icon(
+                        painter = painterResource(
+                            if (albumTopGradient) R.drawable.check else R.drawable.close
                         ),
                         contentDescription = null,
                         modifier = Modifier.size(SwitchDefaults.IconSize)
@@ -830,9 +910,11 @@ private fun IrideThemeControls(
     newIrideUi: Boolean,
     onNewIrideUiChange: (Boolean) -> Unit,
     mainTopGradient: Boolean,
-    onMainTopGradientChange: (Boolean) -> Unit
+    onMainTopGradientChange: (Boolean) -> Unit,
+    albumTopGradient: Boolean,
+    onAlbumTopGradientChange: (Boolean) -> Unit
 ) {
-    // ── New Iride Ui / Main screens top gradient toggles ─────────────────
+    // ── New Iride Ui / Main+Album screens top gradient toggles ───────────
     Spacer(modifier = Modifier.height(16.dp))
 
     Column(
@@ -852,6 +934,13 @@ private fun IrideThemeControls(
             description = stringResource(R.string.main_top_gradient_desc),
             checked = mainTopGradient,
             onCheckedChange = onMainTopGradientChange
+        )
+        HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
+        IrideThemeToggleRow(
+            title = stringResource(R.string.album_top_gradient),
+            description = stringResource(R.string.album_top_gradient_desc),
+            checked = albumTopGradient,
+            onCheckedChange = onAlbumTopGradientChange
         )
     }
 

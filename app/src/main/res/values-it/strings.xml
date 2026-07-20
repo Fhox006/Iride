@@ -313,4 +313,6 @@
     <string name="action_login">Accedi</string>
     <string name="main_top_gradient">Gradiente in cima alle schermate principali</string>
     <string name="main_top_gradient_desc">Mostra il gradiente del brano in riproduzione, sfumato dolcemente, dietro la parte alta di Home, Libreria, Ricerca e News</string>
+    <string name="album_top_gradient">Gradiente in cima agli album</string>
+    <string name="album_top_gradient_desc">Mostra il gradiente dell\'album visualizzato, sfumato dolcemente, dietro la parte alta di Album, Singoli ed EP</string>
 </resources>

@@ -40,6 +40,7 @@ import com.metrolist.music.constants.DataSyncIdKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.VisitorDataKey
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.reportException
@@ -72,6 +73,8 @@ fun LoginScreen(
             .fillMaxSize(),
         factory = { webViewContext ->
             WebView(webViewContext).apply {
+                CookieManager.getInstance().setAcceptCookie(true)
+                CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView, url: String?) {
                         loadUrl("javascript:Android.onRetrieveVisitorData(window.yt.config_.VISITOR_DATA)")
@@ -147,19 +150,9 @@ fun LoginScreen(
         }
     )
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.login)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null
-                )
-            }
-        }
+    SettingsBackTopBar(
+        title = stringResource(R.string.login),
+        navController = navController,
     )
 
     BackHandler(enabled = webView?.canGoBack() == true) {

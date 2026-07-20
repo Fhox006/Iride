@@ -6,6 +6,9 @@
 package com.metrolist.music.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -16,7 +19,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -25,16 +33,24 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.text.style.TextOverflow
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.utils.resize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -89,6 +105,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -113,11 +130,7 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
-import com.metrolist.music.BuildConfig
-import com.metrolist.music.constants.BetaBannerDismissedVersionKey
-import com.metrolist.music.constants.GridItemSize
-import com.metrolist.music.constants.GridItemsSizeKey
-import com.metrolist.music.constants.GridThumbnailHeight
+import com.metrolist.music.constants.NewIrideUiDisclaimerDismissedKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.HideVideoSongsKey
@@ -127,7 +140,6 @@ import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
-import com.metrolist.music.constants.SmallGridThumbnailHeight
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Artist
@@ -141,15 +153,18 @@ import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AlbumGridItem
 import com.metrolist.music.ui.component.VinylPeekFraction
+import com.metrolist.music.ui.component.currentGridThumbnailHeight
 import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.IrideCollapsibleSection
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.LocalTopNavBarController
 import com.metrolist.music.ui.component.RandomizeGridItem
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.SongGridItem
+import com.metrolist.music.ui.component.SongCarousel
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.SpeedDialGridItem
 import com.metrolist.music.ui.component.YouTubeGridItem
@@ -171,6 +186,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.min
+import kotlin.math.roundToInt
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -191,18 +207,82 @@ import kotlin.random.Random
 private val HomeLargeTitleHeightDp = 80.dp
 private val HomeSmallTitleBarHeightDp = 56.dp
 
-// New Iride UI: collapses a section's body while keeping its NavigationTitle row visible.
+/**
+ * New Iride UI: horizontally scrollable chip row for the Mood category selector. Reuses the same
+ * "single shared indicator glides between labels" technique as IrideSegmentedToggle (the
+ * Library/Downloaded switch in LibraryMixScreen.kt, see ui/component/ChipsRow.kt) — the underline
+ * slides and resizes smoothly from one chip to the next instead of each chip independently
+ * popping its own static underline on/off, which read as an un-animated flicker when switching
+ * mood categories. Kept local to Home instead of changing the shared ChipsRow composable itself,
+ * since that component is also used (in its plain, non-glide form) by several other screens.
+ */
 @Composable
-private fun IrideCollapsibleSection(
-    collapsed: Boolean,
-    content: @Composable () -> Unit,
+private fun <E> IrideMoodChipsRow(
+    chips: List<Pair<E, String>>,
+    currentValue: E?,
+    onValueUpdate: (E) -> Unit,
+    modifier: Modifier = Modifier,
+    horizontalPadding: Dp = 20.dp,
 ) {
-    AnimatedVisibility(
-        visible = !collapsed,
-        enter = expandVertically(animationSpec = tween(220)) + fadeIn(tween(180)),
-        exit = shrinkVertically(animationSpec = tween(220)) + fadeOut(tween(140)),
+    val density = LocalDensity.current
+    // index -> (x offset, width) in px, relative to the shared scrollable Column — reported by
+    // each label so the indicator below knows where to glide to.
+    val labelBoundsPx = remember { androidx.compose.runtime.mutableStateMapOf<Int, Pair<Float, Float>>() }
+    val selectedIndex = chips.indexOfFirst { it.first == currentValue }
+    val targetBounds = if (selectedIndex >= 0) labelBoundsPx[selectedIndex] else null
+    val indicatorAnimSpec = spring<Float>(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMediumLow,
+    )
+    val indicatorX by animateFloatAsState(targetBounds?.first ?: 0f, indicatorAnimSpec, label = "moodChipIndicatorX")
+    val indicatorWidth by animateFloatAsState(targetBounds?.second ?: 0f, indicatorAnimSpec, label = "moodChipIndicatorWidth")
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
     ) {
-        content()
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.width(horizontalPadding))
+            chips.forEachIndexed { index, (value, label) ->
+                val isSelected = currentValue == value
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp),
+                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.35f),
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { onValueUpdate(value) }
+                        .padding(vertical = 6.dp)
+                        .onGloballyPositioned { coords ->
+                            labelBoundsPx[index] = coords.positionInParent().x to coords.size.width.toFloat()
+                        },
+                )
+                if (index != chips.lastIndex) Spacer(Modifier.width(20.dp))
+            }
+            Spacer(Modifier.width(horizontalPadding))
+        }
+        Spacer(Modifier.height(3.dp))
+        // No fillMaxWidth() track wrapper here (unlike IrideSegmentedToggle): this Column sits
+        // inside horizontalScroll(), which measures children with unbounded width — fillMaxWidth()
+        // under an unbounded constraint has no well-defined size. The indicator only ever needs
+        // its own (bounded) width, so it's emitted directly with a fixed-height Spacer fallback
+        // to reserve the same 2dp row when no chip has reported its bounds yet.
+        if (targetBounds != null) {
+            Box(
+                modifier = Modifier
+                    .offset { IntOffset(indicatorX.roundToInt(), 0) }
+                    .width(with(density) { indicatorWidth.toDp() })
+                    .height(2.dp)
+                    .background(Color.White),
+            )
+        } else {
+            Spacer(Modifier.height(2.dp))
+        }
     }
 }
 
@@ -229,7 +309,7 @@ fun HomeScreen(
     }.collectAsStateWithLifecycle()
 
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
-    var betaBannerDismissedVersion by rememberPreference(BetaBannerDismissedVersionKey, "")
+    var newIrideUiDisclaimerDismissed by rememberPreference(NewIrideUiDisclaimerDismissedKey, false)
 
     val speedDialItems by viewModel.speedDialItems.collectAsStateWithLifecycle()
     val pinnedSpeedDialItems by viewModel.pinnedSpeedDialItems.collectAsStateWithLifecycle()
@@ -265,7 +345,9 @@ fun HomeScreen(
     val accountAvatarUrl = if (isLoggedIn) accountImageUrl else null
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    // Seeded from App's process-start cache instead of a hardcoded literal — see
+    // App.topNavigationBarEnabledCache and the matching seed in MainActivity's IrideApp.
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = com.metrolist.music.App.topNavigationBarEnabledCache)
     val topNavBarController = LocalTopNavBarController.current
     // New Iride UI: sections start flush with the "Home" label in TopNavigationBar (20dp),
     // instead of the classic UI's 12dp.
@@ -290,8 +372,9 @@ fun HomeScreen(
     val hideExplicit by rememberPreference(HideExplicitKey, defaultValue = false)
     val hideVideoSongs by rememberPreference(HideVideoSongsKey, defaultValue = false)
     val hideYoutubeShorts by rememberPreference(HideYoutubeShortsKey, defaultValue = false)
-    val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
-    val currentGridHeight = if (gridItemSize == GridItemSize.BIG) GridThumbnailHeight else SmallGridThumbnailHeight
+    // Single source of truth for "current grid size" — shared with every other grid card
+    // composable in Items.kt instead of recomputing the same GridItemsSizeKey read locally.
+    val currentGridHeight = currentGridThumbnailHeight()
 
     // Your Mood
     val moodMixItems by viewModel.moodMixItems.collectAsStateWithLifecycle()
@@ -401,14 +484,6 @@ fun HomeScreen(
                 if (containerWidthDp * 0.475f >= 320.dp) 0.475f else 0.9f
             val horizontalLazyGridItemWidth = containerWidthDp * horizontalLazyGridItemWidthFactor
 
-            val quickPicksSnapLayoutInfoProvider = remember(quickPicksLazyGridState) {
-                SnapLayoutInfoProvider(
-                    lazyGridState = quickPicksLazyGridState,
-                    positionInLayout = { layoutSize, itemSize ->
-                        layoutSize * horizontalLazyGridItemWidthFactor / 2f - itemSize / 2f
-                    },
-                )
-            }
             val forgottenFavoritesSnapLayoutInfoProvider = remember(forgottenFavoritesLazyGridState) {
                 SnapLayoutInfoProvider(
                     lazyGridState = forgottenFavoritesLazyGridState,
@@ -492,7 +567,9 @@ fun HomeScreen(
             }
 
             val ytGridItem: @Composable (YTItem, androidx.compose.ui.unit.Dp?, Boolean, String?) -> Unit = { item, sizeOverride, dischiPerTeStyle, fallbackArtistName ->
-                val size = sizeOverride ?: if (item.isMixtape) 180.dp else currentGridHeight
+                // Standard card size for every content type (New Iride UI A6): no more one-off
+                // 180dp mixtape exception — everything follows the same currentGridHeight scale.
+                val size = sizeOverride ?: currentGridHeight
                 YouTubeGridItem(
                     item = item,
                     isActive = item.id in listOf(mediaMetadata?.album?.id, mediaMetadata?.id),
@@ -648,45 +725,47 @@ fun HomeScreen(
                         )
                     }
                 }
-                item(key = "beta_banner") {
-                    AnimatedVisibility(
-                        visible = betaBannerDismissedVersion != BuildConfig.VERSION_NAME,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically(),
-                    ) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f),
-                            ),
+                if (topNavigationBarEnabled) {
+                    item(key = "new_iride_ui_disclaimer") {
+                        // Fade-only, no expandVertically()/shrinkVertically(): those grow/shrink
+                        // this item's height frame-by-frame right below the top nav bar, and
+                        // while they're mid-animation every section below (they all carry
+                        // .animateItem()) reflows to chase the changing height — on a slow first
+                        // frame that read as the Mood/section headers momentarily rendering at
+                        // the wrong offset, overlapping the nav bar above, before settling. A
+                        // plain fade never changes layout height, so nothing below ever moves.
+                        AnimatedVisibility(
+                            visible = !newIrideUiDisclaimerDismissed,
+                            enter = fadeIn(animationSpec = tween(220)),
+                            exit = fadeOut(animationSpec = tween(180)),
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(
+                                                Color(0xFFE8452C),
+                                                Color(0xFFFF8A3D),
+                                            ),
+                                        ),
+                                    )
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Beta Version",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onErrorContainer,
-                                    )
-                                    Text(
-                                        text = "You're using an early beta build. Expect bugs, crashes, and missing features. Feedback is appreciated.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onErrorContainer,
-                                    )
-                                }
-                                IconButton(onClick = { betaBannerDismissedVersion = BuildConfig.VERSION_NAME }) {
+                                Text(
+                                    text = "This new UI is experimental — not everything is fully working yet. You can disable it in Appearance settings.",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily),
+                                    color = Color.White,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                IconButton(onClick = { newIrideUiDisclaimerDismissed = true }) {
                                     Icon(
                                         painter = painterResource(R.drawable.close),
                                         contentDescription = "Dismiss",
-                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                        tint = Color.White,
                                     )
                                 }
                             }
@@ -696,7 +775,25 @@ fun HomeScreen(
 
                 if (isLoading) {
                     item(key = "loading_indicator") {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        if (topNavigationBarEnabled) {
+                            // New Iride UI: thin hairline bar instead of Material's default thick
+                            // (4dp), saturated-color indeterminate bar — matches the flat/monochrome
+                            // language used everywhere else in this UI (see IrideSwitch/IrideSlider
+                            // in IrideSettingsControls.kt and the Iride branch of SyncBanner below).
+                            // Also keeps this item's height negligible, so its brief appearance at
+                            // the very start of a cold load barely shifts anything below it.
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp)
+                                    .height(2.dp)
+                                    .clip(RoundedCornerShape(1.dp)),
+                                color = Color.White.copy(alpha = 0.6f),
+                                trackColor = Color.White.copy(alpha = 0.12f),
+                            )
+                        } else {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
                     }
                 }
 
@@ -706,7 +803,7 @@ fun HomeScreen(
                         enter = fadeIn() + expandVertically(),
                         exit = fadeOut() + shrinkVertically(),
                     ) {
-                        SyncBanner(syncState = syncState)
+                        SyncBanner(syncState = syncState, useIrideStyle = topNavigationBarEnabled)
                     }
                 }
 
@@ -987,54 +1084,49 @@ fun HomeScreen(
                         }
                         item(key = "quick_picks_list") {
                             IrideCollapsibleSection(collapsed = isSectionCollapsed("quick_picks")) {
-                                LazyHorizontalGrid(
-                                    state = quickPicksLazyGridState,
-                                    rows = GridCells.Fixed(4),
-                                    flingBehavior = rememberSnapFlingBehavior(quickPicksSnapLayoutInfoProvider),
+                                SongCarousel(
+                                    items = filteredQp,
+                                    key = { "home_quickpick_${it.id}" },
                                     contentPadding = PaddingValues(horizontal = irideListItemStart),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(ListItemHeight * 4)
-                                        .animateItem(),
-                                ) {
-                                    items(items = filteredQp, key = { "home_quickpick_${it.id}" }) { originalSong ->
-                                        val song by database.song(originalSong.id).collectAsStateWithLifecycle(initialValue = originalSong)
-                                        val currentSong = song ?: originalSong
-                                        SongListItem(
-                                            song = currentSong,
-                                            isActive = currentSong.id == mediaMetadata?.id,
-                                            isPlaying = isPlaying,
-                                            isSwipeable = false,
-                                            trailingContent = {
-                                                IconButton(onClick = {
+                                    gridState = quickPicksLazyGridState,
+                                    modifier = Modifier.animateItem(),
+                                ) { originalSong, itemWidth ->
+                                    val song by database.song(originalSong.id).collectAsStateWithLifecycle(initialValue = originalSong)
+                                    val currentSong = song ?: originalSong
+                                    SongListItem(
+                                        song = currentSong,
+                                        isActive = currentSong.id == mediaMetadata?.id,
+                                        isPlaying = isPlaying,
+                                        isSwipeable = false,
+                                        trailingContent = {
+                                            IconButton(onClick = {
+                                                menuState.show {
+                                                    SongMenu(originalSong = currentSong, navController = navController, onDismiss = menuState::dismiss)
+                                                }
+                                            }) { Icon(painter = painterResource(R.drawable.more_vert), contentDescription = null) }
+                                        },
+                                        modifier = Modifier
+                                            .width(itemWidth)
+                                            .combinedClickable(
+                                                onClick = {
+                                                    if (!isListenTogetherGuest) {
+                                                        if (currentSong.id == mediaMetadata?.id) playerConnection?.togglePlayPause()
+                                                        else playerConnection?.playQueue(
+                                                            YouTubeQueue(
+                                                                WatchEndpoint(videoId = currentSong.id),
+                                                                currentSong.toMediaMetadata(),
+                                                            )
+                                                        )
+                                                    }
+                                                },
+                                                onLongClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     menuState.show {
                                                         SongMenu(originalSong = currentSong, navController = navController, onDismiss = menuState::dismiss)
                                                     }
-                                                }) { Icon(painter = painterResource(R.drawable.more_vert), contentDescription = null) }
-                                            },
-                                            modifier = Modifier
-                                                .width(horizontalLazyGridItemWidth)
-                                                .combinedClickable(
-                                                    onClick = {
-                                                        if (!isListenTogetherGuest) {
-                                                            if (currentSong.id == mediaMetadata?.id) playerConnection?.togglePlayPause()
-                                                            else playerConnection?.playQueue(
-                                                                YouTubeQueue(
-                                                                    WatchEndpoint(videoId = currentSong.id),
-                                                                    currentSong.toMediaMetadata(),
-                                                                )
-                                                            )
-                                                        }
-                                                    },
-                                                    onLongClick = {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        menuState.show {
-                                                            SongMenu(originalSong = currentSong, navController = navController, onDismiss = menuState::dismiss)
-                                                        }
-                                                    },
-                                                ),
-                                        )
-                                    }
+                                                },
+                                            ),
+                                    )
                                 }
                             }
                         }
@@ -1061,15 +1153,27 @@ fun HomeScreen(
                                 .animateItem(),
                         ) {
                             if (moodChips.isNotEmpty()) {
-                                ChipsRow(
-                                    chips = moodChips,
-                                    currentValue = selectedMoodCategory,
-                                    onValueUpdate = { if (it != null) selectedMoodCategory = it },
-                                    chipHeight = 40.dp,
-                                    horizontalPadding = irideStart,
-                                    labelStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp),
-                                    useIrideStyle = topNavigationBarEnabled,
-                                )
+                                if (topNavigationBarEnabled) {
+                                    // Same glide-indicator technique as the Library/Downloaded
+                                    // switch (IrideSegmentedToggle) instead of ChipsRow's plain
+                                    // per-chip static underline.
+                                    IrideMoodChipsRow(
+                                        chips = moodChips,
+                                        currentValue = selectedMoodCategory,
+                                        onValueUpdate = { selectedMoodCategory = it },
+                                        horizontalPadding = irideStart,
+                                    )
+                                } else {
+                                    ChipsRow(
+                                        chips = moodChips,
+                                        currentValue = selectedMoodCategory,
+                                        onValueUpdate = { if (it != null) selectedMoodCategory = it },
+                                        chipHeight = 40.dp,
+                                        horizontalPadding = irideStart,
+                                        labelStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp),
+                                        useIrideStyle = false,
+                                    )
+                                }
                             }
 
                             // Fixed height so switching chips never resizes the row mid-fade —
@@ -1166,7 +1270,8 @@ fun HomeScreen(
                     }
                     item(key = "keep_listening_list") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("keep_listening")) {
-                            val rows = if (kl.size > 6) 2 else 1
+                            // New Iride UI: always a single compact row, never the classic UI's 2-row grid.
+                            val rows = if (topNavigationBarEnabled) 1 else if (kl.size > 6) 2 else 1
                             LazyHorizontalGrid(
                                 state = rememberLazyGridState(),
                                 rows = GridCells.Fixed(rows),
@@ -1199,6 +1304,8 @@ fun HomeScreen(
                             onPlayAllClick = if (!isListenTogetherGuest) {
                                 { playerConnection?.playQueue(ListQueue(title = title, items = ff.distinctBy { it.id }.map { it.toMediaItem() })) }
                             } else null,
+                            onRefreshClick = { viewModel.regenerateForgottenFavorites() },
+                            isRefreshing = "forgotten_favorites" in regeneratingSections,
                             useIrideStyle = topNavigationBarEnabled,
                             collapsed = isSectionCollapsed("forgotten_favorites"),
                             onCollapseToggle = { toggleSection("forgotten_favorites") },
@@ -1320,6 +1427,30 @@ fun HomeScreen(
                     }
                     item(key = "daily_discover_content") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("daily_discover")) {
+                            if (topNavigationBarEnabled) {
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = irideGridItemStart),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    items(discoverList, key = { "daily_discover_${it.recommendation.id}" }) { ddItem ->
+                                        IrideDailyDiscoverCard(
+                                            dailyDiscover = ddItem,
+                                            size = currentGridHeight,
+                                            onClick = {
+                                                if (!isListenTogetherGuest) {
+                                                    val song = ddItem.recommendation as? SongItem
+                                                    val meta = song?.toMediaMetadata()
+                                                    if (meta != null) playerConnection?.playQueue(
+                                                        YouTubeQueue(song.endpoint ?: WatchEndpoint(videoId = song.id), meta)
+                                                    )
+                                                }
+                                            },
+                                            navController = navController,
+                                        )
+                                    }
+                                }
+                            } else {
                             Box(
                                 modifier = Modifier.fillMaxWidth().height(340.dp).padding(horizontal = irideStart),
                                 contentAlignment = Alignment.Center,
@@ -1348,6 +1479,7 @@ fun HomeScreen(
                                     )
                                 }
                             }
+                            }
                         }
                     }
                 }
@@ -1368,46 +1500,33 @@ fun HomeScreen(
                     }
                     item(key = "community_playlists_content") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("community_playlists")) {
-                            val chunked = playlists.chunked(2)
-                            Column(
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = irideGridItemStart),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = irideGridItemStart)
                                     .animateItem(),
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                chunked.forEach { rowItems ->
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    ) {
-                                        rowItems.forEach { cpItem ->
-                                            PlaylistGridItem(
-                                                playlist = Playlist(
-                                                    playlist = PlaylistEntity(
-                                                        id = cpItem.playlist.id.removePrefix("VL"),
-                                                        name = cpItem.playlist.title,
-                                                        browseId = cpItem.playlist.id.removePrefix("VL"),
-                                                        thumbnailUrl = cpItem.playlist.thumbnail,
-                                                    ),
-                                                    songCount = 0,
-                                                    songThumbnails = emptyList(),
-                                                ),
-                                                fillMaxWidth = true,
-                                                autoPlaylist = false,
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .combinedClickable(
-                                                        onClick = {
-                                                            navController.navigate("online_playlist/${cpItem.playlist.id.removePrefix("VL")}")
-                                                        },
-                                                    ),
-                                            )
-                                        }
-                                        if (rowItems.size == 1) {
-                                            Spacer(modifier = Modifier.weight(1f))
-                                        }
-                                    }
+                                items(playlists, key = { "community_playlist_${it.playlist.id}" }) { cpItem ->
+                                    PlaylistGridItem(
+                                        playlist = Playlist(
+                                            playlist = PlaylistEntity(
+                                                id = cpItem.playlist.id.removePrefix("VL"),
+                                                name = cpItem.playlist.title,
+                                                browseId = cpItem.playlist.id.removePrefix("VL"),
+                                                thumbnailUrl = cpItem.playlist.thumbnail,
+                                            ),
+                                            songCount = 0,
+                                            songThumbnails = emptyList(),
+                                        ),
+                                        autoPlaylist = false,
+                                        modifier = Modifier
+                                            .combinedClickable(
+                                                onClick = {
+                                                    navController.navigate("online_playlist/${cpItem.playlist.id.removePrefix("VL")}")
+                                                },
+                                            ),
+                                    )
                                 }
                             }
                         }
@@ -1639,13 +1758,68 @@ private fun HomeCollapsingHeader(
 }
 
 @Composable
-fun SyncBanner(syncState: SyncState) {
+fun SyncBanner(syncState: SyncState, useIrideStyle: Boolean = false) {
     val ops = listOf(
         syncState.likedSongs, syncState.librarySongs, syncState.uploadedSongs,
         syncState.likedAlbums, syncState.uploadedAlbums, syncState.artists, syncState.playlists,
     )
     val completedCount = ops.count { it == SyncStatus.Completed }
     val progress = completedCount / ops.size.toFloat()
+
+    if (useIrideStyle) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 10.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = Color.White.copy(alpha = 0.6f),
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "SYNCING LIBRARY",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = SpaceMonoFontFamily,
+                            fontSize = 13.sp,
+                            letterSpacing = (-0.1).sp,
+                        ),
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White.copy(alpha = 0.55f),
+                    )
+                    Text(
+                        text = "Network features may not work until sync completes.",
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily),
+                        color = Color.White.copy(alpha = 0.4f),
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .clip(CircleShape),
+                color = Color.White.copy(alpha = 0.6f),
+                trackColor = Color.White.copy(alpha = 0.15f),
+            )
+            if (syncState.currentOperation.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = syncState.currentOperation,
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = SpaceMonoFontFamily),
+                    color = Color.White.copy(alpha = 0.4f),
+                )
+            }
+        }
+        return
+    }
 
     Card(
         modifier = Modifier
@@ -1771,8 +1945,8 @@ fun CommunityPlaylistCard(
                     Text(
                         text = item.playlist.title,
                         style = MaterialTheme.typography.titleMedium,
-                        maxLines = 2,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -1780,6 +1954,7 @@ fun CommunityPlaylistCard(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
@@ -1903,7 +2078,94 @@ fun CommunityPlaylistCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+private val DailyDiscoverSeedMessages = listOf(
+    R.string.daily_discover_sounds_like,
+    R.string.daily_discover_because_you_listen_to,
+    R.string.daily_discover_similar_to,
+    R.string.daily_discover_based_on,
+    R.string.daily_discover_for_fans_of,
+)
+
+/**
+ * Compact, flat, monochrome Daily Discover card for the New Iride UI — replaces the classic
+ * UI's large Material3 carousel card with a small squared thumbnail + single-line text stack,
+ * matching the bordered-tile look used elsewhere (e.g. [NewActionButton]).
+ */
+@Composable
+private fun IrideDailyDiscoverCard(
+    dailyDiscover: com.metrolist.music.viewmodels.DailyDiscoverItem,
+    size: Dp,
+    onClick: () -> Unit,
+    navController: NavController,
+    modifier: Modifier = Modifier,
+) {
+    val menuState = LocalMenuState.current
+    val haptic = LocalHapticFeedback.current
+    val song = dailyDiscover.recommendation as? SongItem
+    val messageRes = remember(dailyDiscover.seed.id) {
+        DailyDiscoverSeedMessages[kotlin.math.abs(dailyDiscover.seed.id.hashCode()) % DailyDiscoverSeedMessages.size]
+    }
+
+    Column(
+        modifier = modifier
+            .width(size)
+            .clip(RoundedCornerShape(14.dp))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(14.dp))
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (song != null) {
+                        menuState.show {
+                            YouTubeSongMenu(song = song, navController = navController, onDismiss = { menuState.dismiss() })
+                        }
+                    }
+                },
+            )
+            .padding(8.dp),
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(dailyDiscover.recommendation.thumbnail?.resize(300, 300))
+                .crossfade(true)
+                .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(10.dp)),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = dailyDiscover.recommendation.title,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
+            fontWeight = FontWeight.Bold,
+            color = Color.White.copy(alpha = 0.9f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = song?.artists?.joinToString(", ") { it.name } ?: "",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.White.copy(alpha = 0.6f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = stringResource(
+                messageRes,
+                "${dailyDiscover.seed.title} • ${dailyDiscover.seed.artists.joinToString(", ") { it.name }}",
+            ),
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.45f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
+
 @Composable
 fun DailyDiscoverCard(
     dailyDiscover: com.metrolist.music.viewmodels.DailyDiscoverItem,

@@ -34,7 +34,7 @@ fun <T> EnumDialog(
     valueText: @Composable (T) -> String,
     valueDescription: (@Composable (T) -> String)? = null,
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     ListDialog(
         onDismiss = onDismiss,

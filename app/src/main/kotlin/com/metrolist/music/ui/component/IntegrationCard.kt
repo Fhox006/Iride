@@ -51,7 +51,7 @@ fun IntegrationCard(
     title: String? = null,
     items: List<IntegrationCardItem>
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     if (topNavigationBarEnabled) {
         IrideIntegrationGroup(title = title, items = items)

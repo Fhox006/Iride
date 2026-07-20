@@ -38,7 +38,7 @@
     <string name="recommended_albums">Recommended albums</string>
     <string name="recently_listened_albums">Recently listened</string>
     <string name="clear_recently_listened_albums">Clear</string>
-    <string name="your_youtube_playlists">Your YouTube playlists</string>
+    <string name="your_youtube_playlists">Your Playlists</string>
     <string name="similar_to">Similar to</string>
     <string name="new_release_albums">New release albums</string>
     <string name="artist_latest_release">Latest release</string>
@@ -105,6 +105,19 @@
     <string name="radio">Radio</string>
     <string name="shuffle">Shuffle</string>
     <string name="reset">Reset</string>
+
+    <!-- Guess the song game -->
+    <string name="guess_game">Guess the song</string>
+    <string name="guess_game_subtitle">Guess the song and find out how well you really know the artist</string>
+    <string name="guess_game_best_score">Your best score: %1$s</string>
+    <string name="guess_game_best_label">Your best</string>
+    <string name="guess_game_no_score">No score yet</string>
+    <string name="guess_game_play_now">Play now</string>
+    <string name="guess_game_songs_left">%1$d songs left to guess</string>
+    <string name="guess_game_hint_default">Guess to continue</string>
+    <string name="guess_game_hint_wrong">You got it wrong! Wait 3 seconds</string>
+    <string name="guess_game_new_best">New best!</string>
+    <string name="guess_game_not_enough_songs">Not enough songs found to play this game</string>
 
     <!-- Menu -->
     <string name="details">Details</string>
@@ -411,4 +424,6 @@
 
     <string name="main_top_gradient">Top gradient on main screens</string>
     <string name="main_top_gradient_desc">Shows the current song\'s player gradient, subtly blended, behind the top of Home, Library, Search and News</string>
+    <string name="album_top_gradient">Top gradient on albums</string>
+    <string name="album_top_gradient_desc">Shows the viewed album\'s player gradient, subtly blended, behind the top of Album, Single and EP screens</string>
 </resources>

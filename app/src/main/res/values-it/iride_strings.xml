@@ -205,6 +205,9 @@
     <string name="refetch_desc">Ottieni gli ultimi metadata da YouTube Music</string>
     <string name="share_desc">Condividi un collegamento con questo elemento</string>
     <string name="delete_desc">Rimuovi definitivamente questo elemento</string>
+    <string name="repeat_one">Ripeti brano</string>
+    <string name="repeat_one_desc">Riavvia sempre questo brano, non passa mai al successivo</string>
+    <string name="night_mode">Modalita notte</string>
     <string name="advanced_desc">Cambia il tempo e la tonalitÃ  del brano</string>
     <string name="equalizer_desc">Regola l\'equalizzatore audio</string>
     <string name="enable_dynamic_icon">Attiva l\'icona dinamica</string>

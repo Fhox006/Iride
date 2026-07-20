@@ -10,6 +10,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
@@ -168,7 +169,7 @@ fun GenrePillsRow(
     state: GenreFilterState,
     modifier: Modifier = Modifier,
 ) {
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val genres = state.sortedGenres
     val showPlaceholder = genres.size <= 1 && state.isLoading
 
@@ -183,7 +184,7 @@ fun GenrePillsRow(
         if (genres.size > 1) {
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(if (topNavigationBarEnabled) 20.dp else 8.dp),
-                contentPadding = PaddingValues(start = 20.dp, end = 16.dp),
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp),
             ) {
                 items(genres, key = { it }) { genre ->
                     val selected = state.selectedGenre == genre
@@ -250,6 +251,10 @@ fun GenrePillsRow(
  * background — the "sottolineato" pill look used across New Iride UI filter rows (genre pills
  * here, queue-mode pills in IrideMp3Player). Kept as a standalone composable so both call sites
  * share one visual instead of drifting apart.
+ *
+ * Selection changes are spring-animated (text color/weight glow and underline fade+grow) so this
+ * matches the smooth feel of the other New Iride UI selector, [IrideSegmentedToggle] — previously
+ * this snapped instantly with no animation at all.
  */
 @Composable
 fun UnderlinePill(
@@ -260,6 +265,16 @@ fun UnderlinePill(
 ) {
     val density = LocalDensity.current
     var textWidthPx by remember(text) { mutableStateOf(0) }
+    val textColor by animateColorAsState(
+        targetValue = if (selected) Color.White else Color.White.copy(alpha = 0.55f),
+        animationSpec = spring(stiffness = 400f),
+        label = "underlinePillTextColor",
+    )
+    val underlineAlpha by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = spring(stiffness = 400f),
+        label = "underlinePillUnderlineAlpha",
+    )
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
@@ -275,7 +290,7 @@ fun UnderlinePill(
                 fontFamily = SpaceMonoFontFamily,
                 letterSpacing = 0.5.sp,
             ),
-            color = if (selected) Color.White else Color.White.copy(alpha = 0.55f),
+            color = textColor,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1,
             modifier = Modifier.onSizeChanged { textWidthPx = it.width },
@@ -285,7 +300,7 @@ fun UnderlinePill(
             modifier = Modifier
                 .height(2.dp)
                 .width(with(density) { textWidthPx.toDp() })
-                .background(if (selected) Color.White else Color.Transparent),
+                .background(Color.White.copy(alpha = underlineAlpha)),
         )
     }
 }

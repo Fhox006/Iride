@@ -37,3 +37,10 @@ data class AlbumPlayEvent(
     val songIndex: Int,
     val timestamp: LocalDateTime,
 )
+
+@Immutable
+data class GlobalAlbumPlayEvent(
+    val songId: String,
+    val albumId: String,
+    val timestamp: LocalDateTime,
+)

@@ -107,7 +107,7 @@ fun LocalSearchScreen(
     val searchFilter by viewModel.filter.collectAsState()
     val result by viewModel.result.collectAsState()
 
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
 
     val lazyListState = rememberLazyListState()
@@ -136,6 +136,7 @@ fun LocalSearchScreen(
                     LocalFilter.ALBUM to stringResource(R.string.filter_albums),
                     LocalFilter.ARTIST to stringResource(R.string.filter_artists),
                     LocalFilter.PLAYLIST to stringResource(R.string.filter_playlists),
+                    LocalFilter.DOWNLOAD to stringResource(R.string.filter_downloaded),
                 ),
             currentValue = searchFilter,
             onValueUpdate = { viewModel.filter.value = it },
@@ -145,11 +146,13 @@ fun LocalSearchScreen(
     }
 
     if (header != null) {
-        // New Iride UI: no pinned chrome at all — the header and the filter chips scroll away
-        // together with the results, exactly like HomeScreen, instead of the classic UI's
-        // pinned ChipsRow above a separately-scrolling result list.
-        LazyColumn(
-            state = lazyListState,
+        // Header is a movableContentOf (see SearchScreen) — it must NOT be placed as a
+        // LazyColumn item. Lazy layouts subcompose each item in their own recycled slot table,
+        // and moving/disposing that slot independently of the movable content's remembered
+        // anchor is what crashed with "Could not resolve state for movable content" when
+        // navigating away from Search (e.g. to Library). Pinned as a fixed sibling instead,
+        // exactly like OnlineSearchResultsBody already does for the same reason.
+        Column(
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -169,28 +172,33 @@ fun LocalSearchScreen(
                             base
                         }
                     },
-            contentPadding =
-                WindowInsets.systemBars
-                    .only(WindowInsetsSides.Bottom)
-                    .asPaddingValues(),
         ) {
-            item(key = "search_header") { header() }
-            item(key = "local_search_chips") { chipsRow() }
-            localSearchResultItems(
-                result = result,
-                navController = navController,
-                menuState = menuState,
-                onDismiss = onDismiss,
-                isFromCache = isFromCache,
-                isPlaying = isPlaying,
-                mediaMetadata = mediaMetadata,
-                queueSearchedSongsStr = queueSearchedSongsStr,
-                onFilterChange = { viewModel.filter.value = it },
-                playerConnection = playerConnection,
-                coroutineScope = coroutineScope,
-                haptic = haptic,
-                useIrideStyle = topNavigationBarEnabled,
-            )
+            header()
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier.weight(1f),
+                contentPadding =
+                    WindowInsets.systemBars
+                        .only(WindowInsetsSides.Bottom)
+                        .asPaddingValues(),
+            ) {
+                item(key = "local_search_chips") { chipsRow() }
+                localSearchResultItems(
+                    result = result,
+                    navController = navController,
+                    menuState = menuState,
+                    onDismiss = onDismiss,
+                    isFromCache = isFromCache,
+                    isPlaying = isPlaying,
+                    mediaMetadata = mediaMetadata,
+                    queueSearchedSongsStr = queueSearchedSongsStr,
+                    onFilterChange = { viewModel.filter.value = it },
+                    playerConnection = playerConnection,
+                    coroutineScope = coroutineScope,
+                    haptic = haptic,
+                    useIrideStyle = topNavigationBarEnabled,
+                )
+            }
         }
         return
     }
@@ -272,7 +280,7 @@ private fun LazyListScope.localSearchResultItems(
                                     LocalFilter.ALBUM -> R.string.filter_albums
                                     LocalFilter.ARTIST -> R.string.filter_artists
                                     LocalFilter.PLAYLIST -> R.string.filter_playlists
-                                    LocalFilter.ALL -> error("")
+                                    LocalFilter.ALL, LocalFilter.DOWNLOAD -> error("")
                                 },
                             ),
                             useIrideStyle = useIrideStyle,

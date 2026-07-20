@@ -16,7 +16,7 @@
     <string name="continuous">Continuous</string>
 
     <string name="liked">Liked Songs</string>
-    <string name="starred">Starred</string>
+    <string name="starred">Starred Songs</string>
     <string name="offline">Downloaded</string>
     <string name="downloads">Downloads</string>
     <string name="my_top">My Top</string>
@@ -466,6 +466,9 @@
     <string name="lyrics_search_desc">Search for lyrics by title and artist</string>
     <string name="lyrics_copy_desc">Copy all lyrics to clipboard</string>
     <string name="advanced_desc">Adjust the song\'s tempo and pitch</string>
+    <string name="repeat_one">Repeat one</string>
+    <string name="repeat_one_desc">Restart this song forever, never play another</string>
+    <string name="night_mode">Night mode</string>
     <string name="equalizer_desc">Open the audio equalizer</string>
     <string name="enable_dynamic_icon">Enable dynamic icon</string>
     <string name="mini_player">Mini-player</string>
@@ -773,6 +776,12 @@
     <string name="cd_system_mode">System mode</string>
     <string name="cd_palette_item">%1$s palette</string>
     <string name="play_all">Play all</string>
+
+    <!-- Library Albums screen sections -->
+    <string name="continue_listening">Continue Listening</string>
+    <string name="remove_from_continue_listening">Remove from Continue Listening</string>
+    <string name="favorite_albums">Favorites</string>
+
     <string name="enable_high_refresh_rate">Enable high refresh rate</string>
     <string name="enable_high_refresh_rate_desc">Forces the display to run at its highest supported refresh rate (e.g. 120Hz)</string>
 

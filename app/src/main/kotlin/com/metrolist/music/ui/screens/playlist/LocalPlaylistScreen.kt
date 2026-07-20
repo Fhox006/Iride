@@ -206,7 +206,7 @@ fun LocalPlaylistScreen(
             true,
         )
     var locked by rememberPreference(PlaylistEditLockKey, defaultValue = true)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     val coroutineScope = rememberCoroutineScope()
     val syncUtils = LocalSyncUtils.current
@@ -551,7 +551,12 @@ fun LocalPlaylistScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier =
                                 Modifier
-                                    .padding(start = 16.dp)
+                                    .padding(
+                                        // Matches SongListItem's own 12dp horizontal inset so the
+                                        // sort row lines up with the song rows below it.
+                                        start = if (topNavigationBarEnabled) 12.dp else 8.dp,
+                                        end = if (topNavigationBarEnabled) 12.dp else 8.dp,
+                                    )
                                     .animateItem(),
                         ) {
                             LibrarySortRow(
@@ -667,6 +672,9 @@ fun LocalPlaylistScreen(
                     val content: @Composable () -> Unit = {
                         SongListItem(
                             song = song.song,
+                            // New Iride UI: featured-artist subtitle text should match the rest of
+                            // the row instead of the default muted secondary tone.
+                            subtitleColor = if (topNavigationBarEnabled) Color.Unspecified else null,
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
                             trailingContent = {
@@ -1108,7 +1116,7 @@ fun LocalPlaylistHeader(
 
     val liked = playlist.playlist.bookmarkedAt != null
     val editable: Boolean = playlist.playlist.isEditable
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     val overrideThumbnail = remember { mutableStateOf<String?>(null) }
     var isCustomThumbnail: Boolean =

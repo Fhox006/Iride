@@ -8,6 +8,7 @@ package com.metrolist.music.ui.screens
 /*import android.graphics.Bitmap*/
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 /*import androidx.compose.animation.core.animateFloatAsState*/
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -37,11 +38,12 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -54,6 +56,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableIntStateOf
@@ -115,23 +118,30 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.AlbumTopGradientKey
 import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.AlbumPlayEvent
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.LocalAlbumRadio
 /*import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground*/
 import com.metrolist.music.ui.component.AlbumVinylDisc
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.IrideLoadingIndicator
 import com.metrolist.music.ui.component.IrideOutlineIconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.SongListItem
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.YouTubeGridItem
+import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.ui.menu.AlbumMenu
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
@@ -171,7 +181,23 @@ fun AlbumScreen(
     val hasError by viewModel.hasError.collectAsStateWithLifecycle()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val hideVideoSongs by rememberPreference(key = HideVideoSongsKey, defaultValue = false)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
+    val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
+    val lazyListState = rememberLazyListState()
+    val transparentAppBar by remember {
+        derivedStateOf {
+            lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset < 100
+        }
+    }
+    val topBarBackgroundColor by animateColorAsState(
+        targetValue = if (transparentAppBar) Color.Transparent else MaterialTheme.colorScheme.background,
+        animationSpec = tween(300),
+        label = "albumTopBarBg",
+    )
+    val playerBackgroundStyle by rememberEnumPreference(
+        PlayerBackgroundStyleKey,
+        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+    )
 
     val filteredSongs =
         remember(albumWithSongs, hideExplicit, hideVideoSongs) {
@@ -213,6 +239,7 @@ fun AlbumScreen(
         }
     }
     var resumeDismissed by rememberSaveable(albumWithSongs?.album?.id) { mutableStateOf(false) }
+    val isThisAlbumPlaying = isPlaying && mediaMetadata?.album?.id == albumWithSongs?.album?.id
 
     var inSelectMode by rememberSaveable { mutableStateOf(false) }
     val selection =
@@ -325,8 +352,22 @@ fun AlbumScreen(
         )
     }
 
+    val albumGradientMediaMetadata = remember(albumWithSongs?.album?.id, albumWithSongs?.album?.thumbnailUrl) {
+        albumWithSongs?.album?.let {
+            MediaMetadata(id = it.id, title = it.title, artists = emptyList(), duration = 0, thumbnailUrl = it.thumbnailUrl)
+        }
+    }
+
+    if (albumTopGradientEnabled) {
+        TopScreenGradientBackground(
+            mediaMetadata = albumGradientMediaMetadata,
+            playerBackground = playerBackgroundStyle,
+        )
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
+        state = lazyListState,
         contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
     ) {
             val albumWithSongs = albumWithSongs
@@ -475,7 +516,11 @@ fun AlbumScreen(
                                             val link =
                                                 LinkAnnotation.Clickable(
                                                     tag = artist.id,
-                                                    styles = TextLinkStyles(style = SpanStyle(textDecoration = TextDecoration.None)),
+                                                    // Underline only while held — "release to open artist screen".
+                                                    styles = TextLinkStyles(
+                                                        style = SpanStyle(textDecoration = TextDecoration.None),
+                                                        pressedStyle = SpanStyle(textDecoration = TextDecoration.Underline),
+                                                    ),
                                                 ) {
                                                     navController.navigate("artist/${artist.id}")
                                                 }
@@ -698,17 +743,20 @@ fun AlbumScreen(
                 if (resumeTrackIndex != null) {
                     item(key = "resume_banner") {
                         AnimatedVisibility(
-                            visible = !resumeDismissed,
+                            visible = !resumeDismissed && !isThisAlbumPlaying,
                             enter = fadeIn() + expandVertically(),
                             exit = fadeOut() + shrinkVertically(),
                         ) {
                             val resumeShape = SquircleShape(radius = 20.dp, cornerSmoothing = 0.45f)
+                            // New Iride UI: flat monochrome card, matching BottomSheetMenu's dark panel styling.
+                            val cardColor = if (topNavigationBarEnabled) Color(0xFF0A0A0A) else MaterialTheme.colorScheme.secondaryContainer
+                            val onCardColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSecondaryContainer
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 12.dp, vertical = 8.dp),
                                 shape = resumeShape,
-                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                color = cardColor,
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -720,7 +768,7 @@ fun AlbumScreen(
                                         Text(
                                             text = stringResource(R.string.resume_album),
                                             style = MaterialTheme.typography.titleMedium,
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            color = onCardColor,
                                         )
                                         Text(
                                             text = stringResource(
@@ -729,7 +777,7 @@ fun AlbumScreen(
                                                 albumWithSongs?.songs?.size ?: 0,
                                             ),
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                                            color = onCardColor.copy(alpha = onCardColor.alpha * 0.7f),
                                         )
                                     }
                                     Spacer(modifier = Modifier.width(12.dp))
@@ -744,6 +792,7 @@ fun AlbumScreen(
                                                 )
                                             }
                                         },
+                                        colors = if (topNavigationBarEnabled) ButtonDefaults.textButtonColors(contentColor = Color.White) else ButtonDefaults.textButtonColors(),
                                     ) {
                                         Text(text = stringResource(R.string.resume))
                                     }
@@ -787,6 +836,10 @@ fun AlbumScreen(
                                         song = song,
                                         albumIndex = index + 1,
                                         subtitleOverride = subtitleText,
+                                        // New Iride UI: featuring-artist credits ("feat. X") should
+                                        // read in the same color as the rest of the row instead of
+                                        // the default muted secondary tone.
+                                        subtitleColor = if (topNavigationBarEnabled) Color.Unspecified else null,
                                         isActive = song.id == mediaMetadata?.id,
                                         isPlaying = isPlaying,
                                         trailingContent = {
@@ -954,7 +1007,7 @@ fun AlbumScreen(
                                     .padding(32.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            ContainedLoadingIndicator()
+                            IrideLoadingIndicator()
                         }
                     }
                 }
@@ -1094,7 +1147,7 @@ fun AlbumScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
+                .background(topBarBackgroundColor)
                 .statusBarsPadding()
                 .height(56.dp)
                 .padding(horizontal = 4.dp),

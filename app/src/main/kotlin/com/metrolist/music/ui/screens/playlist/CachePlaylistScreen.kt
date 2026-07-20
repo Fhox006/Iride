@@ -66,6 +66,7 @@ import com.metrolist.music.constants.SongSortTypeKey
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.CollapsingScreenHeader
+import com.metrolist.music.ui.component.IrideAdaptiveTopBar
 import com.metrolist.music.ui.component.EmptyPlaceholder
 import com.metrolist.music.ui.component.GenrePillsRow
 import com.metrolist.music.ui.component.GenreSongInfo
@@ -105,6 +106,7 @@ fun CachePlaylistScreen(
     val (sortDescending, onSortDescendingChange) = rememberPreference(SongSortDescendingKey, true)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val betterLibraryBeta by rememberPreference(BetterLibraryBetaKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(com.metrolist.music.constants.TopNavigationBarKey, defaultValue = true)
 
     val sortedSongs = remember(cachedSongs, sortType, sortDescending) {
         val sorted = when (sortType) {
@@ -186,11 +188,10 @@ fun CachePlaylistScreen(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             if (inSelectMode) {
-                TopAppBar(
+                IrideAdaptiveTopBar(
                     title = {
                         Text(
                             text = pluralStringResource(R.plurals.n_song, selection.size, selection.size),
-                            style = MaterialTheme.typography.titleLarge,
                         )
                     },
                     navigationIcon = {
@@ -305,6 +306,8 @@ fun CachePlaylistScreen(
                             onSortChange = onSortTypeChange,
                             sortDescending = sortDescending,
                             onSortDescendingChange = onSortDescendingChange,
+                            useIrideStyle = topNavigationBarEnabled,
+                            modifier = Modifier.padding(horizontal = 12.dp),
                         )
                     }
 

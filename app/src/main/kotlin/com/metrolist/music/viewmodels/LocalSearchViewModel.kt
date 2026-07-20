@@ -8,6 +8,7 @@ package com.metrolist.music.viewmodels
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.datasource.cache.SimpleCache
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Album
@@ -15,6 +16,7 @@ import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.LocalItem
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.Song
+import com.metrolist.music.di.PlayerCache
 import com.metrolist.music.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -36,6 +38,7 @@ class LocalSearchViewModel
 constructor(
     @ApplicationContext context: Context,
     database: MusicDatabase,
+    @PlayerCache private val playerCache: SimpleCache,
 ) : ViewModel() {
     val query = MutableStateFlow("")
     val filter = MutableStateFlow(LocalFilter.ALL)
@@ -69,6 +72,23 @@ constructor(
                     LocalFilter.ALBUM -> database.searchAlbums(query)
                     LocalFilter.ARTIST -> database.searchArtists(query)
                     LocalFilter.PLAYLIST -> database.searchPlaylists(query)
+                    // Downloaded songs, plus songs merely cached from playback (not explicitly
+                    // downloaded) — "cached" isn't a DB column, so that half is checked against
+                    // the player's on-disk cache here. Albums only count once fully downloaded
+                    // (searchDownloadedAlbums), matching "Recently Downloaded" in Library.
+                    LocalFilter.DOWNLOAD ->
+                        combine(
+                            database.searchSongsForDownloadFilter(query),
+                            database.searchDownloadedAlbums(query),
+                        ) { songs, albums ->
+                            val downloadedOrCached = songs.filter { song ->
+                                song.song.isDownloaded || run {
+                                    val contentLength = song.format?.contentLength
+                                    contentLength != null && playerCache.isCached(song.id, 0, contentLength)
+                                }
+                            }
+                            downloadedOrCached + albums
+                        }
                 }.map { list ->
                     LocalSearchResult(
                         query = query,
@@ -102,6 +122,7 @@ enum class LocalFilter {
     ALBUM,
     ARTIST,
     PLAYLIST,
+    DOWNLOAD,
 }
 
 data class LocalSearchResult(

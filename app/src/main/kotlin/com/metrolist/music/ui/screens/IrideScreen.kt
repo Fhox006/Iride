@@ -32,6 +32,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavController
 import androidx.palette.graphics.Palette
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.IrideAdaptiveTopBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
@@ -214,14 +215,14 @@ fun IrideScreen(
             }
         }
 
-        TopAppBar(
+        IrideAdaptiveTopBar(
             title = { Text("Iride") },
             navigationIcon = {
                 IconButton(onClick = { navController.navigateUp() }) {
                     Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+            transparent = true,
         )
     }
 }

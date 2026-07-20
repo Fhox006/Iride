@@ -375,10 +375,17 @@ fun rememberBottomSheetState(
         mutableIntStateOf(initialAnchor)
     }
 
-    // Never restore to full-screen expanded — nav bar must be visible at startup
-    val effectiveAnchor = if (previousAnchor == expandedAnchor) collapsedAnchor else previousAnchor
+    // Never restore to full-screen expanded on cold start — nav bar must be visible at
+    // startup. Corrected once, on the saved anchor itself, instead of via a derived
+    // "effective" value recomputed on every read: the old approach re-applied this startup-
+    // only downgrade any time dismissedBound/expandedBound/collapsedBound changed value
+    // (e.g. insets shifting when a fullscreen dialog — lyrics fullscreen — hides system bars),
+    // which snapped an already-open player shut just from bounds being recalculated.
+    if (previousAnchor == expandedAnchor) {
+        previousAnchor = collapsedAnchor
+    }
 
-    val initialValue = when (effectiveAnchor) {
+    val initialValue = when (previousAnchor) {
         expandedAnchor -> expandedBound
         collapsedAnchor -> collapsedBound
         else -> dismissedBound
@@ -389,7 +396,7 @@ fun rememberBottomSheetState(
     }
 
     return remember(dismissedBound, expandedBound, collapsedBound, coroutineScope) {
-        val targetValue = when (effectiveAnchor) {
+        val targetValue = when (previousAnchor) {
             expandedAnchor -> expandedBound
             collapsedAnchor -> collapsedBound
             dismissedAnchor -> dismissedBound

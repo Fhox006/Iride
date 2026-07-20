@@ -250,6 +250,131 @@ object ComposeToImage {
             return@withContext bitmap
         }
 
+    /** Renders the "guess the song" game result card — same monochrome/mono-font look as the New Iride UI. */
+    suspend fun createArtistGameResultImage(
+        context: Context,
+        artistThumbnailUrl: String?,
+        artistName: String,
+        timeText: String,
+        isNewBest: Boolean,
+    ): Bitmap =
+        withContext(Dispatchers.Default) {
+            val imageWidth = 1080
+            val padding = 80f
+
+            val monoFont = try {
+                ResourcesCompat.getFont(context, R.font.space_mono_regular)
+            } catch (_: Exception) {
+                null
+            } ?: Typeface.MONOSPACE
+
+            val backgroundColor = 0xFF000000.toInt()
+            val onBackgroundColor = 0xFFFFFFFF.toInt()
+            val secondaryColor = 0xB3FFFFFF.toInt()
+
+            var avatarBitmap: Bitmap? = null
+            if (artistThumbnailUrl != null) {
+                try {
+                    val imageLoader = ImageLoader(context)
+                    val request = ImageRequest.Builder(context).data(artistThumbnailUrl).size(400).allowHardware(false).build()
+                    avatarBitmap = imageLoader.execute(request).image?.toBitmap()
+                } catch (_: Exception) {}
+            }
+
+            val namePaint = TextPaint().apply {
+                color = onBackgroundColor
+                textSize = 64f
+                typeface = Typeface.create(monoFont, Typeface.BOLD)
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+            }
+            val timePaint = TextPaint().apply {
+                color = onBackgroundColor
+                textSize = 150f
+                typeface = Typeface.create(monoFont, Typeface.BOLD)
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+            }
+            val labelPaint = TextPaint().apply {
+                color = secondaryColor
+                textSize = 40f
+                typeface = monoFont
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+            }
+            val badgePaint = TextPaint().apply {
+                color = backgroundColor
+                textSize = 34f
+                typeface = Typeface.create(monoFont, Typeface.BOLD)
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+            }
+            val appNamePaint = TextPaint().apply {
+                color = secondaryColor
+                textSize = 36f
+                typeface = monoFont
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+            }
+
+            val avatarSize = 320f
+            val badgeHeight = if (isNewBest) 90f else 0f
+            val imageHeight = padding + avatarSize + 50f + (namePaint.descent() - namePaint.ascent()) + 40f +
+                badgeHeight + 40f + (timePaint.descent() - timePaint.ascent()) + 20f +
+                (labelPaint.descent() - labelPaint.ascent()) + 70f + padding
+
+            val bitmap = createBitmap(imageWidth, imageHeight.toInt())
+            val canvas = Canvas(bitmap)
+            canvas.drawColor(backgroundColor)
+
+            val centerX = imageWidth / 2f
+            var cursorY = padding
+
+            // Avatar bubble
+            val avatarRect = RectF(centerX - avatarSize / 2f, cursorY, centerX + avatarSize / 2f, cursorY + avatarSize)
+            if (avatarBitmap != null) {
+                canvas.save()
+                canvas.clipPath(Path().apply { addOval(avatarRect, Path.Direction.CW) })
+                canvas.drawBitmap(avatarBitmap, null, avatarRect, null)
+                canvas.restore()
+            } else {
+                canvas.drawOval(avatarRect, Paint().apply { color = secondaryColor; isAntiAlias = true })
+            }
+            canvas.drawOval(avatarRect, Paint().apply { color = onBackgroundColor; style = Paint.Style.STROKE; strokeWidth = 4f; isAntiAlias = true })
+            cursorY += avatarSize + 50f
+
+            // Artist name
+            cursorY -= namePaint.ascent()
+            canvas.drawText(artistName, centerX, cursorY, namePaint)
+            cursorY += namePaint.descent() + 40f
+
+            // New best badge
+            if (isNewBest) {
+                val badgeText = context.getString(R.string.guess_game_new_best).uppercase()
+                val badgeWidth = badgePaint.measureText(badgeText) + 80f
+                val badgeRect = RectF(centerX - badgeWidth / 2f, cursorY, centerX + badgeWidth / 2f, cursorY + 70f)
+                canvas.drawRoundRect(badgeRect, 35f, 35f, Paint().apply { color = onBackgroundColor; isAntiAlias = true })
+                val badgeTextY = badgeRect.centerY() - (badgePaint.descent() + badgePaint.ascent()) / 2f
+                canvas.drawText(badgeText, centerX, badgeTextY, badgePaint)
+                cursorY += 90f + 40f
+            }
+
+            // Time
+            cursorY -= timePaint.ascent()
+            canvas.drawText(timeText, centerX, cursorY, timePaint)
+            cursorY += timePaint.descent() + 20f
+
+            // Label
+            cursorY -= labelPaint.ascent()
+            canvas.drawText(context.getString(R.string.guess_game), centerX, cursorY, labelPaint)
+            cursorY += labelPaint.descent() + 70f
+
+            // Footer
+            canvas.drawText("IRIDE", centerX, imageHeight - padding + 10f, appNamePaint)
+
+            return@withContext bitmap
+        }
+
     // Stack Blur v1.0 from http://www.quasimondo.com/StackBlurForCanvas/StackBlurDemo.html
     // Java Author: Mario Klingemann <mario at quasimondo.com>
     // http://incubator.quasimondo.com

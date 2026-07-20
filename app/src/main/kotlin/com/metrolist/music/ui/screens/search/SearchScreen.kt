@@ -73,6 +73,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -148,7 +149,7 @@ fun SearchScreen(
     }
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     var searchSource by rememberEnumPreference(SearchSourceKey, SearchSource.ONLINE)
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue())
@@ -161,9 +162,17 @@ fun SearchScreen(
     var submittedQuery by rememberSaveable { mutableStateOf<String?>(null) }
     val onlineSearchResultViewModel: OnlineSearchViewModel = hiltViewModel()
 
+    // Rebuilt from scratch: a suggestion/history tap (or a keyboard search) always lands here,
+    // and this is the one place that both fills the visible search box with the submitted text
+    // AND clears focus, atomically. Previously the box was never updated (stayed empty after
+    // tapping a suggestion) and focus was left on, which made OnlineSearchResultsBody's
+    // focused-suggestions branch render on top of the results it had just submitted — a second,
+    // unsynced (still-empty-query) suggestions panel over the New Iride UI's near-black
+    // background, which read as "opens completely black" / uneditable.
     fun handleSearch(searchQuery: String) {
         if (searchQuery.isEmpty()) return
         focusManager.clearFocus()
+        isFocused = false
         when (val parsedUrl = YouTubeUrlParser.parse(searchQuery)) {
             is YouTubeUrlParser.ParsedUrl.Video -> {
                 playerConnection?.playQueue(YouTubeQueue(WatchEndpoint(videoId = parsedUrl.id)))
@@ -179,6 +188,7 @@ fun SearchScreen(
             }
             null -> {
                 if (topNavigationBarEnabled) {
+                    query = TextFieldValue(searchQuery, TextRange(searchQuery.length))
                     submittedQuery = searchQuery
                 } else {
                     navController.navigate("search/${URLEncoder.encode(searchQuery, "UTF-8")}")
@@ -196,13 +206,18 @@ fun SearchScreen(
         submittedQuery?.let(onlineSearchResultViewModel::search)
     }
 
-    BackHandler(enabled = topNavigationBarEnabled && submittedQuery != null) {
-        submittedQuery = null
-    }
-
-    BackHandler(enabled = topNavigationBarEnabled && isFocused) {
-        isFocused = false
-        focusManager.clearFocus()
+    // Single handler, ordered precedence, instead of two BackHandlers racing over overlapping
+    // state (submittedQuery/isFocused/focus manager) with no defined winner — that race is what
+    // crashed the app on back press. Submitted results close first; only then does a still-open
+    // suggestions panel close; below that, normal nav-back applies.
+    BackHandler(enabled = topNavigationBarEnabled && (submittedQuery != null || isFocused)) {
+        if (submittedQuery != null) {
+            submittedQuery = null
+        }
+        if (isFocused) {
+            isFocused = false
+            focusManager.clearFocus()
+        }
     }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
@@ -222,30 +237,40 @@ fun SearchScreen(
     // first time this movableContentOf block ran.)
     val irideHeaderContent = remember {
         movableContentOf {
+            // Content shape must stay constant across every recomposition/move of this
+            // movableContentOf block (Compose requirement) — branching on a nullable
+            // CompositionLocal here (controller becomes transiently null mid back-navigation)
+            // made the block sometimes emit zero children, which crashed with "Could not
+            // resolve state for movable content" when a move landed on a mismatched shape.
+            // SearchScrollableHeader is now always composed with safe fallbacks instead.
             val controller = com.metrolist.music.LocalTopNavBarController.current
-            if (controller != null) {
-                SearchScrollableHeader(
-                    navigationItems = controller.navigationItems,
-                    currentRoute = controller.currentRoute,
-                    onItemClick = controller.onItemClick,
-                    query = query,
-                    onQueryChange = { query = it },
-                    searchSource = searchSource,
-                    onSearchSourceToggle = {
-                        searchSource = if (searchSource == SearchSource.ONLINE) SearchSource.LOCAL else SearchSource.ONLINE
-                    },
-                    focusRequester = focusRequester,
-                    onFocusChanged = { isFocused = it.isFocused },
-                    onSearch = { handleSearch(query.text) },
-                    onClear = { query = TextFieldValue(""); submittedQuery = null },
-                    pureBlack = pureBlack,
-                    transparentBackground = mainTopGradient,
-                )
-            }
+            SearchScrollableHeader(
+                navigationItems = controller?.navigationItems ?: emptyList(),
+                currentRoute = controller?.currentRoute,
+                onItemClick = controller?.onItemClick ?: { _, _ -> },
+                query = query,
+                onQueryChange = { query = it },
+                searchSource = searchSource,
+                onSearchSourceToggle = {
+                    searchSource = if (searchSource == SearchSource.ONLINE) SearchSource.LOCAL else SearchSource.ONLINE
+                },
+                focusRequester = focusRequester,
+                onFocusChanged = { isFocused = it.isFocused },
+                onSearch = { handleSearch(query.text) },
+                onClear = { query = TextFieldValue(""); submittedQuery = null },
+                pureBlack = pureBlack,
+                transparentBackground = mainTopGradient,
+            )
         }
     }
+    // Gate only on topNavigationBarEnabled (a static pref) — NOT on topNavBarController's
+    // nullity. The controller goes transiently null mid back-navigation (see comment above);
+    // gating the movable content's call site on it made that single call site disappear and
+    // reappear exactly during back-swipe, which combined with the system's predictive-back
+    // forced extra measure/draw pass crashed with "Could not resolve state for movable
+    // content". irideHeaderContent already null-safes the controller internally.
     val irideHeader: (@Composable () -> Unit)? =
-        if (topNavigationBarEnabled && topNavBarController != null) irideHeaderContent else null
+        if (topNavigationBarEnabled) irideHeaderContent else null
 
     Scaffold(
         topBar = {
@@ -338,6 +363,7 @@ fun SearchScreen(
                     lazyListState = lazyListState,
                     icon = R.drawable.mic,
                     onClick = { navController.navigate("recognition") },
+                    useIrideStyle = topNavigationBarEnabled,
                 )
             }
         }

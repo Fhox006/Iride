@@ -15,8 +15,11 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -36,6 +39,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -73,12 +77,17 @@ import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.EmptyPlaceholder
+import com.metrolist.music.ui.component.IrideCollapsibleSection
 import com.metrolist.music.ui.component.LibraryAlbumGridItem
 import com.metrolist.music.ui.component.LibraryAlbumListItem
+import com.metrolist.music.ui.component.LibraryContinueListeningAlbumItem
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.NavigationTitle
+import com.metrolist.music.ui.component.VinylPeekFraction
+import com.metrolist.music.ui.component.currentGridThumbnailHeight
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LibraryAlbumsViewModel
@@ -109,6 +118,8 @@ fun LibraryAlbumsScreen(
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val betterLibraryBeta by rememberPreference(com.metrolist.music.constants.BetterLibraryBetaKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(com.metrolist.music.constants.TopNavigationBarKey, defaultValue = true)
+    val currentGridHeight = currentGridThumbnailHeight()
 
     LaunchedEffect(Unit) {
         if (ytmSync) {
@@ -117,9 +128,15 @@ fun LibraryAlbumsScreen(
     }
 
     val albums by (if (isOffline) viewModel.downloadedAlbums else viewModel.allAlbums).collectAsState()
+    val continueListeningAlbums by viewModel.continueListeningAlbums.collectAsState()
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     val searchQuery by viewModel.searchQuery.collectAsState()
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForSearch() }
+
+    // Per-section collapse state (session-only, not persisted) — same convention as HomeScreen.
+    val collapsedSections = remember { mutableStateMapOf<String, Boolean>() }
+    fun isSectionCollapsed(key: String) = collapsedSections[key] == true
+    fun toggleSection(key: String) { collapsedSections[key] = !isSectionCollapsed(key) }
 
     val filteredAlbums = remember(albums, hideExplicit, normalizedQuery) {
         val visible = if (hideExplicit) albums.filter { !it.album.explicit } else albums
@@ -164,6 +181,60 @@ fun LibraryAlbumsScreen(
             snapAnimationSpec = tween(durationMillis = 200),
         )
     }
+
+    val continueListeningSpacing = if (topNavigationBarEnabled) currentGridHeight * VinylPeekFraction else 8.dp
+
+    val continueListeningTitle: @Composable () -> Unit = {
+        NavigationTitle(
+            title = stringResource(R.string.continue_listening),
+            useIrideStyle = topNavigationBarEnabled,
+            collapsed = isSectionCollapsed("continue_listening"),
+            onCollapseToggle = if (topNavigationBarEnabled) { { toggleSection("continue_listening") } } else null,
+        )
+    }
+    val continueListeningRow: @Composable () -> Unit = {
+        val content: @Composable () -> Unit = {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = if (topNavigationBarEnabled) 16.dp else 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(continueListeningSpacing),
+            ) {
+                items(continueListeningAlbums, key = { "continue_listening_${it.id}" }) { album ->
+                    LibraryContinueListeningAlbumItem(
+                        navController = navController,
+                        menuState = menuState,
+                        coroutineScope = coroutineScope,
+                        album = album,
+                        isActive = album.id == mediaMetadata?.album?.id,
+                        isPlaying = isPlaying,
+                        size = currentGridHeight,
+                        showVinylEffect = topNavigationBarEnabled,
+                        onDismiss = { viewModel.dismissContinueListeningAlbum(album.id) },
+                    )
+                }
+            }
+        }
+        if (topNavigationBarEnabled) {
+            IrideCollapsibleSection(collapsed = isSectionCollapsed("continue_listening")) { content() }
+        } else {
+            content()
+        }
+    }
+
+    // New Iride UI: no "Favorite Albums" label — it sat as a redundant divider directly under
+    // Continue Listening, the two sections now just flow into one grid. Classic UI keeps it.
+    val favoritesTitle: @Composable () -> Unit = {
+        if (!topNavigationBarEnabled) {
+            NavigationTitle(
+                title = stringResource(R.string.favorite_albums),
+                useIrideStyle = false,
+                collapsed = isSectionCollapsed("favorite_albums"),
+                onCollapseToggle = null,
+            )
+        } else {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+    val favoritesCollapsed = isSectionCollapsed("favorite_albums") && topNavigationBarEnabled
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -224,59 +295,69 @@ fun LibraryAlbumsScreen(
                                     .asPaddingValues().calculateBottomPadding(),
                             ),
                         ) {
-                            item(key = "sort", contentType = CONTENT_TYPE_HEADER) {
-                                LibrarySortRow(
-                                    sortOptions = sortOptions,
-                                    currentSort = sortType,
-                                    onSortChange = onSortTypeChange,
-                                    sortDescending = sortDescending,
-                                    onSortDescendingChange = onSortDescendingChange,
-                                    viewType = viewType,
-                                    onViewTypeChange = { viewType = it },
-                                )
+                            if (continueListeningAlbums.isNotEmpty()) {
+                                item(key = "continue_listening_title") { continueListeningTitle() }
+                                item(key = "continue_listening_row") { continueListeningRow() }
                             }
 
-                            filteredAlbums.let { albums ->
-                                if (albums.isEmpty()) {
-                                    item(key = "empty_placeholder") {
-                                        if (searchQuery.isNotBlank()) {
-                                            LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
-                                        } else {
-                                            EmptyPlaceholder(
-                                                icon = R.drawable.album,
-                                                text = stringResource(R.string.library_album_empty),
-                                                modifier = Modifier.animateItem(),
-                                            )
+                            item(key = "favorite_albums_title") { favoritesTitle() }
+
+                            if (!favoritesCollapsed) {
+                                item(key = "sort", contentType = CONTENT_TYPE_HEADER) {
+                                    LibrarySortRow(
+                                        sortOptions = sortOptions,
+                                        currentSort = sortType,
+                                        onSortChange = onSortTypeChange,
+                                        sortDescending = sortDescending,
+                                        onSortDescendingChange = onSortDescendingChange,
+                                        viewType = viewType,
+                                        onViewTypeChange = { viewType = it },
+                                        useIrideStyle = topNavigationBarEnabled,
+                                    )
+                                }
+
+                                filteredAlbums.let { albums ->
+                                    if (albums.isEmpty()) {
+                                        item(key = "empty_placeholder") {
+                                            if (searchQuery.isNotBlank()) {
+                                                LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
+                                            } else {
+                                                EmptyPlaceholder(
+                                                    icon = R.drawable.album,
+                                                    text = stringResource(R.string.library_album_empty),
+                                                    modifier = Modifier.animateItem(),
+                                                )
+                                            }
                                         }
                                     }
+                                    items(
+                                        items = albums,
+                                        key = { it.id },
+                                        contentType = { CONTENT_TYPE_ALBUM },
+                                    ) { album ->
+                                        LibraryAlbumListItem(
+                                            navController = navController,
+                                            menuState = menuState,
+                                            album = album,
+                                            isActive = album.id == mediaMetadata?.album?.id,
+                                            isPlaying = isPlaying,
+                                            modifier = Modifier.animateItem(),
+                                        )
+                                    }
                                 }
-                                items(
-                                    items = albums,
-                                    key = { it.id },
-                                    contentType = { CONTENT_TYPE_ALBUM },
-                                ) { album ->
-                                    LibraryAlbumListItem(
-                                        navController = navController,
-                                        menuState = menuState,
-                                        album = album,
-                                        isActive = album.id == mediaMetadata?.album?.id,
-                                        isPlaying = isPlaying,
-                                        modifier = Modifier.animateItem(),
-                                    )
-                                }
-                            }
-                            item(key = "footer") {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 16.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        text = itemCountText,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
+                                item(key = "footer") {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 16.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = itemCountText,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -303,67 +384,78 @@ fun LibraryAlbumsScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            item(
-                                key = "sort",
-                                span = { GridItemSpan(maxLineSpan) },
-                                contentType = CONTENT_TYPE_HEADER,
-                            ) {
-                                LibrarySortRow(
-                                    sortOptions = sortOptions,
-                                    currentSort = sortType,
-                                    onSortChange = onSortTypeChange,
-                                    sortDescending = sortDescending,
-                                    onSortDescendingChange = onSortDescendingChange,
-                                    viewType = viewType,
-                                    onViewTypeChange = { viewType = it },
-                                )
+                            if (continueListeningAlbums.isNotEmpty()) {
+                                item(key = "continue_listening_title", span = { GridItemSpan(maxLineSpan) }) { continueListeningTitle() }
+                                item(key = "continue_listening_row", span = { GridItemSpan(maxLineSpan) }) { continueListeningRow() }
                             }
 
-                            filteredAlbums.let { albums ->
-                                if (albums.isEmpty()) {
-                                    item(span = { GridItemSpan(maxLineSpan) }) {
-                                        if (searchQuery.isNotBlank()) {
-                                            LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
-                                        } else {
-                                            EmptyPlaceholder(
-                                                icon = R.drawable.album,
-                                                text = stringResource(R.string.library_album_empty),
-                                                modifier = Modifier.animateItem(),
-                                            )
+                            item(key = "favorite_albums_title", span = { GridItemSpan(maxLineSpan) }) { favoritesTitle() }
+
+                            if (!favoritesCollapsed) {
+                                item(
+                                    key = "sort",
+                                    span = { GridItemSpan(maxLineSpan) },
+                                    contentType = CONTENT_TYPE_HEADER,
+                                ) {
+                                    LibrarySortRow(
+                                        sortOptions = sortOptions,
+                                        currentSort = sortType,
+                                        onSortChange = onSortTypeChange,
+                                        sortDescending = sortDescending,
+                                        onSortDescendingChange = onSortDescendingChange,
+                                        viewType = viewType,
+                                        onViewTypeChange = { viewType = it },
+                                        useIrideStyle = topNavigationBarEnabled,
+                                    )
+                                }
+
+                                filteredAlbums.let { albums ->
+                                    if (albums.isEmpty()) {
+                                        item(span = { GridItemSpan(maxLineSpan) }) {
+                                            if (searchQuery.isNotBlank()) {
+                                                LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
+                                            } else {
+                                                EmptyPlaceholder(
+                                                    icon = R.drawable.album,
+                                                    text = stringResource(R.string.library_album_empty),
+                                                    modifier = Modifier.animateItem(),
+                                                )
+                                            }
                                         }
                                     }
+                                    items(
+                                        items = albums,
+                                        key = { it.id },
+                                        contentType = { CONTENT_TYPE_ALBUM },
+                                    ) { album ->
+                                        LibraryAlbumGridItem(
+                                            navController = navController,
+                                            menuState = menuState,
+                                            coroutineScope = coroutineScope,
+                                            album = album,
+                                            isActive = album.id == mediaMetadata?.album?.id,
+                                            isPlaying = isPlaying,
+                                            showVinylEffect = topNavigationBarEnabled,
+                                            modifier = Modifier.animateItem(),
+                                        )
+                                    }
                                 }
-                                items(
-                                    items = albums,
-                                    key = { it.id },
-                                    contentType = { CONTENT_TYPE_ALBUM },
-                                ) { album ->
-                                    LibraryAlbumGridItem(
-                                        navController = navController,
-                                        menuState = menuState,
-                                        coroutineScope = coroutineScope,
-                                        album = album,
-                                        isActive = album.id == mediaMetadata?.album?.id,
-                                        isPlaying = isPlaying,
-                                        modifier = Modifier.animateItem(),
-                                    )
-                                }
-                            }
-                            item(
-                                key = "footer",
-                                span = { GridItemSpan(maxLineSpan) },
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 16.dp),
-                                    contentAlignment = Alignment.Center,
+                                item(
+                                    key = "footer",
+                                    span = { GridItemSpan(maxLineSpan) },
                                 ) {
-                                    Text(
-                                        text = itemCountText,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 16.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = itemCountText,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
                         }

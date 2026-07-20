@@ -6,14 +6,25 @@
 package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.WatchEndpoint
@@ -139,7 +150,8 @@ fun LibraryAlbumGridItem(
     coroutineScope: CoroutineScope,
     album: Album,
     isActive: Boolean = false,
-    isPlaying: Boolean = false
+    isPlaying: Boolean = false,
+    showVinylEffect: Boolean = false,
 ) = AlbumGridItem(
     album = album,
     showLikedIcon = false,
@@ -147,7 +159,8 @@ fun LibraryAlbumGridItem(
     isPlaying = isPlaying,
     coroutineScope = coroutineScope,
     fillMaxWidth = true,
-    showPlayButton = false,
+    showPlayButton = !showVinylEffect,
+    showVinylEffect = showVinylEffect,
     modifier = modifier
         .fillMaxWidth()
         .combinedClickable(
@@ -165,6 +178,60 @@ fun LibraryAlbumGridItem(
             }
         )
 )
+
+// "Continue Listening" carousel card (Library Albums screen): a plain AlbumGridItem plus a
+// small dismiss button pinned to the thumbnail's corner. Removing an album here only calls
+// [onDismiss] — it never touches favorites or play history, see LibraryAlbumsViewModel.
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun LibraryContinueListeningAlbumItem(
+    navController: NavController,
+    menuState: MenuState,
+    coroutineScope: CoroutineScope,
+    album: Album,
+    isActive: Boolean,
+    isPlaying: Boolean,
+    size: Dp,
+    showVinylEffect: Boolean,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier.width(size)) {
+        AlbumGridItem(
+            album = album,
+            showLikedIcon = false,
+            isActive = isActive,
+            isPlaying = isPlaying,
+            coroutineScope = coroutineScope,
+            size = size,
+            showPlayButton = !showVinylEffect,
+            showVinylEffect = showVinylEffect,
+            modifier = Modifier.combinedClickable(
+                onClick = { navController.navigate("album/${album.id}") },
+                onLongClick = {
+                    menuState.show {
+                        AlbumMenu(originalAlbum = album, navController = navController, onDismiss = menuState::dismiss)
+                    }
+                },
+            ),
+        )
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp)
+                .size(26.dp)
+                .background(Color.Black.copy(alpha = 0.55f), CircleShape),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.close),
+                contentDescription = stringResource(R.string.remove_from_continue_listening),
+                tint = Color.White,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+    }
+}
 
 @Composable
 fun LibraryPlaylistListItem(

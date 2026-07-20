@@ -5,9 +5,7 @@
 
 package com.metrolist.music.ui.component
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -126,7 +124,7 @@ fun BottomSheetMenu(
     state: MenuState,
     background: Color = MaterialTheme.colorScheme.surface,
 ) {
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val focusManager = LocalFocusManager.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
@@ -157,15 +155,13 @@ fun BottomSheetMenu(
         },
         modifier = modifier
             .then(
-                // Iride style sizes the sheet to its (short) content and draws a hairline border
-                // around it. fillMaxHeight() here would stretch that bordered surface to the full
-                // screen height, so the border traces the entire left/right screen edge instead of
-                // hugging the compact menu — classic UI keeps fillMaxHeight since it has no border.
+                // Iride style sizes the sheet to its (short) content instead of stretching to the
+                // full screen height like classic UI's fillMaxHeight(). No manual border here: a
+                // hairline drawn on this outer modifier sits outside the sheet Surface's own clip
+                // and shows up as a stray 1-2px gray edge against the scrim — containerColor alone
+                // (set above) gives a seamless edge, matching how every other Iride surface looks.
                 if (topNavigationBarEnabled) {
-                    Modifier.border(
-                        BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-                        RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                    )
+                    Modifier
                 } else {
                     Modifier.fillMaxHeight()
                 }

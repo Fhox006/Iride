@@ -268,7 +268,7 @@ fun BottomSheetPlayer(
     val (hideStatusBarOnFullscreen) = rememberPreference(HideStatusBarOnFullscreenKey, false)
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
     val (enableComments) = rememberPreference(EnableCommentsKey, false)
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     // New Iride UI: the player becomes a fixed curtain layer behind the app (portrait/top-level
     // only — the landscape rail's MiniPlayer peek stays untouched regardless of this toggle).
     val curtainMode = topNavigationBarEnabled && !showPeekContent
@@ -300,6 +300,17 @@ fun BottomSheetPlayer(
             showQueue = false
             showInlineLyrics = false
             showComments = false
+            isFullScreen = false
+        }
+    }
+
+    // isFullScreen only makes sense while lyrics or queue is open. Every toggle site
+    // (New Iride wheel labels, classic thumbnail/title taps, peek fullscreen button...)
+    // used to reset showInlineLyrics/showQueue without also resetting isFullScreen,
+    // leaving the fullscreen button's stroke/background stuck in the "active" state
+    // after lyrics/queue closed. Resetting it here once covers every caller.
+    LaunchedEffect(showInlineLyrics, showQueue) {
+        if (!showInlineLyrics && !showQueue) {
             isFullScreen = false
         }
     }
@@ -1075,10 +1086,15 @@ fun BottomSheetPlayer(
                             castHandler = castHandler,
                             playerConnection = playerConnection,
                             listenTogetherManager = listenTogetherManager,
-                            primaryColor = MaterialTheme.colorScheme.primary,
-                            outlineColor = MaterialTheme.colorScheme.outline,
-                            onSurfaceColor = MaterialTheme.colorScheme.onSurface,
-                            errorColor = MaterialTheme.colorScheme.error,
+                            // New Iride UI curtain miniplayer sits on the player's own flat dark
+                            // background (IrideMp3BackgroundColor) in every theme, so it's styled
+                            // monochrome white-on-dark to match the rest of the New Iride UI instead
+                            // of the Material accent/surface palette. The progress ring in particular
+                            // must be solid white here (was the themed primary/accent color).
+                            primaryColor = Color.White,
+                            outlineColor = Color.White,
+                            onSurfaceColor = Color.White,
+                            errorColor = Color(0xFFFF6B6B),
                             onExpandClick = { state.expandSoft() },
                             onArtPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniArt = r } },
                             onInfoPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniInfo = r } },
@@ -2147,6 +2163,8 @@ fun BottomSheetPlayer(
                         onNextClick = { if (!isListenTogetherGuest) playerConnection.seekToNext() },
                         onFavoriteClick = { playerConnection.service.toggleLike() },
                         onRadioClick = { playerConnection.startRadioForSong(it) },
+                        isListenTogetherGuest = isListenTogetherGuest,
+                        isMuted = isMuted,
                         onSeek = { fraction ->
                             if (!isListenTogetherGuest && duration > 0) {
                                 val seekPosition = (duration * fraction).toLong()
@@ -2178,6 +2196,8 @@ fun BottomSheetPlayer(
                                 queueOpenNonce++
                             }
                         },
+                        isFullScreen = isFullScreen,
+                        onToggleFullScreen = { isFullScreen = !isFullScreen },
                         navController = navController,
                         playerBottomSheetState = state,
                         // Just the raw nav-bar inset — using state.collapsedBound here (as before)

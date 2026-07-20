@@ -34,6 +34,7 @@ import com.metrolist.music.utils.CrashHandler
 import com.metrolist.music.utils.GenreProvider
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
 import com.metrolist.music.utils.dataStore
+import com.metrolist.music.utils.get
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -71,6 +72,9 @@ class App :
 
         // Load the on-disk genre-tag cache used by playlist filter pills
         GenreProvider.init(this)
+
+        // Warm the New Iride UI preference before setContent() ever runs (see companion doc).
+        topNavigationBarEnabledCache = dataStore.get(TopNavigationBarKey, true)
 
         Timber.plant(Timber.DebugTree())
 
@@ -271,6 +275,20 @@ class App :
     }
 
     companion object {
+        // New Iride UI: warmed synchronously in onCreate(), before any Activity/Compose code
+        // runs, so the very first composed frame of MainActivity/HomeScreen already has the
+        // real stored value to seed rememberPreference(TopNavigationBarKey, ...) with instead
+        // of a hardcoded literal default. rememberPreference() itself does perform a blocking
+        // DataStore read for its own first-composition value, but that read races with several
+        // other blocking preference reads happening in the same first composition (theme color,
+        // dark mode, dynamic theme, etc.) — on a slow cold start any jank there is exactly the
+        // kind of window where a stale/default UI branch can end up on screen for a frame or
+        // two before settling. Reading it here, at process start, removes that race entirely:
+        // by the time any Composable asks for it, the true value is already sitting in memory.
+        @Volatile
+        var topNavigationBarEnabledCache: Boolean = true
+            private set
+
         suspend fun forgetAccount(context: Context) {
             Timber.d("forgetAccount: Starting logout process")
 

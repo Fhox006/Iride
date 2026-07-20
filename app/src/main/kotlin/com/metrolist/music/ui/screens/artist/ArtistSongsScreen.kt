@@ -99,7 +99,7 @@ fun ArtistSongsScreen(
         )
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val artist by viewModel.artist.collectAsState()
     val songs by viewModel.songs.collectAsState()
     val lazyListState = rememberLazyListState()

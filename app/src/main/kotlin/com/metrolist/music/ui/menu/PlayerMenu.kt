@@ -75,6 +75,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.net.toUri
 import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
@@ -101,10 +102,13 @@ import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.VolumeSlider
+import com.metrolist.music.ui.screens.settings.DarkMode
 import androidx.datastore.preferences.core.edit
+import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.utils.SharePlatform
 import com.metrolist.music.utils.SongLinkResolver
 import com.metrolist.music.utils.dataStore
+import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -142,6 +146,8 @@ fun PlayerMenu(
     val castDeviceName by castHandler?.castDeviceName?.collectAsState() ?: remember { mutableStateOf<String?>(null) }
 
     val varispeedMode by rememberPreference(VarispeedKey, defaultValue = false)
+    val repeatMode by playerConnection.repeatMode.collectAsState()
+    val (darkMode, onDarkModeChange) = rememberEnumPreference(DarkModeKey, DarkMode.ON)
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -695,6 +701,61 @@ fun PlayerMenu(
         }
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
+
+        if (isQueueTrigger != true) {
+            item {
+                Material3MenuGroup(
+                    items =
+                        listOf(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.repeat_one)) },
+                                description = { Text(text = stringResource(R.string.repeat_one_desc)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(
+                                            if (repeatMode == Player.REPEAT_MODE_ONE) R.drawable.repeat_one else R.drawable.repeat,
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                        tint = if (repeatMode == Player.REPEAT_MODE_ONE) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                    )
+                                },
+                                onClick = {
+                                    playerConnection.player.repeatMode = if (repeatMode == Player.REPEAT_MODE_ONE) {
+                                        Player.REPEAT_MODE_OFF
+                                    } else {
+                                        Player.REPEAT_MODE_ONE
+                                    }
+                                },
+                            ),
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.night_mode)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.contrast),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                        tint = if (darkMode == DarkMode.ON) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                    )
+                                },
+                                onClick = {
+                                    onDarkModeChange(if (darkMode == DarkMode.ON) DarkMode.OFF else DarkMode.ON)
+                                },
+                            ),
+                        ),
+                )
+            }
+
+            item { Spacer(modifier = Modifier.height(12.dp)) }
+        }
 
         item {
             Material3MenuGroup(

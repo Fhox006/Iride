@@ -24,13 +24,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -80,6 +80,8 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.IrideLoadingIndicator
+import com.metrolist.music.ui.component.IrideAdaptiveTopBar
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.menu.YouTubeSongMenu
@@ -143,7 +145,7 @@ fun OnlinePodcastScreen(
                             .padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        ContainedLoadingIndicator()
+                        IrideLoadingIndicator()
                     }
                 }
             } else if (error != null) {
@@ -234,7 +236,7 @@ fun OnlinePodcastScreen(
             }
         }
 
-        TopAppBar(
+        IrideAdaptiveTopBar(
             title = {
                 if (isSearching) {
                     TextField(
@@ -243,11 +245,11 @@ fun OnlinePodcastScreen(
                         placeholder = {
                             Text(
                                 text = stringResource(R.string.search),
-                                style = MaterialTheme.typography.titleLarge
+                                style = LocalTextStyle.current
                             )
                         },
                         singleLine = true,
-                        textStyle = MaterialTheme.typography.titleLarge,
+                        textStyle = LocalTextStyle.current,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,

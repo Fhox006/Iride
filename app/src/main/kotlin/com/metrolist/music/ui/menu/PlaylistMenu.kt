@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -51,6 +52,7 @@ import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistSong
 import com.metrolist.music.db.entities.Song
@@ -69,6 +71,7 @@ import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.menu.ExportDialog
 import com.metrolist.music.utils.PlaylistExporter
 import com.metrolist.music.utils.getExportFileUri
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.saveToPublicDocuments
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -91,6 +94,7 @@ fun PlaylistMenu(
     val playerConnection = LocalPlayerConnection.current ?: return
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
+    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val dbPlaylist by database.playlist(playlist.id).collectAsState(initial = playlist)
     var songs by remember {
         mutableStateOf(emptyList<Song>())
@@ -299,9 +303,14 @@ fun PlaylistMenu(
         },
     )
 
-    HorizontalDivider()
-
-    Spacer(modifier = Modifier.height(12.dp))
+    if (newIrideUi) {
+        Spacer(modifier = Modifier.height(6.dp))
+        HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 1.dp)
+        Spacer(modifier = Modifier.height(20.dp))
+    } else {
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(12.dp))
+    }
 
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -326,7 +335,7 @@ fun PlaylistMenu(
                                         painter = painterResource(R.drawable.play),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 },
                                 text = stringResource(R.string.play),
@@ -348,7 +357,7 @@ fun PlaylistMenu(
                                         painter = painterResource(R.drawable.shuffle),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 },
                                 text = stringResource(R.string.shuffle),
@@ -373,7 +382,7 @@ fun PlaylistMenu(
                                     painter = painterResource(R.drawable.share),
                                     contentDescription = null,
                                     modifier = Modifier.size(28.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             },
                             text = stringResource(R.string.share),

@@ -120,6 +120,7 @@ fun LibrarySongsScreen(
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(com.metrolist.music.constants.TopNavigationBarKey, defaultValue = true)
     val betterLibraryBeta by rememberPreference(com.metrolist.music.constants.BetterLibraryBetaKey, defaultValue = false)
 
     val songs by (if (isOffline) viewModel.downloadedSongs else viewModel.allSongs).collectAsState()
@@ -406,6 +407,7 @@ fun LibrarySongsScreen(
                         onSortChange = onSortTypeChange,
                         sortDescending = sortDescending,
                         onSortDescendingChange = onSortDescendingChange,
+                        useIrideStyle = topNavigationBarEnabled,
                     )
                 }
 

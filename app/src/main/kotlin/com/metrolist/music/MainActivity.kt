@@ -711,7 +711,10 @@ class MainActivity : ComponentActivity() {
                 val (listenTogetherInTopBar) = rememberPreference(ListenTogetherInTopBarKey, defaultValue = true)
                 val (showNewsTab) = rememberPreference(ShowNewsTabKey, defaultValue = false)
                 val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
-                val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+                // Seeded from App's process-start cache (read before setContent()) instead of a
+                // hardcoded literal, so the very first frame can't briefly disagree with the
+                // real stored value and flash the wrong UI variant — see App.topNavigationBarEnabledCache.
+                val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = App.topNavigationBarEnabledCache)
                 val navigationItems =
                     remember(listenTogetherInTopBar, showNewsTab, topNavigationBarEnabled) {
                         val filtered = Screens.MainScreens.filter {
@@ -1482,7 +1485,7 @@ class MainActivity : ComponentActivity() {
                         // instead of higher up inside the app layer's rounded-corner reveal zone —
                         // the handle belongs to the miniplayer/player section, not the app section.
                         val collapsedHandleY = maxHeight - playerBottomSheetState.collapsedBound + CurtainCornerRevealHeight + 6.dp
-                        val expandedHandleY = AppPeekHeight + 8.dp
+                        val expandedHandleY = AppPeekHeight + CurtainCornerRevealHeight + 6.dp
                         val handleY = collapsedHandleY + (expandedHandleY - collapsedHandleY) * handleProgress
                         Box(
                             modifier = Modifier

@@ -25,6 +25,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -70,6 +71,7 @@ import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.IrideAdaptiveTopBar
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.SongListItem
@@ -432,7 +434,7 @@ fun HistoryScreen(
         )
     }
 
-    TopAppBar(
+    IrideAdaptiveTopBar(
         title = {
             if (inSelectMode) {
                 Text(pluralStringResource(R.plurals.n_selected, selection.size, selection.size))
@@ -443,11 +445,11 @@ fun HistoryScreen(
                     placeholder = {
                         Text(
                             text = stringResource(R.string.search),
-                            style = MaterialTheme.typography.titleLarge,
+                            style = LocalTextStyle.current,
                         )
                     },
                     singleLine = true,
-                    textStyle = MaterialTheme.typography.titleLarge,
+                    textStyle = LocalTextStyle.current,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     colors =
                         TextFieldDefaults.colors(

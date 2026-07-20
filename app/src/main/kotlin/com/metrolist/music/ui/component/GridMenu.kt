@@ -90,7 +90,7 @@ fun LazyGridScope.GridMenuItem(
     onClick: () -> Unit,
 ) {
     item {
-        val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+        val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
         Column(
             modifier = modifier
                 .clip(if (topNavigationBarEnabled) RoundedCornerShape(5.dp) else ShapeDefaults.Large)
@@ -173,9 +173,10 @@ fun LazyGridScope.SleepTimerGridMenu(
     onClick: () -> Unit
 ) {
     item {
+        val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
         Column(
             modifier = modifier
-                .clip(ShapeDefaults.Large)
+                .clip(if (topNavigationBarEnabled) RoundedCornerShape(5.dp) else ShapeDefaults.Large)
                 .height(GridMenuItemHeight)
                 .clickable(
                     onClick = onClick
@@ -199,7 +200,11 @@ fun LazyGridScope.SleepTimerGridMenu(
                 text = if (enabled) makeTimeString(sleepTimerTimeLeft) else stringResource(
                     id = R.string.sleep_timer
                 ),
-                style = MaterialTheme.typography.labelLarge,
+                style = if (topNavigationBarEnabled) {
+                    MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily)
+                } else {
+                    MaterialTheme.typography.labelLarge
+                },
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 modifier = Modifier.fillMaxWidth()

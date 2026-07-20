@@ -43,7 +43,7 @@ import com.metrolist.music.utils.rememberPreference
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpotifyImportScreen(navController: NavController) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     Box(
         modifier = Modifier

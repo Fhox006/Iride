@@ -66,7 +66,7 @@ fun Material3SettingsGroup(
     useLowContrast: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     if (topNavigationBarEnabled) {
         IrideSettingsGroup(title = title, items = items, modifier = modifier)
@@ -357,7 +357,7 @@ fun ExpandableSettingsSection(
     content: @Composable () -> Unit
 ) {
     var expanded by remember { mutableStateOf(defaultExpanded) }
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     Column(modifier = modifier.fillMaxWidth()) {
         if (topNavigationBarEnabled) {

@@ -31,6 +31,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -93,6 +94,7 @@ import com.metrolist.music.ui.component.EmptyPlaceholder
 import com.metrolist.music.ui.component.GenrePillsRow
 import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.IrideAdaptiveTopBar
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
@@ -290,7 +292,9 @@ fun TopPlaylistScreen(
                     item(key = "songs_header") {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(start = 16.dp),
+                            // Matches SongListItem's own 12dp horizontal inset (LibrarySortRow
+                            // itself adds another 4dp) so this lines up with the songs below.
+                            modifier = Modifier.padding(start = 8.dp),
                         ) {
                             LibrarySortRow(
                                 sortOptions =
@@ -421,13 +425,12 @@ fun TopPlaylistScreen(
             headerItems = 2
         )
 
-        TopAppBar(
+        IrideAdaptiveTopBar(
             title = {
                 when {
                     inSelectMode -> {
                         Text(
                             text = pluralStringResource(R.plurals.n_song, selection.size, selection.size),
-                            style = MaterialTheme.typography.titleLarge
                         )
                     }
                     isSearching -> {
@@ -437,11 +440,11 @@ fun TopPlaylistScreen(
                             placeholder = {
                                 Text(
                                     text = stringResource(R.string.search),
-                                    style = MaterialTheme.typography.titleLarge
+                                    style = LocalTextStyle.current
                                 )
                             },
                             singleLine = true,
-                            textStyle = MaterialTheme.typography.titleLarge,
+                            textStyle = LocalTextStyle.current,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color.Transparent,

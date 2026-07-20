@@ -57,7 +57,7 @@ fun IrideTheme(
         )
     }
 
-    val (newIrideUi, _) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (newIrideUi, _) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     val colorScheme = remember(newIrideUi, baseColorScheme, pureBlack, darkTheme) {
         when {

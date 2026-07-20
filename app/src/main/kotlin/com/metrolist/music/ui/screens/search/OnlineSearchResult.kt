@@ -45,12 +45,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -185,7 +183,7 @@ fun OnlineSearchResult(
     // Restyles this route to match New Iride UI when reached from an entry point other than the
     // Search tab itself (voice search, genre taps, ...) — the tab's own submit flow no longer
     // navigates here when this is enabled, see SearchScreen's inline results.
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
 
     BackHandler(enabled = isSearchFocused) {
@@ -769,27 +767,36 @@ fun OnlineSearchResultsBody(
     }
 
     if (header != null) {
-        // New Iride UI: header + chips share the results' LazyColumn, so the whole page scrolls
-        // as one — no chrome stays pinned — exactly like LocalSearchScreen/OnlineSearchScreen.
-        // While the search box is focused (about to run a new search) the header is instead
-        // pinned above a suggestions panel, matching the classic (non-Iride) layout below — this
-        // keeps the actual search box visible and interactive instead of the previous design,
-        // which drew an opaque suggestions overlay *on top of* the still-hidden-but-still-focused
-        // text field, making it look like typing did nothing and a second search never landed.
-        // `movableContentOf` preserves that text field's identity (and IME focus) as it moves
-        // between the LazyColumn item and the pinned Column below, instead of destroying and
-        // recreating it — which would drop focus on every focus/unfocus transition.
-        val currentHeader by rememberUpdatedState(header)
-        val movableHeader = remember { movableContentOf { currentHeader() } }
-
+        // New Iride UI: the header is now a fixed, non-lazy sibling of the results/suggestions
+        // area, instead of a LazyColumn item that got moved between two structurally different
+        // parents (a LazyColumn item vs. a plain Column child) depending on focus.
+        //
+        // That move was the actual root cause of the long-standing "tap the search bar again to
+        // re-edit -> history flashes on screen and instantly collapses, field becomes
+        // uninteractable" bug: moving a *focused* BasicTextField's underlying node to a different
+        // parent in the composition makes the platform briefly detach/reattach its window focus,
+        // which fires a synthetic onFocusChanged(false) callback. That callback fed straight back
+        // into isSearchFocused/isFocused — the very state whose flip *caused* the move in the
+        // first place — closing the just-opened suggestions panel in the same frame it opened,
+        // and leaving focus cleared so the field could no longer be typed into. Two "independent"
+        // booleans weren't racing here; it was one state driving a structural move that echoed
+        // back into itself.
+        //
+        // Pinning the header removes the feedback loop entirely: isSearchFocused now only ever
+        // switches the content *below* the header (results list vs. suggestions list) — the
+        // header's own position in the tree never changes, so its focus/IME state is never
+        // disturbed by that toggle. (This does mean the header no longer scrolls away together
+        // with browsed results the way it does on LocalSearchScreen/OnlineSearchScreen — a small
+        // trade-off for the search box always staying visible and reliably re-editable, which
+        // matches the classic non-Iride layout's behavior below.)
         LaunchedEffect(isSearchFocused) {
             if (!isSearchFocused) lazyListState.scrollToItem(0)
         }
 
         Box(modifier = modifier.fillMaxSize()) {
-            if (isSearchFocused) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    movableHeader()
+            Column(modifier = Modifier.fillMaxSize()) {
+                header()
+                if (isSearchFocused) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -805,15 +812,16 @@ fun OnlineSearchResultsBody(
                             pureBlack = pureBlack,
                         )
                     }
-                }
-            } else {
-                LazyColumn(
-                    state = lazyListState,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    item(key = "search_header") { movableHeader() }
-                    item(key = "chips_row") { chipsRow() }
-                    resultsListContent()
+                } else {
+                    LazyColumn(
+                        state = lazyListState,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                    ) {
+                        item(key = "chips_row") { chipsRow() }
+                        resultsListContent()
+                    }
                 }
             }
 
@@ -821,6 +829,7 @@ fun OnlineSearchResultsBody(
                 lazyListState = lazyListState,
                 icon = R.drawable.mic,
                 onClick = { navController.navigate("recognition") },
+                useIrideStyle = useIrideStyle,
             )
         }
     } else {
@@ -849,6 +858,7 @@ fun OnlineSearchResultsBody(
                     lazyListState = lazyListState,
                     icon = R.drawable.mic,
                     onClick = { navController.navigate("recognition") },
+                    useIrideStyle = useIrideStyle,
                 )
             }
         }

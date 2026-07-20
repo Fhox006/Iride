@@ -188,7 +188,7 @@ fun AboutScreen(
 ) {
     val uriHandler = LocalUriHandler.current
     val windowInsets = LocalPlayerAwareWindowInsets.current
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     Column(
         modifier = Modifier

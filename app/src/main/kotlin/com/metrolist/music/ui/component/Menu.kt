@@ -37,7 +37,7 @@ import com.metrolist.music.utils.rememberPreference
 fun Material3MenuGroup(
     items: List<Material3MenuItemData>
 ) {
-    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     if (newIrideUi) {
         IrideMenuGroup(items = items)

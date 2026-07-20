@@ -5,8 +5,14 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -308,24 +314,35 @@ fun LibraryViewTypeButton(
                 ) { onViewTypeChange(viewType.toggle()) },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                painter = painterResource(
-                    when (viewType) {
-                        LibraryViewType.LIST -> R.drawable.list
-                        LibraryViewType.GRID -> R.drawable.grid_view
-                        LibraryViewType.GRID_WIDE -> R.drawable.grid_view_3
-                    },
-                ),
-                contentDescription = stringResource(
-                    when (viewType) {
-                        LibraryViewType.LIST -> R.string.switch_to_grid_view
-                        LibraryViewType.GRID -> R.string.switch_to_wide_grid_view
-                        LibraryViewType.GRID_WIDE -> R.string.switch_to_list_view
-                    },
-                ),
-                tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.75f),
-                modifier = Modifier.size(18.dp),
-            )
+            // Fade+scale swap instead of an instant icon replacement, so this reads as an
+            // animated control like the rest of the New Iride UI filter row.
+            AnimatedContent(
+                targetState = viewType,
+                transitionSpec = {
+                    (fadeIn() + scaleIn(initialScale = 0.7f)) togetherWith
+                        (fadeOut() + scaleOut(targetScale = 0.7f))
+                },
+                label = "libraryViewTypeIcon",
+            ) { currentViewType ->
+                Icon(
+                    painter = painterResource(
+                        when (currentViewType) {
+                            LibraryViewType.LIST -> R.drawable.list
+                            LibraryViewType.GRID -> R.drawable.grid_view
+                            LibraryViewType.GRID_WIDE -> R.drawable.grid_view_3
+                        },
+                    ),
+                    contentDescription = stringResource(
+                        when (currentViewType) {
+                            LibraryViewType.LIST -> R.string.switch_to_grid_view
+                            LibraryViewType.GRID -> R.string.switch_to_wide_grid_view
+                            LibraryViewType.GRID_WIDE -> R.string.switch_to_list_view
+                        },
+                    ),
+                    tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.75f),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
         return
     }

@@ -5,6 +5,12 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -22,7 +28,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -195,5 +200,22 @@ fun NavigationTitle(
                 tint = if (useIrideStyle) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.primary
             )
         }
+    }
+}
+
+// New Iride UI: collapses a section's body while keeping its NavigationTitle row visible.
+// Shared by HomeScreen and LibraryAlbumsScreen (any screen using the NavigationTitle collapse
+// arrow above should pair it with this).
+@Composable
+fun IrideCollapsibleSection(
+    collapsed: Boolean,
+    content: @Composable () -> Unit,
+) {
+    AnimatedVisibility(
+        visible = !collapsed,
+        enter = expandVertically(animationSpec = tween(220)) + fadeIn(tween(180)),
+        exit = shrinkVertically(animationSpec = tween(220)) + fadeOut(tween(140)),
+    ) {
+        content()
     }
 }

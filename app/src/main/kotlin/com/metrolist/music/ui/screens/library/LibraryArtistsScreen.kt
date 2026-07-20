@@ -115,6 +115,7 @@ fun LibraryArtistsScreen(
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(com.metrolist.music.constants.TopNavigationBarKey, defaultValue = true)
 
     val sortOptions = listOf(
         ArtistSortType.CREATE_DATE to stringResource(R.string.sort_by_create_date),
@@ -212,6 +213,7 @@ fun LibraryArtistsScreen(
                                     onSortDescendingChange = onSortDescendingChange,
                                     viewType = viewType,
                                     onViewTypeChange = { viewType = it },
+                                    useIrideStyle = topNavigationBarEnabled,
                                 )
                             }
 
@@ -280,6 +282,7 @@ fun LibraryArtistsScreen(
                                     onSortDescendingChange = onSortDescendingChange,
                                     viewType = viewType,
                                     onViewTypeChange = { viewType = it },
+                                    useIrideStyle = topNavigationBarEnabled,
                                 )
                             }
 

@@ -5,7 +5,6 @@
 
 package com.metrolist.music.ui.screens.library
 
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -56,7 +55,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -148,7 +146,7 @@ fun LibraryMixScreen(
 
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val topNavBarController = com.metrolist.music.LocalTopNavBarController.current
     // New Iride UI: sections start flush with the "Library" label in TopNavigationBar (20dp),
     // instead of the classic UI's 12dp — mirrors HomeScreen's irideStart.
@@ -190,8 +188,12 @@ fun LibraryMixScreen(
 
     val topSize by viewModel.topValue.collectAsState(initial = 50)
     val lastLikedDate by viewModel.lastLikedDate.collectAsState()
-    val likedPlaylistName = stringResource(R.string.liked)
-    val likedPlaylist = remember(lastLikedDate, likedPlaylistName) {
+    val lastLikedThumbnails by viewModel.lastLikedThumbnails.collectAsState()
+    // New Iride UI only: "Liked Songs" reads as "Starred" here. R.string.liked is shared with the
+    // legacy UI (and other screens), so it is left untouched and only this pinned entry's display
+    // text is swapped.
+    val likedPlaylistName = if (topNavigationBarEnabled) stringResource(R.string.starred) else stringResource(R.string.liked)
+    val likedPlaylist = remember(lastLikedDate, likedPlaylistName, lastLikedThumbnails) {
         Playlist(
             playlist = PlaylistEntity(
                 id = PlaylistEntity.LIKED_PLAYLIST_ID,
@@ -200,7 +202,7 @@ fun LibraryMixScreen(
                 lastUpdateTime = lastLikedDate,
             ),
             songCount = 0,
-            songThumbnails = emptyList(),
+            songThumbnails = lastLikedThumbnails,
         )
     }
 
@@ -266,20 +268,17 @@ fun LibraryMixScreen(
     val playlist = viewModel.playlists.collectAsState()
     val uploadedSongs by viewModel.uploadedSongs.collectAsState()
     val downloadedAlbums by viewModel.downloadedAlbums.collectAsState()
-    val downloadedPlaylistIds by viewModel.downloadedPlaylistIds.collectAsState()
+    val downloadedLooseSongs by viewModel.downloadedLooseSongs.collectAsState()
     val locale = LocalLocale.current.platformLocale
     val collator = remember(locale) {
         Collator.getInstance(locale).apply {
             strength = Collator.PRIMARY
         }
     }
-    // "Scaricati" shows everything actually downloaded (albums, songs, playlists that contain a
-    // downloaded song) instead of just downloaded albums, so it reads as a real filter of the same
-    // library rather than a near-empty, unrelated mini-view when the pill is toggled.
+    // "Scaricati": fully-downloaded albums show as a single album entry (not their individual
+    // tracks); downloaded singles/loose tracks not part of a complete album still show as songs.
     val base = if (!isLibraryFilter) {
-        val downloadedSongs = songs.value.filter { it.isDownloaded }
-        val downloadedPlaylists = playlist.value.filter { it.id in downloadedPlaylistIds }
-        downloadedAlbums + downloadedSongs + downloadedPlaylists
+        downloadedAlbums + downloadedLooseSongs
     } else {
         val likedEntry = if (lastLikedDate != null) listOf(likedPlaylist) else emptyList()
         albums.value + artist.value + playlist.value + likedEntry
@@ -345,7 +344,13 @@ fun LibraryMixScreen(
             }
 
         if (normalizedQuery.isBlank()) {
-            matchedItems.distinctBy { it.id }
+            // Pinned first regardless of sort/date: as a synthetic entry its createdAt tracks
+            // lastLikedDate, so under CREATE_DATE sort it can rank behind anything touched more
+            // recently (a newly bookmarked album, a new playlist) and read as "gone" even though
+            // it's still in the list, just scrolled past.
+            val distinct = matchedItems.distinctBy { it.id }
+            val (pinned, rest) = distinct.partition { it is Playlist && it.playlist.id == PlaylistEntity.LIKED_PLAYLIST_ID }
+            pinned + rest
         } else {
             matchedItems
                 .sortedWith { first, second ->
@@ -410,19 +415,6 @@ fun LibraryMixScreen(
         }
     }
 
-    val contentAlpha = remember { Animatable(1f) }
-    var isFirstComposition by remember { mutableStateOf(true) }
-    var displayedFilter by remember { mutableStateOf(isLibraryFilter) }
-    LaunchedEffect(isLibraryFilter) {
-        if (isFirstComposition) {
-            isFirstComposition = false
-            displayedFilter = isLibraryFilter
-            return@LaunchedEffect
-        }
-        contentAlpha.animateTo(0f, animationSpec = tween(100))
-        displayedFilter = isLibraryFilter
-        contentAlpha.animateTo(1f, animationSpec = tween(150))
-    }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         snapAnimationSpec = tween(durationMillis = 200),
     )
@@ -542,8 +534,7 @@ fun LibraryMixScreen(
                             else -> MaterialTheme.colorScheme.background
                         },
                     )
-                    .padding(paddingValues)
-                    .alpha(contentAlpha.value),
+                    .padding(paddingValues),
         ) {
             CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
                 // A single LazyVerticalGrid backs both the "list" and "grid" looks (list = a
@@ -602,7 +593,7 @@ fun LibraryMixScreen(
                         CategoriesContent(
                             navController = navController,
                             showUploads = uploadedSongs.isNotEmpty(),
-                            isOffline = !displayedFilter,
+                            isOffline = !isLibraryFilter,
                             useIrideStyle = topNavigationBarEnabled,
                         )
                     }
@@ -614,7 +605,7 @@ fun LibraryMixScreen(
                             contentType = CONTENT_TYPE_HEADER,
                         ) {
                             Text(
-                                text = if (displayedFilter) "Recently Added" else "Recently Downloaded",
+                                text = if (isLibraryFilter) "Recently Added" else "Recently Downloaded",
                                 style = if (topNavigationBarEnabled) {
                                     MaterialTheme.typography.labelLarge.copy(
                                         fontFamily = SpaceMonoFontFamily,

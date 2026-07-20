@@ -214,7 +214,7 @@ private fun IrideTopItemCard(
 
 @Composable
 fun TopArtistCard(rank: Int, artist: ArtistEntity, onClick: () -> Unit = {}) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     if (topNavigationBarEnabled) {
         IrideTopItemCard(
             rank = rank,
@@ -283,7 +283,7 @@ fun TopArtistCard(rank: Int, artist: ArtistEntity, onClick: () -> Unit = {}) {
 
 @Composable
 fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onClick: () -> Unit = {}) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     if (topNavigationBarEnabled) {
         IrideTopItemCard(
             rank = rank,
@@ -357,7 +357,7 @@ fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onC
 
 @Composable
 fun TopSongCard(rank: Int, song: SongEntity, artists: List<ArtistEntity>, onClick: () -> Unit = {}) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     if (topNavigationBarEnabled) {
         IrideTopItemCard(
             rank = rank,
@@ -431,7 +431,7 @@ fun TopSongCard(rank: Int, song: SongEntity, artists: List<ArtistEntity>, onClic
 
 @Composable
 fun SectionHeader(title: String) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     if (topNavigationBarEnabled) {
         // Matches the "eyebrow" section-title idiom used across the app in New Iride UI
         // (Material3SettingsGroup's IrideSettingsGroup title, ArtistScreen's "Information"
@@ -462,7 +462,7 @@ fun StatsDataBox(
 ) {
     val hours = totalMinutes / 60
     val minutes = totalMinutes % 60
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     if (topNavigationBarEnabled) {
         // Flattened: no primaryContainer Card, bare row of 4 tiles with hairline vertical

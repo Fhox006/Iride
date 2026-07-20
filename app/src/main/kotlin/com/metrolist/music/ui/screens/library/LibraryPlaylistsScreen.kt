@@ -123,19 +123,24 @@ fun LibraryPlaylistsScreen(
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val betterLibraryBeta by rememberPreference(com.metrolist.music.constants.BetterLibraryBetaKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(com.metrolist.music.constants.TopNavigationBarKey, defaultValue = true)
 
     val playlists by viewModel.allPlaylists.collectAsState()
     val downloadedPlaylistIds by viewModel.downloadedPlaylistIds.collectAsState()
 
-    val likedName = stringResource(R.string.liked)
-    val likedPlaylistPinned = remember(likedName) {
+    // New Iride UI only: "Liked Songs" reads as "Starred" here. R.string.liked is shared with the
+    // legacy UI (and other screens), so it is left untouched and only this pinned entry's display
+    // text is swapped.
+    val likedName = if (topNavigationBarEnabled) stringResource(R.string.starred) else stringResource(R.string.liked)
+    val lastLikedThumbnails by viewModel.lastLikedThumbnails.collectAsState()
+    val likedPlaylistPinned = remember(likedName, lastLikedThumbnails) {
         Playlist(
             playlist = PlaylistEntity(
                 id = PlaylistEntity.LIKED_PLAYLIST_ID,
                 name = likedName,
             ),
             songCount = 0,
-            songThumbnails = emptyList(),
+            songThumbnails = lastLikedThumbnails,
         )
     }
 
@@ -294,6 +299,7 @@ fun LibraryPlaylistsScreen(
                                     onSortDescendingChange = onSortDescendingChange,
                                     viewType = viewType,
                                     onViewTypeChange = { viewType = it },
+                                    useIrideStyle = topNavigationBarEnabled,
                                 )
                             }
 
@@ -407,6 +413,7 @@ fun LibraryPlaylistsScreen(
                                     onSortDescendingChange = onSortDescendingChange,
                                     viewType = viewType,
                                     onViewTypeChange = { viewType = it },
+                                    useIrideStyle = topNavigationBarEnabled,
                                 )
                             }
 

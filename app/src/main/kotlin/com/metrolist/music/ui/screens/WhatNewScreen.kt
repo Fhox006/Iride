@@ -31,6 +31,7 @@ import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
@@ -62,8 +63,9 @@ fun WhatNewScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("What's New") },
+            SettingsBackTopBar(
+                title = "What's New",
+                navController = navController,
             )
         },
         contentWindowInsets = LocalPlayerAwareWindowInsets.current

@@ -10,10 +10,8 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -120,6 +118,7 @@ import com.metrolist.music.ui.component.DraggableScrollbar
 import com.metrolist.music.ui.component.EmptyPlaceholder
 import com.metrolist.music.ui.component.GenrePillsRow
 import com.metrolist.music.ui.component.GenreSongInfo
+import com.metrolist.music.ui.component.GlassPlaylistCover
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideOutlineIconButton
@@ -158,9 +157,13 @@ fun AutoPlaylistScreen(
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val playlist =
         when (viewModel.playlist) {
-            "liked" -> stringResource(R.string.liked)
+            // New Iride UI only: "Liked Songs" reads as "Starred" here. R.string.liked is shared
+            // with the legacy UI (and other screens), so it is left untouched and only the display
+            // text used by this New-Iride-UI-gated composable is swapped.
+            "liked" -> if (topNavigationBarEnabled) stringResource(R.string.starred) else stringResource(R.string.liked)
             "uploaded" -> stringResource(R.string.uploaded_playlist)
             "starred" -> stringResource(R.string.starred)
             else -> stringResource(R.string.offline)
@@ -183,7 +186,6 @@ fun AutoPlaylistScreen(
     }
 
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
 
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
 
@@ -562,7 +564,12 @@ fun AutoPlaylistScreen(
                     item(key = "songs_header") {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(start = 16.dp),
+                            modifier = Modifier.padding(
+                                // Matches SongListItem's own 12dp horizontal inset so the sort
+                                // row lines up with the song rows below it.
+                                start = if (topNavigationBarEnabled) 12.dp else 8.dp,
+                                end = if (topNavigationBarEnabled) 12.dp else 8.dp,
+                            ),
                         ) {
                             LibrarySortRow(
                                 sortOptions =
@@ -602,6 +609,9 @@ fun AutoPlaylistScreen(
 
                         SongListItem(
                             song = song,
+                            // New Iride UI: featured-artist subtitle text should match the rest of
+                            // the row instead of the default muted secondary tone.
+                            subtitleColor = if (topNavigationBarEnabled) Color.Unspecified else null,
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
                             trailingContent = {
@@ -1053,7 +1063,7 @@ private fun AutoPlaylistHeader(
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     val metadataLine =
         buildString {
@@ -1121,23 +1131,21 @@ private fun AutoPlaylistHeader(
         }
         if (badgeIcon != null) {
             if (topNavigationBarEnabled) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(240.dp)
-                            .border(
-                                BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)),
-                                coverSquircle,
-                            ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(badgeIcon),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.size(240.dp * 0.4f),
-                    )
-                }
+                // Frosted-glass cover: blurred mosaic of the playlist's own thumbnails behind a
+                // translucent panel, replacing the old flat gray square + centered gray star
+                // (felt anonymous). Shared with the Library list/grid rows via GlassPlaylistCover
+                // so the same playlist looks identical on its own screen and from outside.
+                val mosaicThumbnails =
+                    remember(songs) {
+                        songs.mapNotNull { it.song.thumbnailUrl }.distinct().take(4)
+                    }
+                GlassPlaylistCover(
+                    thumbnails = mosaicThumbnails,
+                    icon = badgeIcon,
+                    size = 240.dp,
+                    shape = coverSquircle,
+                    iconSizeFraction = 0.65f,
+                )
             } else {
                 androidx.compose.material3.Surface(
                     modifier =

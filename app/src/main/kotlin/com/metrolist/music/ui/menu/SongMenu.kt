@@ -120,7 +120,7 @@ fun SongMenu(
     val context = LocalContext.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val songState = database.song(originalSong.id).collectAsState(initial = originalSong)
     val song = songState.value ?: originalSong
     val download by LocalDownloadUtil.current
@@ -553,7 +553,7 @@ fun SongMenu(
                                         painter = painterResource(R.drawable.playlist_play),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 },
                                 text = stringResource(R.string.swipe_label_next).lowercase().replaceFirstChar { it.uppercase() },
@@ -568,7 +568,7 @@ fun SongMenu(
                                         painter = painterResource(R.drawable.queue_music),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 },
                                 text = stringResource(R.string.swipe_label_queue).lowercase().replaceFirstChar { it.uppercase() },
@@ -583,7 +583,7 @@ fun SongMenu(
                                         painter = painterResource(R.drawable.radio),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 },
                                 text = stringResource(R.string.radio),

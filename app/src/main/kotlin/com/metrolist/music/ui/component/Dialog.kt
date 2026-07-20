@@ -79,7 +79,7 @@ fun DefaultDialog(
     horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -226,7 +226,7 @@ fun ListDialog(
     modifier: Modifier = Modifier,
     content: LazyListScope.() -> Unit,
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -298,7 +298,7 @@ fun TextFieldDialog(
     val legacyFieldState = remember { mutableStateOf(initialTextFieldValue) }
 
     val focusRequester = remember { FocusRequester() }
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val fieldColors = if (topNavigationBarEnabled) {
         OutlinedTextFieldDefaults.colors(
             focusedTextColor = Color.White,

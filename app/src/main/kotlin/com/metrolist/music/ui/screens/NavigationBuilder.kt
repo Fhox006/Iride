@@ -29,6 +29,7 @@ import androidx.navigation.navArgument
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.ui.screens.artist.ArtistAlbumsScreen
+import com.metrolist.music.ui.screens.artist.ArtistGameScreen
 import com.metrolist.music.ui.screens.artist.ArtistItemsScreen
 import com.metrolist.music.ui.screens.artist.ArtistScreen
 import com.metrolist.music.ui.screens.artist.ArtistSongsScreen
@@ -206,6 +207,13 @@ fun NavGraphBuilder.NavigationBuilder(
         arguments = listOf(navArgument("artistId") { type = NavType.StringType })
     ) {
         ArtistSongsScreen(navController)
+    }
+
+    composable(
+        route = "artist/{artistId}/game",
+        arguments = listOf(navArgument("artistId") { type = NavType.StringType })
+    ) {
+        ArtistGameScreen(navController)
     }
 
     // Only pass scrollBehavior to screens that actually use it

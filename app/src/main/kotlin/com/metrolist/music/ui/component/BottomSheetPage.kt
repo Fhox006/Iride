@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarDefaults
@@ -30,6 +31,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
+import com.metrolist.music.constants.TopNavigationBarKey
+import com.metrolist.music.utils.rememberPreference
 
 val LocalBottomSheetPageState = compositionLocalOf { BottomSheetPageState() }
 
@@ -58,6 +61,7 @@ fun BottomSheetPage(
     state: BottomSheetPageState,
     background: Color = MaterialTheme.colorScheme.surfaceColorAtElevation(NavigationBarDefaults.Elevation),
 ) {
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val focusManager = LocalFocusManager.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
@@ -68,15 +72,26 @@ fun BottomSheetPage(
             state.isVisible = false
         },
         sheetState = sheetState,
-        containerColor = background,
-        contentColor = MaterialTheme.colorScheme.onSurface,
+        containerColor = if (topNavigationBarEnabled) Color(0xFF0A0A0A) else background,
+        contentColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface,
+        shape = if (topNavigationBarEnabled) {
+            RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        } else {
+            BottomSheetDefaults.ExpandedShape
+        },
         dragHandle = {
             Box(
                 modifier = Modifier
                     .padding(vertical = 12.dp)
                     .size(width = 32.dp, height = 4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                    .background(
+                        if (topNavigationBarEnabled) {
+                            Color.White.copy(alpha = 0.3f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        }
+                    )
             )
         },
         modifier = modifier.fillMaxHeight()

@@ -126,7 +126,10 @@ private fun HeroCard(
     onArtistRadioClick: (String, String) -> Unit,
 ) {
     val badgeLabel: String
-    val badgeIcon: Int
+    // Null for the Mood badge only — it used to reuse the "favorite" (heart) glyph, which reads
+    // as a stray/mismatched icon next to the word "MOOD" (hearts mean "liked", not "mood"). Every
+    // other badge keeps its icon.
+    val badgeIcon: Int?
     val title: String
     val subtitle: String
     val coverUrl: String?
@@ -151,7 +154,7 @@ private fun HeroCard(
         }
         is HeroCarouselItem.Mood -> {
             badgeLabel = "MOOD"
-            badgeIcon = R.drawable.favorite
+            badgeIcon = null
             title = item.moodName
             subtitle = "A playlist matching the mood"
             coverUrl = item.coverUrl
@@ -230,13 +233,15 @@ private fun HeroCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                 ) {
-                    Icon(
-                        painter = painterResource(badgeIcon),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    if (badgeIcon != null) {
+                        Icon(
+                            painter = painterResource(badgeIcon),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
                     Text(
                         text = badgeLabel,
                         style = MaterialTheme.typography.labelSmall,

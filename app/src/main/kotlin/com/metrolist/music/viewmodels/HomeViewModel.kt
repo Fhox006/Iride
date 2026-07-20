@@ -287,20 +287,36 @@ class HomeViewModel @Inject constructor(
     // loader every time, and so the row never has to swap between differently-sized content.
     val moodMixItems = MutableStateFlow<List<PlaylistItem>?>(null)
     val isMoodLoading = MutableStateFlow(false)
+    private var moodPageJob: kotlinx.coroutines.Job? = null
 
     fun loadMoodPage(params: String?, chipTitle: String? = null, hideExplicit: Boolean, hideVideoSongs: Boolean, hideYoutubeShorts: Boolean) {
         if (params == lastMoodChipParams && moodPage.value != null) return
         lastMoodChipParams = params
         if (params == null) {
+            moodPageJob?.cancel()
             moodPage.value = null
             moodMixItems.value = null
             isMoodLoading.value = false
             return
         }
-        viewModelScope.launch(Dispatchers.IO) {
+        // Cancel any still-in-flight load for a previously selected chip first. Without this,
+        // switching chips quickly could let an older/slower request finish after a newer one and
+        // overwrite its result — or, worse, its `finally` block flips isMoodLoading back to false
+        // while the newer request is still genuinely loading, making the row look "done" with
+        // stale content instead of showing the spinner for the chip actually selected.
+        moodPageJob?.cancel()
+        moodPageJob = viewModelScope.launch(Dispatchers.IO) {
+            val myJob = coroutineContext[kotlinx.coroutines.Job]
             isMoodLoading.value = true
             try {
-                YouTube.home(params = params).onSuccess { nextSections ->
+                // YouTube.home() has no built-in timeout of its own. If the request stalls (dead
+                // connection, slow/no network), isMoodLoading would otherwise never resolve and
+                // the Mood row would spin forever — this is the "gets stuck in infinite loading"
+                // bug: bounding it here guarantees the section always reaches a loaded, empty, or
+                // (falling through to the catch below) still-showing-previous-content state
+                // within a bounded time instead of hanging indefinitely.
+                val result = withTimeout(15_000L) { YouTube.home(params = params) }
+                result.onSuccess { nextSections ->
                     val filteredPage = nextSections.copy(
                         sections = nextSections.sections.mapNotNull { section ->
                             val filteredItems = section.items
@@ -325,9 +341,21 @@ class HomeViewModel @Inject constructor(
                         }
                         saveMoodSnapshotAfterLoad(chipTitle, params, filteredPage)
                     }
+                }.onFailure {
+                    // Leave whatever was already on screen (cached snapshot or the previous
+                    // chip's mixes) in place instead of clearing it — a failed refresh shouldn't
+                    // blank out a section that had valid content a moment ago. lastMoodChipParams
+                    // was already updated above, but moodPage.value stays null/stale here, so the
+                    // early-return guard at the top of this function won't skip a retry later.
+                    reportException(it)
                 }
+            } catch (e: TimeoutCancellationException) {
+                reportException(e)
             } finally {
-                isMoodLoading.value = false
+                // Guard against a just-cancelled/late job clobbering a newer one's loading state
+                // (see comment above) — only the most recently launched load is allowed to flip
+                // isMoodLoading back to false.
+                if (moodPageJob === myJob) isMoodLoading.value = false
             }
         }
     }
@@ -967,6 +995,28 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Only surfaces the section when there are at least 8 eligible tracks (otherwise the Home
+     * screen's `takeIf { it.isNotEmpty() }` gate would show it with as few as 1), and pulls from
+     * a wider shuffled pool so repeated regenerations actually vary.
+     */
+    private suspend fun getForgottenFavorites() {
+        val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+        val eligible = database.forgottenFavorites().first().filterVideoSongs(hideVideoSongs)
+        forgottenFavorites.value = if (eligible.size >= 8) eligible.shuffled().take(30) else null
+    }
+
+    fun regenerateForgottenFavorites() {
+        viewModelScope.launch(Dispatchers.IO) {
+            regenerateSection(
+                key = "forgotten_favorites",
+                currentIds = { forgottenFavorites.value?.map { it.id }?.toSet().orEmpty() },
+                generate = { getForgottenFavorites() },
+            )
+            HomeCache.forgottenFavorites = forgottenFavorites.value
+        }
+    }
+
     fun regenerateQuickPicks() {
         viewModelScope.launch(Dispatchers.IO) {
             regenerateSection(
@@ -1123,8 +1173,7 @@ class HomeViewModel @Inject constructor(
 
         // Phase 2a: DB secondario — nessuna rete, parte subito
         viewModelScope.launch(Dispatchers.IO) {
-            forgottenFavorites.value = database.forgottenFavorites().first()
-                .filterVideoSongs(hideVideoSongs).shuffled().take(20)
+            getForgottenFavorites()
             HomeCache.forgottenFavorites = forgottenFavorites.value
         }
 
@@ -1335,7 +1384,10 @@ class HomeViewModel @Inject constructor(
         val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
         YouTube.library("FEmusic_liked_playlists").completed().onSuccess {
             accountPlaylists.value = it.items.filterIsInstance<PlaylistItem>()
-                .filterNot { it.id == "SE" }
+                .filterNot { it.id == "LM" || it.id == "SE" }
+                .filterNot { playlist ->
+                    playlist.songCountText?.let { text -> Regex("""\d+""").find(text)?.value?.toIntOrNull() } == 0
+                }
                 .filterYoutubeShorts(hideYoutubeShorts)
         }.onFailure {
             reportException(it)

@@ -113,33 +113,55 @@ class AlbumRecommendationsGenerator(
     }
 
     /**
-     * Builds the "Album consigliati" carousel for the Library Albums screen: unlike [generate],
-     * this excludes every album the user has ever played or already saved — it's meant purely as
-     * a discovery feed, not a "keep listening" mix. ~95% comes from artists related to ones the
-     * user already listens to (the same artist-page expansion [generate] uses), the remaining
-     * ~5% is a deliberate "outside your usual taste" pick from global new releases. Both slices
-     * respect a 90%-newer-than-3-years / 10%-older split.
+     * Builds the "Recommended Albums" carousel for the Library Albums screen. Mostly discovery
+     * (never-heard albums from known/related artists and recent releases), plus two small local
+     * slices pulled from the user's own play history: albums barely touched (a nudge to finish
+     * them) and — rarely, at low weight — albums already played a lot (so favorites aren't
+     * excluded forever, just not shoved in the user's face). `recentlySuggestedIds` are ids
+     * surfaced in a recent regeneration; each bucket prefers albums outside that set and only
+     * falls back to them if its fresh pool runs short, so nothing is excluded permanently.
      */
     suspend fun generateForLibrary(
         explorePage: ExplorePage?,
         hideExplicit: Boolean,
         seed: Long,
         excludedAlbumIds: Set<String>,
+        recentlySuggestedIds: Set<String> = emptySet(),
     ): List<DischiPerTeItem> {
         val random = Random(seed)
         val currentYear = java.time.Year.now().value
         val targetSize = 20
-        val unknownCount = (targetSize * 5 / 100).coerceAtLeast(1)
-        val similarCount = targetSize - unknownCount
+        val lightlyPlayedCount = 3
+        val heavilyPlayedCount = if (random.nextInt(100) < 20) 1 else 0
+        val localCount = lightlyPlayedCount + heavilyPlayedCount
+        val unknownCount = ((targetSize - localCount) * 5 / 100).coerceAtLeast(1)
+        val similarCount = targetSize - localCount - unknownCount
 
         val knownArtists = database.mostPlayedArtists(fromTimeStamp = 0L, limit = 25).first()
             .filter { it.artist.isYouTubeArtist }
             .filterGenuineFavorites()
         val knownArtistIds = knownArtists.map { it.id }.toSet()
 
-        val playedAlbumIds = database.mostPlayedAlbums(fromTimeStamp = 0L, limit = 500).first()
-            .map { it.id }.toSet()
+        val playedAlbums = database.mostPlayedAlbums(fromTimeStamp = 0L, limit = 500).first()
+        val playedAlbumIds = playedAlbums.map { it.id }.toSet()
         val fullExclusion = excludedAlbumIds + playedAlbumIds
+
+        // "Never/barely listened" albums the user already owns but hasn't gotten into — EPs
+        // allowed (songCount > 1), singles excluded, favorites excluded.
+        val lightlyPlayedPool = playedAlbums.filter {
+            it.album.songCount > 1 && (it.songCountListened ?: 0) in 1..2 && it.id !in excludedAlbumIds
+        }
+        // Deliberately rare: albums the user already plays a lot. Low weight per the spec — they
+        // can resurface occasionally rather than never, but shouldn't crowd out discovery.
+        val heavilyPlayedPool = playedAlbums.filter {
+            it.album.songCount > 1 && (it.songCountListened ?: 0) >= 8 && it.id !in excludedAlbumIds
+        }
+        val lightlyPlayedSelected = selectPreferringFresh(
+            lightlyPlayedPool, lightlyPlayedCount, recentlySuggestedIds, random,
+        ) { it.id }
+        val heavilyPlayedSelected = selectPreferringFresh(
+            heavilyPlayedPool, heavilyPlayedCount, recentlySuggestedIds, random,
+        ) { it.id }
 
         // Related artists (not already known) discovered off each known artist's page, paired
         // with a random non-single, not-yet-played album off *their* page. Track which related
@@ -174,12 +196,18 @@ class AlbumRecommendationsGenerator(
             ?.filterExplicit(hideExplicit)
             .orEmpty()
 
-        val similarSelected = selectWithAgeSplit(similarArtistAlbums, similarCount, currentYear, random) { it.first.year }
-        val unknownSelected = selectWithAgeSplit(unknownArtistAlbums, unknownCount, currentYear, random) { it.year }
+        val similarSelected = selectWithAgeSplitPreferringFresh(
+            similarArtistAlbums, similarCount, currentYear, random, recentlySuggestedIds, { it.first.id },
+        ) { it.first.year }
+        val unknownSelected = selectWithAgeSplitPreferringFresh(
+            unknownArtistAlbums, unknownCount, currentYear, random, recentlySuggestedIds, { it.id },
+        ) { it.year }
 
         // If one bucket came up short (e.g. a new user with few known artists), top the list up
         // from whatever the other bucket has left over rather than returning a sparse carousel.
         val result = mutableListOf<DischiPerTeItem>()
+        result += lightlyPlayedSelected.map { DischiPerTeItem.Local(it) }
+        result += heavilyPlayedSelected.map { DischiPerTeItem.Local(it) }
         result += similarSelected.map { (album, artistName) -> DischiPerTeItem.Remote(album, fallbackArtistName = artistName) }
         result += unknownSelected.map { DischiPerTeItem.Remote(it) }
 
@@ -215,6 +243,45 @@ private fun <T> selectWithAgeSplit(
     if (chosen.size < count) {
         val remaining = (recent + older).filterNot { it in chosen }.shuffled(random)
         chosen += remaining.take(count - chosen.size)
+    }
+    return chosen
+}
+
+// Same as [selectWithAgeSplit], but tries the subset of `pool` not in `recentlySuggestedIds`
+// first, only dipping into recently-suggested items to fill a shortfall. Nothing is ever
+// permanently excluded — a cooled-down item just loses priority for one regeneration.
+private fun <T> selectWithAgeSplitPreferringFresh(
+    pool: List<T>,
+    count: Int,
+    currentYear: Int,
+    random: Random,
+    recentlySuggestedIds: Set<String>,
+    idOf: (T) -> String,
+    yearOf: (T) -> Int?,
+): List<T> {
+    if (count <= 0 || pool.isEmpty()) return emptyList()
+    val (fresh, cooled) = pool.partition { idOf(it) !in recentlySuggestedIds }
+    val chosen = selectWithAgeSplit(fresh, count, currentYear, random, yearOf).toMutableList()
+    if (chosen.size < count) {
+        chosen += selectWithAgeSplit(cooled, count - chosen.size, currentYear, random, yearOf)
+    }
+    return chosen
+}
+
+// Same cooldown-preference idea as [selectWithAgeSplitPreferringFresh], without the age split —
+// used for the local "lightly/heavily played" buckets which are too small to bother splitting.
+private fun <T> selectPreferringFresh(
+    pool: List<T>,
+    count: Int,
+    recentlySuggestedIds: Set<String>,
+    random: Random,
+    idOf: (T) -> String,
+): List<T> {
+    if (count <= 0 || pool.isEmpty()) return emptyList()
+    val (fresh, cooled) = pool.partition { idOf(it) !in recentlySuggestedIds }
+    val chosen = fresh.shuffled(random).take(count).toMutableList()
+    if (chosen.size < count) {
+        chosen += cooled.shuffled(random).take(count - chosen.size)
     }
     return chosen
 }

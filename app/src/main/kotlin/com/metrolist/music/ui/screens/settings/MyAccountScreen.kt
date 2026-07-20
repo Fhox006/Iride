@@ -95,7 +95,7 @@ fun MyAccountScreen(
     val scope = rememberCoroutineScope()
     val accountSettingsViewModel: AccountSettingsViewModel = hiltViewModel()
 
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val (advancedMode, _) = rememberPreference(AdvancedModeKey, false)
     val (innerTubeCookie, onInnerTubeCookieChange) = rememberPreference(InnerTubeCookieKey, "")
     val isLoggedIn = remember(innerTubeCookie) { "SAPISID" in parseCookieString(innerTubeCookie) }

@@ -202,7 +202,7 @@ fun StatsScreen(
 
     val coroutineScope = rememberCoroutineScope()
     val (pureBlack) = rememberPreference(PureBlackKey, defaultValue = false)
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val keyboardController = LocalSoftwareKeyboardController.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         snapAnimationSpec = tween(durationMillis = 200),

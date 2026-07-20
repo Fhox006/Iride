@@ -31,6 +31,7 @@ import com.metrolist.innertube.YouTube
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.R
 import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.extensions.isSyncEnabled
 import com.metrolist.music.utils.rememberPreference
@@ -51,6 +52,7 @@ fun CreatePlaylistDialog(
     val coroutineScope = rememberCoroutineScope()
     var syncedPlaylist by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     val isSignedIn = innerTubeCookie.isNotEmpty()
@@ -112,29 +114,38 @@ fun CreatePlaylistDialog(
                         modifier = Modifier.weight(1f),
                         horizontalArrangement = Arrangement.End,
                     ) {
-                        Switch(
-                            checked = syncedPlaylist,
-                            onCheckedChange = {
-                                val isYtmSyncEnabled = context.isSyncEnabled()
-                                if (!isSignedIn && !syncedPlaylist) {
-                                    Toast
-                                        .makeText(
-                                            context,
-                                            notLoggedInYoutubeStr,
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
-                                } else if (!isYtmSyncEnabled) {
-                                    Toast
-                                        .makeText(
-                                            context,
-                                            syncDisabledStr,
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
-                                } else {
-                                    syncedPlaylist = !syncedPlaylist
-                                }
-                            },
-                        )
+                        val onSyncToggle = {
+                            val isYtmSyncEnabled = context.isSyncEnabled()
+                            if (!isSignedIn && !syncedPlaylist) {
+                                Toast
+                                    .makeText(
+                                        context,
+                                        notLoggedInYoutubeStr,
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                            } else if (!isYtmSyncEnabled) {
+                                Toast
+                                    .makeText(
+                                        context,
+                                        syncDisabledStr,
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                            } else {
+                                syncedPlaylist = !syncedPlaylist
+                            }
+                        }
+
+                        if (topNavigationBarEnabled) {
+                            IrideSwitch(
+                                checked = syncedPlaylist,
+                                onCheckedChange = { onSyncToggle() },
+                            )
+                        } else {
+                            Switch(
+                                checked = syncedPlaylist,
+                                onCheckedChange = { onSyncToggle() },
+                            )
+                        }
                     }
                 }
             }

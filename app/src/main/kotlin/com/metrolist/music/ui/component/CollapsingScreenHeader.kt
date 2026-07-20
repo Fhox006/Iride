@@ -31,9 +31,14 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.SoftwareKeyboardController
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp as lerpFloat
+import com.metrolist.music.constants.TopNavigationBarKey
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.utils.rememberPreference
 
 /**
  * Reusable collapsing large-title header for library sub-screens.
@@ -112,6 +117,9 @@ fun CollapsingScreenHeader(
     hideTitle: Boolean = false,
 ) {
     val density = LocalDensity.current
+    // New Iride UI: pushed screens keep the collapsing large title, but it renders in the same
+    // bold monospace type as TopNavigationBar/SettingsBackTopBar so every header reads as one system.
+    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val largeTitleHeightPx = if (hideTitle) 0f else with(density) { CollapsingHeaderLargeTitleHeight.toPx() }
 
     // Tell the scroll behavior how much height it can collapse
@@ -187,9 +195,18 @@ fun CollapsingScreenHeader(
                     if (!hideTitle) {
                         Text(
                             text = title,
-                            style = MaterialTheme.typography.displaySmall.copy(
-                                fontWeight = FontWeight.Bold,
-                            ),
+                            style = if (newIrideUi) {
+                                TextStyle(
+                                    fontFamily = SpaceMonoFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 28.sp,
+                                    letterSpacing = (-0.5).sp,
+                                )
+                            } else {
+                                MaterialTheme.typography.displaySmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            },
                             maxLines = 1,
                             modifier = Modifier
                                 .weight(1f)

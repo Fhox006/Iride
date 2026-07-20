@@ -59,6 +59,7 @@ import com.metrolist.music.db.entities.RecognitionHistory
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.utils.backToMain
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -147,19 +148,9 @@ fun RecognitionHistoryScreen(navController: NavController) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.recognition_history)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = { navController.navigateUp() },
-                        onLongClick = { navController.backToMain() },
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
+            SettingsBackTopBar(
+                title = stringResource(R.string.recognition_history),
+                navController = navController,
                 actions = {
                     if (historyItems.isNotEmpty()) {
                         IconButton(onClick = { showClearDialog = true }) {

@@ -30,10 +30,13 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
 import com.metrolist.music.constants.ThumbnailCornerRadius
+import com.metrolist.music.constants.TopNavigationBarKey
+import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.random.Random
@@ -95,6 +98,9 @@ fun PlayingIndicatorBox(
     playWhenReady: Boolean,
     color: Color = Color.White,
 ) {
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
+    val indicatorShape = if (topNavigationBarEnabled) RoundedCornerShape(10.dp) else CircleShape
+
     AnimatedVisibility(
         visible = isActive,
         enter = fadeIn(tween(500)),
@@ -107,7 +113,7 @@ fun PlayingIndicatorBox(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                    .background(Color.Black.copy(alpha = 0.4f), indicatorShape),
                 contentAlignment = Alignment.Center
             ) {
                 if (playWhenReady) {

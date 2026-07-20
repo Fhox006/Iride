@@ -35,6 +35,7 @@ import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.Event
 import com.metrolist.music.db.entities.EventWithSong
+import com.metrolist.music.db.entities.GlobalAlbumPlayEvent
 import com.metrolist.music.db.entities.FormatEntity
 import com.metrolist.music.db.entities.LyricsEntity
 import com.metrolist.music.db.entities.PlayCountEntity
@@ -187,6 +188,11 @@ interface DatabaseDao {
 
     @Query("SELECT likedDate FROM song WHERE liked = 1 ORDER BY likedDate DESC LIMIT 1")
     fun lastLikedSongDate(): Flow<LocalDateTime?>
+
+    // Backs the frosted-glass mosaic cover shown for the Liked/Starred pinned entry outside its
+    // own screen (Library recently-added row/grid) — a handful of recent covers, not the full list.
+    @Query("SELECT thumbnailUrl FROM song WHERE liked = 1 AND thumbnailUrl IS NOT NULL ORDER BY likedDate DESC LIMIT :limit")
+    fun lastLikedSongThumbnails(limit: Int = 4): Flow<List<String>>
 
     @Transaction
     @Query("SELECT * FROM song WHERE starred ORDER BY rowId")
@@ -675,7 +681,7 @@ interface DatabaseDao {
               GROUP BY n.songId
               ORDER BY oldPlayTime) AS t
                  JOIN song on song.id = t.eid
-        WHERE 0.2 * t.oldPlayTime > t.newPlayTime
+        WHERE 0.4 * t.oldPlayTime > t.newPlayTime
         LIMIT 100
     """
     )
@@ -1103,6 +1109,24 @@ interface DatabaseDao {
     )
     fun recentAlbumPlayEvents(albumId: String, limit: Int = 20): Flow<List<AlbumPlayEvent>>
 
+    // Global play history across every album, newest first — used by the Library Albums screen's
+    // "Continue Listening" section to detect albums with >=3 consecutive plays (see
+    // LibraryAlbumsViewModel.deriveContinueListeningCandidates for the run-length grouping).
+    @Query(
+        """
+        SELECT event.songId AS songId, song_album_map.albumId AS albumId, event.timestamp AS timestamp
+        FROM event
+        JOIN song_album_map ON song_album_map.songId = event.songId
+        ORDER BY event.timestamp DESC
+        LIMIT :limit
+        """
+    )
+    fun recentGlobalAlbumPlayEvents(limit: Int = 300): Flow<List<GlobalAlbumPlayEvent>>
+
+    @Transaction
+    @Query("SELECT * FROM album WHERE id IN (:ids)")
+    fun albumsByIds(ids: List<String>): Flow<List<Album>>
+
     @Transaction
     @Query("SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY rowId")
     fun playlistsByCreateDateAsc(): Flow<List<Playlist>>
@@ -1215,10 +1239,47 @@ interface DatabaseDao {
         SongSortType.PLAY_TIME -> downloadedSongsByPlayTimeAsc()
     }.map { it.reversed(descending) }
 
+    // Only albums where EVERY track is downloaded — a single downloaded song used to be enough
+    // to pull the whole album in here, which then hid that song from the downloaded-songs list
+    // (the screen shows either the album OR its songs, never both) even though most of the album
+    // wasn't actually downloaded yet.
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
-    @Query("SELECT DISTINCT album.* FROM album JOIN song ON song.albumId = album.id WHERE song.isDownloaded = 1 ORDER BY song.dateDownload DESC")
+    @Query(
+        """
+        SELECT album.* FROM album
+        WHERE album.songCount > 0
+          AND album.songCount = (
+              SELECT COUNT(*) FROM song WHERE song.albumId = album.id AND song.isDownloaded = 1
+          )
+        ORDER BY (SELECT MAX(song.dateDownload) FROM song WHERE song.albumId = album.id) DESC
+        """
+    )
     fun albumsDownloadedByDateDesc(): Flow<List<Album>>
+
+    // Downloaded songs not already covered by a fully-downloaded album above — so "Recently
+    // Downloaded" can show singles/loose tracks without duplicating songs that are already
+    // represented by their album.
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM song
+        WHERE isDownloaded = 1
+          AND (isEpisode = 0 OR isEpisode IS NULL)
+          AND (
+              albumId IS NULL
+              OR albumId NOT IN (
+                  SELECT album.id FROM album
+                  WHERE album.songCount > 0
+                    AND album.songCount = (
+                        SELECT COUNT(*) FROM song s2 WHERE s2.albumId = album.id AND s2.isDownloaded = 1
+                    )
+              )
+          )
+        ORDER BY dateDownload DESC
+        """
+    )
+    fun downloadedSongsNotInFullAlbum(): Flow<List<Song>>
 
     @Query("SELECT DISTINCT playlist_song_map.playlistId FROM playlist_song_map JOIN song ON song.id = playlist_song_map.songId WHERE song.isDownloaded = 1")
     fun playlistIdsWithDownloadedSongs(): Flow<List<String>>
@@ -1457,6 +1518,29 @@ interface DatabaseDao {
         query: String,
         previewSize: Int = Int.MAX_VALUE,
     ): Flow<List<Playlist>>
+
+    // Unrestricted by inLibrary/liked (unlike searchSongs above) — a downloaded or cached song
+    // may never have been explicitly added to the library, but should still be findable by the
+    // search screen's "Download" filter. Downloaded/cached status itself is checked in Kotlin
+    // (player cache completeness isn't something SQL can see), so this just narrows by title.
+    @Transaction
+    @Query("SELECT * FROM song WHERE title LIKE '%' || :query || '%' AND (isEpisode = 0 OR isEpisode IS NULL)")
+    fun searchSongsForDownloadFilter(query: String): Flow<List<Song>>
+
+    // Same "fully downloaded" rule as albumsDownloadedByDateDesc, narrowed by title/artist for
+    // the search screen's "Download" filter.
+    @Transaction
+    @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
+    @Query(
+        """
+        SELECT * FROM album WHERE
+            (title LIKE '%' || :query || '%'
+                OR EXISTS(SELECT * FROM album_artist_map JOIN artist ON album_artist_map.artistId = artist.id WHERE album_artist_map.albumId = album.id AND artist.name LIKE '%' || :query || '%'))
+            AND album.songCount > 0
+            AND album.songCount = (SELECT COUNT(*) FROM song WHERE song.albumId = album.id AND song.isDownloaded = 1)
+        """,
+    )
+    fun searchDownloadedAlbums(query: String): Flow<List<Album>>
 
     @Transaction
     @Query("SELECT * FROM event ORDER BY rowId DESC")

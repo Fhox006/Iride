@@ -83,7 +83,7 @@ fun ArtistAlbumsScreen(
     val coroutineScope = rememberCoroutineScope()
     val lazyGridState = rememberLazyGridState()
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     var inSelectMode by rememberSaveable { mutableStateOf(false) }
     val selection =

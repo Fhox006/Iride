@@ -1,9 +1,10 @@
 /**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
- * 
+ *
  * Optimized for minimal recomposition during navigation
  */
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 
 package com.metrolist.music.ui.component
 
@@ -22,6 +23,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -34,6 +42,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -46,7 +55,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -64,6 +75,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -93,6 +105,8 @@ import androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
 import androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING
 import androidx.media3.exoplayer.offline.Download.STATE_QUEUED
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
+import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.metrolist.innertube.YouTube
@@ -124,10 +138,12 @@ import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.Playlist
+import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.queues.LocalAlbumRadio
+import com.metrolist.music.ui.utils.SnapLayoutInfoProvider
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.joinByBullet
 import com.metrolist.music.utils.makeTimeString
@@ -161,63 +177,69 @@ const val VinylPeekFraction = 0.28f
  * Iride New UI "dischi per te" row. Draw this *before* the square album [ItemThumbnail] in the
  * same Box so the square covers the hidden portion of the disc.
  */
+private val VinylPeekDiscBaseTop = Color(0xFF141416)
+private val VinylPeekDiscBaseBottom = Color(0xFF060607)
+
 @Composable
 private fun VinylPeekDisc(
     thumbnailUrl: String?,
     size: Dp,
     modifier: Modifier = Modifier,
 ) {
-    // Dark charcoal, not pure black: stays a shade lighter than a black cover / black background
-    // so the disc still reads as its own shape instead of vanishing into them.
-    val vinylBase = Color(0xFF2A2A2A)
-    Box(
-        modifier = modifier
-            .size(size)
-            .shadow(elevation = 3.dp, shape = CircleShape, clip = false)
-            .clip(CircleShape)
-            .background(vinylBase)
-            // Faint rim so the disc's silhouette stays visible even against a black cover.
-            .border(width = 1.dp, color = Color.White.copy(alpha = 0.12f), shape = CircleShape)
+    val painter = rememberAsyncImagePainter(
+        model = ImageRequest.Builder(LocalContext.current)
+            .data(thumbnailUrl?.resize(120, 120))
+            .crossfade(true)
+            .build(),
+    )
+    val painterState by painter.state.collectAsState()
+    // The disc only makes sense once we actually have art to print on its label — don't show
+    // an empty/placeholder record while the thumbnail is still loading or missing.
+    val isLoaded = painterState is AsyncImagePainter.State.Success
+
+    AnimatedVisibility(
+        visible = isLoaded,
+        enter = fadeIn(),
+        modifier = modifier,
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(thumbnailUrl?.resize(300, 300))
-                .crossfade(true)
-                .build(),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                // Slightly translucent so the charcoal base tints through even on black covers.
-                .alpha(0.82f)
-        )
-        // Concentric grooves for a realistic record texture. Neutral grey reads on both
-        // light and dark covers, unlike a pure black or pure white stroke would.
-        for (ring in 1..4) {
+                .size(size)
+                .shadow(elevation = 3.dp, shape = CircleShape, clip = false)
+                .clip(CircleShape)
+                .background(Brush.verticalGradient(listOf(VinylPeekDiscBaseTop, VinylPeekDiscBaseBottom)))
+                // Faint rim so the disc's silhouette stays visible even against a black cover.
+                .border(width = 1.dp, color = Color.White.copy(alpha = 0.12f), shape = CircleShape)
+        ) {
+            // Concentric grooves for a realistic record texture.
+            for (ring in 1..4) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .fillMaxSize(1f - ring * 0.16f)
+                        .border(width = 0.6.dp, color = Color.White.copy(alpha = 0.06f), shape = CircleShape)
+                )
+            }
+            // Center label — the only place album artwork appears on the disc.
+            Image(
+                painter = painter,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxSize(0.24f)
+                    .clip(CircleShape)
+                    .border(width = 0.5.dp, color = Color.White.copy(alpha = 0.18f), shape = CircleShape)
+            )
+            // Spindle hole.
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .fillMaxSize(1f - ring * 0.16f)
-                    .border(width = 0.6.dp, color = Color.Gray.copy(alpha = 0.4f), shape = CircleShape)
+                    .fillMaxSize(0.045f)
+                    .clip(CircleShape)
+                    .background(VinylPeekDiscBaseBottom)
             )
         }
-        // Center label.
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxSize(0.24f)
-                .clip(CircleShape)
-                .background(vinylBase.copy(alpha = 0.85f))
-                .border(width = 0.5.dp, color = Color.White.copy(alpha = 0.18f), shape = CircleShape)
-        )
-        // Spindle hole.
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxSize(0.045f)
-                .clip(CircleShape)
-                .background(vinylBase)
-        )
     }
 }
 
@@ -386,6 +408,11 @@ fun ListItem(
     title: String,
     subtitle: String?,
     badges: @Composable RowScope.() -> Unit = {},
+    // Lets callers (Album/Playlist screens, New Iride UI only) render the subtitle in the same
+    // color as the title instead of the default muted secondary — used so a "feat. Artist" credit
+    // doesn't read as visually washed-out compared to the rest of the row. Defaults to the
+    // existing secondary color everywhere else so this is a no-op unless explicitly overridden.
+    subtitleColor: Color = MaterialTheme.colorScheme.secondary,
     thumbnailContent: @Composable () -> Unit,
     trailingContent: @Composable RowScope.() -> Unit = {},
     isSelected: Boolean? = false,
@@ -401,7 +428,7 @@ fun ListItem(
         if (!subtitle.isNullOrEmpty()) {
             Text(
                 text = subtitle,
-                color = MaterialTheme.colorScheme.secondary,
+                color = subtitleColor,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -431,7 +458,7 @@ fun GridItem(
 ) {
     val applyHPad = LocalItemHorizontalPadding.current
     // New Iride UI: tiles sit closer together laterally than the classic UI's 8dp gap.
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val hPad = if (applyHPad) (if (topNavigationBarEnabled) 4.dp else 8.dp) else 0.dp
     Column(
         modifier = if (fillMaxWidth) {
@@ -534,6 +561,8 @@ fun SongListItem(
     showLikedIcon: Boolean = true,
     showDownloadIcon: Boolean = true,
     subtitleOverride: String? = null,
+    // See ListItem's subtitleColor doc — null keeps the existing muted secondary color.
+    subtitleColor: Color? = null,
     badges: @Composable RowScope.() -> Unit = {
         if (showLikedIcon && song.song.liked && albumIndex == null) {
             Icon.Starred()
@@ -573,6 +602,7 @@ fun SongListItem(
                     makeTimeString(song.song.duration * 1000L)
                 )
             },
+            subtitleColor = subtitleColor ?: MaterialTheme.colorScheme.secondary,
             badges = badges,
             thumbnailContent = {
                 ItemThumbnail(
@@ -661,7 +691,7 @@ fun SongGridItem(
             text = subtitleText,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.secondary,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     },
@@ -669,7 +699,7 @@ fun SongGridItem(
     thumbnailContent = {
         val gridHeight = currentGridThumbnailHeight()
         val squircleRadius = maxWidth * 0.06f
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         ItemThumbnail(
             thumbnailUrl = song.song.thumbnailUrl,
             isActive = isActive,
@@ -886,7 +916,7 @@ fun AlbumGridItem(
             text = joinByBullet(album.artists.joinToString { it.name }, album.album.year?.toString()),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.secondary,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
     },
@@ -896,7 +926,7 @@ fun AlbumGridItem(
         val playerConnection = LocalPlayerConnection.current ?: return@GridItem
         val scope = rememberCoroutineScope()
         val squircleRadius = maxWidth * 0.06f
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
         if (showVinylEffect) {
             VinylPeekDisc(
@@ -991,29 +1021,42 @@ fun PlaylistListItem(
     },
     badges = badges,
     thumbnailContent = {
-        PlaylistThumbnail(
-            thumbnails = playlist.thumbnails,
-            size = ListThumbnailSize,
-            placeHolder = {
-                val likedName = stringResource(R.string.liked)
-                val painter = when (playlist.playlist.name) {
-                    likedName -> R.drawable.star
-                    stringResource(R.string.offline) -> R.drawable.offline
-                    stringResource(R.string.cached_playlist) -> R.drawable.cached
-                    // R.drawable.backup as placeholder
-                    stringResource(R.string.uploaded_playlist) -> R.drawable.backup
-                    else -> if (autoPlaylist) R.drawable.trending_up else R.drawable.queue_music
-                }
-                val iconSize = if (playlist.playlist.name == likedName) ListThumbnailSize * 0.65f else ListThumbnailSize / 2
-                Icon(
-                    painter = painterResource(painter),
-                    contentDescription = null,
-                    tint = LocalContentColor.current.copy(alpha = 0.8f),
-                    modifier = Modifier.size(iconSize)
-                )
-            },
-            shape = SquircleShape(radius = 9.dp, cornerSmoothing = 0.5f)
-        )
+        // Matched by stable playlist id (not the localized display name) so this keeps showing
+        // the glass star cover even when the Liked Songs entry is renamed to "Starred" for New
+        // Iride UI — a name-string match would silently fall through the moment the texts differ.
+        val isLikedPlaylist = playlist.playlist.id == PlaylistEntity.LIKED_PLAYLIST_ID
+        if (isLikedPlaylist) {
+            // Same frosted-glass mosaic + badge as the playlist's own screen (AutoPlaylistScreen)
+            // so this entry looks identical whether seen from inside or from the Library list.
+            GlassPlaylistCover(
+                thumbnails = playlist.thumbnails,
+                icon = R.drawable.star,
+                size = ListThumbnailSize,
+                shape = SquircleShape(radius = 9.dp, cornerSmoothing = 0.5f),
+                iconSizeFraction = 0.65f,
+            )
+        } else {
+            PlaylistThumbnail(
+                thumbnails = playlist.thumbnails,
+                size = ListThumbnailSize,
+                placeHolder = {
+                    val painter = when {
+                        playlist.playlist.name == stringResource(R.string.offline) -> R.drawable.offline
+                        playlist.playlist.name == stringResource(R.string.cached_playlist) -> R.drawable.cached
+                        // R.drawable.backup as placeholder
+                        playlist.playlist.name == stringResource(R.string.uploaded_playlist) -> R.drawable.backup
+                        else -> if (autoPlaylist) R.drawable.trending_up else R.drawable.queue_music
+                    }
+                    Icon(
+                        painter = painterResource(painter),
+                        contentDescription = null,
+                        tint = LocalContentColor.current.copy(alpha = 0.8f),
+                        modifier = Modifier.size(ListThumbnailSize / 2)
+                    )
+                },
+                shape = SquircleShape(radius = 9.dp, cornerSmoothing = 0.5f)
+            )
+        }
     },
     trailingContent = trailingContent,
     modifier = modifier
@@ -1086,7 +1129,7 @@ fun PlaylistGridItem(
             text = subtitle,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.secondary,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
     },
@@ -1094,35 +1137,47 @@ fun PlaylistGridItem(
     thumbnailContent = {
         val width = maxWidth
         val squircleRadius = maxWidth * 0.06f
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
-        PlaylistThumbnail(
-            thumbnails = playlist.thumbnails,
-            size = width,
-            placeHolder = {
-                val likedName = stringResource(R.string.liked)
-                val painter = when (playlist.playlist.name) {
-                    likedName -> R.drawable.star
-                    stringResource(R.string.offline) -> R.drawable.offline
-                    stringResource(R.string.cached_playlist) -> R.drawable.cached
-                    // R.drawable.backup as placeholder
-                    stringResource(R.string.uploaded_playlist) -> R.drawable.backup
-                    else -> if (autoPlaylist) R.drawable.trending_up else R.drawable.queue_music
-                }
-                val iconSize = if (playlist.playlist.name == likedName) width * 0.65f else width / 2
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Icon(
-                        painter = painterResource(painter),
-                        contentDescription = null,
-                        tint = LocalContentColor.current.copy(alpha = 0.8f),
-                        modifier = Modifier.size(iconSize)
-                    )
-                }
-            },
-            shape = if (topNavigationBarEnabled) RoundedCornerShape(5.dp) else SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f)
-        )
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
+        val shape = if (topNavigationBarEnabled) RoundedCornerShape(5.dp) else SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f)
+        // See PlaylistListItem's placeholder for why this matches by id, not name.
+        val isLikedPlaylist = playlist.playlist.id == PlaylistEntity.LIKED_PLAYLIST_ID
+        if (isLikedPlaylist) {
+            // Same frosted-glass mosaic + badge as the playlist's own screen (AutoPlaylistScreen)
+            // so this entry looks identical whether seen from inside or from the Library grid.
+            GlassPlaylistCover(
+                thumbnails = playlist.thumbnails,
+                icon = R.drawable.star,
+                size = width,
+                shape = shape,
+                iconSizeFraction = 0.65f,
+            )
+        } else {
+            PlaylistThumbnail(
+                thumbnails = playlist.thumbnails,
+                size = width,
+                placeHolder = {
+                    val painter = when {
+                        playlist.playlist.name == stringResource(R.string.offline) -> R.drawable.offline
+                        playlist.playlist.name == stringResource(R.string.cached_playlist) -> R.drawable.cached
+                        // R.drawable.backup as placeholder
+                        playlist.playlist.name == stringResource(R.string.uploaded_playlist) -> R.drawable.backup
+                        else -> if (autoPlaylist) R.drawable.trending_up else R.drawable.queue_music
+                    }
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Icon(
+                            painter = painterResource(painter),
+                            contentDescription = null,
+                            tint = LocalContentColor.current.copy(alpha = 0.8f),
+                            modifier = Modifier.size(width / 2)
+                        )
+                    }
+                },
+                shape = shape
+            )
+        }
     },
     fillMaxWidth = fillMaxWidth,
     modifier = modifier
@@ -1348,7 +1403,7 @@ fun YouTubeGridItem(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.secondary,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -1359,7 +1414,7 @@ fun YouTubeGridItem(
         val playerConnection = LocalPlayerConnection.current ?: return@GridItem
         val scope = rememberCoroutineScope()
         val squircleRadius = maxWidth * 0.06f
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
         if (showVinylEffect && item is AlbumItem) {
             VinylPeekDisc(
@@ -1578,7 +1633,7 @@ fun ItemThumbnail(
         }
 
         if (albumIndex == null) {
-            AsyncImage(
+            val painter = rememberAsyncImagePainter(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(thumbnailUrl)
                     .crossfade(200)
@@ -1586,6 +1641,33 @@ fun ItemThumbnail(
                     .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                     .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
                     .build(),
+            )
+            val painterState by painter.state.collectAsState()
+            val isLoaded = painterState is AsyncImagePainter.State.Success
+
+            AnimatedVisibility(
+                visible = !isLoaded,
+                enter = fadeIn(),
+                exit = fadeOut(tween(200)),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.music_note),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxSize(0.4f),
+                    )
+                }
+            }
+
+            Image(
+                painter = painter,
                 contentDescription = null,
                 contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
                 modifier = Modifier
@@ -1914,6 +1996,49 @@ fun BoxScope.AlbumPlayButton(
     }
 }
 
+// Same horizontally-snapping carousel mechanism as Home's "Picked for you" (LazyHorizontalGrid
+// + snap fling, `rows` tall pages), factored out so every song carousel in the app (Picked for
+// you, Artist "Top Songs", Artist library songs) stays visually identical. Row spacing/shape is
+// untouched here — callers render their own row composable (SongListItem/YouTubeListItem) inside
+// [itemContent], so the existing look of those rows carries over as-is.
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun <T> SongCarousel(
+    items: List<T>,
+    key: (T) -> Any,
+    modifier: Modifier = Modifier,
+    rows: Int = 4,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    gridState: LazyGridState = rememberLazyGridState(),
+    itemContent: @Composable (item: T, itemWidth: Dp) -> Unit,
+) {
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val itemWidthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
+        val itemWidth = maxWidth * itemWidthFactor
+        val snapLayoutInfoProvider = remember(gridState) {
+            SnapLayoutInfoProvider(
+                lazyGridState = gridState,
+                positionInLayout = { layoutSize, itemSize ->
+                    layoutSize * itemWidthFactor / 2f - itemSize / 2f
+                },
+            )
+        }
+        LazyHorizontalGrid(
+            state = gridState,
+            rows = GridCells.Fixed(rows),
+            flingBehavior = rememberSnapFlingBehavior(snapLayoutInfoProvider),
+            contentPadding = contentPadding,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(ListItemHeight * rows),
+        ) {
+            gridItems(items = items, key = { key(it) }) { item ->
+                itemContent(item, itemWidth)
+            }
+        }
+    }
+}
+
 @Composable
 fun SwipeToSongBox(
     modifier: Modifier = Modifier,
@@ -1925,7 +2050,7 @@ fun SwipeToSongBox(
     val scope = rememberCoroutineScope()
     val offset = remember { mutableFloatStateOf(0f) }
     val threshold = 300f
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     val dragState = rememberDraggableState { delta ->
         offset.floatValue = (offset.floatValue + delta).coerceIn(-threshold, threshold)
@@ -1960,24 +2085,30 @@ fun SwipeToSongBox(
             val (labelRes, bg, tint, align) = if (offset.floatValue > 0)
                 Quadruple(
                     R.string.swipe_label_next,
-                    if (topNavigationBarEnabled) MaterialTheme.colorScheme.inverseSurface else MaterialTheme.colorScheme.secondary,
-                    if (topNavigationBarEnabled) MaterialTheme.colorScheme.inverseOnSurface else MaterialTheme.colorScheme.onSecondary,
+                    if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.secondary,
+                    if (topNavigationBarEnabled) Color.Black else MaterialTheme.colorScheme.onSecondary,
                     Alignment.CenterStart
                 ) else
                 Quadruple(
                     R.string.swipe_label_queue,
-                    if (topNavigationBarEnabled) MaterialTheme.colorScheme.inverseSurface else MaterialTheme.colorScheme.primary,
-                    if (topNavigationBarEnabled) MaterialTheme.colorScheme.inverseOnSurface else MaterialTheme.colorScheme.onPrimary,
+                    if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.primary,
+                    if (topNavigationBarEnabled) Color.Black else MaterialTheme.colorScheme.onPrimary,
                     Alignment.CenterEnd
                 )
 
-            // Fixed-size panel (matches Alpha15) — spans the full row at all times instead of
-            // growing with drag distance. The sliding content Box (drawn after this one, so it
-            // sits on top in z-order) is what actually reveals/covers it, so the panel itself —
-            // and the label inside it — never changes size or jitters while dragging.
+            // Fixed-size panel — spans the full row at all times instead of growing with
+            // drag distance. The sliding content Box (drawn after this one, so it sits on
+            // top in z-order) is what actually reveals/covers it, so the panel itself — and
+            // the label inside it — never changes size or jitters while dragging.
+            //
+            // The row itself has a transparent background in New Iride UI, so this panel
+            // alone would show through behind the cover/title/artist too and clash with
+            // their white text. The content Box below carries its own black backing sized
+            // to its own bounds (only while swiping), so NEXT/QUEUE keeps a plain white
+            // backdrop while the song info stays readable on black.
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .matchParentSize()
                     .background(bg),
                 contentAlignment = align
             ) {
@@ -1996,7 +2127,14 @@ fun SwipeToSongBox(
         Box(
             modifier = Modifier
                 .offset { IntOffset(offset.floatValue.roundToInt(), 0) }
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .then(
+                    if (topNavigationBarEnabled && offset.floatValue != 0f) {
+                        Modifier.background(Color.Black)
+                    } else {
+                        Modifier
+                    }
+                ),
             content = content
         )
     }
@@ -2036,24 +2174,38 @@ object Icon {
 
     @Composable
     fun Download(state: Int?) {
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         when (state) {
-            STATE_COMPLETED -> Box(
-                modifier = Modifier
-                    .padding(end = 2.dp)
-                    .size(14.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center,
-            ) {
+            STATE_COMPLETED -> if (topNavigationBarEnabled) {
+                // New Iride UI: flat monochrome badge, no colored pill — matches Starred()/Explicit() above.
                 Icon(
                     painter = painterResource(R.drawable.arrow_downward),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(11.dp),
+                    tint = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier
+                        .size(16.dp)
+                        .padding(end = 2.dp),
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .padding(end = 2.dp)
+                        .size(14.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.arrow_downward),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(11.dp),
+                    )
+                }
             }
             STATE_QUEUED, STATE_DOWNLOADING -> CircularProgressIndicator(
                 strokeWidth = 2.dp,
+                color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.6f) else ProgressIndicatorDefaults.circularColor,
                 modifier = Modifier
                     .size(16.dp)
                     .padding(end = 2.dp)
@@ -2074,5 +2226,21 @@ object Icon {
                     .padding(end = 2.dp)
             )
         }
+    }
+}
+
+// New Iride UI: flat monochrome spinner instead of the Material Expressive blob shape,
+// matching the tinting already used for HomeScreen's mood-mix loaders.
+@Composable
+fun IrideLoadingIndicator(modifier: Modifier = Modifier) {
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
+    if (topNavigationBarEnabled) {
+        CircularProgressIndicator(
+            modifier = modifier.size(28.dp),
+            strokeWidth = 2.dp,
+            color = Color.White.copy(alpha = 0.6f),
+        )
+    } else {
+        ContainedLoadingIndicator(modifier = modifier)
     }
 }

@@ -78,7 +78,7 @@ fun NewActionButton(
         }
     }
 
-    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     if (newIrideUi) {
         Column(

@@ -41,8 +41,12 @@ import com.metrolist.music.constants.SongSortDescendingKey
 import com.metrolist.music.constants.SongSortType
 import com.metrolist.music.constants.SongSortTypeKey
 import com.metrolist.music.constants.DismissedListenedAlbumsKey
+import com.metrolist.music.constants.DismissedContinueListeningAlbumsKey
+import com.metrolist.music.constants.RecentlySuggestedAlbumsKey
 import com.metrolist.music.constants.TopSize
 import com.metrolist.music.db.MusicDatabase
+import com.metrolist.music.db.entities.Album
+import com.metrolist.music.db.entities.GlobalAlbumPlayEvent
 import com.metrolist.music.discovery.AlbumRecommendationsGenerator
 import com.metrolist.music.extensions.filterExplicit
 import com.metrolist.music.extensions.filterExplicitAlbums
@@ -65,6 +69,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -75,11 +80,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import javax.inject.Inject
 
 @HiltViewModel
@@ -220,6 +227,31 @@ constructor(
     }
 }
 
+@Serializable
+private data class TimestampedAlbumId(val id: String, val timestamp: Long)
+
+private const val CONTINUE_LISTENING_MIN_STREAK = 3
+
+// Walks `events` (newest first, one row per song play joined to its album) and returns, for each
+// album with a run of >= CONTINUE_LISTENING_MIN_STREAK consecutive same-album plays, that run's
+// most recent timestamp. Only the latest run per album is kept — older runs are superseded, which
+// is also what lets a dismissed album quietly reappear: a fresh streak produces a newer timestamp
+// than the dismiss time, an unrepeated old streak doesn't.
+private fun deriveContinueListeningCandidates(events: List<GlobalAlbumPlayEvent>): Map<String, LocalDateTime> {
+    val result = linkedMapOf<String, LocalDateTime>()
+    var i = 0
+    while (i < events.size) {
+        val albumId = events[i].albumId
+        var j = i
+        while (j < events.size && events[j].albumId == albumId) j++
+        if (j - i >= CONTINUE_LISTENING_MIN_STREAK && albumId !in result) {
+            result[albumId] = events[i].timestamp
+        }
+        i = j
+    }
+    return result
+}
+
 @HiltViewModel
 class LibraryAlbumsViewModel
 @Inject
@@ -258,31 +290,121 @@ constructor(
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedAlbums() }
     }
 
-    // "Album consigliati" — discovery carousel, generated lazily and cached until the user
-    // asks for a fresh batch (mirrors HomeViewModel's dischi-per-te regenerate flow).
+    // "Recommended Albums" — discovery carousel, generated lazily and cached until the user asks
+    // for a fresh batch (mirrors HomeViewModel's dischi-per-te regenerate flow). Backed by
+    // LibraryAlbumsCache (process-scoped) rather than just this ViewModel's own field, so
+    // navigating away from and back to the Albums screen doesn't lose/regenerate the list — only
+    // a full app restart does.
     private val albumRecommendationsGenerator = AlbumRecommendationsGenerator(database)
-    val recommendedAlbums = MutableStateFlow<List<DischiPerTeItem>?>(null)
+    val recommendedAlbums = MutableStateFlow(LibraryAlbumsCache.recommendedAlbums)
+    val isRegeneratingRecommendedAlbums = MutableStateFlow(false)
 
     fun loadRecommendedAlbums() {
         if (recommendedAlbums.value != null) return
-        viewModelScope.launch(Dispatchers.IO) { generateRecommendedAlbums() }
+        viewModelScope.launch(Dispatchers.IO) {
+            isRegeneratingRecommendedAlbums.value = true
+            try {
+                generateRecommendedAlbums()
+            } finally {
+                isRegeneratingRecommendedAlbums.value = false
+            }
+        }
     }
 
     fun regenerateRecommendedAlbums() {
-        viewModelScope.launch(Dispatchers.IO) { generateRecommendedAlbums() }
+        viewModelScope.launch(Dispatchers.IO) {
+            isRegeneratingRecommendedAlbums.value = true
+            try {
+                generateRecommendedAlbums()
+            } finally {
+                isRegeneratingRecommendedAlbums.value = false
+            }
+        }
     }
+
+    private val recommendationCooldownMs = Duration.ofDays(3).toMillis()
 
     private suspend fun generateRecommendedAlbums() {
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val explorePage = HomeCache.explorePage ?: YouTube.explore().getOrNull()?.also {
             HomeCache.explorePage = it
         }
-        recommendedAlbums.value = albumRecommendationsGenerator.generateForLibrary(
+        val cutoff = System.currentTimeMillis() - recommendationCooldownMs
+        val recentlySuggestedIds = context.dataStore.data.first()[RecentlySuggestedAlbumsKey]?.let { json ->
+            runCatching { Json.decodeFromString<List<TimestampedAlbumId>>(json) }.getOrNull()
+        }.orEmpty().filter { it.timestamp >= cutoff }.map { it.id }.toSet()
+
+        val generated = albumRecommendationsGenerator.generateForLibrary(
             explorePage = explorePage,
             hideExplicit = hideExplicit,
             seed = System.currentTimeMillis(),
             excludedAlbumIds = allAlbums.value.map { it.id }.toSet(),
+            recentlySuggestedIds = recentlySuggestedIds,
         )
+        recommendedAlbums.value = generated
+        LibraryAlbumsCache.recommendedAlbums = generated
+        recordSuggestedAlbums(generated.map { it.id })
+    }
+
+    private suspend fun recordSuggestedAlbums(ids: List<String>) {
+        if (ids.isEmpty()) return
+        val now = System.currentTimeMillis()
+        // Prune entries well past the cooldown so this pref doesn't grow forever.
+        val pruneCutoff = now - recommendationCooldownMs * 3
+        context.dataStore.edit { prefs ->
+            val existing = prefs[RecentlySuggestedAlbumsKey]?.let { json ->
+                runCatching { Json.decodeFromString<List<TimestampedAlbumId>>(json) }.getOrNull()
+            }.orEmpty().filter { it.timestamp >= pruneCutoff }
+            val merged = (existing + ids.map { TimestampedAlbumId(it, now) })
+                .groupBy { it.id }
+                .map { (_, entries) -> entries.maxByOrNull { it.timestamp }!! }
+            prefs[RecentlySuggestedAlbumsKey] = Json.encodeToString(merged)
+        }
+    }
+
+    // "Continue Listening" — albums with >= 3 consecutive plays (anywhere in the library, not
+    // just on the album's own page) that the user hasn't favorited yet. Removing one from this
+    // list only hides it here until a newer streak forms; favorites and play history are
+    // untouched.
+    private val dismissedContinueListeningAlbums = context.dataStore.data
+        .map { prefs ->
+            prefs[DismissedContinueListeningAlbumsKey]?.let { json ->
+                runCatching { Json.decodeFromString<List<TimestampedAlbumId>>(json) }.getOrNull()
+            }.orEmpty().associate { it.id to it.timestamp }
+        }
+
+    val continueListeningAlbums: StateFlow<List<Album>> = combine(
+        database.recentGlobalAlbumPlayEvents(300),
+        allAlbums,
+        dismissedContinueListeningAlbums,
+    ) { events, saved, dismissed ->
+        val savedIds = saved.map { it.id }.toSet()
+        deriveContinueListeningCandidates(events)
+            .filterKeys { it !in savedIds }
+            .filter { (id, timestamp) ->
+                val dismissedAt = dismissed[id] ?: return@filter true
+                timestamp.toInstant(ZoneOffset.UTC).toEpochMilli() > dismissedAt
+            }
+    }.flatMapLatest { candidates ->
+        if (candidates.isEmpty()) {
+            flowOf(emptyList<Album>())
+        } else {
+            database.albumsByIds(candidates.keys.toList()).map { albums ->
+                albums.sortedByDescending { candidates[it.id] }
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    fun dismissContinueListeningAlbum(albumId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            context.dataStore.edit { prefs ->
+                val existing = prefs[DismissedContinueListeningAlbumsKey]?.let { json ->
+                    runCatching { Json.decodeFromString<List<TimestampedAlbumId>>(json) }.getOrNull()
+                }.orEmpty().filterNot { it.id == albumId }
+                prefs[DismissedContinueListeningAlbumsKey] = Json.encodeToString(existing + TimestampedAlbumId(albumId, now))
+            }
+        }
     }
 
     // "Album ascoltati" — albums with >=2 songs played that aren't saved to the library yet,
@@ -378,6 +500,9 @@ constructor(
     val downloadedPlaylistIds = database.playlistIdsWithDownloadedSongs()
         .map { it.toSet() }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
+
+    val lastLikedThumbnails = database.lastLikedSongThumbnails()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     fun sync() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncSavedPlaylists() }
@@ -492,6 +617,9 @@ constructor(
     var downloadedAlbums = database
         .albumsDownloadedByDateDesc()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    var downloadedLooseSongs = database
+        .downloadedSongsNotInFullAlbum()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val downloadedPlaylistIds = database.playlistIdsWithDownloadedSongs()
         .map { it.toSet() }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
@@ -504,6 +632,8 @@ constructor(
 
     val lastLikedDate = database.lastLikedSongDate()
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
+    val lastLikedThumbnails = database.lastLikedSongThumbnails()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     init {
         viewModelScope.launch(Dispatchers.IO) {

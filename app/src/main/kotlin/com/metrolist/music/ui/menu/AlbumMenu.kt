@@ -47,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
@@ -74,6 +75,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.db.entities.SpeedDialItem
@@ -91,6 +93,7 @@ import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.menu.ExportDialog
 import com.metrolist.music.utils.PlaylistExporter
 import com.metrolist.music.utils.getExportFileUri
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.saveToPublicDocuments
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -107,6 +110,7 @@ fun AlbumMenu(
     val downloadUtil = LocalDownloadUtil.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val listenTogetherManager = LocalListenTogetherManager.current
+    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
     val scope = rememberCoroutineScope()
     val libraryAlbum by database.album(originalAlbum.id).collectAsState(initial = originalAlbum)
@@ -282,16 +286,27 @@ fun AlbumMenu(
             ) {
                 Icon(
                     painter = painterResource(if (album.album.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border),
-                    tint = if (album.album.bookmarkedAt != null) MaterialTheme.colorScheme.error else LocalContentColor.current,
+                    tint = if (newIrideUi) {
+                        LocalContentColor.current
+                    } else if (album.album.bookmarkedAt != null) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        LocalContentColor.current
+                    },
                     contentDescription = null,
                 )
             }
         },
     )
 
-    HorizontalDivider()
-
-    Spacer(modifier = Modifier.height(12.dp))
+    if (newIrideUi) {
+        Spacer(modifier = Modifier.height(6.dp))
+        HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 1.dp)
+        Spacer(modifier = Modifier.height(20.dp))
+    } else {
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(12.dp))
+    }
 
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -316,7 +331,7 @@ fun AlbumMenu(
                                         painter = painterResource(R.drawable.play),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 },
                                 text = stringResource(R.string.play),
@@ -339,7 +354,7 @@ fun AlbumMenu(
                                         painter = painterResource(R.drawable.shuffle),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 },
                                 text = stringResource(R.string.shuffle),
@@ -367,7 +382,7 @@ fun AlbumMenu(
                                     painter = painterResource(R.drawable.share),
                                     contentDescription = null,
                                     modifier = Modifier.size(28.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             },
                             text = stringResource(R.string.share),

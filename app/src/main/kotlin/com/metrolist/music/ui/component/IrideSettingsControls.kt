@@ -45,7 +45,7 @@ fun IrideSwitch(
     enabled: Boolean = true,
     thumbContent: (@Composable () -> Unit)? = null,
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     if (!topNavigationBarEnabled) {
         Switch(
@@ -110,7 +110,7 @@ fun IrideSlider(
     steps: Int = 0,
     onValueChangeFinished: (() -> Unit)? = null,
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     if (!topNavigationBarEnabled) {
         Slider(

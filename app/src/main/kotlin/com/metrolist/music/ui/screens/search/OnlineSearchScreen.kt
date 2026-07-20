@@ -123,7 +123,7 @@ fun OnlineSearchScreen(
     val viewState by viewModel.viewState.collectAsState()
     val explorePage by homeViewModel.explorePage.collectAsState()
 
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
 
     val lazyListState = rememberLazyListState()
@@ -148,9 +148,12 @@ fun OnlineSearchScreen(
         }
     }
 
-    LazyColumn(
-        state = lazyListState,
-        contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Bottom).asPaddingValues(),
+    // Header is a movableContentOf (see SearchScreen) — must NOT be a LazyColumn item. Lazy
+    // layouts subcompose each item in their own recycled slot table; moving/disposing that slot
+    // independently of the movable content's remembered anchor crashed with "Could not resolve
+    // state for movable content" when navigating away from Search (e.g. to Library). Pinned as a
+    // fixed sibling instead, same fix already used by OnlineSearchResultsBody/LocalSearchScreen.
+    Column(
         modifier =
             Modifier
                 .fillMaxSize()
@@ -162,9 +165,12 @@ fun OnlineSearchScreen(
                     },
                 ),
     ) {
-        if (header != null) {
-            item(key = "search_header") { header() }
-        }
+    header?.invoke()
+    LazyColumn(
+        state = lazyListState,
+        contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Bottom).asPaddingValues(),
+        modifier = Modifier.weight(1f),
+    ) {
         if (query.isEmpty() && !isFocused) {
             // === EXPLORE SECTION: moods first, no history ===
             if (explorePage?.moodAndGenres?.isNotEmpty() == true) {
@@ -771,6 +777,7 @@ fun OnlineSearchScreen(
         item(key = "pill_spacer") {
             Spacer(modifier = Modifier.height(136.dp))
         }
+    }
     }
 }
 

@@ -44,6 +44,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
@@ -185,7 +186,7 @@ fun SettingsScreen(
 
     val (advancedMode, onAdvancedModeChange) = rememberPreference(AdvancedModeKey, false)
     var showAdvancedMenu by remember { mutableStateOf(false) }
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = false)
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val topNavBarController = LocalTopNavBarController.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         snapAnimationSpec = tween(durationMillis = 200),
@@ -204,7 +205,9 @@ fun SettingsScreen(
             DropdownMenu(
                 expanded = showAdvancedMenu,
                 onDismissRequest = { showAdvancedMenu = false },
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                containerColor = if (topNavigationBarEnabled) Color(0xFF0A0A0A) else MenuDefaults.containerColor,
+                border = if (topNavigationBarEnabled) BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)) else null,
             ) {
                 DropdownMenuItem(
                     text = {
@@ -213,8 +216,18 @@ fun SettingsScreen(
                                 if (advancedMode) R.string.disable_advanced_settings
                                 else R.string.enable_advanced_settings
                             ),
-                            style = MaterialTheme.typography.bodyLarge
+                            style = if (topNavigationBarEnabled) {
+                                MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold)
+                            } else {
+                                MaterialTheme.typography.bodyLarge
+                            },
+                            color = if (topNavigationBarEnabled) Color.White else Color.Unspecified,
                         )
+                    },
+                    colors = if (topNavigationBarEnabled) {
+                        MenuDefaults.itemColors(textColor = Color.White)
+                    } else {
+                        MenuDefaults.itemColors()
                     },
                     onClick = {
                         onAdvancedModeChange(!advancedMode)
