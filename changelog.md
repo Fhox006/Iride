@@ -1,3 +1,16 @@
+## 0.1.0-alpha18
+
+### New features
+
+- **Guess the song**: new artist-page quiz game (New Iride UI) — guess songs from a random full-catalog pool of that artist, wrong guesses cost a 3s penalty, best score tracked per artist
+- **Library Albums sections**: new Favorites and Continue Listening rows on the Library Albums screen
+
+### Improvements
+
+- New "Top gradient on albums" setting, mirroring the existing home top gradient, subtly blended behind Album/Single/EP screens
+- New glass-style playlist cover component
+- Further monochrome/flat styling pass across menus, dialogs, settings screens, search, and the player for New Iride UI
+
 ## 0.1.0-alpha17
 
 ### New features
