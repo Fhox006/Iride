@@ -1,3 +1,16 @@
+## 0.1.0-alpha19
+
+### New look
+
+- **New graphic style**: a fresh monospace typographic identity (Space Mono) now runs across the New Iride UI — song, album, artist and playlist titles and subtitles all adopt the new typeface for a cleaner, more distinctive feel
+- Player redesigned: larger, better-spaced album title, refined circular controls with subtle borders, reworked background gradient blend, and corrected touch zones so every control reacts where you tap
+
+### Improvements
+
+- **Guess the song**: rounds now start instantly — the next song's audio is preloaded the moment you answer, so there is no buffering between rounds; songs are loaded in full upfront (a short one-time wait, explained on the loading screen)
+- Guess the song scoreboard shows a clearer "correct / total" result, and the songs-left counter now reads naturally in singular and plural
+- Continued monochrome/flat styling pass across menus, bottom sheets, and lyrics for the New Iride UI
+
 ## 0.1.0-alpha18
 
 ### New features
