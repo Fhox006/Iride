@@ -29,6 +29,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -375,14 +376,20 @@ fun rememberBottomSheetState(
         mutableIntStateOf(initialAnchor)
     }
 
-    // Never restore to full-screen expanded on cold start — nav bar must be visible at
-    // startup. Corrected once, on the saved anchor itself, instead of via a derived
-    // "effective" value recomputed on every read: the old approach re-applied this startup-
-    // only downgrade any time dismissedBound/expandedBound/collapsedBound changed value
-    // (e.g. insets shifting when a fullscreen dialog — lyrics fullscreen — hides system bars),
-    // which snapped an already-open player shut just from bounds being recalculated.
-    if (previousAnchor == expandedAnchor) {
-        previousAnchor = collapsedAnchor
+    // Never restore to full-screen expanded on cold start — nav bar must be visible at startup.
+    // One-shot (plain remember, not rememberSaveable): runs once per composition lifetime, so a
+    // real process cold-start still corrects, but a legitimately-expanded sheet is never clobbered.
+    // The old unconditional version ran on every recomposition: it flipped expandedAnchor ->
+    // collapsedAnchor the instant the user opened the player, so previousAnchor never persisted as
+    // expanded during a live session — then any bounds change (fullscreen lyrics dialog hiding
+    // system bars) recomputed the remember() block against the stale collapsed anchor and snapped
+    // the open player shut (which in turn closed lyrics + dismissed the fullscreen dialog).
+    var startupCorrected by remember { mutableStateOf(false) }
+    if (!startupCorrected) {
+        if (previousAnchor == expandedAnchor) {
+            previousAnchor = collapsedAnchor
+        }
+        startupCorrected = true
     }
 
     val initialValue = when (previousAnchor) {

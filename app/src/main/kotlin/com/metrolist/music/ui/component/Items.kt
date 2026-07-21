@@ -74,6 +74,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -507,9 +508,14 @@ fun GridItem(
 ) = GridItem(
     modifier = modifier,
     title = {
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         Text(
             text = title,
-            style = MaterialTheme.typography.bodyLarge,
+            style = if (topNavigationBarEnabled) {
+                MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily)
+            } else {
+                MaterialTheme.typography.bodyLarge
+            },
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -518,9 +524,14 @@ fun GridItem(
         )
     },
     subtitle = {
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         Text(
             text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
+            style = if (topNavigationBarEnabled) {
+                MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily)
+            } else {
+                MaterialTheme.typography.bodyMedium
+            },
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -668,9 +679,14 @@ fun SongGridItem(
 ) = GridItem(
     title = {
         AutoLinkFeaturedArtistEffect(song)
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         Text(
             text = song.song.title,
-            style = MaterialTheme.typography.bodyLarge,
+            style = if (topNavigationBarEnabled) {
+                MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily)
+            } else {
+                MaterialTheme.typography.bodyLarge
+            },
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -678,6 +694,7 @@ fun SongGridItem(
         )
     },
     subtitle = {
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
         val subtitleText = if (shouldHideDuration(song.song.duration, hideDurationForStandard)) {
             song.orderedArtists.joinToString { it.name }
@@ -689,7 +706,11 @@ fun SongGridItem(
         }
         Text(
             text = subtitleText,
-            style = MaterialTheme.typography.bodyMedium,
+            style = if (topNavigationBarEnabled) {
+                MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily)
+            } else {
+                MaterialTheme.typography.bodyMedium
+            },
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -748,6 +769,7 @@ fun ArtistListItem(
                 .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .build(),
             contentDescription = null,
+            contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(ListThumbnailSize)
                 .clip(CircleShape),
@@ -902,9 +924,14 @@ fun AlbumGridItem(
     size: Dp = currentGridThumbnailHeight(),
 ) = GridItem(
     title = {
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         Text(
             text = album.album.title,
-            style = MaterialTheme.typography.bodyLarge,
+            style = if (topNavigationBarEnabled) {
+                MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily)
+            } else {
+                MaterialTheme.typography.bodyLarge
+            },
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -912,9 +939,14 @@ fun AlbumGridItem(
         )
     },
     subtitle = {
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         Text(
             text = joinByBullet(album.artists.joinToString { it.name }, album.album.year?.toString()),
-            style = MaterialTheme.typography.bodyMedium,
+            style = if (topNavigationBarEnabled) {
+                MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily)
+            } else {
+                MaterialTheme.typography.bodyMedium
+            },
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -1366,9 +1398,14 @@ fun YouTubeGridItem(
     GridItem(
     title = {
         if (showTitle) {
+            val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
             Text(
                 text = item.title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = if (topNavigationBarEnabled) {
+                    MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily)
+                } else {
+                    MaterialTheme.typography.bodyLarge
+                },
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1378,6 +1415,7 @@ fun YouTubeGridItem(
         }
     },
     subtitle = {
+        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
         val subtitle = when (item) {
             is SongItem -> {
@@ -1401,7 +1439,11 @@ fun YouTubeGridItem(
         if (subtitle != null) {
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
+                style = if (topNavigationBarEnabled) {
+                    MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily)
+                } else {
+                    MaterialTheme.typography.bodyMedium
+                },
                 color = MaterialTheme.colorScheme.secondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -2056,6 +2098,26 @@ fun SwipeToSongBox(
         offset.floatValue = (offset.floatValue + delta).coerceIn(-threshold, threshold)
     }
 
+    // Every offset read below is deferred to layout/draw (Modifier.offset{} lambda,
+    // graphicsLayer{} lambda, drawBehind{}) instead of read directly in this function's body.
+    // Reading offset.floatValue directly here — as this used to do, in an `if` gating the
+    // reveal panel's presence and in a `then(if (...))` on content's own Modifier chain — makes
+    // this whole composable (and, since it isn't a separate skip scope, the heavy `content()`
+    // it hosts: thumbnail, badges, download-state flows) recompose on every single drag pixel.
+    // That recomposition storm is what read as a jittery/stuttering row while dragging; sizes
+    // and colors below never change mid-drag, only visibility (alpha) and position do, so they
+    // can be computed once and animated purely at draw time.
+    val nextBg = if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.secondary
+    val nextTint = if (topNavigationBarEnabled) Color.Black else MaterialTheme.colorScheme.onSecondary
+    val queueBg = if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.primary
+    val queueTint = if (topNavigationBarEnabled) Color.Black else MaterialTheme.colorScheme.onPrimary
+    val labelStyle = MaterialTheme.typography.labelLarge
+    val labelFontFamily = if (topNavigationBarEnabled) SpaceMonoFontFamily else FontFamily.Default
+    val labelLetterSpacing = if (topNavigationBarEnabled) 0.5.sp else 0.sp
+    val nextLabel = stringResource(R.string.swipe_label_next)
+    val queueLabel = stringResource(R.string.swipe_label_queue)
+    val contentBg = if (topNavigationBarEnabled) Color.Black else null
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -2081,60 +2143,60 @@ fun SwipeToSongBox(
                 }
             )
     ) {
-        if (offset.floatValue != 0f) {
-            val (labelRes, bg, tint, align) = if (offset.floatValue > 0)
-                Quadruple(
-                    R.string.swipe_label_next,
-                    if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.secondary,
-                    if (topNavigationBarEnabled) Color.Black else MaterialTheme.colorScheme.onSecondary,
-                    Alignment.CenterStart
-                ) else
-                Quadruple(
-                    R.string.swipe_label_queue,
-                    if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.primary,
-                    if (topNavigationBarEnabled) Color.Black else MaterialTheme.colorScheme.onPrimary,
-                    Alignment.CenterEnd
-                )
-
-            // Fixed-size panel — spans the full row at all times instead of growing with
-            // drag distance. The sliding content Box (drawn after this one, so it sits on
-            // top in z-order) is what actually reveals/covers it, so the panel itself — and
-            // the label inside it — never changes size or jitters while dragging.
-            //
-            // The row itself has a transparent background in New Iride UI, so this panel
-            // alone would show through behind the cover/title/artist too and clash with
-            // their white text. The content Box below carries its own black backing sized
-            // to its own bounds (only while swiping), so NEXT/QUEUE keeps a plain white
-            // backdrop while the song info stays readable on black.
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(bg),
-                contentAlignment = align
-            ) {
-                Text(
-                    text = stringResource(labelRes),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontFamily = if (topNavigationBarEnabled) SpaceMonoFontFamily else FontFamily.Default,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = if (topNavigationBarEnabled) 0.5.sp else 0.sp,
-                    color = tint,
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
-            }
+        // Fixed-size panels — span the full row at all times instead of growing with drag
+        // distance, and both always stay in composition (only their alpha animates) so
+        // dragging never adds/removes a subtree. The sliding content Box (drawn after these,
+        // so it sits on top in z-order) is what actually reveals/covers them.
+        //
+        // The row itself has a transparent background in New Iride UI, so this panel alone
+        // would show through behind the cover/title/artist too and clash with their white
+        // text. The content Box below carries its own black backing sized to its own bounds
+        // (only while swiping), so NEXT/QUEUE keeps a plain white backdrop while the song
+        // info stays readable on black.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer { alpha = if (offset.floatValue > 0f) 1f else 0f }
+                .background(nextBg),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text = nextLabel,
+                style = labelStyle,
+                fontFamily = labelFontFamily,
+                fontWeight = FontWeight.Black,
+                letterSpacing = labelLetterSpacing,
+                color = nextTint,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+        }
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer { alpha = if (offset.floatValue < 0f) 1f else 0f }
+                .background(queueBg),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            Text(
+                text = queueLabel,
+                style = labelStyle,
+                fontFamily = labelFontFamily,
+                fontWeight = FontWeight.Black,
+                letterSpacing = labelLetterSpacing,
+                color = queueTint,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
         }
 
         Box(
             modifier = Modifier
                 .offset { IntOffset(offset.floatValue.roundToInt(), 0) }
                 .fillMaxWidth()
-                .then(
-                    if (topNavigationBarEnabled && offset.floatValue != 0f) {
-                        Modifier.background(Color.Black)
-                    } else {
-                        Modifier
+                .drawBehind {
+                    if (contentBg != null && offset.floatValue != 0f) {
+                        drawRect(contentBg)
                     }
-                ),
+                },
             content = content
         )
     }
@@ -2150,14 +2212,6 @@ private fun reset(offset: MutableState<Float>, scope: CoroutineScope) {
         ) { value, _ -> offset.value = value }
     }
 }
-
-// Data holder for swipe visuals
-data class Quadruple<A, B, C, D>(
-    val first: A,
-    val second: B,
-    val third: C,
-    val fourth: D
-)
 
 object Icon {
     @Composable

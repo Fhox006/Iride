@@ -12,6 +12,7 @@ import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -41,7 +42,12 @@ data class ArtistGameArtistInfo(val name: String, val thumbnailUrl: String?)
 
 sealed interface GameUiState {
     data object Loading : GameUiState
-    data class Ready(val bestScoreMs: Long?, val preparing: Boolean) : GameUiState
+    data class Ready(
+        val bestScoreMs: Long?,
+        val bestCorrectCount: Int?,
+        val bestTotalRounds: Int?,
+        val preparing: Boolean,
+    ) : GameUiState
     data class Countdown(val value: Int) : GameUiState
     data class Playing(
         val roundIndex: Int,
@@ -50,7 +56,13 @@ sealed interface GameUiState {
         val correctId: String,
         val result: RoundResult?,
     ) : GameUiState
-    data class Finished(val totalMs: Long, val isNewBest: Boolean) : GameUiState
+    data class Finished(
+        val totalMs: Long,
+        val isNewBest: Boolean,
+        val bestScoreMs: Long,
+        val correctCount: Int,
+        val totalRounds: Int,
+    ) : GameUiState
     data object NotEnoughSongs : GameUiState
 }
 
@@ -85,24 +97,29 @@ class ArtistGameViewModel @Inject constructor(
     private var rounds: List<RoundData> = emptyList()
     private var timerJob: Job? = null
     private var roundJob: Job? = null
+    private var correctCount = 0
 
     private fun bestScoreKey() = longPreferencesKey("artist_game_best_ms_$artistId")
+    private fun bestCorrectKey() = intPreferencesKey("artist_game_best_correct_$artistId")
+    private fun bestTotalKey() = intPreferencesKey("artist_game_best_total_$artistId")
 
     init {
         viewModelScope.launch {
             val bestScoreMs = context.dataStore.get(bestScoreKey())
-            preload(bestScoreMs)
+            val bestCorrectCount = context.dataStore.get(bestCorrectKey())
+            val bestTotalRounds = context.dataStore.get(bestTotalKey())
+            preload(bestScoreMs, bestCorrectCount, bestTotalRounds)
         }
     }
 
-    private suspend fun preload(bestScoreMs: Long?) {
+    private suspend fun preload(bestScoreMs: Long?, bestCorrectCount: Int?, bestTotalRounds: Int?) {
         val page = YouTube.artist(artistId).getOrNull()
         if (page == null) {
             uiState = GameUiState.NotEnoughSongs
             return
         }
         artistInfo = ArtistGameArtistInfo(page.artist.title, page.artist.thumbnail)
-        uiState = GameUiState.Ready(bestScoreMs, preparing = true)
+        uiState = GameUiState.Ready(bestScoreMs, bestCorrectCount, bestTotalRounds, preparing = true)
 
         val directSongs = page.sections.flatMap { it.items.filterIsInstance<SongItem>() }
         val albumIds = page.sections.flatMap { it.items.filterIsInstance<AlbumItem>() }.map { it.browseId }.distinct()
@@ -153,7 +170,7 @@ class ArtistGameViewModel @Inject constructor(
             return
         }
 
-        uiState = GameUiState.Ready(bestScoreMs, preparing = false)
+        uiState = GameUiState.Ready(bestScoreMs, bestCorrectCount, bestTotalRounds, preparing = false)
     }
 
     fun onPlayNowClicked() {
@@ -175,6 +192,7 @@ class ArtistGameViewModel @Inject constructor(
     private fun startTimer() {
         val startTime = System.currentTimeMillis()
         elapsedMs = 0L
+        correctCount = 0
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
             while (true) {
@@ -184,7 +202,7 @@ class ArtistGameViewModel @Inject constructor(
         }
     }
 
-    private fun startRound(index: Int) {
+    private fun startRound(index: Int, audioAlreadyPlaying: Boolean = false) {
         val round = rounds[index]
         val options = (round.distractors + round.correct).shuffled()
         uiState = GameUiState.Playing(
@@ -194,7 +212,7 @@ class ArtistGameViewModel @Inject constructor(
             correctId = round.correct.id,
             result = null,
         )
-        audioService.playPrepared(round.correct.id)
+        if (!audioAlreadyPlaying) audioService.playPrepared(round.correct.id)
     }
 
     fun onOptionSelected(songId: String) {
@@ -202,14 +220,27 @@ class ArtistGameViewModel @Inject constructor(
         if (playing.result != null) return
         audioService.stop()
         val correct = songId == playing.correctId
+        if (correct) correctCount++
         playFeedbackTone(correct)
         uiState = playing.copy(result = RoundResult(songId, correct))
+        val nextIndex = playing.roundIndex + 1
+        val hasNext = nextIndex < playing.totalRounds
+        // Correct answer: fire off next round's audio the instant it turns green, so it has the
+        // full transition window to actually start (not just reach STATE_READY) before the round
+        // switches. Fast taps (<200ms) used to race the blind delay below and switch rounds while
+        // the ExoPlayer was still grabbing audio focus / starting its AudioTrack — startAudioJob
+        // gets joined below so the switch waits for real playback, not just a timer.
+        val startAudioJob = if (correct && hasNext) {
+            viewModelScope.launch { audioService.playPreparedAwaitStart(rounds[nextIndex].correct.id) }
+        } else {
+            null
+        }
         roundJob?.cancel()
         roundJob = viewModelScope.launch {
-            delay(if (correct) 700 else 3000)
-            val nextIndex = playing.roundIndex + 1
-            if (nextIndex < playing.totalRounds) {
-                startRound(nextIndex)
+            delay(if (correct) 200 else 3000)
+            startAudioJob?.join()
+            if (hasNext) {
+                startRound(nextIndex, audioAlreadyPlaying = correct)
             } else {
                 finishGame()
             }
@@ -225,15 +256,39 @@ class ArtistGameViewModel @Inject constructor(
         }
     }
 
+    private fun playFinishJingle() {
+        viewModelScope.launch(Dispatchers.Default) {
+            val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 90)
+            for (note in listOf(ToneGenerator.TONE_DTMF_5, ToneGenerator.TONE_DTMF_7, ToneGenerator.TONE_DTMF_9)) {
+                toneGenerator.startTone(note, 120)
+                delay(130)
+            }
+            toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 300)
+            delay(320)
+            toneGenerator.release()
+        }
+    }
+
     private suspend fun finishGame() {
         timerJob?.cancel()
+        playFinishJingle()
         val totalMs = elapsedMs
         val previousBest = context.dataStore.get(bestScoreKey())
         val isNewBest = previousBest == null || totalMs < previousBest
         if (isNewBest) {
-            context.dataStore.edit { it[bestScoreKey()] = totalMs }
+            context.dataStore.edit {
+                it[bestScoreKey()] = totalMs
+                it[bestCorrectKey()] = correctCount
+                it[bestTotalKey()] = rounds.size
+            }
         }
-        uiState = GameUiState.Finished(totalMs, isNewBest)
+        uiState = GameUiState.Finished(
+            totalMs = totalMs,
+            isNewBest = isNewBest,
+            bestScoreMs = if (isNewBest) totalMs else previousBest!!,
+            correctCount = correctCount,
+            totalRounds = rounds.size,
+        )
     }
 
     override fun onCleared() {

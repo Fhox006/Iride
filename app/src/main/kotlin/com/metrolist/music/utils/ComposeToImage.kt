@@ -257,6 +257,8 @@ object ComposeToImage {
         artistName: String,
         timeText: String,
         isNewBest: Boolean,
+        correctCount: Int,
+        totalRounds: Int,
     ): Bitmap =
         withContext(Dispatchers.Default) {
             val imageWidth = 1080
@@ -316,12 +318,28 @@ object ComposeToImage {
                 isAntiAlias = true
                 textAlign = Paint.Align.CENTER
             }
+            val statValuePaint = TextPaint().apply {
+                color = onBackgroundColor
+                textSize = 44f
+                typeface = Typeface.create(monoFont, Typeface.BOLD)
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+            }
+            val statLabelPaint = TextPaint().apply {
+                color = secondaryColor
+                textSize = 28f
+                typeface = monoFont
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+            }
 
             val avatarSize = 320f
             val badgeHeight = if (isNewBest) 90f else 0f
+            val statsBoxHeight = 40f + (statValuePaint.descent() - statValuePaint.ascent()) +
+                10f + (statLabelPaint.descent() - statLabelPaint.ascent()) + 40f
             val imageHeight = padding + avatarSize + 50f + (namePaint.descent() - namePaint.ascent()) + 40f +
                 badgeHeight + 40f + (timePaint.descent() - timePaint.ascent()) + 20f +
-                (labelPaint.descent() - labelPaint.ascent()) + 70f + padding
+                (labelPaint.descent() - labelPaint.ascent()) + 50f + statsBoxHeight + 60f + padding
 
             val bitmap = createBitmap(imageWidth, imageHeight.toInt())
             val canvas = Canvas(bitmap)
@@ -367,7 +385,23 @@ object ComposeToImage {
             // Label
             cursorY -= labelPaint.ascent()
             canvas.drawText(context.getString(R.string.guess_game), centerX, cursorY, labelPaint)
-            cursorY += labelPaint.descent() + 70f
+            cursorY += labelPaint.descent() + 50f
+
+            // Stats box — songs guessed correctly, same layout language as the in-app result screen
+            val statsBoxRect = RectF(centerX - 260f, cursorY, centerX + 260f, cursorY + statsBoxHeight)
+            canvas.drawRoundRect(statsBoxRect, 28f, 28f, Paint().apply { color = 0x0FFFFFFF; isAntiAlias = true })
+            var statsCursorY = statsBoxRect.top + 40f
+            statsCursorY -= statValuePaint.ascent()
+            canvas.drawText(
+                context.getString(R.string.guess_game_result_correct, correctCount, totalRounds),
+                centerX,
+                statsCursorY,
+                statValuePaint,
+            )
+            statsCursorY += statValuePaint.descent() + 10f
+            statsCursorY -= statLabelPaint.ascent()
+            canvas.drawText(context.getString(R.string.guess_game_result_correct_label), centerX, statsCursorY, statLabelPaint)
+            cursorY += statsBoxHeight + 60f
 
             // Footer
             canvas.drawText("IRIDE", centerX, imageHeight - padding + 10f, appNamePaint)

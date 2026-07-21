@@ -228,6 +228,7 @@ fun ExperimentalLyrics(
     onExitFullScreen: () -> Unit = {},
     showPills: Boolean = true,
     pillsController: LyricsPillController? = null,
+    textScale: Float = 1f,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val database = LocalDatabase.current
@@ -1123,7 +1124,10 @@ fun ExperimentalLyrics(
                                         currentPositionState = currentPositionState,
                                         lyricsOffset = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS,
                                         playerConnection = playerConnection,
-                                        lyricsTextSize = 32.4f,
+                                        // Small (in-card, non-fullscreen) player view reads
+                                        // cramped at full size — 30% smaller there, back to
+                                        // normal once expanded to the fullscreen dialog.
+                                        lyricsTextSize = (if (isFullScreen) 32.4f else 32.4f * 0.7f) * textScale,
                                         lyricsLineSpacing = 1.05f,
                                         expressiveAccent = expressiveAccent,
                                         lyricsTextPosition = lyricsTextPosition,

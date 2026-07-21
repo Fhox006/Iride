@@ -13,6 +13,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,15 +43,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
@@ -71,7 +76,7 @@ fun ArtistGameScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    fun shareResult(timeMs: Long, isNewBest: Boolean) {
+    fun shareResult(timeMs: Long, isNewBest: Boolean, correctCount: Int, totalRounds: Int) {
         scope.launch {
             val bitmap = ComposeToImage.createArtistGameResultImage(
                 context = context,
@@ -79,6 +84,8 @@ fun ArtistGameScreen(
                 artistName = artistInfo?.name.orEmpty(),
                 timeText = formatTime(timeMs),
                 isNewBest = isNewBest,
+                correctCount = correctCount,
+                totalRounds = totalRounds,
             )
             val uri = ComposeToImage.saveBitmapAsFile(context, bitmap, "iride_game_${System.currentTimeMillis()}")
             val sendIntent = Intent(Intent.ACTION_SEND).apply {
@@ -102,10 +109,18 @@ fun ArtistGameScreen(
                 artistInfo = artistInfo,
                 state = state,
                 onPlayNow = viewModel::onPlayNowClicked,
-                onShare = { state.bestScoreMs?.let { shareResult(it, isNewBest = false) } },
+                onShare = {
+                    val timeMs = state.bestScoreMs
+                    val correctCount = state.bestCorrectCount
+                    val totalRounds = state.bestTotalRounds
+                    if (timeMs != null && correctCount != null && totalRounds != null) {
+                        shareResult(timeMs, isNewBest = false, correctCount = correctCount, totalRounds = totalRounds)
+                    }
+                },
             )
             is GameUiState.Countdown -> CountdownContent(state.value)
             is GameUiState.Playing -> PlayingContent(
+                artistName = artistInfo?.name,
                 state = state,
                 elapsedMs = viewModel.elapsedMs,
                 onSelect = viewModel::onOptionSelected,
@@ -113,7 +128,7 @@ fun ArtistGameScreen(
             is GameUiState.Finished -> FinishedContent(
                 artistInfo = artistInfo,
                 state = state,
-                onShare = { shareResult(state.totalMs, state.isNewBest) },
+                onShare = { shareResult(state.totalMs, state.isNewBest, state.correctCount, state.totalRounds) },
             )
         }
 
@@ -134,12 +149,14 @@ fun ArtistGameScreen(
         if (uiState is GameUiState.Playing) {
             Text(
                 text = formatTime(viewModel.elapsedMs),
-                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp),
-                color = Color.White,
+                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 32.sp),
+                color = Color.Black,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .statusBarsPadding()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .background(Color.White, RoundedCornerShape(50))
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
             )
         }
     }
@@ -176,6 +193,7 @@ private fun ArtistAvatar(thumbnailUrl: String?, size: Dp) {
             AsyncImage(
                 model = thumbnailUrl,
                 contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -193,45 +211,94 @@ private fun ReadyContent(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(horizontal = 32.dp, vertical = 64.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 32.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(24.dp))
-        ArtistAvatar(artistInfo?.thumbnailUrl, 180.dp)
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
+        ArtistAvatar(artistInfo?.thumbnailUrl, 120.dp)
+        Spacer(Modifier.height(16.dp))
         Text(
             text = artistInfo?.name.orEmpty(),
-            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 30.sp),
+            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp),
             color = Color.White,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.guess_game_subtitle),
-            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 14.sp),
+            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
             color = Color.White.copy(alpha = 0.6f),
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.weight(1f))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = state.bestScoreMs?.let { stringResource(R.string.guess_game_best_score, formatTime(it)) }
-                    ?: stringResource(R.string.guess_game_no_score),
-                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 15.sp),
-                color = Color.White,
-                modifier = Modifier.weight(1f),
-            )
-            if (state.bestScoreMs != null) {
+        Spacer(Modifier.height(24.dp))
+        if (state.bestScoreMs != null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
+                    .padding(vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = formatTime(state.bestScoreMs),
+                    style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 40.sp),
+                    color = Color.White,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.guess_game_best_label),
+                    style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp, letterSpacing = 1.sp),
+                    color = Color.White.copy(alpha = 0.5f),
+                )
+                if (state.bestCorrectCount != null && state.bestTotalRounds != null) {
+                    Spacer(Modifier.height(14.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth(0.7f)
+                            .background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(14.dp))
+                            .padding(horizontal = 20.dp, vertical = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.guess_game_result_correct, state.bestCorrectCount, state.bestTotalRounds),
+                            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp),
+                            color = Color.White,
+                        )
+                        Text(
+                            text = stringResource(R.string.guess_game_result_correct_label),
+                            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 11.sp),
+                            color = Color.White.copy(alpha = 0.5f),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
                 IconButton(onClick = onShare) {
                     Icon(painterResource(R.drawable.share), contentDescription = stringResource(R.string.share), tint = Color.White)
                 }
             }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                    .padding(20.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.guess_game_no_score),
+                    style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 15.sp),
+                    color = Color.White,
+                )
+            }
+        }
+        if (state.preparing) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.guess_game_loading_hint),
+                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp),
+                color = Color.White.copy(alpha = 0.5f),
+                textAlign = TextAlign.Center,
+            )
         }
         Spacer(Modifier.height(20.dp))
         Button(
@@ -272,11 +339,11 @@ private fun CountdownContent(value: Int) {
 
 @Composable
 private fun PlayingContent(
+    artistName: String?,
     state: GameUiState.Playing,
     elapsedMs: Long,
     onSelect: (String) -> Unit,
 ) {
-    val remaining = state.totalRounds - state.roundIndex - 1
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -284,12 +351,23 @@ private fun PlayingContent(
             .padding(horizontal = 24.dp, vertical = 80.dp),
     ) {
         Spacer(Modifier.weight(1f))
+        if (!artistName.isNullOrBlank()) {
+            Text(
+                text = artistName,
+                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp),
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+        val songsLeft = state.totalRounds - state.roundIndex
         Text(
-            text = stringResource(R.string.guess_game_songs_left, remaining),
-            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 14.sp),
+            text = pluralStringResource(R.plurals.guess_game_songs_left, songsLeft, songsLeft),
+            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 0.5.sp),
             color = Color.White.copy(alpha = 0.6f),
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
         state.options.forEach { option ->
             val result = state.result
             val isSelected = result?.selectedId == option.id
@@ -386,19 +464,53 @@ private fun FinishedContent(
                         .padding(horizontal = 14.dp, vertical = 6.dp),
                 )
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
             Text(
                 text = formatTime(state.totalMs),
-                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 48.sp),
+                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 52.sp),
                 color = Color.White,
             )
+            Spacer(Modifier.height(4.dp))
             Text(
                 text = stringResource(R.string.guess_game),
                 style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp, letterSpacing = 1.sp),
                 color = Color.White.copy(alpha = 0.5f),
             )
+            Spacer(Modifier.height(20.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(horizontalAlignment = Alignment.Start) {
+                    Text(
+                        text = stringResource(R.string.guess_game_result_correct, state.correctCount, state.totalRounds),
+                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp),
+                        color = Color.White,
+                    )
+                    Text(
+                        text = stringResource(R.string.guess_game_result_correct_label),
+                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 11.sp),
+                        color = Color.White.copy(alpha = 0.5f),
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = formatTime(state.bestScoreMs),
+                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp),
+                        color = Color.White,
+                    )
+                    Text(
+                        text = stringResource(R.string.guess_game_best_label),
+                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 11.sp),
+                        color = Color.White.copy(alpha = 0.5f),
+                    )
+                }
+            }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
         Button(
             onClick = onShare,
             modifier = Modifier.fillMaxWidth().height(56.dp),

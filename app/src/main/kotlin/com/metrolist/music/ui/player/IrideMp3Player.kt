@@ -163,6 +163,10 @@ private val IrideMp3HoleLipBrush = Brush.verticalGradient(
 
 private const val IrideMp3CoverWidthFraction = 0.82f
 
+// Lifts the control wheel up off the bottom system-gesture strip (see call site) so its bottom
+// "more" zone stays fully tappable on gesture-nav devices.
+private val WheelBottomGestureClearance = 24.dp
+
 private fun irideSquircle(radius: Dp) = SquircleShape(radius = radius, cornerSmoothing = 0.48f)
 
 @Stable
@@ -173,6 +177,12 @@ class IrideBridgeState {
     var playerInfo by mutableStateOf<Rect?>(null)
 
     var panelActive by mutableStateOf(false)
+    // True while the lyrics FullScreenLyricsDialog (a separate Android Window drawn on top of
+    // everything) is showing. MainActivity's app-peek-height "tap to collapse" catcher sits in
+    // the same Activity window underneath that dialog and has no other way to know a fullscreen
+    // overlay is up — without this flag a tap landing in that strip during the dialog's
+    // open/close transition collapses the whole player and drops the lyrics with it.
+    var lyricsFullScreenActive by mutableStateOf(false)
 }
 
 internal fun Modifier.irideReportRect(target: (Rect) -> Unit): Modifier =
@@ -213,37 +223,42 @@ fun IrideMp3PlayerContent(
     var radioActive by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    var dragFraction by remember { mutableStateOf<Float?>(null) }
-
-    SideEffect {
-        bridgeState?.panelActive = isLyricsActive || isQueueActive
+    // Overflow menu trigger, lives in the title row (a flat area outside the circular wheel and
+    // outside the lyrics/queue panel) instead of as a wheel zone — the wheel's bottom "more" spot
+    // sat right where the round wheel and the square center play/pause button's touch target
+    // overlapped, so taps there were unreliable and only landed from the outer edge. A plain row
+    // button has no competing hit-test geometry, so a tap always reaches it.
+    val onMoreClick = {
+        menuState.show {
+            PlayerMenu(
+                mediaMetadata = mediaMetadata,
+                navController = navController,
+                playerBottomSheetState = playerBottomSheetState,
+                onShowDetailsDialog = {
+                    mediaMetadata.id.let { id ->
+                        bottomSheetPageState.show { ShowMediaInfo(id) }
+                    }
+                },
+                onDismiss = menuState::dismiss,
+            )
+        }
     }
+
+    var dragFraction by remember { mutableStateOf<Float?>(null) }
 
     val panelActive = isLyricsActive || isQueueActive
     // Fullscreen only ever applies to lyrics, never queue — queue always stays in its normal
     // card, and its own fullscreen affordance (button + expand) was removed entirely below.
     val fullScreenActive = isFullScreen && isLyricsActive
-    val lyricsPillController = remember { LyricsPillController() }
 
-    // Old-MP3-screen "glitch" flash whenever the visible panel changes (cover <-> lyrics
-    // <-> queue): a brief chromatic-split flicker that decays smoothly, never a hard cut.
-    val viewKey = if (isLyricsActive) 1 else if (isQueueActive) 2 else 0
-    val glitchProgress = remember { Animatable(0f) }
-    LaunchedEffect(viewKey) {
-        glitchProgress.snapTo(1f)
-        glitchProgress.animateTo(0f, tween(260, easing = FastOutSlowInEasing))
+    SideEffect {
+        bridgeState?.panelActive = panelActive
+        bridgeState?.lyricsFullScreenActive = fullScreenActive
     }
-    // Fixed set of scanline positions (fraction of card height, stripe thickness) for the
-    // glitch flash below — a handful of thin slivers, not a full-screen tint.
-    val glitchScanlines = remember {
-        listOf(
-            0.12f to 3.dp,
-            0.30f to 5.dp,
-            0.52f to 2.dp,
-            0.68f to 6.dp,
-            0.86f to 3.dp,
-        )
+    DisposableEffect(bridgeState) {
+        onDispose { bridgeState?.lyricsFullScreenActive = false }
     }
+    val lyricsPillController = remember { LyricsPillController() }
 
     Box(
         modifier = modifier
@@ -344,7 +359,13 @@ fun IrideMp3PlayerContent(
                         // stays in its normal (non-fullscreen) layout.
                         isFullScreen = false,
                         pillsController = lyricsPillController,
-                        modifier = Modifier.fillMaxSize().padding(top = 34.dp, start = 12.dp),
+                        // 15% larger than the default in-card size for a more comfortable read —
+                        // scoped to this player only (the fullscreen dialog copy keeps its own size).
+                        textScale = 1.15f,
+                        // Sits a bit higher than the fullscreen copy (top = 34.dp there) —
+                        // this card is small, so lyrics start closer to the top edge instead
+                        // of leaving a big empty gap above the first line.
+                        modifier = Modifier.fillMaxSize().padding(top = 22.dp, start = 12.dp),
                     )
                 }
 
@@ -352,6 +373,10 @@ fun IrideMp3PlayerContent(
                     FullScreenLyricsDialog(
                         sliderPositionProvider = lyricsSliderPositionProvider,
                         lyricsBgBitmap = lyricsBgBitmap,
+                        // Same on-screen rect already tracked for the mini-player <-> full-player
+                        // art bridge — this card and the cover art share the same bounds, so it
+                        // doubles as the "grow from here" origin for the expand animation below.
+                        sourceRect = bridgeState?.playerArt,
                         onDismiss = onToggleFullScreen,
                     )
                 }
@@ -373,44 +398,6 @@ fun IrideMp3PlayerContent(
                         modifier = Modifier.fillMaxSize(),
                         topClearance = 26.dp,
                     )
-                }
-
-                // Old-MP3-screen glitch flash: a handful of thin chromatic-split scanlines that
-                // pop in on panel change and decay smoothly back to nothing. Partial coverage
-                // only (not a full-screen tint) so it reads as a glitch, not a screen flash.
-                if (glitchProgress.value > 0f) {
-                    val g = glitchProgress.value
-                    BoxWithConstraints(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .zIndex(3f),
-                    ) {
-                        val h = maxHeight
-                        glitchScanlines.forEach { (yFraction, stripeHeight) ->
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(stripeHeight)
-                                    .offset(y = h * yFraction)
-                                    .graphicsLayer {
-                                        alpha = g * 0.35f
-                                        translationX = 4.dp.toPx() * g
-                                    }
-                                    .background(Color.Cyan),
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(stripeHeight)
-                                    .offset(y = h * yFraction)
-                                    .graphicsLayer {
-                                        alpha = g * 0.35f
-                                        translationX = -4.dp.toPx() * g
-                                    }
-                                    .background(Color.Magenta),
-                            )
-                        }
-                    }
                 }
 
                 // Fullscreen is a lyrics-only affordance now — queue never offers it, so this
@@ -628,21 +615,7 @@ fun IrideMp3PlayerContent(
                         radioActive = !radioActive
                         onRadioClick()
                     },
-                    onMoreClick = {
-                        menuState.show {
-                            PlayerMenu(
-                                mediaMetadata = mediaMetadata,
-                                navController = navController,
-                                playerBottomSheetState = playerBottomSheetState,
-                                onShowDetailsDialog = {
-                                    mediaMetadata.id.let { id ->
-                                        bottomSheetPageState.show { ShowMediaInfo(id) }
-                                    }
-                                },
-                                onDismiss = menuState::dismiss,
-                            )
-                        }
-                    },
+                    onMoreClick = onMoreClick,
                     wheelSize = wheelSize,
                     buttonSize = buttonSize,
                     iconSize = iconSize,
@@ -670,7 +643,12 @@ fun IrideMp3PlayerContent(
                     )
                 }
             }
-            Spacer(Modifier.height(bottomInset))
+            // Extra clearance beyond the raw nav-bar inset: on gesture-nav devices the bottom
+            // strip is a system gesture zone that eats taps landing in it, and the wheel's bottom
+            // "more" zone sat low enough that only the top half of its icon cleared the strip —
+            // taps on the lower half never reached the button. Lifting the whole wheel up by this
+            // margin keeps the three-dot zone fully tappable.
+            Spacer(Modifier.height(bottomInset + WheelBottomGestureClearance))
         }
     }
 }
@@ -687,10 +665,33 @@ fun IrideMp3PlayerContent(
 private fun FullScreenLyricsDialog(
     sliderPositionProvider: () -> Long?,
     lyricsBgBitmap: android.graphics.Bitmap?,
+    // On-screen rect (window coordinates) of the small in-card lyrics view this dialog is
+    // expanding from — null falls back to a plain fade-in, no grow animation.
+    sourceRect: Rect?,
     onDismiss: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
+    val progress = remember { Animatable(0f) }
+    var closing by remember { mutableStateOf(false) }
+
+    // Routes every close path (back press, close button, tap-to-exit inside Lyrics) through the
+    // same shrink-back-down animation before actually tearing the dialog down, so closing mirrors
+    // the expand-in instead of just vanishing.
+    fun requestClose() {
+        if (closing) return
+        closing = true
+        scope.launch {
+            progress.animateTo(0f, tween(220, easing = FastOutSlowInEasing))
+            onDismiss()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        progress.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
+    }
+
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = ::requestClose,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
             decorFitsSystemWindows = false,
@@ -718,74 +719,101 @@ private fun FullScreenLyricsDialog(
         }
 
         val pillController = remember { LyricsPillController() }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(IrideMp3BackgroundColor),
-        ) {
-            BetterAnimatedGradientBackground(
-                thumbnail = lyricsBgBitmap,
-                modifier = Modifier.fillMaxSize(),
-            )
-            Lyrics(
-                sliderPositionProvider = sliderPositionProvider,
-                showLyrics = true,
-                showPills = false,
-                isFullScreen = true,
-                onExitFullScreen = onDismiss,
-                pillsController = pillController,
-                modifier = Modifier.fillMaxSize().padding(top = 34.dp, start = 12.dp),
-            )
+        val density = LocalDensity.current
 
-            Row(
+        // BoxWithConstraints resolves maxWidth/maxHeight on the first measure pass — unlike
+        // onGloballyPositioned, no one-frame flash at a wrong (zero) size before the real
+        // fullscreen bounds are known.
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val endRect = remember(maxWidth, maxHeight) {
+                with(density) { Rect(0f, 0f, maxWidth.toPx(), maxHeight.toPx()) }
+            }
+            val startRect = sourceRect ?: endRect
+            val p = progress.value
+            val scaleX = if (endRect.width > 0f) lerp(startRect.width / endRect.width, 1f, p) else 1f
+            val scaleY = if (endRect.height > 0f) lerp(startRect.height / endRect.height, 1f, p) else 1f
+            val translateX = lerp(startRect.left, endRect.left, p) - endRect.left
+            val translateY = lerp(startRect.top, endRect.top, p) - endRect.top
+
+            Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .windowInsetsPadding(WindowInsets.systemBars)
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        this.scaleX = scaleX
+                        this.scaleY = scaleY
+                        transformOrigin = TransformOrigin(0f, 0f)
+                        translationX = translateX
+                        translationY = translateY
+                        alpha = lerp(0.4f, 1f, p)
+                    }
+                    .background(IrideMp3BackgroundColor),
             ) {
-                if (pillController.hasTranslations) {
+                BetterAnimatedGradientBackground(
+                    thumbnail = lyricsBgBitmap,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                Lyrics(
+                    sliderPositionProvider = sliderPositionProvider,
+                    showLyrics = true,
+                    showPills = false,
+                    isFullScreen = true,
+                    onExitFullScreen = ::requestClose,
+                    pillsController = pillController,
+                    modifier = Modifier.fillMaxSize().padding(top = 34.dp, start = 12.dp),
+                )
+
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .windowInsetsPadding(WindowInsets.systemBars)
+                        // Lowered a bit from the top edge (was a flat 16.dp) so it doesn't sit
+                        // flush against the status bar strip.
+                        .padding(top = 26.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (pillController.hasTranslations) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.9f))
+                                .border(1.dp, IrideMp3PanelBorderColor, CircleShape)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = { pillController.translateAction() },
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.translate),
+                                contentDescription = null,
+                                tint = Color.Black,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(44.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.9f))
+                            .background(Color.White.copy(alpha = 0.14f))
                             .border(1.dp, IrideMp3PanelBorderColor, CircleShape)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
-                                onClick = { pillController.translateAction() },
+                                onClick = { requestClose() },
                             ),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.translate),
+                            painter = painterResource(R.drawable.expand_less),
                             contentDescription = null,
-                            tint = Color.Black,
-                            modifier = Modifier.size(20.dp),
+                            tint = Color.White.copy(alpha = 0.9f),
+                            modifier = Modifier.size(22.dp),
                         )
                     }
-                }
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.14f))
-                        .border(1.dp, IrideMp3PanelBorderColor, CircleShape)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onDismiss,
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.expand_less),
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.9f),
-                        modifier = Modifier.size(22.dp),
-                    )
                 }
             }
         }
@@ -1302,7 +1330,15 @@ private fun IrideClickWheel(
                     modifier = Modifier.size(skipIconSize),
                 )
             }
-            WheelZone(alignment = Alignment.BottomCenter, size = buttonSize, onClick = onMoreClick) {
+            WheelZone(
+                alignment = Alignment.BottomCenter,
+                size = buttonSize,
+                onClick = onMoreClick,
+                // Wide bottom strip: the empty bottom-left/right of the wheel (prev/next sit at
+                // mid-height, not down here) becomes part of the "more" target so a near-miss no
+                // longer collapses the player.
+                hitWidth = buttonSize * 2.2f,
+            ) {
                 Icon(
                     painter = painterResource(R.drawable.more_vert),
                     contentDescription = null,
@@ -1333,6 +1369,11 @@ private fun BoxScope.WheelZone(
     size: Dp,
     onClick: () -> Unit,
     enabled: Boolean = true,
+    // Touch target size; defaults to the icon size. The bottom "more" zone widens it so a tap
+    // landing slightly left/right of the dots still opens the menu instead of falling through to
+    // the player's background collapse-on-tap and dropping to the mini player.
+    hitWidth: Dp = size,
+    hitHeight: Dp = size,
     content: @Composable () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -1346,21 +1387,29 @@ private fun BoxScope.WheelZone(
         modifier = Modifier
             .align(alignment)
             .padding(12.dp)
-            .size(size)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(CircleShape)
+            .size(width = hitWidth, height = hitHeight)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 enabled = enabled,
                 onClick = onClick,
             ),
-        contentAlignment = Alignment.Center,
-        content = { content() },
-    )
+        // Anchor the icon to the zone's own edge so a widened hit box grows inward (toward the
+        // wheel center) without shifting the icon off its spot.
+        contentAlignment = alignment,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clip(CircleShape),
+            contentAlignment = Alignment.Center,
+            content = { content() },
+        )
+    }
 }
 
 /**

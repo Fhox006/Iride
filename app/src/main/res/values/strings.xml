@@ -113,11 +113,17 @@
     <string name="guess_game_best_label">Your best</string>
     <string name="guess_game_no_score">No score yet</string>
     <string name="guess_game_play_now">Play now</string>
-    <string name="guess_game_songs_left">%1$d songs left to guess</string>
+    <plurals name="guess_game_songs_left">
+        <item quantity="one">%1$d song left to play</item>
+        <item quantity="other">%1$d songs left to play</item>
+    </plurals>
     <string name="guess_game_hint_default">Guess to continue</string>
     <string name="guess_game_hint_wrong">You got it wrong! Wait 3 seconds</string>
     <string name="guess_game_new_best">New best!</string>
+    <string name="guess_game_result_correct">%1$d/%2$d</string>
+    <string name="guess_game_result_correct_label">Correct</string>
     <string name="guess_game_not_enough_songs">Not enough songs found to play this game</string>
+    <string name="guess_game_loading_hint">Loading can take a moment — every song is loaded in full upfront so rounds start instantly with no buffering.</string>
 
     <!-- Menu -->
     <string name="details">Details</string>

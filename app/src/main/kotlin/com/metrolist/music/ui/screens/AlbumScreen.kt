@@ -21,6 +21,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -903,11 +904,17 @@ fun AlbumScreen(
                         NavigationTitle(
                             title = stringResource(R.string.other_versions),
                             modifier = Modifier.animateItem(),
+                            useIrideStyle = topNavigationBarEnabled,
                         )
                     }
                     item(key = "other_versions_list") {
                         LazyRow(
-                            contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues(),
+                            horizontalArrangement = Arrangement.spacedBy(0.dp),
+                            contentPadding = if (topNavigationBarEnabled) {
+                                PaddingValues(horizontal = 20.dp)
+                            } else {
+                                WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues()
+                            },
                         ) {
                             items(
                                 items = otherVersions.distinctBy { it.id },
@@ -944,11 +951,17 @@ fun AlbumScreen(
                         NavigationTitle(
                             title = stringResource(R.string.similar_albums),
                             modifier = Modifier.animateItem(),
+                            useIrideStyle = topNavigationBarEnabled,
                         )
                     }
                     item(key = "similar_albums_list") {
                         LazyRow(
-                            contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues(),
+                            horizontalArrangement = Arrangement.spacedBy(0.dp),
+                            contentPadding = if (topNavigationBarEnabled) {
+                                PaddingValues(horizontal = 20.dp)
+                            } else {
+                                WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues()
+                            },
                         ) {
                             items(
                                 items = similarAlbums.distinctBy { it.id },

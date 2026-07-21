@@ -153,19 +153,12 @@ fun BottomSheetMenu(
                     )
             )
         },
-        modifier = modifier
-            .then(
-                // Iride style sizes the sheet to its (short) content instead of stretching to the
-                // full screen height like classic UI's fillMaxHeight(). No manual border here: a
-                // hairline drawn on this outer modifier sits outside the sheet Surface's own clip
-                // and shows up as a stray 1-2px gray edge against the scrim — containerColor alone
-                // (set above) gives a seamless edge, matching how every other Iride surface looks.
-                if (topNavigationBarEnabled) {
-                    Modifier
-                } else {
-                    Modifier.fillMaxHeight()
-                }
-            )
+        // fillMaxHeight in BOTH modes. The Iride wrap-content variant looked tighter but was the
+        // root of the dead-button bug: a wrap-content ModalBottomSheet has no valid expanded anchor,
+        // so swiping it up desynced the draggable from its buttons and killed taps. Matching classic's
+        // full-height sheet gives a real partial+expanded anchor pair — buttons always live, and the
+        // partial state makes it dismiss on a small swipe instead of a full-height drag.
+        modifier = modifier.fillMaxHeight()
     ) {
         Column(
             modifier = Modifier

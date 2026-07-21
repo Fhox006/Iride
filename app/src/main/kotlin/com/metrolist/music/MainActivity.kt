@@ -1454,7 +1454,7 @@ class MainActivity : ComponentActivity() {
                     // beneath it (here, TopNavigationBar's nav buttons, which live inside this
                     // same top AppPeekHeight strip) even though its onClick never fires — so
                     // gating via the composable's presence, not just `enabled`, is required.
-                    if (curtainActive && !playerBottomSheetState.isCollapsed) {
+                    if (curtainActive && !playerBottomSheetState.isCollapsed && !irideBridgeState.lyricsFullScreenActive) {
                         Box(
                             modifier = Modifier
                                 .align(Alignment.TopStart)

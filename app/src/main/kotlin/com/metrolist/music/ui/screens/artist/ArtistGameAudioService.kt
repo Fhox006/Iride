@@ -82,8 +82,9 @@ class ArtistGameAudioService(
             }
             exoPlayer.addListener(listener)
             exoPlayer.playWhenReady = false
-            exoPlayer.setMediaItem(MediaItem.Builder().setUri(uri).setMediaId(songId).build())
-            exoPlayer.seekTo(positionMs)
+            // Atomic start position — avoids a pending seekTo() racing with prepare(), which
+            // could let the sink render a frame near 0 before the seek lands (audible skip).
+            exoPlayer.setMediaItem(MediaItem.Builder().setUri(uri).setMediaId(songId).build(), positionMs)
             exoPlayer.prepare()
             preparedPlayers[songId] = exoPlayer
             cont.invokeOnCancellation { exoPlayer.removeListener(listener) }
@@ -94,6 +95,32 @@ class ArtistGameAudioService(
     fun playPrepared(songId: String) {
         currentId = songId
         preparedPlayers[songId]?.play()
+    }
+
+    /**
+     * Same as [playPrepared], but suspends until audio has actually started flowing to the
+     * output (not just ExoPlayer's internal STATE_READY). Closes the race where a round-switch
+     * happens on a fixed short delay (e.g. 200ms after a correct answer) that can be shorter than
+     * the real time ExoPlayer needs to grab audio focus and start the AudioTrack — without this,
+     * a fast-clicking user could see the next round's UI before its audio is physically playing.
+     */
+    suspend fun playPreparedAwaitStart(songId: String) {
+        currentId = songId
+        val player = preparedPlayers[songId] ?: return
+        if (player.isPlaying) return
+        suspendCancellableCoroutine { cont ->
+            val listener = object : Player.Listener {
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (isPlaying) {
+                        player.removeListener(this)
+                        if (cont.isActive) cont.resume(Unit)
+                    }
+                }
+            }
+            player.addListener(listener)
+            player.play()
+            cont.invokeOnCancellation { player.removeListener(listener) }
+        }
     }
 
     fun stop() {
