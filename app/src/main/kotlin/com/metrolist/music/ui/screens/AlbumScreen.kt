@@ -8,16 +8,19 @@ package com.metrolist.music.ui.screens
 /*import android.graphics.Bitmap*/
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-/*import androidx.compose.animation.core.animateFloatAsState*/
-import androidx.compose.animation.core.tween
+import com.metrolist.music.ui.component.frostedTopBarBackground
+import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.component.rememberFrostBackdrop
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +45,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -79,7 +83,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -99,9 +106,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachIndexed
 import androidx.compose.ui.util.fastForEachReversed
+import androidx.compose.ui.util.lerp
 import sv.lib.squircleshape.SquircleShape
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
 import androidx.core.net.toUri
 import androidx.media3.exoplayer.offline.Download
@@ -109,6 +118,8 @@ import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
+import coil3.decode.DataSource
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
@@ -128,32 +139,46 @@ import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.AlbumPlayEvent
+import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
+import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.LocalAlbumRadio
 /*import com.metrolist.music.ui.component.AnimatedAlbumGradientBackground*/
-import com.metrolist.music.ui.component.AlbumVinylDisc
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.IridePlaylistControlPanel
+import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.IrideLoadingIndicator
 import com.metrolist.music.ui.component.IrideOutlineIconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.component.TypewriterText
 import com.metrolist.music.ui.component.YouTubeGridItem
+import com.metrolist.music.ui.component.rememberRubberBandPull
+import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.ui.menu.AlbumMenu
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
+import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.utils.headerEnter
+import com.metrolist.music.ui.utils.irideEnter
+import com.metrolist.music.ui.utils.irideEnterScale
+import com.metrolist.music.ui.utils.rememberEnterProgress
+import com.metrolist.music.ui.utils.rememberSectionEnter
+import com.metrolist.music.ui.utils.revealMask
 import com.metrolist.music.utils.GenreProvider
 import com.metrolist.music.utils.joinByBullet
 import com.metrolist.music.utils.makeReadableTimeString
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.AlbumViewModel
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -185,16 +210,56 @@ fun AlbumScreen(
     val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
     val lazyListState = rememberLazyListState()
-    val transparentAppBar by remember {
+    val density = LocalDensity.current
+    val frostBackdrop = rememberFrostBackdrop()
+    // Stretch of the vertical rubber band, hoisted so the header art can answer the pull.
+    val headerPull = rememberRubberBandPull()
+
+    // Screen's own one-shot "have I landed" flag: the header title types out only once, and the top
+    // bar's glass may only turn on after a real frame exists to blur (frostBackdrop's GraphicsLayer
+    // isn't saveable, so navigating back to an already-scrolled album must wait for one real frame).
+    var headerRevealed by rememberSaveable { mutableStateOf(false) }
+    // Sections that have already played their entrance — LazyColumn disposes items scrolled far off
+    // screen, so without this a shelf would replay its wipe-in every time it scrolled back into view.
+    val revealedSections = remember { mutableSetOf<String>() }
+
+    // Window-space Y of the header title's bottom edge and of the top bar's bottom edge — the bar's
+    // glass and mirrored title fade in exactly when the big title goes behind the bar (same crossing
+    // ArtistScreen uses), instead of a flat scroll-distance threshold.
+    var nameBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
+    var topBarBottomPx by remember { mutableStateOf(0f) }
+    val titleCoverRangePx = with(density) { 24.dp.toPx() }
+    val topBarRevealProgress by remember {
         derivedStateOf {
-            lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset < 100
+            if (!headerRevealed) {
+                0f
+            } else if (lazyListState.firstVisibleItemIndex > 0) {
+                // Header item scrolled off and disposed: nameBottomPx would otherwise hold its last
+                // (stale) recorded value.
+                1f
+            } else {
+                ((topBarBottomPx + titleCoverRangePx - nameBottomPx) / titleCoverRangePx).coerceIn(0f, 1f)
+            }
         }
     }
-    val topBarBackgroundColor by animateColorAsState(
-        targetValue = if (transparentAppBar) Color.Transparent else MaterialTheme.colorScheme.background,
-        animationSpec = tween(300),
-        label = "albumTopBarBg",
-    )
+
+    val albumTitle = albumWithSongs?.album?.title
+    // Everything in the header waits for the title to finish typing, so the block reads as one
+    // sentence being composed rather than several things appearing at once.
+    val titleTypingMs = remember(albumTitle) {
+        val length = albumTitle?.length ?: 0
+        if (length == 0) 0 else minOf(26 * length, 700)
+    }
+    LaunchedEffect(albumTitle) {
+        if (albumTitle != null && !headerRevealed) {
+            delay(titleTypingMs + 60L + IrideMotion.Short)
+            headerRevealed = true
+        }
+    }
+
+    // The whole screen arrives rather than being slapped down: covers the gap between navigation and
+    // first layout.
+    val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
     val playerBackgroundStyle by rememberEnumPreference(
         PlayerBackgroundStyleKey,
         defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
@@ -240,7 +305,8 @@ fun AlbumScreen(
         }
     }
     var resumeDismissed by rememberSaveable(albumWithSongs?.album?.id) { mutableStateOf(false) }
-    val isThisAlbumPlaying = isPlaying && mediaMetadata?.album?.id == albumWithSongs?.album?.id
+    val isThisAlbumQueueLoaded = mediaMetadata?.album?.id == albumWithSongs?.album?.id
+    val isThisAlbumPlaying = isPlaying && isThisAlbumQueueLoaded
 
     var inSelectMode by rememberSaveable { mutableStateOf(false) }
     val selection =
@@ -272,6 +338,63 @@ fun AlbumScreen(
         mutableIntStateOf(Download.STATE_STOPPED)
     }
     var showRemoveDownloadDialog by remember { mutableStateOf(false) }
+
+    // Control-panel pill (shuffle/play/download) — New Iride UI body panel, mirrors
+    // LocalPlaylistScreen's IridePlaylistControlPanel usage.
+    val onControlPanelPlayClick: () -> Unit = {
+        if (!isListenTogetherGuest) {
+            if (isThisAlbumQueueLoaded) {
+                playerConnection.togglePlayPause()
+            } else {
+                albumWithSongs?.let { current ->
+                    playerConnection.service.getAutomix(playlistId)
+                    playerConnection.playQueue(LocalAlbumRadio(current))
+                }
+            }
+        }
+    }
+    val onControlPanelShuffleClick: () -> Unit = {
+        albumWithSongs?.let { current ->
+            playerConnection.playQueue(
+                ListQueue(
+                    title = current.album.title,
+                    items = current.songs.shuffled().map { it.toMediaItem() },
+                ),
+            )
+        }
+    }
+    val onControlPanelDownloadClick: () -> Unit = {
+        albumWithSongs?.let { current ->
+            when (downloadState) {
+                Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
+                Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                    current.songs.forEach { song ->
+                        DownloadService.sendRemoveDownload(
+                            context,
+                            ExoDownloadService::class.java,
+                            song.id,
+                            false,
+                        )
+                    }
+                }
+                else -> {
+                    current.songs.forEach { song ->
+                        val downloadRequest = DownloadRequest
+                            .Builder(song.id, song.id.toUri())
+                            .setCustomCacheKey(song.id)
+                            .setData(song.song.title.toByteArray())
+                            .build()
+                        DownloadService.sendAddDownload(
+                            context,
+                            ExoDownloadService::class.java,
+                            downloadRequest,
+                            false,
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     LaunchedEffect(albumWithSongs) {
         val songs = albumWithSongs?.songs?.map { it.id }
@@ -359,6 +482,20 @@ fun AlbumScreen(
         }
     }
 
+    // Everything the frosted top bar sees through its "glass" is captured here: the gradient belongs
+    // inside the snapshot too, otherwise the bar blurs the song list over a hard-edged gradient.
+    // Contents left at their original indentation — wrapping alone, no reflow.
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .recordFrostBackdrop(frostBackdrop)
+            // Fade only, covering the gap between navigation and first layout — a scale-down here
+            // would inset edge-to-edge content and show a hairline of window background at the edges.
+            .then(
+                if (topNavigationBarEnabled) Modifier.graphicsLayer { alpha = screenProgress } else Modifier,
+            ),
+    ) {
+
     if (albumTopGradientEnabled) {
         TopScreenGradientBackground(
             mediaMetadata = albumGradientMediaMetadata,
@@ -367,7 +504,15 @@ fun AlbumScreen(
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (topNavigationBarEnabled) {
+                    Modifier.rubberBandOverscroll(Orientation.Vertical, lazyListState, headerPull)
+                } else {
+                    Modifier
+                },
+            ),
         state = lazyListState,
         contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
     ) {
@@ -413,8 +558,6 @@ fun AlbumScreen(
                         displayDate,
                         if (totalDuration > 0) makeReadableTimeString(totalDuration * 1000L) else null,
                     )
-                    val isThisAlbumPlaying = isPlaying && mediaMetadata?.album?.id == albumWithSongs.album.id
-
                     val onLikeClick: () -> Unit = {
                         database.query {
                             update(albumWithSongs.album.toggleLike())
@@ -468,16 +611,51 @@ fun AlbumScreen(
                                 .padding(top = 12.dp, bottom = 20.dp),
                         ) {
                             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                AlbumVinylDisc(
-                                    thumbnailUrl = albumWithSongs.album.thumbnailUrl,
-                                    coverSize = 240.dp,
-                                    isPlaying = isThisAlbumPlaying,
+                                // A memory-cache hit (revisiting an album already seen this session)
+                                // resolves synchronously — animating that in over 420ms would replay
+                                // the surfaceVariant placeholder every time. Only a genuinely new
+                                // decode plays the entrance.
+                                var coverLoaded by remember(albumWithSongs.album.id) { mutableStateOf(false) }
+                                var skipCoverEnterAnim by remember(albumWithSongs.album.id) { mutableStateOf(false) }
+                                val animatedCoverProgress = rememberEnterProgress(
+                                    play = coverLoaded,
+                                    durationMillis = 420,
+                                    easing = IrideMotion.EaseOutQuart,
+                                )
+                                val coverProgress = if (skipCoverEnterAnim) 1f else animatedCoverProgress
+                                AsyncImage(
+                                    model = albumWithSongs.album.thumbnailUrl,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    onState = { state ->
+                                        if (state is AsyncImagePainter.State.Success) {
+                                            if (state.result.dataSource == DataSource.MEMORY_CACHE) {
+                                                skipCoverEnterAnim = true
+                                            }
+                                            coverLoaded = true
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .size(240.dp)
+                                        .graphicsLayer {
+                                            alpha = coverProgress
+                                            val s = lerp(0.94f, 1f, coverProgress)
+                                            scaleX = s
+                                            scaleY = s
+                                        }
+                                        .shadow(
+                                            elevation = 20.dp,
+                                            shape = albumCoverSquircle,
+                                            spotColor = Color.Black.copy(alpha = 0.5f),
+                                        )
+                                        .clip(albumCoverSquircle)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
                                 )
                             }
 
                             Spacer(modifier = Modifier.height(20.dp))
 
-                            Text(
+                            TypewriterText(
                                 text = albumWithSongs.album.title,
                                 style = TextStyle(
                                     fontFamily = SpaceMonoFontFamily,
@@ -486,18 +664,33 @@ fun AlbumScreen(
                                     letterSpacing = (-0.2).sp,
                                 ),
                                 color = MaterialTheme.colorScheme.onBackground,
-                                textAlign = TextAlign.Center,
+                                // Keyed on the album, not the string: recomposing this screen must
+                                // not retype the title.
+                                resetKey = albumWithSongs.album.id,
+                                // Types on the first landing only — coming back to the top of the
+                                // page (e.g. scrolling back up) is navigation, not an arrival.
+                                animate = !headerRevealed,
                                 maxLines = 3,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .onGloballyPositioned { nameBottomPx = it.boundsInWindow().bottom },
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
 
+                            val artistRowProgress = headerEnter(
+                                revealed = headerRevealed,
+                                play = true,
+                                delayMillis = titleTypingMs + 20,
+                                durationMillis = IrideMotion.Short,
+                            )
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .revealMask(artistRowProgress),
                             ) {
                                 val primaryArtist = albumWithSongs.artists.firstOrNull()
                                 if (primaryArtist?.thumbnailUrl != null) {
@@ -540,14 +733,22 @@ fun AlbumScreen(
 
                             Spacer(modifier = Modifier.height(6.dp))
 
+                            val metadataProgress = headerEnter(
+                                revealed = headerRevealed,
+                                play = true,
+                                delayMillis = titleTypingMs + 40,
+                                durationMillis = IrideMotion.Short,
+                            )
                             Text(
                                 text = metadataLine,
                                 style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
                                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
                                 textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .revealMask(metadataProgress),
                             )
-                            // Action buttons (like/play/download) live in the top bar now — see topBarActions.
+                            // Like/play live in the top bar now; download lives behind its ⋯ overflow.
                         }
                     } else {
                     Column(
@@ -741,6 +942,27 @@ fun AlbumScreen(
                     }
                 }
 
+                if (topNavigationBarEnabled) {
+                    item(key = "control_panel") {
+                        val controlPanelProgress = headerEnter(
+                            revealed = headerRevealed,
+                            play = true,
+                            delayMillis = titleTypingMs + 60,
+                            durationMillis = IrideMotion.Short,
+                        )
+                        IridePlaylistControlPanel(
+                            onShuffleClick = onControlPanelShuffleClick,
+                            onPlayClick = onControlPanelPlayClick,
+                            onDownloadClick = onControlPanelDownloadClick,
+                            downloadState = downloadState,
+                            isPlaying = isThisAlbumPlaying,
+                            modifier = Modifier
+                                .padding(bottom = 12.dp)
+                                .irideEnterScale(controlPanelProgress),
+                        )
+                    }
+                }
+
                 if (resumeTrackIndex != null) {
                     item(key = "resume_banner") {
                         AnimatedVisibility(
@@ -748,28 +970,28 @@ fun AlbumScreen(
                             enter = fadeIn() + expandVertically(),
                             exit = fadeOut() + shrinkVertically(),
                         ) {
-                            val resumeShape = SquircleShape(radius = 20.dp, cornerSmoothing = 0.45f)
-                            // New Iride UI: flat monochrome card, matching BottomSheetMenu's dark panel styling.
-                            val cardColor = if (topNavigationBarEnabled) Color(0xFF0A0A0A) else MaterialTheme.colorScheme.secondaryContainer
-                            val onCardColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSecondaryContainer
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                                shape = resumeShape,
-                                color = cardColor,
-                            ) {
+                            val resumeShape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
+                            if (topNavigationBarEnabled) {
+                                // New Iride UI: hairline-bordered console panel, no filled surface —
+                                // matches IntegrationCard/NewMenuComponents' flat monochrome vocabulary.
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                                        .clip(resumeShape)
+                                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), resumeShape)
+                                        .padding(horizontal = 16.dp, vertical = 14.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = stringResource(R.string.resume_album),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = onCardColor,
+                                            style = MaterialTheme.typography.labelLarge.copy(
+                                                fontFamily = SpaceMonoFontFamily,
+                                                letterSpacing = (-0.1).sp,
+                                            ),
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White,
                                         )
                                         Text(
                                             text = stringResource(
@@ -777,12 +999,12 @@ fun AlbumScreen(
                                                 resumeTrackIndex + 1,
                                                 albumWithSongs?.songs?.size ?: 0,
                                             ),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = onCardColor.copy(alpha = onCardColor.alpha * 0.7f),
+                                            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+                                            color = Color.White.copy(alpha = 0.55f),
                                         )
                                     }
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    TextButton(
+                                    OutlinedButton(
                                         onClick = {
                                             val album = albumWithSongs
                                             resumeDismissed = true
@@ -793,9 +1015,62 @@ fun AlbumScreen(
                                                 )
                                             }
                                         },
-                                        colors = if (topNavigationBarEnabled) ButtonDefaults.textButtonColors(contentColor = Color.White) else ButtonDefaults.textButtonColors(),
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
                                     ) {
-                                        Text(text = stringResource(R.string.resume))
+                                        Text(
+                                            text = stringResource(R.string.resume),
+                                            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                    }
+                                }
+                            } else {
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    shape = resumeShape,
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = stringResource(R.string.resume_album),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            )
+                                            Text(
+                                                text = stringResource(
+                                                    R.string.resume_album_track_progress,
+                                                    resumeTrackIndex + 1,
+                                                    albumWithSongs?.songs?.size ?: 0,
+                                                ),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        TextButton(
+                                            onClick = {
+                                                val album = albumWithSongs
+                                                resumeDismissed = true
+                                                if (!isListenTogetherGuest && album != null) {
+                                                    playerConnection.service.getAutomix(playlistId)
+                                                    playerConnection.playQueue(
+                                                        LocalAlbumRadio(album, startIndex = resumeTrackIndex),
+                                                    )
+                                                }
+                                            },
+                                        ) {
+                                            Text(text = stringResource(R.string.resume))
+                                        }
                                     }
                                 }
                             }
@@ -810,6 +1085,15 @@ fun AlbumScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .then(
+                                    if (topNavigationBarEnabled) {
+                                        Modifier
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                            .revealMask(rememberSectionEnter("songs", revealedSections))
+                                    } else {
+                                        Modifier
+                                    },
+                                )
                         ) {
                                 filteredSongs.fastForEachIndexed { index, song ->
                                     val onCheckedChange: (Boolean) -> Unit = {
@@ -903,17 +1187,35 @@ fun AlbumScreen(
                     item(key = "other_versions_title") {
                         NavigationTitle(
                             title = stringResource(R.string.other_versions),
-                            modifier = Modifier.animateItem(),
+                            modifier = Modifier
+                                .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                .then(
+                                    if (topNavigationBarEnabled) {
+                                        Modifier.revealMask(rememberSectionEnter("other_versions", revealedSections))
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
                             useIrideStyle = topNavigationBarEnabled,
                         )
                     }
                     item(key = "other_versions_list") {
+                        val rowState = rememberLazyListState()
                         LazyRow(
+                            state = rowState,
+                            overscrollEffect = null,
                             horizontalArrangement = Arrangement.spacedBy(0.dp),
                             contentPadding = if (topNavigationBarEnabled) {
                                 PaddingValues(horizontal = 20.dp)
                             } else {
                                 WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues()
+                            },
+                            modifier = if (topNavigationBarEnabled) {
+                                Modifier
+                                    .irideEnter(rememberSectionEnter("other_versions_row", revealedSections), 10.dp)
+                                    .rubberBandOverscroll(Orientation.Horizontal, rowState)
+                            } else {
+                                Modifier
                             },
                         ) {
                             items(
@@ -939,7 +1241,7 @@ fun AlbumScreen(
                                                         )
                                                     }
                                                 },
-                                            ).animateItem(),
+                                            ).animateItem(placementSpec = IrideMotion.PlacementSpec),
                                 )
                             }
                         }
@@ -986,7 +1288,7 @@ fun AlbumScreen(
                                                         )
                                                     }
                                                 },
-                                            ).animateItem(),
+                                            ).animateItem(placementSpec = IrideMotion.PlacementSpec),
                                 )
                             }
                         }
@@ -1027,9 +1329,11 @@ fun AlbumScreen(
             }
         }
 
-    // Top-bar mirrors of the header's like/play/download actions (New Iride UI only) — the header
-    // versions close over a non-null local `albumWithSongs`, these close over the nullable top-level
-    // state so they're safe to call before the album has loaded.
+    }
+
+    // Top-bar mirrors of the header's like/play actions (New Iride UI only) — the header versions
+    // close over a non-null local `albumWithSongs`, these close over the nullable top-level state so
+    // they're safe to call before the album has loaded.
     val onTopBarLikeClick: () -> Unit = {
         albumWithSongs?.let { current ->
             database.query {
@@ -1037,48 +1341,6 @@ fun AlbumScreen(
             }
         }
     }
-    val onTopBarPlayClick: () -> Unit = {
-        if (!isListenTogetherGuest) {
-            albumWithSongs?.let { current ->
-                playerConnection.service.getAutomix(playlistId)
-                playerConnection.playQueue(LocalAlbumRadio(current))
-            }
-        }
-    }
-    val onTopBarDownloadClick: () -> Unit = {
-        albumWithSongs?.let { current ->
-            when (downloadState) {
-                Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
-                Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
-                    current.songs.forEach { song ->
-                        DownloadService.sendRemoveDownload(
-                            context,
-                            ExoDownloadService::class.java,
-                            song.id,
-                            false,
-                        )
-                    }
-                }
-                else -> {
-                    current.songs.forEach { song ->
-                        val downloadRequest =
-                            DownloadRequest
-                                .Builder(song.id, song.id.toUri())
-                                .setCustomCacheKey(song.id)
-                                .setData(song.song.title.toByteArray())
-                                .build()
-                        DownloadService.sendAddDownload(
-                            context,
-                            ExoDownloadService::class.java,
-                            downloadRequest,
-                            false,
-                        )
-                    }
-                }
-            }
-        }
-    }
-
     val topBarNavigationIcon: @Composable () -> Unit = {
         if (inSelectMode) {
             IconButton(onClick = onExitSelectionMode) {
@@ -1160,15 +1422,30 @@ fun AlbumScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(topBarBackgroundColor)
+                .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
+                .frostedTopBarBackground(
+                    progress = topBarRevealProgress,
+                    barColor = MaterialTheme.colorScheme.background,
+                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                    backdrop = frostBackdrop,
+                )
                 .statusBarsPadding()
                 .height(56.dp)
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            topBarNavigationIcon()
+            val backProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
+            Box(modifier = Modifier.irideEnterScale(backProgress, from = 0.8f)) {
+                topBarNavigationIcon()
+            }
+            // Always composed and always holding its weight — the title fades in via
+            // topBarRevealProgress, tracking the big header title going behind this bar.
             Text(
-                text = if (inSelectMode) pluralStringResource(R.plurals.n_selected, selection.size, selection.size) else "",
+                text = if (inSelectMode) {
+                    pluralStringResource(R.plurals.n_selected, selection.size, selection.size)
+                } else {
+                    albumWithSongs?.album?.title.orEmpty()
+                },
                 style = TextStyle(
                     fontFamily = SpaceMonoFontFamily,
                     fontWeight = FontWeight.Bold,
@@ -1180,35 +1457,32 @@ fun AlbumScreen(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 4.dp),
+                    .padding(start = 4.dp)
+                    .then(
+                        if (inSelectMode) {
+                            Modifier
+                        } else {
+                            Modifier.irideEnter(topBarRevealProgress, 6.dp).revealMask(topBarRevealProgress)
+                        },
+                    ),
             )
             if (!inSelectMode && albumWithSongs != null) {
+                val actionsProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
                 IrideOutlineIconButton(
                     onClick = onTopBarLikeClick,
                     icon = if (albumWithSongs?.album?.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border,
-                    contentDescription = null,
+                    contentDescription = stringResource(
+                        if (albumWithSongs?.album?.bookmarkedAt != null) R.string.remove_from_library else R.string.add_to_library,
+                    ),
                     size = 40.dp,
                     iconSize = 20.dp,
-                )
-                IrideOutlineIconButton(
-                    onClick = onTopBarPlayClick,
-                    icon = R.drawable.ic_iride_play,
-                    contentDescription = stringResource(R.string.play),
-                    size = 40.dp,
-                    iconSize = 20.dp,
-                )
-                IrideOutlineIconButton(
-                    onClick = onTopBarDownloadClick,
-                    icon = when (downloadState) {
-                        Download.STATE_COMPLETED -> R.drawable.check
-                        else -> R.drawable.arrow_downward
-                    },
-                    contentDescription = null,
-                    loading = downloadState == Download.STATE_DOWNLOADING || downloadState == Download.STATE_QUEUED,
-                    size = 40.dp,
-                    iconSize = 20.dp,
+                    pressEffect = IridePressEffect.Punch,
+                    modifier = Modifier.irideEnterScale(actionsProgress),
                 )
             }
+            // Download now lives behind the ⋯ overflow (AlbumMenu already has its own download item)
+            // — three buttons shoulder to shoulder was the same crowding ArtistScreen solved by
+            // moving its secondary actions behind an overflow instead of shrinking targets further.
             topBarActions()
         }
     } else {

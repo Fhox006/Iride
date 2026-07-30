@@ -60,6 +60,7 @@ fun LocalPlaylistMenu(
     onDownload: () -> Unit,
     onQueue: () -> Unit,
     onDismiss: () -> Unit,
+    onReorder: (() -> Unit)? = null,
 ) {
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
@@ -142,6 +143,25 @@ fun LocalPlaylistMenu(
                     },
                 ),
             )
+
+            if (onReorder != null) {
+                add(
+                    Material3MenuItemData(
+                        title = { Text(stringResource(R.string.reorder)) },
+                        description = { Text(stringResource(R.string.reorder_desc)) },
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.list),
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = {
+                            onReorder()
+                            onDismiss()
+                        },
+                    ),
+                )
+            }
 
             // Show sync button only for YouTube playlists
             if (isYouTubePlaylist) {
@@ -319,6 +339,7 @@ fun AutoPlaylistMenu(
     onDismiss: () -> Unit,
     songs: List<Song> = emptyList(),
     playlistName: String = "Playlist",
+    onReorder: (() -> Unit)? = null,
 ) {
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
@@ -396,6 +417,24 @@ fun AutoPlaylistMenu(
                         },
                         onClick = {
                             onQueue()
+                            onDismiss()
+                        },
+                    )
+                } else {
+                    null
+                },
+                if (onReorder != null) {
+                    Material3MenuItemData(
+                        title = { Text(stringResource(R.string.reorder)) },
+                        description = { Text(stringResource(R.string.reorder_desc)) },
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.list),
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = {
+                            onReorder()
                             onDismiss()
                         },
                     )

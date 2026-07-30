@@ -35,6 +35,7 @@
     <string name="forgotten_favorites">Forgotten favorites</string>
     <string name="keep_listening">Keep listening</string>
     <string name="discs_for_you">Discs picked for you</string>
+    <string name="for_you_shelf_title">On repeat for you</string>
     <string name="recommended_albums">Recommended albums</string>
     <string name="recently_listened_albums">Recently listened</string>
     <string name="clear_recently_listened_albums">Clear</string>
@@ -42,6 +43,9 @@
     <string name="similar_to">Similar to</string>
     <string name="new_release_albums">New release albums</string>
     <string name="artist_latest_release">Latest release</string>
+    <string name="essential_albums">Essential Albums</string>
+    <string name="suggested_follow_artists">You listen a lot — follow them?</string>
+    <string name="new_from_followed_artists">New from artists you follow</string>
 
     <!-- History -->
     <string name="today">Today</string>
@@ -161,6 +165,8 @@
     <string name="remove_from_queue">Remove from queue</string>
     <string name="search_online">Search online</string>
     <string name="action_sync">Sync</string>
+    <string name="library_refresh">Refresh library</string>
+    <string name="library_refreshing">Refreshing…</string>
     <string name="advanced">Advanced</string>
     <string name="tempo_and_pitch">Tempo and Pitch</string>
 

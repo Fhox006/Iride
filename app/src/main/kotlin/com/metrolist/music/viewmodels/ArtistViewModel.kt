@@ -26,6 +26,7 @@ import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.extensions.filterExplicit
 import com.metrolist.music.extensions.filterExplicitAlbums
+import com.metrolist.music.utils.NewReleaseNotifier
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
@@ -60,11 +61,25 @@ class ArtistViewModel @Inject constructor(
     private val database: MusicDatabase,
     private val syncUtils: SyncUtils,
     private val musicBrainzRepository: MusicBrainzRepository,
+    private val newReleaseNotifier: NewReleaseNotifier,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     val artistId = savedStateHandle.get<String>("artistId")!!
+
+    init {
+        // Opening the profile clears its new-release badge and it doesn't come back.
+        viewModelScope.launch(Dispatchers.IO) { newReleaseNotifier.markSeen(artistId) }
+    }
+
     private val isPodcastChannel = savedStateHandle.get<Boolean>("isPodcastChannel") ?: false
     var artistPage by mutableStateOf<ArtistPage?>(null)
+
+    // YTM's own "Top Songs" shelf on the artist page only ever carries ~5 tracks — the full list
+    // sits behind the shelf's own "more" browse endpoint, same one ArtistItemsScreen's "see all"
+    // uses. Fetched quietly in the background so the carousel upgrades from 5 to the real count
+    // without the user having to leave the page for it.
+    private val _expandedTopSongs = MutableStateFlow<List<com.metrolist.innertube.models.SongItem>?>(null)
+    val expandedTopSongs = _expandedTopSongs.asStateFlow()
 
     // Track API subscription state separately
     private val _apiSubscribed = MutableStateFlow<Boolean?>(null)
@@ -238,6 +253,23 @@ class ArtistViewModel @Inject constructor(
                     artistPage = page.copy(sections = filteredSections)
                     // Store API subscription state
                     _apiSubscribed.value = page.isSubscribed
+
+                    _expandedTopSongs.value = null
+                    val topSongsMoreEndpoint = filteredSections.firstOrNull { section ->
+                        (section.items.firstOrNull() as? com.metrolist.innertube.models.SongItem)?.album != null
+                    }?.moreEndpoint
+                    if (topSongsMoreEndpoint != null) {
+                        viewModelScope.launch {
+                            YouTube.artistItems(topSongsMoreEndpoint)
+                                .onSuccess { itemsPage ->
+                                    _expandedTopSongs.value = itemsPage.items
+                                        .filterIsInstance<com.metrolist.innertube.models.SongItem>()
+                                        .filterExplicit(hideExplicit)
+                                        .filterVideoSongs(hideVideoSongs)
+                                        .filterYoutubeShorts(hideYoutubeShorts)
+                                }
+                        }
+                    }
                 }.onFailure {
                     reportException(it)
                 }

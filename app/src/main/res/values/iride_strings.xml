@@ -43,6 +43,15 @@
 
     <string name="remove_from_cache">Remove from cache</string>
 
+    <!-- Artist discography -->
+    <string name="view_discography">View Discography</string>
+    <string name="discography">Discography</string>
+    <string name="discography_from_artist">From Artist</string>
+    <string name="discography_appears_on">Appears On</string>
+    <string name="discography_singles">Singles</string>
+    <string name="discography_eps">EPs</string>
+    <string name="discography_empty">Nothing more to show</string>
+
     <!-- Artist about section -->
     <string name="about_artist">About</string>
     <string name="show_more">Show more</string>
@@ -59,6 +68,9 @@
     <string name="share_playlist_desc">Share this playlist with others</string>
     <string name="delete_playlist_desc">Remove this playlist permanently</string>
     <string name="sync_playlist_desc">Sync this playlist with YouTube Music</string>
+    <string name="reorder">Reorder</string>
+    <string name="reorder_desc">Drag songs to set a custom order</string>
+    <string name="menu">Menu</string>
     <string name="copy_link">Copy link</string>
     <string name="select">Select all</string>
     <string name="like_all">Like all</string>
@@ -1021,6 +1033,10 @@
     <string name="show_news_tab_desc">Adds a News tab to the bottom navigation, between Home and Library</string>
     <string name="top_navigation_bar">New Iride Ui</string>
     <string name="top_navigation_bar_desc">Text-only tabs at the top and a full black screen instead of the bottom pill</string>
+    <string name="iride_animations">Iride animations</string>
+    <string name="iride_animations_desc">Typewriter titles, parallax and entrance transitions. Turn off if the app stutters</string>
+    <string name="player_auto_hide_top_panel">Auto-hide return panel</string>
+    <string name="player_auto_hide_top_panel_desc">Fades out the top return-to-app panel after 5s idle in the expanded player. Scrolling down brings it back</string>
     <string name="news">News</string>
     <string name="news_new_albums">New albums</string>
     <string name="news_new_songs">New songs</string>

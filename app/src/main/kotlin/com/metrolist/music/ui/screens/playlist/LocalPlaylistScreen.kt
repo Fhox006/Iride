@@ -17,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -81,11 +82,17 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -104,6 +111,7 @@ import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.util.fastForEachIndexed
 import androidx.compose.ui.util.fastForEachReversed
 import androidx.compose.ui.util.fastSumBy
+import androidx.compose.ui.util.lerp
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -113,6 +121,8 @@ import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
+import coil3.decode.DataSource
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.utils.completed
@@ -122,8 +132,10 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.LocalSyncUtils
 import com.metrolist.music.R
+import com.metrolist.music.constants.AlbumTopGradientKey
 import com.metrolist.music.constants.DarkModeKey
-import com.metrolist.music.constants.PlaylistEditLockKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlaylistSongSortDescendingKey
 import com.metrolist.music.constants.PlaylistSongSortType
 import com.metrolist.music.constants.PlaylistSongSortTypeKey
@@ -134,6 +146,7 @@ import com.metrolist.music.db.entities.PlaylistSong
 import com.metrolist.music.db.entities.PlaylistSongMap
 import com.metrolist.music.extensions.move
 import com.metrolist.music.extensions.toMediaItem
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.ListQueue
@@ -145,18 +158,36 @@ import com.metrolist.music.ui.component.GenrePillsRow
 import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideOutlineIconButton
+import com.metrolist.music.ui.component.IridePlaylistControlPanel
+import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.frostedTopBarBackground
+import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.rememberRubberBandPull
+import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.OverlayEditButton
 import com.metrolist.music.ui.component.SongListItem
+import com.metrolist.music.ui.component.SongRowReorderButton
 import com.metrolist.music.ui.component.TextFieldDialog
+import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.component.TypewriterText
 import com.metrolist.music.ui.menu.CustomThumbnailMenu
 import com.metrolist.music.ui.menu.LocalPlaylistMenu
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
+import com.metrolist.music.ui.screens.search.IrideSearchBox
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.component.rememberGenreFilter
+import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.utils.headerEnter
+import com.metrolist.music.ui.utils.irideEnter
+import com.metrolist.music.ui.utils.irideEnterScale
+import com.metrolist.music.ui.utils.rememberEnterProgress
+import com.metrolist.music.ui.utils.rememberSectionEnter
+import com.metrolist.music.ui.utils.revealMask
 import com.metrolist.music.ui.utils.prefetchThumbnails
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
@@ -187,9 +218,14 @@ fun LocalPlaylistScreen(
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val queueTitle by playerConnection.queueTitle.collectAsState()
 
     val playlist by viewModel.playlist.collectAsState()
     val songs by viewModel.playlistSongs.collectAsState()
+    // Is the currently loaded queue this playlist's own — lets the pill's play button toggle
+    // play/pause on an already-loaded queue instead of always restarting it from track 0.
+    val isThisPlaylistQueueLoaded = playlist != null && queueTitle == playlist?.playlist?.name
+    val isThisPlaylistPlaying = isPlaying && isThisPlaylistQueueLoaded
     val mutableSongs = remember { mutableStateListOf<PlaylistSong>() }
     val playlistLength =
         remember(songs) {
@@ -205,8 +241,57 @@ fun LocalPlaylistScreen(
             PlaylistSongSortDescendingKey,
             true,
         )
-    var locked by rememberPreference(PlaylistEditLockKey, defaultValue = true)
+    // Not persisted across restarts — the only way in is the "Reorder" overflow menu entry, the
+    // only way out is the top bar's close button, both scoped to this visit of the screen.
+    var locked by rememberSaveable { mutableStateOf(true) }
+    val swipeRemoveEnabled by rememberPreference(SwipeToRemoveSongKey, defaultValue = true)
     val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
+
+    // New Iride UI one-shot entrance: mirrors AlbumScreen's arrival choreography — title types out
+    // once, then the rest of the header/sections fade in, never replaying on scroll-back.
+    var headerRevealed by rememberSaveable { mutableStateOf(false) }
+    val revealedSections = remember { mutableSetOf<String>() }
+    val playlistTitle = playlist?.playlist?.name
+    val titleTypingMs = remember(playlistTitle) {
+        val length = playlistTitle?.length ?: 0
+        if (length == 0) 0 else minOf(26 * length, 700)
+    }
+    LaunchedEffect(playlistTitle) {
+        if (playlistTitle != null && !headerRevealed) {
+            delay(titleTypingMs + 60L + IrideMotion.Short)
+            headerRevealed = true
+        }
+    }
+    val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
+    val controlsRowProgress = rememberSectionEnter("playlist_controls", revealedSections)
+    val genrePillsProgress = rememberSectionEnter("playlist_genre_pills", revealedSections)
+    val controlPanelProgress = rememberSectionEnter("playlist_control_panel", revealedSections)
+    val songsSectionProgress = rememberSectionEnter("playlist_songs", revealedSections)
+    val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(
+        PlayerBackgroundStyleKey,
+        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+    )
+    val playlistGradientMediaMetadata = remember(playlist?.playlist?.id, playlist?.thumbnails?.firstOrNull()) {
+        playlist?.let {
+            MediaMetadata(
+                id = it.playlist.id,
+                title = it.playlist.name,
+                artists = emptyList(),
+                duration = 0,
+                thumbnailUrl = it.thumbnails.firstOrNull(),
+            )
+        }
+    }
+
+    // Window-space Y of the header title's bottom edge and of the top bar's bottom edge — same
+    // crossing math as AlbumScreen: the bar's glass and mirrored title fade in exactly when the
+    // big title goes behind the bar, instead of a flat scroll-distance/item-index threshold.
+    val density = LocalDensity.current
+    var nameBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
+    var topBarBottomPx by remember { mutableStateOf(0f) }
+    val titleCoverRangePx = with(density) { 24.dp.toPx() }
+    val headerPull = rememberRubberBandPull()
 
     val coroutineScope = rememberCoroutineScope()
     val syncUtils = LocalSyncUtils.current
@@ -240,11 +325,8 @@ fun LocalPlaylistScreen(
         )
 
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(isSearching) {
-        if (isSearching) {
-            focusRequester.requestFocus()
-        }
-    }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     var inSelectMode by rememberSaveable { mutableStateOf(false) }
     val selection =
@@ -266,9 +348,13 @@ fun LocalPlaylistScreen(
         BackHandler {
             isSearching = false
             query = TextFieldValue()
+            focusManager.clearFocus()
+            keyboardController?.hide()
         }
     } else if (inSelectMode) {
         BackHandler(onBack = onExitSelectionMode)
+    } else if (!locked) {
+        BackHandler { locked = true }
     }
 
     val downloadUtil = LocalDownloadUtil.current
@@ -442,8 +528,31 @@ fun LocalPlaylistScreen(
         )
     }
 
-    val headerItems = 2
+    // Every leading LazyColumn item ahead of the song rows themselves: controls_row + genre_pills,
+    // plus playlist_header and control_panel (both skipped while isSearching), plus search_bar
+    // on top for New Iride UI.
+    val headerItems = when {
+        topNavigationBarEnabled && isSearching -> 3
+        topNavigationBarEnabled -> 5
+        isSearching -> 2
+        else -> 3
+    }
     val lazyListState = rememberLazyListState()
+    // Same crossing math as AlbumScreen: 0 until the header has played its one-shot reveal, 1 once
+    // the header item (search_bar + playlist_header) has scrolled past and been disposed —
+    // nameBottomPx would otherwise hold its last (stale) recorded value — and a continuous
+    // pixel-accurate ramp in between, instead of a flat item-index threshold.
+    val topBarRevealProgress by remember {
+        derivedStateOf {
+            if (!headerRevealed) {
+                0f
+            } else if (lazyListState.firstVisibleItemIndex > 1) {
+                1f
+            } else {
+                ((topBarBottomPx + titleCoverRangePx - nameBottomPx) / titleCoverRangePx).coerceIn(0f, 1f)
+            }
+        }
+    }
     var dragInfo by remember {
         mutableStateOf<Pair<Int, Int>?>(null)
     }
@@ -514,13 +623,117 @@ fun LocalPlaylistScreen(
         prefetchThumbnails(context, displayedSongs.map { it.song.thumbnailUrl })
     }
 
+    val frostBackdrop = rememberFrostBackdrop()
+
+    // Top-bar mirrors of the header's shuffle/play/download actions (New Iride UI only) — the
+    // header versions live in a separate composable closing over a non-null `playlist` param.
+    // Also reused by the control panel just above the song list, so declared before the
+    // LazyColumn that renders it.
+    val onTopBarShuffleClick: () -> Unit = {
+        playlist?.let { current ->
+            playerConnection.playQueue(
+                ListQueue(
+                    title = current.playlist.name,
+                    items = songs.shuffled().map { it.song.toMediaItem() },
+                ),
+            )
+        }
+    }
+    val onTopBarPlaylistPlayClick: () -> Unit = {
+        if (isThisPlaylistQueueLoaded) {
+            playerConnection.togglePlayPause()
+        } else {
+            playlist?.let { current ->
+                playerConnection.playQueue(
+                    ListQueue(
+                        title = current.playlist.name,
+                        items = songs.map { it.song.toMediaItem() },
+                    ),
+                )
+            }
+        }
+    }
+    val onTopBarPlaylistDownloadClick: () -> Unit = {
+        when (downloadState) {
+            Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
+            Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                songs.forEach { song ->
+                    DownloadService.sendRemoveDownload(
+                        context,
+                        ExoDownloadService::class.java,
+                        song.song.id,
+                        false,
+                    )
+                }
+            }
+            else -> {
+                songs.forEach { song ->
+                    val downloadRequest =
+                        DownloadRequest
+                            .Builder(song.song.id, song.song.id.toUri())
+                            .setCustomCacheKey(song.song.id)
+                            .setData(song.song.song.title.toByteArray())
+                            .build()
+                    DownloadService.sendAddDownload(
+                        context,
+                        ExoDownloadService::class.java,
+                        downloadRequest,
+                        false,
+                    )
+                }
+            }
+        }
+    }
+    val onTopBarLikeClick: () -> Unit = {
+        playlist?.let { current ->
+            database.query {
+                update(current.playlist.toggleLike())
+            }
+        }
+    }
+
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .recordFrostBackdrop(frostBackdrop)
+            .then(
+                if (topNavigationBarEnabled) Modifier.graphicsLayer { alpha = screenProgress } else Modifier,
+            ),
     ) {
+        if (albumTopGradientEnabled) {
+            TopScreenGradientBackground(
+                mediaMetadata = playlistGradientMediaMetadata,
+                playerBackground = playerBackgroundStyle,
+            )
+        }
+
         LazyColumn(
+            modifier = Modifier
+                .then(
+                    if (topNavigationBarEnabled) {
+                        Modifier.rubberBandOverscroll(Orientation.Vertical, lazyListState, headerPull)
+                    } else {
+                        Modifier
+                    },
+                ),
             state = lazyListState,
             contentPadding = LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime).asPaddingValues(),
         ) {
+            if (topNavigationBarEnabled) {
+                item(key = "search_bar") {
+                    IrideSearchBox(
+                        query = query,
+                        onQueryChange = { query = it },
+                        placeholderText = stringResource(R.string.search),
+                        focusRequester = focusRequester,
+                        onFocusChanged = { if (it.isFocused) isSearching = true },
+                        onSearch = {},
+                        onClear = { query = TextFieldValue() },
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
+                }
+            }
+
             playlist?.let { playlist ->
                 if (playlist.songCount == 0 && playlist.playlist.remoteSongCount == 0) {
                     item(key = "empty_placeholder") {
@@ -541,7 +754,24 @@ fun LocalPlaylistScreen(
                                 onshowDeletePlaylistDialog = { showDeletePlaylistDialog = true },
                                 onStartSearch = { isSearching = true },
                                 snackbarHostState = snackbarHostState,
-                                modifier = Modifier.animateItem(),
+                                headerRevealed = headerRevealed,
+                                titleTypingMs = titleTypingMs,
+                                onTitleBoundsChanged = { nameBottomPx = it },
+                            )
+                        }
+                    }
+
+                    if (topNavigationBarEnabled && !isSearching) {
+                        item(key = "control_panel") {
+                            IridePlaylistControlPanel(
+                                onShuffleClick = onTopBarShuffleClick,
+                                onPlayClick = onTopBarPlaylistPlayClick,
+                                onDownloadClick = onTopBarPlaylistDownloadClick,
+                                downloadState = downloadState,
+                                isPlaying = isThisPlaylistPlaying,
+                                modifier = Modifier
+                                    .padding(bottom = 12.dp)
+                                    .irideEnterScale(controlPanelProgress),
                             )
                         }
                     }
@@ -557,7 +787,9 @@ fun LocalPlaylistScreen(
                                         start = if (topNavigationBarEnabled) 12.dp else 8.dp,
                                         end = if (topNavigationBarEnabled) 12.dp else 8.dp,
                                     )
-                                    .animateItem(),
+                                    .then(
+                                        if (topNavigationBarEnabled) Modifier.irideEnter(controlsRowProgress, 6.dp) else Modifier,
+                                    ),
                         ) {
                             LibrarySortRow(
                                 sortOptions =
@@ -576,24 +808,16 @@ fun LocalPlaylistScreen(
                                 useIrideStyle = topNavigationBarEnabled,
                                 modifier = Modifier.weight(1f),
                             )
-                            if (editable) {
-                                IconButton(
-                                    onClick = { locked = !locked },
-                                    modifier = Modifier.padding(horizontal = 6.dp),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(if (locked) R.drawable.lock else R.drawable.lock_open),
-                                        contentDescription = null,
-                                    )
-                                }
-                            }
                         }
                     }
 
                     item(key = "genre_pills") {
                         GenrePillsRow(
                             state = genreFilter,
-                            modifier = Modifier.animateItem(),
+                            modifier = Modifier
+                                .then(
+                                    if (topNavigationBarEnabled) Modifier.irideEnter(genrePillsProgress, 6.dp) else Modifier,
+                                ),
                         )
                     }
                 }
@@ -640,7 +864,6 @@ fun LocalPlaylistScreen(
                         }
                     }
 
-                    val swipeRemoveEnabled by rememberPreference(SwipeToRemoveSongKey, defaultValue = true)
                     val dismissBoxState =
                         rememberSwipeToDismissBoxState(
                             positionalThreshold = { totalDistance -> totalDistance },
@@ -684,8 +907,11 @@ fun LocalPlaylistScreen(
                                         onCheckedChange = onCheckedChange,
                                     )
                                 } else {
-                                    IconButton(
-                                        onClick = {
+                                    val reordering = sortType == PlaylistSongSortType.CUSTOM && !locked &&
+                                        !inSelectMode && !isSearching && editable
+                                    SongRowReorderButton(
+                                        reordering = reordering,
+                                        onMenuClick = {
                                             menuState.show {
                                                 SongMenu(
                                                     originalSong = song.song,
@@ -696,24 +922,7 @@ fun LocalPlaylistScreen(
                                                 )
                                             }
                                         },
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.more_vert),
-                                            contentDescription = null,
-                                        )
-                                    }
-
-                                    if (sortType == PlaylistSongSortType.CUSTOM && !locked && !inSelectMode && !isSearching && editable) {
-                                        IconButton(
-                                            onClick = { },
-                                            modifier = Modifier.draggableHandle(),
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.drag_handle),
-                                                contentDescription = null,
-                                            )
-                                        }
-                                    }
+                                    )
                                 }
                             },
                             modifier =
@@ -765,15 +974,23 @@ fun LocalPlaylistScreen(
                         )
                     }
 
+                    val rowMotionModifier = if (topNavigationBarEnabled) {
+                        Modifier
+                            .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                            .irideEnter(songsSectionProgress, 6.dp)
+                    } else {
+                        Modifier.animateItem()
+                    }
+
                     if (locked || inSelectMode || !swipeRemoveEnabled) {
-                        Box(modifier = Modifier.animateItem()) {
+                        Box(modifier = rowMotionModifier) {
                             content()
                         }
                     } else {
                         SwipeToDismissBox(
                             state = dismissBoxState,
                             backgroundContent = {},
-                            modifier = Modifier.animateItem(),
+                            modifier = rowMotionModifier,
                         ) {
                             content()
                         }
@@ -791,67 +1008,15 @@ fun LocalPlaylistScreen(
                             .asPaddingValues(),
                     ).align(Alignment.CenterEnd),
             scrollState = lazyListState,
-            headerItems = 2,
+            headerItems = headerItems,
         )
-
-        // Top-bar mirrors of the header's shuffle/play/download actions (New Iride UI only) — the
-        // header versions live in a separate composable closing over a non-null `playlist` param.
-        val onTopBarShuffleClick: () -> Unit = {
-            playlist?.let { current ->
-                playerConnection.playQueue(
-                    ListQueue(
-                        title = current.playlist.name,
-                        items = songs.shuffled().map { it.song.toMediaItem() },
-                    ),
-                )
-            }
-        }
-        val onTopBarPlaylistPlayClick: () -> Unit = {
-            playlist?.let { current ->
-                playerConnection.playQueue(
-                    ListQueue(
-                        title = current.playlist.name,
-                        items = songs.map { it.song.toMediaItem() },
-                    ),
-                )
-            }
-        }
-        val onTopBarPlaylistDownloadClick: () -> Unit = {
-            when (downloadState) {
-                Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
-                Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
-                    songs.forEach { song ->
-                        DownloadService.sendRemoveDownload(
-                            context,
-                            ExoDownloadService::class.java,
-                            song.song.id,
-                            false,
-                        )
-                    }
-                }
-                else -> {
-                    songs.forEach { song ->
-                        val downloadRequest =
-                            DownloadRequest
-                                .Builder(song.song.id, song.song.id.toUri())
-                                .setCustomCacheKey(song.song.id)
-                                .setData(song.song.song.title.toByteArray())
-                                .build()
-                        DownloadService.sendAddDownload(
-                            context,
-                            ExoDownloadService::class.java,
-                            downloadRequest,
-                            false,
-                        )
-                    }
-                }
-            }
-        }
 
         val topBarTitle: @Composable () -> Unit = {
             if (inSelectMode) {
                 Text(pluralStringResource(R.plurals.n_selected, selection.size, selection.size))
-            } else if (isSearching) {
+            } else if (!locked) {
+                Text(stringResource(R.string.reorder))
+            } else if (isSearching && !topNavigationBarEnabled) {
                 TextField(
                     value = query,
                     onValueChange = { query = it },
@@ -889,12 +1054,21 @@ fun LocalPlaylistScreen(
                         contentDescription = null,
                     )
                 }
+            } else if (!locked) {
+                IconButton(onClick = { locked = true }) {
+                    Icon(
+                        painter = painterResource(R.drawable.close),
+                        contentDescription = stringResource(R.string.reorder),
+                    )
+                }
             } else {
                 IconButton(
                     onClick = {
                         if (isSearching) {
                             isSearching = false
                             query = TextFieldValue()
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
                         } else {
                             navController.navigateUp()
                         }
@@ -949,15 +1123,16 @@ fun LocalPlaylistScreen(
                         contentDescription = null,
                     )
                 }
-            } else if (!isSearching) {
-                // Only search button remains in TopAppBar
-                IconButton(
-                    onClick = { isSearching = true },
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.search),
-                        contentDescription = null,
-                    )
+            } else if (!isSearching && locked) {
+                if (!topNavigationBarEnabled) {
+                    IconButton(
+                        onClick = { isSearching = true },
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.search),
+                            contentDescription = null,
+                        )
+                    }
                 }
                 playlist?.let { currentPlaylist ->
                     IconButton(
@@ -971,6 +1146,14 @@ fun LocalPlaylistScreen(
                                     onEdit = { showEditDialog = true },
                                     onSync = { syncUtils.syncSavedPlaylists() },
                                     onDelete = { showDeletePlaylistDialog = true },
+                                    onReorder = if (editable) {
+                                        {
+                                            locked = false
+                                            onSortTypeChange(PlaylistSongSortType.CUSTOM)
+                                        }
+                                    } else {
+                                        null
+                                    },
                                     onDownload = {
                                         when (downloadState) {
                                             Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
@@ -1027,42 +1210,65 @@ fun LocalPlaylistScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
+                    .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
+                    .frostedTopBarBackground(
+                        progress = if (!locked || inSelectMode) 1f else topBarRevealProgress,
+                        barColor = MaterialTheme.colorScheme.background,
+                        strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                        backdrop = frostBackdrop,
+                    )
                     .statusBarsPadding()
                     .height(56.dp)
                     .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 topBarNavigationIcon()
-                Box(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
-                    topBarTitle()
-                }
-                if (!inSelectMode && !isSearching && playlist != null) {
-                    IrideOutlineIconButton(
-                        onClick = onTopBarShuffleClick,
-                        icon = R.drawable.shuffle,
-                        contentDescription = stringResource(R.string.shuffle),
-                        size = 40.dp,
-                        iconSize = 20.dp,
-                    )
-                    IrideOutlineIconButton(
-                        onClick = onTopBarPlaylistPlayClick,
-                        icon = R.drawable.ic_iride_play,
-                        contentDescription = stringResource(R.string.play),
-                        size = 40.dp,
-                        iconSize = 20.dp,
-                    )
-                    IrideOutlineIconButton(
-                        onClick = onTopBarPlaylistDownloadClick,
-                        icon = when (downloadState) {
-                            Download.STATE_COMPLETED -> R.drawable.check
-                            else -> R.drawable.arrow_downward
-                        },
-                        contentDescription = null,
-                        loading = downloadState == Download.STATE_DOWNLOADING || downloadState == Download.STATE_QUEUED,
-                        size = 40.dp,
-                        iconSize = 20.dp,
-                    )
+                // Always composed and always holding its weight — fades in via topBarRevealProgress,
+                // tracking the big header title going behind this bar (same as AlbumScreen). Only the
+                // ⋯ overflow lives here otherwise; shuffle/play/download moved into the pill panel.
+                Text(
+                    text = when {
+                        inSelectMode -> pluralStringResource(R.plurals.n_selected, selection.size, selection.size)
+                        !locked -> stringResource(R.string.reorder)
+                        isSearching -> ""
+                        else -> playlist?.playlist?.name.orEmpty()
+                    },
+                    style = TextStyle(
+                        fontFamily = SpaceMonoFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        letterSpacing = (-0.1).sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 4.dp)
+                        .then(
+                            if (inSelectMode || isSearching || !locked) {
+                                Modifier
+                            } else {
+                                Modifier.irideEnter(topBarRevealProgress, 6.dp).revealMask(topBarRevealProgress)
+                            },
+                        ),
+                )
+                if (!inSelectMode && locked && !isSearching) {
+                    playlist?.let { current ->
+                        IrideOutlineIconButton(
+                            onClick = onTopBarLikeClick,
+                            icon = if (current.playlist.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border,
+                            contentDescription = stringResource(
+                                if (current.playlist.bookmarkedAt != null) R.string.remove_from_library else R.string.add_to_library,
+                            ),
+                            size = 40.dp,
+                            iconSize = 20.dp,
+                            pressEffect = IridePressEffect.Punch,
+                            modifier = Modifier.irideEnterScale(
+                                rememberEnterProgress(play = true, durationMillis = IrideMotion.Short),
+                            ),
+                        )
+                    }
                 }
                 topBarActions()
             }
@@ -1093,7 +1299,10 @@ fun LocalPlaylistHeader(
     onshowDeletePlaylistDialog: () -> Unit,
     onStartSearch: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    modifier: Modifier,
+    headerRevealed: Boolean,
+    titleTypingMs: Int,
+    modifier: Modifier = Modifier,
+    onTitleBoundsChanged: (Float) -> Unit = {},
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -1274,6 +1483,18 @@ fun LocalPlaylistHeader(
         }
         // Playlist Thumbnail(s) - shared between both layouts below, only the size differs.
         val playlistCoverSquircle = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
+        // Fade the cover in once on a genuine new decode — a memory-cache hit (revisiting a
+        // playlist already seen this session) resolves synchronously, so animating that would
+        // replay the surfaceVariant placeholder every time. Old (non-Iride) UI skips this.
+        var coverLoaded by remember(playlist.playlist.id) { mutableStateOf(false) }
+        var skipCoverEnterAnim by remember(playlist.playlist.id) { mutableStateOf(false) }
+        val animatedCoverProgress = rememberEnterProgress(play = coverLoaded, durationMillis = 420, easing = IrideMotion.EaseOutQuart)
+        val coverProgress = when {
+            !topNavigationBarEnabled -> 1f
+            skipCoverEnterAnim -> 1f
+            else -> animatedCoverProgress
+        }
+
         val playlistCoverArt: @Composable (Dp) -> Unit = { coverSize ->
             Box {
                 when (playlist.thumbnails.size) {
@@ -1308,6 +1529,12 @@ fun LocalPlaylistHeader(
                             modifier =
                                 Modifier
                                     .size(coverSize)
+                                    .graphicsLayer {
+                                        alpha = coverProgress
+                                        val s = lerp(0.94f, 1f, coverProgress)
+                                        scaleX = s
+                                        scaleY = s
+                                    }
                                     .shadow(
                                         elevation = 24.dp,
                                         shape = playlistCoverSquircle,
@@ -1319,6 +1546,14 @@ fun LocalPlaylistHeader(
                                 model = overrideThumbnail.value ?: playlist.thumbnails[0],
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
+                                onState = { state ->
+                                    if (state is AsyncImagePainter.State.Success) {
+                                        if (state.result.dataSource == DataSource.MEMORY_CACHE) {
+                                            skipCoverEnterAnim = true
+                                        }
+                                        coverLoaded = true
+                                    }
+                                },
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -1526,7 +1761,7 @@ fun LocalPlaylistHeader(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Text(
+                TypewriterText(
                     text = playlist.playlist.name,
                     style = TextStyle(
                         fontFamily = SpaceMonoFontFamily,
@@ -1535,20 +1770,35 @@ fun LocalPlaylistHeader(
                         letterSpacing = (-0.2).sp,
                     ),
                     color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center,
+                    // Keyed on the playlist, not the string: recomposing this screen must not
+                    // retype the title.
+                    resetKey = playlist.playlist.id,
+                    // Types on the first landing only — scrolling back to the top is navigation,
+                    // not an arrival.
+                    animate = !headerRevealed,
                     maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onGloballyPositioned { onTitleBoundsChanged(it.boundsInWindow().bottom) },
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val metadataProgress = headerEnter(
+                    revealed = headerRevealed,
+                    play = true,
+                    delayMillis = titleTypingMs + 40,
+                    durationMillis = IrideMotion.Short,
+                )
                 Text(
                     text = metadataLine,
                     style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .revealMask(metadataProgress),
                 )
                 // Action buttons (shuffle/play/download) live in the top bar now — see topBarActions.
             }

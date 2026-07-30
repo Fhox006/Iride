@@ -5,6 +5,10 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -31,6 +35,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.metrolist.music.ui.utils.rememberReducedMotion
 
 /**
  * Frosted-glass playlist cover: a blurred mosaic of up to 4 of the playlist's own thumbnails
@@ -48,6 +53,7 @@ fun GlassPlaylistCover(
     modifier: Modifier = Modifier,
 ) {
     val mosaicThumbnails = thumbnails.distinct().take(4)
+    val reducedMotion = rememberReducedMotion()
     Box(
         modifier =
             modifier
@@ -56,52 +62,61 @@ fun GlassPlaylistCover(
                 .background(MaterialTheme.colorScheme.surfaceContainer),
     ) {
         if (mosaicThumbnails.isNotEmpty()) {
-            Box(
-                modifier =
-                    Modifier
-                        .matchParentSize()
-                        // Zoomed well past the crop bounds so each quadrant's photo fills more of
-                        // its quarter and the 4 tiles read as one blended scene instead of 4
-                        // distinctly separated corners.
-                        .graphicsLayer(scaleX = 1.6f, scaleY = 1.6f)
-                        .blur(size * 0.1f),
-            ) {
-                if (mosaicThumbnails.size == 1) {
-                    AsyncImage(
-                        model = mosaicThumbnails[0],
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    Column(Modifier.fillMaxSize()) {
-                        Row(Modifier.weight(1f).fillMaxWidth()) {
-                            AsyncImage(
-                                model = mosaicThumbnails.getOrElse(0) { mosaicThumbnails[0] },
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                            )
-                            AsyncImage(
-                                model = mosaicThumbnails.getOrElse(1) { mosaicThumbnails[0] },
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                            )
-                        }
-                        Row(Modifier.weight(1f).fillMaxWidth()) {
-                            AsyncImage(
-                                model = mosaicThumbnails.getOrElse(2) { mosaicThumbnails[0] },
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                            )
-                            AsyncImage(
-                                model = mosaicThumbnails.getOrElse(3) { mosaicThumbnails[0] },
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                            )
+            // Dissolve between mosaics instead of a hard cut, since liking/unliking a song
+            // reshuffles which 4 thumbnails land in the 4 tiles.
+            Crossfade(
+                targetState = mosaicThumbnails,
+                modifier = Modifier.matchParentSize(),
+                animationSpec = if (reducedMotion) snap() else tween(durationMillis = 300, easing = FastOutSlowInEasing),
+                label = "glassPlaylistCoverMosaic",
+            ) { tiles ->
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            // Zoomed well past the crop bounds so each quadrant's photo fills more of
+                            // its quarter and the 4 tiles read as one blended scene instead of 4
+                            // distinctly separated corners.
+                            .graphicsLayer(scaleX = 1.6f, scaleY = 1.6f)
+                            .blur(size * 0.1f),
+                ) {
+                    if (tiles.size == 1) {
+                        AsyncImage(
+                            model = tiles[0],
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Column(Modifier.fillMaxSize()) {
+                            Row(Modifier.weight(1f).fillMaxWidth()) {
+                                AsyncImage(
+                                    model = tiles.getOrElse(0) { tiles[0] },
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                )
+                                AsyncImage(
+                                    model = tiles.getOrElse(1) { tiles[0] },
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                )
+                            }
+                            Row(Modifier.weight(1f).fillMaxWidth()) {
+                                AsyncImage(
+                                    model = tiles.getOrElse(2) { tiles[0] },
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                )
+                                AsyncImage(
+                                    model = tiles.getOrElse(3) { tiles[0] },
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                )
+                            }
                         }
                     }
                 }

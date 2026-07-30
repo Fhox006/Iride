@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -88,6 +89,7 @@ import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.VinylPeekFraction
 import com.metrolist.music.ui.component.currentGridThumbnailHeight
+import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LibraryAlbumsViewModel
@@ -194,9 +196,13 @@ fun LibraryAlbumsScreen(
     }
     val continueListeningRow: @Composable () -> Unit = {
         val content: @Composable () -> Unit = {
+            val continueListeningState = rememberLazyListState()
             LazyRow(
+                state = continueListeningState,
                 contentPadding = PaddingValues(horizontal = if (topNavigationBarEnabled) 16.dp else 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(continueListeningSpacing),
+                overscrollEffect = null,
+                modifier = Modifier.rubberBandOverscroll(Orientation.Horizontal, continueListeningState),
             ) {
                 items(continueListeningAlbums, key = { "continue_listening_${it.id}" }) { album ->
                     LibraryContinueListeningAlbumItem(
@@ -294,6 +300,8 @@ fun LibraryAlbumsScreen(
                                 bottom = LocalPlayerAwareWindowInsets.current
                                     .asPaddingValues().calculateBottomPadding(),
                             ),
+                            overscrollEffect = null,
+                            modifier = Modifier.rubberBandOverscroll(Orientation.Vertical, lazyListState),
                         ) {
                             if (continueListeningAlbums.isNotEmpty()) {
                                 item(key = "continue_listening_title") { continueListeningTitle() }
@@ -383,6 +391,8 @@ fun LibraryAlbumsScreen(
                             ),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
+                            overscrollEffect = null,
+                            modifier = Modifier.rubberBandOverscroll(Orientation.Vertical, lazyGridState),
                         ) {
                             if (continueListeningAlbums.isNotEmpty()) {
                                 item(key = "continue_listening_title", span = { GridItemSpan(maxLineSpan) }) { continueListeningTitle() }

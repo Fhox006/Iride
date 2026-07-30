@@ -1,8 +1,8 @@
 ---
-description: Attiva insieme caveman mode + ponytail mode (default preferito utente)
+description: /def (caveman + ponytail) + attivazione skill impeccable per lavoro UI
 ---
 
-Attiva ENTRAMBI subito, persistenti per tutta sessione:
+Attiva TUTTO subito, persistente per tutta la sessione: caveman mode + ponytail mode + impeccable.
 
 # Caveman (full)
 
@@ -42,6 +42,14 @@ Non pigro su comprensione problema: leggi tutto il flow prima di scegliere il gr
 # Commenti
 
 Se trovi commenti dentro codice che tocchi, rimuovili. Non scrivere nuovi commenti.
+
+# Impeccable
+
+Ogni volta che il task tocca UI (schermate, componenti, layout, tipografia, colore, motion, spacing, stati vuoti/errore, accessibilità), invoca la skill `impeccable:impeccable` con il sub-comando adatto (`polish`, `audit`, `craft`, `shape`, `layout`, `harden`, ...) e segui il suo Setup e le sue reference. Non improvvisare design: usa la skill.
+
+Task non-UI (build, dati, playback, networking): salta impeccable, resta caveman + ponytail.
+
+Impeccable governa la qualità del design, ponytail governa quanto codice scrivi: quando confliggono, vince la scala ponytail per la struttura, impeccable per la resa visiva.
 
 ---
 

@@ -36,7 +36,21 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  */
 @OptIn(ExperimentalEncodingApi::class)
 class InnerTube {
+    // Held here (instead of built inline in createClient) so it can be evicted when the device
+    // changes network. Sockets opened on a network that has since gone away stay in the pool and
+    // get reused by every later request, which then hangs until the connect timeout — repeatedly,
+    // for the whole process lifetime. That is the "app works again only after force close" case.
+    private val connectionPool = okhttp3.ConnectionPool(
+        5,
+        2,
+        java.util.concurrent.TimeUnit.MINUTES,
+    )
+
     private var httpClient = createClient()
+
+    fun evictConnections() {
+        connectionPool.evictAll()
+    }
 
     var locale = YouTubeLocale(
         gl = Locale.getDefault().country,
@@ -83,16 +97,10 @@ class InnerTube {
         engine {
             config {
                 // Connection pool settings for better connection reuse
-                connectionPool(
-                    okhttp3.ConnectionPool(
-                        5, // maxIdleConnections
-                        2, // keepAliveDuration
-                        java.util.concurrent.TimeUnit.MINUTES
-                    )
-                )
-                
+                connectionPool(this@InnerTube.connectionPool)
+
                 // Timeout configurations
-                connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
                 readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
                 writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
                 
@@ -129,7 +137,7 @@ class InnerTube {
         // Request timeout configuration
         install(HttpTimeout) {
             requestTimeoutMillis = 60000
-            connectTimeoutMillis = 30000
+            connectTimeoutMillis = 10000
             socketTimeoutMillis = 60000
         }
 

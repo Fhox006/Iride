@@ -165,6 +165,7 @@ import com.metrolist.music.constants.SYSTEM_DEFAULT
 import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.constants.SimpMusicMigrationDoneKey
 import com.metrolist.music.constants.SlimNavBarKey
+import com.metrolist.music.constants.PlayerAutoHideTopPanelKey
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
 import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
@@ -181,6 +182,7 @@ import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.AppNavigationRail
+import com.metrolist.music.ui.component.RubberBandNavGate
 import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.DebugBubble
@@ -191,6 +193,8 @@ import com.metrolist.music.ui.component.BottomSheetMenu
 import com.metrolist.music.ui.component.BottomSheetPage
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.collapsedAnchor
+import com.metrolist.music.ui.component.dismissedAnchor
 import com.metrolist.music.ui.component.rememberBottomSheetState
 import com.metrolist.music.ui.component.rememberDeviceCornerInfo
 import com.metrolist.music.ui.component.shimmer.ShimmerTheme
@@ -838,6 +842,11 @@ class MainActivity : ComponentActivity() {
                 val playerBottomSheetState =
                     rememberBottomSheetState(
                         dismissedBound = 0.dp,
+                        // New Iride UI: the curtain is never dismissed to nothing — it always sits
+                        // collapsed (showing a placeholder peek row when no track is loaded) from the
+                        // very first frame, instead of starting at dismissedAnchor and briefly falling
+                        // back to the classic FloatingPill until a track shows up.
+                        initialAnchor = if (curtainMode) collapsedAnchor else dismissedAnchor,
                         collapsedBound = if (!showRail) {
                             bottomInset + (if (isTopLevelRoute && !topNavigationBarEnabled) FloatingPillHeight else MiniPlayerHeight) + FloatingPillBottomSpacing +
                                 (if (curtainMode) CurtainCornerRevealHeight else 0.dp)
@@ -852,12 +861,35 @@ class MainActivity : ComponentActivity() {
                         preventDismissDrag = curtainMode,
                     )
 
-                // The curtain only actually covers anything while a track is loaded (collapsed or
-                // expanded). When dismissed (no track — e.g. on cold app start), it isn't mounted
-                // at all, so nothing must reserve its space either: Scaffold takes the full height
-                // and FloatingPill becomes the visible bottom bar instead, exactly like the classic
-                // (non-curtain) UI already does when there's nothing playing.
-                val curtainActive = curtainMode && !playerBottomSheetState.isDismissed
+                // New Iride UI: the curtain is always mounted, whether or not a track is loaded — it
+                // never falls back to the classic FloatingPill. With nothing playing it just sits
+                // collapsed showing a placeholder peek row (see BottomSheetPlayer's collapsedContent),
+                // so the very first frame after cold start already reads as "the mp3 mini player",
+                // never the rounded pill.
+                val curtainActive = curtainMode
+
+                // New Iride UI: after 5s static in the fully expanded player, fade out the app-peek
+                // strip (TopNavigationBar + drag handle) that's needed to return to the app, leaving
+                // a clean player view. Starting a downward drag (progress dropping off 1f) cancels
+                // the pending fade and brings it back immediately.
+                val (autoHideTopPanel) = rememberPreference(PlayerAutoHideTopPanelKey, defaultValue = true)
+                val isPlayerSettledExpanded by remember(playerBottomSheetState) {
+                    derivedStateOf { playerBottomSheetState.progress >= 0.999f }
+                }
+                var topPanelVisible by remember { mutableStateOf(true) }
+                LaunchedEffect(curtainActive, autoHideTopPanel, isPlayerSettledExpanded) {
+                    if (curtainActive && autoHideTopPanel && isPlayerSettledExpanded) {
+                        delay(5000)
+                        topPanelVisible = false
+                    } else {
+                        topPanelVisible = true
+                    }
+                }
+                val topPanelAlpha by animateFloatAsState(
+                    targetValue = if (topPanelVisible) 1f else 0f,
+                    animationSpec = tween(500),
+                    label = "playerTopPanelAlpha",
+                )
 
                 // New Iride UI bridge: shared between BottomSheetPlayer (which reports the mini
                 // and expanded rects of the cover art) and IrideMiniPlayerBridgeOverlay (which
@@ -941,10 +973,16 @@ class MainActivity : ComponentActivity() {
                 // still null at the instant playerConnection binds on a cold start. A one-shot check
                 // here used to latch the sheet as "user-dismissed" before the restore completed,
                 // leaving the New Iride UI stuck on the classic layout until manually toggled.
-                LaunchedEffect(playerConnection) {
+                LaunchedEffect(playerConnection, curtainMode) {
                     val connection = playerConnection ?: return@LaunchedEffect
                     connection.mediaMetadata.collectLatest { metadata ->
-                        if (metadata == null) {
+                        if (curtainMode) {
+                            // New Iride UI: never dismiss the curtain — bounce back to collapsed
+                            // (placeholder peek) instead, regardless of whether a track is loaded.
+                            if (playerBottomSheetState.isDismissed) {
+                                playerBottomSheetState.collapseSoft()
+                            }
+                        } else if (metadata == null) {
                             if (!playerBottomSheetState.isDismissed) {
                                 playerBottomSheetState.dismiss()
                             }
@@ -1017,7 +1055,10 @@ class MainActivity : ComponentActivity() {
 
                 val onNavItemClick: (Screens, Boolean) -> Unit =
                     remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState, navBackStackEntry, topNavigationBarEnabled) {
-                        { screen: Screens, isSelected: Boolean ->
+                        nav@{ screen: Screens, isSelected: Boolean ->
+                            // Refuse to switch tabs while a Home/Library/Search/Account rubber-band
+                            // pull is still dragging or springing back — see RubberBandNavGate.
+                            if (RubberBandNavGate.isActive) return@nav
                             if (playerBottomSheetState.isExpanded) {
                                 playerBottomSheetState.collapseSoft()
                             }
@@ -1119,6 +1160,8 @@ class MainActivity : ComponentActivity() {
                         IrideMiniPlayerBridgeOverlay(
                             bridgeState = irideBridgeState,
                             sheetProgress = playerBottomSheetState.progress,
+                            navController = navController,
+                            playerBottomSheetState = playerBottomSheetState,
                         )
                     }
 
@@ -1215,6 +1258,7 @@ class MainActivity : ComponentActivity() {
                                         translationY = -(playerBottomSheetState.value - playerBottomSheetState.collapsedBound)
                                             .coerceAtLeast(0.dp)
                                             .toPx()
+                                        alpha = topPanelAlpha
                                     }
                                     // Dissolve the app content to black as the curtain expands. The
                                     // seam border itself is no longer drawn here — see the unclipped
@@ -1323,52 +1367,52 @@ class MainActivity : ComponentActivity() {
                                                 else -> Screens.Home
                                             }.route
                                         },
-                                    // Enter Transition - fade between tabs, slide for sub-screens
+                                    // Enter Transition - instant between tabs, slide for sub-screens
                                     enterTransition = {
                                         val currentRouteIndex = topLevelIndex(targetState.destination.route)
                                         val previousRouteIndex = topLevelIndex(initialState.destination.route)
 
                                         if (currentRouteIndex != -1 && previousRouteIndex != -1) {
-                                            fadeIn(tween(200))
+                                            EnterTransition.None
                                         } else if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex) {
                                             slideInHorizontally { it / 8 } + fadeIn(tween(200))
                                         } else {
                                             slideInHorizontally { -it / 8 } + fadeIn(tween(200))
                                         }
                                     },
-                                    // Exit Transition - fade between tabs, slide for sub-screens
+                                    // Exit Transition - instant between tabs, slide for sub-screens
                                     exitTransition = {
                                         val currentRouteIndex = topLevelIndex(initialState.destination.route)
                                         val targetRouteIndex = topLevelIndex(targetState.destination.route)
 
                                         if (currentRouteIndex != -1 && targetRouteIndex != -1) {
-                                            fadeOut(tween(200))
+                                            ExitTransition.None
                                         } else if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex) {
                                             slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
                                         } else {
                                             slideOutHorizontally { it / 8 } + fadeOut(tween(200))
                                         }
                                     },
-                                    // Pop Enter Transition - fade between tabs
+                                    // Pop Enter Transition - instant between tabs
                                     popEnterTransition = {
                                         val currentRouteIndex = topLevelIndex(targetState.destination.route)
                                         val previousRouteIndex = topLevelIndex(initialState.destination.route)
 
                                         if (currentRouteIndex != -1 && previousRouteIndex != -1) {
-                                            fadeIn(tween(200))
+                                            EnterTransition.None
                                         } else if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex) {
                                             slideInHorizontally { it / 8 } + fadeIn(tween(200))
                                         } else {
                                             slideInHorizontally { -it / 8 } + fadeIn(tween(200))
                                         }
                                     },
-                                    // Pop Exit Transition - fade between tabs
+                                    // Pop Exit Transition - instant between tabs
                                     popExitTransition = {
                                         val currentRouteIndex = topLevelIndex(initialState.destination.route)
                                         val targetRouteIndex = topLevelIndex(targetState.destination.route)
 
                                         if (currentRouteIndex != -1 && targetRouteIndex != -1) {
-                                            fadeOut(tween(200))
+                                            ExitTransition.None
                                         } else if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex) {
                                             slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
                                         } else {
@@ -1410,6 +1454,7 @@ class MainActivity : ComponentActivity() {
                                     translationY = -(playerBottomSheetState.value - playerBottomSheetState.collapsedBound)
                                         .coerceAtLeast(0.dp)
                                         .toPx()
+                                    alpha = topPanelAlpha
                                 }
                                 .drawWithContent {
                                     val strokeWidthPx = 1.5.dp.toPx()

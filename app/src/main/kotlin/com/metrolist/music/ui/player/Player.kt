@@ -204,6 +204,7 @@ import com.metrolist.music.ui.component.Lyrics
 import com.metrolist.music.ui.component.LyricsPillController
 import com.metrolist.music.ui.component.PillPlayerRow
 import com.metrolist.music.ui.component.PillProgressState
+import com.metrolist.music.ui.component.PlaceholderMediaMetadata
 import com.metrolist.music.ui.component.PlayerSliderTrack
 import com.metrolist.music.ui.component.ResizableIconButton
 import com.metrolist.music.ui.component.SquigglySlider
@@ -915,6 +916,11 @@ fun BottomSheetPlayer(
         modifier = modifier,
         clickableHeight = if (curtainMode) state.collapsedBound else MiniPlayerHeight,
         selfPositions = !curtainMode,
+        // New Iride UI: the curtain is always mounted (see MainActivity's curtainActive), but with
+        // no track loaded there's nothing to expand into — IrideMp3PlayerContent below only renders
+        // for a non-null mediaMetadata, so disable both the tap and the drag-to-expand gesture until
+        // a real track lands, instead of opening onto a blank body.
+        isExpandable = if (curtainMode) mediaMetadata != null else true,
         // Content starts CurtainCornerRevealHeight above AppPeekHeight (not exactly at it) so the
         // expanded player's own background reaches up into the strip the app layer's rounded
         // corner cuts into when fully expanded — otherwise that strip has nothing curtain-colored
@@ -1042,7 +1048,14 @@ fun BottomSheetPlayer(
         },
         onDismiss = onSheetDismiss,
         collapsedContent = {
+            // curtainMode never shows the classic legacy MiniPlayer or the classic FloatingPill —
+            // only ever this row. While mediaMetadata is still null (cold start, before
+            // MusicService's restored queue lands, or nothing has ever played) it falls back to
+            // PlaceholderMediaMetadata so the very first frame already reads as the mp3 mini
+            // player's own placeholder, not a different pill design swapped in underneath it.
+            val currentMetadata = mediaMetadata
             if (curtainMode) {
+                val displayMetadata = currentMetadata ?: PlaceholderMediaMetadata
                 val pillProgressState = remember(positionState, durationState) {
                     PillProgressState(positionState, durationState)
                 }
@@ -1073,13 +1086,8 @@ fun BottomSheetPlayer(
                         // affordance never vanishes mid-gesture.
                         PillPlayerRow(
                             progressState = pillProgressState,
-                            displayMetadata = mediaMetadata ?: MediaMetadata(
-                                id = "",
-                                title = "Tap a track to start listening",
-                                artists = emptyList(),
-                                duration = 0,
-                            ),
-                            favoriteSongId = mediaMetadata?.id,
+                            displayMetadata = displayMetadata,
+                            favoriteSongId = currentMetadata?.id,
                             playbackState = playbackState,
                             canSkipNext = canSkipNext,
                             isCasting = isCasting,
@@ -1095,7 +1103,10 @@ fun BottomSheetPlayer(
                             outlineColor = Color.White,
                             onSurfaceColor = Color.White,
                             errorColor = Color(0xFFFF6B6B),
-                            onExpandClick = { state.expandSoft() },
+                            // PillPlayerRow has its own clickable, independent of BottomSheet's
+                            // isExpandable — guard here too, or a placeholder tap would still open
+                            // onto IrideMp3PlayerContent's blank (mediaMetadata == null) body.
+                            onExpandClick = { if (currentMetadata != null) state.expandSoft() },
                             onArtPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniArt = r } },
                             onInfoPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniInfo = r } },
                         )
@@ -2348,73 +2359,82 @@ fun BottomSheetPlayer(
             }
         }
 
-        if (isFullScreen && showInlineLyrics) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(queueSheetState.collapsedBound + 60.dp)
-                    .align(Alignment.BottomCenter)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                    ) { isFullScreen = false },
-            )
-        }
+        // Classic (non-Iride) queue bottom sheet — New Iride UI has its own inline QUEUE panel
+        // (IrideQueuePreview, inside IrideMp3PlayerContent) so this whole classic sheet must never
+        // mount when topNavigationBarEnabled is on. It used to render unconditionally: its own
+        // full-screen BottomSheet drag/click layer sat on top of the expanded Iride content in
+        // z-order, with its collapsed peek strip landing right over the click-wheel's bottom
+        // "more" zone — silently swallowing taps meant for the three-dot menu button. It was also
+        // a second full player screen's worth of composables running behind the New Iride UI at
+        // all times, doubling render cost for a UI the user never sees.
+        if (!topNavigationBarEnabled) {
+            if (isFullScreen && showInlineLyrics) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(queueSheetState.collapsedBound + 60.dp)
+                        .align(Alignment.BottomCenter)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                        ) { isFullScreen = false },
+                )
+            }
 
-        AnimatedVisibility(
-            visible = !isFullScreen,
-            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-            exit = shrinkVertically(shrinkTowards = Alignment.Top) + slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-        ) {
-            Queue(
-                state = queueSheetState,
-                playerBottomSheetState = state,
-                navController = navController,
-                background =
-                    if (useBlackBackground) {
-                        Color.Black
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainer
-                    },
-                onBackgroundColor = onBackgroundColor,
-                TextBackgroundColor = TextBackgroundColor,
-                textButtonColor = textButtonColor,
-                iconButtonColor = iconButtonColor,
-                pureBlack = pureBlack,
-                showInlineLyrics = showInlineLyrics,
-                playerBackground = playerBackground,
-                isLyricsLoading = mediaMetadata != null && currentLyrics == null,
-                isQueueActive = showQueue,
-                isCommentsActive = showComments,
-                isCommentsFeatureEnabled = enableComments,
-                hideCollapsedControls = topNavigationBarEnabled,
-                onToggleLyrics = {
-                    showInlineLyrics = !showInlineLyrics
-                    if (showInlineLyrics) {
-                        showQueue = false
-                        showComments = false
-                    }
-                },
-                onToggleQueue = {
-                    showQueue = !showQueue
-                    if (showQueue) {
-                        showInlineLyrics = false
-                        showComments = false
-                        queueOpenNonce++
-                    }
-                },
-                onToggleComments = {
-                    if (enableComments) {
-                        showComments = !showComments
-                        if (showComments) {
+            AnimatedVisibility(
+                visible = !isFullScreen,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = shrinkVertically(shrinkTowards = Alignment.Top) + slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            ) {
+                Queue(
+                    state = queueSheetState,
+                    playerBottomSheetState = state,
+                    navController = navController,
+                    background =
+                        if (useBlackBackground) {
+                            Color.Black
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainer
+                        },
+                    onBackgroundColor = onBackgroundColor,
+                    TextBackgroundColor = TextBackgroundColor,
+                    textButtonColor = textButtonColor,
+                    iconButtonColor = iconButtonColor,
+                    pureBlack = pureBlack,
+                    showInlineLyrics = showInlineLyrics,
+                    playerBackground = playerBackground,
+                    isLyricsLoading = mediaMetadata != null && currentLyrics == null,
+                    isQueueActive = showQueue,
+                    isCommentsActive = showComments,
+                    isCommentsFeatureEnabled = enableComments,
+                    hideCollapsedControls = topNavigationBarEnabled,
+                    onToggleLyrics = {
+                        showInlineLyrics = !showInlineLyrics
+                        if (showInlineLyrics) {
                             showQueue = false
-                            showInlineLyrics = false
+                            showComments = false
                         }
-                    }
-                },
-            )
+                    },
+                    onToggleQueue = {
+                        showQueue = !showQueue
+                        if (showQueue) {
+                            showInlineLyrics = false
+                            showComments = false
+                            queueOpenNonce++
+                        }
+                    },
+                    onToggleComments = {
+                        if (enableComments) {
+                            showComments = !showComments
+                            if (showComments) {
+                                showQueue = false
+                                showInlineLyrics = false
+                            }
+                        }
+                    },
+                )
+            }
         }
-
     }
 }
 

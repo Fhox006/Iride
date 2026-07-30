@@ -123,7 +123,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.withContext
 
-private val PlaceholderMediaMetadata = MediaMetadata(
+// Shared with BottomSheetPlayer's curtain collapsedContent (Player.kt) — the New Iride UI curtain
+// shows this same "no track yet" placeholder instead of ever falling back to this classic pill.
+internal val PlaceholderMediaMetadata = MediaMetadata(
     id = "",
     title = "Tap a track to start listening",
     artists = emptyList(),

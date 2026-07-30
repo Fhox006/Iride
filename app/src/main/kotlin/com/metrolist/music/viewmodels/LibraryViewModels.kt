@@ -42,6 +42,7 @@ import com.metrolist.music.constants.SongSortType
 import com.metrolist.music.constants.SongSortTypeKey
 import com.metrolist.music.constants.DismissedListenedAlbumsKey
 import com.metrolist.music.constants.DismissedContinueListeningAlbumsKey
+import com.metrolist.music.constants.DismissedSuggestedFollowArtistsKey
 import com.metrolist.music.constants.RecentlySuggestedAlbumsKey
 import com.metrolist.music.constants.TopSize
 import com.metrolist.music.db.MusicDatabase
@@ -57,6 +58,7 @@ import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.models.DischiPerTeItem
 import com.metrolist.music.playback.DownloadUtil
+import com.metrolist.music.utils.NewReleaseNotifier
 import com.metrolist.music.utils.PodcastRefreshTrigger
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.dataStore
@@ -157,13 +159,16 @@ constructor(
     }
 }
 
+private const val SUGGESTED_FOLLOW_MIN_PLAYS = 10
+
 @HiltViewModel
 class LibraryArtistsViewModel
 @Inject
 constructor(
-    @ApplicationContext context: Context,
-    database: MusicDatabase,
+    @ApplicationContext private val context: Context,
+    private val database: MusicDatabase,
     private val syncUtils: SyncUtils,
+    private val newReleaseNotifier: NewReleaseNotifier,
 ) : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
@@ -173,6 +178,58 @@ constructor(
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
+    }
+
+    // New songs from followed artists: artistId -> count, and the library-title total.
+    val newSongCounts = newReleaseNotifier.counts
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+    val totalNewSongs = newSongCounts
+        .map { counts -> counts.values.sum() }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
+    // "You play them a lot but forgot to follow" — analog of the Albums screen's recently-listened
+    // row. Frequently-played YouTube artists not yet bookmarked and not dismissed from this row.
+    private val dismissedSuggestedFollowIds = context.dataStore.data
+        .map { prefs ->
+            prefs[DismissedSuggestedFollowArtistsKey]?.let { json ->
+                runCatching { Json.decodeFromString<List<String>>(json) }.getOrNull()
+            }?.toSet().orEmpty()
+        }
+
+    val suggestedFollowArtists = combine(
+        database.mostPlayedArtists(fromTimeStamp = 0L, limit = 50),
+        dismissedSuggestedFollowIds,
+    ) { played, dismissed ->
+        played.filter {
+            it.artist.bookmarkedAt == null &&
+                !it.artist.isLocal &&
+                it.artist.isYouTubeArtist &&
+                it.songCount >= SUGGESTED_FOLLOW_MIN_PLAYS &&
+                it.id !in dismissed
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    fun dismissSuggestedFollowArtist(artistId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            context.dataStore.edit { prefs ->
+                val existing = prefs[DismissedSuggestedFollowArtistsKey]?.let { json ->
+                    runCatching { Json.decodeFromString<List<String>>(json) }.getOrNull()
+                }.orEmpty()
+                prefs[DismissedSuggestedFollowArtistsKey] =
+                    Json.encodeToString((existing.toSet() + artistId).toList())
+            }
+        }
+    }
+
+    // Quick-follow from the suggested row: bookmark right away, no detour through the artist page.
+    fun followSuggestedArtist(artistId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            database.artist(artistId).first()?.let { artist ->
+                database.query {
+                    update(artist.artist.toggleLike())
+                }
+            }
+        }
     }
 
     val allArtists =
@@ -191,6 +248,15 @@ constructor(
                 }
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    // Followed artists with an unseen release, newest activity first. The screen's lead section:
+    // "what happened since you last looked", not another list to browse.
+    val newReleaseArtists =
+        combine(allArtists, newSongCounts) { artists, counts ->
+            artists
+                .filter { (counts[it.id] ?: 0) > 0 }
+                .sortedByDescending { counts[it.id] ?: 0 }
+        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     val filteredArtists =
         combine(allArtists, searchQuery) { artists, query ->
             val normalizedQuery = query.normalizeForSearch()
@@ -206,6 +272,14 @@ constructor(
     }
 
     init {
+        // Check followed artists for new releases (throttled inside the notifier).
+        viewModelScope.launch(Dispatchers.IO) {
+            val followedIds = database.artistsBookmarked(ArtistSortType.CREATE_DATE, true)
+                .first()
+                .filter { it.artist.isYouTubeArtist && !it.artist.isPodcastChannel }
+                .map { it.id }
+            newReleaseNotifier.refresh(followedIds)
+        }
         viewModelScope.launch(Dispatchers.IO) {
             allArtists.collect { artists ->
                 artists
@@ -576,6 +650,8 @@ constructor(
     fun refresh() {
         viewModelScope.launch(Dispatchers.IO) {
             _isRefreshing.value = true
+            YouTube.evictConnections()
+            syncUtils.reInjectCredentials()
             syncUtils.performFullSyncSuspend()
             _isRefreshing.value = false
         }

@@ -14,7 +14,8 @@ import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.DraggableState
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -41,6 +42,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.platform.LocalDensity
@@ -50,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.music.constants.NavigationBarAnimationSpec
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.pow
 
 /**
@@ -109,23 +112,56 @@ fun BottomSheet(
             }
             .pointerInput(state, isExpandable) {
                 if (!isExpandable) return@pointerInput
-                val velocityTracker = VelocityTracker()
-
-                detectVerticalDragGestures(
-                    onVerticalDrag = { change, dragAmount ->
-                        velocityTracker.addPointerInputChange(change)
-                        state.dispatchRawDelta(dragAmount)
-                    },
-                    onDragCancel = {
-                        velocityTracker.resetTracking()
-                        state.performFling(0f, onDismiss)
-                    },
-                    onDragEnd = {
-                        val velocity = -velocityTracker.calculateVelocity().y
-                        velocityTracker.resetTracking()
-                        state.performFling(velocity, onDismiss)
+                // Plain detectVerticalDragGestures claims the gesture at the platform's default
+                // touch slop (~8dp) — a real finger's ordinary jitter during a tap on a button
+                // anywhere in this full-surface Box crosses that easily, canceling the button's
+                // own click mid-press (Compose cancels a pressed clickable the moment an ancestor
+                // consumes a position change for that pointer) and, on release, can even read as a
+                // downward fling into performFling(onDismiss) — closing the whole player from what
+                // was meant to be a tap. Requiring a much larger, unambiguous vertical move before
+                // this Box claims the pointer lets ordinary taps reach their target reliably, while
+                // real swipes (expand/collapse/dismiss) still clear it well within a normal gesture.
+                val dragSlop = 32.dp.toPx()
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val velocityTracker = VelocityTracker()
+                    velocityTracker.addPointerInputChange(down)
+                    var accumulatedY = 0f
+                    var accumulatedX = 0f
+                    var dragging = false
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!dragging) {
+                            if (change.isConsumed) break
+                            val delta = change.positionChange()
+                            accumulatedY += delta.y
+                            accumulatedX += delta.x
+                            if (abs(accumulatedY) > dragSlop && abs(accumulatedY) > abs(accumulatedX)) {
+                                dragging = true
+                                change.consume()
+                                velocityTracker.addPointerInputChange(change)
+                                state.dispatchRawDelta(accumulatedY)
+                            }
+                            if (!change.pressed) break
+                        } else {
+                            velocityTracker.addPointerInputChange(change)
+                            state.dispatchRawDelta(change.positionChange().y)
+                            change.consume()
+                            if (!change.pressed) {
+                                val velocity = -velocityTracker.calculateVelocity().y
+                                state.performFling(velocity, onDismiss)
+                                dragging = false
+                                break
+                            }
+                        }
                     }
-                )
+                    if (dragging) {
+                        // Pointer left the stream without a normal lift (e.g. another gesture
+                        // took over) mid-drag — same as the old onDragCancel path.
+                        state.performFling(0f, onDismiss)
+                    }
+                }
             }
             .graphicsLayer {
                 if (selfPositions) {
@@ -170,7 +206,14 @@ fun BottomSheet(
                 Box(
                     modifier = Modifier
                         .graphicsLayer {
-                            alpha = 1f - (state.progress * 4).coerceAtMost(1f)
+                            // Matches the expanded content's own fade-in start (progress 0.15,
+                            // just below) instead of the old faster 0.25 cutoff — that gap used to
+                            // leave both this collapsed row AND the expanded content (including
+                            // whatever queue/lyrics panel was open) partially visible and stacked
+                            // on top of each other for a stretch of the drag, so shrinking the
+                            // player with a panel open showed its dark background ghosting through
+                            // behind the miniplayer row.
+                            alpha = 1f - (state.progress / 0.15f).coerceIn(0f, 1f)
                         }
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },

@@ -5,6 +5,7 @@ import com.metrolist.innertube.pages.HomePage
 import com.metrolist.music.db.entities.LocalItem
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.models.DischiPerTeItem
+import com.metrolist.music.models.ForYouShelfItem
 import com.metrolist.music.models.SimilarRecommendation
 
 object HomeCache {
@@ -16,6 +17,7 @@ object HomeCache {
     var dailyDiscover: List<DailyDiscoverItem>? = null
     var communityPlaylists: List<CommunityPlaylistItem>? = null
     var dischiPerTe: List<DischiPerTeItem>? = null
+    var forYouShelves: List<ForYouShelfItem>? = null
     var explorePage: ExplorePage? = null
     var lastLoadedAt: Long = 0L
     private const val CACHE_TTL_MS = 15 * 60 * 1000L
@@ -29,6 +31,7 @@ object HomeCache {
         dailyDiscover = null
         communityPlaylists = null
         dischiPerTe = null
+        forYouShelves = null
         explorePage = null
         lastLoadedAt = 0L
     }

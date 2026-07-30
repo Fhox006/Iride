@@ -21,6 +21,7 @@
     <string name="quick_picks_empty">Ascolta alcuni brani per generare le tue scelte rapide</string>
     <string name="new_release_albums">Nuovi album in uscita</string>
     <string name="artist_latest_release">Ultima uscita</string>
+    <string name="essential_albums">Essential Albums</string>
     <string name="today">Oggi</string>
     <string name="yesterday">Ieri</string>
     <string name="this_week">Questa settimana</string>
@@ -267,6 +268,7 @@
     <string name="player">Lettore</string>
     <string name="forgotten_favorites">Preferiti dimenticati</string>
     <string name="discs_for_you">Dischi scelti per te</string>
+    <string name="for_you_shelf_title">In rotazione per te</string>
     <string name="recommended_albums">Album consigliati</string>
     <string name="recently_listened_albums">Album ascoltati</string>
     <string name="clear_recently_listened_albums">Clear</string>

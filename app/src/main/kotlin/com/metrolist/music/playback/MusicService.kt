@@ -2677,9 +2677,7 @@ class MusicService :
                     player.pause()
                     Timber.tag(TAG).d("Paused playback due to AudioTrack error")
 
-                    // Wait longer for audio renderer to settle before retry
-                    // This prevents the renderer from continuing to fail in a loop
-                    delay(RETRY_DELAY_MS * 3) // 3 seconds instead of 1 second
+                    delay(RETRY_DELAY_MS)
 
                     // Check if player is still initialized before attempting recovery
                     if (!playerInitialized.value) {
@@ -2698,7 +2696,7 @@ class MusicService :
 
                         // Resume playback if it wasn't paused by user
                         if (wasPlayingBeforeAudioFocusLoss) {
-                            delay(500) // Brief delay to allow renderer to be ready
+                            delay(200)
                             if (hasAudioFocus && playerInitialized.value) {
                                 if (castConnectionHandler?.isCasting?.value != true) {
                                     player.play()

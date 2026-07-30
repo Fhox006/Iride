@@ -797,11 +797,15 @@ fun OnlineSearchResultsBody(
             Column(modifier = Modifier.fillMaxSize()) {
                 header()
                 if (isSearchFocused) {
+                    // No background here: OnlineSearchScreen already paints its own
+                    // (transparent/gradient when mainTopGradient is on, matching the very first
+                    // search). Painting a solid MaterialTheme.colorScheme.background behind it
+                    // ignored mainTopGradient and showed through as flat black on every re-search
+                    // after the first, instead of staying transparent like the initial screen.
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxWidth()
-                            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
+                            .fillMaxWidth(),
                     ) {
                         OnlineSearchScreen(
                             query = queryText,

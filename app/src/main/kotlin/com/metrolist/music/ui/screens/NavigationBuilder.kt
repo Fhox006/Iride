@@ -29,6 +29,7 @@ import androidx.navigation.navArgument
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.ui.screens.artist.ArtistAlbumsScreen
+import com.metrolist.music.ui.screens.artist.ArtistDiscographyScreen
 import com.metrolist.music.ui.screens.artist.ArtistGameScreen
 import com.metrolist.music.ui.screens.artist.ArtistItemsScreen
 import com.metrolist.music.ui.screens.artist.ArtistScreen
@@ -222,6 +223,13 @@ fun NavGraphBuilder.NavigationBuilder(
         arguments = listOf(navArgument("artistId") { type = NavType.StringType })
     ) {
         ArtistAlbumsScreen(navController, scrollBehavior)
+    }
+
+    composable(
+        route = "artist/{artistId}/discography",
+        arguments = listOf(navArgument("artistId") { type = NavType.StringType })
+    ) {
+        ArtistDiscographyScreen(navController)
     }
 
     composable(

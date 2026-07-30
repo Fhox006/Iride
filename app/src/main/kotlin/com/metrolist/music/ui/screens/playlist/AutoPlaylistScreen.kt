@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,6 +58,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -74,10 +76,15 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -91,6 +98,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachReversed
 import androidx.compose.ui.util.fastSumBy
+import androidx.compose.ui.util.lerp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.exoplayer.offline.Download
@@ -103,14 +111,19 @@ import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.AlbumTopGradientKey
+import com.metrolist.music.constants.AutoPlaylistSongSortType
+import com.metrolist.music.constants.AutoPlaylistSongSortTypeKey
 import com.metrolist.music.constants.HideExplicitKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.SongSortDescendingKey
-import com.metrolist.music.constants.SongSortType
-import com.metrolist.music.constants.SongSortTypeKey
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.db.entities.Song
+import com.metrolist.music.extensions.move
 import com.metrolist.music.extensions.toMediaItem
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.DefaultDialog
@@ -121,17 +134,30 @@ import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.GlassPlaylistCover
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
-import com.metrolist.music.ui.component.IrideOutlineIconButton
+import com.metrolist.music.ui.component.IridePlaylistControlPanel
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.frostedTopBarBackground
+import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.rememberRubberBandPull
+import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.SongListItem
+import com.metrolist.music.ui.component.SongRowReorderButton
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.rememberGenreFilter
 import com.metrolist.music.ui.menu.AutoPlaylistMenu
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
+import com.metrolist.music.ui.screens.search.IrideSearchBox
+import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.utils.irideEnter
+import com.metrolist.music.ui.utils.irideEnterScale
 import com.metrolist.music.ui.utils.isScrollingUp
 import com.metrolist.music.ui.utils.prefetchThumbnails
+import com.metrolist.music.ui.utils.rememberEnterProgress
+import com.metrolist.music.ui.utils.revealMask
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -139,6 +165,8 @@ import com.metrolist.music.viewmodels.AutoPlaylistViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -157,6 +185,7 @@ fun AutoPlaylistScreen(
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val queueTitle by playerConnection.queueTitle.collectAsState()
     val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val playlist =
         when (viewModel.playlist) {
@@ -174,16 +203,33 @@ fun AutoPlaylistScreen(
         remember {
             mutableStateListOf<Song>()
         }
+    val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(
+        PlayerBackgroundStyleKey,
+        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+    )
+    val playlistGradientMediaMetadata = remember(viewModel.playlist, songs?.firstOrNull()?.song?.thumbnailUrl) {
+        songs?.firstOrNull()?.let {
+            MediaMetadata(
+                id = viewModel.playlist,
+                title = it.song.title,
+                artists = emptyList(),
+                duration = 0,
+                thumbnailUrl = it.song.thumbnailUrl,
+            )
+        }
+    }
 
     var isSearching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf(TextFieldValue()) }
     val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
-    LaunchedEffect(isSearching) {
-        if (isSearching) {
-            focusRequester.requestFocus()
-        }
-    }
+    val density = LocalDensity.current
+    var nameBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
+    var topBarBottomPx by remember { mutableStateOf(0f) }
+    val titleCoverRangePx = with(density) { 24.dp.toPx() }
+    val headerPull = rememberRubberBandPull()
 
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
 
@@ -219,20 +265,27 @@ fun AutoPlaylistScreen(
         selection.clear()
         selectionAnchorSongId = null
     }
+    // Not persisted — entered via the overflow menu's "Reorder" item, exited via the top bar's
+    // close button, both scoped to this visit of the screen (mirrors LocalPlaylistScreen).
+    var locked by rememberSaveable { mutableStateOf(true) }
 
     if (isSearching) {
         BackHandler {
             isSearching = false
             query = TextFieldValue()
+            focusManager.clearFocus()
+            keyboardController?.hide()
         }
     } else if (inSelectMode) {
         BackHandler(onBack = onExitSelectionMode)
+    } else if (!locked) {
+        BackHandler { locked = true }
     }
 
     val (sortType, onSortTypeChange) =
         rememberEnumPreference(
-            SongSortTypeKey,
-            SongSortType.CREATE_DATE,
+            AutoPlaylistSongSortTypeKey,
+            AutoPlaylistSongSortType.CREATE_DATE,
         )
     val (sortDescending, onSortDescendingChange) = rememberPreference(SongSortDescendingKey, true)
 
@@ -512,15 +565,123 @@ fun AutoPlaylistScreen(
     }
 
     val state = rememberLazyListState()
+    // Same crossing math as AlbumScreen/LocalPlaylistScreen: a continuous pixel-accurate ramp as
+    // the header name goes behind the bar, instead of a flat item-index threshold. No typing/
+    // reveal gate here — this header's name has no entrance animation to wait on.
+    val topBarRevealProgress by remember {
+        derivedStateOf {
+            if (state.firstVisibleItemIndex > 1) {
+                1f
+            } else {
+                ((topBarBottomPx + titleCoverRangePx - nameBottomPx) / titleCoverRangePx).coerceIn(0f, 1f)
+            }
+        }
+    }
+
+    // Every leading LazyColumn item ahead of the song rows themselves — search_bar (New Iride UI
+    // only) + playlist_header + control_panel (both hidden while searching) + songs_header +
+    // genre_pills. Must stay exact: it's subtracted from drag indices below, and a miscount there
+    // silently reorders the wrong song out from under the user's finger.
+    val headerItems = when {
+        topNavigationBarEnabled && !isSearching -> 5
+        topNavigationBarEnabled -> 3
+        !isSearching -> 3
+        else -> 2
+    }
+    var dragInfo by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    val reorderableState =
+        rememberReorderableLazyListState(
+            lazyListState = state,
+            scrollThresholdPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+        ) { from, to ->
+            if (to.index >= headerItems && from.index >= headerItems) {
+                val currentDragInfo = dragInfo
+                dragInfo = if (currentDragInfo == null) {
+                    (from.index - headerItems) to (to.index - headerItems)
+                } else {
+                    currentDragInfo.first to (to.index - headerItems)
+                }
+                mutableSongs.move(from.index - headerItems, to.index - headerItems)
+            }
+        }
+
+    LaunchedEffect(reorderableState.isAnyItemDragging) {
+        if (!reorderableState.isAnyItemDragging && dragInfo != null) {
+            viewModel.saveCustomOrder(mutableSongs.map { it.id })
+            dragInfo = null
+        }
+    }
+
+    val displayedSongs = if (isSearching) filteredSongs else mutableSongs.filter { genreFilter.matches(it.id) }
 
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val pullRefreshState = rememberPullToRefreshState()
     val canRefresh = playlistType == PlaylistType.LIKE || playlistType == PlaylistType.UPLOADED
+    val frostBackdrop = rememberFrostBackdrop()
+
+    // Top-bar mirrors of the header's shuffle/play/download actions (New Iride UI only) — also
+    // reused by the control panel just above the song list, so declared before the LazyColumn
+    // that renders it.
+    val onTopBarShuffleClick: () -> Unit = {
+        playerConnection.playQueue(
+            ListQueue(
+                title = playlist,
+                items = songs.orEmpty().shuffled().map { it.toMediaItem() },
+            ),
+        )
+    }
+    val isThisPlaylistQueueLoaded = queueTitle == playlist
+    val isThisPlaylistPlaying = isPlaying && isThisPlaylistQueueLoaded
+    val onTopBarPlaylistPlayClick: () -> Unit = {
+        if (isThisPlaylistQueueLoaded) {
+            playerConnection.togglePlayPause()
+        } else {
+            playerConnection.playQueue(
+                ListQueue(
+                    title = playlist,
+                    items = songs.orEmpty().map { it.toMediaItem() },
+                ),
+            )
+        }
+    }
+    val onTopBarPlaylistDownloadClick: () -> Unit = {
+        when (downloadState) {
+            Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
+            Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                songs?.forEach { song ->
+                    DownloadService.sendRemoveDownload(
+                        context,
+                        ExoDownloadService::class.java,
+                        song.song.id,
+                        false,
+                    )
+                }
+            }
+            else -> {
+                songs?.forEach { song ->
+                    val downloadRequest =
+                        DownloadRequest
+                            .Builder(song.song.id, song.song.id.toUri())
+                            .setCustomCacheKey(song.song.id)
+                            .setData(song.song.title.toByteArray())
+                            .build()
+                    DownloadService.sendAddDownload(
+                        context,
+                        ExoDownloadService::class.java,
+                        downloadRequest,
+                        false,
+                    )
+                }
+            }
+        }
+    }
+    val controlPanelProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Medium)
 
     Box(
         modifier =
             Modifier
                 .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop)
                 .then(
                     if (canRefresh) {
                         Modifier.pullToRefresh(
@@ -533,10 +694,40 @@ fun AutoPlaylistScreen(
                     },
                 ),
     ) {
+        if (albumTopGradientEnabled) {
+            TopScreenGradientBackground(
+                mediaMetadata = playlistGradientMediaMetadata,
+                playerBackground = playerBackgroundStyle,
+            )
+        }
+
         LazyColumn(
+            modifier = Modifier
+                .then(
+                    if (topNavigationBarEnabled) {
+                        Modifier.rubberBandOverscroll(Orientation.Vertical, state, headerPull)
+                    } else {
+                        Modifier
+                    },
+                ),
             state = state,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
         ) {
+            if (topNavigationBarEnabled) {
+                item(key = "search_bar") {
+                    IrideSearchBox(
+                        query = query,
+                        onQueryChange = { query = it },
+                        placeholderText = stringResource(R.string.search),
+                        focusRequester = focusRequester,
+                        onFocusChanged = { if (it.isFocused) isSearching = true },
+                        onSearch = {},
+                        onClear = { query = TextFieldValue("") },
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
+                }
+            }
+
             if (songs != null) {
                 if (songs!!.isEmpty()) {
                     item(key = "empty_placeholder") {
@@ -556,7 +747,22 @@ fun AutoPlaylistScreen(
                                 playlistType = playlistType,
                                 onShowRemoveDownloadDialog = { showRemoveDownloadDialog = true },
                                 menuState = menuState,
-                                modifier = Modifier.animateItem(),
+                                onTitleBoundsChanged = { nameBottomPx = it },
+                            )
+                        }
+                    }
+
+                    if (topNavigationBarEnabled && !isSearching) {
+                        item(key = "control_panel") {
+                            IridePlaylistControlPanel(
+                                onShuffleClick = onTopBarShuffleClick,
+                                onPlayClick = onTopBarPlaylistPlayClick,
+                                onDownloadClick = onTopBarPlaylistDownloadClick,
+                                downloadState = downloadState,
+                                isPlaying = isThisPlaylistPlaying,
+                                modifier = Modifier
+                                    .padding(bottom = 12.dp)
+                                    .irideEnterScale(controlPanelProgress),
                             )
                         }
                     }
@@ -574,15 +780,17 @@ fun AutoPlaylistScreen(
                             LibrarySortRow(
                                 sortOptions =
                                     listOf(
-                                        SongSortType.CREATE_DATE to stringResource(R.string.sort_by_create_date),
-                                        SongSortType.NAME to stringResource(R.string.sort_by_name),
-                                        SongSortType.ARTIST to stringResource(R.string.sort_by_artist),
-                                        SongSortType.PLAY_TIME to stringResource(R.string.sort_by_play_time),
+                                        AutoPlaylistSongSortType.CUSTOM to stringResource(R.string.sort_by_custom),
+                                        AutoPlaylistSongSortType.CREATE_DATE to stringResource(R.string.sort_by_create_date),
+                                        AutoPlaylistSongSortType.NAME to stringResource(R.string.sort_by_name),
+                                        AutoPlaylistSongSortType.ARTIST to stringResource(R.string.sort_by_artist),
+                                        AutoPlaylistSongSortType.PLAY_TIME to stringResource(R.string.sort_by_play_time),
                                     ),
                                 currentSort = sortType,
                                 onSortChange = onSortTypeChange,
                                 sortDescending = sortDescending,
                                 onSortDescendingChange = onSortDescendingChange,
+                                showDescending = sortType != AutoPlaylistSongSortType.CUSTOM,
                                 useIrideStyle = topNavigationBarEnabled,
                                 modifier = Modifier.weight(1f),
                             )
@@ -594,98 +802,100 @@ fun AutoPlaylistScreen(
                     }
                 }
 
-                if (filteredSongs.isNotEmpty()) {
+                if (displayedSongs.isNotEmpty()) {
                     itemsIndexed(
-                        items = filteredSongs,
+                        items = displayedSongs,
                         key = { _, song -> song.id },
                     ) { index, song ->
-                        val onCheckedChange: (Boolean) -> Unit = {
-                            if (it) {
-                                selection.add(song.id)
-                            } else {
-                                selection.remove(song.id)
-                            }
-                        }
-
-                        SongListItem(
-                            song = song,
-                            // New Iride UI: featured-artist subtitle text should match the rest of
-                            // the row instead of the default muted secondary tone.
-                            subtitleColor = if (topNavigationBarEnabled) Color.Unspecified else null,
-                            isActive = song.song.id == mediaMetadata?.id,
-                            isPlaying = isPlaying,
-                            trailingContent = {
-                                if (inSelectMode) {
-                                    Checkbox(
-                                        checked = song.id in selection,
-                                        onCheckedChange = onCheckedChange,
-                                    )
+                        ReorderableItem(
+                            state = reorderableState,
+                            key = song.id,
+                        ) {
+                            val onCheckedChange: (Boolean) -> Unit = {
+                                if (it) {
+                                    selection.add(song.id)
                                 } else {
-                                    IconButton(
-                                        onClick = {
-                                            menuState.show {
-                                                SongMenu(
-                                                    originalSong = song,
-                                                    navController = navController,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-                                        },
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.more_vert),
-                                            contentDescription = null,
+                                    selection.remove(song.id)
+                                }
+                            }
+
+                            SongListItem(
+                                song = song,
+                                // New Iride UI: featured-artist subtitle text should match the rest of
+                                // the row instead of the default muted secondary tone.
+                                subtitleColor = if (topNavigationBarEnabled) Color.Unspecified else null,
+                                isActive = song.song.id == mediaMetadata?.id,
+                                isPlaying = isPlaying,
+                                trailingContent = {
+                                    if (inSelectMode) {
+                                        Checkbox(
+                                            checked = song.id in selection,
+                                            onCheckedChange = onCheckedChange,
+                                        )
+                                    } else {
+                                        SongRowReorderButton(
+                                            reordering = sortType == AutoPlaylistSongSortType.CUSTOM &&
+                                                !locked && !inSelectMode && !isSearching,
+                                            onMenuClick = {
+                                                menuState.show {
+                                                    SongMenu(
+                                                        originalSong = song,
+                                                        navController = navController,
+                                                        onDismiss = menuState::dismiss,
+                                                    )
+                                                }
+                                            },
                                         )
                                     }
-                                }
-                            },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .combinedClickable(
-                                        onClick = {
-                                            if (inSelectMode) {
-                                                onCheckedChange(song.id !in selection)
-                                            } else if (song.song.id == mediaMetadata?.id) {
-                                                playerConnection.togglePlayPause()
-                                            } else {
-                                                playerConnection.playQueue(
-                                                    ListQueue(
-                                                        title = playlist,
-                                                        items = songs!!.map { it.toMediaItem() },
-                                                        startIndex = songs!!.indexOfFirst { it.id == song.id },
-                                                    ),
-                                                )
-                                            }
-                                        },
-                                        onLongClick = {
-                                            if (!inSelectMode) {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                inSelectMode = true
-                                                onCheckedChange(true)
-                                                selectionAnchorSongId = song.id
-                                            } else {
-                                                val anchorIndex =
-                                                    selectionAnchorSongId?.let { anchorSongId ->
-                                                        filteredSongs.indexOfFirst { it.id == anchorSongId }
-                                                    } ?: -1
-
-                                                if (anchorIndex == -1) {
+                                },
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .combinedClickable(
+                                            onClick = {
+                                                if (inSelectMode) {
+                                                    onCheckedChange(song.id !in selection)
+                                                } else if (song.song.id == mediaMetadata?.id) {
+                                                    playerConnection.togglePlayPause()
+                                                } else {
+                                                    playerConnection.playQueue(
+                                                        ListQueue(
+                                                            title = playlist,
+                                                            items = songs!!.map { it.toMediaItem() },
+                                                            startIndex = songs!!.indexOfFirst { it.id == song.id },
+                                                        ),
+                                                    )
+                                                }
+                                            },
+                                            onLongClick = {
+                                                if (!inSelectMode) {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    inSelectMode = true
                                                     onCheckedChange(true)
                                                     selectionAnchorSongId = song.id
                                                 } else {
-                                                    val range = if (anchorIndex <= index) anchorIndex..index else index..anchorIndex
-                                                    for (rangeIndex in range) {
-                                                        val rangeSongId = filteredSongs[rangeIndex].id
-                                                        if (rangeSongId !in selection) {
-                                                            selection.add(rangeSongId)
+                                                    val anchorIndex =
+                                                        selectionAnchorSongId?.let { anchorSongId ->
+                                                            displayedSongs.indexOfFirst { it.id == anchorSongId }
+                                                        } ?: -1
+
+                                                    if (anchorIndex == -1) {
+                                                        onCheckedChange(true)
+                                                        selectionAnchorSongId = song.id
+                                                    } else {
+                                                        val range = if (anchorIndex <= index) anchorIndex..index else index..anchorIndex
+                                                        for (rangeIndex in range) {
+                                                            val rangeSongId = displayedSongs[rangeIndex].id
+                                                            if (rangeSongId !in selection) {
+                                                                selection.add(rangeSongId)
+                                                            }
                                                         }
                                                     }
                                                 }
-                                            }
-                                        },
-                                    ).animateItem(),
-                        )
+                                            },
+                                        ).animateItem(),
+                            )
+                        }
                     }
                 }
             }
@@ -700,7 +910,7 @@ fun AutoPlaylistScreen(
                             .asPaddingValues(),
                     ).align(Alignment.CenterEnd),
             scrollState = state,
-            headerItems = 2,
+            headerItems = headerItems,
         )
 
         if (canRefresh && playlistType != PlaylistType.LIKE) {
@@ -749,7 +959,6 @@ fun AutoPlaylistScreen(
                 }
             }
         }
-
         val topBarTitle: @Composable () -> Unit = {
             when {
                 inSelectMode -> {
@@ -768,7 +977,23 @@ fun AutoPlaylistScreen(
                     )
                 }
 
-                isSearching -> {
+                !locked -> {
+                    Text(
+                        text = stringResource(R.string.reorder),
+                        style = if (topNavigationBarEnabled) {
+                            TextStyle(
+                                fontFamily = SpaceMonoFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                letterSpacing = (-0.1).sp,
+                            )
+                        } else {
+                            MaterialTheme.typography.titleLarge
+                        },
+                    )
+                }
+
+                isSearching && !topNavigationBarEnabled -> {
                     TextField(
                         value = query,
                         onValueChange = { query = it },
@@ -815,55 +1040,6 @@ fun AutoPlaylistScreen(
                 }
             }
         }
-        // Top-bar mirrors of the header's shuffle/play/download actions (New Iride UI only) — the
-        // header versions live in a separate composable, not reachable from the top bar.
-        val onTopBarShuffleClick: () -> Unit = {
-            playerConnection.playQueue(
-                ListQueue(
-                    title = playlist,
-                    items = songs.orEmpty().shuffled().map { it.toMediaItem() },
-                ),
-            )
-        }
-        val onTopBarPlaylistPlayClick: () -> Unit = {
-            playerConnection.playQueue(
-                ListQueue(
-                    title = playlist,
-                    items = songs.orEmpty().map { it.toMediaItem() },
-                ),
-            )
-        }
-        val onTopBarPlaylistDownloadClick: () -> Unit = {
-            when (downloadState) {
-                Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
-                Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
-                    songs?.forEach { song ->
-                        DownloadService.sendRemoveDownload(
-                            context,
-                            ExoDownloadService::class.java,
-                            song.song.id,
-                            false,
-                        )
-                    }
-                }
-                else -> {
-                    songs?.forEach { song ->
-                        val downloadRequest =
-                            DownloadRequest
-                                .Builder(song.song.id, song.song.id.toUri())
-                                .setCustomCacheKey(song.song.id)
-                                .setData(song.song.title.toByteArray())
-                                .build()
-                        DownloadService.sendAddDownload(
-                            context,
-                            ExoDownloadService::class.java,
-                            downloadRequest,
-                            false,
-                        )
-                    }
-                }
-            }
-        }
 
         val topBarNavigationIcon: @Composable () -> Unit = {
             IconButton(
@@ -873,10 +1049,15 @@ fun AutoPlaylistScreen(
                             isSearching = false
                             query = TextFieldValue()
                             focusManager.clearFocus()
+                            keyboardController?.hide()
                         }
 
                         inSelectMode -> {
                             onExitSelectionMode()
+                        }
+
+                        !locked -> {
+                            locked = true
                         }
 
                         else -> {
@@ -885,7 +1066,7 @@ fun AutoPlaylistScreen(
                     }
                 },
                 onLongClick = {
-                    if (!isSearching && !inSelectMode) {
+                    if (!isSearching && !inSelectMode && locked) {
                         navController.backToMain()
                     }
                 },
@@ -893,22 +1074,22 @@ fun AutoPlaylistScreen(
                 Icon(
                     painter =
                         painterResource(
-                            if (inSelectMode) R.drawable.close else R.drawable.arrow_back,
+                            if (inSelectMode || !locked) R.drawable.close else R.drawable.arrow_back,
                         ),
-                    contentDescription = null,
+                    contentDescription = if (!locked && !inSelectMode) stringResource(R.string.reorder) else null,
                 )
             }
         }
         val topBarActions: @Composable RowScope.() -> Unit = {
                 if (inSelectMode) {
                     Checkbox(
-                        checked = selection.size == filteredSongs.size && selection.isNotEmpty(),
+                        checked = selection.size == displayedSongs.size && selection.isNotEmpty(),
                         onCheckedChange = {
-                            if (selection.size == filteredSongs.size) {
+                            if (selection.size == displayedSongs.size) {
                                 selection.clear()
                             } else {
                                 selection.clear()
-                                selection.addAll(filteredSongs.map { it.id })
+                                selection.addAll(displayedSongs.map { it.id })
                             }
                         },
                     )
@@ -917,7 +1098,7 @@ fun AutoPlaylistScreen(
                         onClick = {
                             menuState.show {
                                 SelectionSongMenu(
-                                    songSelection = filteredSongs.filter { it.id in selection },
+                                    songSelection = displayedSongs.filter { it.id in selection },
                                     onDismiss = menuState::dismiss,
                                     clearAction = onExitSelectionMode,
                                     isUploadedPlaylist = playlistType == PlaylistType.UPLOADED,
@@ -930,14 +1111,16 @@ fun AutoPlaylistScreen(
                             contentDescription = null,
                         )
                     }
-                } else if (!isSearching) {
-                    IconButton(
-                        onClick = { isSearching = true },
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.search),
-                            contentDescription = null,
-                        )
+                } else if (!isSearching && locked) {
+                    if (!topNavigationBarEnabled) {
+                        IconButton(
+                            onClick = { isSearching = true },
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.search),
+                                contentDescription = null,
+                            )
+                        }
                     }
                     IconButton(
                         onClick = {
@@ -985,6 +1168,14 @@ fun AutoPlaylistScreen(
                                     onDismiss = menuState::dismiss,
                                     songs = songs ?: emptyList(),
                                     playlistName = playlist,
+                                    onReorder = if (!songs.isNullOrEmpty()) {
+                                        {
+                                            locked = false
+                                            onSortTypeChange(AutoPlaylistSongSortType.CUSTOM)
+                                        }
+                                    } else {
+                                        null
+                                    },
                                 )
                             }
                         },
@@ -1001,43 +1192,49 @@ fun AutoPlaylistScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
+                    .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
+                    .frostedTopBarBackground(
+                        progress = topBarRevealProgress,
+                        barColor = MaterialTheme.colorScheme.background,
+                        strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                        backdrop = frostBackdrop,
+                    )
                     .statusBarsPadding()
                     .height(56.dp)
                     .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 topBarNavigationIcon()
-                Box(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
-                    topBarTitle()
-                }
-                if (!inSelectMode && !isSearching && !songs.isNullOrEmpty()) {
-                    IrideOutlineIconButton(
-                        onClick = onTopBarShuffleClick,
-                        icon = R.drawable.shuffle,
-                        contentDescription = stringResource(R.string.shuffle),
-                        size = 40.dp,
-                        iconSize = 20.dp,
-                    )
-                    IrideOutlineIconButton(
-                        onClick = onTopBarPlaylistPlayClick,
-                        icon = R.drawable.ic_iride_play,
-                        contentDescription = stringResource(R.string.play),
-                        size = 40.dp,
-                        iconSize = 20.dp,
-                    )
-                    IrideOutlineIconButton(
-                        onClick = onTopBarPlaylistDownloadClick,
-                        icon = when (downloadState) {
-                            Download.STATE_COMPLETED -> R.drawable.check
-                            else -> R.drawable.arrow_downward
-                        },
-                        contentDescription = null,
-                        loading = downloadState == Download.STATE_DOWNLOADING || downloadState == Download.STATE_QUEUED,
-                        size = 40.dp,
-                        iconSize = 20.dp,
-                    )
-                }
+                // Always composed and always holding its weight — fades in via topBarRevealProgress,
+                // tracking the header name going behind this bar (same as AlbumScreen). Only the ⋯
+                // overflow lives here otherwise; shuffle/play/download moved into the pill panel.
+                Text(
+                    text = when {
+                        inSelectMode -> pluralStringResource(R.plurals.n_song, selection.size, selection.size)
+                        !locked -> stringResource(R.string.reorder)
+                        isSearching -> ""
+                        else -> playlist
+                    },
+                    style = TextStyle(
+                        fontFamily = SpaceMonoFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        letterSpacing = (-0.1).sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 4.dp)
+                        .then(
+                            if (inSelectMode || isSearching || !locked) {
+                                Modifier
+                            } else {
+                                Modifier.irideEnter(topBarRevealProgress, 6.dp).revealMask(topBarRevealProgress)
+                            },
+                        ),
+                )
                 topBarActions()
             }
         } else {
@@ -1060,6 +1257,7 @@ private fun AutoPlaylistHeader(
     onShowRemoveDownloadDialog: () -> Unit,
     menuState: com.metrolist.music.ui.component.MenuState,
     modifier: Modifier = Modifier,
+    onTitleBoundsChanged: (Float) -> Unit = {},
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -1202,7 +1400,21 @@ private fun AutoPlaylistHeader(
                 .padding(horizontal = 20.dp)
                 .padding(top = 12.dp, bottom = 20.dp),
         ) {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            // Cover entrance matches AlbumScreen/LocalPlaylistScreen — no per-image decode signal
+            // to gate on here (GlassPlaylistCover has no onState hook, and mosaics arrive one
+            // thumbnail at a time), so this plays once on composition instead.
+            val coverProgress = rememberEnterProgress(play = true, durationMillis = 420, easing = IrideMotion.EaseOutQuart)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        alpha = coverProgress
+                        val s = lerp(0.94f, 1f, coverProgress)
+                        scaleX = s
+                        scaleY = s
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
                 coverContent()
             }
 
@@ -1220,7 +1432,9 @@ private fun AutoPlaylistHeader(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { onTitleBoundsChanged(it.boundsInWindow().bottom) },
             )
 
             Spacer(modifier = Modifier.height(8.dp))

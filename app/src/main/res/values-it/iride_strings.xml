@@ -321,6 +321,13 @@
     <string name="turntable_widget_description">Widget musicale circolare con controlli di riproduzione e mi piace</string>
     <string name="remember_shuffle_and_repeat">Ricorda le opzioni di ripetizione e di riproduzione casuale</string>
     <string name="remember_shuffle_and_repeat_desc">Ricorda le modalitÃ  di ripetizione e di riproduzione casuale quando l\'app viene riavviata</string>
+    <string name="view_discography">Vedi Discografia</string>
+    <string name="discography">Discografia</string>
+    <string name="discography_from_artist">Dell\'Artista</string>
+    <string name="discography_appears_on">Compare In</string>
+    <string name="discography_singles">Singoli</string>
+    <string name="discography_eps">EP</string>
+    <string name="discography_empty">Niente da mostrare</string>
     <string name="about_artist">Informazioni</string>
     <string name="show_more">Mostra di piÃ¹</string>
     <string name="show_less">Mostra meno</string>
@@ -815,6 +822,10 @@
     <string name="show_news_tab_desc">Aggiunge una scheda News alla barra di navigazione, tra Home e Libreria</string>
     <string name="top_navigation_bar">New Iride Ui</string>
     <string name="top_navigation_bar_desc">Schede solo testo in alto e schermo interamente nero al posto della pillola in basso</string>
+    <string name="iride_animations">Animazioni Iride</string>
+    <string name="iride_animations_desc">Titoli a macchina da scrivere, parallasse e transizioni d\'ingresso. Disattiva se l\'app scatta</string>
+    <string name="player_auto_hide_top_panel">Dissolvenza pannello di ritorno</string>
+    <string name="player_auto_hide_top_panel_desc">Dopo 5s di inattività nel player espanso, nasconde il pannello in alto per tornare all\'app. Scorrendo verso il basso riappare</string>
     <string name="news">News</string>
     <string name="news_new_albums">Album nuovi</string>
     <string name="news_new_songs">Canzoni nuove</string>

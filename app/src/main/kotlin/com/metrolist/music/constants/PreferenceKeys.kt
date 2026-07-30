@@ -54,6 +54,8 @@ val DefaultOpenTabKey = stringPreferencesKey("defaultOpenTab")
 val ShowNewsTabKey = booleanPreferencesKey("showNewsTab")
 val SlimNavBarKey = booleanPreferencesKey("slimNavBar")
 val TopNavigationBarKey = booleanPreferencesKey("topNavigationBar")
+val IrideAnimationsKey = booleanPreferencesKey("irideAnimations")
+val PlayerAutoHideTopPanelKey = booleanPreferencesKey("playerAutoHideTopPanel")
 val GridItemsSizeKey = stringPreferencesKey("gridItemSize")
 val SliderStyleKey = stringPreferencesKey("sliderStyle")
 val SquigglySliderKey = booleanPreferencesKey("squigglySlider")
@@ -253,7 +255,6 @@ val AlbumViewTypeKey = stringPreferencesKey("albumViewType")
 val PlaylistViewTypeKey = stringPreferencesKey("playlistViewType")
 val MixViewTypeKey = stringPreferencesKey("mixViewType")
 
-val PlaylistEditLockKey = booleanPreferencesKey("playlistEditLock")
 val QuickPicksKey = stringPreferencesKey("discover")
 val PreferredLyricsProviderKey = stringPreferencesKey("lyricsProvider")
 val LyricsProviderOrderKey = stringPreferencesKey("lyricsProviderOrder")
@@ -337,6 +338,7 @@ enum class PlaylistSongSortType {
 }
 
 enum class AutoPlaylistSongSortType {
+    CUSTOM,
     CREATE_DATE,
     NAME,
     ARTIST,
@@ -578,6 +580,19 @@ val RecentlySuggestedAlbumsKey = stringPreferencesKey("recentlySuggestedAlbums")
 // carousel — never touches favorites or play history. An album reappears once a fresh
 // 3-consecutive-song streak (newer than the dismiss timestamp) forms again.
 val DismissedContinueListeningAlbumsKey = stringPreferencesKey("dismissedContinueListeningAlbums")
+
+// Library Artists screen: new-release notification state. JSON-encoded Map<artistId, ArtistReleaseState>
+// tracking, per followed artist, which album ids we've already accounted for (baseline) and which
+// song ids from genuinely new releases are still "unseen". Cleared for an artist when its profile is
+// opened; individual songs drop out of the count once played (any source). See NewReleaseNotifier.
+val ArtistNewReleasesKey = stringPreferencesKey("artistNewReleases")
+
+// Epoch millis of the last new-release check, used to throttle YouTube fetches to once per window.
+val ArtistNewReleasesCheckedKey = androidx.datastore.preferences.core.longPreferencesKey("artistNewReleasesChecked")
+
+// Library Artists screen: ids the user cleared from the "artists you play a lot but forgot to follow"
+// suggestion row. Non-destructive, hides them from that row only. JSON-encoded List<String>.
+val DismissedSuggestedFollowArtistsKey = stringPreferencesKey("dismissedSuggestedFollowArtists")
 
 val LanguageCodeToName =
     mapOf(

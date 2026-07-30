@@ -16,7 +16,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -24,7 +27,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -49,6 +52,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -78,9 +82,12 @@ import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.constants.YtmSyncKey
+import com.metrolist.music.ui.component.ArtistGridItem
+import com.metrolist.music.ui.component.ArtistNewReleaseRingItem
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.LibraryArtistGridItem
 import com.metrolist.music.ui.component.LibraryArtistListItem
+import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.LibrarySearchHeader
@@ -141,6 +148,96 @@ fun LibraryArtistsScreen(
     val filteredArtistsRaw by viewModel.filteredArtists.collectAsState()
     val filteredArtists = if (isOffline) emptyList() else filteredArtistsRaw
 
+    val newSongCounts by viewModel.newSongCounts.collectAsState()
+    val totalNewSongs by viewModel.totalNewSongs.collectAsState()
+    val newReleaseArtists by viewModel.newReleaseArtists.collectAsState()
+    val showNewReleases = !isOffline && searchQuery.isBlank() && newReleaseArtists.isNotEmpty()
+    val suggestedFollowArtists by viewModel.suggestedFollowArtists.collectAsState()
+    val showSuggestedFollow = !isOffline && searchQuery.isBlank() && suggestedFollowArtists.isNotEmpty()
+
+    // Lead section: "what happened since you last looked" — followed artists with an unseen
+    // release, ringed like a story tray. This is the reason to open the screen, so it sits above
+    // suggestions and the roster, not buried as a badge inside the grid.
+    val newReleaseSection: @Composable () -> Unit = {
+        androidx.compose.foundation.layout.Column {
+            NavigationTitle(
+                title = stringResource(R.string.new_from_followed_artists),
+                useIrideStyle = topNavigationBarEnabled,
+            )
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = if (topNavigationBarEnabled) 16.dp else 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(
+                    items = newReleaseArtists,
+                    key = { "new_release_${it.id}" },
+                ) { artist ->
+                    ArtistNewReleaseRingItem(
+                        artist = artist,
+                        newSongCount = newSongCounts[artist.id] ?: 0,
+                        modifier = Modifier.clickable { navController.navigate("artist/${artist.id}") },
+                    )
+                }
+            }
+        }
+    }
+
+    // "Artists you play a lot but forgot to follow" — one horizontal row. The ring's "+" follows
+    // right away (no detour through the artist page); long-press still dismisses the suggestion,
+    // mirroring the Albums screen's recently-listened row.
+    val suggestedFollowSection: @Composable () -> Unit = {
+        androidx.compose.foundation.layout.Column {
+            NavigationTitle(
+                title = stringResource(R.string.suggested_follow_artists),
+                useIrideStyle = topNavigationBarEnabled,
+            )
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = if (topNavigationBarEnabled) 16.dp else 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(
+                    items = suggestedFollowArtists,
+                    key = { "suggested_follow_${it.id}" },
+                ) { artist ->
+                    Box {
+                        ArtistGridItem(
+                            artist = artist,
+                            showLikedIcon = false,
+                            modifier = Modifier.combinedClickable(
+                                onClick = { navController.navigate("artist/${artist.id}") },
+                                onLongClick = { viewModel.dismissSuggestedFollowArtist(artist.id) },
+                            ),
+                        )
+                        // Circular "+" sitting on the avatar's rim — same nested-circle language as
+                        // the new-release ring above, so the two rows read as one system. The 48dp
+                        // touch target lives on the IconButton itself; the 28dp bubble is only the
+                        // visual, so the tap area doesn't shrink to match the small ring look.
+                        IconButton(
+                            onClick = { viewModel.followSuggestedArtist(artist.id) },
+                            modifier = Modifier.align(Alignment.BottomEnd),
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background, CircleShape)
+                                    .padding(3.dp)
+                                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.add),
+                                    contentDescription = stringResource(R.string.subscribe),
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     val lazyListState = rememberLazyListState()
     val lazyGridState = rememberLazyGridState()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -172,6 +269,7 @@ fun LibraryArtistsScreen(
                 searchQuery = searchQuery,
                 onSearchQueryChange = viewModel::updateSearchQuery,
                 keyboardController = keyboardController,
+                titleBadge = totalNewSongs.takeIf { it > 0 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
@@ -204,6 +302,14 @@ fun LibraryArtistsScreen(
                                     .asPaddingValues().calculateBottomPadding(),
                             ),
                         ) {
+                            if (showNewReleases) {
+                                item(key = "new_releases") { newReleaseSection() }
+                            }
+
+                            if (showSuggestedFollow) {
+                                item(key = "suggested_follow") { suggestedFollowSection() }
+                            }
+
                             item(key = "sort", contentType = CONTENT_TYPE_HEADER) {
                                 LibrarySortRow(
                                     sortOptions = sortOptions,
@@ -245,6 +351,7 @@ fun LibraryArtistsScreen(
                                         navController = navController,
                                         menuState = menuState,
                                         coroutineScope = coroutineScope,
+                                        newSongCount = newSongCounts[artist.id] ?: 0,
                                         modifier = Modifier.animateItem(),
                                         artist = artist
                                     )
@@ -269,6 +376,20 @@ fun LibraryArtistsScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
+                            if (showNewReleases) {
+                                item(
+                                    key = "new_releases",
+                                    span = { GridItemSpan(maxLineSpan) },
+                                ) { newReleaseSection() }
+                            }
+
+                            if (showSuggestedFollow) {
+                                item(
+                                    key = "suggested_follow",
+                                    span = { GridItemSpan(maxLineSpan) },
+                                ) { suggestedFollowSection() }
+                            }
+
                             item(
                                 key = "sort",
                                 span = { GridItemSpan(maxLineSpan) },
@@ -314,6 +435,7 @@ fun LibraryArtistsScreen(
                                         navController = navController,
                                         menuState = menuState,
                                         coroutineScope = coroutineScope,
+                                        newSongCount = newSongCounts[artist.id] ?: 0,
                                         modifier = Modifier.animateItem(),
                                         artist = artist
                                     )

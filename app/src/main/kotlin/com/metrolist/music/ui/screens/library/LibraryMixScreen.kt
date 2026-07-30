@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -57,11 +59,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -112,6 +118,7 @@ import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
+import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.LibrarySortRow
@@ -120,6 +127,12 @@ import com.metrolist.music.ui.menu.AlbumMenu
 import com.metrolist.music.ui.menu.ArtistMenu
 import com.metrolist.music.ui.menu.PlaylistMenu
 import com.metrolist.music.ui.menu.SongMenu
+import com.metrolist.music.ui.utils.IrideMotion
+import com.metrolist.music.ui.utils.IrideTabEntrance
+import com.metrolist.music.ui.utils.irideEnter
+import com.metrolist.music.ui.utils.revealMask
+import com.metrolist.music.ui.utils.rememberEnterProgress
+import com.metrolist.music.ui.utils.rememberSectionEnter
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LibraryMixViewModel
@@ -175,6 +188,19 @@ fun LibraryMixScreen(
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
 
     var isLibraryFilter by viewModel.isLibraryMode
+    // Covers the gap between navigation and first layout, same as Home/Artist/Album. Keyed by
+    // filter so switching Library<->Downloaded still replays once each, but IrideTabEntrance (not
+    // `remember`) means switching to another bottom-nav tab and back doesn't replay it as a "reload".
+    val libraryTabKey = "library_$isLibraryFilter"
+    val screenProgress = if (IrideTabEntrance.wasRevealed(libraryTabKey)) {
+        1f
+    } else {
+        rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
+            .also { if (it >= 1f) IrideTabEntrance.markRevealed(libraryTabKey) }
+    }
+    // Library vs Downloaded is a full content swap (like Artist's online/local toggle) — each gets
+    // its own section-seen set so switching filters still replays that branch's entrance.
+    val revealedSections = remember(isLibraryFilter) { IrideTabEntrance.sectionsFor(libraryTabKey) }
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     val searchQuery by viewModel.searchQuery.collectAsState()
     val debouncedSearchQuery by viewModel.debouncedSearchQuery.collectAsState()
@@ -186,6 +212,7 @@ fun LibraryMixScreen(
         }
     }
 
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
     val topSize by viewModel.topValue.collectAsState(initial = 50)
     val lastLikedDate by viewModel.lastLikedDate.collectAsState()
     val lastLikedThumbnails by viewModel.lastLikedThumbnails.collectAsState()
@@ -534,7 +561,14 @@ fun LibraryMixScreen(
                             else -> MaterialTheme.colorScheme.background
                         },
                     )
-                    .padding(paddingValues),
+                    .padding(paddingValues)
+                    .then(
+                        if (topNavigationBarEnabled) {
+                            Modifier.graphicsLayer { alpha = screenProgress }
+                        } else {
+                            Modifier
+                        },
+                    ),
         ) {
             CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
                 // A single LazyVerticalGrid backs both the "list" and "grid" looks (list = a
@@ -544,6 +578,9 @@ fun LibraryMixScreen(
                 // longer drift between the two view types since they share the same arrangement.
                 LazyVerticalGrid(
                     state = lazyGridState,
+                    // Same edge-pull as every other top-level scroll (Home/Artist/Album) — this
+                    // grid was the one missing it.
+                    modifier = Modifier.rubberBandOverscroll(Orientation.Vertical, lazyGridState),
                     columns = when (viewType) {
                         LibraryViewType.LIST -> GridCells.Fixed(1)
                         LibraryViewType.GRID_WIDE -> GridCells.Fixed(3)
@@ -560,13 +597,21 @@ fun LibraryMixScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
-                    if (topNavigationBarEnabled && topNavBarController != null) {
+                    if (topNavigationBarEnabled) {
+                        // Gate only on the static pref, never on topNavBarController's nullity — see
+                        // the matching comment in HomeScreen.kt/SearchScreen.kt. The controller goes
+                        // transiently null mid back-navigation; dropping this item out of the grid for
+                        // that one frame shifted the filter toggle and every shelf below it up by one
+                        // slot, then back down once the controller returned — painting over the header
+                        // mid-transition. Null-safe fallbacks instead.
                         item(key = "top_nav_bar", span = { GridItemSpan(maxLineSpan) }) {
                             TopNavigationBar(
-                                navigationItems = topNavBarController.navigationItems,
-                                currentRoute = topNavBarController.currentRoute,
-                                onItemClick = topNavBarController.onItemClick,
-                                modifier = Modifier.animateItem(),
+                                navigationItems = topNavBarController?.navigationItems ?: emptyList(),
+                                currentRoute = topNavBarController?.currentRoute,
+                                onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
+                                modifier = Modifier
+                                    .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                    .irideEnter(rememberSectionEnter("top_nav_bar", revealedSections), 8.dp),
                                 containerColor = Color.Transparent,
                                 // The grid below already reserves irideStart as its own start/end
                                 // contentPadding — this bar's default 20dp would otherwise stack on
@@ -576,7 +621,12 @@ fun LibraryMixScreen(
                             )
                         }
                         item(key = "library_filter_toggle", span = { GridItemSpan(maxLineSpan) }) {
-                            Row(modifier = Modifier.padding(top = 8.dp, bottom = 4.dp).animateItem()) {
+                            Row(
+                                modifier = Modifier
+                                    .padding(top = 8.dp, bottom = 4.dp)
+                                    .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                    .irideEnter(rememberSectionEnter("library_filter_toggle", revealedSections), 8.dp),
+                            ) {
                                 IrideSegmentedToggle(
                                     options = listOf(
                                         true to stringResource(R.string.filter_library),
@@ -595,6 +645,9 @@ fun LibraryMixScreen(
                             showUploads = uploadedSongs.isNotEmpty(),
                             isOffline = !isLibraryFilter,
                             useIrideStyle = topNavigationBarEnabled,
+                            modifier = Modifier
+                                .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                .revealMask(rememberSectionEnter("categories", revealedSections)),
                         )
                     }
 
@@ -617,7 +670,10 @@ fun LibraryMixScreen(
                                 },
                                 fontWeight = if (topNavigationBarEnabled) FontWeight.SemiBold else FontWeight.Normal,
                                 color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.55f) else MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.padding(vertical = 12.dp),
+                                modifier = Modifier
+                                    .padding(vertical = 12.dp)
+                                    .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                    .revealMask(rememberSectionEnter("recently_added_label", revealedSections)),
                             )
                         }
                         item(
@@ -634,13 +690,20 @@ fun LibraryMixScreen(
                                 viewType = viewType,
                                 onViewTypeChange = { viewType = it },
                                 useIrideStyle = topNavigationBarEnabled,
+                                modifier = Modifier
+                                    .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                    .irideEnter(rememberSectionEnter("sort_header", revealedSections), 6.dp),
                             )
                         }
                     }
 
                     if (showDownloadedPlaylist) {
                         item(key = "downloadedPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
-                            Box(modifier = Modifier.padding(bottom = contentGutter)) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(bottom = contentGutter)
+                                    .irideEnter(rememberSectionEnter("downloadedPlaylist", revealedSections)),
+                            ) {
                                 if (isListView) {
                                     PlaylistListItem(
                                         playlist = downloadPlaylist,
@@ -648,7 +711,7 @@ fun LibraryMixScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { navController.navigate("auto_playlist/downloaded") }
-                                            .animateItem(),
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                     )
                                 } else {
                                     PlaylistGridItem(
@@ -660,7 +723,7 @@ fun LibraryMixScreen(
                                             .combinedClickable(
                                                 onClick = { navController.navigate("auto_playlist/downloaded") },
                                             )
-                                            .animateItem(),
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                     )
                                 }
                             }
@@ -669,7 +732,11 @@ fun LibraryMixScreen(
 
                     if (showCachedPlaylists) {
                         item(key = "cachedPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
-                            Box(modifier = Modifier.padding(bottom = contentGutter)) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(bottom = contentGutter)
+                                    .irideEnter(rememberSectionEnter("cachedPlaylist", revealedSections)),
+                            ) {
                                 if (isListView) {
                                     PlaylistListItem(
                                         playlist = cachedPlaylist,
@@ -677,7 +744,7 @@ fun LibraryMixScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { navController.navigate("cache_playlist/cached") }
-                                            .animateItem(),
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                     )
                                 } else {
                                     PlaylistGridItem(
@@ -689,7 +756,7 @@ fun LibraryMixScreen(
                                             .combinedClickable(
                                                 onClick = { navController.navigate("cache_playlist/cached") },
                                             )
-                                            .animateItem(),
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                     )
                                 }
                             }
@@ -698,7 +765,11 @@ fun LibraryMixScreen(
 
                     if (showTopPlaylists) {
                         item(key = "TopPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
-                            Box(modifier = Modifier.padding(bottom = contentGutter)) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(bottom = contentGutter)
+                                    .irideEnter(rememberSectionEnter("TopPlaylist", revealedSections)),
+                            ) {
                                 if (isListView) {
                                     PlaylistListItem(
                                         playlist = topPlaylist,
@@ -706,7 +777,7 @@ fun LibraryMixScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { navController.navigate("top_playlist/$topSize") }
-                                            .animateItem(),
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                     )
                                 } else {
                                     PlaylistGridItem(
@@ -718,7 +789,7 @@ fun LibraryMixScreen(
                                             .combinedClickable(
                                                 onClick = { navController.navigate("top_playlist/$topSize") },
                                             )
-                                            .animateItem(),
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                     )
                                 }
                             }
@@ -727,7 +798,11 @@ fun LibraryMixScreen(
 
                     if (showUploadedPlaylists) {
                         item(key = "uploadedPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
-                            Box(modifier = Modifier.padding(bottom = contentGutter)) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(bottom = contentGutter)
+                                    .irideEnter(rememberSectionEnter("uploadedPlaylist", revealedSections)),
+                            ) {
                                 if (isListView) {
                                     PlaylistListItem(
                                         playlist = uploadedPlaylist,
@@ -735,7 +810,7 @@ fun LibraryMixScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { navController.navigate("auto_playlist/uploaded") }
-                                            .animateItem(),
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                     )
                                 } else {
                                     PlaylistGridItem(
@@ -745,7 +820,7 @@ fun LibraryMixScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { navController.navigate("auto_playlist/uploaded") }
-                                            .animateItem(),
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                     )
                                 }
                             }
@@ -768,7 +843,7 @@ fun LibraryMixScreen(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .clickable { navController.navigate("auto_playlist/liked") }
-                                                    .animateItem(),
+                                                    .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                             )
                                         } else {
                                             LibraryPlaylistListItem(
@@ -778,7 +853,7 @@ fun LibraryMixScreen(
                                                 playlist = item,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .animateItem(),
+                                                    .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                             )
                                         }
                                     } else {
@@ -813,7 +888,7 @@ fun LibraryMixScreen(
                                                         }
                                                     },
                                                 )
-                                                .animateItem(),
+                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                         )
                                     }
                                 }
@@ -852,7 +927,7 @@ fun LibraryMixScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-                                                .animateItem(),
+                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                         )
                                     } else {
                                         SongGridItem(
@@ -864,7 +939,7 @@ fun LibraryMixScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-                                                .animateItem(),
+                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                         )
                                     }
                                 }
@@ -879,7 +954,7 @@ fun LibraryMixScreen(
                                             isPlaying = isPlaying,
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .animateItem(),
+                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                         )
                                     } else {
                                         AlbumGridItem(
@@ -905,7 +980,7 @@ fun LibraryMixScreen(
                                                         }
                                                     },
                                                 )
-                                                .animateItem(),
+                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                         )
                                     }
                                 }
@@ -933,11 +1008,22 @@ fun LibraryMixScreen(
                                                         }
                                                     },
                                                 )
-                                                .animateItem(),
+                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                         )
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    if (normalizedQuery.isBlank()) {
+                        item(key = "manual_refresh", span = { GridItemSpan(maxLineSpan) }) {
+                            LibraryRefreshButton(
+                                isRefreshing = isRefreshing,
+                                useIrideStyle = topNavigationBarEnabled,
+                                onClick = { viewModel.refresh() },
+                                modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
+                            )
                         }
                     }
 
@@ -953,12 +1039,65 @@ fun LibraryMixScreen(
                             key = "empty_search_result",
                             span = { GridItemSpan(maxLineSpan) },
                         ) {
-                            LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
+                            LibrarySearchEmptyPlaceholder(
+                                modifier = Modifier
+                                    .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                    .irideEnter(rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)),
+                            )
                         }
                     }
                 }
             }
+
         }
+    }
+}
+
+@Composable
+private fun LibraryRefreshButton(
+    isRefreshing: Boolean,
+    useIrideStyle: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val label = stringResource(if (isRefreshing) R.string.library_refreshing else R.string.library_refresh)
+    val contentColor = if (useIrideStyle) {
+        Color.White.copy(alpha = if (isRefreshing) 0.45f else 0.6f)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 20.dp, bottom = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(enabled = !isRefreshing, role = Role.Button, onClick = onClick)
+            .heightIn(min = 48.dp)
+            .padding(vertical = 14.dp)
+            .semantics { contentDescription = label },
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.refresh),
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = label,
+            style = if (useIrideStyle) {
+                MaterialTheme.typography.labelLarge.copy(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontSize = 13.sp,
+                    letterSpacing = 0.2.sp,
+                )
+            } else {
+                MaterialTheme.typography.labelLarge
+            },
+            color = contentColor,
+        )
     }
 }
 
@@ -974,6 +1113,7 @@ private fun CategoriesContent(
     showUploads: Boolean,
     isOffline: Boolean,
     useIrideStyle: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     val albumsStr = stringResource(R.string.albums)
     val artistsStr = stringResource(R.string.artists)
@@ -992,7 +1132,7 @@ private fun CategoriesContent(
         }
     }
 
-    Column {
+    Column(modifier = modifier) {
         items.forEach { item ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,

@@ -15,6 +15,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -91,6 +92,7 @@ import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.Updater
@@ -282,6 +284,7 @@ fun SettingsScreen(
         containerColor = if (topNavigationBarEnabled) Color.Transparent else MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
+    val settingsScrollState = rememberScrollState()
     Column(
         Modifier
             .fillMaxSize()
@@ -291,7 +294,11 @@ fun SettingsScreen(
                     WindowInsetsSides.Horizontal
                 )
             )
-            .verticalScroll(rememberScrollState())
+            // Same edge-pull as every other top-level scroll (Home/Library/Search) — this tab's
+            // own scroll was the one missing it. Must sit outside (before) verticalScroll in the
+            // chain so its nestedScroll connection is an ancestor of the scrollable, not a child.
+            .rubberBandOverscroll(Orientation.Vertical, settingsScrollState)
+            .verticalScroll(settingsScrollState)
     ) {
         if (topNavigationBarEnabled && topNavBarController != null) {
             TopNavigationBar(

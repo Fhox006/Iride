@@ -33,6 +33,7 @@ import com.metrolist.music.db.entities.AlbumWithSongs
 import com.metrolist.music.db.entities.AlbumPlayEvent
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.ArtistEntity
+import com.metrolist.music.db.entities.AutoPlaylistSongOrderEntity
 import com.metrolist.music.db.entities.Event
 import com.metrolist.music.db.entities.EventWithSong
 import com.metrolist.music.db.entities.GlobalAlbumPlayEvent
@@ -652,6 +653,24 @@ interface DatabaseDao {
     """
     )
     fun artistAlbumsPreview(artistId: String, previewSize: Int = 6): Flow<List<Album>>
+
+    // Albums the artist appears on via any song credit, not just album_artist_map's primary
+    // artist — covers albums they're featured on, superset of artistAlbumsPreview.
+    @Transaction
+    @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
+    @Query(
+        """
+        SELECT album.*, count(song.dateDownload) downloadCount
+        FROM song_artist_map
+            JOIN song ON song_artist_map.songId = song.id
+            JOIN album ON song.albumId = album.id
+        WHERE song_artist_map.artistId = :artistId
+        GROUP BY album.id
+        ORDER BY album.releaseDate DESC, album.year DESC
+        LIMIT :previewSize
+    """
+    )
+    fun artistCreditedAlbumsPreview(artistId: String, previewSize: Int = 20): Flow<List<Album>>
 
     @Query("SELECT sum(count) from playCount WHERE song = :songId")
     fun getLifetimePlayCount(songId: String?): Flow<Int>
@@ -1546,6 +1565,12 @@ interface DatabaseDao {
     @Query("SELECT * FROM event ORDER BY rowId DESC")
     fun events(): Flow<List<EventWithSong>>
 
+    // Which of the given song ids have at least one play event. Used by the new-release notifier to
+    // drop already-listened songs from an artist's "+N" badge live. ponytail: single IN clause, caller
+    // caps the id list well under SQLite's ~999 bind-variable limit.
+    @Query("SELECT DISTINCT songId FROM event WHERE songId IN (:songIds)")
+    fun playedSongIds(songIds: List<String>): Flow<List<String>>
+
     @Transaction
     @Query("SELECT * FROM event ORDER BY rowId ASC LIMIT 1")
     fun firstEvent(): Flow<EventWithSong?>
@@ -2074,4 +2099,24 @@ interface DatabaseDao {
 
     @Delete
     fun delete(podcast: PodcastEntity)
+
+    // Auto playlist (liked/downloaded/uploaded/starred) custom song order cache.
+
+    @Query("SELECT songId FROM auto_playlist_song_order WHERE playlistKey = :playlistKey ORDER BY position")
+    fun autoPlaylistSongOrder(playlistKey: String): Flow<List<String>>
+
+    @Query("DELETE FROM auto_playlist_song_order WHERE playlistKey = :playlistKey")
+    fun clearAutoPlaylistSongOrder(playlistKey: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertAutoPlaylistSongOrder(entries: List<AutoPlaylistSongOrderEntity>)
+
+    @Transaction
+    fun saveAutoPlaylistSongOrder(
+        playlistKey: String,
+        songIds: List<String>,
+    ) {
+        clearAutoPlaylistSongOrder(playlistKey)
+        insertAutoPlaylistSongOrder(songIds.mapIndexed { index, songId -> AutoPlaylistSongOrderEntity(playlistKey, songId, index) })
+    }
 }

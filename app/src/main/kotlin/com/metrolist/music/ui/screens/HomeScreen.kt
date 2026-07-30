@@ -18,6 +18,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -165,6 +166,7 @@ import com.metrolist.music.ui.component.RandomizeGridItem
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongCarousel
+import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.SpeedDialGridItem
 import com.metrolist.music.ui.component.YouTubeGridItem
@@ -199,9 +201,16 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.models.HeroCarouselItem
 import com.metrolist.music.models.DischiPerTeItem
+import com.metrolist.music.models.ForYouShelfItem
 import com.metrolist.music.db.entities.PlaylistSongMap
 import com.metrolist.music.utils.SyncState
 import com.metrolist.music.viewmodels.CommunityPlaylistItem
+import com.metrolist.music.ui.utils.IrideMotion
+import com.metrolist.music.ui.utils.IrideTabEntrance
+import com.metrolist.music.ui.utils.irideEnter
+import com.metrolist.music.ui.utils.revealMask
+import com.metrolist.music.ui.utils.rememberEnterProgress
+import com.metrolist.music.ui.utils.rememberSectionEnter
 import kotlin.random.Random
 
 private val HomeLargeTitleHeightDp = 80.dp
@@ -327,6 +336,7 @@ fun HomeScreen(
     val accountPlaylists by viewModel.accountPlaylists.collectAsStateWithLifecycle()
     val similarRecommendations by viewModel.similarRecommendations.collectAsStateWithLifecycle()
     val dischiPerTe by viewModel.dischiPerTe.collectAsStateWithLifecycle()
+    val forYouShelves by viewModel.forYouShelves.collectAsStateWithLifecycle()
     val homePage by viewModel.homePage.collectAsStateWithLifecycle()
     val phase1Complete by viewModel.phase1Complete.collectAsStateWithLifecycle()
     val isHeroCarouselEnabled by viewModel.isHeroCarouselEnabled.collectAsStateWithLifecycle()
@@ -406,6 +416,29 @@ fun HomeScreen(
     fun isSectionCollapsed(key: String) = collapsedSections[key] == true
     fun toggleSection(key: String) { collapsedSections[key] = !isSectionCollapsed(key) }
 
+    // Same IrideMotion vocabulary as ArtistScreen/AlbumScreen: the whole feed fades in once on
+    // landing, and each shelf plays its own entrance exactly once — LazyColumn disposes items
+    // scrolled far off screen, so without this set a shelf scrolled back into view would replay
+    // its wipe-in every time. Sections/progress live in IrideTabEntrance (not `remember`) so
+    // switching to Library and back doesn't replay the whole thing as a "reload".
+    val revealedSections = remember { IrideTabEntrance.sectionsFor("home") }
+    val screenProgress = if (IrideTabEntrance.wasRevealed("home")) {
+        1f
+    } else {
+        rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
+            .also { if (it >= 1f) IrideTabEntrance.markRevealed("home") }
+    }
+
+    @Composable
+    fun LazyItemScope.homeTitleMotion(key: String): Modifier = Modifier
+        .animateItem(placementSpec = IrideMotion.PlacementSpec)
+        .revealMask(rememberSectionEnter(key, revealedSections))
+
+    @Composable
+    fun LazyItemScope.homeRowMotion(key: String, offsetY: Dp = 10.dp): Modifier = Modifier
+        .irideEnter(rememberSectionEnter(key, revealedSections), offsetY)
+        .animateItem(placementSpec = IrideMotion.PlacementSpec)
+
     val quickPicksLazyGridState = rememberLazyGridState()
     val forgottenFavoritesLazyGridState = rememberLazyGridState()
     LaunchedEffect(quickPicks) {
@@ -427,6 +460,16 @@ fun HomeScreen(
             "after_mood"
         } else {
             listOf("after_keep_listening", "after_forgotten_favorites", "after_daily_discover", "after_community").random()
+        }
+    }
+
+    // "On repeat for you" usually lands as the 3rd/4th shelf, same as the brief asked for, but
+    // sometimes drifts further down so the feed doesn't always show it in the same spot.
+    val forYouShelfPosition = remember {
+        if (Random.nextInt(100) < 60) {
+            listOf("after_mood", "after_keep_listening").random()
+        } else {
+            listOf("after_forgotten_favorites", "after_account_playlists", "after_daily_discover").random()
         }
     }
 
@@ -681,7 +724,7 @@ fun HomeScreen(
                     item(key = "dischi_per_te_title") {
                         NavigationTitle(
                             title = stringResource(R.string.discs_for_you),
-                            modifier = Modifier.animateItem(),
+                            modifier = homeTitleMotion("dischi_per_te"),
                             onRefreshClick = { viewModel.regenerateDischiPerTe() },
                             isRefreshing = "dischi_per_te" in regeneratingSections,
                             useIrideStyle = topNavigationBarEnabled,
@@ -694,10 +737,14 @@ fun HomeScreen(
                             // Extra gap reserves room for the vinyl disc peeking out of each
                             // album cover (New Iride UI only) so it never overlaps the next card.
                             val dischiPerTeSpacing = if (topNavigationBarEnabled) currentGridHeight * VinylPeekFraction else 0.dp
+                            val dischiPerTeState = rememberLazyListState()
                             LazyRow(
+                                state = dischiPerTeState,
                                 contentPadding = PaddingValues(horizontal = irideGridItemStart),
                                 horizontalArrangement = Arrangement.spacedBy(dischiPerTeSpacing),
-                                modifier = Modifier.animateItem(),
+                                overscrollEffect = null,
+                                modifier = homeRowMotion("dischi_per_te_row")
+                                    .rubberBandOverscroll(Orientation.Horizontal, dischiPerTeState),
                             ) {
                                 items(discs, key = { "dischi_per_te_${it.id}" }) { discItem -> dischiPerTeGridItem(discItem) }
                             }
@@ -706,20 +753,138 @@ fun HomeScreen(
                 }
             }
 
+            // "On repeat for you": a carousel exactly like any other Home shelf (Account
+            // Playlists, Dischi per te) — one card slot per artist (most-listened or followed).
+            // Inside that single-slot footprint sits a miniature 2x2 grid: the artist photo
+            // top-left, then 3 of their albums (never songs). Artists that can't fill all 3
+            // album tiles are dropped rather than shown incomplete.
+            // Box scaled 35% up (uniform, like Figma's K scale) — text below stays default size.
+            val forYouBoxScale = 1.35f
+            val forYouCellGap = 3.dp * forYouBoxScale
+            val forYouBoxSize = currentGridHeight * forYouBoxScale
+            val forYouCellSize = (forYouBoxSize - forYouCellGap) / 2
+            val forYouOnClick: (LocalItem) -> Unit = { cell ->
+                when (cell) {
+                    is Song -> {
+                        if (!isListenTogetherGuest) {
+                            if (cell.id == mediaMetadata?.id) {
+                                playerConnection?.togglePlayPause()
+                            } else {
+                                playerConnection?.startRadioForSong(cell.toMediaMetadata())
+                            }
+                        }
+                    }
+                    is Album -> navController.navigate("album/${cell.id}")
+                    is Artist -> navController.navigate("artist/${cell.id}")
+                    is Playlist -> {}
+                }
+            }
+            val forYouMiniTile: @Composable (LocalItem) -> Unit = { cell ->
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(cell.thumbnailUrl?.resize(300, 300))
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .networkCachePolicy(CachePolicy.ENABLED)
+                        .build(),
+                    contentDescription = cell.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(forYouCellSize)
+                        .clip(if (cell is Artist) CircleShape else RoundedCornerShape(6.dp))
+                        .clickable { forYouOnClick(cell) },
+                )
+            }
+            val forYouBlock: @Composable (ForYouShelfItem) -> Unit = { shelf ->
+                val cells = (listOf(shelf.artist) + shelf.tiles).take(4)
+                Column(modifier = Modifier.width(forYouBoxSize)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(forYouCellGap)) {
+                        cells.chunked(2).forEach { rowCells ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(forYouCellGap)) {
+                                rowCells.forEach { cell -> forYouMiniTile(cell) }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = shelf.artist.artist.name,
+                        style = if (topNavigationBarEnabled) {
+                            MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily)
+                        } else {
+                            MaterialTheme.typography.bodyLarge
+                        },
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            val forYouSection: LazyListScope.() -> Unit = {
+                forYouShelves.takeIf { it.isNotEmpty() }?.let { shelves ->
+                    item(key = "for_you_title") {
+                        NavigationTitle(
+                            title = stringResource(R.string.for_you_shelf_title),
+                            modifier = homeTitleMotion("for_you"),
+                            onRefreshClick = { viewModel.regenerateForYouShelves() },
+                            isRefreshing = "for_you_shelf" in regeneratingSections,
+                            useIrideStyle = topNavigationBarEnabled,
+                            collapsed = isSectionCollapsed("for_you"),
+                            onCollapseToggle = { toggleSection("for_you") },
+                        )
+                    }
+                    item(key = "for_you_row") {
+                        IrideCollapsibleSection(collapsed = isSectionCollapsed("for_you")) {
+                            val forYouState = rememberLazyListState()
+                            LazyRow(
+                                state = forYouState,
+                                contentPadding = PaddingValues(horizontal = irideGridItemStart),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                overscrollEffect = null,
+                                modifier = homeRowMotion("for_you_carousel")
+                                    .rubberBandOverscroll(Orientation.Horizontal, forYouState),
+                            ) {
+                                items(shelves, key = { "for_you_${it.artist.id}" }) { shelf -> forYouBlock(shelf) }
+                            }
+                        }
+                    }
+                }
+            }
+
             LazyColumn(
                 state = lazyListState,
+                overscrollEffect = null,
                 contentPadding = PaddingValues(
                     top = paddingValues.calculateTopPadding(),
                     bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
                 ),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(
+                        // Fade only, same as ArtistScreen: covers the gap between navigation and
+                        // first layout without insetting edge-to-edge content.
+                        if (topNavigationBarEnabled) {
+                            Modifier.graphicsLayer { alpha = screenProgress }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    // Same edge-pull effect as every other top-level scroll (Library/Artist/Album);
+                    // Home's outer list was the one missing it.
+                    .rubberBandOverscroll(Orientation.Vertical, lazyListState),
             ) {
-                if (topNavigationBarEnabled && topNavBarController != null) {
+                if (topNavigationBarEnabled) {
+                    // Gate only on the static pref, never on topNavBarController's nullity — the
+                    // controller goes transiently null mid back-navigation (see SearchScreen.kt's
+                    // matching comment), and dropping this item out of the list for that one frame
+                    // shifted every shelf below it up by one slot; when the controller came back the
+                    // header re-inserted at index 0 while those shelves' own animateItem() was still
+                    // sliding them back down, so their still-moving content painted over the header
+                    // mid-transition. Always emit the item with null-safe fallbacks instead.
                     item(key = "top_nav_bar") {
                         TopNavigationBar(
-                            navigationItems = topNavBarController.navigationItems,
-                            currentRoute = topNavBarController.currentRoute,
-                            onItemClick = topNavBarController.onItemClick,
+                            navigationItems = topNavBarController?.navigationItems ?: emptyList(),
+                            currentRoute = topNavBarController?.currentRoute,
+                            onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
                             modifier = Modifier.animateItem(),
                             containerColor = Color.Transparent,
                         )
@@ -800,8 +965,14 @@ fun HomeScreen(
                 item(key = "sync_banner") {
                     AnimatedVisibility(
                         visible = isLoggedIn && syncState.overallStatus == SyncStatus.Syncing && syncBannerLaunchCount < 3,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically(),
+                        // New Iride UI: fade-only, same fix as the disclaimer item above and for the
+                        // same reason — expandVertically/shrinkVertically animates this item's height
+                        // frame-by-frame, and every shelf below it carries .animateItem(), so it
+                        // reflows in step and can momentarily paint over the top nav bar during the
+                        // cold-start window. Classic UI (no top nav bar item to protect) keeps the
+                        // original grow/shrink transition.
+                        enter = if (topNavigationBarEnabled) fadeIn() else fadeIn() + expandVertically(),
+                        exit = if (topNavigationBarEnabled) fadeOut() else fadeOut() + shrinkVertically(),
                     ) {
                         SyncBanner(syncState = syncState, useIrideStyle = topNavigationBarEnabled)
                     }
@@ -836,7 +1007,7 @@ fun HomeScreen(
                                 }
                                 Unit
                             },
-                            modifier = Modifier.animateItem(),
+                            modifier = homeRowMotion("hero_carousel"),
                         )
                     }
                 }
@@ -1071,7 +1242,7 @@ fun HomeScreen(
                             val title = stringResource(R.string.quick_picks)
                             NavigationTitle(
                                 title = title,
-                                modifier = Modifier.animateItem(),
+                                modifier = homeTitleMotion("quick_picks"),
                                 onPlayAllClick = if (!isListenTogetherGuest) {
                                     { playerConnection?.playQueue(ListQueue(title = title, items = filteredQp.map { it.toMediaItem() })) }
                                 } else null,
@@ -1089,7 +1260,7 @@ fun HomeScreen(
                                     key = { "home_quickpick_${it.id}" },
                                     contentPadding = PaddingValues(horizontal = irideListItemStart),
                                     gridState = quickPicksLazyGridState,
-                                    modifier = Modifier.animateItem(),
+                                    modifier = homeRowMotion("quick_picks_row"),
                                 ) { originalSong, itemWidth ->
                                     val song by database.song(originalSong.id).collectAsStateWithLifecycle(initialValue = originalSong)
                                     val currentSong = song ?: originalSong
@@ -1138,7 +1309,7 @@ fun HomeScreen(
                     item(key = "your_mood_title") {
                         NavigationTitle(
                             title = "Mood & Playlists for You",
-                            modifier = Modifier.animateItem(),
+                            modifier = homeTitleMotion("your_mood"),
                             useIrideStyle = topNavigationBarEnabled,
                             collapsed = isSectionCollapsed("your_mood"),
                             onCollapseToggle = { toggleSection("your_mood") },
@@ -1150,7 +1321,7 @@ fun HomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .animateItem(),
+                                .then(homeRowMotion("your_mood_row")),
                         ) {
                             if (moodChips.isNotEmpty()) {
                                 if (topNavigationBarEnabled) {
@@ -1201,10 +1372,12 @@ fun HomeScreen(
                                         state = moodMixesState,
                                         contentPadding = PaddingValues(horizontal = irideGridItemStart),
                                         horizontalArrangement = Arrangement.spacedBy(if (topNavigationBarEnabled) 4.dp else 12.dp),
+                                        overscrollEffect = null,
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .padding(top = 10.dp, bottom = 4.dp)
-                                            .alpha(if (isMoodLoading) 0.4f else 1f),
+                                            .alpha(if (isMoodLoading) 0.4f else 1f)
+                                            .rubberBandOverscroll(Orientation.Horizontal, moodMixesState),
                                     ) {
                                         items(mixItems, key = { it.id }) { mix ->
                                             YouTubeGridItem(
@@ -1256,13 +1429,14 @@ fun HomeScreen(
                 }
 
                 if (dischiPerTePosition == "after_mood") dischiPerTeSection()
+                if (forYouShelfPosition == "after_mood") forYouSection()
 
                 // ── Other sections (appear as data arrives, no stagger) ──────
                 keepListening?.takeIf { it.isNotEmpty() }?.let { kl ->
                     item(key = "keep_listening_title") {
                         NavigationTitle(
                             title = stringResource(R.string.keep_listening),
-                            modifier = Modifier.animateItem(),
+                            modifier = homeTitleMotion("keep_listening"),
                             useIrideStyle = topNavigationBarEnabled,
                             collapsed = isSectionCollapsed("keep_listening"),
                             onCollapseToggle = { toggleSection("keep_listening") },
@@ -1272,14 +1446,17 @@ fun HomeScreen(
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("keep_listening")) {
                             // New Iride UI: always a single compact row, never the classic UI's 2-row grid.
                             val rows = if (topNavigationBarEnabled) 1 else if (kl.size > 6) 2 else 1
+                            val keepListeningState = rememberLazyGridState()
                             LazyHorizontalGrid(
-                                state = rememberLazyGridState(),
+                                state = keepListeningState,
                                 rows = GridCells.Fixed(rows),
                                 contentPadding = PaddingValues(horizontal = irideGridItemStart),
+                                overscrollEffect = null,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(currentGridHeight * rows + 56.dp * rows)
-                                    .animateItem(),
+                                    .then(homeRowMotion("keep_listening_row"))
+                                    .rubberBandOverscroll(Orientation.Horizontal, keepListeningState),
                             ) {
                                 items(kl) { localGridItem(it) }
                             }
@@ -1288,6 +1465,7 @@ fun HomeScreen(
                 }
 
                 if (dischiPerTePosition == "after_keep_listening") dischiPerTeSection()
+                if (forYouShelfPosition == "after_keep_listening") forYouSection()
 
                 if (speedDialItems.isNotEmpty() && deferSpeedDialToBottom && !topNavigationBarEnabled) {
                     item(key = "speed_dial_list") {
@@ -1300,7 +1478,7 @@ fun HomeScreen(
                         val title = stringResource(R.string.forgotten_favorites)
                         NavigationTitle(
                             title = title,
-                            modifier = Modifier.animateItem(),
+                            modifier = homeTitleMotion("forgotten_favorites"),
                             onPlayAllClick = if (!isListenTogetherGuest) {
                                 { playerConnection?.playQueue(ListQueue(title = title, items = ff.distinctBy { it.id }.map { it.toMediaItem() })) }
                             } else null,
@@ -1319,10 +1497,12 @@ fun HomeScreen(
                                 rows = GridCells.Fixed(rows),
                                 contentPadding = PaddingValues(horizontal = irideListItemStart),
                                 flingBehavior = rememberSnapFlingBehavior(forgottenFavoritesSnapLayoutInfoProvider),
+                                overscrollEffect = null,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(ListItemHeight * rows)
-                                    .animateItem(),
+                                    .then(homeRowMotion("forgotten_favorites_row"))
+                                    .rubberBandOverscroll(Orientation.Horizontal, forgottenFavoritesLazyGridState),
                             ) {
                                 items(items = ff.distinctBy { it.id }, key = { "home_forgotten_${it.id}" }) { song ->
                                     SongListItem(
@@ -1362,6 +1542,7 @@ fun HomeScreen(
                 }
 
                 if (dischiPerTePosition == "after_forgotten_favorites") dischiPerTeSection()
+                if (forYouShelfPosition == "after_forgotten_favorites") forYouSection()
 
                 accountPlaylists?.takeIf { it.isNotEmpty() }?.let { apl ->
                     item(key = "account_playlists_title") {
@@ -1392,7 +1573,7 @@ fun HomeScreen(
                                 }
                             },
                             onClick = { navController.navigate("account") },
-                            modifier = Modifier.animateItem(),
+                            modifier = homeTitleMotion("account_playlists"),
                             useIrideStyle = topNavigationBarEnabled,
                             collapsed = isSectionCollapsed("account_playlists"),
                             onCollapseToggle = { toggleSection("account_playlists") },
@@ -1400,7 +1581,14 @@ fun HomeScreen(
                     }
                     item(key = "account_playlists_list") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("account_playlists")) {
-                            LazyRow(contentPadding = PaddingValues(horizontal = irideGridItemStart), modifier = Modifier.animateItem()) {
+                            val accountPlaylistsState = rememberLazyListState()
+                            LazyRow(
+                                state = accountPlaylistsState,
+                                contentPadding = PaddingValues(horizontal = irideGridItemStart),
+                                overscrollEffect = null,
+                                modifier = homeRowMotion("account_playlists_row")
+                                    .rubberBandOverscroll(Orientation.Horizontal, accountPlaylistsState),
+                            ) {
                                 items(items = apl.distinctBy { it.id }, key = { "home_account_playlist_${it.id}" }) { ap ->
                                     ytGridItem(ap, null, false, null)
                                 }
@@ -1408,6 +1596,7 @@ fun HomeScreen(
                         }
                     }
                 }
+                if (forYouShelfPosition == "after_account_playlists") forYouSection()
 
                 dailyDiscover?.takeIf { it.isNotEmpty() }?.let { discoverList ->
                     item(key = "daily_discover_title") {
@@ -1423,15 +1612,22 @@ fun HomeScreen(
                             useIrideStyle = topNavigationBarEnabled,
                             collapsed = isSectionCollapsed("daily_discover"),
                             onCollapseToggle = { toggleSection("daily_discover") },
+                            modifier = homeTitleMotion("daily_discover"),
                         )
                     }
                     item(key = "daily_discover_content") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("daily_discover")) {
                             if (topNavigationBarEnabled) {
+                                val dailyDiscoverState = rememberLazyListState()
                                 LazyRow(
+                                    state = dailyDiscoverState,
                                     contentPadding = PaddingValues(horizontal = irideGridItemStart),
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    modifier = Modifier.fillMaxWidth(),
+                                    overscrollEffect = null,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .then(homeRowMotion("daily_discover_row"))
+                                        .rubberBandOverscroll(Orientation.Horizontal, dailyDiscoverState),
                                 ) {
                                     items(discoverList, key = { "daily_discover_${it.recommendation.id}" }) { ddItem ->
                                         IrideDailyDiscoverCard(
@@ -1485,12 +1681,13 @@ fun HomeScreen(
                 }
 
                 if (dischiPerTePosition == "after_daily_discover") dischiPerTeSection()
+                if (forYouShelfPosition == "after_daily_discover") forYouSection()
 
                 communityPlaylists?.takeIf { it.isNotEmpty() }?.let { playlists ->
                     item(key = "community_playlists_title") {
                         NavigationTitle(
                             title = stringResource(R.string.from_the_community),
-                            modifier = Modifier.animateItem(),
+                            modifier = homeTitleMotion("community_playlists"),
                             onRefreshClick = { viewModel.regenerateCommunityPlaylists() },
                             isRefreshing = "community_playlists" in regeneratingSections,
                             useIrideStyle = topNavigationBarEnabled,
@@ -1500,12 +1697,16 @@ fun HomeScreen(
                     }
                     item(key = "community_playlists_content") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("community_playlists")) {
+                            val communityPlaylistsState = rememberLazyListState()
                             LazyRow(
+                                state = communityPlaylistsState,
                                 contentPadding = PaddingValues(horizontal = irideGridItemStart),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                overscrollEffect = null,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .animateItem(),
+                                    .then(homeRowMotion("community_playlists_row"))
+                                    .rubberBandOverscroll(Orientation.Horizontal, communityPlaylistsState),
                             ) {
                                 items(playlists, key = { "community_playlist_${it.playlist.id}" }) { cpItem ->
                                     PlaylistGridItem(
@@ -1556,7 +1757,7 @@ fun HomeScreen(
                             },
                             onRefreshClick = { viewModel.regenerateSimilarRecommendations() },
                             isRefreshing = "similar_recommendations" in regeneratingSections,
-                            modifier = Modifier.animateItem(),
+                            modifier = homeTitleMotion("similar_to_$index"),
                             useIrideStyle = topNavigationBarEnabled,
                             collapsed = isSectionCollapsed("similar_to_$index"),
                             onCollapseToggle = { toggleSection("similar_to_$index") },
@@ -1564,7 +1765,14 @@ fun HomeScreen(
                     }
                     item(key = "similar_to_list_$index") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("similar_to_$index")) {
-                            LazyRow(contentPadding = PaddingValues(horizontal = irideGridItemStart), modifier = Modifier.animateItem()) {
+                            val similarToState = rememberLazyListState()
+                            LazyRow(
+                                state = similarToState,
+                                contentPadding = PaddingValues(horizontal = irideGridItemStart),
+                                overscrollEffect = null,
+                                modifier = homeRowMotion("similar_to_row_$index")
+                                    .rubberBandOverscroll(Orientation.Horizontal, similarToState),
+                            ) {
                                 items(rec.items) { recItem -> ytGridItem(recItem, null, false, null) }
                             }
                         }
@@ -1604,7 +1812,7 @@ fun HomeScreen(
                                         )
                                     }
                                 } else null,
-                                modifier = Modifier.animateItem(),
+                                modifier = homeTitleMotion("home_section_$index"),
                                 useIrideStyle = topNavigationBarEnabled,
                                 collapsed = isSectionCollapsed("home_section_$index"),
                                 onCollapseToggle = { toggleSection("home_section_$index") },
@@ -1614,11 +1822,17 @@ fun HomeScreen(
                         if (isSongsOnly) {
                             item(key = "home_section_list_$index") {
                                 IrideCollapsibleSection(collapsed = isSectionCollapsed("home_section_$index")) {
+                                    val sectionSongsState = rememberLazyGridState()
                                     LazyHorizontalGrid(
-                                        state = rememberLazyGridState(),
+                                        state = sectionSongsState,
                                         rows = GridCells.Fixed(4),
                                         contentPadding = PaddingValues(horizontal = irideListItemStart),
-                                        modifier = Modifier.fillMaxWidth().height(ListItemHeight * 4).animateItem(),
+                                        overscrollEffect = null,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(ListItemHeight * 4)
+                                            .then(homeRowMotion("home_section_${index}_row"))
+                                            .rubberBandOverscroll(Orientation.Horizontal, sectionSongsState),
                                     ) {
                                         items(items = sectionSongs.distinctBy { it.id }, key = { "home_section_${index}_song_${it.id}" }) { song ->
                                             YouTubeListItem(
@@ -1656,7 +1870,14 @@ fun HomeScreen(
                         } else {
                             item(key = "home_section_list_$index") {
                                 IrideCollapsibleSection(collapsed = isSectionCollapsed("home_section_$index")) {
-                                    LazyRow(contentPadding = PaddingValues(horizontal = irideGridItemStart), modifier = Modifier.animateItem()) {
+                                    val sectionItemsState = rememberLazyListState()
+                                    LazyRow(
+                                        state = sectionItemsState,
+                                        contentPadding = PaddingValues(horizontal = irideGridItemStart),
+                                        overscrollEffect = null,
+                                        modifier = homeRowMotion("home_section_${index}_row")
+                                            .rubberBandOverscroll(Orientation.Horizontal, sectionItemsState),
+                                    ) {
                                         items(items = sectionData.items.distinctBy { it.id }, key = { "home_section_${index}_item_${it.id}" }) { secItem ->
                                             ytGridItem(secItem, null, false, null)
                                         }
@@ -1667,6 +1888,7 @@ fun HomeScreen(
                     }
                 }
             }
+
         }
     }
 }

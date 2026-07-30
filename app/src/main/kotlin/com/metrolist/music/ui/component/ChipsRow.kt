@@ -113,7 +113,11 @@ fun <E> ChipsRow(
                     Text(
                         text = label,
                         style = labelStyle,
-                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.35f),
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+                        },
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                         modifier = Modifier.onSizeChanged { textWidthPx = it.width },
                     )
@@ -122,7 +126,9 @@ fun <E> ChipsRow(
                         modifier = Modifier
                             .height(2.dp)
                             .width(with(density) { textWidthPx.toDp() })
-                            .background(if (isSelected) Color.White else Color.Transparent),
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                            ),
                     )
                 }
                 Spacer(Modifier.width(20.dp))
@@ -231,7 +237,7 @@ fun <E> IrideSegmentedToggle(
                         .offset { androidx.compose.ui.unit.IntOffset(indicatorX.roundToInt(), 0) }
                         .width(with(density) { indicatorWidth.toDp() })
                         .height(2.dp)
-                        .background(Color.White),
+                        .background(MaterialTheme.colorScheme.onSurface),
                 )
             }
         }
@@ -294,13 +300,13 @@ fun <Int> ChoiceChipsRow(
                             fontSize = 13.sp,
                             letterSpacing = (-0.1).sp,
                         ),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Spacer(Modifier.width(4.dp))
                     Icon(
                         painter = painterResource(R.drawable.expand_more),
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.6f),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         modifier = Modifier
                             .size(16.dp)
                             .graphicsLayer(rotationZ = rotationAnimation),
@@ -368,7 +374,11 @@ fun <Int> ChoiceChipsRow(
                             Text(
                                 text = label,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.35f),
+                                color = if (isSelected) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+                        },
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                                 modifier = Modifier.onSizeChanged { textWidthPx = it.width },
                             )
@@ -377,7 +387,9 @@ fun <Int> ChoiceChipsRow(
                                 modifier = Modifier
                                     .height(2.dp)
                                     .width(with(LocalDensity.current) { textWidthPx.toDp() })
-                                    .background(if (isSelected) Color.White else Color.Transparent),
+                                    .background(
+                                if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                            ),
                             )
                         }
                         Spacer(Modifier.width(16.dp))

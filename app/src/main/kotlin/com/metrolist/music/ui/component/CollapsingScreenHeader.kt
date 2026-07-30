@@ -111,6 +111,8 @@ fun CollapsingScreenHeader(
     navigationIcon: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
     transparentBackground: Boolean = false,
+    // Optional "+N" pill shown right after the title (e.g. new songs from followed artists).
+    titleBadge: Int? = null,
     // New Iride UI: the animated large-title area is redundant with the persistent
     // TopNavigationBar tabs bar above it, so it collapses away to just the small,
     // fixed toolbar row (trailingContent stays visible there, never fades).
@@ -209,7 +211,10 @@ fun CollapsingScreenHeader(
                             },
                             maxLines = 1,
                             modifier = Modifier
-                                .weight(1f)
+                                // fill = false so a short title doesn't stretch the badge to the far
+                                // edge — it sits right beside the title. The trailing Spacer below
+                                // still pushes any trailingContent to the row's end.
+                                .weight(1f, fill = false)
                                 .graphicsLayer {
                                     val targetScale = 0.61f
                                     val scale = lerpFloat(1f, targetScale, fraction)
@@ -219,6 +224,17 @@ fun CollapsingScreenHeader(
                                     alpha = lerpFloat(1f, 0.95f, fraction)
                                 },
                         )
+                        if (titleBadge != null && titleBadge > 0) {
+                            androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
+                            NewReleaseBadge(
+                                count = titleBadge,
+                                modifier = Modifier.graphicsLayer {
+                                    // Fade out with the title as the header collapses.
+                                    alpha = lerpFloat(1f, 0f, (fraction * 2f).coerceIn(0f, 1f))
+                                },
+                            )
+                        }
+                        androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
                     }
 
                     // Optional trailing slot — fades out during collapse, always fully visible

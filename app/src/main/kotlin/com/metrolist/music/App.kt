@@ -32,6 +32,7 @@ import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.extensions.toInetSocketAddress
 import com.metrolist.music.utils.CrashHandler
 import com.metrolist.music.utils.GenreProvider
+import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
@@ -40,6 +41,7 @@ import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -60,6 +62,9 @@ class App :
     @Inject
     @ApplicationScope
     lateinit var applicationScope: CoroutineScope
+
+    @Inject
+    lateinit var connectivityObserver: NetworkConnectivityObserver
 
     override fun onCreate() {
         super.onCreate()
@@ -82,6 +87,29 @@ class App :
         applicationScope.launch {
             initializeSettings()
             observeSettingsChanges()
+        }
+
+        observeConnectivity()
+    }
+
+    /**
+     * A network change leaves the OkHttp pool full of sockets bound to the old (now dead) network.
+     * Every later request picks one up and stalls until the connect timeout, so the app looks
+     * permanently offline until the process is killed. Dropping the pool on each transition makes
+     * the next request open a fresh connection instead.
+     */
+    private fun observeConnectivity() {
+        applicationScope.launch(Dispatchers.IO) {
+            connectivityObserver.networkStatus
+                .drop(1)
+                .collect { connected ->
+                    YouTube.evictConnections()
+                    if (connected) {
+                        val prefs = dataStore.data.first()
+                        prefs[InnerTubeCookieKey]?.takeIf { it.isNotEmpty() }?.let { YouTube.cookie = it }
+                        prefs[VisitorDataKey]?.takeIf { it.isNotEmpty() && it != "null" }?.let { YouTube.visitorData = it }
+                    }
+                }
         }
     }
 

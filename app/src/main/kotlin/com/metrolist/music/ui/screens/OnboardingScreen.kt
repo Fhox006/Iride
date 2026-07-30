@@ -115,7 +115,7 @@ fun OnboardingScreen(navController: NavController) {
                 )
                 2 -> LoginPage(
                     onLogin = {
-                        coroutineScope.launch { pagerState.animateScrollToPage(3) }
+                        navController.navigate("login")
                     },
                     onSkip = {
                         coroutineScope.launch { pagerState.animateScrollToPage(3) }

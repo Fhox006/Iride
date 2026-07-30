@@ -31,6 +31,7 @@ import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.HomeCacheLastLoadedKey
 import com.metrolist.music.constants.AccountNameKey
+import com.metrolist.music.constants.ArtistSortType
 import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.VisitorDataKey
@@ -48,6 +49,7 @@ import com.metrolist.music.constants.ShowWrappedCardKey
 import com.metrolist.music.discovery.AlbumRecommendationsGenerator
 import com.metrolist.music.discovery.HeroCarouselGenerator
 import com.metrolist.music.models.DischiPerTeItem
+import com.metrolist.music.models.ForYouShelfItem
 import com.metrolist.music.models.HeroCarouselItem
 import com.metrolist.music.constants.SpeedDialSnapshotKey
 import com.metrolist.music.constants.WrappedSeenKey
@@ -196,6 +198,7 @@ class HomeViewModel @Inject constructor(
     private val heroCarouselGenerator = HeroCarouselGenerator(database)
 
     val dischiPerTe = MutableStateFlow<List<DischiPerTeItem>?>(null)
+    val forYouShelves = MutableStateFlow<List<ForYouShelfItem>>(emptyList())
 
     private val albumRecommendationsGenerator = AlbumRecommendationsGenerator(database)
 
@@ -701,6 +704,71 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * One mini 2x2 block per artist (most-listened, last 30 days, or followed via the star):
+     * artist photo + 3 album tiles, never songs. An artist's most-listened albums come first;
+     * if listening history doesn't cover 3 albums, the rest of that artist's credited discography
+     * fills the remaining tiles — their own albums plus albums they're featured on, not
+     * necessarily listened to. Artists who still can't fill all 3 tiles are dropped rather than
+     * shown as an incomplete box. Followed artists are oversampled so starred artists show up
+     * often even when they're not in the top listening history.
+     */
+    private suspend fun getForYouShelves() {
+        val fromTimeStamp = System.currentTimeMillis() - 86400000L * 30
+        val toTimeStamp = System.currentTimeMillis()
+        val listenedArtists = database.mostPlayedArtists(fromTimeStamp, limit = 25, toTimeStamp = toTimeStamp).first()
+        val followedArtists = database.artistsBookmarked(ArtistSortType.CREATE_DATE, true).first()
+        val artists = (listenedArtists + followedArtists + followedArtists)
+            .filter { it.artist.thumbnailUrl != null }
+            .distinctBy { it.id }
+            .shuffled()
+            .take(20)
+
+        val shelves = artists.mapNotNull { artist ->
+            val usedAlbumIds = mutableSetOf<String>()
+            val tiles = mutableListOf<LocalItem>()
+
+            val candidateSongs = database.mostPlayedSongsByArtist(artist.id, fromTimeStamp, toTimeStamp)
+                .first().shuffled()
+            for (song in candidateSongs) {
+                if (tiles.size >= 3) break
+                val albumId = song.album?.id ?: continue
+                if (albumId in usedAlbumIds) continue
+                val album = database.album(albumId).first() ?: continue
+                tiles += album
+                usedAlbumIds += albumId
+            }
+
+            if (tiles.size < 3) {
+                val moreAlbums = database.artistCreditedAlbumsPreview(artist.id, previewSize = 20).first().shuffled()
+                for (album in moreAlbums) {
+                    if (tiles.size >= 3) break
+                    if (album.id in usedAlbumIds) continue
+                    tiles += album
+                    usedAlbumIds += album.id
+                }
+            }
+
+            if (tiles.size < 3) null else ForYouShelfItem(artist, tiles)
+        }.shuffled()
+        forYouShelves.value = shelves
+        HomeCache.forYouShelves = shelves
+    }
+
+    fun regenerateForYouShelves() {
+        viewModelScope.launch(Dispatchers.IO) {
+            regenerateSection(
+                key = "for_you_shelf",
+                currentIds = {
+                    forYouShelves.value.orEmpty()
+                        .flatMap { listOf(it.artist.id) + it.tiles.map { tile -> tile.id } }
+                        .toSet()
+                },
+                generate = { getForYouShelves() },
+            )
+        }
+    }
+
     private suspend fun getDischiPerTe() {
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         dischiPerTe.value = albumRecommendationsGenerator.generate(
@@ -1149,6 +1217,7 @@ class HomeViewModel @Inject constructor(
                         .filter { it.artist.isYouTubeArtist && it.artist.thumbnailUrl != null }.shuffled().take(5)
                     keepListening.value = (songs + albums + artists).shuffled()
                 }
+                launch(Dispatchers.IO) { getForYouShelves() }
             }
             allLocalItems.value = (quickPicks.value.orEmpty() + keepListening.value.orEmpty())
                 .filter { it is Song || it is Album }
@@ -1492,6 +1561,7 @@ class HomeViewModel @Inject constructor(
                 dailyDiscover.value = HomeCache.dailyDiscover
                 communityPlaylists.value = HomeCache.communityPlaylists
                 dischiPerTe.value = HomeCache.dischiPerTe
+                forYouShelves.value = HomeCache.forYouShelves.orEmpty()
                 isPhase1Complete.value = true
                 phase1Complete.value = true
                 phase2Complete.value = true

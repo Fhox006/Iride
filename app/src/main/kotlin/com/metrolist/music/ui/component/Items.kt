@@ -8,9 +8,15 @@
 
 package com.metrolist.music.ui.component
 
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandIn
 import androidx.compose.animation.fadeIn
@@ -61,8 +67,10 @@ import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
@@ -70,12 +78,14 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -87,6 +97,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
@@ -96,6 +107,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachIndexed
@@ -144,7 +156,9 @@ import com.metrolist.music.db.entities.Song
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.queues.LocalAlbumRadio
+import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.SnapLayoutInfoProvider
+import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.joinByBullet
 import com.metrolist.music.utils.makeTimeString
@@ -154,11 +168,15 @@ import com.metrolist.music.utils.reportException
 import com.metrolist.music.utils.TitleFeaturingParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlin.random.Random
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 import kotlin.math.roundToInt
+import sh.calvin.reorderable.ReorderableCollectionItemScope
 
 const val ActiveBoxAlpha = 0.6f
 
@@ -537,6 +555,7 @@ fun GridItem(
             overflow = TextOverflow.Ellipsis,
         )
     },
+    badges = badges,
     thumbnailContent = thumbnailContent,
     thumbnailRatio = thumbnailRatio,
     fillMaxWidth = fillMaxWidth
@@ -655,6 +674,57 @@ fun SongListItem(
         }
     } else {
         content()
+    }
+}
+
+/**
+ * The single trailing button a song row shows for its overflow menu / drag handle. Reorder mode
+ * never adds a second button next to it — this one morphs in place: three dots crossfade into
+ * three lines, and the same slot becomes the [sh.calvin.reorderable] drag handle.
+ */
+@Composable
+fun ReorderableCollectionItemScope.SongRowReorderButton(
+    reordering: Boolean,
+    onMenuClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val reducedMotion = rememberReducedMotion()
+    val morph by animateFloatAsState(
+        targetValue = if (reordering) 1f else 0f,
+        animationSpec = if (reducedMotion) {
+            snap()
+        } else {
+            tween(IrideMotion.Quick, easing = IrideMotion.EaseOutQuart)
+        },
+        label = "reorderButtonMorph",
+    )
+
+    androidx.compose.material3.IconButton(
+        onClick = { if (!reordering) onMenuClick() },
+        modifier = modifier.then(if (reordering) Modifier.draggableHandle() else Modifier),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                painter = painterResource(R.drawable.more_vert),
+                contentDescription = if (reordering) null else stringResource(R.string.menu),
+                modifier = Modifier.graphicsLayer {
+                    alpha = 1f - morph
+                    val scale = 1f - morph * 0.4f
+                    scaleX = scale
+                    scaleY = scale
+                },
+            )
+            Icon(
+                painter = painterResource(R.drawable.drag_handle),
+                contentDescription = if (reordering) stringResource(R.string.reorder) else null,
+                modifier = Modifier.graphicsLayer {
+                    alpha = morph
+                    val scale = 0.6f + morph * 0.4f
+                    scaleX = scale
+                    scaleY = scale
+                },
+            )
+        }
     }
 }
 
@@ -812,6 +882,84 @@ fun ArtistGridItem(
     fillMaxWidth = fillMaxWidth,
     modifier = modifier
 )
+
+/**
+ * "New from artists you follow" row item. A thin ring around the avatar carries the unread-release
+ * signal instead of a floating numeral badge, so the indicator and the circular photo share one
+ * shape language (concentric circles) rather than a shape clashing against a shape.
+ */
+@Composable
+fun ArtistNewReleaseRingItem(
+    artist: Artist,
+    newSongCount: Int,
+    modifier: Modifier = Modifier,
+) {
+    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
+    val avatarSize = 72.dp
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .padding(horizontal = 6.dp, vertical = 4.dp)
+            .width(avatarSize + 12.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(avatarSize + 12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(avatarSize)
+                    .border(1.5.dp, MaterialTheme.colorScheme.onBackground, CircleShape)
+                    .padding(4.dp)
+                    .clip(CircleShape),
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(artist.artist.thumbnailUrl?.resize(300, 300))
+                        .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
+                        .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
+                        .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(20.dp)
+                    .background(MaterialTheme.colorScheme.background, CircleShape)
+                    .padding(2.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = if (newSongCount > 9) "9+" else newSongCount.toString(),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = SpaceMonoFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = artist.artist.name,
+            style = if (topNavigationBarEnabled) {
+                MaterialTheme.typography.labelMedium.copy(fontFamily = SpaceMonoFontFamily)
+            } else {
+                MaterialTheme.typography.labelMedium
+            },
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
 
 @Composable
 fun AlbumListItem(
@@ -1377,6 +1525,12 @@ fun YouTubeGridItem(
     },
     thumbnailRatio: Float = if (item is SongItem) 16f / 9 else 1f,
     thumbnailCornerRadius: Dp = ThumbnailCornerRadius,
+    // Overrides the shape computed below entirely. Square (ratio 1f) tiles in the New Iride UI
+    // otherwise always draw a fixed 5.dp RoundedCornerShape regardless of `thumbnailCornerRadius` or
+    // `size` — fine at the ~150-180dp this was tuned for, but at a much larger tile the same 5.dp
+    // reads as almost square. Rather than change that fixed value for every existing square tile in
+    // the app, callers that intentionally render an oversized tile can pass their own shape here.
+    thumbnailShape: Shape? = null,
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
@@ -1472,7 +1626,7 @@ fun YouTubeGridItem(
             thumbnailUrl = item.thumbnail,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = when {
+            shape = thumbnailShape ?: when {
                 item is ArtistItem -> CircleShape
                 // Non-square thumbnails (e.g. 16:9 videos) don't suit a squircle
                 effectiveThumbnailRatio != 1f -> RoundedCornerShape(thumbnailCornerRadius)
@@ -1711,9 +1865,9 @@ fun ItemThumbnail(
             Image(
                 painter = painter,
                 contentDescription = null,
-                contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
+                contentScale = if (shape == CircleShape || cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .clip(shape)
             )
         }
@@ -1791,7 +1945,7 @@ fun LocalThumbnail(
                 .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .build(),
             contentDescription = null,
-            contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
+            contentScale = if (shape == CircleShape || cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
             modifier = Modifier.fillMaxSize()
         )
 
@@ -2070,9 +2224,11 @@ fun <T> SongCarousel(
             rows = GridCells.Fixed(rows),
             flingBehavior = rememberSnapFlingBehavior(snapLayoutInfoProvider),
             contentPadding = contentPadding,
+            overscrollEffect = null,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(ListItemHeight * rows),
+                .height(ListItemHeight * rows)
+                .rubberBandOverscroll(Orientation.Horizontal, gridState),
         ) {
             gridItems(items = items, key = { key(it) }) { item ->
                 itemContent(item, itemWidth)
@@ -2093,6 +2249,9 @@ fun SwipeToSongBox(
     val offset = remember { mutableFloatStateOf(0f) }
     val threshold = 300f
     val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
+    // One-shot white pulse drawn on confirmed swipe only (threshold reached at release).
+    // Never fires on a cancelled drag (offset springs back below threshold), per design ask.
+    val confirmFlash = remember { Animatable(0f) }
 
     val dragState = rememberDraggableState { delta ->
         offset.floatValue = (offset.floatValue + delta).coerceIn(-threshold, threshold)
@@ -2129,12 +2288,14 @@ fun SwipeToSongBox(
                         offset.floatValue >= threshold -> {
                             player?.playNext(listOf(mediaItem))
                             Toast.makeText(ctx, R.string.play_next, Toast.LENGTH_SHORT).show()
+                            confirmSwipe(scope, confirmFlash, player?.isPlaying?.value == true)
                             reset(offset, scope)
                         }
 
                         offset.floatValue <= -threshold -> {
                             player?.addToQueue(listOf(mediaItem))
                             Toast.makeText(ctx, R.string.add_to_queue, Toast.LENGTH_SHORT).show()
+                            confirmSwipe(scope, confirmFlash, player?.isPlaying?.value == true)
                             reset(offset, scope)
                         }
 
@@ -2153,40 +2314,44 @@ fun SwipeToSongBox(
         // text. The content Box below carries its own black backing sized to its own bounds
         // (only while swiping), so NEXT/QUEUE keeps a plain white backdrop while the song
         // info stays readable on black.
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .graphicsLayer { alpha = if (offset.floatValue > 0f) 1f else 0f }
-                .background(nextBg),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Text(
-                text = nextLabel,
-                style = labelStyle,
-                fontFamily = labelFontFamily,
-                fontWeight = FontWeight.Black,
-                letterSpacing = labelLetterSpacing,
-                color = nextTint,
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
-        }
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .graphicsLayer { alpha = if (offset.floatValue < 0f) 1f else 0f }
-                .background(queueBg),
-            contentAlignment = Alignment.CenterEnd
-        ) {
-            Text(
-                text = queueLabel,
-                style = labelStyle,
-                fontFamily = labelFontFamily,
-                fontWeight = FontWeight.Black,
-                letterSpacing = labelLetterSpacing,
-                color = queueTint,
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
-        }
+        //
+        // Visibility is exposed as derivedStateOf booleans instead of reading offset.floatValue
+        // directly here — the boolean only flips twice per gesture (at each sign change), so
+        // animateFloatAsState below recomposes on that rare flip, never per drag pixel. That
+        // animated float replaces the old instant graphicsLayer{alpha=0/1} snap with a short
+        // dissolve, and in New Iride UI drives a tech-HUD frame + typewriter reveal so the flash
+        // reads as a designed transition instead of a glitch.
+        val nextVisible by remember { derivedStateOf { offset.floatValue > 0f } }
+        val queueVisible by remember { derivedStateOf { offset.floatValue < 0f } }
+
+        SwipeRevealPanel(
+            modifier = Modifier.matchParentSize(),
+            visible = nextVisible,
+            alignment = Alignment.CenterStart,
+            background = nextBg,
+            tint = nextTint,
+            label = nextLabel,
+            style = labelStyle,
+            fontFamily = labelFontFamily,
+            letterSpacing = labelLetterSpacing,
+            techStyled = topNavigationBarEnabled,
+            offset = offset,
+            threshold = threshold,
+        )
+        SwipeRevealPanel(
+            modifier = Modifier.matchParentSize(),
+            visible = queueVisible,
+            alignment = Alignment.CenterEnd,
+            background = queueBg,
+            tint = queueTint,
+            label = queueLabel,
+            style = labelStyle,
+            fontFamily = labelFontFamily,
+            letterSpacing = labelLetterSpacing,
+            techStyled = topNavigationBarEnabled,
+            offset = offset,
+            threshold = threshold,
+        )
 
         Box(
             modifier = Modifier
@@ -2199,6 +2364,36 @@ fun SwipeToSongBox(
                 },
             content = content
         )
+
+        // Confirm-only white pulse — never touched by a cancelled drag, only by confirmSwipe().
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer { alpha = confirmFlash.value }
+                .background(Color.White)
+        )
+    }
+}
+
+// Fires the confirm-only white pulse and, when nothing is currently playing, a short
+// monospace beep via ToneGenerator (mirrors the ArtistGameViewModel tone pattern) so a
+// silent app still gives audible confirmation that the swipe committed.
+private fun confirmSwipe(
+    scope: CoroutineScope,
+    flash: Animatable<Float, AnimationVector1D>,
+    isPlaying: Boolean,
+) {
+    scope.launch {
+        flash.snapTo(0.55f)
+        flash.animateTo(0f, animationSpec = tween(durationMillis = 220))
+    }
+    if (!isPlaying) {
+        scope.launch {
+            val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 60)
+            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP2, 40)
+            delay(60)
+            toneGenerator.release()
+        }
     }
 }
 
@@ -2211,6 +2406,136 @@ private fun reset(offset: MutableState<Float>, scope: CoroutineScope) {
             animationSpec = tween(durationMillis = 300)
         ) { value, _ -> offset.value = value }
     }
+}
+
+// NEXT/QUEUE reveal panel behind a swiped song row. `techStyled` (New Iride UI) adds a thin
+// HUD hairline frame and a passcode-style scramble reveal driven by drag distance (not time):
+// letters lock in left-to-right as `offset` approaches `threshold`, unrevealed letters cycle
+// through random glyphs. Classic Material UI keeps a plain fade with no framing or reveal.
+@Composable
+private fun SwipeRevealPanel(
+    modifier: Modifier,
+    visible: Boolean,
+    alignment: Alignment,
+    background: Color,
+    tint: Color,
+    label: String,
+    style: TextStyle,
+    fontFamily: FontFamily,
+    letterSpacing: TextUnit,
+    techStyled: Boolean,
+    offset: State<Float>,
+    threshold: Float,
+) {
+    val alpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(durationMillis = 160),
+        label = "swipePanelAlpha"
+    )
+    Box(
+        modifier = modifier
+            .graphicsLayer { this.alpha = alpha }
+            .background(background)
+            .then(
+                if (techStyled) {
+                    Modifier.drawBehind {
+                        val strokeWidth = 1.dp.toPx()
+                        val lineColor = tint.copy(alpha = 0.35f)
+                        drawLine(lineColor, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth)
+                        drawLine(lineColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth)
+                    }
+                } else {
+                    Modifier
+                }
+            ),
+        contentAlignment = alignment
+    ) {
+        if (techStyled) {
+            PasscodeSwipeLabel(
+                label = label,
+                visible = visible,
+                offset = offset,
+                threshold = threshold,
+                style = style,
+                fontFamily = fontFamily,
+                letterSpacing = letterSpacing,
+                color = tint,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+        } else {
+            Text(
+                text = label,
+                style = style,
+                fontFamily = fontFamily,
+                fontWeight = FontWeight.Black,
+                letterSpacing = letterSpacing,
+                color = tint,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+        }
+    }
+}
+
+private const val SCRAMBLE_GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+private const val SCRAMBLE_TICK_MS = 45L
+private const val REVEAL_BOOST = 1.25f
+
+// Passcode-style reveal: how many letters are locked follows drag progress (offset/threshold),
+// not a timer, so it reads as "decoding" the further you swipe. Locked letters show the real
+// label; the rest keep re-rolling random glyphs on a fixed tick until they lock too.
+@Composable
+private fun PasscodeSwipeLabel(
+    label: String,
+    visible: Boolean,
+    offset: State<Float>,
+    threshold: Float,
+    style: TextStyle,
+    fontFamily: FontFamily,
+    letterSpacing: TextUnit,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    val reducedMotion = rememberReducedMotion()
+    // Boosted so the full word locks in before the drag reaches the actual commit threshold —
+    // reading "NEXT"/"QUEUE" complete gives the reveal breathing room before release fires.
+    val progress by remember {
+        derivedStateOf { (abs(offset.value) / threshold * REVEAL_BOOST).coerceIn(0f, 1f) }
+    }
+    var tick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(visible, reducedMotion) {
+        if (visible && !reducedMotion) {
+            while (true) {
+                delay(SCRAMBLE_TICK_MS)
+                tick++
+            }
+        } else {
+            tick = 0
+        }
+    }
+    // Reduced motion: no scramble, label reveals instantly at any drag rather than decoding
+    // letter-by-letter — the "crossfade or instant" alternative platform guidelines call for.
+    val lockedCount = if (reducedMotion) {
+        if (progress > 0f) label.length else 0
+    } else {
+        (progress * label.length).toInt().coerceIn(0, label.length)
+    }
+    val displayed = remember(label, lockedCount, tick) {
+        buildString {
+            append(label.take(lockedCount))
+            for (i in lockedCount until label.length) {
+                append(SCRAMBLE_GLYPHS[Random(tick * 31 + i).nextInt(SCRAMBLE_GLYPHS.length)])
+            }
+        }
+    }
+    Text(
+        text = displayed,
+        style = style,
+        fontFamily = fontFamily,
+        fontWeight = FontWeight.Black,
+        letterSpacing = letterSpacing,
+        color = color,
+        modifier = modifier,
+    )
 }
 
 object Icon {

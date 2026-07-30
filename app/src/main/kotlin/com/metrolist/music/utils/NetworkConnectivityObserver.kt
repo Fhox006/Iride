@@ -10,8 +10,9 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Simple NetworkConnectivityObserver based on OuterTune's implementation
@@ -21,20 +22,24 @@ class NetworkConnectivityObserver(context: Context) {
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    private val _networkStatus = Channel<Boolean>(Channel.CONFLATED)
-    val networkStatus = _networkStatus.receiveAsFlow()
+    // StateFlow, not Channel.receiveAsFlow(): a channel-backed flow delivers each element to
+    // exactly one collector, so with several collectors (MusicService, LyricsMenuViewModel,
+    // ListenTogetherClient, App) every status change reached only one of them at random and the
+    // others stayed stuck on their last seen value.
+    private val _networkStatus = MutableStateFlow(true)
+    val networkStatus: StateFlow<Boolean> = _networkStatus.asStateFlow()
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            _networkStatus.trySend(isCurrentlyConnected())
+            _networkStatus.value = isCurrentlyConnected()
         }
 
         override fun onLost(network: Network) {
-            _networkStatus.trySend(isCurrentlyConnected())
+            _networkStatus.value = isCurrentlyConnected()
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
-            _networkStatus.trySend(isCurrentlyConnected())
+            _networkStatus.value = isCurrentlyConnected()
         }
     }
 
@@ -43,23 +48,19 @@ class NetworkConnectivityObserver(context: Context) {
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
             .build()
-        
+
         try {
             connectivityManager.registerNetworkCallback(request, networkCallback)
+            _networkStatus.value = isCurrentlyConnected()
         } catch (e: Exception) {
-            // Fallback: assume connected if registration fails
-            _networkStatus.trySend(true)
+            _networkStatus.value = true
         }
-        
-        // Send initial state
-        val isInitiallyConnected = isCurrentlyConnected()
-        _networkStatus.trySend(isInitiallyConnected)
     }
 
     fun unregister() {
         connectivityManager.unregisterNetworkCallback(networkCallback)
     }
-    
+
     /**
      * Check current connectivity state synchronously
      */

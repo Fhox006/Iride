@@ -9,6 +9,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -78,6 +80,7 @@ import com.metrolist.music.constants.SuggestionItemHeight
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
 import com.metrolist.music.ui.menu.YouTubeArtistMenu
@@ -169,7 +172,9 @@ fun OnlineSearchScreen(
     LazyColumn(
         state = lazyListState,
         contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Bottom).asPaddingValues(),
-        modifier = Modifier.weight(1f),
+        modifier = Modifier
+            .weight(1f)
+            .rubberBandOverscroll(Orientation.Vertical, lazyListState),
     ) {
         if (query.isEmpty() && !isFocused) {
             // === EXPLORE SECTION: moods first, no history ===
@@ -861,24 +866,31 @@ fun SuggestionItem(
                 .clickable(onClick = onClick)
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
     ) {
-        Icon(
-            painterResource(if (online) R.drawable.search else R.drawable.history),
-            contentDescription = null,
-            tint = if (useIrideStyle) Color.White.copy(alpha = 0.5f) else LocalContentColor.current,
-            modifier = Modifier.padding(horizontal = 16.dp).alpha(if (useIrideStyle) 1f else 0.5f),
-        )
+        // New Iride UI: no leading history/search icon repeated on every row (it added noise
+        // without conveying anything useful) — text alone, indented to match the rest of the
+        // iride search rows (chips/search box/list items all start at 20.dp).
+        if (useIrideStyle) {
+            Spacer(modifier = Modifier.width(20.dp))
+        } else {
+            Icon(
+                painterResource(if (online) R.drawable.search else R.drawable.history),
+                contentDescription = null,
+                tint = LocalContentColor.current,
+                modifier = Modifier.padding(horizontal = 16.dp).alpha(0.5f),
+            )
+        }
 
         Text(
             text = query,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = if (useIrideStyle) {
-                MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontSize = 14.sp)
+                MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp)
             } else {
                 MaterialTheme.typography.bodyLarge
             },
-            color = if (useIrideStyle) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
+            color = if (useIrideStyle) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f).padding(end = if (useIrideStyle) 12.dp else 0.dp),
         )
 
         if (!online) {

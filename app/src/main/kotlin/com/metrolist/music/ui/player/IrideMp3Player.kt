@@ -3,7 +3,6 @@ package com.metrolist.music.ui.player
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -128,7 +127,10 @@ import com.metrolist.music.ui.component.UnderlinePill
 import com.metrolist.music.ui.menu.PlayerMenu
 import com.metrolist.music.ui.theme.InterFontFamily
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.ShowMediaInfo
+import com.metrolist.music.ui.utils.pressScale
+import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.utils.makeTimeString
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.first
@@ -140,17 +142,21 @@ import sv.lib.squircleshape.SquircleShape
 internal val IrideMp3BackgroundColor = Color(0xFF0A0A0A)
 private val IrideMp3SurfaceColor = Color(0xFF1C1C1F)
 private val IrideMp3PanelBorderColor = Color.White.copy(alpha = 0.14f)
-private val IrideMp3DimIconColor = Color.White.copy(alpha = 0.55f)
+// Bumped from 0.55 — under direct sunlight/glare the low-alpha icons on the (also lightened)
+// wheel background were washing out to near-invisible.
+private val IrideMp3DimIconColor = Color.White.copy(alpha = 0.75f)
 
-private val IrideMp3WheelCenterColor = Color(0xFF2B2B31)
-private val IrideMp3WheelEdgeColor = Color(0xFF131316)
-private val IrideMp3HoleCenterColor = Color(0xFF111113)
-private val IrideMp3HoleEdgeColor = Color(0xFF060608)
+// Lightened from the original near-black (0xFF2B2B31 / 0xFF131316) — against direct light the
+// wheel read as a flat black disc with no visible depth or icon contrast.
+private val IrideMp3WheelCenterColor = Color(0xFF46464E)
+private val IrideMp3WheelEdgeColor = Color(0xFF232328)
+private val IrideMp3HoleCenterColor = Color(0xFF29292F)
+private val IrideMp3HoleEdgeColor = Color(0xFF141416)
 private val IrideMp3WheelRimBrush = Brush.verticalGradient(
     listOf(
-        Color.White.copy(alpha = 0.26f),
-        Color.White.copy(alpha = 0.09f),
-        Color.White.copy(alpha = 0.03f),
+        Color.White.copy(alpha = 0.38f),
+        Color.White.copy(alpha = 0.16f),
+        Color.White.copy(alpha = 0.08f),
     ),
 )
 private val IrideMp3HoleLipBrush = Brush.verticalGradient(
@@ -161,7 +167,7 @@ private val IrideMp3HoleLipBrush = Brush.verticalGradient(
     ),
 )
 
-private const val IrideMp3CoverWidthFraction = 0.82f
+private const val IrideMp3CoverWidthFraction = 0.78f
 
 // Lifts the control wheel up off the bottom system-gesture strip (see call site) so its bottom
 // "more" zone stays fully tappable on gesture-nav devices.
@@ -221,7 +227,6 @@ fun IrideMp3PlayerContent(
     val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
     var radioActive by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
 
     // Overflow menu trigger, lives in the title row (a flat area outside the circular wheel and
     // outside the lyrics/queue panel) instead of as a wheel zone — the wheel's bottom "more" spot
@@ -245,6 +250,7 @@ fun IrideMp3PlayerContent(
     }
 
     var dragFraction by remember { mutableStateOf<Float?>(null) }
+    val reducedMotion = rememberReducedMotion()
 
     val panelActive = isLyricsActive || isQueueActive
     // Fullscreen only ever applies to lyrics, never queue — queue always stays in its normal
@@ -264,11 +270,6 @@ fun IrideMp3PlayerContent(
         modifier = modifier
             .fillMaxSize()
             .background(IrideMp3BackgroundColor)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = { playerBottomSheetState.collapseSoft() },
-            )
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
     ) {
         Column(
@@ -316,7 +317,7 @@ fun IrideMp3PlayerContent(
 
                 val lyricsAlpha by animateFloatAsState(
                     targetValue = if (isLyricsActive) 1f else 0f,
-                    animationSpec = tween(280, easing = FastOutSlowInEasing),
+                    animationSpec = tween(if (reducedMotion) 0 else IrideMotion.Short, easing = IrideMotion.EaseOutQuart),
                     label = "irideLyricsAlpha",
                 )
                 val currentDragFraction by rememberUpdatedState(dragFraction)
@@ -346,44 +347,47 @@ fun IrideMp3PlayerContent(
                         .alpha(lyricsAlpha)
                         .background(IrideMp3BackgroundColor),
                 ) {
-                    BetterAnimatedGradientBackground(
-                        thumbnail = lyricsBgBitmap,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    Lyrics(
-                        sliderPositionProvider = lyricsSliderPositionProvider,
-                        showLyrics = true,
-                        showPills = false,
-                        // The card itself never expands anymore — real fullscreen is the
-                        // separate FullScreenLyricsDialog below, so this inline copy always
-                        // stays in its normal (non-fullscreen) layout.
-                        isFullScreen = false,
-                        pillsController = lyricsPillController,
-                        // 15% larger than the default in-card size for a more comfortable read —
-                        // scoped to this player only (the fullscreen dialog copy keeps its own size).
-                        textScale = 1.15f,
-                        // Sits a bit higher than the fullscreen copy (top = 34.dp there) —
-                        // this card is small, so lyrics start closer to the top edge instead
-                        // of leaving a big empty gap above the first line.
-                        modifier = Modifier.fillMaxSize().padding(top = 22.dp, start = 12.dp),
-                    )
+                    // Skipped entirely while the fullscreen dialog is up: it draws this exact same
+                    // 4-sprite blurred background plus its own Lyrics copy, so keeping this one
+                    // running underneath doubled the heaviest animation on screen for no visible
+                    // gain (the dialog fully covers it) — that was the actual cause of the laggy
+                    // fullscreen entrance, not the entrance animation itself.
+                    if (!fullScreenActive) {
+                        BetterAnimatedGradientBackground(
+                            thumbnail = lyricsBgBitmap,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        Lyrics(
+                            sliderPositionProvider = lyricsSliderPositionProvider,
+                            showLyrics = true,
+                            showPills = false,
+                            // The card itself never expands anymore — real fullscreen is the
+                            // separate FullScreenLyricsDialog below, so this inline copy always
+                            // stays in its normal (non-fullscreen) layout.
+                            isFullScreen = false,
+                            pillsController = lyricsPillController,
+                            // 15% larger than the default in-card size for a more comfortable read —
+                            // scoped to this player only (the fullscreen dialog copy keeps its own size).
+                            textScale = 1.15f,
+                            // Sits a bit higher than the fullscreen copy (top = 34.dp there) —
+                            // this card is small, so lyrics start closer to the top edge instead
+                            // of leaving a big empty gap above the first line.
+                            modifier = Modifier.fillMaxSize().padding(top = 22.dp, start = 12.dp),
+                        )
+                    }
                 }
 
                 if (isFullScreen && isLyricsActive) {
                     FullScreenLyricsDialog(
                         sliderPositionProvider = lyricsSliderPositionProvider,
                         lyricsBgBitmap = lyricsBgBitmap,
-                        // Same on-screen rect already tracked for the mini-player <-> full-player
-                        // art bridge — this card and the cover art share the same bounds, so it
-                        // doubles as the "grow from here" origin for the expand animation below.
-                        sourceRect = bridgeState?.playerArt,
                         onDismiss = onToggleFullScreen,
                     )
                 }
 
                 val queueAlpha by animateFloatAsState(
                     targetValue = if (isQueueActive) 1f else 0f,
-                    animationSpec = tween(280, easing = FastOutSlowInEasing),
+                    animationSpec = tween(if (reducedMotion) 0 else IrideMotion.Short, easing = IrideMotion.EaseOutQuart),
                     label = "irideQueueAlpha",
                 )
                 Box(
@@ -411,7 +415,7 @@ fun IrideMp3PlayerContent(
                     } else {
                         ((playerBottomSheetState.progress - 0.85f) / 0.15f).coerceIn(0f, 1f)
                     },
-                    animationSpec = tween(200, easing = FastOutSlowInEasing),
+                    animationSpec = tween(if (reducedMotion) 0 else IrideMotion.Quick, easing = IrideMotion.EaseOutQuart),
                     label = "irideFullscreenAlpha",
                 )
                 Row(
@@ -480,54 +484,81 @@ fun IrideMp3PlayerContent(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
-                                .weight(1f, fill = false)
+                                .weight(1f)
                                 .basicMarquee(iterations = 1, initialDelayMillis = 2000),
                         )
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) { onMoreClick() },
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.more_vert),
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                         val favoriteScale = remember { Animatable(1f) }
                         LaunchedEffect(isFavorite) {
-                            favoriteScale.snapTo(0.7f)
-                            favoriteScale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                            if (reducedMotion) {
+                                favoriteScale.snapTo(1f)
+                            } else {
+                                favoriteScale.snapTo(0.7f)
+                                favoriteScale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                            }
                         }
-                        Icon(
-                            painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
-                            contentDescription = null,
-                            tint = if (isFavorite) Color.White else Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier
-                                .size(20.dp)
-                                .graphicsLayer {
-                                    scaleX = favoriteScale.value
-                                    scaleY = favoriteScale.value
-                                }
-                                .clickable { onFavoriteClick() },
-                        )
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.size(36.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
+                                contentDescription = null,
+                                tint = if (isFavorite) Color.White else Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .graphicsLayer {
+                                        scaleX = favoriteScale.value
+                                        scaleY = favoriteScale.value
+                                    }
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                    ) { onFavoriteClick() },
+                            )
+                        }
                     }
                     IrideArtistText(
                         mediaMetadata = mediaMetadata,
                         color = Color(0xFFB8B8B8),
                         fontSize = 12.sp,
                         onArtistClick = onArtistClick,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(10.dp))
 
                 val rawProgress = dragFraction
                     ?: if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
+                // Plain tween, no release bounce — the old scaleY pulse Animatable added a 3-step
+                // spring sequence on every seek that ran concurrently with drag recomposition and
+                // the animated background, and was the main source of visible jank while scrubbing.
                 val progress by animateFloatAsState(
                     targetValue = rawProgress,
-                    animationSpec = tween(if (dragFraction != null) 0 else 450, easing = FastOutSlowInEasing),
+                    animationSpec = tween(if (dragFraction != null || reducedMotion) 0 else IrideMotion.Long, easing = IrideMotion.EaseOutQuart),
                     label = "irideProgress",
                 )
-                val seekPulse = remember { Animatable(1f) }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(5.dp)
-                        .graphicsLayer {
-                            scaleY = seekPulse.value
-                            transformOrigin = TransformOrigin(0.5f, 0.5f)
-                        }
                         .clip(RoundedCornerShape(50))
                         .background(Color.White.copy(alpha = 0.22f))
                         .pointerInput(duration, isListenTogetherGuest) {
@@ -539,14 +570,7 @@ fun IrideMp3PlayerContent(
                                     change.consume()
                                     dragFraction = (change.position.x / size.width).coerceIn(0f, 1f)
                                 }
-                                dragFraction?.let {
-                                    onSeek(it)
-                                    coroutineScope.launch {
-                                        seekPulse.snapTo(1f)
-                                        seekPulse.animateTo(1.3f, tween(180, easing = FastOutSlowInEasing))
-                                        seekPulse.animateTo(1f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow))
-                                    }
-                                }
+                                dragFraction?.let { onSeek(it) }
                                 dragFraction = null
                             }
                         },
@@ -560,7 +584,7 @@ fun IrideMp3PlayerContent(
                     )
                 }
 
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(4.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -581,7 +605,30 @@ fun IrideMp3PlayerContent(
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            // Own flow row instead of an overlay pinned to the wheel's TopCenter — the overlay
+            // approach only avoided the wheel's circle by relying on incidental slack between the
+            // box top and the (size-clamped) circle. On shorter screens that slack shrank to
+            // nothing and the labels sat on top of the wheel's radio zone. Giving this row its
+            // own real height means the wheel below is sized against what's actually left,
+            // guaranteeing no overlap regardless of screen height.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(IrideMp3CoverWidthFraction)
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 8.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                IridePanelLabel(
+                    text = "LYRICS",
+                    isActive = isLyricsActive,
+                    onClick = onLyricsClick,
+                )
+                IridePanelLabel(
+                    text = "QUEUE",
+                    isActive = isQueueActive,
+                    onClick = onQueueClick,
+                )
+            }
 
             BoxWithConstraints(
                 modifier = Modifier
@@ -594,13 +641,18 @@ fun IrideMp3PlayerContent(
                 // clip), pushing the bottom "more" zone past the visible/tappable area — the
                 // three-dot button looked present but taps never landed on it. Clamping to
                 // whatever space is really available keeps every wheel zone reachable.
-                val wheelSize = minOf(260.dp, maxHeight * 0.92f, maxWidth * 0.92f)
+                // Base reference bumped 260 -> 352dp (+35%) per explicit ask: the click wheel
+                // (play/pause/skip/radio) needed to read as clearly bigger, not a marginal bump.
+                // Cover/info/label chrome above was shrunk (IrideMp3CoverWidthFraction 0.90 -> 0.78,
+                // tighter inter-row spacing) to free the vertical budget this needs; the 0.97 clamp
+                // factor still leaves a small margin so the circle doesn't touch the box edges.
+                val wheelSize = minOf(352.dp, maxHeight * 0.97f, maxWidth * 0.97f)
                 val scale = wheelSize / 260.dp
                 val buttonSize = 74.dp * scale
                 val iconSize = 25.dp * scale
                 val skipIconSize = 32.dp * scale
-                val centerButtonSize = 96.dp * scale
-                val centerIconSize = 34.dp * scale
+                val centerButtonSize = 115.dp * scale
+                val centerIconSize = 41.dp * scale
 
                 IrideClickWheel(
                     isPlaying = isPlaying,
@@ -624,24 +676,6 @@ fun IrideMp3PlayerContent(
                     centerIconSize = centerIconSize,
                     modifier = Modifier.align(Alignment.Center),
                 )
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .fillMaxWidth(IrideMp3CoverWidthFraction)
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    IridePanelLabel(
-                        text = "LYRICS",
-                        isActive = isLyricsActive,
-                        onClick = onLyricsClick,
-                    )
-                    IridePanelLabel(
-                        text = "QUEUE",
-                        isActive = isQueueActive,
-                        onClick = onQueueClick,
-                    )
-                }
             }
             // Extra clearance beyond the raw nav-bar inset: on gesture-nav devices the bottom
             // strip is a system gesture zone that eats taps landing in it, and the wheel's bottom
@@ -665,12 +699,10 @@ fun IrideMp3PlayerContent(
 private fun FullScreenLyricsDialog(
     sliderPositionProvider: () -> Long?,
     lyricsBgBitmap: android.graphics.Bitmap?,
-    // On-screen rect (window coordinates) of the small in-card lyrics view this dialog is
-    // expanding from — null falls back to a plain fade-in, no grow animation.
-    sourceRect: Rect?,
     onDismiss: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val reducedMotion = rememberReducedMotion()
     val progress = remember { Animatable(0f) }
     var closing by remember { mutableStateOf(false) }
 
@@ -681,13 +713,21 @@ private fun FullScreenLyricsDialog(
         if (closing) return
         closing = true
         scope.launch {
-            progress.animateTo(0f, tween(220, easing = FastOutSlowInEasing))
+            if (reducedMotion) {
+                progress.snapTo(0f)
+            } else {
+                progress.animateTo(0f, tween(IrideMotion.Short, easing = IrideMotion.EaseOutExpo))
+            }
             onDismiss()
         }
     }
 
     LaunchedEffect(Unit) {
-        progress.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
+        if (reducedMotion) {
+            progress.snapTo(1f)
+        } else {
+            progress.animateTo(1f, tween(IrideMotion.Medium, easing = IrideMotion.EaseOutExpo))
+        }
     }
 
     Dialog(
@@ -719,101 +759,90 @@ private fun FullScreenLyricsDialog(
         }
 
         val pillController = remember { LyricsPillController() }
-        val density = LocalDensity.current
 
-        // BoxWithConstraints resolves maxWidth/maxHeight on the first measure pass — unlike
-        // onGloballyPositioned, no one-frame flash at a wrong (zero) size before the real
-        // fullscreen bounds are known.
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val endRect = remember(maxWidth, maxHeight) {
-                with(density) { Rect(0f, 0f, maxWidth.toPx(), maxHeight.toPx()) }
-            }
-            val startRect = sourceRect ?: endRect
-            val p = progress.value
-            val scaleX = if (endRect.width > 0f) lerp(startRect.width / endRect.width, 1f, p) else 1f
-            val scaleY = if (endRect.height > 0f) lerp(startRect.height / endRect.height, 1f, p) else 1f
-            val translateX = lerp(startRect.left, endRect.left, p) - endRect.left
-            val translateY = lerp(startRect.top, endRect.top, p) - endRect.top
+        // Plain fade + scale-from-center — the previous version morphed scaleX/scaleY/
+        // translateX/translateY from the small in-card rect every frame, computed on top of
+        // an already-heavy blurred background animation underneath (see the inline lyrics Box
+        // above, now skipped while this dialog is open). That combination is what read as
+        // laggy; a flat fade+scale is materially cheaper and still reads as an entrance.
+        val p = progress.value
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = lerp(0.94f, 1f, p)
+                    scaleY = lerp(0.94f, 1f, p)
+                    alpha = p
+                }
+                .background(IrideMp3BackgroundColor),
+        ) {
+            BetterAnimatedGradientBackground(
+                thumbnail = lyricsBgBitmap,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Lyrics(
+                sliderPositionProvider = sliderPositionProvider,
+                showLyrics = true,
+                showPills = false,
+                isFullScreen = true,
+                onExitFullScreen = ::requestClose,
+                pillsController = pillController,
+                modifier = Modifier.fillMaxSize().padding(top = 34.dp, start = 12.dp),
+            )
 
-            Box(
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        this.scaleX = scaleX
-                        this.scaleY = scaleY
-                        transformOrigin = TransformOrigin(0f, 0f)
-                        translationX = translateX
-                        translationY = translateY
-                        alpha = lerp(0.4f, 1f, p)
-                    }
-                    .background(IrideMp3BackgroundColor),
+                    .align(Alignment.TopEnd)
+                    .windowInsetsPadding(WindowInsets.systemBars)
+                    // Lowered a bit from the top edge (was a flat 16.dp) so it doesn't sit
+                    // flush against the status bar strip.
+                    .padding(top = 26.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                BetterAnimatedGradientBackground(
-                    thumbnail = lyricsBgBitmap,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                Lyrics(
-                    sliderPositionProvider = sliderPositionProvider,
-                    showLyrics = true,
-                    showPills = false,
-                    isFullScreen = true,
-                    onExitFullScreen = ::requestClose,
-                    pillsController = pillController,
-                    modifier = Modifier.fillMaxSize().padding(top = 34.dp, start = 12.dp),
-                )
-
-                Row(
+                // Always visible (was gated behind pillController.hasTranslations, so it could
+                // never be tapped to actually *request* a translation) — matches the old
+                // classic player's translate pill, which is always present and just toggles
+                // between "translate" and "revert" depending on hasTranslations.
+                Box(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .windowInsetsPadding(WindowInsets.systemBars)
-                        // Lowered a bit from the top edge (was a flat 16.dp) so it doesn't sit
-                        // flush against the status bar strip.
-                        .padding(top = 26.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(if (pillController.hasTranslations) Color.White.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.14f))
+                        .border(1.dp, IrideMp3PanelBorderColor, CircleShape)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { pillController.translateAction() },
+                        ),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    if (pillController.hasTranslations) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.9f))
-                                .border(1.dp, IrideMp3PanelBorderColor, CircleShape)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = { pillController.translateAction() },
-                                ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.translate),
-                                contentDescription = null,
-                                tint = Color.Black,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.14f))
-                            .border(1.dp, IrideMp3PanelBorderColor, CircleShape)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = { requestClose() },
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.expand_less),
-                            contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.9f),
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
+                    Icon(
+                        painter = painterResource(R.drawable.translate),
+                        contentDescription = null,
+                        tint = if (pillController.hasTranslations) Color.Black else Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.14f))
+                        .border(1.dp, IrideMp3PanelBorderColor, CircleShape)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { requestClose() },
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.expand_less),
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.size(22.dp),
+                    )
                 }
             }
         }
@@ -1261,19 +1290,10 @@ private fun IrideClickWheel(
         }
 
         val playPauseInteraction = remember { MutableInteractionSource() }
-        val playPausePressed by playPauseInteraction.collectIsPressedAsState()
-        val playPauseScale by animateFloatAsState(
-            targetValue = if (playPausePressed) 0.9f else 1f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
-            label = "irideWheelPlayPauseScale",
-        )
         Box(
             modifier = Modifier
                 .size(centerButtonSize)
-                .graphicsLayer {
-                    scaleX = playPauseScale
-                    scaleY = playPauseScale
-                }
+                .pressScale(playPauseInteraction, pressedScale = 0.9f)
                 .clip(CircleShape)
                 .background(
                     Brush.radialGradient(
@@ -1304,6 +1324,10 @@ private fun IrideClickWheel(
             )
         }
 
+        // Drawn last (on top of the center play/pause knob) so these zones win the hit test
+        // in the sliver where the knob's square touch target creeps past its round edge into
+        // the bottom "more" zone — without this, taps near the wheel's center on that zone
+        // were swallowed by the play/pause button and only the outer edge of the button worked.
         // Drawn last (on top of the center play/pause knob) so these zones win the hit test
         // in the sliver where the knob's square touch target creeps past its round edge into
         // the bottom "more" zone — without this, taps near the wheel's center on that zone
@@ -1377,12 +1401,6 @@ private fun BoxScope.WheelZone(
     content: @Composable () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
-        label = "irideWheelZoneScale",
-    )
     Box(
         modifier = Modifier
             .align(alignment)
@@ -1401,10 +1419,7 @@ private fun BoxScope.WheelZone(
         Box(
             modifier = Modifier
                 .size(size)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }
+                .pressScale(interactionSource, pressedScale = 0.92f)
                 .clip(CircleShape),
             contentAlignment = Alignment.Center,
             content = { content() },
@@ -1424,9 +1439,10 @@ private fun IridePanelLabel(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val reducedMotion = rememberReducedMotion()
     val color by animateColorAsState(
         targetValue = if (isActive) Color.White else Color.White.copy(alpha = 0.55f),
-        animationSpec = tween(200, easing = FastOutSlowInEasing),
+        animationSpec = tween(if (reducedMotion) 0 else IrideMotion.Quick, easing = IrideMotion.EaseOutQuart),
         label = "iridePanelLabelColor",
     )
     Text(
@@ -1449,12 +1465,22 @@ private fun IridePanelLabel(
 fun IrideMiniPlayerBridgeOverlay(
     bridgeState: IrideBridgeState,
     sheetProgress: Float,
+    navController: NavController,
+    playerBottomSheetState: BottomSheetState,
     modifier: Modifier = Modifier,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val metadata = mediaMetadata ?: return
-    val eased = sheetProgress.coerceIn(0f, 1f)
+    // Reduced motion: the container-transform morph becomes an instant cut between the mini and
+    // player layouts instead of tracking drag position — snapping `eased` to the nearer endpoint
+    // collapses every lerp below to that endpoint's value with no interpolation drawn.
+    val reducedMotion = rememberReducedMotion()
+    val eased = if (reducedMotion) {
+        if (sheetProgress >= 0.5f) 1f else 0f
+    } else {
+        sheetProgress.coerceIn(0f, 1f)
+    }
     var rootOffset by remember { mutableStateOf(Offset.Zero) }
 
     val textProgress = ((eased - IrideCoverTextSplit) / (1f - IrideCoverTextSplit)).coerceIn(0f, 1f)
@@ -1490,6 +1516,8 @@ fun IrideMiniPlayerBridgeOverlay(
                 end = infoEnd,
                 rootOffset = rootOffset,
                 progress = textProgress,
+                navController = navController,
+                playerBottomSheetState = playerBottomSheetState,
             )
         }
     }
@@ -1504,6 +1532,8 @@ private fun BridgedInfoBlock(
     end: Rect,
     rootOffset: Offset,
     progress: Float,
+    navController: NavController,
+    playerBottomSheetState: BottomSheetState,
 ) {
     val density = LocalDensity.current
     val startLocal = remember(start, rootOffset) { start.translate(-rootOffset.x, -rootOffset.y) }
@@ -1515,20 +1545,85 @@ private fun BridgedInfoBlock(
     val miniTitleColor = MaterialTheme.colorScheme.onSurface
     val miniArtistColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
 
+    val playerConnection = LocalPlayerConnection.current
+    val database = LocalDatabase.current
+    val librarySong by database.song(metadata.id).collectAsState(initial = null)
+    val isEpisode = librarySong?.song?.isEpisode == true
+    val isFavorite = if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
+
+    val menuState = LocalMenuState.current
+    val bottomSheetPageState = LocalBottomSheetPageState.current
+    val onMoreClick = {
+        menuState.show {
+            PlayerMenu(
+                mediaMetadata = metadata,
+                navController = navController,
+                playerBottomSheetState = playerBottomSheetState,
+                onShowDetailsDialog = {
+                    metadata.id.let { id ->
+                        bottomSheetPageState.show { ShowMediaInfo(id) }
+                    }
+                },
+                onDismiss = menuState::dismiss,
+            )
+        }
+    }
+
     Column(
         modifier = Modifier
             .offset { IntOffset(left.roundToInt(), top.roundToInt()) }
             .width(with(density) { width.toDp() }),
     ) {
-        Text(
-            text = metadata.title,
-            color = lerpColor(miniTitleColor, Color.White, progress),
-            fontFamily = InterFontFamily,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = lerpTextUnit(14.sp, 16.sp, progress),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = metadata.title,
+                color = lerpColor(miniTitleColor, Color.White, progress),
+                fontFamily = InterFontFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = lerpTextUnit(14.sp, 16.sp, progress),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (progress > 0.6f && playerConnection != null) {
+                val iconAlpha = ((progress - 0.6f) / 0.4f).coerceIn(0f, 1f)
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .padding(start = 6.dp)
+                        .graphicsLayer { alpha = iconAlpha }
+                        .size(36.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { onMoreClick() },
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.more_vert),
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .graphicsLayer { alpha = iconAlpha }
+                        .size(36.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { playerConnection.service.toggleLike() },
+                ) {
+                    Icon(
+                        painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
+                        contentDescription = null,
+                        tint = if (isFavorite) Color.White else Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+        }
         if (metadata.artists.any { it.name.isNotBlank() }) {
             Text(
                 text = metadata.artists.joinToString(", ") { it.name },

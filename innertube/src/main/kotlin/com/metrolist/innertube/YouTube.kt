@@ -128,6 +128,12 @@ object YouTube {
             innerTube.useLoginForBrowse = value
         }
 
+    /**
+     * Drop every pooled socket. Call after the device changes or regains network so requests
+     * stop being retried over connections that belong to a network that no longer exists.
+     */
+    fun evictConnections() = innerTube.evictConnections()
+
     suspend fun searchSuggestions(query: String): Result<SearchSuggestions> = runCatching {
         val response = innerTube.getSearchSuggestions(WEB_REMIX, query).body<GetSearchSuggestionsResponse>()
         SearchSuggestions(

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -69,6 +70,7 @@ import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
+import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.menu.AlbumMenu
@@ -176,7 +178,9 @@ fun LocalSearchScreen(
             header()
             LazyColumn(
                 state = lazyListState,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .rubberBandOverscroll(Orientation.Vertical, lazyListState),
                 contentPadding =
                     WindowInsets.systemBars
                         .only(WindowInsetsSides.Bottom)
@@ -228,7 +232,9 @@ fun LocalSearchScreen(
 
         LazyColumn(
             state = lazyListState,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .rubberBandOverscroll(Orientation.Vertical, lazyListState),
             contentPadding =
                 WindowInsets.systemBars
                     .only(WindowInsetsSides.Bottom)
