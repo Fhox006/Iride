@@ -6,7 +6,7 @@ A visually-focused YouTube Music client for Android
 
 <br/>
 
-<img src="https://github.com/user-attachments/assets/f44e5ef0-af13-4268-8353-c335e4a1980d" width="320" alt="Screenshot_20260526-230201"/>
+<img width="300" alt="Iride player — retro monospace UI" src="https://github.com/user-attachments/assets/8d1ff52e-de45-4c59-94bc-2cd987e0e1f6" />
 
 <br/><br/>
 
@@ -41,7 +41,7 @@ The project follows a deliberate two-phase approach:
 1. **UX first** — fix, refine, and align all functional and structural aspects inherited from Metrolist before touching the visual layer.
 2. **UI second** — once the UX foundation is solid, redesign the visual identity: typography, colour, motion, and layout.
 
-Right now, the project is in **Phase 1**.
+**Phase 1 (UX) is done.** The app now works the way it should. Development has moved into **Phase 2**: the visual identity is being rebuilt around a **retro monospace look** — Space Mono typography, flat monochrome surfaces, a click-wheel player, and consistent motion across every screen.
 
 ---
 
@@ -49,29 +49,31 @@ Right now, the project is in **Phase 1**.
 
 <table>
   <tr>
-    <td align="center"><img src="https://github.com/user-attachments/assets/f34dcc82-4f86-44ff-be6b-c8b6e3fba7bc" width="200"/></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/07b8b0fa-ce03-4175-88d1-e69e5eb07da0" width="200"/></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/a192df0c-7ffe-4924-a0c2-7efae43e5529" width="200"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/53bad714-6025-44ad-afc6-8e4379e8ef8b" width="180"/><br/><sub><b>Home</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/9d894b7f-e946-458d-a9df-17c2e1c5319c" width="180"/><br/><sub><b>Library</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/92927863-14ee-47ca-9ce8-c07c78b2d9d2" width="180"/><br/><sub><b>Search</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/3aaf1a26-f850-440b-a2ed-d013692c518b" width="180"/><br/><sub><b>Search (detail)</b></sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="https://github.com/user-attachments/assets/93e8f6df-a78b-4f6c-ae88-099dd975683c" width="200"/></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/0391f531-d605-4b12-9ef1-069a95bbbd04" width="200"/></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/21c3a87e-d5bd-4401-839d-2c2aba62fdac" width="200"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/8d1ff52e-de45-4c59-94bc-2cd987e0e1f6" width="180"/><br/><sub><b>Player</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/482bf08d-85e1-47a4-823f-08c43b1e661f" width="180"/><br/><sub><b>Lyrics</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/a3c1129d-c178-4510-8117-e561c7dc0161" width="180"/><br/><sub><b>Artist</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/1fba1367-ceaf-4900-bf3a-d0efefb928aa" width="180"/><br/><sub><b>Album</b></sub></td>
   </tr>
 </table>
 
 ---
 
-## Current Focus — Phase 1: UX
+## Current Focus — Phase 2: UI
 
-The current development effort is focused on addressing all the gaps, inconsistencies, and rough edges inherited from the Metrolist codebase. This includes:
+With the UX foundation solid, work has shifted fully to graphics and style. The app is being refined into a cohesive **retro monospace** identity:
 
-- Fixing navigation flows and screen transitions
-- Resolving layout and interaction inconsistencies
-- Improving state management and edge-case handling
-- Aligning the overall structure with a coherent user experience
+- Space Mono typography across the whole app
+- Flat, monochrome surfaces — no gradients, no noise
+- Click-wheel player and vinyl-peek mini player
+- Consistent enter/exit motion on every screen (Home, Library, Search, Artist, Album, Player)
 
-No cosmetic changes are being introduced at this stage. The goal is to make the app work exactly as it should before making it look exactly as it should.
+This phase is actively in progress — screens are being redesigned and polished one by one.
 
 ---
 
@@ -79,8 +81,8 @@ No cosmetic changes are being introduced at this stage. The goal is to make the 
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| Phase 1 | UX — Fix & refine all Metrolist-inherited issues | 🔄 In progress |
-| Phase 2 | UI — Visual redesign (typography, colour, motion, layout) | ⏳ Planned |
+| Phase 1 | UX — Fix & refine all Metrolist-inherited issues | ✅ Done |
+| Phase 2 | UI — Retro monospace visual redesign (typography, colour, motion, layout) | 🔄 In progress |
 
 ---
 
@@ -121,22 +123,6 @@ Requires Android Studio (latest stable) and JDK 17+.
 <div align="center">
 
 **Disclaimer:** This project is not affiliated with, funded, authorized, endorsed by, or in any way associated with YouTube, Google LLC, or any of their affiliates and subsidiaries. All trademarks belong to their respective owners.
-
-
-
-FOTO HOME MAGE: <img width="1080" height="2424" alt="Screenshot_20260731-002139" src="https://github.com/user-attachments/assets/53bad714-6025-44ad-afc6-8e4379e8ef8b" />
-FOTO LIBRERIA: <img width="1080" height="2424" alt="Screenshot_20260731-002153" src="https://github.com/user-attachments/assets/9d894b7f-e946-458d-a9df-17c2e1c5319c" />
-FOTO RICERCA: <img width="1080" height="2424" alt="Screenshot_20260731-002203" src="https://github.com/user-attachments/assets/92927863-14ee-47ca-9ce8-c07c78b2d9d2" />
-FOTO RICERCA SPECIFICA: <img width="1080" height="2424" alt="Screenshot_20260731-002200" src="https://github.com/user-attachments/assets/3aaf1a26-f850-440b-a2ed-d013692c518b" />
-FOTO PLAYER: <img width="1080" height="2424" alt="Screenshot_20260731-002318" src="https://github.com/user-attachments/assets/8d1ff52e-de45-4c59-94bc-2cd987e0e1f6" />
-FOTO LYRICS: <img width="1080" height="2424" alt="Screenshot_20260731-002245" src="https://github.com/user-attachments/assets/482bf08d-85e1-47a4-823f-08c43b1e661f" />
-FOTO PAGINA ARTISTI: <img width="1080" height="2424" alt="Screenshot_20260731-002353 (1)" src="https://github.com/user-attachments/assets/a3c1129d-c178-4510-8117-e561c7dc0161" />
-FOTO ALBUM: <img width="1080" height="2424" alt="Screenshot_20260731-002443" src="https://github.com/user-attachments/assets/1fba1367-ceaf-4900-bf3a-d0efefb928aa" />
-
-
-
-
-
 
 *Personal fork maintained by a Design student at Politecnico di Torino.*
 
