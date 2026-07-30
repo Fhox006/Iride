@@ -120,6 +120,7 @@ import androidx.media3.exoplayer.offline.Download.STATE_QUEUED
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
+import coil3.compose.rememberConstraintsSizeResolver
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.metrolist.innertube.YouTube
@@ -189,6 +190,16 @@ val LocalItemHorizontalPadding = compositionLocalOf { true }
  * peeking disc will overlap the next card's cover.
  */
 const val VinylPeekFraction = 0.28f
+
+/**
+ * Edge length asked of the artwork CDN for feed thumbnails.
+ *
+ * Sized for the largest surface [ItemThumbnail] draws (grid tiles top out around 128dp, plus the
+ * wider Home carousel cards) and deliberately kept under 480: [resize] treats anything from there
+ * up as a request for i.ytimg.com's `maxresdefault`, which is both larger than any tile needs and
+ * missing entirely for a good number of videos.
+ */
+private const val ThumbnailRequestSize = 448
 
 /**
  * A vinyl record, printed with the album's own cover art, sitting behind an album square and
@@ -833,7 +844,8 @@ fun ArtistListItem(
     thumbnailContent = {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
-                .data(artist.artist.thumbnailUrl?.resize(900, 900))
+                // 900px of avatar for a 48dp circle was ~18x the pixels this ever draws.
+                .data(artist.artist.thumbnailUrl?.resize(192, 192))
                 .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
@@ -867,7 +879,7 @@ fun ArtistGridItem(
     thumbnailContent = {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
-                .data(artist.artist.thumbnailUrl?.resize(900, 900))
+                .data(artist.artist.thumbnailUrl?.resize(ThumbnailRequestSize, ThumbnailRequestSize))
                 .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
@@ -1829,9 +1841,17 @@ fun ItemThumbnail(
         }
 
         if (albumIndex == null) {
+            // Every call site hands this its raw thumbnail URL, and rememberAsyncImagePainter —
+            // unlike AsyncImage — installs no size resolver, so Coil defaults to SizeResolver
+            // .ORIGINAL: each row of every feed was downloading and decoding full-resolution
+            // artwork (lh3 originals run 1000-2400px) to draw a 48-128dp tile. Asking the CDN for
+            // ThumbnailRequestSize cuts the bytes, and the constraints resolver decodes to the
+            // size actually on screen so a 48dp row doesn't hold a 448px bitmap in the cache.
+            val sizeResolver = rememberConstraintsSizeResolver()
             val painter = rememberAsyncImagePainter(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(thumbnailUrl)
+                    .data(thumbnailUrl?.resize(ThumbnailRequestSize, ThumbnailRequestSize))
+                    .size(sizeResolver)
                     .crossfade(200)
                     .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                     .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
@@ -1868,6 +1888,7 @@ fun ItemThumbnail(
                 contentScale = if (shape == CircleShape || cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxSize()
+                    .then(sizeResolver)
                     .clip(shape)
             )
         }

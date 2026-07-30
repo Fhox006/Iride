@@ -6,7 +6,10 @@
         <item name="android:windowMinWidthMinor">100%</item>
         <item name="android:windowMinWidthMajor">100%</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="android:windowBackground">#ffffff</item>
+        <!-- Matches the app's own surface (dark by default, and pure black under the New Iride
+             UI scheme). API 31+ derives the splash background from this too, so a cold start goes
+             splash -> app on one colour instead of flashing white first. -->
+        <item name="android:windowBackground">#000000</item>
         <item name="android:enforceNavigationBarContrast" tools:ignore="NewApi">false</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>

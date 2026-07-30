@@ -150,8 +150,6 @@ private val IrideMp3DimIconColor = Color.White.copy(alpha = 0.75f)
 // wheel read as a flat black disc with no visible depth or icon contrast.
 private val IrideMp3WheelCenterColor = Color(0xFF46464E)
 private val IrideMp3WheelEdgeColor = Color(0xFF232328)
-private val IrideMp3HoleCenterColor = Color(0xFF29292F)
-private val IrideMp3HoleEdgeColor = Color(0xFF141416)
 private val IrideMp3WheelRimBrush = Brush.verticalGradient(
     listOf(
         Color.White.copy(alpha = 0.38f),
@@ -347,12 +345,13 @@ fun IrideMp3PlayerContent(
                         .alpha(lyricsAlpha)
                         .background(IrideMp3BackgroundColor),
                 ) {
-                    // Skipped entirely while the fullscreen dialog is up: it draws this exact same
-                    // 4-sprite blurred background plus its own Lyrics copy, so keeping this one
-                    // running underneath doubled the heaviest animation on screen for no visible
-                    // gain (the dialog fully covers it) — that was the actual cause of the laggy
-                    // fullscreen entrance, not the entrance animation itself.
-                    if (!fullScreenActive) {
+                    // Skipped entirely while the fullscreen dialog is up (see above) and, more
+                    // importantly, unmounted whenever the panel is fully hidden: rememberInfiniteTransition
+                    // keeps redrawing the Canvas (120.dp blur + 4 rotating full-size sprite draws)
+                    // every frame for as long as it stays composed, alpha=0 does not stop that —
+                    // leaving it always mounted meant this heaviest animation on screen ran
+                    // continuously for the whole player session, not just while LYRICS was open.
+                    if (!fullScreenActive && (isLyricsActive || lyricsAlpha > 0f)) {
                         BetterAnimatedGradientBackground(
                             thumbnail = lyricsBgBitmap,
                             modifier = Modifier.fillMaxSize(),
@@ -615,6 +614,7 @@ fun IrideMp3PlayerContent(
                 modifier = Modifier
                     .fillMaxWidth(IrideMp3CoverWidthFraction)
                     .align(Alignment.CenterHorizontally)
+                    .padding(horizontal = 6.dp)
                     .padding(top = 8.dp, bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -1295,11 +1295,7 @@ private fun IrideClickWheel(
                 .size(centerButtonSize)
                 .pressScale(playPauseInteraction, pressedScale = 0.9f)
                 .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        listOf(IrideMp3HoleCenterColor, IrideMp3HoleEdgeColor),
-                    ),
-                )
+                .background(IrideMp3BackgroundColor)
                 .border(1.dp, IrideMp3HoleLipBrush, CircleShape)
                 .clickable(
                     interactionSource = playPauseInteraction,

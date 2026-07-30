@@ -14,7 +14,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.os.SystemClock
 import android.view.View
+import android.view.ViewTreeObserver
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -24,6 +26,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.EaseInOut
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -247,6 +250,7 @@ class MainActivity : ComponentActivity() {
         private const val ACTION_LIBRARY = "com.metrolist.music.action.LIBRARY"
         const val ACTION_RECOGNITION = "com.metrolist.music.action.RECOGNITION"
         const val EXTRA_AUTO_START_RECOGNITION = "auto_start_recognition"
+        private const val FIRST_FRAME_HOLD_TIMEOUT_MS = 200L
     }
 
     @Inject
@@ -457,6 +461,8 @@ class MainActivity : ComponentActivity() {
                 }
         }
 
+        holdFirstFrameUntilReady()
+
         setContent {
             IrideApp(
                 latestVersionName = latestVersionName,
@@ -467,6 +473,43 @@ class MainActivity : ComponentActivity() {
                 syncUtils = syncUtils,
             )
         }
+    }
+
+    /**
+     * Holds the very first frame back so the app is published with its layout already settled
+     * against the real window insets, rather than publishing one laid out against a 0dp navigation
+     * bar and visibly re-laying the mini player out when the insets land.
+     *
+     * Insets are dispatched before the first measure/layout, but the composition reading them
+     * re-runs after it — so the second traversal is the first whose layout is settled. That is the
+     * entire wait: roughly one frame, not a fixed delay. Composition, measure and layout keep
+     * running throughout; only the publish waits, which is what the platform's splash handoff is
+     * for. The deadline is a safety net for a device that never produces a second traversal.
+     *
+     * Deliberately NOT waiting on the MusicService binding: that used to matter only because
+     * LocalPlayerConnection was a static CompositionLocal whose null -> instance flip recomposed
+     * the world. With that fixed the bind is invisible, and waiting on it just held the launch —
+     * and everything downstream of it, artwork included — for hundreds of milliseconds.
+     */
+    private fun holdFirstFrameUntilReady() {
+        val content = findViewById<View>(android.R.id.content)
+        val deadline = SystemClock.uptimeMillis() + FIRST_FRAME_HOLD_TIMEOUT_MS
+        var traversals = 0
+        content.viewTreeObserver.addOnPreDrawListener(
+            object : ViewTreeObserver.OnPreDrawListener {
+                override fun onPreDraw(): Boolean {
+                    val ready = ++traversals >= 2 || SystemClock.uptimeMillis() >= deadline
+                    if (ready) {
+                        content.viewTreeObserver.removeOnPreDrawListener(this)
+                    } else {
+                        // Guarantees the next traversal actually happens instead of waiting on an
+                        // unrelated invalidation.
+                        content.postInvalidateOnAnimation()
+                    }
+                    return ready
+                }
+            },
+        )
     }
 
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -595,9 +638,19 @@ class MainActivity : ComponentActivity() {
         var targetThemeColor by rememberSaveable(stateSaver = ColorSaver) {
             mutableStateOf(selectedThemeColor)
         }
+        // The seed color feeds rememberDynamicColorScheme, which regenerates the entire Material
+        // palette on every distinct value — so tweening the seed means ~36 full palette builds, and
+        // every composable reading MaterialTheme recomposes with each one. On a cold start that
+        // lands exactly on top of first layout (the artwork color is extracted right as the service
+        // binds). Snap to the first color instead; only later track changes are worth animating.
+        var animateThemeColor by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            delay(1200)
+            animateThemeColor = true
+        }
         val themeColor by animateColorAsState(
             targetValue = targetThemeColor,
-            animationSpec = tween(durationMillis = 600),
+            animationSpec = if (animateThemeColor) tween(durationMillis = 600) else snap(),
             label = "themeColor"
         )
         val themeColorCache = remember { LinkedHashMap<String, Color>(21, 0.75f, true) }
@@ -1126,6 +1179,18 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                // Remembered rather than rebuilt inline: a fresh instance on every recomposition of
+                // this function is a new value for the local, which recomposes every
+                // TopNavigationBar in the app (each tab root renders its own) for changes that have
+                // nothing to do with navigation.
+                val topNavBarController = remember(navigationItems, currentRoute, onNavItemClick) {
+                    TopNavBarController(
+                        navigationItems = navigationItems,
+                        currentRoute = currentRoute,
+                        onItemClick = onNavItemClick,
+                    )
+                }
+
                 CompositionLocalProvider(
                     LocalDatabase provides database,
                     LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
@@ -1135,11 +1200,7 @@ class MainActivity : ComponentActivity() {
                     LocalShimmerTheme provides ShimmerTheme,
                     LocalSyncUtils provides syncUtils,
                     LocalListenTogetherManager provides listenTogetherManager,
-                    LocalTopNavBarController provides TopNavBarController(
-                        navigationItems = navigationItems,
-                        currentRoute = currentRoute,
-                        onItemClick = onNavItemClick,
-                    ),
+                    LocalTopNavBarController provides topNavBarController,
                 ) {
                     // New Iride UI: player "curtain" mounted first (behind everything) as a fixed,
                     // full-screen layer. The app content below (Scaffold) sits on top of it and
@@ -1771,7 +1832,13 @@ class MainActivity : ComponentActivity() {
 }
 
 val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }
-val LocalPlayerConnection = staticCompositionLocalOf<PlayerConnection?> { error("No PlayerConnection provided") }
+// Deliberately NOT static: this one is the only app-wide local whose value actually changes at
+// runtime — it flips null -> instance the moment MusicService binds, a few hundred ms into a cold
+// start. A staticCompositionLocalOf invalidates its entire subtree unconditionally on any change,
+// so that single flip used to tear down and recompose the whole UI mid-launch (nav bar, feed and
+// mini player all blinking out and back). A regular compositionLocalOf recomposes only the
+// surfaces that actually read the connection.
+val LocalPlayerConnection = compositionLocalOf<PlayerConnection?> { error("No PlayerConnection provided") }
 val LocalPlayerAwareWindowInsets = compositionLocalOf<WindowInsets> { error("No WindowInsets provided") }
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }

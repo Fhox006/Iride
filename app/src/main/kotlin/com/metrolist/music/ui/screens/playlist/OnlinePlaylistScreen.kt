@@ -467,6 +467,12 @@ fun OnlinePlaylistScreen(
         }
     }
 
+    // Two boxes, not one, exactly like AlbumScreen: the frosted top bar *samples* the backdrop
+    // layer, so it must not be drawn inside the Box that records it. Nested, the bar's drawBehind
+    // re-enters frostBackdrop.content (drawLayer of a RenderNode that is still mid-record) and the
+    // platform throws — which is why the playlist screens crashed the moment the bar's glass turned
+    // on (progress > 0) while the album screen never did.
+    Box(modifier = Modifier.fillMaxSize()) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -722,6 +728,9 @@ fun OnlinePlaylistScreen(
                 }
             }
         }
+
+        }
+        // --- everything below is a sibling of the recorded content, never inside it ---
 
         val topBarNavigationIcon: @Composable () -> Unit = {
             IconButton(

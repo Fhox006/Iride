@@ -17,6 +17,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import com.metrolist.music.extensions.toEnum
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -27,18 +28,35 @@ import kotlin.properties.ReadOnlyProperty
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-operator fun <T> DataStore<Preferences>.get(key: Preferences.Key<T>): T? =
-    runBlocking(Dispatchers.IO) {
-        data.first()[key]
+/**
+ * Latest emitted preferences, kept current by [keepPreferencesWarm].
+ *
+ * Every `rememberPreference` / `rememberEnumPreference` seeds itself with a synchronous read, and
+ * the first composition of the app performs dozens of them — MainActivity, IrideTheme, HomeScreen
+ * and each of its shelves. Without this snapshot each of those was a `runBlocking(IO)` round trip
+ * on the main thread while it was assembling the first frame.
+ */
+@Volatile
+private var preferencesSnapshot: Preferences? = null
+
+/** Starts mirroring this store into [preferencesSnapshot]. Call once, at process start. */
+fun DataStore<Preferences>.keepPreferencesWarm(scope: CoroutineScope) {
+    scope.launch(Dispatchers.IO) {
+        data.collect { preferencesSnapshot = it }
     }
+}
+
+private fun DataStore<Preferences>.snapshot(): Preferences =
+    preferencesSnapshot ?: runBlocking(Dispatchers.IO) {
+        data.first().also { preferencesSnapshot = it }
+    }
+
+operator fun <T> DataStore<Preferences>.get(key: Preferences.Key<T>): T? = snapshot()[key]
 
 fun <T> DataStore<Preferences>.get(
     key: Preferences.Key<T>,
     defaultValue: T,
-): T =
-    runBlocking(Dispatchers.IO) {
-        data.first()[key] ?: defaultValue
-    }
+): T = snapshot()[key] ?: defaultValue
 
 fun <T> preference(
     context: Context,

@@ -79,7 +79,8 @@ fun Modifier.frostedTopBarBackground(
 ): Modifier = drawBehind {
     val p = progress.coerceIn(0f, 1f)
     if (p <= 0f) return@drawBehind
-    if (backdrop != null) {
+    val contentSize = backdrop?.content?.size
+    if (backdrop != null && contentSize != null && contentSize.width > 0 && contentSize.height > 0) {
         val blurred = backdrop.blurred
         // Opaque base first: the screen already painted itself sharply under this bar, and the
         // blurred copy is transparent wherever the content was, so without this the sharp original
@@ -88,8 +89,10 @@ fun Modifier.frostedTopBarBackground(
         // Record at the content's full size so the blur can pull in pixels from just below the bar,
         // then clip to the bar — otherwise the bottom edge samples nothing and washes out.
         blurred.alpha = p
-        blurred.record(size = backdrop.content.size) { drawLayer(backdrop.content) }
+        blurred.record(size = contentSize) { drawLayer(backdrop.content) }
         clipRect { drawLayer(blurred) }
+    } else {
+        drawRect(barColor, alpha = p)
     }
     drawRect(barColor, alpha = p * if (backdrop != null) FROST_SCRIM_ALPHA else FROST_SCRIM_ALPHA_NO_BLUR)
     val sw = 1.dp.toPx()

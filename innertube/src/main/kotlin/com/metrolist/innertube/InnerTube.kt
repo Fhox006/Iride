@@ -99,10 +99,16 @@ class InnerTube {
                 // Connection pool settings for better connection reuse
                 connectionPool(this@InnerTube.connectionPool)
 
-                // Timeout configurations
+                // Timeout configurations. Muzza (this fork's upstream sibling) leaves these at
+                // OkHttp's own defaults (10s connect/read/write) and never gets stuck after a
+                // network switch. A pooled socket left over from a dead network still opens the
+                // TCP connection fine (short connectTimeout catches that) but then hangs on the
+                // read waiting for bytes that never arrive; a 60s read timeout meant every retry
+                // attempt (withRetry does 3) could hang up to 60s each, so browse/library/lyrics
+                // calls looked permanently stuck for up to ~3 minutes after resume/reconnect.
                 connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
                 
                 // Enable HTTP/2 for better performance
                 protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))
@@ -134,11 +140,11 @@ class InnerTube {
             }
         }
 
-        // Request timeout configuration
+        // Request timeout configuration (mirrors the OkHttp engine timeouts above)
         install(HttpTimeout) {
-            requestTimeoutMillis = 60000
+            requestTimeoutMillis = 20000
             connectTimeoutMillis = 10000
-            socketTimeoutMillis = 60000
+            socketTimeoutMillis = 15000
         }
 
         defaultRequest {

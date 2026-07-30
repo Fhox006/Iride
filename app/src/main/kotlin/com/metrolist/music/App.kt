@@ -36,6 +36,7 @@ import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
+import com.metrolist.music.utils.keepPreferencesWarm
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -77,6 +78,9 @@ class App :
 
         // Load the on-disk genre-tag cache used by playlist filter pills
         GenreProvider.init(this)
+
+        // Mirror the preferences into memory so composition never blocks on a disk read.
+        dataStore.keepPreferencesWarm(applicationScope)
 
         // Warm the New Iride UI preference before setContent() ever runs (see companion doc).
         topNavigationBarEnabledCache = dataStore.get(TopNavigationBarKey, true)
