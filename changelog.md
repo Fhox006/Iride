@@ -1,3 +1,20 @@
+## 0.1.0-alpha20
+
+### New features
+
+- **Playlist reorder**: drag to reorder songs in playlists, with a dedicated reorder mode (menu entry + morphing button) and instant response (fixed a per-row blocking read that caused stutter); auto playlists (favorites, most played, etc.) now support a custom manual order too
+- **Artist discography screen**: browse an artist's full catalog beyond the top shelves
+- **New release notifications**: Library Artists shows "+N" badges for new releases (title total + per-artist), auto-clears when you open the artist's profile, subtracts songs you've already played, and suggests artists you listen to but haven't followed
+
+### Improvements
+
+- Consistent entrance motion (fade + reveal) now applied across Artist, Album, Home and Library screens for the New Iride UI
+- Playlist screen (New Iride UI) unified with the Album/Artist top bar style, with a new play/pause control panel and gradient background
+- Player: rebalanced cover and control wheel sizing for better fit and spacing
+- Fixed a rare cold-start glitch where the mini player briefly showed placeholder text before the real song info loaded
+- Fixed the app getting stuck showing "offline" until force-closed even after the network came back; added a manual refresh button to Library
+- Fixed taps being swallowed by the player sheet in some cases, and the guess-the-song game round switch occasionally showing the wrong round
+
 ## 0.1.0-alpha19
 
 ### New look
