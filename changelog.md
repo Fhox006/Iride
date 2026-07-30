@@ -1,3 +1,14 @@
+## 0.1.0-alpha21
+
+### Improvements
+
+- Update popup now matches the New Iride UI monospace look (Space Mono, flat monochrome, when the toggle is on)
+- Cold start: fixed a black/white flash before the app's real theme takes over, and a re-layout jump caused by the nav bar insets landing after the first frame
+- Fixed a crash on some playlist screens when the frosted top bar's glass effect turned on
+- Feed thumbnails now request only the resolution they actually draw, cutting network and memory use
+- Network requests time out faster after a lost connection so browse/library/lyrics don't look stuck for minutes
+- Player: click-wheel center button simplified to match the surrounding wheel; lyrics background animation now only runs while lyrics are visible, cutting player battery/CPU use
+
 ## 0.1.0-alpha20
 
 ### New features
