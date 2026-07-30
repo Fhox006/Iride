@@ -6,7 +6,7 @@ A visually-focused YouTube Music client for Android
 
 <br/>
 
-<img width="300" alt="Iride player — retro monospace UI" src="https://github.com/user-attachments/assets/8d1ff52e-de45-4c59-94bc-2cd987e0e1f6" />
+<img width="300" alt="Iride home — retro monospace UI" src="https://github.com/user-attachments/assets/53bad714-6025-44ad-afc6-8e4379e8ef8b" />
 
 <br/><br/>
 
@@ -52,7 +52,7 @@ The project follows a deliberate two-phase approach:
     <td align="center"><img src="https://github.com/user-attachments/assets/53bad714-6025-44ad-afc6-8e4379e8ef8b" width="180"/><br/><sub><b>Home</b></sub></td>
     <td align="center"><img src="https://github.com/user-attachments/assets/9d894b7f-e946-458d-a9df-17c2e1c5319c" width="180"/><br/><sub><b>Library</b></sub></td>
     <td align="center"><img src="https://github.com/user-attachments/assets/92927863-14ee-47ca-9ce8-c07c78b2d9d2" width="180"/><br/><sub><b>Search</b></sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/3aaf1a26-f850-440b-a2ed-d013692c518b" width="180"/><br/><sub><b>Search (detail)</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/3aaf1a26-f850-440b-a2ed-d013692c518b" width="180"/><br/><sub><b>Search+</b></sub></td>
   </tr>
   <tr>
     <td align="center"><img src="https://github.com/user-attachments/assets/8d1ff52e-de45-4c59-94bc-2cd987e0e1f6" width="180"/><br/><sub><b>Player</b></sub></td>
