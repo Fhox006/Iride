@@ -10,15 +10,13 @@ A visually-focused YouTube Music client for Android
 
 <br/><br/>
 
-**The first pre-release is out — v0.1.0-alpha05**
-
 Alpha build. Rough edges, missing pieces, breaking changes ahead.  
 Worth trying if you're curious.
 
 <br/>
 
-<a href="https://github.com/Fhox006/Iride/releases/download/v0.1.0-alpha05/Iride.apk">
-  <img src="https://img.shields.io/badge/↓_Download_APK-iride.apk_·_v0.1.0--alpha05-4361ee?style=for-the-badge" alt="Download iride.apk"/>
+<a href="https://github.com/Fhox006/Iride/releases/latest">
+  <img src="https://img.shields.io/github/v/release/Fhox006/Iride?include_prereleases&style=for-the-badge&labelColor=0d1117&color=4361ee&label=%E2%86%93%20Download%20latest%20APK" alt="Download latest APK"/>
 </a>
 
 <br/><br/>
@@ -49,16 +47,16 @@ The project follows a deliberate two-phase approach:
 
 <table>
   <tr>
-    <td align="center"><img src="https://github.com/user-attachments/assets/53bad714-6025-44ad-afc6-8e4379e8ef8b" width="180"/><br/><sub><b>Home</b></sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/9d894b7f-e946-458d-a9df-17c2e1c5319c" width="180"/><br/><sub><b>Library</b></sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/92927863-14ee-47ca-9ce8-c07c78b2d9d2" width="180"/><br/><sub><b>Search</b></sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/3aaf1a26-f850-440b-a2ed-d013692c518b" width="180"/><br/><sub><b>Search+</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/53bad714-6025-44ad-afc6-8e4379e8ef8b" width="210"/><br/><sub><b>Home</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/9d894b7f-e946-458d-a9df-17c2e1c5319c" width="210"/><br/><sub><b>Library</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/92927863-14ee-47ca-9ce8-c07c78b2d9d2" width="210"/><br/><sub><b>Search</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/3aaf1a26-f850-440b-a2ed-d013692c518b" width="210"/><br/><sub><b>Search+</b></sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="https://github.com/user-attachments/assets/8d1ff52e-de45-4c59-94bc-2cd987e0e1f6" width="180"/><br/><sub><b>Player</b></sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/482bf08d-85e1-47a4-823f-08c43b1e661f" width="180"/><br/><sub><b>Lyrics</b></sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/a3c1129d-c178-4510-8117-e561c7dc0161" width="180"/><br/><sub><b>Artist</b></sub></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/1fba1367-ceaf-4900-bf3a-d0efefb928aa" width="180"/><br/><sub><b>Album</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/8d1ff52e-de45-4c59-94bc-2cd987e0e1f6" width="210"/><br/><sub><b>Player</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/482bf08d-85e1-47a4-823f-08c43b1e661f" width="210"/><br/><sub><b>Lyrics</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/a3c1129d-c178-4510-8117-e561c7dc0161" width="210"/><br/><sub><b>Artist</b></sub></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/1fba1367-ceaf-4900-bf3a-d0efefb928aa" width="210"/><br/><sub><b>Album</b></sub></td>
   </tr>
 </table>
 
