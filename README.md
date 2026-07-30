@@ -122,6 +122,22 @@ Requires Android Studio (latest stable) and JDK 17+.
 
 **Disclaimer:** This project is not affiliated with, funded, authorized, endorsed by, or in any way associated with YouTube, Google LLC, or any of their affiliates and subsidiaries. All trademarks belong to their respective owners.
 
+
+
+FOTO HOME MAGE: <img width="1080" height="2424" alt="Screenshot_20260731-002139" src="https://github.com/user-attachments/assets/53bad714-6025-44ad-afc6-8e4379e8ef8b" />
+FOTO LIBRERIA: <img width="1080" height="2424" alt="Screenshot_20260731-002153" src="https://github.com/user-attachments/assets/9d894b7f-e946-458d-a9df-17c2e1c5319c" />
+FOTO RICERCA: <img width="1080" height="2424" alt="Screenshot_20260731-002203" src="https://github.com/user-attachments/assets/92927863-14ee-47ca-9ce8-c07c78b2d9d2" />
+FOTO RICERCA SPECIFICA: <img width="1080" height="2424" alt="Screenshot_20260731-002200" src="https://github.com/user-attachments/assets/3aaf1a26-f850-440b-a2ed-d013692c518b" />
+FOTO PLAYER: <img width="1080" height="2424" alt="Screenshot_20260731-002318" src="https://github.com/user-attachments/assets/8d1ff52e-de45-4c59-94bc-2cd987e0e1f6" />
+FOTO LYRICS: <img width="1080" height="2424" alt="Screenshot_20260731-002245" src="https://github.com/user-attachments/assets/482bf08d-85e1-47a4-823f-08c43b1e661f" />
+FOTO PAGINA ARTISTI: <img width="1080" height="2424" alt="Screenshot_20260731-002353 (1)" src="https://github.com/user-attachments/assets/a3c1129d-c178-4510-8117-e561c7dc0161" />
+FOTO ALBUM: <img width="1080" height="2424" alt="Screenshot_20260731-002443" src="https://github.com/user-attachments/assets/1fba1367-ceaf-4900-bf3a-d0efefb928aa" />
+
+
+
+
+
+
 *Personal fork maintained by a Design student at Politecnico di Torino.*
 
 </div>
