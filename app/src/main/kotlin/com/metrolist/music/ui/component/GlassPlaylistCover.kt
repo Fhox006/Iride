@@ -35,6 +35,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.metrolist.music.constants.IrideBaseBorderWidth
 import com.metrolist.music.ui.utils.rememberReducedMotion
 
 /**
@@ -142,7 +143,7 @@ fun GlassPlaylistCover(
                             start = Offset.Zero,
                             end = Offset(340f, 340f),
                         ),
-                    ).border(1.dp, Color.White.copy(alpha = 0.28f), shape),
+                    ).border(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f), shape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

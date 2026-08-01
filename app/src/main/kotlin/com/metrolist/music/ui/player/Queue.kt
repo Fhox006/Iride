@@ -54,6 +54,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -107,6 +109,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -131,9 +134,12 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.ActionPromptDialog
 import com.metrolist.music.ui.component.BottomSheet
 import com.metrolist.music.ui.component.BottomSheetState
+import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.MediaMetadataListItem
+import com.metrolist.music.ui.component.UnderlinePill
+import com.metrolist.music.ui.component.rememberGenreFilter
 import com.metrolist.music.ui.menu.PlayerMenu
 import com.metrolist.music.ui.menu.QueueMenu
 import com.metrolist.music.ui.menu.SelectionMediaMetadataMenu
@@ -1300,6 +1306,55 @@ private sealed class QueueSlot(val key: Any) {
     class Automix(val item: androidx.media3.common.MediaItem) : QueueSlot("inline_automix_${item.mediaId}")
 }
 
+// Auto-Mix filter chips. ALL/POPULAR pass the list through unfiltered (the API already
+// returns it in relevance order). DISCOVER/FAMILIAR check the artist against what's already
+// in this listening session (history + queue), no network needed. PARTY/WORKOUT/the trailing
+// genre chip match against real tags from GenreProvider (Last.fm/iTunes) — Iride has no
+// genre data anywhere else, so this is the only honest source; there is no "workout" tag,
+// so it's approximated from adjacent high-energy genre tags rather than faked.
+// Not private: IrideMp3Player.kt's queue preview reuses the exact same filter set/logic
+// instead of duplicating it, so the two UP NEXT surfaces (old + New Iride UI player) can't drift.
+const val AUTOMIX_FILTER_ALL = "ALL"
+const val AUTOMIX_FILTER_POPULAR = "POPULAR"
+const val AUTOMIX_FILTER_DISCOVER = "DISCOVER"
+const val AUTOMIX_FILTER_FAMILIAR = "FAMILIAR"
+const val AUTOMIX_FILTER_PARTY = "PARTY"
+const val AUTOMIX_FILTER_WORKOUT = "WORKOUT"
+const val AUTOMIX_FILTER_DEEP_CUTS = "DEEP CUTS"
+val AUTOMIX_STATIC_FILTERS = listOf(
+    AUTOMIX_FILTER_ALL, AUTOMIX_FILTER_POPULAR, AUTOMIX_FILTER_DISCOVER, AUTOMIX_FILTER_FAMILIAR,
+    AUTOMIX_FILTER_PARTY, AUTOMIX_FILTER_WORKOUT, AUTOMIX_FILTER_DEEP_CUTS,
+)
+private val PARTY_TAG_KEYWORDS = listOf("dance", "electro", "edm", "house", "pop")
+private val WORKOUT_TAG_KEYWORDS = listOf("rock", "metal", "hip", "rap", "edm")
+
+fun filterAutomix(
+    items: List<androidx.media3.common.MediaItem>,
+    filter: String,
+    familiarArtists: Set<String>,
+    genreBySongId: Map<String, List<String>>,
+): List<androidx.media3.common.MediaItem> {
+    if (items.isEmpty() || filter == AUTOMIX_FILTER_ALL || filter == AUTOMIX_FILTER_POPULAR) return items
+    val filtered = when (filter) {
+        AUTOMIX_FILTER_DISCOVER -> items.filter { item ->
+            item.metadata?.artists?.none { it.name in familiarArtists } == true
+        }
+        AUTOMIX_FILTER_FAMILIAR -> items.filter { item ->
+            item.metadata?.artists?.any { it.name in familiarArtists } == true
+        }
+        AUTOMIX_FILTER_DEEP_CUTS -> items.drop(items.size / 2)
+        AUTOMIX_FILTER_PARTY -> items.filter { item ->
+            genreBySongId[item.mediaId]?.any { tag -> PARTY_TAG_KEYWORDS.any { tag.contains(it, true) } } == true
+        }
+        AUTOMIX_FILTER_WORKOUT -> items.filter { item ->
+            genreBySongId[item.mediaId]?.any { tag -> WORKOUT_TAG_KEYWORDS.any { tag.contains(it, true) } } == true
+        }
+        // Trailing dynamic chip: exact match against a real detected genre tag.
+        else -> items.filter { item -> genreBySongId[item.mediaId]?.any { it.equals(filter, true) } == true }
+    }
+    return filtered.ifEmpty { items }
+}
+
 @SuppressLint("UnrememberedMutableState")
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -1423,6 +1478,33 @@ fun InlineQueuePanel(
         lastKnownMetadata = currentMediaMetadata
     }
 
+    // Auto-Mix filter chips. FAMILIAR = artist already heard this session (history + queue,
+    // no network needed). PARTY/WORKOUT/the trailing chip match real genre tags resolved by
+    // GenreProvider (Last.fm/iTunes) — the trailing chip's label IS the top detected genre
+    // for the current Auto-Mix batch, so it genuinely reflects what's playing.
+    val familiarArtistNames = remember(historyItems, queueWindows) {
+        buildSet {
+            historyItems.forEach { md -> md.artists.forEach { add(it.name) } }
+            queueWindows.forEach { w -> w.mediaItem.metadata?.artists?.forEach { add(it.name) } }
+        }
+    }
+    val automixGenreSongs = remember(automix) {
+        automix.map {
+            GenreSongInfo(id = it.mediaId, title = it.metadata?.title.orEmpty(), artist = it.metadata?.artists?.firstOrNull()?.name)
+        }
+    }
+    // No cacheKey: automix batches change per song, so a persisted pill order would go
+    // stale immediately — live-resorting for the current batch only is what's wanted here.
+    val automixGenreFilter = rememberGenreFilter(automixGenreSongs)
+    val dynamicGenreFilter = automixGenreFilter.sortedGenres.firstOrNull()?.uppercase()
+    val automixFilters = remember(dynamicGenreFilter) {
+        if (dynamicGenreFilter != null) AUTOMIX_STATIC_FILTERS + dynamicGenreFilter else AUTOMIX_STATIC_FILTERS
+    }
+    var selectedAutomixFilter by remember { mutableStateOf(AUTOMIX_FILTER_ALL) }
+    val filteredAutomix = remember(automix, selectedAutomixFilter, familiarArtistNames, automixGenreFilter.genreBySongId) {
+        filterAutomix(automix, selectedAutomixFilter, familiarArtistNames, automixGenreFilter.genreBySongId)
+    }
+
     val dragScrollZone = LocalConfiguration.current.screenHeightDp.dp * 0.15f
     val dragAutoScroller = rememberScroller(
         scrollableState = lazyListState,
@@ -1529,7 +1611,7 @@ fun InlineQueuePanel(
         }
     }
 
-    LaunchedEffect(queueWindows, currentWindowIndex, historyItems, automix) {
+    LaunchedEffect(queueWindows, currentWindowIndex, historyItems, filteredAutomix) {
         if (!reorderableState.isAnyItemDragging) {
             // Hide already-played windows from the queue section — the current song is
             // always the first entry below the divider, never buried mid-list.
@@ -1542,7 +1624,7 @@ fun InlineQueuePanel(
                 clear()
                 addAll(historyItems.map { QueueSlot.History(it) })
                 addAll(visibleQueueWindows.map { QueueSlot.QueueEntry(it) })
-                addAll(automix.map { QueueSlot.Automix(it) })
+                addAll(filteredAutomix.map { QueueSlot.Automix(it) })
             }
         }
     }
@@ -1554,8 +1636,9 @@ fun InlineQueuePanel(
     // playing song down out of view instead of keeping it centered at the top.
     LaunchedEffect(openNonce) {
         // Layout: index 0 = spacer, then history items (none loaded yet on a fresh open),
-        // then the divider row, then the current song as the first queue entry.
-        val targetIndex = historyItems.size + 2
+        // then the divider row, then the CONTINUE LISTENING header, then the current song
+        // as the first queue entry.
+        val targetIndex = historyItems.size + 3
         val itemInfo = lazyListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == targetIndex }
         if (itemInfo == null) {
             lazyListState.scrollToItem(maxOf(0, targetIndex - 3))
@@ -1593,10 +1676,20 @@ fun InlineQueuePanel(
                 iconButtonColor = iconButtonColor,
                 modifier = Modifier.weight(1f),
                 onClick = {
+                    // Radio is a shortcut into Auto-Mix, not a full queue replace: it must
+                    // never restart or change the song that's currently playing.
                     val currentIndex = playerConnection.player.currentMediaItemIndex
                     val currentMetadata = playerConnection.player.getMediaItemAt(currentIndex).metadata
                     if (currentMetadata != null) {
-                        playerConnection.startRadioForSong(currentMetadata)
+                        selectedAutomixFilter = AUTOMIX_FILTER_ALL
+                        coroutineScope.launch {
+                            playerConnection.regenerateAutomix(currentMetadata)
+                            delay(80)
+                            val automixIdx = combinedList.indexOfFirst { it is QueueSlot.Automix }
+                            if (automixIdx != -1) {
+                                lazyListState.animateScrollToItem(automixIdx)
+                            }
+                        }
                     }
                 },
             )
@@ -1631,6 +1724,18 @@ fun InlineQueuePanel(
             )
         },
         content = {
+        // Persistent title, stays put while History/Continue Listening/Auto-Mix scroll
+        // underneath it — dragging down toward History never scrolls the panel's own name away.
+        Column(modifier = Modifier.fillMaxSize()) {
+            Text(
+                text = stringResource(R.string.queue).uppercase(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.sp,
+                color = textButtonColor,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
+            )
+            Box(modifier = Modifier.weight(1f)) {
 
         if (showSleepTimerDialog) {
             ActionPromptDialog(
@@ -1788,17 +1893,51 @@ fun InlineQueuePanel(
                 combinedList.forEachIndexed { slotIdx, slot ->
                     if (slotIdx == firstQueueSlotIndex) {
                         item(key = "queue_section_divider") { dividerRow() }
+                        item(key = "continue_listening_header") {
+                            Text(
+                                text = stringResource(R.string.queue_continue_listening).uppercase(),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 0.8.sp,
+                                color = textButtonColor.copy(alpha = 0.85f),
+                                modifier = Modifier
+                                    .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp)
+                                    .animateItem(),
+                            )
+                        }
                     }
                     if (slotIdx == automixStartIndex) {
+                        if (automix.isNotEmpty()) {
+                            item(key = "automix_filters") {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState())
+                                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                                        .animateItem(),
+                                ) {
+                                    automixFilters.forEach { filter ->
+                                        UnderlinePill(
+                                            text = filter,
+                                            selected = selectedAutomixFilter == filter,
+                                            onClick = { selectedAutomixFilter = filter },
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         item(key = "inline_automix_divider") {
                             Column(modifier = Modifier.animateItem()) {
                                 HorizontalDivider(
                                     modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
                                 )
                                 Text(
-                                    text = stringResource(R.string.queue_autoplay),
+                                    text = stringResource(R.string.queue_autoplay).uppercase(),
                                     modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    letterSpacing = 0.8.sp,
                                     color = textButtonColor.copy(alpha = 0.7f),
                                 )
                             }
@@ -2057,6 +2196,8 @@ fun InlineQueuePanel(
                 hostState = snackbarHostState,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp),
             )
+            }
+        }
         },
     )
 }

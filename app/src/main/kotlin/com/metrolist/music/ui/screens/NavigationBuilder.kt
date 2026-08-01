@@ -144,6 +144,19 @@ fun NavGraphBuilder.NavigationBuilder(
         LaunchedEffect(Unit) { delay(320); readyToAnimate = true }
         IrideScreen(navController, readyToAnimate = readyToAnimate)
     }
+    composable(
+        route = "video_player/{videoId}?title={title}",
+        arguments = listOf(
+            navArgument("videoId") { type = NavType.StringType },
+            navArgument("title") { type = NavType.StringType; nullable = true },
+        )
+    ) {
+        VideoPlayerScreen(
+            navController = navController,
+            videoId = it.arguments?.getString("videoId").orEmpty(),
+            initialTitle = it.arguments?.getString("title"),
+        )
+    }
     composable("mood_and_genres") { MoodAndGenresScreen(navController) }
     composable("genres_screen") { GenresScreen(navController = navController) }
     composable("account") { AccountScreen(navController) }

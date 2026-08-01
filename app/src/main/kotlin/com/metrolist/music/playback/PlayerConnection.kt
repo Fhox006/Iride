@@ -276,6 +276,15 @@ class PlayerConnection(
         }
     }
 
+    suspend fun regenerateAutomix(mediaMetadata: MediaMetadata) {
+        if (!allowInternalSync && shouldBlockPlaybackChanges?.invoke() == true) return
+        try {
+            service.regenerateAutomix(mediaMetadata)
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Error in regenerateAutomix")
+        }
+    }
+
     fun playNext(item: MediaItem) = playNext(listOf(item))
 
     fun playNext(items: List<MediaItem>) {

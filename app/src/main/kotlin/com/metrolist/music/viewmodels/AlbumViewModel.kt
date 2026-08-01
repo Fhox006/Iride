@@ -12,6 +12,7 @@ import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.music.data.remote.MusicBrainzRepository
 import com.metrolist.music.db.MusicDatabase
+import com.metrolist.music.utils.NewReleaseNotifier
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -31,10 +32,20 @@ class AlbumViewModel
 constructor(
     private val database: MusicDatabase,
     private val musicBrainzRepository: MusicBrainzRepository,
+    private val newReleaseNotifier: NewReleaseNotifier,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     val albumId = savedStateHandle.get<String>("albumId")!!
     val playlistId = MutableStateFlow("")
+
+    // Same global dot set as the artist page's Top Songs/Featuring rows — cleared when a song row
+    // actually scrolls into view here, not on play.
+    val unseenSongIds = newReleaseNotifier.unseenSongIds
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
+
+    fun markSongSeen(songId: String) {
+        viewModelScope.launch(Dispatchers.IO) { newReleaseNotifier.markSongSeen(songId) }
+    }
     val albumWithSongs =
         database
             .albumWithSongs(albumId)

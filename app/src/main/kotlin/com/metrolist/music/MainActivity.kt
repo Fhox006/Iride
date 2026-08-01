@@ -120,6 +120,9 @@ import androidx.core.util.Consumer
 import androidx.core.view.WindowCompat
 import androidx.datastore.preferences.core.edit
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.coroutineScope
 import androidx.lifecycle.lifecycleScope
@@ -170,6 +173,7 @@ import com.metrolist.music.constants.SimpMusicMigrationDoneKey
 import com.metrolist.music.constants.SlimNavBarKey
 import com.metrolist.music.constants.PlayerAutoHideTopPanelKey
 import com.metrolist.music.constants.TopNavigationBarKey
+import com.metrolist.music.constants.CompactTopNavigationBarKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
 import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
 import com.metrolist.music.constants.VisitorDataKey
@@ -772,6 +776,7 @@ class MainActivity : ComponentActivity() {
                 // hardcoded literal, so the very first frame can't briefly disagree with the
                 // real stored value and flash the wrong UI variant — see App.topNavigationBarEnabledCache.
                 val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = App.topNavigationBarEnabledCache)
+                val (compactTopNavigationBar) = rememberPreference(CompactTopNavigationBarKey, defaultValue = true)
                 val navigationItems =
                     remember(listenTogetherInTopBar, showNewsTab, topNavigationBarEnabled) {
                         val filtered = Screens.MainScreens.filter {
@@ -913,6 +918,31 @@ class MainActivity : ComponentActivity() {
                         expandedBound = if (curtainMode) maxHeight - AppPeekHeight else maxHeight,
                         preventDismissDrag = curtainMode,
                     )
+
+                // Force the curtain shut the moment the app leaves the foreground, instead of
+                // relying only on the cold-start correction in rememberBottomSheetState. That
+                // correction fixes a restored `expandedAnchor`, but an interrupted drag/fling
+                // (app backgrounded mid-gesture, before performFling ever runs) can leave the
+                // anchor still at `expanded` while visually settled elsewhere — closing it here
+                // means onSaveInstanceState never captures a bad value in the first place.
+                val lifecycleOwner = LocalLifecycleOwner.current
+                DisposableEffect(playerBottomSheetState, lifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        // Checking isExpanded (settled at upperBound) misses this exact case:
+                        // a fling toward expand sets the anchor synchronously but the spring is
+                        // still mid-flight when ON_STOP fires, so isExpanded reads false while
+                        // the anchor already says expanded. Guard on "not settled collapsed or
+                        // dismissed" instead so any in-flight state gets forced shut too.
+                        if (event == Lifecycle.Event.ON_STOP &&
+                            !playerBottomSheetState.isCollapsed &&
+                            !playerBottomSheetState.isDismissed
+                        ) {
+                            playerBottomSheetState.collapseSoft()
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
 
                 // New Iride UI: the curtain is always mounted, whether or not a track is loaded — it
                 // never falls back to the classic FloatingPill. With nothing playing it just sits
@@ -1183,11 +1213,13 @@ class MainActivity : ComponentActivity() {
                 // this function is a new value for the local, which recomposes every
                 // TopNavigationBar in the app (each tab root renders its own) for changes that have
                 // nothing to do with navigation.
-                val topNavBarController = remember(navigationItems, currentRoute, onNavItemClick) {
+                val topNavBarController = remember(navigationItems, currentRoute, onNavItemClick, compactTopNavigationBar, accountImageUrl) {
                     TopNavBarController(
                         navigationItems = navigationItems,
                         currentRoute = currentRoute,
                         onItemClick = onNavItemClick,
+                        compact = compactTopNavigationBar,
+                        accountImageUrl = accountImageUrl,
                     )
                 }
 
@@ -1244,6 +1276,8 @@ class MainActivity : ComponentActivity() {
                                         currentRoute = currentRoute,
                                         onItemClick = onNavItemClick,
                                         containerColor = if (mainTopGradientEnabled) Color.Transparent else MaterialTheme.colorScheme.background,
+                                        compact = compactTopNavigationBar,
+                                        accountImageUrl = accountImageUrl,
                                     )
                                 }
                                 AnimatedVisibility(
@@ -1849,5 +1883,7 @@ data class TopNavBarController(
     val navigationItems: List<Screens>,
     val currentRoute: String?,
     val onItemClick: (Screens, Boolean) -> Unit,
+    val compact: Boolean = false,
+    val accountImageUrl: String? = null,
 )
 val LocalTopNavBarController = compositionLocalOf<TopNavBarController?> { null }

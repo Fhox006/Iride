@@ -41,7 +41,8 @@
       "Bash(find ~/.gradle/caches/modules-2/files-2.1/com.github.promeG* -type f)",
       "Bash(mkdir -p /tmp_extract)",
       "Bash(java -version)",
-      "Bash(\"/c/Program Files/Java/jdk-18.0.2.1/bin/javap.exe\" -classpath /tmp/ktorx io.ktor.client.plugins.HttpRequestTimeoutException)"
+      "Bash(\"/c/Program Files/Java/jdk-18.0.2.1/bin/javap.exe\" -classpath /tmp/ktorx io.ktor.client.plugins.HttpRequestTimeoutException)",
+      "Bash(./gradlew :app:compileFossDebugKotlin -q)"
     ]
   },
   "hooks": {

@@ -8,6 +8,7 @@
 package com.metrolist.music.viewmodels
 
 import android.content.Context
+import timber.log.Timber
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.datastore.preferences.core.edit
@@ -198,14 +199,20 @@ constructor(
 
     val suggestedFollowArtists = combine(
         database.mostPlayedArtists(fromTimeStamp = 0L, limit = 50),
+        // Bookmarked-name lookup guards against a followed artist appearing here under a second,
+        // duplicate db row (a different YTM channel/browse id for the same real-world artist name)
+        // — filtering by id alone (bookmarkedAt on THIS row) misses that case.
+        database.artistsBookmarked(ArtistSortType.CREATE_DATE, true)
+            .map { bookmarked -> bookmarked.map { it.artist.name.lowercase() }.toSet() },
         dismissedSuggestedFollowIds,
-    ) { played, dismissed ->
+    ) { played, bookmarkedNames, dismissed ->
         played.filter {
             it.artist.bookmarkedAt == null &&
                 !it.artist.isLocal &&
                 it.artist.isYouTubeArtist &&
                 it.songCount >= SUGGESTED_FOLLOW_MIN_PLAYS &&
-                it.id !in dismissed
+                it.id !in dismissed &&
+                it.artist.name.lowercase() !in bookmarkedNames
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -650,10 +657,21 @@ constructor(
     fun refresh() {
         viewModelScope.launch(Dispatchers.IO) {
             _isRefreshing.value = true
-            YouTube.evictConnections()
-            syncUtils.reInjectCredentials()
-            syncUtils.performFullSyncSuspend()
-            _isRefreshing.value = false
+            try {
+                YouTube.evictConnections()
+                syncUtils.resetState()
+                syncUtils.reInjectCredentials()
+                syncUtils.performFullSyncSuspend()
+                // Process-scoped caches that a real force-stop would wipe but a plain resync
+                // doesn't touch — without this the button looked "refreshing" while every
+                // screen kept serving the same stale in-memory data.
+                HomeCache.clear()
+                LibraryAlbumsCache.clear()
+            } catch (e: Exception) {
+                Timber.e(e, "Library refresh failed")
+            } finally {
+                _isRefreshing.value = false
+            }
         }
     }
 

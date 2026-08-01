@@ -204,6 +204,7 @@ import com.metrolist.music.ui.component.Lyrics
 import com.metrolist.music.ui.component.LyricsPillController
 import com.metrolist.music.ui.component.PillPlayerRow
 import com.metrolist.music.ui.component.PillProgressState
+import com.metrolist.music.ui.component.PillShimmerSkeleton
 import com.metrolist.music.ui.component.PlaceholderMediaMetadata
 import com.metrolist.music.ui.component.PlayerSliderTrack
 import com.metrolist.music.ui.component.ResizableIconButton
@@ -990,6 +991,7 @@ fun BottomSheetPlayer(
                                     .data(mediaMetadata?.thumbnailUrl)
                                     .size(100, 100)
                                     .allowHardware(false)
+                                    .memoryCacheKey("gradient_${mediaMetadata?.id}")
                                     .build()
                                 val result = context.imageLoader.execute(request)
                                 currentBitmap = result.image?.toBitmap()
@@ -1015,6 +1017,7 @@ fun BottomSheetPlayer(
                                     .data(mediaMetadata?.thumbnailUrl)
                                     .size(100, 100)
                                     .allowHardware(false)
+                                    .memoryCacheKey("gradient_${mediaMetadata?.id}")
                                     .build()
                                 val result = context.imageLoader.execute(request)
                                 val newBitmap = result.image?.toBitmap()
@@ -1059,6 +1062,12 @@ fun BottomSheetPlayer(
                 val pillProgressState = remember(positionState, durationState) {
                     PillProgressState(positionState, durationState)
                 }
+                // While a persisted queue is still being restored, mediaMetadata reads null just
+                // like the genuine "nothing ever played" case — without this check the row would
+                // briefly render PlaceholderMediaMetadata with live play/pause/skip, then pop the
+                // real cover/title in a moment later. Hold the skeleton until restore resolves so
+                // the swap to real content happens once, atomically.
+                val hasPendingQueueRestore by playerConnection.service.hasPendingQueueRestoreFlow.collectAsState()
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -1078,6 +1087,9 @@ fun BottomSheetPlayer(
                             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom)),
                         verticalArrangement = Arrangement.Bottom,
                     ) {
+                        if (hasPendingQueueRestore) {
+                            PillShimmerSkeleton(isTopLevelRoute = false)
+                        } else {
                         // The drag-handle indicator used to live here as a static Box, but it
                         // disappeared once the sheet started expanding (this whole collapsedContent
                         // fades out by ~25% progress). It's now drawn by IrideCurtainHandleOverlay
@@ -1110,6 +1122,7 @@ fun BottomSheetPlayer(
                             onArtPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniArt = r } },
                             onInfoPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniInfo = r } },
                         )
+                        }
                     }
                 }
             } else if (showPeekContent) {

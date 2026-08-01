@@ -39,12 +39,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.palette.graphics.Palette
+import com.metrolist.music.ui.utils.rememberResumeFadeAlpha
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
@@ -466,7 +468,9 @@ fun AnimatedAlbumGradientBackground(
     val t2 by infinite.animateFloat(0f, (Math.PI * 2).toFloat(), infiniteRepeatable(tween(31000, easing = LinearEasing)))
     val t3 by infinite.animateFloat(0f, (Math.PI * 2).toFloat(), infiniteRepeatable(tween(39000, easing = LinearEasing)))
 
-    Box(modifier = modifier.fillMaxSize()) {
+    val resumeFadeAlpha = rememberResumeFadeAlpha()
+
+    Box(modifier = modifier.fillMaxSize().graphicsLayer { alpha = resumeFadeAlpha }) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w      = size.width
             val h      = size.height

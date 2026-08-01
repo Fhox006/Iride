@@ -9,6 +9,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -62,6 +63,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -213,6 +215,27 @@ fun LibraryMixScreen(
     }
 
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val hardResetContext = LocalContext.current
+    var hardResetArmed by remember { mutableStateOf(false) }
+    LaunchedEffect(isRefreshing) {
+        if (isRefreshing) {
+            hardResetArmed = true
+        } else if (hardResetArmed) {
+            hardResetArmed = false
+            // A true hard reset: kill the process and let Android relaunch it fresh, same as
+            // force-stopping the app from system settings and reopening it. Clearing caches or
+            // recreating the Activity in-process still leaves Hilt singletons (YouTube auth
+            // state, OkHttp pools, DownloadUtil, etc.) alive — only process death actually
+            // resets those.
+            val restartIntent = hardResetContext.packageManager
+                .getLaunchIntentForPackage(hardResetContext.packageName)
+                ?.let { Intent.makeRestartActivityTask(it.component) }
+            if (restartIntent != null) {
+                hardResetContext.startActivity(restartIntent)
+                Runtime.getRuntime().exit(0)
+            }
+        }
+    }
     val topSize by viewModel.topValue.collectAsState(initial = 50)
     val lastLikedDate by viewModel.lastLikedDate.collectAsState()
     val lastLikedThumbnails by viewModel.lastLikedThumbnails.collectAsState()
@@ -609,6 +632,8 @@ fun LibraryMixScreen(
                                 navigationItems = topNavBarController?.navigationItems ?: emptyList(),
                                 currentRoute = topNavBarController?.currentRoute,
                                 onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
+                                compact = topNavBarController?.compact ?: false,
+                                accountImageUrl = topNavBarController?.accountImageUrl,
                                 modifier = Modifier
                                     .animateItem(placementSpec = IrideMotion.PlacementSpec)
                                     .irideEnter(rememberSectionEnter("top_nav_bar", revealedSections), 8.dp),

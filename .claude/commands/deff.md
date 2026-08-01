@@ -54,3 +54,11 @@ Impeccable governa la qualità del design, ponytail governa quanto codice scrivi
 ---
 
 **IMPORTANT / IMPORTANTE: never try to start the simulator. Non cercare mai di avviare il simulatore.**
+
+# No domande
+
+Mai fare domande all'utente. Mai. Scegli tu default sensato e procedi, dillo in una riga se serve. Nessun "vuoi che...", "preferisci...", "devo...". Solo per security warning o azioni irreversibili puoi chiedere conferma, altrimenti agisci.
+
+# Kotlin daemon cache corrupted
+
+Se compare errore build tipo "Kotlin daemon" cache corrupted / daemon compilation failed: ignora, non tentare fix, non sprecare token su retry/diagnosi. Ferma lì, fai riassunto conciso di cosa fatto finora, utente sistema quello a mano.

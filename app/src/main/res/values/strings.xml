@@ -28,6 +28,8 @@
     <string name="history">History</string>
     <string name="stats">Stats</string>
     <string name="mood_and_genres">Mood and Genres</string>
+    <string name="discovery_weekly">Discovery Weekly</string>
+    <string name="discovery_weekly_creating">Creating your mix…</string>
     <string name="account">Account</string>
     <string name="account_content">My YouTube Library</string>
     <string name="quick_picks">Picked for you</string>
@@ -43,7 +45,15 @@
     <string name="similar_to">Similar to</string>
     <string name="new_release_albums">New release albums</string>
     <string name="artist_latest_release">Latest release</string>
+    <string name="artist_release_type_album">ALBUM</string>
+    <string name="artist_release_type_ep">EP</string>
+    <string name="artist_release_type_single">SINGLE</string>
+    <string name="artist_release_type_feat">FEAT</string>
+    <string name="genius_section_title">Featuring detection (Genius)</string>
+    <string name="genius_api_key">Genius API Token</string>
+    <string name="genius_api_key_description">Finds "feat." credits the artist\'s own YTM page misses. Get a free token at genius.com/api-clients.</string>
     <string name="essential_albums">Essential Albums</string>
+    <string name="featuring">Featuring</string>
     <string name="suggested_follow_artists">You listen a lot — follow them?</string>
     <string name="new_from_followed_artists">New from artists you follow</string>
 
@@ -338,11 +348,19 @@
     <string name="audio_quality_auto">Auto</string>
     <string name="audio_quality_high">High</string>
     <string name="audio_quality_low">Low</string>
-    <string name="queue">Queue</string>
+    <string name="queue">Up Next</string>
     <string name="queue_recently_played">Recently played</string>
     <string name="queue_recently_played_more">Recently played  ↑</string>
     <string name="queue_scroll_for_history">Scroll up for history</string>
-    <string name="queue_autoplay">Automatic playback</string>
+    <string name="queue_autoplay">Auto-Mix</string>
+    <string name="queue_continue_listening">Continue listening</string>
+    <string name="queue_filter_all">All</string>
+    <string name="queue_filter_popular">Popular</string>
+    <string name="queue_filter_discover">Discover</string>
+    <string name="queue_filter_familiar">Familiar</string>
+    <string name="queue_filter_party">Party</string>
+    <string name="queue_filter_workout">Workout</string>
+    <string name="queue_filter_deep_cuts">Deep Cuts</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>
     <string name="auto_load_more">Auto load more songs</string>

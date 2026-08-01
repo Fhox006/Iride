@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.metrolist.music.ui.utils.rememberResumeFadeAlpha
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
@@ -77,10 +78,13 @@ fun BetterAnimatedGradientBackground(
         label = "bag_a3",
     )
 
+    val resumeFadeAlpha = rememberResumeFadeAlpha()
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .graphicsLayer {
+                alpha = resumeFadeAlpha
                 colorFilter = ColorFilter.colorMatrix(
                     ColorMatrix().apply { setToSaturation(1.60f) }
                 )

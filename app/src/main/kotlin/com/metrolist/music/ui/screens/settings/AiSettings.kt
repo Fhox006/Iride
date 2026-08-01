@@ -50,6 +50,7 @@ import com.metrolist.music.constants.DEFAULT_AI_SYSTEM_PROMPT
 import com.metrolist.music.constants.DeeplApiKey
 import com.metrolist.music.constants.DeeplFormalityKey
 import com.metrolist.music.constants.LanguageCodeToName
+import com.metrolist.music.constants.GeniusApiTokenKey
 import com.metrolist.music.constants.OpenRouterApiKey
 import com.metrolist.music.constants.OpenRouterBaseUrlKey
 import com.metrolist.music.constants.OpenRouterModelKey
@@ -72,6 +73,7 @@ fun AiSettings(navController: NavController) {
     var translateLanguage by rememberPreference(TranslateLanguageKey, "en")
     var translateMode by rememberPreference(TranslateModeKey, "Literal")
     var deeplApiKey by rememberPreference(DeeplApiKey, "")
+    var geniusApiKey by rememberPreference(GeniusApiTokenKey, "")
     var deeplFormality by rememberPreference(DeeplFormalityKey, "default")
     var aiSystemPrompt by rememberPreference(AiSystemPromptKey, "")
 
@@ -166,6 +168,7 @@ fun AiSettings(navController: NavController) {
     var showLanguageDialog by rememberSaveable { mutableStateOf(false) }
     var showApiKeyDialog by rememberSaveable { mutableStateOf(false) }
     var showDeeplApiKeyDialog by rememberSaveable { mutableStateOf(false) }
+    var showGeniusApiKeyDialog by rememberSaveable { mutableStateOf(false) }
     var showDeeplFormalityDialog by rememberSaveable { mutableStateOf(false) }
     var showBaseUrlDialog by rememberSaveable { mutableStateOf(false) }
     var showModelDialog by rememberSaveable { mutableStateOf(false) }
@@ -359,6 +362,19 @@ fun AiSettings(navController: NavController) {
                 showDeeplApiKeyDialog = false
             },
             onDismiss = { showDeeplApiKeyDialog = false },
+        )
+    }
+
+    if (showGeniusApiKeyDialog) {
+        TextFieldDialog(
+            title = { Text(stringResource(R.string.genius_api_key)) },
+            icon = { Icon(painterResource(R.drawable.key), null) },
+            initialTextFieldValue = TextFieldValue(text = geniusApiKey),
+            onDone = {
+                geniusApiKey = it
+                showGeniusApiKeyDialog = false
+            },
+            onDismiss = { showGeniusApiKeyDialog = false },
         )
     }
 
@@ -645,6 +661,29 @@ fun AiSettings(navController: NavController) {
                         ),
                     )
                 },
+        )
+
+        Spacer(modifier = Modifier.height(27.dp))
+
+        Material3SettingsGroup(
+            title = stringResource(R.string.genius_section_title),
+            items =
+                listOf(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.key),
+                        title = { Text(stringResource(R.string.genius_api_key)) },
+                        description = {
+                            Text(
+                                if (geniusApiKey.isNotEmpty()) {
+                                    "•".repeat(minOf(geniusApiKey.length, 8))
+                                } else {
+                                    stringResource(R.string.genius_api_key_description)
+                                },
+                            )
+                        },
+                        onClick = { showGeniusApiKeyDialog = true },
+                    ),
+                ),
         )
 
         Spacer(modifier = Modifier.height(16.dp))

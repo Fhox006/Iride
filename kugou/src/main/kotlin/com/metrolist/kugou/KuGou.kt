@@ -55,8 +55,10 @@ object KuGou {
         runCatching {
             val keyword = generateKeyword(title, artist, album)
             getLyricsCandidate(keyword, duration)?.let { candidate ->
-                Base64.Default.decode(downloadLyrics(candidate.id, candidate.accesskey).content).decodeToString()
+                val lyrics = Base64.Default.decode(downloadLyrics(candidate.id, candidate.accesskey).content).decodeToString()
                     .normalize()
+                if (lyrics.isBlank()) throw IllegalStateException("No lyrics candidate")
+                lyrics
             } ?: throw IllegalStateException("No lyrics candidate")
         }
 
@@ -68,13 +70,13 @@ object KuGou {
             if (duration == -1 || abs(it.duration - duration) <= DURATION_TOLERANCE) {
                 searchLyricsByHash(it.hash).candidates.firstOrNull()?.let { candidate ->
                     Base64.Default.decode(downloadLyrics(candidate.id, candidate.accesskey).content).decodeToString()
-                        .normalize().let(callback)
+                        .normalize().takeIf { it.isNotBlank() }?.let(callback)
                 }
             }
         }
         searchLyricsByKeyword(keyword, duration).candidates.forEach { candidate ->
             Base64.Default.decode(downloadLyrics(candidate.id, candidate.accesskey).content).decodeToString()
-                .normalize().let(callback)
+                .normalize().takeIf { it.isNotBlank() }?.let(callback)
         }
     }
 
@@ -178,7 +180,7 @@ object KuGou {
         Keyword(normalizeTitle(title), normalizeArtist(artist), album)
 
     private fun String.normalize(): String =
-        lines().filter { line -> line.matches(ACCEPTED_REGEX) }
+        lines().filter { line -> line.matches(ACCEPTED_REGEX) && !INSTRUMENTAL_REGEX.containsMatchIn(line) }
             .let { lines ->
                 // Remove useless information such as singer, writer, composer, guitar, etc.
                 var headCutLine = 0
@@ -205,6 +207,8 @@ object KuGou {
     @Suppress("RegExpRedundantEscape")
     private val ACCEPTED_REGEX = "\\[(\\d\\d):(\\d\\d)\\.(\\d{2,3})\\].*".toRegex()
     private val BANNED_REGEX = ".+].+[:：].+".toRegex()
+    // KuGou marks many non-Chinese songs as instrumental ("pure music") when it can't find real lyrics
+    private val INSTRUMENTAL_REGEX = "(纯音乐|純音樂)".toRegex()
 
     private const val DURATION_TOLERANCE = 8
 }

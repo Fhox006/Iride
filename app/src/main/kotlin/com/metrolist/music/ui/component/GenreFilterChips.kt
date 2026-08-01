@@ -74,20 +74,28 @@ data class GenreFilterState(
     val selectedGenre: String?,
     val isLoading: Boolean,
     val onSelect: (String) -> Unit,
+    // Frozen for the whole visit (see rememberGenreFilter) so the pill row never
+    // reorders while genres are still streaming in; only "which of these genres
+    // still exist in this song list" is live-filtered against genreBySongId.
+    private val displayOrder: List<String> = emptyList(),
 ) {
     private val genreCounts: Map<String, Int>
         get() = genreBySongId.values.flatten().groupingBy { it }.eachCount()
 
     // Genres with only 1 matching song aren't useful as a filter (they'd
-    // narrow the list to a single item), so they're dropped. The rest are
-    // ordered most → fewest songs, so the left edge is always the "biggest" pill.
+    // narrow the list to a single item), so they're dropped. While the
+    // background fetch is still running (or hasn't started), genreBySongId is
+    // incomplete/empty — pruning displayOrder against it right away would wipe
+    // out every remembered pill until the fetch fully settles. So the frozen
+    // order is trusted as-is during loading, and only pruned against live
+    // counts once loading finishes (to drop genres that genuinely no longer
+    // apply, e.g. a song was removed from the playlist).
     val sortedGenres: List<String>
-        get() =
-            genreCounts
-                .filterValues { it >= 2 }
-                .entries
-                .sortedByDescending { it.value }
-                .map { it.key }
+        get() {
+            if (isLoading) return displayOrder
+            val counts = genreCounts
+            return displayOrder.filter { (counts[it] ?: 0) >= 2 }
+        }
 
     fun matches(songId: String): Boolean =
         selectedGenre == null || genreBySongId[songId]?.contains(selectedGenre) == true
@@ -107,19 +115,40 @@ private const val PILL_SNAPSHOT_INTERVAL_MS = 400L
 // genres, pills render on the very next frame with no delay at all.
 private const val INITIAL_PILL_RENDER_DELAY_MS = 120L
 
+private fun genreOrder(genreBySongId: Map<String, List<String>>): List<String> =
+    genreBySongId.values.flatten().groupingBy { it }.eachCount()
+        .filterValues { it >= 2 }
+        .entries
+        .sortedByDescending { it.value }
+        .map { it.key }
+
 /**
  * Fetches genre/style tags for [songs] from [GenreProvider] (no genre data
  * exists anywhere else in Iride) and exposes selection/filter state for
  * [GenrePillsRow]. Resets the selected genre whenever the song list changes.
+ *
+ * [cacheKey] (playlist id, or a fixed key for screens with no id) is what the pill
+ * *order* remembers between visits: on entry the last saved order renders immediately
+ * and stays frozen all session — genres still resolve live in the background (so
+ * `matches()` filtering is always correct), but the row itself doesn't reorder while
+ * that happens. The freshly computed order is saved at the end for the next visit.
+ * With no [cacheKey] (or no order saved yet) it falls back to the old live-resorting
+ * behavior for that one visit.
  */
 @Composable
-fun rememberGenreFilter(songs: List<GenreSongInfo>): GenreFilterState {
+fun rememberGenreFilter(songs: List<GenreSongInfo>, cacheKey: String? = null): GenreFilterState {
     var genres by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var stableGenres by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var selectedGenre by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
 
     val ids = remember(songs) { songs.map { it.id } }
+    // An empty saved order (playlist had <2-song genre overlap on last visit) must NOT freeze
+    // displayOrder forever — the `savedOrder == null` gates below would never re-open, so pills
+    // discovered on a later visit (or a slower fetch that just hadn't finished yet) could never
+    // surface. Treat "saved but empty" the same as "nothing saved".
+    val savedOrder = remember(ids, cacheKey) { cacheKey?.let(GenreProvider::getSavedOrder)?.takeIf { it.isNotEmpty() } }
+    var displayOrder by remember(ids) { mutableStateOf(savedOrder ?: emptyList()) }
 
     LaunchedEffect(ids) {
         selectedGenre = null
@@ -127,6 +156,9 @@ fun rememberGenreFilter(songs: List<GenreSongInfo>): GenreFilterState {
         if (missing.isEmpty()) {
             stableGenres = genres
             isLoading = false
+            val finalOrder = genreOrder(genres)
+            if (savedOrder == null) displayOrder = finalOrder
+            cacheKey?.let { GenreProvider.saveOrder(it, finalOrder) }
             return@LaunchedEffect
         }
 
@@ -151,9 +183,13 @@ fun rememberGenreFilter(songs: List<GenreSongInfo>): GenreFilterState {
         while (fetchJob.isActive) {
             delay(PILL_SNAPSHOT_INTERVAL_MS)
             stableGenres = genres
+            if (savedOrder == null) displayOrder = genreOrder(genres)
         }
         stableGenres = genres
         isLoading = false
+        val finalOrder = genreOrder(genres)
+        if (savedOrder == null) displayOrder = finalOrder
+        cacheKey?.let { GenreProvider.saveOrder(it, finalOrder) }
     }
 
     return GenreFilterState(
@@ -161,6 +197,7 @@ fun rememberGenreFilter(songs: List<GenreSongInfo>): GenreFilterState {
         selectedGenre = selectedGenre,
         isLoading = isLoading,
         onSelect = { genre -> selectedGenre = if (selectedGenre == genre) null else genre },
+        displayOrder = displayOrder,
     )
 }
 

@@ -141,7 +141,11 @@ fun SearchScreen(
             isHandlingScrollToTop = true
             kotlinx.coroutines.delay(100)
             if (!isPlayerExpanded) {
-                focusManager.clearFocus(force = true)
+                // Re-tapping Search while already on this screen (top bar tab, or the compact
+                // top bar's search icon) acts like tapping the search box itself: focus it and
+                // pop the keyboard, instead of the old clear-focus/scroll-to-top behavior.
+                focusRequester.requestFocus()
+                keyboardController?.show()
             }
             kotlinx.coroutines.delay(500)
             isHandlingScrollToTop = false
@@ -248,6 +252,8 @@ fun SearchScreen(
                 navigationItems = controller?.navigationItems ?: emptyList(),
                 currentRoute = controller?.currentRoute,
                 onItemClick = controller?.onItemClick ?: { _, _ -> },
+                compact = controller?.compact ?: false,
+                accountImageUrl = controller?.accountImageUrl,
                 query = query,
                 onQueryChange = { query = it },
                 searchSource = searchSource,
@@ -407,6 +413,8 @@ private fun SearchScrollableHeader(
     navigationItems: List<com.metrolist.music.ui.screens.Screens>,
     currentRoute: String?,
     onItemClick: (com.metrolist.music.ui.screens.Screens, Boolean) -> Unit,
+    compact: Boolean,
+    accountImageUrl: String?,
     query: TextFieldValue,
     onQueryChange: (TextFieldValue) -> Unit,
     searchSource: SearchSource,
@@ -424,6 +432,8 @@ private fun SearchScrollableHeader(
             currentRoute = currentRoute,
             onItemClick = onItemClick,
             containerColor = Color.Transparent,
+            compact = compact,
+            accountImageUrl = accountImageUrl,
         )
 
         Box(modifier = Modifier.padding(start = 20.dp, top = 8.dp, bottom = 8.dp)) {

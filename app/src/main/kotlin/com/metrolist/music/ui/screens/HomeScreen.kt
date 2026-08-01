@@ -61,6 +61,7 @@ import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -132,6 +133,8 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.NewIrideUiDisclaimerDismissedKey
+import com.metrolist.music.constants.RandomizeHomeOrderKey
+import com.metrolist.music.constants.HomeCollapsedSectionsKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.HideVideoSongsKey
@@ -153,7 +156,6 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AlbumGridItem
-import com.metrolist.music.ui.component.VinylPeekFraction
 import com.metrolist.music.ui.component.currentGridThumbnailHeight
 import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ChipsRow
@@ -411,10 +413,13 @@ fun HomeScreen(
         }
     }
 
-    // New Iride UI: per-section collapse state (session-only, not persisted).
-    val collapsedSections = remember { androidx.compose.runtime.mutableStateMapOf<String, Boolean>() }
-    fun isSectionCollapsed(key: String) = collapsedSections[key] == true
-    fun toggleSection(key: String) { collapsedSections[key] = !isSectionCollapsed(key) }
+    // New Iride UI: per-section collapse state, persisted so a section closed today stays
+    // closed on the next app open instead of resetting every session.
+    var collapsedSections by rememberPreference(HomeCollapsedSectionsKey, defaultValue = emptySet())
+    fun isSectionCollapsed(key: String) = key in collapsedSections
+    fun toggleSection(key: String) {
+        collapsedSections = if (key in collapsedSections) collapsedSections - key else collapsedSections + key
+    }
 
     // Same IrideMotion vocabulary as ArtistScreen/AlbumScreen: the whole feed fades in once on
     // landing, and each shelf plays its own entrance exactly once — LazyColumn disposes items
@@ -452,25 +457,27 @@ fun HomeScreen(
     var randomizeJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val lazyListState = rememberLazyListState()
 
-    // "Dischi scelti per te" doesn't always sit right below the mood pills — most of the
-    // time it does, but every so often it lands further down the feed instead, so the
-    // layout doesn't feel too predictable. Picked once per screen visit.
-    val dischiPerTePosition = remember {
-        if (Random.nextInt(100) < 55) {
-            "after_mood"
+    // Off by default: shelves land in a fixed, predictable order (Featured → Picked for you →
+    // On repeat for you → Mood & Playlists → the rest) since their *content* already refreshes
+    // dynamically/personalized without needing the shelf order itself to shuffle every visit.
+    val randomizeHomeOrder by rememberPreference(RandomizeHomeOrderKey, defaultValue = false)
+
+    val dischiPerTePosition = remember(randomizeHomeOrder) {
+        if (randomizeHomeOrder) {
+            if (Random.nextInt(100) < 55) {
+                "after_mood"
+            } else {
+                listOf("after_keep_listening", "after_forgotten_favorites", "after_daily_discover", "after_community").random()
+            }
         } else {
-            listOf("after_keep_listening", "after_forgotten_favorites", "after_daily_discover", "after_community").random()
+            "after_keep_listening"
         }
     }
 
-    // "On repeat for you" usually lands as the 3rd/4th shelf, same as the brief asked for, but
-    // sometimes drifts further down so the feed doesn't always show it in the same spot.
-    val forYouShelfPosition = remember {
-        if (Random.nextInt(100) < 60) {
-            listOf("after_mood", "after_keep_listening").random()
-        } else {
-            listOf("after_forgotten_favorites", "after_account_playlists", "after_daily_discover").random()
-        }
+    // "On repeat for you" is personalized/high-priority content: fixed default lands it right
+    // after "Picked for you", ahead of Mood & Playlists, per the required shelf order above.
+    val forYouShelfPosition = remember(randomizeHomeOrder) {
+        if (randomizeHomeOrder) listOf("after_mood", "after_keep_listening").random() else "after_quick_picks"
     }
 
     LaunchedEffect(Unit) {
@@ -620,7 +627,6 @@ fun HomeScreen(
                     coroutineScope = scope,
                     thumbnailRatio = 1f,
                     showPlayButton = !dischiPerTeStyle,
-                    showVinylEffect = dischiPerTeStyle,
                     size = size,
                     fallbackArtistName = fallbackArtistName,
                     modifier = Modifier.combinedClickable(
@@ -692,6 +698,9 @@ fun HomeScreen(
                 )
             }
 
+            // Plain cover, no vinyl decoration — same footprint as every other shelf now
+            // (was 0.82x, which made this row look smaller/misaligned against its neighbors).
+            val dischiPerTeItemSize = currentGridHeight
             val dischiPerTeGridItem: @Composable (DischiPerTeItem) -> Unit = { discItem ->
                 when (discItem) {
                     is DischiPerTeItem.Local -> {
@@ -701,9 +710,8 @@ fun HomeScreen(
                             isActive = album.id == mediaMetadata?.album?.id,
                             isPlaying = isPlaying,
                             coroutineScope = scope,
-                            size = currentGridHeight,
+                            size = dischiPerTeItemSize,
                             showPlayButton = !topNavigationBarEnabled,
-                            showVinylEffect = topNavigationBarEnabled,
                             modifier = Modifier.combinedClickable(
                                 onClick = { navController.navigate("album/${album.id}") },
                                 onLongClick = {
@@ -715,7 +723,7 @@ fun HomeScreen(
                             ),
                         )
                     }
-                    is DischiPerTeItem.Remote -> ytGridItem(discItem.item, null, topNavigationBarEnabled, discItem.fallbackArtistName)
+                    is DischiPerTeItem.Remote -> ytGridItem(discItem.item, dischiPerTeItemSize, true, discItem.fallbackArtistName)
                 }
             }
 
@@ -734,9 +742,7 @@ fun HomeScreen(
                     }
                     item(key = "dischi_per_te_list") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("dischi_per_te")) {
-                            // Extra gap reserves room for the vinyl disc peeking out of each
-                            // album cover (New Iride UI only) so it never overlaps the next card.
-                            val dischiPerTeSpacing = if (topNavigationBarEnabled) currentGridHeight * VinylPeekFraction else 0.dp
+                            val dischiPerTeSpacing = 12.dp
                             val dischiPerTeState = rememberLazyListState()
                             LazyRow(
                                 state = dischiPerTeState,
@@ -835,6 +841,16 @@ fun HomeScreen(
                     item(key = "for_you_row") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("for_you")) {
                             val forYouState = rememberLazyListState()
+                            // Never-ending carousel: once the user scrolls near the tail,
+                            // pull in the next batch of artist shelves so there's always more.
+                            LaunchedEffect(forYouState, shelves.size) {
+                                snapshotFlow { forYouState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+                                    .collect { lastVisible ->
+                                        if (lastVisible != null && lastVisible >= shelves.size - 3) {
+                                            viewModel.loadMoreForYouShelves()
+                                        }
+                                    }
+                            }
                             LazyRow(
                                 state = forYouState,
                                 contentPadding = PaddingValues(horizontal = irideGridItemStart),
@@ -843,7 +859,7 @@ fun HomeScreen(
                                 modifier = homeRowMotion("for_you_carousel")
                                     .rubberBandOverscroll(Orientation.Horizontal, forYouState),
                             ) {
-                                items(shelves, key = { "for_you_${it.artist.id}" }) { shelf -> forYouBlock(shelf) }
+                                itemsIndexed(shelves, key = { index, shelf -> "for_you_${index}_${shelf.artist.id}" }) { _, shelf -> forYouBlock(shelf) }
                             }
                         }
                     }
@@ -887,6 +903,8 @@ fun HomeScreen(
                             onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
                             modifier = Modifier.animateItem(),
                             containerColor = Color.Transparent,
+                            compact = topNavBarController?.compact ?: false,
+                            accountImageUrl = topNavBarController?.accountImageUrl,
                         )
                     }
                 }
@@ -979,43 +997,52 @@ fun HomeScreen(
                 }
 
                 // ── Hero Carousel ───────────────────────────────────────────
-                if (isHeroCarouselEnabled && heroCarouselItems.isNotEmpty()) {
+                // Slot is reserved the moment the feature is enabled, not once its (network-
+                // backed) data arrives — Picked for you loads from the DB and is typically ready
+                // first, so without a reserved slot here Hero would pop in above it later and
+                // shove everything down. Skeleton keeps the final height from frame one; the real
+                // section fades into that same slot once heroCarouselItems is non-empty.
+                if (isHeroCarouselEnabled) {
                     item(key = "hero_carousel") {
-                        HeroCarouselSection(
-                            items = heroCarouselItems,
-                            onNewReleaseClick = { albumId -> navController.navigate("album/$albumId") },
-                            onForYouClick = { playlistId, isLocal ->
-                                when {
-                                    isLocal && playlistId == PlaylistEntity.LIKED_PLAYLIST_ID ->
-                                        navController.navigate("auto_playlist/liked")
-                                    isLocal -> navController.navigate("local_playlist/$playlistId")
-                                    else -> navController.navigate("online_playlist/$playlistId")
-                                }
-                            },
-                            onMoodClick = { playlistId -> navController.navigate("online_playlist/$playlistId") },
-                            onArtistClick = { artistId -> navController.navigate("artist/$artistId") },
-                            onArtistRadioClick = { artistId, _ ->
-                                scope.launch(Dispatchers.IO) {
-                                    val endpoint = viewModel.fetchArtistRadioEndpoint(artistId)
-                                    withContext(Dispatchers.Main) {
-                                        if (endpoint != null) {
-                                            playerConnection?.playQueue(YouTubeQueue(endpoint))
-                                        } else {
-                                            navController.navigate("artist/$artistId")
+                        if (heroCarouselItems.isNotEmpty()) {
+                            HeroCarouselSection(
+                                items = heroCarouselItems,
+                                newIrideUi = topNavigationBarEnabled,
+                                collapsed = isSectionCollapsed("hero_carousel"),
+                                onCollapseToggle = { toggleSection("hero_carousel") },
+                                onAlbumClick = { albumId -> navController.navigate("album/$albumId") },
+                                onArtistClick = { artistId -> navController.navigate("artist/$artistId") },
+                                onArtistRadioClick = { artistId, _ ->
+                                    scope.launch(Dispatchers.IO) {
+                                        val endpoint = viewModel.fetchArtistRadioEndpoint(artistId)
+                                        withContext(Dispatchers.Main) {
+                                            if (endpoint != null) {
+                                                playerConnection?.playQueue(YouTubeQueue(endpoint))
+                                            } else {
+                                                navController.navigate("artist/$artistId")
+                                            }
                                         }
                                     }
-                                }
-                                Unit
-                            },
-                            modifier = homeRowMotion("hero_carousel"),
-                        )
+                                    Unit
+                                },
+                                modifier = homeRowMotion("hero_carousel"),
+                            )
+                        } else {
+                            HeroCarouselSkeleton(
+                                newIrideUi = topNavigationBarEnabled,
+                                modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
+                            )
+                        }
                     }
                 }
 
                 // ── Speed Dial ──────────────────────────────────────────────
-                // When the Hero Carousel leads the screen, push Speed Dial a few
-                // blocks down instead of stacking two big carousels back to back.
-                val deferSpeedDialToBottom = isHeroCarouselEnabled && heroCarouselItems.isNotEmpty()
+                // When the Hero Carousel leads the screen, push Speed Dial a few blocks down
+                // instead of stacking two big carousels back to back. Keyed on the feature being
+                // enabled, not on heroCarouselItems being non-empty — Hero's slot is reserved from
+                // frame one now (see above), so Speed Dial's position must be decided once too, or
+                // it would render early and then jump down the moment hero data arrives.
+                val deferSpeedDialToBottom = isHeroCarouselEnabled
                 val speedDialContent: @Composable LazyItemScope.() -> Unit = {
                         val items = speedDialItems
                         val targetItemSize = 160.dp
@@ -1303,6 +1330,8 @@ fun HomeScreen(
                         }
                     }
                 }
+
+                if (forYouShelfPosition == "after_quick_picks") forYouSection()
 
                 // ── Your Mood (only shown when logged in) ────────────────────
                 if (isLoggedIn) {

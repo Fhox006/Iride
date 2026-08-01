@@ -142,6 +142,8 @@ fun AccountScreen(
                             currentRoute = topNavBarController.currentRoute,
                             onItemClick = topNavBarController.onItemClick,
                             containerColor = Color.Transparent,
+                            compact = topNavBarController.compact,
+                            accountImageUrl = topNavBarController.accountImageUrl,
                         )
                     }
                     CollapsingScreenHeader(

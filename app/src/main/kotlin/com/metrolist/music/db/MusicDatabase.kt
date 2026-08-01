@@ -25,7 +25,6 @@ import com.metrolist.music.db.daos.SpeedDialDao
 import com.metrolist.music.db.entities.AlbumArtistMap
 import com.metrolist.music.db.entities.AlbumEntity
 import com.metrolist.music.db.entities.ArtistEntity
-import com.metrolist.music.db.entities.AutoPlaylistSongOrderEntity
 import com.metrolist.music.db.entities.Event
 import com.metrolist.music.db.entities.FormatEntity
 import com.metrolist.music.db.entities.LyricsEntity
@@ -110,14 +109,13 @@ class MusicDatabase(
         RecognitionHistory::class,
         SpeedDialItem::class,
         PodcastEntity::class,
-        AutoPlaylistSongOrderEntity::class,
     ],
     views = [
         SortedSongArtistMap::class,
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = 40,
+    version = 42,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 2, to = 3),
@@ -158,6 +156,8 @@ class MusicDatabase(
         AutoMigration(from = 37, to = 38),
         AutoMigration(from = 38, to = 39),
         AutoMigration(from = 39, to = 40),
+        AutoMigration(from = 40, to = 41),
+        AutoMigration(from = 41, to = 42, spec = Migration41To42::class),
     ],
 )
 @TypeConverters(Converters::class)
@@ -734,6 +734,11 @@ class Migration29To30 : AutoMigrationSpec {
         }
     }
 }
+
+@DeleteTable.Entries(
+    DeleteTable(tableName = "auto_playlist_song_order"),
+)
+class Migration41To42 : AutoMigrationSpec
 
 class Migration35To36 : AutoMigrationSpec {
     override fun onPostMigrate(db: SupportSQLiteDatabase) {

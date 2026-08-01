@@ -34,6 +34,7 @@ import com.metrolist.music.utils.get
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
@@ -190,10 +191,26 @@ constructor(
         private set
     private var smartSearchStarted = false
 
+    // In-flight fetches for the *current* query — cancelled wholesale on search(), so an old
+    // query's slow network calls can no longer land after a newer query has already taken over
+    // (they used to keep running and write into viewStateMap after the fact).
+    private var searchJob: Job? = null
+
+    // Bounded per-query cache: switching back to a query already loaded this session restores
+    // instantly instead of re-fetching every shelf from network again. FIFO eviction once full —
+    // no need for real LRU/recency tracking at this size.
+    private data class QueryCache(
+        val summaryPage: SearchSummaryPage?,
+        val viewStateMap: Map<String, ItemsPage?>,
+        val smartSearchOrder: List<YouTube.SearchFilter>,
+        val smartSearchStarted: Boolean,
+    )
+    private val queryCache = linkedMapOf<String, QueryCache>()
+
     fun loadSmartSearch() {
         if (smartSearchStarted || query.isBlank()) return
         smartSearchStarted = true
-        viewModelScope.launch {
+        searchJob = viewModelScope.launch {
             loadSummaryPage()
             val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
             val topCategory = categoryOf(summaryPage?.summaries?.firstOrNull()?.items?.firstOrNull())
@@ -209,7 +226,9 @@ constructor(
                         viewStateMap[sectionFilter.value] = ItemsPage(episodesFromSummary(), null)
                     }
                 } else {
-                    viewModelScope.launch { fetchAndStoreFilterResults(sectionFilter) }
+                    // Launched as a child of this coroutine (not viewModelScope directly) so
+                    // cancelling searchJob on the next search() cancels these too.
+                    launch { fetchAndStoreFilterResults(sectionFilter) }
                 }
             }
         }
@@ -243,12 +262,31 @@ constructor(
     // route does.
     fun search(newQuery: String) {
         if (newQuery == query) return
+        if (query.isNotBlank()) {
+            queryCache[query] = QueryCache(summaryPage, viewStateMap.toMap(), smartSearchOrder, smartSearchStarted)
+            while (queryCache.size > MAX_QUERY_CACHE) {
+                queryCache.remove(queryCache.keys.first())
+            }
+        }
+        searchJob?.cancel()
         query = newQuery
         filter.value = null
-        summaryPage = null
         viewStateMap.clear()
-        smartSearchOrder = emptyList()
-        smartSearchStarted = false
-        viewModelScope.launch { loadSummaryPage() }
+        val cached = queryCache[newQuery]
+        if (cached != null) {
+            summaryPage = cached.summaryPage
+            viewStateMap.putAll(cached.viewStateMap)
+            smartSearchOrder = cached.smartSearchOrder
+            smartSearchStarted = cached.smartSearchStarted
+        } else {
+            summaryPage = null
+            smartSearchOrder = emptyList()
+            smartSearchStarted = false
+        }
+        searchJob = viewModelScope.launch { loadSummaryPage() }
+    }
+
+    private companion object {
+        const val MAX_QUERY_CACHE = 8
     }
 }

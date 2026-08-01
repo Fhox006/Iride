@@ -51,6 +51,11 @@ const val PLAYER_THUMBNAIL_SIZE = 512
 
 val ThumbnailCornerRadius = 3.dp
 
+// New Iride UI: single reference stroke width for every decorative border/outline (cards, cover
+// art, avatar rings), sourced from the Album screen's pill Play button so the whole app reads as
+// one thickness.
+val IrideBaseBorderWidth = 1.5.dp
+
 val PlayerHorizontalPadding = 32.dp
 
 val NavigationBarAnimationSpec = spring<Dp>(

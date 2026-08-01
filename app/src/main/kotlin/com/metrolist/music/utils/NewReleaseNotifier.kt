@@ -11,8 +11,14 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AlbumItem
+import com.metrolist.innertube.models.Artist
+import com.metrolist.innertube.models.SongItem
 import com.metrolist.music.constants.ArtistNewReleasesCheckedKey
 import com.metrolist.music.constants.ArtistNewReleasesKey
+import com.metrolist.music.constants.GeniusApiTokenKey
+import com.metrolist.music.constants.UnseenSongDotsKey
+import com.metrolist.music.data.remote.GeniusFeaturedSong
+import com.metrolist.music.data.remote.GeniusRepository
 import com.metrolist.music.db.MusicDatabase
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -26,35 +32,73 @@ import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@Serializable
+data class NameId(val name: String, val id: String?)
+
+/** Snapshot of a song where the followed artist appears as a featured (non-primary) credit. */
+@Serializable
+data class FeaturedSongInfo(
+    val songId: String,
+    val title: String,
+    val thumbnailUrl: String,
+    val albumId: String? = null,
+    val albumTitle: String? = null, // null => standalone single feature, not on someone else's album
+    val otherArtists: List<NameId> = emptyList(),
+    val year: Int? = null, // best-effort chronological sort key
+    val firstSeenMs: Long,
+)
+
 /**
- * Per-followed-artist state for the Library › Artists new-release badges.
+ * Per-followed-artist state for the Library › Artists new-release badges and the artist page's
+ * Featuring section.
  *
  * @param knownAlbumIds every album/single/EP id we've already accounted for (the baseline).
- * @param newSongIds song ids from releases that appeared *after* the baseline and are still unseen.
+ * @param newSongIds song ids from releases that appeared *after* the baseline and are still unseen —
+ *        drives the library "+N" badge. Fed by both owned releases and newly-discovered features.
+ * @param unseenAlbumIds album/single/EP ids from those same releases, cleared one at a time when the
+ *        user actually opens that release — unlike [newSongIds] this does NOT clear on [markSeen], so
+ *        the per-item marker on the artist page survives opening the artist profile.
  * @param initialized false until the first sync recorded a baseline — before that we don't flag the
  *        whole back-catalog as "new".
+ * @param knownFeaturedSongIds song ids already accounted for as features, so a feature isn't
+ *        re-flagged "new" on every refresh.
+ * @param featuredSongs permanent content list for the artist page's Featuring section — tracks where
+ *        this artist is a featured (non-primary) credit, whether on a single or another artist's
+ *        album. Capped to bound DataStore size (see [NewReleaseNotifier.maxFeaturedSongsPerArtist]).
  */
 @Serializable
 data class ArtistReleaseState(
     val knownAlbumIds: Set<String> = emptySet(),
     val newSongIds: List<String> = emptyList(),
+    val unseenAlbumIds: Set<String> = emptySet(),
     val initialized: Boolean = false,
+    val knownFeaturedSongIds: Set<String> = emptySet(),
+    val featuredSongs: List<FeaturedSongInfo> = emptyList(),
+    // Genius song ids already processed (whether or not a playable YTM match was found), so a
+    // credit Genius knows about but YTM search can't resolve isn't retried every single cycle.
+    val knownGeniusSongIds: Set<Int> = emptySet(),
 )
 
 /**
- * Detects new songs from followed artists and exposes a per-artist "+N" count for the library.
+ * Detects new songs and features from followed artists and exposes a per-artist "+N" count for the
+ * library plus the artist page's Featuring section.
  *
  * - [counts] derives the badge live: stored unseen song ids minus any already played (from the
  *   `event` table), so listening to a new song anywhere — radio, search, playlist — drops it from
  *   the count without opening the artist.
- * - [refresh] fetches each followed artist's page, diffs album ids against the stored baseline, and
- *   for each genuinely new release fetches its tracklist to accumulate the new song ids.
- * - [markSeen] clears an artist's unseen list when its profile is opened.
+ * - [refresh] fetches each followed artist's page, diffs album ids against the stored baseline for
+ *   owned releases, and separately scans every shelf for tracks crediting the artist as a featured
+ *   (non-primary) artist — whether a standalone single or a track buried in someone else's album.
+ * - [markSeen] clears an artist's unseen song count (the library "+N") when its profile is opened.
+ * - [markAlbumSeen] clears a single release's "new" marker when the user opens that release.
+ * - [markSongSeen] clears one song's dot globally once its row actually scrolls into view — used by
+ *   the Featuring section, Top Songs, and album song lists alike, independent of played state.
  */
 @Singleton
 class NewReleaseNotifier @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
+    private val geniusRepository: GeniusRepository,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -62,11 +106,35 @@ class NewReleaseNotifier @Inject constructor(
     // but clamp so a pathological store can never crash the query.
     private val maxReconcileIds = 900
 
+    // ponytail: bound the persisted Featuring list so a prolific artist's collab history doesn't
+    // grow the DataStore blob unbounded. Newest (by firstSeenMs) kept.
+    private val maxFeaturedSongsPerArtist = 200
+
+    // ponytail: bound extra album fetches per refresh cycle for feature detection — a "Featured on"
+    // shelf realistically lists a handful of albums, not hundreds.
+    private val maxFeatureAlbumFetchesPerArtist = 20
+
+    // One-time baseline scan (first refresh after following an artist) can afford to look at more
+    // albums than a recurring 4h cycle — it happens once, not every window, and existing without it
+    // is exactly what caused backlog collabs to trickle in as false "new" over following cycles.
+    private val maxFeatureAlbumFetchesBaseline = 100
+
+    // ponytail: Genius pages are cheap (metadata only) compared to the YTM album fetches above, but
+    // each candidate still costs a YTM search call to resolve a playable id, so that's the real
+    // limiter. Baseline gets more room (one-time, same reasoning as the album cap above).
+    private val maxGeniusPagesPerCycle = 2
+    private val maxGeniusPagesBaseline = 6
+    private val maxGeniusResolveAttemptsPerCycle = 10
+    private val maxGeniusResolveAttemptsBaseline = 40
+
     private fun parse(raw: String?): Map<String, ArtistReleaseState> =
         raw?.let { runCatching { json.decodeFromString<Map<String, ArtistReleaseState>>(it) }.getOrNull() }
             .orEmpty()
 
-    /** artistId -> count of unseen, not-yet-played new songs. */
+    private fun parseIds(raw: String?): Set<String> =
+        raw?.let { runCatching { json.decodeFromString<Set<String>>(it) }.getOrNull() }.orEmpty()
+
+    /** artistId -> count of unseen, not-yet-played new songs (owned releases + newly found features). */
     val counts: Flow<Map<String, Int>> = context.dataStore.data
         .map { parse(it[ArtistNewReleasesKey]) }
         .distinctUntilChanged()
@@ -82,7 +150,22 @@ class NewReleaseNotifier @Inject constructor(
             }
         }
 
-    /** Clears the unseen list for one artist (keeps its baseline). Call when the profile opens. */
+    /** Unseen album/single/EP ids for one artist — drives the per-item "new" marker on its page. */
+    fun unseenAlbumIds(artistId: String): Flow<Set<String>> = context.dataStore.data
+        .map { parse(it[ArtistNewReleasesKey])[artistId]?.unseenAlbumIds.orEmpty() }
+        .distinctUntilChanged()
+
+    /** Tracks where this artist is a featured (non-primary) credit, newest first. */
+    fun featuredSongs(artistId: String): Flow<List<FeaturedSongInfo>> = context.dataStore.data
+        .map { parse(it[ArtistNewReleasesKey])[artistId]?.featuredSongs.orEmpty() }
+        .distinctUntilChanged()
+
+    /** Global set of song ids whose per-row dot hasn't been cleared yet (Top Songs, Featuring, albums). */
+    val unseenSongIds: Flow<Set<String>> = context.dataStore.data
+        .map { parseIds(it[UnseenSongDotsKey]) }
+        .distinctUntilChanged()
+
+    /** Clears the unseen song count for one artist (keeps its baseline). Call when the profile opens. */
     suspend fun markSeen(artistId: String) {
         context.dataStore.edit { prefs ->
             val store = parse(prefs[ArtistNewReleasesKey])
@@ -94,15 +177,149 @@ class NewReleaseNotifier @Inject constructor(
         }
     }
 
+    /** Clears one release's "new" marker. Call when the user opens that specific album/single/EP. */
+    suspend fun markAlbumSeen(artistId: String, albumId: String) {
+        context.dataStore.edit { prefs ->
+            val store = parse(prefs[ArtistNewReleasesKey])
+            val state = store[artistId] ?: return@edit
+            if (albumId !in state.unseenAlbumIds) return@edit
+            prefs[ArtistNewReleasesKey] = json.encodeToString(
+                store + (artistId to state.copy(unseenAlbumIds = state.unseenAlbumIds - albumId)),
+            )
+        }
+    }
+
+    /** Clears one song's dot globally. Call when its row actually scrolls into view — not on play. */
+    suspend fun markSongSeen(songId: String) {
+        context.dataStore.edit { prefs ->
+            val ids = parseIds(prefs[UnseenSongDotsKey])
+            if (songId !in ids) return@edit
+            prefs[UnseenSongDotsKey] = json.encodeToString(ids - songId)
+        }
+    }
+
+    /** True if `artists` includes `artistId` but not as the first (primary) credit. */
+    private fun isFeaturedTrack(artists: List<Artist>, artistId: String): Boolean =
+        artists.any { it.id == artistId } && artists.firstOrNull()?.id != artistId
+
     /**
-     * Refreshes new-release state for the given followed artists. Throttled to once per [windowMs]
-     * unless [force]. Drops state for artists no longer followed. Network-bound; run off the main
-     * thread.
+     * Scans [page] for tracks crediting [artistId] as a featured (non-primary) artist — both bare
+     * song shelves and other artists' albums not already known to be owned by [artistId]. Video
+     * items are dropped: the Featuring section lists official tracks only, not music videos.
+     */
+    private suspend fun discoverFeatures(
+        page: com.metrolist.innertube.pages.ArtistPage,
+        artistId: String,
+        currentAlbumIds: Set<String>,
+        knownAlbumIds: Set<String>,
+        now: Long,
+        albumFetchCap: Int,
+    ): List<FeaturedSongInfo> {
+        val directFeatureSongs = page.sections
+            .flatMap { it.items }
+            .filterIsInstance<SongItem>()
+            .filter { !it.isVideoSong && isFeaturedTrack(it.artists, artistId) }
+            .map { song ->
+                FeaturedSongInfo(
+                    songId = song.id,
+                    title = song.title,
+                    thumbnailUrl = song.thumbnail,
+                    albumId = song.album?.id,
+                    albumTitle = song.album?.name,
+                    otherArtists = song.artists.filter { it.id != artistId }
+                        .map { NameId(it.name, it.id) },
+                    firstSeenMs = now,
+                )
+            }
+
+        val candidateAlbumIds = page.sections
+            .flatMap { it.items }
+            .filterIsInstance<AlbumItem>()
+            .map { it.browseId }
+            .filter { it !in currentAlbumIds && it !in knownAlbumIds }
+            .distinct()
+            .take(albumFetchCap)
+
+        val albumFeatureSongs = candidateAlbumIds.flatMap { albumId ->
+            val albumPage = YouTube.album(albumId).getOrNull() ?: return@flatMap emptyList()
+            albumPage.songs
+                .filter { !it.isVideoSong && isFeaturedTrack(it.artists, artistId) }
+                .map { song ->
+                    FeaturedSongInfo(
+                        songId = song.id,
+                        title = song.title,
+                        thumbnailUrl = song.thumbnail,
+                        albumId = albumId,
+                        albumTitle = albumPage.album.title,
+                        otherArtists = song.artists.filter { it.id != artistId }
+                            .map { NameId(it.name, it.id) },
+                        year = albumPage.album.year,
+                        firstSeenMs = now,
+                    )
+                }
+        }
+
+        return (directFeatureSongs + albumFeatureSongs).distinctBy { it.songId }
+    }
+
+    private fun normalizeTitle(title: String): String = title.lowercase().replace(Regex("""[^a-z0-9]"""), "")
+
+    /**
+     * Genius indexes every song an artist is credited on, including "feat." credits YTM's own
+     * shelves never surface (see [GeniusRepository]). Genius only gives a title + primary artist
+     * name, not a playable YTM id, so each candidate is resolved via a YTM song search — best
+     * effort, skipped if nothing close enough turns up. Returns the resolved features plus the
+     * full set of Genius song ids considered (resolved or not), so callers can mark them known.
+     */
+    private suspend fun discoverGeniusFeatures(
+        artistName: String,
+        artistId: String,
+        knownGeniusSongIds: Set<Int>,
+        now: Long,
+        geniusToken: String,
+        maxPages: Int,
+        maxResolveAttempts: Int,
+    ): Pair<List<FeaturedSongInfo>, Set<Int>> {
+        if (geniusToken.isBlank()) return emptyList<FeaturedSongInfo>() to knownGeniusSongIds
+
+        val candidates = geniusRepository.findFeaturedSongs(artistName, geniusToken, maxPages)
+            .filter { it.geniusId !in knownGeniusSongIds }
+            .take(maxResolveAttempts)
+        if (candidates.isEmpty()) return emptyList<FeaturedSongInfo>() to knownGeniusSongIds
+
+        val resolved = candidates.mapNotNull { candidate ->
+            val query = "${candidate.primaryArtistName} ${candidate.title}"
+            val match = YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull()
+                ?.items?.filterIsInstance<SongItem>()?.firstOrNull { result ->
+                    val normalizedResult = normalizeTitle(result.title)
+                    val normalizedCandidate = normalizeTitle(candidate.title)
+                    !result.isVideoSong && normalizedCandidate.length >= 3 &&
+                        (normalizedResult.contains(normalizedCandidate) || normalizedCandidate.contains(normalizedResult))
+                } ?: return@mapNotNull null
+
+            FeaturedSongInfo(
+                songId = match.id,
+                title = match.title,
+                thumbnailUrl = match.thumbnail,
+                albumId = match.album?.id,
+                albumTitle = match.album?.name,
+                otherArtists = match.artists.filter { it.id != artistId }.map { NameId(it.name, it.id) },
+                firstSeenMs = now,
+            )
+        }
+
+        return resolved to (knownGeniusSongIds + candidates.map { it.geniusId })
+    }
+
+    /**
+     * Refreshes new-release and featuring state for the given followed artists. Throttled to once
+     * per [windowMs] unless [force]. Drops state for artists no longer followed. Network-bound; run
+     * off the main thread.
      */
     suspend fun refresh(
         followedArtistIds: List<String>,
         force: Boolean = false,
-        windowMs: Long = 12 * 60 * 60 * 1000L,
+        windowMs: Long = 4 * 60 * 60 * 1000L,
     ) {
         if (followedArtistIds.isEmpty()) return
         val now = System.currentTimeMillis()
@@ -112,12 +329,16 @@ class NewReleaseNotifier @Inject constructor(
 
         val followed = followedArtistIds.toSet()
         val store = parse(prefsSnapshot[ArtistNewReleasesKey]).toMutableMap()
+        var unseenSongDots = parseIds(prefsSnapshot[UnseenSongDotsKey])
+        val geniusToken = prefsSnapshot[GeniusApiTokenKey].orEmpty()
         // Forget artists that were unfollowed.
         store.keys.retainAll(followed)
 
         for (artistId in followed) {
             val page = YouTube.artist(artistId).getOrNull() ?: continue
-            // Only the artist's own releases — Album/Single/EP shelves, never "Featured on"/playlists.
+            val artistName = page.artist.title
+
+            // Owned releases — Album/Single/EP shelves.
             val currentAlbumIds = page.sections
                 .filter { section ->
                     val t = section.title
@@ -133,26 +354,77 @@ class NewReleaseNotifier @Inject constructor(
 
             val state = store[artistId] ?: ArtistReleaseState()
             if (!state.initialized) {
-                // First time we see this artist: record baseline, flag nothing.
-                store[artistId] = state.copy(knownAlbumIds = currentAlbumIds, initialized = true)
+                // First time we see this artist: baseline both owned releases AND existing features
+                // so neither back-catalog shows up as "new" later. Skipping the feature baseline
+                // here (as before) was the bug: knownFeaturedSongIds started empty, so every collab
+                // the throttled per-cycle album scan (20/refresh) eventually reached over following
+                // 4h windows got flagged "new" even though it was old backlog, not a real release.
+                val baselineFeatures = discoverFeatures(
+                    page, artistId, currentAlbumIds, knownAlbumIds = emptySet(), now,
+                    albumFetchCap = maxFeatureAlbumFetchesBaseline,
+                )
+                val (baselineGeniusFeatures, geniusIdsAfterBaseline) = discoverGeniusFeatures(
+                    artistName, artistId, knownGeniusSongIds = emptySet(), now, geniusToken,
+                    maxPages = maxGeniusPagesBaseline, maxResolveAttempts = maxGeniusResolveAttemptsBaseline,
+                )
+                val allBaselineFeatures = (baselineFeatures + baselineGeniusFeatures).distinctBy { it.songId }
+                store[artistId] = state.copy(
+                    knownAlbumIds = currentAlbumIds,
+                    initialized = true,
+                    knownFeaturedSongIds = allBaselineFeatures.map { it.songId }.toSet(),
+                    featuredSongs = allBaselineFeatures
+                        .sortedByDescending { it.firstSeenMs }
+                        .take(maxFeaturedSongsPerArtist),
+                    knownGeniusSongIds = geniusIdsAfterBaseline,
+                )
                 continue
             }
 
             val newAlbumIds = currentAlbumIds - state.knownAlbumIds
-            if (newAlbumIds.isEmpty()) continue
-
-            val newSongs = newAlbumIds.flatMap { albumId ->
+            val newOwnedSongs = newAlbumIds.flatMap { albumId ->
                 YouTube.album(albumId).getOrNull()?.songs?.map { it.id }.orEmpty()
             }
+
+            // Features: any track anywhere on the page crediting this artist but not as primary.
+            // Bare SongItem shelves (e.g. the artist's own catalog appearing elsewhere) are checked
+            // directly; AlbumItem shelves not already known to be owned by this artist require
+            // fetching the album to see its actual tracklist and credits.
+            val discoveredFeatures = discoverFeatures(
+                page, artistId, currentAlbumIds, knownAlbumIds = state.knownAlbumIds, now,
+                albumFetchCap = maxFeatureAlbumFetchesPerArtist,
+            )
+            val (geniusFeatures, geniusIdsAfterPass) = discoverGeniusFeatures(
+                artistName, artistId, knownGeniusSongIds = state.knownGeniusSongIds, now, geniusToken,
+                maxPages = maxGeniusPagesPerCycle, maxResolveAttempts = maxGeniusResolveAttemptsPerCycle,
+            )
+            val newFeatures = (discoveredFeatures + geniusFeatures)
+                .distinctBy { it.songId }
+                .filter { it.songId !in state.knownFeaturedSongIds }
+
+            if (newAlbumIds.isEmpty() && newFeatures.isEmpty() && geniusIdsAfterPass == state.knownGeniusSongIds) continue
+
+            val mergedFeaturedSongs = (state.featuredSongs + newFeatures)
+                .distinctBy { it.songId }
+                .sortedByDescending { it.firstSeenMs }
+                .take(maxFeaturedSongsPerArtist)
+
+            val newSongIdsThisPass = newOwnedSongs + newFeatures.map { it.songId }
+            unseenSongDots = unseenSongDots + newSongIdsThisPass
+
             store[artistId] = state.copy(
                 knownAlbumIds = state.knownAlbumIds + currentAlbumIds,
-                newSongIds = (state.newSongIds + newSongs).distinct(),
+                newSongIds = (state.newSongIds + newSongIdsThisPass).distinct(),
+                unseenAlbumIds = state.unseenAlbumIds + newAlbumIds,
+                knownFeaturedSongIds = state.knownFeaturedSongIds + newFeatures.map { it.songId },
+                featuredSongs = mergedFeaturedSongs,
+                knownGeniusSongIds = geniusIdsAfterPass,
             )
         }
 
         context.dataStore.edit { prefs ->
             prefs[ArtistNewReleasesKey] = json.encodeToString<Map<String, ArtistReleaseState>>(store)
             prefs[ArtistNewReleasesCheckedKey] = now
+            prefs[UnseenSongDotsKey] = json.encodeToString(unseenSongDots)
         }
     }
 }

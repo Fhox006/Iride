@@ -6,8 +6,10 @@
 package com.metrolist.music.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
@@ -115,6 +117,7 @@ import com.metrolist.music.LocalSyncUtils
 import com.metrolist.music.R
 import com.metrolist.music.constants.AlbumTopGradientKey
 import com.metrolist.music.constants.HideExplicitKey
+import com.metrolist.music.constants.IrideBaseBorderWidth
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.TopNavigationBarKey
@@ -263,6 +266,7 @@ fun OnlinePlaylistScreen(
             remember(songs) {
                 songs.map { GenreSongInfo(it.id, it.title, it.artists.firstOrNull()?.name) }
             },
+            cacheKey = playlist?.id,
         )
 
     val filteredSongs =
@@ -1071,7 +1075,8 @@ private fun OnlinePlaylistHeader(
                             spotColor = Color.Black.copy(alpha = 0.5f),
                         )
                         .clip(playlistCoverSquircle)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .border(BorderStroke(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f)), playlistCoverSquircle),
                 )
             }
 

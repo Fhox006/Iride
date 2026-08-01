@@ -8,6 +8,7 @@ package com.metrolist.music.ui.screens.artist
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -117,6 +118,7 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AlbumGridItem
+import com.metrolist.music.ui.component.ItemThumbnail
 import com.metrolist.music.ui.component.ExpandableText
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideOutlineIconButton
@@ -168,8 +170,11 @@ import androidx.compose.ui.util.lerp
 import coil3.compose.AsyncImagePainter
 import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.TypewriterText
+import com.metrolist.music.ui.component.rememberNewlyVisibleKeys
 import com.metrolist.music.ui.component.rememberRubberBandPull
 import com.metrolist.music.ui.component.rubberBandOverscroll
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.grainOverlay
 import com.metrolist.music.ui.utils.headerEnter
@@ -274,6 +279,9 @@ fun ArtistScreen(
     val recentAlbum by viewModel.recentAlbum.collectAsState()
     val recentAlbumPreciseDate by viewModel.recentAlbumPreciseDate.collectAsState()
     val expandedTopSongs by viewModel.expandedTopSongs.collectAsState()
+    val unseenAlbumIds by viewModel.unseenAlbumIds.collectAsState()
+    val featuringSongs by viewModel.featuringSongs.collectAsState()
+    val unseenSongIds by viewModel.unseenSongIds.collectAsState()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val showArtistDescription by rememberPreference(key = ShowArtistDescriptionKey, defaultValue = true)
     val showArtistSubscriberCount by rememberPreference(key = ShowArtistSubscriberCountKey, defaultValue = true)
@@ -454,6 +462,8 @@ fun ArtistScreen(
     // screen — the old one had no listeners line and no latest-release panel — so it guaranteed the
     // jump it existed to prevent.
     val fullSkeleton = artistLoading && !topNavigationBarEnabled
+
+    val featuringTitle = stringResource(R.string.featuring)
 
     Box(
         modifier = Modifier
@@ -942,6 +952,8 @@ fun ArtistScreen(
                                         preciseDate = recentAlbumPreciseDate,
                                         useMonospace = topNavigationBarEnabled,
                                         enterProgress = if (topNavigationBarEnabled) panelProgress else 1f,
+                                        isActive = mediaMetadata?.album?.id == recentAlbum!!.album.id,
+                                        isPlaying = isPlaying,
                                         onClick = { navController.navigate("album/${recentAlbum!!.album.id}") },
                                         onLongClick = {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -1137,6 +1149,98 @@ fun ArtistScreen(
                     // artists carry separate "Singles" and "EPs" shelves rather than one combined
                     // shelf; the button lands under whichever of those is encountered first.
                     var discographyButtonRendered = false
+                    // Guards the Featuring section to a single insertion — it's injected right
+                    // before the first Video/Performance-titled shelf (above videos, below
+                    // EPs/Singles per the artist page's own shelf order), or after the loop if the
+                    // artist page never has a video shelf at all.
+                    var featuringSectionRendered = false
+                    val featuringSection: LazyListScope.() -> Unit = {
+                        if (featuringSongs.isNotEmpty()) {
+                            item(key = "featuring_title") {
+                                NavigationTitle(
+                                    title = featuringTitle,
+                                    modifier = Modifier
+                                        .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                        .revealMask(rememberSectionEnter("featuring_section", revealedSections)),
+                                    useIrideStyle = topNavigationBarEnabled,
+                                )
+                            }
+                            item(key = "featuring_carousel") {
+                                val gridState = rememberLazyGridState()
+                                rememberNewlyVisibleKeys(gridState) { visibleIds ->
+                                    visibleIds.forEach { viewModel.markSongSeen(it) }
+                                }
+                                SongCarousel(
+                                    items = featuringSongs,
+                                    key = { it.id },
+                                    gridState = gridState,
+                                    modifier = Modifier.irideEnter(
+                                        rememberSectionEnter("featuring_carousel", revealedSections),
+                                        10.dp,
+                                    ),
+                                ) { song, itemWidth ->
+                                    YouTubeListItem(
+                                        item = song,
+                                        isActive = mediaMetadata?.id == song.id,
+                                        isPlaying = isPlaying,
+                                        isSwipeable = false,
+                                        showNewMarker = song.id in unseenSongIds,
+                                        newMarkerLabel = if (song.id in unseenSongIds) stringResource(R.string.artist_release_type_feat) else null,
+                                        showAlbumInSubtitle = true,
+                                        trailingContent = {
+                                            IconButton(
+                                                onClick = {
+                                                    menuState.show {
+                                                        YouTubeSongMenu(
+                                                            song = song,
+                                                            navController = navController,
+                                                            onDismiss = menuState::dismiss,
+                                                        )
+                                                    }
+                                                },
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.more_vert),
+                                                    contentDescription = null,
+                                                )
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .width(itemWidth)
+                                            .padding(horizontal = if (topNavigationBarEnabled) 8.dp else 0.dp)
+                                            .combinedClickable(
+                                                onClick = {
+                                                    if (song.id in unseenSongIds) viewModel.markSongSeen(song.id)
+                                                    if (!isGuest) {
+                                                        if (song.id == mediaMetadata?.id) {
+                                                            playerConnection.togglePlayPause()
+                                                        } else {
+                                                            playerConnection.playQueue(
+                                                                ListQueue(
+                                                                    title = featuringTitle,
+                                                                    items = featuringSongs.map { it.toMediaItem() },
+                                                                    startIndex = featuringSongs.indexOfFirst { it.id == song.id },
+                                                                ),
+                                                            )
+                                                        }
+                                                    }
+                                                },
+                                                onLongClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    menuState.show {
+                                                        YouTubeSongMenu(
+                                                            song = song,
+                                                            navController = navController,
+                                                            onDismiss = menuState::dismiss,
+                                                        )
+                                                    }
+                                                },
+                                            ),
+                                    )
+                                }
+                            }
+                        }
+                    }
                     artistPage?.sections?.fastForEach { section ->
                         // "From your library" is redundant with the dedicated library toggle above — skip it
                         val isFromYourLibrarySection = section.title.contains("your library", ignoreCase = true) ||
@@ -1168,6 +1272,15 @@ fun ArtistScreen(
                                 // the same movement and reads as the shelf sliding down out of
                                 // nowhere. Left unanimated, it just holds its resting position.
                                 val isTopSongsShelf = (filteredItems.firstOrNull() as? SongItem)?.album != null
+
+                                val isVideoSectionForFeaturingGate = section.title.contains("Video", ignoreCase = true) ||
+                                    section.title.contains("Performance", ignoreCase = true)
+                                if (isVideoSectionForFeaturingGate && !featuringSectionRendered) {
+                                    featuringSectionRendered = true
+                                    featuringSection()
+                                }
+
+                                if (!isVideoSectionForFeaturingGate) {
                                 item(key = "section_${section.title}") {
                                     NavigationTitle(
                                         title = section.title,
@@ -1200,9 +1313,14 @@ fun ArtistScreen(
                                     // back longer than what we already have.
                                     val topSongs = expandedTopSongs?.takeIf { it.size > shelfTopSongs.size } ?: shelfTopSongs
                                     item(key = "top_songs_carousel_${section.title}") {
+                                        val topSongsGridState = rememberLazyGridState()
+                                        rememberNewlyVisibleKeys(topSongsGridState) { visibleIds ->
+                                            visibleIds.forEach { viewModel.markSongSeen(it) }
+                                        }
                                         SongCarousel(
                                             items = topSongs,
-                                            key = { "youtube_song_${it.id}" },
+                                            key = { it.id },
+                                            gridState = topSongsGridState,
                                         ) { song, itemWidth ->
                                             YouTubeListItem(
                                                 item = song,
@@ -1211,6 +1329,7 @@ fun ArtistScreen(
                                                 // Same carousel/swipe gesture conflict as the local
                                                 // songs carousel above.
                                                 isSwipeable = false,
+                                                showNewMarker = song.id in unseenSongIds,
                                                 trailingContent = {
                                                     IconButton(
                                                         onClick = {
@@ -1372,6 +1491,14 @@ fun ArtistScreen(
                                                     thumbnailRatio = if (isVideoSection) 16f / 9f else 1f,
                                                     thumbnailCornerRadius = if (isVideoSection) 8.dp else 3.dp,
                                                     showPlayButton = !hidePlayButton,
+                                                    showNewMarker = item is AlbumItem && item.id in unseenAlbumIds,
+                                                    newMarkerLabel = when {
+                                                        item !is AlbumItem || item.id !in unseenAlbumIds -> null
+                                                        isAlbumSection -> stringResource(R.string.artist_release_type_album)
+                                                        section.title.contains("EP", ignoreCase = true) -> stringResource(R.string.artist_release_type_ep)
+                                                        isSingleEpSection -> stringResource(R.string.artist_release_type_single)
+                                                        else -> null
+                                                    },
                                                     size = when {
                                                         isAlbumSection -> 180.dp
                                                         isVideoSection -> 110.dp
@@ -1381,9 +1508,16 @@ fun ArtistScreen(
                                                         Modifier
                                                             .combinedClickable(
                                                                 onClick = {
+                                                                    if (item is AlbumItem && item.id in unseenAlbumIds) {
+                                                                        viewModel.markAlbumSeen(item.id)
+                                                                    }
                                                                     when (item) {
                                                                         is SongItem -> {
-                                                                            if (!isGuest) {
+                                                                            if (isVideoSection) {
+                                                                                navController.navigate(
+                                                                                    "video_player/${item.id}?title=${Uri.encode(item.title)}",
+                                                                                )
+                                                                            } else if (!isGuest) {
                                                                                 playerConnection.playQueue(
                                                                                     YouTubeQueue(
                                                                                         WatchEndpoint(videoId = item.id),
@@ -1480,6 +1614,7 @@ fun ArtistScreen(
                                         }
                                     }
                                 }
+                                }
 
                                 if (isSinglesSection && topNavigationBarEnabled && !discographyButtonRendered) {
                                     discographyButtonRendered = true
@@ -1520,6 +1655,11 @@ fun ArtistScreen(
                                 }
                             }
                         }
+                    }
+
+                    if (!featuringSectionRendered) {
+                        featuringSectionRendered = true
+                        featuringSection()
                     }
 
                     // About Artist Section
@@ -1843,6 +1983,8 @@ fun RecentAlbumPanel(
     preciseDate: String? = null,
     /** 0f→1f entrance driven by the caller, so the panel lands after the artist name is typed. */
     enterProgress: Float = 1f,
+    isActive: Boolean = false,
+    isPlaying: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -1879,13 +2021,19 @@ fun RecentAlbumPanel(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            AsyncImage(
-                model = album.thumbnailUrl?.resize(544, 544),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(if (useMonospace) 108.dp else 96.dp)
-                    .clip(SquircleShape(radius = if (useMonospace) 9.dp else 6.dp, cornerSmoothing = 0.48f))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            ItemThumbnail(
+                thumbnailUrl = album.thumbnailUrl?.resize(544, 544),
+                isActive = isActive,
+                isPlaying = isPlaying,
+                // New Iride UI: same 9.dp squircle radius as every other cover in the app (album/
+                // playlist list & grid rows); classic UI keeps its own smaller 6.dp rounding.
+                shape = if (useMonospace) {
+                    SquircleShape(radius = 9.dp, cornerSmoothing = 0.5f)
+                } else {
+                    SquircleShape(radius = 6.dp, cornerSmoothing = 0.48f)
+                },
+                modifier = Modifier.size(if (useMonospace) 108.dp else 96.dp),
+                hairlineBorder = useMonospace,
             )
 
             Column(

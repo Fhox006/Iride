@@ -52,7 +52,13 @@ object GenreProvider {
     private val found = ConcurrentHashMap<String, List<String>>()
     private val notFound = ConcurrentHashMap.newKeySet<String>()
 
+    // Last computed genre-pill order per playlist/screen (keyed by playlistId or a fixed
+    // screen key), so a filter row can render its previous session's order immediately
+    // instead of resorting live while genres stream in. See GenreFilterChips.kt.
+    private val orderCache = ConcurrentHashMap<String, List<String>>()
+
     private var cacheFile: File? = null
+    private var orderCacheFile: File? = null
     private val dirty = AtomicBoolean(false)
     private val ioScope = CoroutineScope(Dispatchers.IO)
 
@@ -101,12 +107,17 @@ object GenreProvider {
     fun init(context: Context) {
         if (cacheFile != null) return
         cacheFile = File(context.filesDir, "genre_cache.json")
+        orderCacheFile = File(context.filesDir, "genre_order_cache.json")
         loadCache()
+        loadOrderCache()
 
         ioScope.launch {
             while (true) {
                 delay(3000)
-                if (dirty.getAndSet(false)) persistCache()
+                if (dirty.getAndSet(false)) {
+                    persistCache()
+                    persistOrderCache()
+                }
             }
         }
     }
@@ -128,6 +139,35 @@ object GenreProvider {
             file.writeText(json.encodeToString(found.toMap()))
         } catch (e: Exception) {
             Timber.tag("GenreProvider").d(e, "Failed to persist genre cache")
+        }
+    }
+
+    /** Last remembered pill order for [key] (playlist id or fixed screen key), if any. */
+    fun getSavedOrder(key: String): List<String>? = orderCache[key]
+
+    /** Call once a playlist's genre counts finish resolving, so the next visit opens sorted. */
+    fun saveOrder(key: String, order: List<String>) {
+        orderCache[key] = order
+        dirty.set(true)
+    }
+
+    private fun loadOrderCache() {
+        val file = orderCacheFile ?: return
+        if (!file.exists()) return
+        try {
+            val cached: Map<String, List<String>> = json.decodeFromString(file.readText())
+            orderCache.putAll(cached)
+        } catch (e: Exception) {
+            Timber.tag("GenreProvider").d(e, "Failed to load genre order cache")
+        }
+    }
+
+    private fun persistOrderCache() {
+        val file = orderCacheFile ?: return
+        try {
+            file.writeText(json.encodeToString(orderCache.toMap()))
+        } catch (e: Exception) {
+            Timber.tag("GenreProvider").d(e, "Failed to persist genre order cache")
         }
     }
 

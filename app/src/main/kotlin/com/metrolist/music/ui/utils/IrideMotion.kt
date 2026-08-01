@@ -13,9 +13,11 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,9 +33,12 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.metrolist.music.constants.IrideAnimationsKey
 import com.metrolist.music.utils.rememberPreference
 import kotlin.random.Random
@@ -119,6 +124,44 @@ fun rememberReducedMotion(): Boolean {
         ) == 0f
     }
     return !animationsEnabled || systemDisabled
+}
+
+/**
+ * 1f normally; after the app has been backgrounded (`ON_STOP`) and comes back (`ON_START`), drops
+ * to 0f and fades back up over [fadeMillis].
+ *
+ * Compose's `rememberInfiniteTransition` phases its animations off the system frame clock, which
+ * keeps advancing while the app is stopped. A continuously-animated surface (the animated gradient
+ * backgrounds) is drawn mid-cycle when the app resumes, at a position far from where it was left —
+ * a hard visual cut. Wrapping that surface's alpha in this masks the cut as a soft fade to the new
+ * position instead of a jump.
+ */
+@Composable
+fun rememberResumeFadeAlpha(fadeMillis: Int = 500): Float {
+    val reducedMotion = rememberReducedMotion()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var wasStopped by remember { mutableStateOf(false) }
+    var fadeKey by remember { mutableStateOf(0) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_STOP -> wasStopped = true
+                Lifecycle.Event.ON_START -> if (wasStopped) {
+                    wasStopped = false
+                    fadeKey++
+                }
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    if (reducedMotion) return 1f
+    val alpha = remember(fadeKey) { Animatable(if (fadeKey == 0) 1f else 0f) }
+    LaunchedEffect(fadeKey) {
+        if (fadeKey > 0) alpha.animateTo(1f, tween(fadeMillis, easing = IrideMotion.EaseOutExpo))
+    }
+    return alpha.value
 }
 
 /**

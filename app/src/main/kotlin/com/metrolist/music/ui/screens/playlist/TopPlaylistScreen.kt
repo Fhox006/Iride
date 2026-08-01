@@ -157,6 +157,7 @@ fun TopPlaylistScreen(
             remember(songs) {
                 songs?.map { GenreSongInfo(it.id, it.title, it.artists.firstOrNull()?.name) } ?: emptyList()
             },
+            cacheKey = "top_playlist",
         )
 
     val filteredSongs = remember(songs, query, genreFilter.selectedGenre, genreFilter.genreBySongId) {

@@ -121,6 +121,7 @@ import coil3.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.metrolist.music.ui.theme.PlayerColorExtractor
+import com.metrolist.music.ui.component.PillShimmerSkeleton
 
 /**
  * Stable wrapper for progress state - reads values only during draw phase
@@ -177,6 +178,37 @@ private fun NewMiniPlayer(
     modifier: Modifier = Modifier,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
+
+    // Read before the pending-restore gate below so the skeleton is sized the same as the real
+    // content it's standing in for — tablet landscape uses a fixed 500dp centered pill, not
+    // fillMaxWidth, and skipping that here would make the skeleton snap narrower/wider the moment
+    // real content swaps in.
+    val windowInfoForSkeleton = LocalWindowInfo.current
+    val configurationForSkeleton = LocalConfiguration.current
+    val densityForSkeleton = LocalDensity.current
+    val isTabletLandscapeForSkeleton = remember(windowInfoForSkeleton.containerSize.width, configurationForSkeleton.orientation) {
+        (windowInfoForSkeleton.containerSize.width / densityForSkeleton.density) >= 600f &&
+            configurationForSkeleton.orientation == Configuration.ORIENTATION_LANDSCAPE
+    }
+
+    // Same "restoring a persisted queue" window as FloatingPill/curtain — hold the skeleton
+    // instead of letting mediaMetadata's transient null pop a placeholder + live controls in
+    // before the real track lands a moment later.
+    val hasPendingQueueRestore by playerConnection.service.hasPendingQueueRestoreFlow.collectAsState()
+    if (hasPendingQueueRestore) {
+        Box(modifier.fillMaxWidth()) {
+            Box(
+                modifier = if (isTabletLandscapeForSkeleton) {
+                    Modifier.width(500.dp).align(Alignment.Center)
+                } else {
+                    Modifier.fillMaxWidth()
+                },
+            ) {
+                PillShimmerSkeleton(isTopLevelRoute = false)
+            }
+        }
+        return
+    }
 
     // Theme settings - these rarely change
     val miniPlayerBackground by rememberEnumPreference(
@@ -254,6 +286,7 @@ private fun NewMiniPlayer(
                         .data(url)
                         .size(100, 100)
                         .allowHardware(false)
+                        .memoryCacheKey("gradient_${mediaMetadata?.id}")
                         .build()
                     val result = runCatching { context.imageLoader.execute(request) }.getOrNull()
                     val bitmap = result?.image?.toBitmap()
@@ -565,22 +598,7 @@ private fun NewMiniPlayerSongInfo(
                 overflow = TextOverflow.Clip,
                 modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
             )
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (metadata.explicit) MIcon.Explicit()
-                if (metadata.artists.any { it.name.isNotBlank() }) {
-                    Text(
-                        text = metadata.artists.joinToString { it.name },
-                        color = onSurfaceColor.copy(alpha = 0.7f),
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Clip,
-                        modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
-                    )
-                }
-            }
+            if (metadata.explicit) MIcon.Explicit()
 
             AnimatedVisibility(visible = error != null, enter = fadeIn(), exit = fadeOut()) {
                 Text(
@@ -605,6 +623,29 @@ private fun LegacyMiniPlayer(
     modifier: Modifier = Modifier,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
+
+    // The caller (MiniPlayer()) already applies Modifier.align(Alignment.Center) to `modifier`
+    // for the tablet-landscape case (see below) — read the same size-class check here so the
+    // skeleton picks up the same fixed 500dp width instead of stretching full-width and then
+    // snapping narrower once real content swaps in.
+    val windowInfoForSkeleton = LocalWindowInfo.current
+    val configurationForSkeleton = LocalConfiguration.current
+    val densityForSkeleton = LocalDensity.current
+    val isTabletLandscapeForSkeleton = remember(windowInfoForSkeleton.containerSize.width, configurationForSkeleton.orientation) {
+        (windowInfoForSkeleton.containerSize.width / densityForSkeleton.density) >= 600f &&
+            configurationForSkeleton.orientation == Configuration.ORIENTATION_LANDSCAPE
+    }
+
+    val hasPendingQueueRestore by playerConnection.service.hasPendingQueueRestoreFlow.collectAsState()
+    if (hasPendingQueueRestore) {
+        Box(
+            modifier.then(if (isTabletLandscapeForSkeleton) Modifier.width(500.dp) else Modifier.fillMaxWidth()),
+        ) {
+            PillShimmerSkeleton(isTopLevelRoute = false)
+        }
+        return
+    }
+
     val pureBlack by rememberPreference(PureBlackMiniPlayerKey, defaultValue = false)
 
     val playbackState by playerConnection.playbackState.collectAsState()
@@ -923,16 +964,6 @@ private fun LegacyMiniMediaInfo(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.basicMarquee(),
             )
-
-            if (mediaMetadata.artists.any { it.name.isNotBlank() }) {
-                Text(
-                    text = mediaMetadata.artists.joinToString { it.name },
-                    color = MaterialTheme.colorScheme.secondary,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
         }
     }
 }

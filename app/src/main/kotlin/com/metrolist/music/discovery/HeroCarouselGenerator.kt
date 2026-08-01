@@ -5,16 +5,20 @@
 
 package com.metrolist.music.discovery
 
-import com.metrolist.innertube.models.PlaylistItem
-import com.metrolist.innertube.models.isMixtape
+import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.pages.ExplorePage
 import com.metrolist.innertube.pages.HomePage
 import com.metrolist.music.db.MusicDatabase
-import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.extensions.filterGenuineFavorites
+import com.metrolist.music.models.DischiPerTeItem
 import com.metrolist.music.models.HeroCarouselItem
-import com.metrolist.music.models.MoodSnapshot
+import com.metrolist.music.utils.GenreProvider
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlin.random.Random
 
 class HeroCarouselGenerator(
@@ -28,7 +32,7 @@ class HeroCarouselGenerator(
     suspend fun generate(
         explorePage: ExplorePage?,
         homePage: HomePage?,
-        moodSnapshot: MoodSnapshot?,
+        dischiPerTe: List<DischiPerTeItem>,
         seed: Long,
         seenAsFirstIds: Set<String>,
     ): Result {
@@ -43,6 +47,7 @@ class HeroCarouselGenerator(
             .filterGenuineFavorites()
         val knownArtistIds = knownArtists.map { it.id }.toSet()
 
+        // "More New": new releases from artists the user actually follows.
         val newReleaseCandidates = explorePage?.newReleaseAlbums
             ?.distinctBy { it.browseId }
             ?.let { albums ->
@@ -68,95 +73,95 @@ class HeroCarouselGenerator(
                 )
             }.orEmpty()
 
-        val mixtapes = homePage?.sections
+        // "Album in rotazione": albums straight from the user's own recent/stale plays —
+        // the local half of the "Dischi per te" shelf's mix, never a playlist.
+        val inRotationCandidates = dischiPerTe.filterIsInstance<DischiPerTeItem.Local>()
+            .shuffled(random)
+            .take(3)
+            .map { local ->
+                HeroCarouselItem.InRotation(
+                    albumId = local.album.id,
+                    title = local.album.title,
+                    artistName = local.album.artists.joinToString(", ") { it.name },
+                    coverUrl = local.album.thumbnailUrl,
+                )
+            }
+
+        // "Album consigliati in base agli ascolti recenti": the algorithmic half of the
+        // same "Dischi per te" shelf (similar/unheard artists derived from recent plays).
+        val recommendedAlbumCandidates = dischiPerTe.filterIsInstance<DischiPerTeItem.Remote>()
+            .shuffled(random)
+            .take(3)
+            .map { remote ->
+                HeroCarouselItem.RecommendedAlbum(
+                    albumId = remote.item.id,
+                    title = remote.item.title,
+                    artistName = remote.item.artists?.joinToString(", ") { it.name }
+                        ?: remote.fallbackArtistName ?: "",
+                    coverUrl = remote.item.thumbnail,
+                )
+            }
+
+        // "Artisti emergenti o in tendenza": artists surfaced on the personalized home
+        // feed that the user doesn't already follow — the closest proxy to "trending"
+        // available without a dedicated trending-artists endpoint.
+        val trendingArtistCandidates = homePage?.sections
             ?.flatMap { it.items }
-            ?.filterIsInstance<PlaylistItem>()
-            ?.filter { it.isMixtape }
+            ?.filterIsInstance<ArtistItem>()
+            ?.filterNot { it.id in knownArtistIds }
             ?.distinctBy { it.id }
             ?.shuffled(random)
-            ?.take(2)
-            ?.map { playlist ->
-                HeroCarouselItem.ForYou(
-                    playlistId = playlist.id,
-                    title = playlist.title,
-                    subtitle = playlist.author?.name ?: "Mix",
-                    coverUrl = playlist.thumbnail,
-                    isLocal = false,
-                )
-            }.orEmpty()
-
-        val forYouCandidates = mixtapes.ifEmpty {
-            val likedCount = database.likedSongsCount().first()
-            if (likedCount > 0) {
-                listOf(
-                    HeroCarouselItem.ForYou(
-                        playlistId = PlaylistEntity.LIKED_PLAYLIST_ID,
-                        title = "Liked Songs",
-                        subtitle = "$likedCount songs",
-                        coverUrl = null,
-                        isLocal = true,
-                    )
-                )
-            } else emptyList()
-        }
-
-        val moodCandidates = moodSnapshot?.items
-            ?.firstOrNull { it.type == "playlist" }
-            ?.let { snapshotItem ->
-                listOf(
-                    HeroCarouselItem.Mood(
-                        playlistId = snapshotItem.id,
-                        moodName = moodSnapshot.chipTitle,
-                        coverUrl = snapshotItem.thumbnailUrl,
-                    )
+            ?.take(3)
+            ?.map { artist ->
+                HeroCarouselItem.TrendingArtist(
+                    artistId = artist.id,
+                    artistName = artist.title,
+                    coverUrl = artist.thumbnail,
                 )
             }.orEmpty()
 
         val topArtists = knownArtists.take(8).shuffled(random)
-
-        val moreFromCandidates = topArtists.take(3).map { artist ->
-            HeroCarouselItem.MoreFromArtist(
+        val radioCandidates = topArtists.take(3).map { artist ->
+            HeroCarouselItem.ArtistRadio(
                 artistId = artist.id,
                 artistName = artist.artist.name,
                 coverUrl = artist.artist.thumbnailUrl,
             )
         }
 
-        val radioCandidates = topArtists.drop(3).take(3)
-            .ifEmpty { topArtists.take(3) }
-            .map { artist ->
-                HeroCarouselItem.ArtistRadio(
-                    artistId = artist.id,
-                    artistName = artist.artist.name,
-                    coverUrl = artist.artist.thumbnailUrl,
-                )
-            }
+        // "Nuove uscite del genere preferito": tag a handful of new releases with a genre
+        // via GenreProvider (same lookup GenrePillsRow uses for playlists) and keep the
+        // ones matching the genre the user's most-played songs skew towards.
+        val genreNewReleaseCandidates = buildGenreNewReleases(explorePage, random)
 
-        val pools = listOf(newReleaseCandidates, forYouCandidates, moodCandidates, moreFromCandidates, radioCandidates)
-            .filter { it.isNotEmpty() }
-            .map { it.shuffled(random) }
+        val pools = listOf(
+            newReleaseCandidates, inRotationCandidates, recommendedAlbumCandidates,
+            trendingArtistCandidates, radioCandidates, genreNewReleaseCandidates,
+        ).filter { it.isNotEmpty() }.map { it.shuffled(random).toMutableList() }
 
         if (pools.isEmpty()) return Result(emptyList(), seenAsFirstIds)
 
-        val cursors = IntArray(pools.size)
+        // Draw each candidate at most once. Padding out to a fixed 10 by reusing a pool
+        // once it ran dry (e.g. a single "Liked Songs" card) made the carousel repeat the
+        // same slide several times — the carousel is now only as long as the real variety
+        // available (capped at 10), with no two consecutive cards from the same pool.
         val result = mutableListOf<HeroCarouselItem>()
         var lastPoolIndex = -1
 
-        repeat(10) { position ->
-            val availableIndices = pools.indices.filter { it != lastPoolIndex }.ifEmpty { pools.indices.toList() }
+        while (result.size < 10 && pools.any { it.isNotEmpty() }) {
+            val availableIndices = pools.indices.filter { pools[it].isNotEmpty() && it != lastPoolIndex }
+                .ifEmpty { pools.indices.filter { pools[it].isNotEmpty() } }
             val poolIndex = availableIndices.random(random)
-            var pool = pools[poolIndex]
+            val pool = pools[poolIndex]
 
             // The album shown as the very first card must rotate: never repeat one
             // already presented in that position.
-            if (position == 0) {
-                val filtered = pool.filterNot { it is HeroCarouselItem.NewRelease && it.albumId in seenAsFirstIds }
-                if (filtered.isNotEmpty()) pool = filtered
-            }
+            val pickIndex = if (result.isEmpty()) {
+                pool.indexOfFirst { it !is HeroCarouselItem.NewRelease || it.albumId !in seenAsFirstIds }
+                    .takeIf { it != -1 } ?: 0
+            } else 0
 
-            val idx = cursors[poolIndex] % pool.size
-            cursors[poolIndex] = cursors[poolIndex] + 1
-            result.add(pool[idx])
+            result.add(pool.removeAt(pickIndex))
             lastPoolIndex = poolIndex
         }
 
@@ -165,5 +170,46 @@ class HeroCarouselGenerator(
             ?: seenAsFirstIds
 
         return Result(result, updatedSeenIds)
+    }
+
+    private suspend fun buildGenreNewReleases(
+        explorePage: ExplorePage?,
+        random: Random,
+    ): List<HeroCarouselItem.GenreNewRelease> = coroutineScope {
+        val albums = explorePage?.newReleaseAlbums?.distinctBy { it.browseId }
+            ?.shuffled(random)?.take(15) ?: return@coroutineScope emptyList()
+        if (albums.isEmpty()) return@coroutineScope emptyList()
+
+        val semaphore = Semaphore(4)
+        val topSongs = database.mostPlayedSongs(fromTimeStamp = 0L, limit = 8).first()
+        val favoriteGenre = topSongs.map { song ->
+            async {
+                semaphore.withPermit {
+                    GenreProvider.getGenres(song.song.id, song.song.title, song.artists.firstOrNull()?.name)
+                }
+            }
+        }.awaitAll().flatten()
+            .groupingBy { it.lowercase() }
+            .eachCount()
+            .maxByOrNull { it.value }
+            ?.key ?: return@coroutineScope emptyList()
+
+        albums.map { album ->
+            async {
+                val artistName = album.artists?.joinToString(", ") { it.name } ?: ""
+                val matched = semaphore.withPermit {
+                    GenreProvider.getGenres(album.browseId, album.title, artistName.ifEmpty { null })
+                }.firstOrNull { it.equals(favoriteGenre, ignoreCase = true) }
+                matched?.let { Triple(album, artistName, it) }
+            }
+        }.awaitAll().filterNotNull().take(3).map { (album, artistName, genreLabel) ->
+            HeroCarouselItem.GenreNewRelease(
+                albumId = album.browseId,
+                title = album.title,
+                artistName = artistName,
+                coverUrl = album.thumbnail,
+                genreLabel = genreLabel,
+            )
+        }
     }
 }

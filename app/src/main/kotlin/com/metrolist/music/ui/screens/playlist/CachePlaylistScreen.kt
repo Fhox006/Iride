@@ -148,6 +148,7 @@ fun CachePlaylistScreen(
             remember(sortedSongs) {
                 sortedSongs.map { GenreSongInfo(it.id, it.title, it.artists.firstOrNull()?.name) }
             },
+            cacheKey = "cache_playlist",
         )
 
     val filteredSongs = remember(sortedSongs, searchQuery, genreFilter.selectedGenre, genreFilter.genreBySongId) {

@@ -102,6 +102,7 @@ import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.YouTubeQueue
+import com.metrolist.music.utils.recordSearchHistoryOpen
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.EmptyPlaceholder
 import com.metrolist.music.ui.component.HideOnScrollFAB
@@ -375,14 +376,16 @@ fun OnlineSearchResultsBody(
 ) {
     val menuState = LocalMenuState.current
     val playerConnection = LocalPlayerConnection.current ?: return
+    val database = LocalDatabase.current
     val haptic = LocalHapticFeedback.current
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
+    val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
 
     var smartSelected by rememberSaveable { mutableStateOf(true) }
-    LaunchedEffect(smartSelected) {
+    LaunchedEffect(smartSelected, viewModel.query) {
         if (smartSelected) viewModel.loadSmartSearch()
     }
 
@@ -451,6 +454,7 @@ fun OnlineSearchResultsBody(
                 .padding(horizontal = if (useIrideStyle) 20.dp else 16.dp)
                 .combinedClickable(
                     onClick = {
+                        if (!pauseSearchHistory) database.recordSearchHistoryOpen(viewModel.query, item)
                         when (item) {
                             is SongItem -> {
                                 if (item.id == mediaMetadata?.id) playerConnection.togglePlayPause()
@@ -503,6 +507,7 @@ fun OnlineSearchResultsBody(
                     modifier = Modifier
                         .combinedClickable(
                             onClick = {
+                                if (!pauseSearchHistory) database.recordSearchHistoryOpen(viewModel.query, rowItem)
                                 when (rowItem) {
                                     is SongItem -> {
                                         if (rowItem.id == mediaMetadata?.id) playerConnection.togglePlayPause()
@@ -583,6 +588,7 @@ fun OnlineSearchResultsBody(
                             .weight(1f)
                             .combinedClickable(
                                 onClick = {
+                                    if (!pauseSearchHistory) database.recordSearchHistoryOpen(viewModel.query, item)
                                     when (item) {
                                         is SongItem -> {
                                             if (item.id == mediaMetadata?.id) playerConnection.togglePlayPause()

@@ -17,22 +17,29 @@ object TitleFeaturingParser {
     private val trailingPattern =
         Regex("""\s+(?:feat\.?|featuring|ft\.?)\s+(.+)$""", RegexOption.IGNORE_CASE)
 
+    // Splits a raw captured credit into individual names: "Frezza, G.Mineiro" or "Frezza & G.Mineiro"
+    // both credit two separate artists, not one combined name.
+    private val nameSeparator = Regex("""\s*(?:,|&|/)\s*""")
+
+    private fun splitNames(raw: String): List<String> =
+        nameSeparator.split(raw).map { it.trim() }.filter { it.isNotEmpty() }
+
     /** Cheap pre-check to avoid running the full regex on every title. */
     fun looksFeatured(title: String): Boolean = quickCheck.containsMatchIn(title)
 
-    /** Returns (cleanTitle, collaboratorName) if a featuring credit was found, else null. */
-    fun extract(title: String): Pair<String, String>? {
+    /** Returns (cleanTitle, collaboratorNames) if a featuring credit was found, else null. */
+    fun extract(title: String): Pair<String, List<String>>? {
         parenPattern.find(title)?.let { match ->
-            val artist = match.groupValues[1].trim()
-            if (artist.isEmpty()) return null
+            val artists = splitNames(match.groupValues[1])
+            if (artists.isEmpty()) return null
             val clean = title.replace(match.value, "").trim().replace(Regex("""\s{2,}"""), " ")
-            return clean to artist
+            return clean to artists
         }
         trailingPattern.find(title)?.let { match ->
-            val artist = match.groupValues[1].trim()
-            if (artist.isEmpty()) return null
+            val artists = splitNames(match.groupValues[1])
+            if (artists.isEmpty()) return null
             val clean = title.substring(0, match.range.first).trim()
-            return clean to artist
+            return clean to artists
         }
         return null
     }

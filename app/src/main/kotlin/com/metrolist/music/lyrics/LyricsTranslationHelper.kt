@@ -314,6 +314,7 @@ object LyricsTranslationHelper {
                             var hasError = false
                             var errorMessage = ""
                             val contentAccumulator = StringBuilder()
+                            val streamStartTime = System.currentTimeMillis()
 
                             OpenRouterStreamingService
                                 .streamTranslation(
@@ -331,18 +332,23 @@ object LyricsTranslationHelper {
                                             // Accumulate content for progressive parsing
                                             contentAccumulator.append(chunk.text)
 
-                                            // Try to parse partial content and update UI progressively
-                                            val partialContent = contentAccumulator.toString()
-                                            val partialResult = tryParsePartialTranslation(partialContent, nonEmptyEntries.size)
-                                            if (partialResult.isNotEmpty()) {
-                                                // Update lyrics with partial translations as they become available
-                                                partialResult.forEachIndexed { idx, translation ->
-                                                    if (idx < nonEmptyEntries.size && translation.isNotBlank()) {
-                                                        val originalIndex = nonEmptyEntries[idx].first
-                                                        lyrics[originalIndex].translatedTextFlow.value = translation
+                                            // Don't reveal partial lines for the first ~1.5s: early
+                                            // chunks are mid-token (stray "[", numbering, markdown
+                                            // fences) and read as a glitch if shown immediately.
+                                            // Enough usually accumulates by then to parse clean lines.
+                                            if (System.currentTimeMillis() - streamStartTime >= 1500L) {
+                                                val partialContent = contentAccumulator.toString()
+                                                val partialResult = tryParsePartialTranslation(partialContent, nonEmptyEntries.size)
+                                                if (partialResult.isNotEmpty()) {
+                                                    // Update lyrics with partial translations as they become available
+                                                    partialResult.forEachIndexed { idx, translation ->
+                                                        if (idx < nonEmptyEntries.size && translation.isNotBlank()) {
+                                                            val originalIndex = nonEmptyEntries[idx].first
+                                                            lyrics[originalIndex].translatedTextFlow.value = translation
+                                                        }
                                                     }
+                                                    _status.value = TranslationStatus.Translating
                                                 }
-                                                _status.value = TranslationStatus.Translating
                                             }
                                         }
 

@@ -99,6 +99,7 @@ import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.constants.IrideAnimationsKey
 import com.metrolist.music.constants.PlayerAutoHideTopPanelKey
 import com.metrolist.music.constants.TopNavigationBarKey
+import com.metrolist.music.constants.CompactTopNavigationBarKey
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
@@ -929,6 +930,17 @@ private fun IrideThemeControls(
             description = stringResource(R.string.top_navigation_bar_desc),
             checked = newIrideUi,
             onCheckedChange = onNewIrideUiChange
+        )
+        HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
+        // Read here rather than threaded down for the same reason as irideAnimations below: only
+        // this row and TopNavigationBar itself (AppNavigation.kt) need it.
+        val (compactTopBar, onCompactTopBarChange) =
+            rememberPreference(CompactTopNavigationBarKey, defaultValue = true)
+        IrideThemeToggleRow(
+            title = stringResource(R.string.compact_top_navigation_bar),
+            description = stringResource(R.string.compact_top_navigation_bar_desc),
+            checked = compactTopBar,
+            onCheckedChange = onCompactTopBarChange
         )
         HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
         // Escape hatch for the Iride motion layer (see ui/utils/IrideMotion.kt). Read here rather

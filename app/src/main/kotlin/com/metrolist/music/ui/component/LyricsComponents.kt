@@ -106,18 +106,16 @@ internal fun LyricsTranslationHeader(
     ) {
         when (status) {
             is LyricsTranslationHelper.TranslationStatus.Translating -> {
-                TranslationCard(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ) {
+                TranslationCard {
                     androidx.compose.material3.CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(14.dp),
                         strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = Color.White,
                     )
                     Text(
-                        text = stringResource(R.string.ai_translating_lyrics),
-                        style = MaterialTheme.typography.labelMedium
+                        text = "Translating…",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
                     )
                 }
             }
@@ -126,34 +124,32 @@ internal fun LyricsTranslationHeader(
                     delay(3000L)
                     LyricsTranslationHelper.clearErrorStatus()
                 }
-                TranslationCard(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-                ) {
+                TranslationCard {
                     Icon(
                         painter = painterResource(R.drawable.error),
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(14.dp),
+                        tint = Color.White,
                     )
                     Text(
                         text = status.message,
-                        style = MaterialTheme.typography.labelMedium
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
                     )
                 }
             }
             is LyricsTranslationHelper.TranslationStatus.Success -> {
-                TranslationCard(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                ) {
+                TranslationCard {
                     Icon(
                         painter = painterResource(R.drawable.check),
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(14.dp),
+                        tint = Color.White,
                     )
                     Text(
-                        text = stringResource(R.string.ai_lyrics_translated),
-                        style = MaterialTheme.typography.labelMedium
+                        text = "Lyrics translated",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
                     )
                 }
             }
@@ -164,22 +160,18 @@ internal fun LyricsTranslationHeader(
 
 @Composable
 private fun TranslationCard(
-    containerColor: Color,
-    contentColor: Color,
     content: @Composable RowScope.() -> Unit
 ) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            content = content
-        )
-    }
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = 0.10f))
+            .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(50))
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        content = content
+    )
 }
 
 @Composable

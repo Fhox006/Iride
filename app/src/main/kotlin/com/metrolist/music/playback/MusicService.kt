@@ -64,6 +64,7 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.analytics.PlaybackStats
 import androidx.media3.exoplayer.analytics.PlaybackStatsListener
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioTrackBufferSizeProvider
 import androidx.media3.exoplayer.audio.SilenceSkippingAudioProcessor
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
@@ -172,6 +173,7 @@ import com.metrolist.music.models.PersistQueue
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.alarm.MusicAlarmScheduler
 import com.metrolist.music.playback.alarm.MusicAlarmStore
+import com.metrolist.music.playback.audio.ScratchAudioProcessor
 import com.metrolist.music.playback.audio.SilenceDetectorAudioProcessor
 import com.metrolist.music.playback.queues.EmptyQueue
 import com.metrolist.music.playback.queues.ListQueue
@@ -364,6 +366,8 @@ class MusicService :
 
     lateinit var player: ExoPlayer
         private set
+    lateinit var scratchProcessor: ScratchAudioProcessor
+        private set
     private var secondaryPlayer: ExoPlayer? = null
     private var fadingPlayer: ExoPlayer? = null
     private var isCrossfading = false
@@ -374,6 +378,12 @@ class MusicService :
     // Tracks if player has been properly initilized
     private val playerInitialized = MutableStateFlow(false)
     val isPlayerReady: kotlinx.coroutines.flow.StateFlow<Boolean> = playerInitialized.asStateFlow()
+
+    // True from the moment a persisted queue file is found until playQueue() has applied it (or
+    // restore failed) — lets the mini player UI hold its skeleton instead of briefly rendering
+    // "Tap a track to start listening" with live controls before the real track pops in.
+    private val pendingQueueRestore = MutableStateFlow(false)
+    val hasPendingQueueRestoreFlow: kotlinx.coroutines.flow.StateFlow<Boolean> = pendingQueueRestore.asStateFlow()
 
     // Expose active player flow for UI/Connection updates
     private val _playerFlow = MutableStateFlow<ExoPlayer?>(null)
@@ -946,6 +956,7 @@ class MusicService :
         if (persistentQueueEnabled) {
             val queueFile = filesDir.resolve(PERSISTENT_QUEUE_FILE)
             if (queueFile.exists()) {
+                pendingQueueRestore.value = true
                 runCatching {
                     queueFile.inputStream().use { fis ->
                         ObjectInputStream(fis).use { oos ->
@@ -958,21 +969,27 @@ class MusicService :
                         val restoredQueue = queue.toQueue()
                         // Wait for player initialization before playing
                         scope.launch {
-                            playerInitialized.first { it }
-                            if (isActive) {
-                                playQueue(
-                                    queue = restoredQueue,
-                                    playWhenReady = false,
-                                )
+                            try {
+                                playerInitialized.first { it }
+                                if (isActive) {
+                                    playQueue(
+                                        queue = restoredQueue,
+                                        playWhenReady = false,
+                                    )
+                                }
+                            } finally {
+                                pendingQueueRestore.value = false
                             }
                         }
                     }.onFailure { error ->
                         Timber.tag(TAG).w(error, "Failed to restore persisted queue, clearing data")
                         clearPersistedQueueFiles()
+                        pendingQueueRestore.value = false
                     }
                 }.onFailure { error ->
                     Timber.tag(TAG).w(error, "Failed to read persisted queue, clearing data")
                     clearPersistedQueueFiles()
+                    pendingQueueRestore.value = false
                 }
             }
 
@@ -1059,6 +1076,7 @@ class MusicService :
         equalizerService.addAudioProcessor(eqProcessor)
 
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
+        scratchProcessor = ScratchAudioProcessor()
 
         // Set initial state
         runBlocking {
@@ -1071,7 +1089,7 @@ class MusicService :
             ExoPlayer
                 .Builder(this)
                 .setMediaSourceFactory(createMediaSourceFactory())
-                .setRenderersFactory(createRenderersFactory(eqProcessor, silenceProcessor))
+                .setRenderersFactory(createRenderersFactory(eqProcessor, silenceProcessor, scratchProcessor))
                 .setHandleAudioBecomingNoisy(true)
                 .setWakeMode(C.WAKE_MODE_NETWORK)
                 .setAudioAttributes(
@@ -1571,6 +1589,23 @@ class MusicService :
         // fail (double-nested try/catch swallowing exceptions), which is why radio
         // requests sometimes appeared to do nothing.
         playQueue(YouTubeQueue.radio(mediaMetadata))
+    }
+
+    // Refills automixItems only (the future/Auto-Mix section) for the given song,
+    // without touching the player queue — used by the Radio pill in UP NEXT so pressing
+    // it never restarts or replaces what's currently playing.
+    suspend fun regenerateAutomix(mediaMetadata: MediaMetadata) {
+        try {
+            YouTube.next(WatchEndpoint(videoId = mediaMetadata.id))
+                .onSuccess { result ->
+                    val items = result.items
+                        .filter { it.id != mediaMetadata.id }
+                        .map { it.toMediaItem() }
+                    if (items.isNotEmpty()) automixItems.value = items
+                }
+        } catch (_: Exception) {
+            // Silent fail, mirrors getAutomix
+        }
     }
 
     fun getAutomixAlbum(albumId: String) {
@@ -3149,6 +3184,7 @@ class MusicService :
     private fun createRenderersFactory(
         eqProcessor: CustomEqualizerAudioProcessor,
         silenceProcessor: SilenceDetectorAudioProcessor,
+        scratchProcessor: ScratchAudioProcessor,
     ) = object : DefaultRenderersFactory(this) {
         override fun buildAudioSink(
             context: Context,
@@ -3158,12 +3194,30 @@ class MusicService :
             .Builder(this@MusicService)
             .setEnableFloatOutput(enableFloatOutput)
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+            // Default PCM buffer clamps to 250-750ms (4x min buffer size), so the AudioTrack
+            // hardware buffer holds up to 3/4s of already-decoded, pre-scratch audio that has
+            // to drain before a scratch gesture becomes audible, and refills in chunks too
+            // coarse to track a live drag smoothly. Shrinking the target buffer keeps that
+            // backlog (and so scratch latency/choppiness) close to the low end everywhere.
+            // The max also doubles as forward-scratch runway: ScratchAudioProcessor can only
+            // scrub "into the future" as far as audio has already been decoded ahead of what's
+            // audible, i.e. exactly this backlog — 150ms left almost no room before a forward
+            // scratch hit the wall, so this trades a bit of that latency win back for headroom.
+            .setAudioTrackBufferSizeProvider(
+                DefaultAudioTrackBufferSizeProvider.Builder()
+                    .setMinPcmBufferDurationUs(60_000)
+                    .setMaxPcmBufferDurationUs(400_000)
+                    .build(),
+            )
             .setAudioProcessorChain(
                 DefaultAudioSink.DefaultAudioProcessorChain(
                     // 2. Inject processor into audio pipeline
                     arrayOf(
                         eqProcessor,
                         silenceProcessor,
+                        // Runs after the silence detector so scratch-induced fake silence never
+                        // trips the auto long-silence skip.
+                        scratchProcessor,
                     ),
                     SilenceSkippingAudioProcessor(2_000_000, 20_000, 256),
                     SonicAudioProcessor(),

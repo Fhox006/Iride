@@ -54,6 +54,7 @@ val DefaultOpenTabKey = stringPreferencesKey("defaultOpenTab")
 val ShowNewsTabKey = booleanPreferencesKey("showNewsTab")
 val SlimNavBarKey = booleanPreferencesKey("slimNavBar")
 val TopNavigationBarKey = booleanPreferencesKey("topNavigationBar")
+val CompactTopNavigationBarKey = booleanPreferencesKey("compactTopNavigationBar")
 val IrideAnimationsKey = booleanPreferencesKey("irideAnimations")
 val PlayerAutoHideTopPanelKey = booleanPreferencesKey("playerAutoHideTopPanel")
 val GridItemsSizeKey = stringPreferencesKey("gridItemSize")
@@ -62,6 +63,7 @@ val SquigglySliderKey = booleanPreferencesKey("squigglySlider")
 val SwipeToSongKey = booleanPreferencesKey("SwipeToSong")
 val HideDurationForStandardSongsKey = booleanPreferencesKey("hide_duration_standard_songs")
 val AutoLinkFeaturedArtistsKey = booleanPreferencesKey("auto_link_featured_artists")
+val ShowFeaturedArtistsInTopSongsKey = booleanPreferencesKey("show_featured_artists_in_top_songs")
 val SwipeToRemoveSongKey = booleanPreferencesKey("SwipeToRemoveSong")
 val UseNewPlayerDesignKey = booleanPreferencesKey("useNewPlayerDesign")
 val UseNewMiniPlayerDesignKey = booleanPreferencesKey("useNewMiniPlayerDesign")
@@ -246,6 +248,7 @@ val LastFullSyncKey = longPreferencesKey("last_full_sync")
 val SyncBannerLaunchCountKey = intPreferencesKey("syncBannerLaunchCount")
 val LastWeeklyMostPlaylistSyncKey = longPreferencesKey("last_weekly_most_playlist_sync")
 val LastMonthlyMostPlaylistSyncKey = longPreferencesKey("last_monthly_most_playlist_sync")
+val LastDiscoveryWeeklySyncKey = longPreferencesKey("last_discovery_weekly_sync")
 
 // Sync cooldown in seconds (30 minutes)
 const val SYNC_COOLDOWN = 30 * 60L
@@ -272,6 +275,7 @@ val LastMoodChipParamsKey = stringPreferencesKey("lastMoodChipParams")
 
 val HeroCarouselEnabledKey = booleanPreferencesKey("discoveryCarouselEnabled")
 val SeenNewReleaseFirstIdsKey = stringSetPreferencesKey("seenNewReleaseFirstIds")
+val HomeCollapsedSectionsKey = stringSetPreferencesKey("homeCollapsedSections")
 
 val LibraryOfflineModeKey = booleanPreferencesKey("library_offline_mode")
 
@@ -338,7 +342,6 @@ enum class PlaylistSongSortType {
 }
 
 enum class AutoPlaylistSongSortType {
-    CUSTOM,
     CREATE_DATE,
     NAME,
     ARTIST,
@@ -476,6 +479,10 @@ val HideStatusBarOnFullscreenKey = booleanPreferencesKey("hideStatusBarOnFullscr
 val LyricsRomanizeAsMainKey = booleanPreferencesKey("lyricsRomanizeAsMain")
 val LyricsRomanizeCyrillicByLineKey = booleanPreferencesKey("lyricsRomanizeCyrillicByLine")
 val OpenRouterApiKey = stringPreferencesKey("openRouterApiKey")
+// Genius API access token — used to discover "feat." credits the followed artist's own YTM page
+// never surfaces (Genius indexes every song an artist is credited on, including features other
+// artists' albums bury); paste your own token from genius.com/api-clients.
+val GeniusApiTokenKey = stringPreferencesKey("geniusApiToken")
 val AiProviderKey = stringPreferencesKey("aiProvider")
 val OpenRouterBaseUrlKey = stringPreferencesKey("openRouterBaseUrl")
 val OpenRouterModelKey = stringPreferencesKey("openRouterModel")
@@ -589,6 +596,11 @@ val ArtistNewReleasesKey = stringPreferencesKey("artistNewReleases")
 
 // Epoch millis of the last new-release check, used to throttle YouTube fetches to once per window.
 val ArtistNewReleasesCheckedKey = androidx.datastore.preferences.core.longPreferencesKey("artistNewReleasesChecked")
+
+// Global (not per-artist) JSON-encoded Set<String> of song ids whose per-row dot hasn't been cleared
+// yet. Unlike ArtistNewReleasesKey's unseenAlbumIds (cleared by opening the release), these clear
+// when the row actually scrolls into view — see NewReleaseNotifier.markSongSeen.
+val UnseenSongDotsKey = stringPreferencesKey("unseenSongDots")
 
 // Library Artists screen: ids the user cleared from the "artists you play a lot but forgot to follow"
 // suggestion row. Non-destructive, hides them from that row only. JSON-encoded List<String>.

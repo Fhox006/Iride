@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,7 +41,8 @@ import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import kotlinx.coroutines.CoroutineScope
 
 // Small "+N" pill used for the new-release badges (library title + per-artist card). Monospace to
-// match the Iride UI type system; falls back fine in the classic UI too.
+// match the Iride UI type system; falls back fine in the classic UI too. Flat monochrome — no accent
+// hue, same convention as Icon.Starred()/Explicit()/New() — so it reads as information, not promotion.
 @Composable
 fun NewReleaseBadge(
     count: Int,
@@ -50,7 +52,7 @@ fun NewReleaseBadge(
     Box(
         modifier = modifier
             .background(
-                androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                 androidx.compose.foundation.shape.RoundedCornerShape(50),
             )
             .padding(horizontal = 6.dp, vertical = 1.dp),
@@ -58,7 +60,7 @@ fun NewReleaseBadge(
     ) {
         androidx.compose.material3.Text(
             text = "+$count",
-            color = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.background,
             style = androidx.compose.ui.text.TextStyle(
                 fontFamily = com.metrolist.music.ui.theme.SpaceMonoFontFamily,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
@@ -196,7 +198,6 @@ fun LibraryAlbumGridItem(
     album: Album,
     isActive: Boolean = false,
     isPlaying: Boolean = false,
-    showVinylEffect: Boolean = false,
 ) = AlbumGridItem(
     album = album,
     showLikedIcon = false,
@@ -204,8 +205,6 @@ fun LibraryAlbumGridItem(
     isPlaying = isPlaying,
     coroutineScope = coroutineScope,
     fillMaxWidth = true,
-    showPlayButton = !showVinylEffect,
-    showVinylEffect = showVinylEffect,
     modifier = modifier
         .fillMaxWidth()
         .combinedClickable(
@@ -237,7 +236,6 @@ fun LibraryContinueListeningAlbumItem(
     isActive: Boolean,
     isPlaying: Boolean,
     size: Dp,
-    showVinylEffect: Boolean,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -249,8 +247,6 @@ fun LibraryContinueListeningAlbumItem(
             isPlaying = isPlaying,
             coroutineScope = coroutineScope,
             size = size,
-            showPlayButton = !showVinylEffect,
-            showVinylEffect = showVinylEffect,
             modifier = Modifier.combinedClickable(
                 onClick = { navController.navigate("album/${album.id}") },
                 onLongClick = {
@@ -271,6 +267,66 @@ fun LibraryContinueListeningAlbumItem(
             Icon(
                 painter = painterResource(R.drawable.close),
                 contentDescription = stringResource(R.string.remove_from_continue_listening),
+                tint = Color.White,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+    }
+}
+
+// "Suggested follow artists" row (Library Artists screen): artists you play a lot but haven't
+// followed. Sized and chromed to match LibraryContinueListeningAlbumItem above — same family, same
+// footprint — rather than the full-size default ArtistGridItem, since this is a lightweight
+// suggestion strip, not another shelf of full tiles. The follow "+" is a flat monochrome fill (no
+// accent color, matching NewReleaseBadge/Icon.Starred() elsewhere); a visible trash icon replaces
+// the old long-press-only dismiss so removing a suggestion doesn't need a hidden gesture.
+@Composable
+fun LibrarySuggestedFollowArtistItem(
+    navController: NavController,
+    artist: Artist,
+    size: Dp,
+    onFollow: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier.width(size)) {
+        ArtistGridItem(
+            artist = artist,
+            showLikedIcon = false,
+            size = size,
+            modifier = Modifier.clickable { navController.navigate("artist/${artist.id}") },
+        )
+        IconButton(
+            onClick = onFollow,
+            modifier = Modifier.align(Alignment.BottomEnd),
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(MaterialTheme.colorScheme.background, CircleShape)
+                    .padding(3.dp)
+                    .background(MaterialTheme.colorScheme.onSurface, CircleShape),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.add),
+                    contentDescription = stringResource(R.string.subscribe),
+                    tint = MaterialTheme.colorScheme.background,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+        }
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp)
+                .size(26.dp)
+                .background(Color.Black.copy(alpha = 0.55f), CircleShape),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.delete),
+                contentDescription = stringResource(R.string.remove_suggested_follow_artist),
                 tint = Color.White,
                 modifier = Modifier.size(14.dp),
             )

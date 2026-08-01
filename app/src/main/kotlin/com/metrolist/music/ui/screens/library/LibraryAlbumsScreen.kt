@@ -87,7 +87,6 @@ import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
-import com.metrolist.music.ui.component.VinylPeekFraction
 import com.metrolist.music.ui.component.currentGridThumbnailHeight
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.utils.rememberEnumPreference
@@ -184,7 +183,7 @@ fun LibraryAlbumsScreen(
         )
     }
 
-    val continueListeningSpacing = if (topNavigationBarEnabled) currentGridHeight * VinylPeekFraction else 8.dp
+    val continueListeningSpacing = 8.dp
 
     val continueListeningTitle: @Composable () -> Unit = {
         NavigationTitle(
@@ -213,7 +212,6 @@ fun LibraryAlbumsScreen(
                         isActive = album.id == mediaMetadata?.album?.id,
                         isPlaying = isPlaying,
                         size = currentGridHeight,
-                        showVinylEffect = topNavigationBarEnabled,
                         onDismiss = { viewModel.dismissContinueListeningAlbum(album.id) },
                     )
                 }
@@ -445,7 +443,6 @@ fun LibraryAlbumsScreen(
                                             album = album,
                                             isActive = album.id == mediaMetadata?.album?.id,
                                             isPlaying = isPlaying,
-                                            showVinylEffect = topNavigationBarEnabled,
                                             modifier = Modifier.animateItem(),
                                         )
                                     }

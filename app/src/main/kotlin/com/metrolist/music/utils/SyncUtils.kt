@@ -207,6 +207,21 @@ class SyncUtils @Inject constructor(
         }
     }
 
+    /**
+     * Clear per-item locks (playlistsBeingModified / pendingYouTubeAdds / pendingRemovals) and
+     * the reported sync status. These are only ever cleared by the operation that set them; if
+     * that operation dies mid-flight (network drop, exception outside its own try/finally) the
+     * lock never lifts and every future sync for that item is silently skipped until the process
+     * restarts. Call this from a user-facing "refresh" action to get the same clean slate a force
+     * close gives, without actually killing the process.
+     */
+    fun resetState() {
+        playlistsBeingModified.clear()
+        pendingYouTubeAdds.clear()
+        pendingRemovals.clear()
+        _syncState.value = SyncState()
+    }
+
     suspend fun reInjectCredentials(): Boolean = isLoggedIn()
 
     private suspend fun isLoggedIn(): Boolean {

@@ -8,6 +8,7 @@ package com.metrolist.music.ui.component
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -340,7 +341,122 @@ fun TopNavigationBar(
     // LazyColumn contentPadding) must pass 0.dp here — otherwise this bar's own inset stacks on
     // top of the container's, pushing it further right than every other item in that list.
     horizontalPadding: Dp = 20.dp,
+    // Experimental compact layout: Home/Library (and any other non-Search/Account item) as text
+    // on the left, Search + Account collapsed into icons pinned on the right. Reverting
+    // CompactTopNavigationBarKey off falls back to the original all-text row below.
+    compact: Boolean = false,
+    accountImageUrl: String? = null,
 ) {
+    if (compact) {
+        val leftItems = navigationItems.filter { it != Screens.Search && it != Screens.Account }
+        val searchSelected = remember(currentRoute) {
+            isRouteSelected(currentRoute, Screens.Search.route, navigationItems)
+        }
+        val currentSearchSelected by rememberUpdatedState(searchSelected)
+        val accountSelected = remember(currentRoute) {
+            isRouteSelected(currentRoute, Screens.Account.route, navigationItems)
+        }
+        val currentAccountSelected by rememberUpdatedState(accountSelected)
+
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .background(containerColor)
+                .statusBarsPadding()
+                .padding(top = 10.dp)
+                .height(64.dp)
+                .padding(start = horizontalPadding, end = horizontalPadding),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            leftItems.forEach { screen ->
+                val isSelected = remember(currentRoute, screen.route) {
+                    isRouteSelected(currentRoute, screen.route, navigationItems)
+                }
+                val currentIsSelected by rememberUpdatedState(isSelected)
+                val titleColor by animateColorAsState(
+                    targetValue = if (isSelected) Color.White else Color.White.copy(alpha = 0.55f),
+                    animationSpec = if (isSelected) tween(220) else snap(),
+                    label = "titleColor"
+                )
+
+                Text(
+                    text = stringResource(screen.titleId),
+                    style = TextStyle(
+                        fontFamily = SpaceMonoFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        letterSpacing = (-0.1).sp,
+                        color = titleColor
+                    ),
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier
+                        .padding(end = 20.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            onItemClick(screen, currentIsSelected)
+                        }
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // 48dp min touch target (Material 3) around each icon, kept visually smaller inside.
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        onItemClick(Screens.Search, currentSearchSelected)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = Screens.Search.iconIdInactive),
+                    contentDescription = stringResource(Screens.Search.titleId),
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.size(8.dp))
+
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        onItemClick(Screens.Account, currentAccountSelected)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                if (accountImageUrl != null) {
+                    AsyncImage(
+                        model = accountImageUrl,
+                        contentDescription = stringResource(Screens.Account.titleId),
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(id = Screens.Account.iconIdInactive),
+                        contentDescription = stringResource(Screens.Account.titleId),
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+        }
+        return
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -358,11 +474,12 @@ fun TopNavigationBar(
             }
             val currentIsSelected by rememberUpdatedState(isSelected)
 
-            // Soft fade on the title text color when its tab becomes selected, so the switch
-            // reads as a gentle settle instead of an instant color snap.
+            // Soft fade in on selection; snap out instantly on deselection. A symmetric
+            // 220ms fade both ways let fast tab switching leave multiple titles still
+            // mid-fade (still bright) at once, reading as "everything selected".
             val titleColor by animateColorAsState(
                 targetValue = if (isSelected) Color.White else Color.White.copy(alpha = 0.55f),
-                animationSpec = tween(220),
+                animationSpec = if (isSelected) tween(220) else snap(),
                 label = "titleColor"
             )
 

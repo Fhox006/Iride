@@ -793,6 +793,7 @@
     <string name="continue_listening">Continue Listening</string>
     <string name="remove_from_continue_listening">Remove from Continue Listening</string>
     <string name="favorite_albums">Favorites</string>
+    <string name="remove_suggested_follow_artist">Remove suggestion</string>
 
     <string name="enable_high_refresh_rate">Enable high refresh rate</string>
     <string name="enable_high_refresh_rate_desc">Forces the display to run at its highest supported refresh rate (e.g. 120Hz)</string>
@@ -1022,6 +1023,8 @@
     <string name="hide_duration_standard_songs_desc">Hides the time indicator for songs between 1 and 5 minutes. Only the artist name is shown.</string>
     <string name="auto_link_featured_artists">Auto-detect featured artists</string>
     <string name="auto_link_featured_artists_desc">Strips "feat./ft." credits out of song titles and links the collaborator as a real artist.</string>
+    <string name="show_featured_artists_in_top_songs">Show featured artists in Top Songs</string>
+    <string name="show_featured_artists_in_top_songs_desc">Shows collaborators credited on a track alongside the main artist in Top Songs.</string>
     <string name="resume_album">Resume Album</string>
     <string name="resume">Resume</string>
     <string name="resume_album_track_progress">Track %1$d of %2$d</string>
@@ -1033,6 +1036,8 @@
     <string name="show_news_tab_desc">Adds a News tab to the bottom navigation, between Home and Library</string>
     <string name="top_navigation_bar">New Iride Ui</string>
     <string name="top_navigation_bar_desc">Text-only tabs at the top and a full black screen instead of the bottom pill</string>
+    <string name="compact_top_navigation_bar">Compact top bar</string>
+    <string name="compact_top_navigation_bar_desc">Home and Library as text on the left, Search and your profile picture as icons on the right. Turn off to go back to the classic bar with every tab spelled out</string>
     <string name="iride_animations">Iride animations</string>
     <string name="iride_animations_desc">Typewriter titles, parallax and entrance transitions. Turn off if the app stutters</string>
     <string name="player_auto_hide_top_panel">Auto-hide return panel</string>

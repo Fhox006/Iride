@@ -33,7 +33,6 @@ import com.metrolist.music.db.entities.AlbumWithSongs
 import com.metrolist.music.db.entities.AlbumPlayEvent
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.ArtistEntity
-import com.metrolist.music.db.entities.AutoPlaylistSongOrderEntity
 import com.metrolist.music.db.entities.Event
 import com.metrolist.music.db.entities.EventWithSong
 import com.metrolist.music.db.entities.GlobalAlbumPlayEvent
@@ -341,6 +340,15 @@ interface DatabaseDao {
         artistId: String,
         previewSize: Int = 3,
     ): Flow<List<Song>>
+
+    // Songs where this artist is linked as a non-primary (position > 0) contributor — i.e. featured,
+    // whether auto-linked from a "feat." title (TitleFeaturingParser/linkFeaturedArtist) or otherwise.
+    // Feeds the artist page's Featuring section, including historical songs that were later retitled.
+    @Transaction
+    @Query(
+        "SELECT song.* FROM song_artist_map JOIN song ON song_artist_map.songId = song.id WHERE artistId = :artistId AND position > 0",
+    )
+    fun artistFeaturedSongs(artistId: String): Flow<List<Song>>
 
     @Transaction
     @Query(
@@ -751,6 +759,11 @@ interface DatabaseDao {
     @Transaction
     @Query("SELECT * FROM song")
     fun allSongs(): Flow<List<Song>>
+
+    // Songs with at least one recorded play — used to keep already-heard songs out of
+    // Discovery Weekly regardless of whether they were ever liked/added to the library.
+    @Query("SELECT DISTINCT songId FROM event")
+    suspend fun allPlayedSongIds(): List<String>
 
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
@@ -1883,16 +1896,18 @@ interface DatabaseDao {
      */
     @Transaction
     fun linkFeaturedArtist(song: Song): Boolean {
-        val (cleanTitle, featuredName) = TitleFeaturingParser.extract(song.song.title) ?: return false
+        val (cleanTitle, featuredNames) = TitleFeaturingParser.extract(song.song.title) ?: return false
 
         update(song.song.copy(title = cleanTitle))
 
-        val alreadyCredited = song.artists.any { it.name.equals(featuredName, ignoreCase = true) }
-        if (!alreadyCredited) {
+        var nextPosition = (songArtistMap(song.id).maxOfOrNull { it.position } ?: -1) + 1
+        for (featuredName in featuredNames) {
+            val alreadyCredited = song.artists.any { it.name.equals(featuredName, ignoreCase = true) }
+            if (alreadyCredited) continue
             val artistId = artistByName(featuredName)?.id ?: ArtistEntity.generateArtistId()
             insert(ArtistEntity(id = artistId, name = featuredName))
-            val nextPosition = (songArtistMap(song.id).maxOfOrNull { it.position } ?: -1) + 1
             insert(SongArtistMap(songId = song.id, artistId = artistId, position = nextPosition))
+            nextPosition++
         }
         return true
     }
@@ -2100,23 +2115,4 @@ interface DatabaseDao {
     @Delete
     fun delete(podcast: PodcastEntity)
 
-    // Auto playlist (liked/downloaded/uploaded/starred) custom song order cache.
-
-    @Query("SELECT songId FROM auto_playlist_song_order WHERE playlistKey = :playlistKey ORDER BY position")
-    fun autoPlaylistSongOrder(playlistKey: String): Flow<List<String>>
-
-    @Query("DELETE FROM auto_playlist_song_order WHERE playlistKey = :playlistKey")
-    fun clearAutoPlaylistSongOrder(playlistKey: String)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertAutoPlaylistSongOrder(entries: List<AutoPlaylistSongOrderEntity>)
-
-    @Transaction
-    fun saveAutoPlaylistSongOrder(
-        playlistKey: String,
-        songIds: List<String>,
-    ) {
-        clearAutoPlaylistSongOrder(playlistKey)
-        insertAutoPlaylistSongOrder(songIds.mapIndexed { index, songId -> AutoPlaylistSongOrderEntity(playlistKey, songId, index) })
-    }
 }

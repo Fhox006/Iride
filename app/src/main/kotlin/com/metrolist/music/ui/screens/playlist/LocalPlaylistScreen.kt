@@ -14,6 +14,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -134,6 +135,7 @@ import com.metrolist.music.LocalSyncUtils
 import com.metrolist.music.R
 import com.metrolist.music.constants.AlbumTopGradientKey
 import com.metrolist.music.constants.DarkModeKey
+import com.metrolist.music.constants.IrideBaseBorderWidth
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlaylistSongSortDescendingKey
@@ -322,6 +324,7 @@ fun LocalPlaylistScreen(
             remember(songs) {
                 songs.map { GenreSongInfo(it.song.id, it.song.song.title, it.song.artists.firstOrNull()?.name) }
             },
+            cacheKey = viewModel.playlistId,
         )
 
     val focusRequester = remember { FocusRequester() }
@@ -1491,6 +1494,12 @@ fun LocalPlaylistHeader(
         }
         // Playlist Thumbnail(s) - shared between both layouts below, only the size differs.
         val playlistCoverSquircle = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
+        // New Iride UI only — classic UI keeps its plain Material elevation, no added border.
+        val coverBorder = if (topNavigationBarEnabled) {
+            BorderStroke(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f))
+        } else {
+            null
+        }
         // Fade the cover in once on a genuine new decode — a memory-cache hit (revisiting a
         // playlist already seen this session) resolves synchronously, so animating that would
         // replay the surfaceVariant placeholder every time. Old (non-Iride) UI skips this.
@@ -1517,6 +1526,7 @@ fun LocalPlaylistHeader(
                                     ),
                             shape = playlistCoverSquircle,
                             color = MaterialTheme.colorScheme.surfaceVariant,
+                            border = coverBorder,
                         ) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -1549,6 +1559,7 @@ fun LocalPlaylistHeader(
                                         spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                                     ),
                             shape = playlistCoverSquircle,
+                            border = coverBorder,
                         ) {
                             AsyncImage(
                                 model = overrideThumbnail.value ?: playlist.thumbnails[0],
@@ -1626,6 +1637,7 @@ fun LocalPlaylistHeader(
                                         spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                                     ),
                             shape = playlistCoverSquircle,
+                            border = coverBorder,
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 listOf(

@@ -261,7 +261,9 @@ fun FloatingPill(
             .height(animatedPillHeight)
             .clip(SquircleShape(radius = 24.dp, cornerSmoothing = 0.48f)),
     ) {
-        if (playerConnection == null) {
+        val hasPendingQueueRestore by playerConnection?.service?.hasPendingQueueRestoreFlow?.collectAsState()
+            ?: remember { mutableStateOf(false) }
+        if (playerConnection == null || hasPendingQueueRestore) {
             PillShimmerSkeleton(isTopLevelRoute = isTopLevelRoute && showNavRow)
         } else {
             PillContent(
@@ -284,7 +286,7 @@ fun FloatingPill(
 }
 
 @Composable
-private fun PillShimmerSkeleton(isTopLevelRoute: Boolean) {
+internal fun PillShimmerSkeleton(isTopLevelRoute: Boolean) {
     val pillHeight = if (isTopLevelRoute) FloatingPillHeight else MiniPlayerHeight
     Box(
         modifier = Modifier

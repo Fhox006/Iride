@@ -822,6 +822,8 @@
     <string name="show_news_tab_desc">Aggiunge una scheda News alla barra di navigazione, tra Home e Libreria</string>
     <string name="top_navigation_bar">New Iride Ui</string>
     <string name="top_navigation_bar_desc">Schede solo testo in alto e schermo interamente nero al posto della pillola in basso</string>
+    <string name="compact_top_navigation_bar">Barra superiore compatta</string>
+    <string name="compact_top_navigation_bar_desc">Home e Libreria come testo a sinistra, Cerca e la tua foto profilo come icone a destra. Disattiva per tornare alla barra classica con tutte le schede scritte per esteso</string>
     <string name="iride_animations">Animazioni Iride</string>
     <string name="iride_animations_desc">Titoli a macchina da scrivere, parallasse e transizioni d\'ingresso. Disattiva se l\'app scatta</string>
     <string name="player_auto_hide_top_panel">Dissolvenza pannello di ritorno</string>

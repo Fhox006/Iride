@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,7 @@ import com.metrolist.music.constants.BetterGradientSmoothTransitionKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.theme.PlayerColorExtractor
+import com.metrolist.music.ui.utils.rememberResumeFadeAlpha
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -210,11 +212,13 @@ private fun TopGradientBlobs(colors: List<Color>, bgColor: Color) {
         ),
         label = "top_gradient_shift",
     )
+    val resumeFadeAlpha = rememberResumeFadeAlpha()
 
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
-            .height(TopGradientHeight),
+            .height(TopGradientHeight)
+            .graphicsLayer { alpha = resumeFadeAlpha },
     ) {
         val w = size.width
         val h = size.height

@@ -11,6 +11,8 @@ import androidx.compose.animation.AnimatedVisibility
 import com.metrolist.music.ui.component.frostedTopBarBackground
 import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.rememberFrostBackdrop
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -21,6 +23,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,6 +68,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -74,15 +79,19 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 /*import androidx.compose.ui.draw.alpha*/
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -134,6 +143,7 @@ import com.metrolist.music.constants.AlbumTopGradientKey
 import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
+import com.metrolist.music.constants.IrideBaseBorderWidth
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.TopNavigationBarKey
@@ -155,7 +165,9 @@ import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.component.NeedleDropLeadInMs
 import com.metrolist.music.ui.component.TypewriterText
+import com.metrolist.music.ui.component.VinylPeekDisc
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.rememberRubberBandPull
 import com.metrolist.music.ui.component.rubberBandOverscroll
@@ -173,12 +185,46 @@ import com.metrolist.music.ui.utils.rememberEnterProgress
 import com.metrolist.music.ui.utils.rememberSectionEnter
 import com.metrolist.music.ui.utils.revealMask
 import com.metrolist.music.utils.GenreProvider
+import com.metrolist.music.utils.TurntableSfx
 import com.metrolist.music.utils.joinByBullet
 import com.metrolist.music.utils.makeReadableTimeString
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.AlbumViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.exp
+
+// Real 33⅓ RPM turntable feel for the cover-peeking disc: how far it slides out from behind the
+// cover, how much the cover itself steps aside to make room, how fast it spins, and how much
+// track time one full revolution represents while scratching (see the drag handler below).
+private const val AlbumDiscPeekFraction = 0.30f
+private const val AlbumCoverShiftFraction = 0.12f
+private const val AlbumDiscDegreesPerSecond = 200f
+private const val AlbumDiscMsPerRevolution = 1800L
+private const val AlbumDiscFrictionPerSecond = 3.2f
+private const val AlbumDiscCoastSettleEpsilon = 0.02
+// Touch events can land only a few ms apart (batched input), and dividing a normal angle delta
+// by a near-zero dtMs spikes the instantaneous velocity estimate absurdly high. Clamping caps how
+// far off a single noisy sample can seed the release coast — without it, one bad sample right
+// before release could make the coast (and so the audio settling back to 1x) take seconds.
+private const val AlbumDiscMaxScratchVelocity = 12.0
+// >3x the processor's velocity time constant (25ms): enough margin for it to actually settle
+// near 1x before we hand back to real playback, short enough to not itself feel like a stall.
+private const val AlbumDiscAudioSettleMs = 120L
+// Slow, unhurried glide — the disc easing out from behind the cover is a small ceremony, not a
+// snap; EaseOutExpo's long soft landing reads as calm at this length where it'd read as sluggish
+// at the shared IrideMotion.Short/Medium durations used for on-screen movement elsewhere.
+private const val AlbumDiscRevealMs = 900
+
+private fun angleOfTouch(position: Offset, center: Offset): Float {
+    val dx = position.x - center.x
+    val dy = position.y - center.y
+    return Math.toDegrees(atan2(dy, dx).toDouble()).toFloat()
+}
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -210,6 +256,11 @@ fun AlbumScreen(
     val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
     val lazyListState = rememberLazyListState()
+    val unseenSongIds by viewModel.unseenSongIds.collectAsState()
+    // Songs render in one plain Column (not lazily virtualized, see below), so a song's own
+    // composition can't be used as a "seen" proxy — this tracks the LazyColumn's actual on-screen
+    // bounds so each row can check itself against it.
+    var listViewportBounds by remember { mutableStateOf<Rect?>(null) }
     val density = LocalDensity.current
     val frostBackdrop = rememberFrostBackdrop()
     // Stretch of the vertical rubber band, hoisted so the header art can answer the pull.
@@ -347,8 +398,12 @@ fun AlbumScreen(
                 playerConnection.togglePlayPause()
             } else {
                 albumWithSongs?.let { current ->
+                    TurntableSfx.play()
                     playerConnection.service.getAutomix(playlistId)
-                    playerConnection.playQueue(LocalAlbumRadio(current))
+                    coroutineScope.launch {
+                        delay(NeedleDropLeadInMs)
+                        playerConnection.playQueue(LocalAlbumRadio(current))
+                    }
                 }
             }
         }
@@ -506,6 +561,7 @@ fun AlbumScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
+            .onGloballyPositioned { listViewportBounds = it.boundsInWindow() }
             .then(
                 if (topNavigationBarEnabled) {
                     Modifier.rubberBandOverscroll(Orientation.Vertical, lazyListState, headerPull)
@@ -565,10 +621,14 @@ fun AlbumScreen(
                     }
                     val onPlayClick: () -> Unit = {
                         if (!isListenTogetherGuest) {
+                            TurntableSfx.play()
                             playerConnection.service.getAutomix(playlistId)
-                            playerConnection.playQueue(
-                                LocalAlbumRadio(albumWithSongs),
-                            )
+                            coroutineScope.launch {
+                                delay(NeedleDropLeadInMs)
+                                playerConnection.playQueue(
+                                    LocalAlbumRadio(albumWithSongs),
+                                )
+                            }
                         }
                     }
                     val onDownloadClick: () -> Unit = {
@@ -623,6 +683,127 @@ fun AlbumScreen(
                                     easing = IrideMotion.EaseOutQuart,
                                 )
                                 val coverProgress = if (skipCoverEnterAnim) 1f else animatedCoverProgress
+
+                                // Disc sits fully hidden behind the cover until this album is the one
+                                // playing (or being scratched): then it peeks out to the right and
+                                // spins, and the cover steps aside to make room for it.
+                                var discRotation by remember(albumWithSongs.album.id) { mutableFloatStateOf(0f) }
+                                var isScratchingDisc by remember(albumWithSongs.album.id) { mutableStateOf(false) }
+                                var wasSkipSilenceBeforeScratch by remember(albumWithSongs.album.id) { mutableStateOf(false) }
+                                val discOut = isThisAlbumPlaying || isScratchingDisc
+                                val discRevealProgress by animateFloatAsState(
+                                    targetValue = if (discOut) 1f else 0f,
+                                    animationSpec = tween(AlbumDiscRevealMs, easing = IrideMotion.EaseOutExpo),
+                                    label = "albumDiscReveal",
+                                )
+
+                                LaunchedEffect(albumWithSongs.album.id, isThisAlbumPlaying, isScratchingDisc) {
+                                    if (!isThisAlbumPlaying || isScratchingDisc) return@LaunchedEffect
+                                    var lastFrame = withFrameNanos { it }
+                                    while (true) {
+                                        withFrameNanos { now ->
+                                            val deltaSec = (now - lastFrame) / 1_000_000_000f
+                                            lastFrame = now
+                                            discRotation = (discRotation + deltaSec * AlbumDiscDegreesPerSecond) % 360f
+                                        }
+                                    }
+                                }
+
+                                VinylPeekDisc(
+                                    thumbnailUrl = albumWithSongs.album.thumbnailUrl,
+                                    size = 240.dp,
+                                    rotationDegrees = discRotation,
+                                    modifier = Modifier
+                                        .offset(x = 240.dp * AlbumDiscPeekFraction * discRevealProgress)
+                                        .graphicsLayer { alpha = discRevealProgress }
+                                        .pointerInput(albumWithSongs.album.id) {
+                                            var center = Offset.Zero
+                                            var lastAngle = 0f
+                                            var lastEventUptimeMillis = 0L
+                                            var lastVelocity = 1.0
+                                            var coastJob: Job? = null
+                                            var audioSettleJob: Job? = null
+
+                                            // Audio hand-back, decoupled from the visual coast below: the processor's own
+                                            // one-pole filter (tau ~25ms) reaches 1x in a couple hundred ms regardless of how
+                                            // fast the disc was spinning, so there's no reason to make the seek — and so real
+                                            // playback resuming — wait out the multi-second friction curve the wheel uses.
+                                            // Waiting on the slow curve was the "silence for a second before it's back to
+                                            // normal" complaint.
+                                            fun finishAudioScratch() {
+                                                val scratch = playerConnection.service.scratchProcessor
+                                                scratch.setVelocity(1.0)
+                                                audioSettleJob = coroutineScope.launch {
+                                                    delay(AlbumDiscAudioSettleMs)
+                                                    val offsetMs = scratch.endScratch()
+                                                    val player = playerConnection.player
+                                                    player.skipSilenceEnabled = wasSkipSilenceBeforeScratch
+                                                    if (offsetMs != 0L) {
+                                                        val newPosition = (player.currentPosition + offsetMs)
+                                                            .coerceIn(0L, player.duration.coerceAtLeast(0L))
+                                                        player.seekTo(newPosition)
+                                                    }
+                                                }
+                                            }
+
+                                            fun startCoast() {
+                                                finishAudioScratch()
+                                                coastJob = coroutineScope.launch {
+                                                    var velocity = lastVelocity
+                                                    var lastFrame = withFrameNanos { it }
+                                                    while (abs(velocity - 1.0) > AlbumDiscCoastSettleEpsilon) {
+                                                        withFrameNanos { now ->
+                                                            val dtSec = (now - lastFrame) / 1_000_000_000.0
+                                                            lastFrame = now
+                                                            velocity = 1.0 + (velocity - 1.0) * exp(-AlbumDiscFrictionPerSecond * dtSec)
+                                                            val deltaDegrees = (velocity * dtSec * 1000.0 / AlbumDiscMsPerRevolution * 360f).toFloat()
+                                                            discRotation = (discRotation + deltaDegrees + 360f) % 360f
+                                                        }
+                                                    }
+                                                    isScratchingDisc = false
+                                                }
+                                            }
+
+                                            detectDragGestures(
+                                                onDragStart = { startPosition ->
+                                                    if (discRevealProgress < 0.4f) return@detectDragGestures
+                                                    coastJob?.cancel()
+                                                    audioSettleJob?.cancel()
+                                                    center = Offset(size.width / 2f, size.height / 2f)
+                                                    lastAngle = angleOfTouch(startPosition, center)
+                                                    lastEventUptimeMillis = 0L
+                                                    lastVelocity = 1.0
+                                                    isScratchingDisc = true
+                                                    val player = playerConnection.player
+                                                    wasSkipSilenceBeforeScratch = player.skipSilenceEnabled
+                                                    player.skipSilenceEnabled = false
+                                                    playerConnection.service.scratchProcessor.beginScratch(player.currentPosition)
+                                                },
+                                                onDrag = { change, _ ->
+                                                    if (!isScratchingDisc) return@detectDragGestures
+                                                    val angle = angleOfTouch(change.position, center)
+                                                    var delta = angle - lastAngle
+                                                    if (delta > 180f) delta -= 360f
+                                                    if (delta < -180f) delta += 360f
+                                                    lastAngle = angle
+                                                    discRotation = (discRotation + delta + 360f) % 360f
+                                                    val scratch = playerConnection.service.scratchProcessor
+                                                    val dtMs = change.uptimeMillis - lastEventUptimeMillis
+                                                    if (lastEventUptimeMillis != 0L && dtMs > 0) {
+                                                        val instVelocity = ((delta / 360f * AlbumDiscMsPerRevolution) / dtMs)
+                                                            .toDouble()
+                                                            .coerceIn(-AlbumDiscMaxScratchVelocity, AlbumDiscMaxScratchVelocity)
+                                                        scratch.setVelocity(instVelocity)
+                                                        lastVelocity = lastVelocity + (instVelocity - lastVelocity) * 0.35
+                                                    }
+                                                    lastEventUptimeMillis = change.uptimeMillis
+                                                },
+                                                onDragEnd = { startCoast() },
+                                                onDragCancel = { startCoast() },
+                                            )
+                                        },
+                                )
+
                                 AsyncImage(
                                     model = albumWithSongs.album.thumbnailUrl,
                                     contentDescription = null,
@@ -642,6 +823,7 @@ fun AlbumScreen(
                                             val s = lerp(0.94f, 1f, coverProgress)
                                             scaleX = s
                                             scaleY = s
+                                            translationX = -240.dp.toPx() * AlbumCoverShiftFraction * discRevealProgress
                                         }
                                         .shadow(
                                             elevation = 20.dp,
@@ -649,7 +831,8 @@ fun AlbumScreen(
                                             spotColor = Color.Black.copy(alpha = 0.5f),
                                         )
                                         .clip(albumCoverSquircle)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                        .border(BorderStroke(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f)), albumCoverSquircle),
                                 )
                             }
 
@@ -1121,6 +1304,7 @@ fun AlbumScreen(
                                         song = song,
                                         albumIndex = index + 1,
                                         subtitleOverride = subtitleText,
+                                        showNewMarker = song.id in unseenSongIds,
                                         // New Iride UI: featuring-artist credits ("feat. X") should
                                         // read in the same color as the rest of the row instead of
                                         // the default muted secondary tone.
@@ -1154,6 +1338,18 @@ fun AlbumScreen(
                                         },
                                         modifier = Modifier
                                             .fillMaxWidth()
+                                            .then(
+                                                if (song.id in unseenSongIds) {
+                                                    Modifier.onGloballyPositioned { coords ->
+                                                        val viewport = listViewportBounds ?: return@onGloballyPositioned
+                                                        if (coords.boundsInWindow().overlaps(viewport)) {
+                                                            viewModel.markSongSeen(song.id)
+                                                        }
+                                                    }
+                                                } else {
+                                                    Modifier
+                                                },
+                                            )
                                             .combinedClickable(
                                                 onClick = {
                                                     if (inSelectMode) {

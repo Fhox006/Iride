@@ -32,12 +32,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -65,7 +67,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -115,15 +116,18 @@ import com.metrolist.music.extensions.metadata
 import com.metrolist.music.extensions.move
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.ListQueue
 import androidx.compose.foundation.layout.BoxWithConstraints
 import com.metrolist.music.ui.component.BetterAnimatedGradientBackground
 import com.metrolist.music.ui.component.BottomSheetState
+import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.Lyrics
 import com.metrolist.music.ui.component.LyricsPillController
 import com.metrolist.music.ui.component.UnderlinePill
+import com.metrolist.music.ui.component.rememberGenreFilter
 import com.metrolist.music.ui.menu.PlayerMenu
 import com.metrolist.music.ui.theme.InterFontFamily
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
@@ -146,26 +150,11 @@ private val IrideMp3PanelBorderColor = Color.White.copy(alpha = 0.14f)
 // wheel background were washing out to near-invisible.
 private val IrideMp3DimIconColor = Color.White.copy(alpha = 0.75f)
 
-// Lightened from the original near-black (0xFF2B2B31 / 0xFF131316) — against direct light the
-// wheel read as a flat black disc with no visible depth or icon contrast.
-private val IrideMp3WheelCenterColor = Color(0xFF46464E)
-private val IrideMp3WheelEdgeColor = Color(0xFF232328)
-private val IrideMp3WheelRimBrush = Brush.verticalGradient(
-    listOf(
-        Color.White.copy(alpha = 0.38f),
-        Color.White.copy(alpha = 0.16f),
-        Color.White.copy(alpha = 0.08f),
-    ),
-)
-private val IrideMp3HoleLipBrush = Brush.verticalGradient(
-    listOf(
-        Color.White.copy(alpha = 0.02f),
-        Color.White.copy(alpha = 0.05f),
-        Color.White.copy(alpha = 0.14f),
-    ),
-)
+// Flat grey surface, matching the rest of the New Iride UI (AlbumScreen panels/chips): a solid
+// fill plus a single hairline border instead of a gradient disc.
+private val IrideMp3WheelSurfaceColor = IrideMp3SurfaceColor
 
-private const val IrideMp3CoverWidthFraction = 0.78f
+private const val IrideMp3CoverWidthFraction = 0.84f
 
 // Lifts the control wheel up off the bottom system-gesture strip (see call site) so its bottom
 // "more" zone stays fully tappable on gesture-nav devices.
@@ -332,6 +321,7 @@ fun IrideMp3PlayerContent(
                             .data(url)
                             .size(100, 100)
                             .allowHardware(false)
+                            .memoryCacheKey("gradient_${mediaMetadata.id}")
                             .build()
                         lyricsBgContext.imageLoader.execute(request).image?.toBitmap()
                     } else {
@@ -624,7 +614,7 @@ fun IrideMp3PlayerContent(
                     onClick = onLyricsClick,
                 )
                 IridePanelLabel(
-                    text = "QUEUE",
+                    text = "UP NEXT",
                     isActive = isQueueActive,
                     onClick = onQueueClick,
                 )
@@ -651,13 +641,13 @@ fun IrideMp3PlayerContent(
                 val buttonSize = 74.dp * scale
                 val iconSize = 25.dp * scale
                 val skipIconSize = 32.dp * scale
-                val centerButtonSize = 115.dp * scale
-                val centerIconSize = 41.dp * scale
+                // Purely decorative now (center knob lost its click). Trimmed 150 -> 135dp so the
+                // hub reads smaller and leaves more ring band for the 4 zones to sit in.
+                val centerButtonSize = 135.dp * scale
 
                 IrideClickWheel(
                     isPlaying = isPlaying,
                     isRadioActive = radioActive,
-                    isMoreActive = menuState.isVisible,
                     isListenTogetherGuest = isListenTogetherGuest,
                     isMuted = isMuted,
                     onPlayPauseClick = onPlayPauseClick,
@@ -667,13 +657,11 @@ fun IrideMp3PlayerContent(
                         radioActive = !radioActive
                         onRadioClick()
                     },
-                    onMoreClick = onMoreClick,
                     wheelSize = wheelSize,
                     buttonSize = buttonSize,
                     iconSize = iconSize,
                     skipIconSize = skipIconSize,
                     centerButtonSize = centerButtonSize,
-                    centerIconSize = centerIconSize,
                     modifier = Modifier.align(Alignment.Center),
                 )
             }
@@ -968,7 +956,7 @@ private fun IrideQueuePreview(
 
     fun selectRadioMode(mode: IrideRadioSubMode) {
         activeRadioSubMode = mode
-        playerConnection.startRadioForSong(mediaMetadata)
+        playerConnection.startRadioSeamlessly()
         when (mode) {
             IrideRadioSubMode.STANDARD -> Unit
             IrideRadioSubMode.CLOSE -> {
@@ -1246,22 +1234,28 @@ private fun IrideQueueModePanel(
 private fun IrideClickWheel(
     isPlaying: Boolean,
     isRadioActive: Boolean,
-    isMoreActive: Boolean,
     isListenTogetherGuest: Boolean,
     isMuted: Boolean,
     onPlayPauseClick: () -> Unit,
     onPreviousClick: () -> Unit,
     onNextClick: () -> Unit,
     onRadioClick: () -> Unit,
-    onMoreClick: () -> Unit,
     wheelSize: Dp,
     buttonSize: Dp,
     iconSize: Dp,
     skipIconSize: Dp,
     centerButtonSize: Dp,
-    centerIconSize: Dp,
     modifier: Modifier = Modifier,
 ) {
+    // Ring band between the outer rim and the center hole: (wheelSize - centerButtonSize) / 2.
+    // The 4 zones sit centered in that band's outer half, so they read as pushed out toward the
+    // rim instead of hugging a flat edge margin that ignored how big the hole was.
+    val ringWidth = (wheelSize - centerButtonSize) / 2
+    val zoneEdgeInset = ringWidth / 6
+    // Spread the 4 zones outward from center as a set, like widening the wheel's effective
+    // diameter for just the buttons, so they land mid-band in the gray ring instead of hugging it.
+    val zoneSpread = buttonSize * 0.14f
+
     Box(
         modifier = modifier.requiredSize(wheelSize),
         contentAlignment = Alignment.Center,
@@ -1270,66 +1264,20 @@ private fun IrideClickWheel(
             modifier = Modifier
                 .requiredSize(wheelSize)
                 .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        listOf(IrideMp3WheelCenterColor, IrideMp3WheelEdgeColor),
-                    ),
-                )
-                .border(
-                    width = 1.dp,
-                    brush = IrideMp3WheelRimBrush,
-                    shape = CircleShape,
-                ),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(5.dp)
-                    .border(1.dp, Color.White.copy(alpha = 0.05f), CircleShape),
-            )
-        }
+                .background(IrideMp3WheelSurfaceColor)
+                .border(1.dp, IrideMp3PanelBorderColor, CircleShape),
+        )
 
-        val playPauseInteraction = remember { MutableInteractionSource() }
         Box(
             modifier = Modifier
                 .size(centerButtonSize)
-                .pressScale(playPauseInteraction, pressedScale = 0.9f)
                 .clip(CircleShape)
                 .background(IrideMp3BackgroundColor)
-                .border(1.dp, IrideMp3HoleLipBrush, CircleShape)
-                .clickable(
-                    interactionSource = playPauseInteraction,
-                    indication = null,
-                    onClick = onPlayPauseClick,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(
-                    if (isListenTogetherGuest) {
-                        if (isMuted) R.drawable.volume_off else R.drawable.volume_up
-                    } else if (isPlaying) {
-                        R.drawable.ic_iride_pause
-                    } else {
-                        R.drawable.ic_iride_play
-                    },
-                ),
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(centerIconSize),
-            )
-        }
+                .border(1.dp, IrideMp3PanelBorderColor, CircleShape),
+        )
 
-        // Drawn last (on top of the center play/pause knob) so these zones win the hit test
-        // in the sliver where the knob's square touch target creeps past its round edge into
-        // the bottom "more" zone — without this, taps near the wheel's center on that zone
-        // were swallowed by the play/pause button and only the outer edge of the button worked.
-        // Drawn last (on top of the center play/pause knob) so these zones win the hit test
-        // in the sliver where the knob's square touch target creeps past its round edge into
-        // the bottom "more" zone — without this, taps near the wheel's center on that zone
-        // were swallowed by the play/pause button and only the outer edge of the button worked.
         Box(modifier = Modifier.requiredSize(wheelSize)) {
-            WheelZone(alignment = Alignment.TopCenter, size = buttonSize, onClick = onRadioClick) {
+            WheelZone(alignment = Alignment.TopCenter, size = buttonSize, edgeInset = zoneEdgeInset, offsetY = -zoneSpread, onClick = onRadioClick) {
                 Icon(
                     painter = painterResource(R.drawable.radio),
                     contentDescription = null,
@@ -1340,6 +1288,8 @@ private fun IrideClickWheel(
             WheelZone(
                 alignment = Alignment.CenterEnd,
                 size = buttonSize,
+                edgeInset = zoneEdgeInset,
+                offsetX = zoneSpread,
                 onClick = onNextClick,
                 enabled = !isListenTogetherGuest,
             ) {
@@ -1353,22 +1303,34 @@ private fun IrideClickWheel(
             WheelZone(
                 alignment = Alignment.BottomCenter,
                 size = buttonSize,
-                onClick = onMoreClick,
+                edgeInset = zoneEdgeInset,
+                offsetY = zoneSpread,
+                onClick = onPlayPauseClick,
                 // Wide bottom strip: the empty bottom-left/right of the wheel (prev/next sit at
-                // mid-height, not down here) becomes part of the "more" target so a near-miss no
-                // longer collapses the player.
+                // mid-height, not down here) becomes part of the play/pause target so a near-miss
+                // no longer collapses the player.
                 hitWidth = buttonSize * 2.2f,
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.more_vert),
+                    painter = painterResource(
+                        if (isListenTogetherGuest) {
+                            if (isMuted) R.drawable.volume_off else R.drawable.volume_up
+                        } else if (isPlaying) {
+                            R.drawable.ic_iride_pause
+                        } else {
+                            R.drawable.ic_iride_play
+                        },
+                    ),
                     contentDescription = null,
-                    tint = if (isMoreActive) Color.White else IrideMp3DimIconColor,
-                    modifier = Modifier.size(iconSize),
+                    tint = Color.White,
+                    modifier = Modifier.size(skipIconSize),
                 )
             }
             WheelZone(
                 alignment = Alignment.CenterStart,
                 size = buttonSize,
+                edgeInset = zoneEdgeInset,
+                offsetX = -zoneSpread,
                 onClick = onPreviousClick,
                 enabled = !isListenTogetherGuest,
             ) {
@@ -1387,20 +1349,29 @@ private fun IrideClickWheel(
 private fun BoxScope.WheelZone(
     alignment: Alignment,
     size: Dp,
+    // Distance from the wheel's outer edge to the zone's center — centers it in the outer half
+    // of the ring band (between the rim and the center hole) instead of a flat margin that
+    // ignored how big that band actually was.
+    edgeInset: Dp,
     onClick: () -> Unit,
     enabled: Boolean = true,
-    // Touch target size; defaults to the icon size. The bottom "more" zone widens it so a tap
-    // landing slightly left/right of the dots still opens the menu instead of falling through to
-    // the player's background collapse-on-tap and dropping to the mini player.
+    // Touch target size; defaults to the icon size. The bottom play/pause zone widens it so a tap
+    // landing slightly left/right of the icon still hits instead of falling through to the
+    // player's background collapse-on-tap and dropping to the mini player.
     hitWidth: Dp = size,
     hitHeight: Dp = size,
+    // Nudges the zone off its raw edge-aligned spot, in sync with the other 3 zones, so the ring
+    // of buttons reads as a slightly wider circle centered in the gray band.
+    offsetX: Dp = 0.dp,
+    offsetY: Dp = 0.dp,
     content: @Composable () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
             .align(alignment)
-            .padding(12.dp)
+            .padding(edgeInset)
+            .offset(x = offsetX, y = offsetY)
             .size(width = hitWidth, height = hitHeight)
             .clickable(
                 interactionSource = interactionSource,
@@ -1621,13 +1592,18 @@ private fun BridgedInfoBlock(
             }
         }
         if (metadata.artists.any { it.name.isNotBlank() }) {
-            Text(
-                text = metadata.artists.joinToString(", ") { it.name },
+            IrideArtistText(
+                mediaMetadata = metadata,
                 color = lerpColor(miniArtistColor, Color.Gray, progress),
-                fontFamily = InterFontFamily,
                 fontSize = lerpTextUnit(12.sp, 12.sp, progress),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                onArtistClick = { artistId ->
+                    if (progress < 1f) {
+                        playerBottomSheetState.expandSoft()
+                    } else if (artistId.isNotBlank()) {
+                        navController.navigate("artist/$artistId")
+                        playerBottomSheetState.collapseSoft()
+                    }
+                },
             )
         }
     }

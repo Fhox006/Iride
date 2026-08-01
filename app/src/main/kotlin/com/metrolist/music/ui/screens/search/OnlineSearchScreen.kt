@@ -20,19 +20,25 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -64,18 +70,25 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.EpisodeItem
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.PodcastItem
 import com.metrolist.innertube.models.SongItem
+import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.SuggestionItemHeight
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.models.toMediaMetadata
@@ -87,7 +100,9 @@ import com.metrolist.music.ui.menu.YouTubeArtistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.playback.queues.YouTubeQueue
+import com.metrolist.music.utils.recordSearchHistoryOpen
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.HomeViewModel
 import com.metrolist.music.viewmodels.OnlineSearchSuggestionViewModel
@@ -125,9 +140,11 @@ fun OnlineSearchScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val viewState by viewModel.viewState.collectAsState()
     val explorePage by homeViewModel.explorePage.collectAsState()
+    val discoveryWeeklyPlaylist by homeViewModel.discoveryWeeklyPlaylist.collectAsState()
 
     val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
 
     val lazyListState = rememberLazyListState()
 
@@ -143,6 +160,13 @@ fun OnlineSearchScreen(
         snapshotFlow { query }.debounce(300L).collectLatest {
             viewModel.query.value = it
         }
+    }
+
+    // Search's HomeViewModel instance is scoped to this nav entry, separate from Home's —
+    // it can't rely on Home's 12s-delayed cold-start job to have run. Trigger it directly
+    // so the Discovery Weekly card doesn't depend on Home ever having been opened long enough.
+    LaunchedEffect(Unit) {
+        homeViewModel.syncDiscoveryWeeklyIfNeeded()
     }
 
     LaunchedEffect(explorePage?.moodAndGenres?.isNotEmpty()) {
@@ -177,62 +201,90 @@ fun OnlineSearchScreen(
             .rubberBandOverscroll(Orientation.Vertical, lazyListState),
     ) {
         if (query.isEmpty() && !isFocused) {
-            // === EXPLORE SECTION: moods first, no history ===
-            if (explorePage?.moodAndGenres?.isNotEmpty() == true) {
-                item(key = "moods_header") {
-                    Text(
-                        text = stringResource(R.string.mood_and_genres),
-                        style = if (topNavigationBarEnabled) {
-                            MaterialTheme.typography.labelLarge.copy(
-                                fontFamily = SpaceMonoFontFamily,
-                                fontSize = 13.sp,
-                                letterSpacing = (-0.1).sp,
-                            )
-                        } else {
-                            MaterialTheme.typography.titleMedium
-                        },
-                        fontWeight = if (topNavigationBarEnabled) FontWeight.Bold else FontWeight.Normal,
-                        color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.55f) else MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .padding(
-                                start = if (topNavigationBarEnabled) 20.dp else 16.dp,
-                                end = if (topNavigationBarEnabled) 20.dp else 16.dp,
-                                top = if (topNavigationBarEnabled) 20.dp else 16.dp,
-                                bottom = if (topNavigationBarEnabled) 6.dp else 8.dp,
-                            )
-                            .animateItem(),
-                    )
-                }
+            // === EXPLORE SECTION: Discovery Weekly first, then moods, no history ===
+            // Discovery Weekly is prepended into the same 2-per-row grid as the mood/genre
+            // cards (not a separate row) so it lands as the section's first box and shares
+            // their exact cell size/spacing by construction rather than by copied values.
+            // Always a slot for Discovery Weekly (real card once generated, "creating…"
+            // placeholder until then) — the user wants it visibly always there, not silently
+            // absent while the first generation is still running in the background.
+            val discoveryWeeklyEntry: Any =
+                discoveryWeeklyPlaylist?.takeIf { it.songCount > 0 } ?: DiscoveryWeeklyPending
+            val moods = explorePage?.moodAndGenres.orEmpty()
+            item(key = "moods_header") {
+                Text(
+                    text = stringResource(R.string.mood_and_genres),
+                    style = if (topNavigationBarEnabled) {
+                        MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = SpaceMonoFontFamily,
+                            fontSize = 13.sp,
+                            letterSpacing = (-0.1).sp,
+                        )
+                    } else {
+                        MaterialTheme.typography.titleMedium
+                    },
+                    fontWeight = if (topNavigationBarEnabled) FontWeight.Bold else FontWeight.Normal,
+                    color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.55f) else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .padding(
+                            start = if (topNavigationBarEnabled) 20.dp else 16.dp,
+                            end = if (topNavigationBarEnabled) 20.dp else 16.dp,
+                            top = if (topNavigationBarEnabled) 20.dp else 16.dp,
+                            bottom = if (topNavigationBarEnabled) 6.dp else 8.dp,
+                        )
+                        .animateItem(),
+                )
+            }
 
-                val moods = explorePage!!.moodAndGenres
-                val moodRows = moods.chunked(2)
-                itemsIndexed(
-                    items = moodRows,
-                    key = { index, _ -> "mood_row_$index" },
-                ) { _, row ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = if (topNavigationBarEnabled) 20.dp else 12.dp,
-                                vertical = 4.dp,
-                            )
-                            .animateItem(),
-                        horizontalArrangement = Arrangement.spacedBy(if (topNavigationBarEnabled) 10.dp else 8.dp),
-                    ) {
-                        row.forEach { mood ->
-                            SearchMoodCard(
-                                title = mood.title,
-                                onClick = {
-                                    navController.navigate("youtube_browse/${mood.endpoint.browseId}?params=${mood.endpoint.params}")
-                                },
-                                useIrideStyle = topNavigationBarEnabled,
-                                modifier = Modifier.weight(1f),
-                            )
+            val gridEntries: List<Any> = listOf(discoveryWeeklyEntry) + moods
+            val gridRows = gridEntries.chunked(2)
+            itemsIndexed(
+                items = gridRows,
+                key = { index, _ -> "mood_row_$index" },
+            ) { _, row ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = if (topNavigationBarEnabled) 20.dp else 12.dp,
+                            vertical = 4.dp,
+                        )
+                        .animateItem(),
+                    horizontalArrangement = Arrangement.spacedBy(if (topNavigationBarEnabled) 10.dp else 8.dp),
+                ) {
+                    row.forEach { entry ->
+                        when (entry) {
+                            is com.metrolist.music.db.entities.Playlist -> {
+                                DiscoveryWeeklyCard(
+                                    thumbnails = entry.thumbnails,
+                                    onClick = { navController.navigate("local_playlist/${entry.id}") },
+                                    useIrideStyle = topNavigationBarEnabled,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            is com.metrolist.innertube.pages.MoodAndGenres.Item -> {
+                                SearchMoodCard(
+                                    title = entry.title,
+                                    onClick = {
+                                        navController.navigate("youtube_browse/${entry.endpoint.browseId}?params=${entry.endpoint.params}")
+                                    },
+                                    useIrideStyle = topNavigationBarEnabled,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            is DiscoveryWeeklyPending -> {
+                                DiscoveryWeeklyCard(
+                                    thumbnails = emptyList(),
+                                    onClick = {},
+                                    useIrideStyle = topNavigationBarEnabled,
+                                    pendingLabel = stringResource(R.string.discovery_weekly_creating),
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
                         }
-                        if (row.size < 2) {
-                            Spacer(Modifier.weight(1f))
-                        }
+                    }
+                    if (row.size < 2) {
+                        Spacer(Modifier.weight(1f))
                     }
                 }
             }
@@ -390,6 +442,7 @@ fun OnlineSearchScreen(
                             Modifier
                                 .combinedClickable(
                                     onClick = {
+                                        if (!pauseSearchHistory) database.recordSearchHistoryOpen(query, item)
                                         when (item) {
                                             is SongItem -> {
                                                 if (item.id == mediaMetadata?.id) {
@@ -519,11 +572,28 @@ fun OnlineSearchScreen(
 
             items(viewState.history, key = { "history_${it.query}" }) { history ->
                 SuggestionItem(
-                    query = history.query,
+                    query = history.title ?: history.query,
                     online = false,
+                    thumbnailUrl = history.thumbnailUrl,
+                    isArtistThumbnail = history.itemType == "artist",
                     onClick = {
-                        onSearch(history.query)
-                        onDismiss()
+                        when (history.itemType) {
+                            "song" -> {
+                                if (history.itemId == mediaMetadata?.id) {
+                                    playerConnection.togglePlayPause()
+                                } else {
+                                    playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = history.itemId!!)))
+                                }
+                                onDismiss()
+                            }
+                            "album" -> { navController.navigate("album/${history.itemId}"); onDismiss() }
+                            "artist" -> { navController.navigate("artist/${history.itemId}"); onDismiss() }
+                            "playlist" -> { navController.navigate("online_playlist/${history.itemId}"); onDismiss() }
+                            else -> {
+                                onSearch(history.query)
+                                onDismiss()
+                            }
+                        }
                     },
                     onDelete = {
                         database.query {
@@ -662,6 +732,7 @@ fun OnlineSearchScreen(
                         Modifier
                             .combinedClickable(
                                 onClick = {
+                                    if (!pauseSearchHistory) database.recordSearchHistoryOpen(query, item)
                                     when (item) {
                                         is SongItem -> {
                                             if (item.id == mediaMetadata?.id) {
@@ -786,6 +857,10 @@ fun OnlineSearchScreen(
     }
 }
 
+// Marks the Discovery Weekly grid slot as "not generated yet" so it always occupies the box
+// instead of the grid silently shrinking by one while the background generation is running.
+private object DiscoveryWeeklyPending
+
 @Composable
 private fun SearchMoodCard(
     title: String,
@@ -838,6 +913,129 @@ private fun SearchMoodCard(
     }
 }
 
+// First box in the Search explore grid: the auto-generated weekly mix. Same cell size as
+// SearchMoodCard (shares the grid row above), but its background is the blurred 4-cover mosaic
+// language from the Starred/Liked cover (GlassPlaylistCover) instead of a flat tint — a visual
+// cue that this box holds a personal, ever-changing mix rather than a static category.
+@Composable
+private fun DiscoveryWeeklyCard(
+    thumbnails: List<String>,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    useIrideStyle: Boolean = false,
+    pendingLabel: String? = null,
+) {
+    val mosaicThumbnails = thumbnails.distinct().take(4)
+    val height = if (useIrideStyle) 72.dp else 80.dp
+
+    Box(
+        modifier = modifier
+            .height(height)
+            .clip(RoundedCornerShape(if (useIrideStyle) 5.dp else 18.dp))
+            .background(if (useIrideStyle) Color.White.copy(alpha = 0.06f) else MaterialTheme.colorScheme.secondaryContainer)
+            .then(if (pendingLabel == null) Modifier.clickable(onClick = onClick) else Modifier),
+    ) {
+        if (mosaicThumbnails.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer(scaleX = 1.6f, scaleY = 1.6f)
+                    .blur(height * 0.25f),
+            ) {
+                if (mosaicThumbnails.size == 1) {
+                    AsyncImage(
+                        model = mosaicThumbnails[0],
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    Column(Modifier.fillMaxSize()) {
+                        Row(Modifier.weight(1f).fillMaxWidth()) {
+                            AsyncImage(
+                                model = mosaicThumbnails.getOrElse(0) { mosaicThumbnails[0] },
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                            AsyncImage(
+                                model = mosaicThumbnails.getOrElse(1) { mosaicThumbnails[0] },
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                        }
+                        Row(Modifier.weight(1f).fillMaxWidth()) {
+                            AsyncImage(
+                                model = mosaicThumbnails.getOrElse(2) { mosaicThumbnails[0] },
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                            AsyncImage(
+                                model = mosaicThumbnails.getOrElse(3) { mosaicThumbnails[0] },
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                        }
+                    }
+                }
+            }
+            Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.45f)))
+        }
+
+        // White only reads over the photo mosaic or the iride near-black tint — over the flat
+        // classic-style secondaryContainer (a light role in most themes) it fails contrast, same
+        // trap SearchMoodCard avoids by using onSecondaryContainer instead of a hardcoded color.
+        val onCardColor = if (mosaicThumbnails.isNotEmpty() || useIrideStyle) {
+            Color.White
+        } else {
+            MaterialTheme.colorScheme.onSecondaryContainer
+        }
+
+        if (pendingLabel != null) {
+            CircularProgressIndicator(
+                color = onCardColor.copy(alpha = 0.7f),
+                strokeWidth = 2.dp,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(if (useIrideStyle) 18.dp else 22.dp),
+            )
+        } else {
+            Icon(
+                painter = painterResource(R.drawable.language),
+                contentDescription = null,
+                tint = onCardColor.copy(alpha = if (mosaicThumbnails.isNotEmpty() || useIrideStyle) 0.9f else 1f),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(x = 10.dp)
+                    .size(if (useIrideStyle) 22.dp else 26.dp),
+            )
+        }
+
+        Text(
+            text = pendingLabel ?: stringResource(R.string.discovery_weekly),
+            style = if (useIrideStyle) {
+                MaterialTheme.typography.labelLarge.copy(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontSize = 13.sp,
+                    letterSpacing = (-0.1).sp,
+                )
+            } else {
+                MaterialTheme.typography.titleSmall
+            },
+            fontWeight = FontWeight.Bold,
+            color = onCardColor,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(12.dp),
+        )
+    }
+}
+
 
 @Composable
 fun SuggestionItem(
@@ -849,6 +1047,10 @@ fun SuggestionItem(
     onFillTextField: () -> Unit,
     pureBlack: Boolean,
     useIrideStyle: Boolean = false,
+    // Set once a history row has an opened item attached (song/artist/album/playlist) — its
+    // cover/avatar replaces the generic clock icon, same as Spotify's search history.
+    thumbnailUrl: String? = null,
+    isArtistThumbnail: Boolean = false,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -866,10 +1068,25 @@ fun SuggestionItem(
                 .clickable(onClick = onClick)
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
     ) {
-        // New Iride UI: no leading history/search icon repeated on every row (it added noise
-        // without conveying anything useful) — text alone, indented to match the rest of the
-        // iride search rows (chips/search box/list items all start at 20.dp).
-        if (useIrideStyle) {
+        if (thumbnailUrl != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(thumbnailUrl.resize(192, 192))
+                    .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .padding(start = if (useIrideStyle) 20.dp else 12.dp, end = 12.dp)
+                    .size(ListThumbnailSize)
+                    .clip(if (isArtistThumbnail) CircleShape else RoundedCornerShape(4.dp)),
+            )
+        } else if (useIrideStyle) {
+            // New Iride UI: no leading history/search icon repeated on every row (it added noise
+            // without conveying anything useful) — text alone, indented to match the rest of the
+            // iride search rows (chips/search box/list items all start at 20.dp).
             Spacer(modifier = Modifier.width(20.dp))
         } else {
             Icon(

@@ -740,4 +740,51 @@ object YTPlayerUtils {
             streamExpiresInSeconds,
         )
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Video playback (Artist screen "Video" shelf): resolves a separate
+    // video-only + audio-only adaptive stream pair, ported from Flow's
+    // (github.com/A-EDev/Flow) NewPipeExtractor-based approach — same
+    // extractor this file already uses for audio. Muxed into one MediaItem
+    // by MergingMediaSource in the player screen. Reuses the Muzza client
+    // fallback list since it's already tuned for stream-URL resolution.
+    // ─────────────────────────────────────────────────────────────────────
+
+    data class VideoPlaybackData(
+        val videoUrl: String,
+        val audioUrl: String,
+        val title: String?,
+    )
+
+    private fun findVideoFormat(playerResponse: PlayerResponse): PlayerResponse.StreamingData.Format? =
+        playerResponse.streamingData?.adaptiveFormats
+            ?.filter { !it.isAudio && it.isOriginal && it.mimeType.startsWith("video/mp4") && (it.height ?: 0) <= 1080 }
+            ?.maxByOrNull { it.height ?: 0 }
+
+    private fun findBestAudioFormat(playerResponse: PlayerResponse): PlayerResponse.StreamingData.Format? =
+        playerResponse.streamingData?.adaptiveFormats
+            ?.filter { it.isAudio && it.isOriginal }
+            ?.maxByOrNull { it.bitrate + (if (it.mimeType.startsWith("audio/webm")) 10240 else 0) }
+
+    suspend fun resolveVideoStreams(videoId: String): Result<VideoPlaybackData> = runCatching {
+        val isLoggedIn = YouTube.cookie != null
+        val signatureTimestamp = getSignatureTimestampMuzzaOrNull(videoId)
+
+        for (client in arrayOf(MUZZA_MAIN_CLIENT, *MUZZA_STREAM_FALLBACK_CLIENTS)) {
+            if (client.loginRequired && !isLoggedIn) continue
+
+            val response = YouTube.player(videoId, null, client, signatureTimestamp).getOrNull() ?: continue
+            if (response.playabilityStatus.status != "OK") continue
+
+            val videoFormat = findVideoFormat(response) ?: continue
+            val audioFormat = findBestAudioFormat(response) ?: continue
+
+            val videoUrl = NewPipeExtractor.getStreamUrl(videoFormat, videoId) ?: continue
+            val audioUrl = NewPipeExtractor.getStreamUrl(audioFormat, videoId) ?: continue
+
+            return@runCatching VideoPlaybackData(videoUrl, audioUrl, response.videoDetails?.title)
+        }
+
+        throw Exception("No playable video stream found for $videoId")
+    }
 }

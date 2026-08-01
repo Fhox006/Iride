@@ -137,6 +137,14 @@ class LyricsViewModel @Inject constructor(
                 LyricsUtils.detectTier(cached.lyrics)
             } else LyricsTier.PLAIN
 
+            // Carried forward into any re-fetched row below so a translation survives a
+            // full-screen-lyrics remount (loadProgressiveLyrics reruns on every mount and used
+            // to delete+upsert a bare LyricsEntity, wiping these columns even though the lyrics
+            // text itself hadn't changed).
+            val preservedTranslatedLyrics = cached?.translatedLyrics.orEmpty()
+            val preservedTranslationLanguage = cached?.translationLanguage.orEmpty()
+            val preservedTranslationMode = cached?.translationMode.orEmpty()
+
             if (cached != null && cached.lyrics != LYRICS_NOT_FOUND) {
                 processLyrics(cached.lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
                 lyricsSearchStatus.value = when (cachedTier) {
@@ -184,7 +192,16 @@ class LyricsViewModel @Inject constructor(
                     bestTierSaved = tier
                     processLyrics(result.lyrics, enabledLanguages, romanizeCyrillicByLine, showIntervalIndicator)
                     database.query {
-                        upsert(LyricsEntity(mediaMetadata.id, result.lyrics, result.provider))
+                        upsert(
+                            LyricsEntity(
+                                id = mediaMetadata.id,
+                                lyrics = result.lyrics,
+                                provider = result.provider,
+                                translatedLyrics = preservedTranslatedLyrics,
+                                translationLanguage = preservedTranslationLanguage,
+                                translationMode = preservedTranslationMode,
+                            )
+                        )
                     }
                     lyricsSearchStatus.value = when (tier) {
                         LyricsTier.SYNCED_WORD -> LyricsSearchStatus.FoundWord

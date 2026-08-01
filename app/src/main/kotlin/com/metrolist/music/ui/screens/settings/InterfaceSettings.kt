@@ -48,6 +48,7 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.HeroCarouselEnabledKey
 import com.metrolist.music.constants.AutoLinkFeaturedArtistsKey
+import com.metrolist.music.constants.ShowFeaturedArtistsInTopSongsKey
 import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.ChipSortTypeKey
 import com.metrolist.music.constants.DefaultOpenTabKey
@@ -108,11 +109,13 @@ fun InterfaceSettings(
     val (showWrappedCard, onShowWrappedCardChange) =
         rememberPreference(ShowWrappedCardKey, defaultValue = false)
     val (randomizeHomeOrder, onRandomizeHomeOrderChange) =
-        rememberPreference(RandomizeHomeOrderKey, defaultValue = true)
+        rememberPreference(RandomizeHomeOrderKey, defaultValue = false)
     val (hideDurationForStandard, onHideDurationForStandardChange) =
         rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
     val (autoLinkFeaturedArtists, onAutoLinkFeaturedArtistsChange) =
         rememberPreference(AutoLinkFeaturedArtistsKey, defaultValue = true)
+    val (showFeaturedArtistsInTopSongs, onShowFeaturedArtistsInTopSongsChange) =
+        rememberPreference(ShowFeaturedArtistsInTopSongsKey, defaultValue = true)
     val (heroCarouselEnabled, onHeroCarouselEnabledChange) =
         rememberPreference(HeroCarouselEnabledKey, defaultValue = false)
     val (betterLibraryBeta, onBetterLibraryBetaChange) =
@@ -590,6 +593,24 @@ fun InterfaceSettings(
                         )
                     },
                     onClick = { onAutoLinkFeaturedArtistsChange(!autoLinkFeaturedArtists) }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.group),
+                    title = { Text(stringResource(R.string.show_featured_artists_in_top_songs)) },
+                    description = { Text(stringResource(R.string.show_featured_artists_in_top_songs_desc)) },
+                    trailingContent = {
+                        IrideSwitch(
+                            checked = showFeaturedArtistsInTopSongs, onCheckedChange = onShowFeaturedArtistsInTopSongsChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(if (showFeaturedArtistsInTopSongs) R.drawable.check else R.drawable.close),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onShowFeaturedArtistsInTopSongsChange(!showFeaturedArtistsInTopSongs) }
                 )
             )
         )

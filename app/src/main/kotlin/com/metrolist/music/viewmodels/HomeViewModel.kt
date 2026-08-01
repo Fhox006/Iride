@@ -9,9 +9,10 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.metrolist.music.R
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AlbumItem
-import com.metrolist.innertube.models.Artist
+import com.metrolist.innertube.models.Artist as YTArtist
 import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
@@ -43,18 +44,22 @@ import com.metrolist.music.constants.MoodSnapshotKey
 import com.metrolist.music.constants.QuickPicks
 import com.metrolist.music.constants.QuickPicksKey
 import com.metrolist.music.constants.HeroCarouselEnabledKey
+import com.metrolist.music.constants.LastDiscoveryWeeklySyncKey
 import com.metrolist.music.constants.SeenNewReleaseFirstIdsKey
 import com.metrolist.music.constants.RandomizeHomeOrderKey
 import com.metrolist.music.constants.ShowWrappedCardKey
 import com.metrolist.music.discovery.AlbumRecommendationsGenerator
+import com.metrolist.music.discovery.DiscoveryWeeklyGenerator
 import com.metrolist.music.discovery.HeroCarouselGenerator
 import com.metrolist.music.models.DischiPerTeItem
 import com.metrolist.music.models.ForYouShelfItem
 import com.metrolist.music.models.HeroCarouselItem
+import com.metrolist.music.models.stableKey
 import com.metrolist.music.constants.SpeedDialSnapshotKey
 import com.metrolist.music.constants.WrappedSeenKey
 import com.metrolist.music.models.HomeSnapshotItem
 import com.metrolist.music.models.MoodSnapshot
+import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.models.toPlaylistItem
 import com.metrolist.music.models.SpeedDialSnapshot
 import kotlinx.serialization.decodeFromString
@@ -63,8 +68,11 @@ import kotlinx.serialization.json.Json
 import com.metrolist.music.ui.screens.HomeSection
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Album
+import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.LocalItem
+import com.metrolist.music.db.entities.PlaylistEntity
+import com.metrolist.music.db.entities.PlaylistSongMap
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.db.entities.SongEntity
 import com.metrolist.music.db.entities.SpeedDialItem
@@ -73,6 +81,7 @@ import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.models.SimilarRecommendation
 import com.metrolist.music.ui.screens.wrapped.WrappedAudioService
 import com.metrolist.music.ui.screens.wrapped.WrappedManager
+import com.metrolist.music.utils.NewReleaseNotifier
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
@@ -92,6 +101,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlin.random.Random
@@ -114,6 +124,7 @@ class HomeViewModel @Inject constructor(
     val syncUtils: SyncUtils,
     val wrappedManager: WrappedManager,
     private val wrappedAudioService: WrappedAudioService,
+    private val newReleaseNotifier: NewReleaseNotifier,
 ) : ViewModel() {
     val syncState = syncUtils.syncState
 
@@ -181,17 +192,17 @@ class HomeViewModel @Inject constructor(
     val randomSeed = MutableStateFlow(System.currentTimeMillis())
 
     private val randomizeHomeOrder: StateFlow<Boolean> = context.dataStore.data
-        .map { it[RandomizeHomeOrderKey] ?: true }
+        .map { it[RandomizeHomeOrderKey] ?: false }
         .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val moodPage = MutableStateFlow<HomePage?>(null)
     private var lastMoodChipParams: String? = null
 
     val isHeroCarouselEnabled: StateFlow<Boolean> = context.dataStore.data
-        .map { it[HeroCarouselEnabledKey] ?: false }
+        .map { it[HeroCarouselEnabledKey] ?: true }
         .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     val heroCarouselItems = MutableStateFlow<List<HeroCarouselItem>>(emptyList())
 
@@ -199,28 +210,128 @@ class HomeViewModel @Inject constructor(
 
     val dischiPerTe = MutableStateFlow<List<DischiPerTeItem>?>(null)
     val forYouShelves = MutableStateFlow<List<ForYouShelfItem>>(emptyList())
+    private var forYouArtistPool: List<Artist> = emptyList()
+    private var forYouPoolCursor = 0
+    private val _isLoadingMoreForYou = MutableStateFlow(false)
 
     private val albumRecommendationsGenerator = AlbumRecommendationsGenerator(database)
 
-    private fun defaultHeroCarouselSeed() =
-        LocalDate.now().toEpochDay() xor context.packageName.hashCode().toLong()
+    private val discoveryWeeklyGenerator = DiscoveryWeeklyGenerator(database)
+    private val discoveryWeeklySyncMutex = kotlinx.coroutines.sync.Mutex()
+
+    val discoveryWeeklyPlaylist = database
+        .playlist(PlaylistEntity.DISCOVER_WEEKLY_PLAYLIST_ID)
+        .stateIn(viewModelScope, SharingStarted.Lazily, null)
+
+    // Regenerates the Discovery Weekly playlist once every 7 days (or immediately if it has
+    // never been built), same cooldown mechanism as the Weekly/Monthly Most playlists in
+    // StatsViewModel. Safe to call on every cold start — it's a no-op most of the time.
+    fun syncDiscoveryWeeklyIfNeeded(force: Boolean = false) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                discoveryWeeklySyncMutex.withLock {
+                    val prefs = context.dataStore.data.first()
+                    val lastSyncMillis = prefs[LastDiscoveryWeeklySyncKey]
+                    // songCount, not just row existence — a row can exist with 0 songs (e.g. a
+                    // past generation that came up empty) and the 7-day cooldown would otherwise
+                    // lock that empty state in for a week before trying again.
+                    val existingRow = database.playlist(PlaylistEntity.DISCOVER_WEEKLY_PLAYLIST_ID).first()
+                    val playlistReady = existingRow != null && existingRow.songCount > 0
+                    val due = lastSyncMillis == null ||
+                        java.time.Instant.ofEpochMilli(lastSyncMillis).plus(java.time.Duration.ofDays(7))
+                            .isBefore(java.time.Instant.now())
+                    if (!force && !due && playlistReady) return@withLock
+
+                    val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                    val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+                    val songs = discoveryWeeklyGenerator.generate(
+                        hideExplicit = hideExplicit,
+                        hideVideoSongs = hideVideoSongs,
+                        seed = java.time.LocalDate.now().toEpochDay() / 7,
+                    )
+                    if (songs.isEmpty()) return@withLock
+
+                    val playlistId = PlaylistEntity.DISCOVER_WEEKLY_PLAYLIST_ID
+                    val existingPlaylist = existingRow?.playlist
+                    val now = java.time.LocalDateTime.now()
+                    val playlistEntity = existingPlaylist?.copy(lastUpdateTime = now)
+                        ?: PlaylistEntity(
+                            id = playlistId,
+                            name = context.getString(R.string.discovery_weekly),
+                            isEditable = true,
+                            bookmarkedAt = now,
+                            lastUpdateTime = now,
+                        )
+                    if (existingPlaylist == null) database.insert(playlistEntity) else database.update(playlistEntity)
+
+                    database.clearPlaylist(playlistId)
+                    songs.forEachIndexed { position, song ->
+                        database.insert(song.toMediaMetadata())
+                        database.insert(PlaylistSongMap(songId = song.id, playlistId = playlistId, position = position))
+                    }
+
+                    context.dataStore.edit { it[LastDiscoveryWeeklySyncKey] = System.currentTimeMillis() }
+                }
+            } catch (e: Exception) {
+                reportException(e)
+            }
+        }
+    }
+
+    // Per-launch, not per-day: a date-derived seed reproduced the exact same shuffle order on
+    // every cold start within the same day, so "Featured for you" looked frozen no matter how
+    // many times the app was reopened.
+    private fun defaultHeroCarouselSeed() = System.currentTimeMillis()
 
     private var lastHeroCarouselSeed = defaultHeroCarouselSeed()
 
-    fun refreshHeroCarousel(seed: Long = lastHeroCarouselSeed) {
+    // Cold start fires several async arrivals (cache restore, explorePage, homePage,
+    // dischiPerTe) that each used to trigger a full regenerate — same seed, but a
+    // different pool mix each time reshuffles the whole list, silently swapping out
+    // the card the user is already looking at. Only the first successful generation
+    // (or an explicit force, e.g. pull-to-refresh) replaces the list; every later
+    // arrival only appends newly available cards to the end via [appendHeroCarousel].
+    private var heroCarouselFirstGenDone = false
+
+    fun refreshHeroCarousel(seed: Long = lastHeroCarouselSeed, force: Boolean = false) {
+        if (!force && heroCarouselFirstGenDone) {
+            appendHeroCarousel()
+            return
+        }
         lastHeroCarouselSeed = seed
         viewModelScope.launch(Dispatchers.IO) {
             val seenAsFirstIds = context.dataStore.data.first()[SeenNewReleaseFirstIdsKey] ?: emptySet()
             val result = heroCarouselGenerator.generate(
                 explorePage = explorePage.value,
                 homePage = homePage.value,
-                moodSnapshot = cachedMoodSnapshot.value,
+                dischiPerTe = dischiPerTe.value.orEmpty(),
                 seed = seed,
                 seenAsFirstIds = seenAsFirstIds,
             )
             heroCarouselItems.value = result.items
+            heroCarouselFirstGenDone = true
             if (result.seenAsFirstIds != seenAsFirstIds) {
                 context.dataStore.edit { it[SeenNewReleaseFirstIdsKey] = result.seenAsFirstIds }
+            }
+        }
+    }
+
+    // Panels only ever get added on the right, never reordered or replaced — cards
+    // already shown keep their position no matter what data arrives afterwards.
+    private fun appendHeroCarousel() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val seenAsFirstIds = context.dataStore.data.first()[SeenNewReleaseFirstIdsKey] ?: emptySet()
+            val fresh = heroCarouselGenerator.generate(
+                explorePage = explorePage.value,
+                homePage = homePage.value,
+                dischiPerTe = dischiPerTe.value.orEmpty(),
+                seed = lastHeroCarouselSeed,
+                seenAsFirstIds = seenAsFirstIds,
+            )
+            val existingKeys = heroCarouselItems.value.map { it.stableKey() }.toSet()
+            val appended = fresh.items.filterNot { it.stableKey() in existingKeys }
+            if (appended.isNotEmpty()) {
+                heroCarouselItems.value = (heroCarouselItems.value + appended).take(10)
             }
         }
     }
@@ -391,7 +502,7 @@ class HomeViewModel @Inject constructor(
                         is Song -> SongItem(
                             id = item.id,
                             title = item.title,
-                            artists = item.artists.map { Artist(name = it.name, id = it.id) },
+                            artists = item.artists.map { YTArtist(name = it.name, id = it.id) },
                             thumbnail = item.thumbnailUrl ?: "",
                             explicit = false
                         )
@@ -399,7 +510,7 @@ class HomeViewModel @Inject constructor(
                             browseId = item.id,
                             playlistId = item.album.playlistId ?: "",
                             title = item.title,
-                            artists = item.artists.map { Artist(name = it.name, id = it.id) },
+                            artists = item.artists.map { YTArtist(name = it.name, id = it.id) },
                             year = item.album.year,
                             thumbnail = item.thumbnailUrl ?: ""
                         )
@@ -427,7 +538,7 @@ class HomeViewModel @Inject constructor(
                     SongItem(
                         id = song.id,
                         title = song.title,
-                        artists = song.artists.map { Artist(name = it.name, id = it.id) },
+                        artists = song.artists.map { YTArtist(name = it.name, id = it.id) },
                         thumbnail = song.thumbnailUrl ?: "",
                         explicit = false
                     )
@@ -605,7 +716,7 @@ class HomeViewModel @Inject constructor(
                     SongItem(
                         id = song.id,
                         title = song.title,
-                        artists = song.artists.map { Artist(name = it.name, id = it.id) },
+                        artists = song.artists.map { YTArtist(name = it.name, id = it.id) },
                         thumbnail = song.thumbnailUrl ?: "",
                         explicit = false
                     )
@@ -618,7 +729,7 @@ class HomeViewModel @Inject constructor(
                         is Song -> userSongs.add(SongItem(
                             id = item.id,
                             title = item.title,
-                            artists = item.artists.map { Artist(name = it.name, id = it.id) },
+                            artists = item.artists.map { YTArtist(name = it.name, id = it.id) },
                             thumbnail = item.thumbnailUrl ?: "",
                             explicit = false
                         ))
@@ -626,7 +737,7 @@ class HomeViewModel @Inject constructor(
                             browseId = item.id,
                             playlistId = item.album.playlistId ?: "",
                             title = item.title,
-                            artists = item.artists.map { Artist(name = it.name, id = it.id) },
+                            artists = item.artists.map { YTArtist(name = it.name, id = it.id) },
                             year = item.album.year,
                             thumbnail = item.thumbnailUrl ?: ""
                         ))
@@ -713,46 +824,93 @@ class HomeViewModel @Inject constructor(
      * shown as an incomplete box. Followed artists are oversampled so starred artists show up
      * often even when they're not in the top listening history.
      */
-    private suspend fun getForYouShelves() {
+    private suspend fun buildForYouShelf(artist: Artist, fromTimeStamp: Long, toTimeStamp: Long): ForYouShelfItem? {
+        val usedAlbumIds = mutableSetOf<String>()
+        val tiles = mutableListOf<LocalItem>()
+
+        val candidateSongs = database.mostPlayedSongsByArtist(artist.id, fromTimeStamp, toTimeStamp)
+            .first().shuffled()
+        for (song in candidateSongs) {
+            if (tiles.size >= 3) break
+            val albumId = song.album?.id ?: continue
+            if (albumId in usedAlbumIds) continue
+            val album = database.album(albumId).first() ?: continue
+            tiles += album
+            usedAlbumIds += albumId
+        }
+
+        if (tiles.size < 3) {
+            val moreAlbums = database.artistCreditedAlbumsPreview(artist.id, previewSize = 20).first().shuffled()
+            for (album in moreAlbums) {
+                if (tiles.size >= 3) break
+                if (album.id in usedAlbumIds) continue
+                tiles += album
+                usedAlbumIds += album.id
+            }
+        }
+
+        return if (tiles.size < 3) null else ForYouShelfItem(artist, tiles)
+    }
+
+    // Pool is the whole library (listened + followed + everything else with local plays),
+    // not just the top 25 — so the "On repeat for you" carousel has real material to page
+    // through. Once loadMoreForYouShelves() exhausts the pool it wraps back to the start
+    // (reshuffled, new album tiles) so scrolling forward never hits a hard stop.
+    private suspend fun buildForYouArtistPool(): List<Artist> {
         val fromTimeStamp = System.currentTimeMillis() - 86400000L * 30
         val toTimeStamp = System.currentTimeMillis()
         val listenedArtists = database.mostPlayedArtists(fromTimeStamp, limit = 25, toTimeStamp = toTimeStamp).first()
         val followedArtists = database.artistsBookmarked(ArtistSortType.CREATE_DATE, true).first()
-        val artists = (listenedArtists + followedArtists + followedArtists)
+        val libraryArtists = database.artists(ArtistSortType.PLAY_TIME, true).first()
+        return (listenedArtists + followedArtists + followedArtists + libraryArtists)
             .filter { it.artist.thumbnailUrl != null }
             .distinctBy { it.id }
             .shuffled()
-            .take(20)
+    }
 
-        val shelves = artists.mapNotNull { artist ->
-            val usedAlbumIds = mutableSetOf<String>()
-            val tiles = mutableListOf<LocalItem>()
+    private suspend fun getForYouShelves() {
+        forYouArtistPool = buildForYouArtistPool()
+        forYouPoolCursor = 0
+        val fromTimeStamp = System.currentTimeMillis() - 86400000L * 30
+        val toTimeStamp = System.currentTimeMillis()
 
-            val candidateSongs = database.mostPlayedSongsByArtist(artist.id, fromTimeStamp, toTimeStamp)
-                .first().shuffled()
-            for (song in candidateSongs) {
-                if (tiles.size >= 3) break
-                val albumId = song.album?.id ?: continue
-                if (albumId in usedAlbumIds) continue
-                val album = database.album(albumId).first() ?: continue
-                tiles += album
-                usedAlbumIds += albumId
-            }
-
-            if (tiles.size < 3) {
-                val moreAlbums = database.artistCreditedAlbumsPreview(artist.id, previewSize = 20).first().shuffled()
-                for (album in moreAlbums) {
-                    if (tiles.size >= 3) break
-                    if (album.id in usedAlbumIds) continue
-                    tiles += album
-                    usedAlbumIds += album.id
-                }
-            }
-
-            if (tiles.size < 3) null else ForYouShelfItem(artist, tiles)
-        }.shuffled()
+        val shelves = mutableListOf<ForYouShelfItem>()
+        while (shelves.size < 20 && forYouPoolCursor < forYouArtistPool.size) {
+            val artist = forYouArtistPool[forYouPoolCursor]
+            forYouPoolCursor++
+            buildForYouShelf(artist, fromTimeStamp, toTimeStamp)?.let { shelves += it }
+        }
         forYouShelves.value = shelves
         HomeCache.forYouShelves = shelves
+    }
+
+    fun loadMoreForYouShelves() {
+        if (_isLoadingMoreForYou.value || forYouArtistPool.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _isLoadingMoreForYou.value = true
+            val fromTimeStamp = System.currentTimeMillis() - 86400000L * 30
+            val toTimeStamp = System.currentTimeMillis()
+            val newShelves = mutableListOf<ForYouShelfItem>()
+            var scanned = 0
+            // Scan up to one full lap of the pool looking for 10 more valid shelves; wrap the
+            // cursor (reshuffling) once exhausted so the carousel keeps producing content.
+            while (newShelves.size < 10 && scanned < forYouArtistPool.size) {
+                if (forYouPoolCursor >= forYouArtistPool.size) {
+                    forYouArtistPool = forYouArtistPool.shuffled()
+                    forYouPoolCursor = 0
+                }
+                val artist = forYouArtistPool[forYouPoolCursor]
+                forYouPoolCursor++
+                scanned++
+                buildForYouShelf(artist, fromTimeStamp, toTimeStamp)?.let { newShelves += it }
+            }
+            if (newShelves.isNotEmpty()) {
+                val combined = forYouShelves.value + newShelves
+                forYouShelves.value = combined
+                HomeCache.forYouShelves = combined
+            }
+            _isLoadingMoreForYou.value = false
+        }
     }
 
     fun regenerateForYouShelves() {
@@ -777,6 +935,7 @@ class HomeViewModel @Inject constructor(
             seed = System.currentTimeMillis(),
         )
         HomeCache.dischiPerTe = dischiPerTe.value
+        refreshHeroCarousel()
     }
 
     private suspend fun getDailyDiscover() {
@@ -1246,9 +1405,9 @@ class HomeViewModel @Inject constructor(
             HomeCache.forgottenFavorites = forgottenFavorites.value
         }
 
-        // Phase 2b: Rete — ritardata per lasciare thread IO liberi a Coil
+        // Phase 2b: Rete — parte subito, in parallelo col Mood, così non arriva
+        // in coda dietro un ritardo artificiale
         viewModelScope.launch(Dispatchers.IO) {
-            kotlinx.coroutines.delay(2500)
             YouTube.explore().onSuccess { page ->
                 explorePage.value = page.copy(newReleaseAlbums = page.newReleaseAlbums.filterExplicit(hideExplicit))
                 HomeCache.explorePage = explorePage.value
@@ -1257,7 +1416,6 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch(Dispatchers.IO) {
-            kotlinx.coroutines.delay(2500)
             var homeResult = YouTube.home()
             if (homeResult.isFailure) {
                 if (YouTube.cookie != null) {
@@ -1348,7 +1506,6 @@ class HomeViewModel @Inject constructor(
 
         if (YouTube.cookie != null) {
             viewModelScope.launch(Dispatchers.IO) {
-                kotlinx.coroutines.delay(2500)
                 loadAccountPlaylists()
             }
         }
@@ -1490,7 +1647,7 @@ class HomeViewModel @Inject constructor(
             } else {
                 load()
             }
-            refreshHeroCarousel(System.currentTimeMillis())
+            refreshHeroCarousel(System.currentTimeMillis(), force = true)
             isRefreshing.value = false
         }
         // Run sync when user manually refreshes
@@ -1508,7 +1665,16 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
-        refreshHeroCarousel()
+        // New releases from followed artists are checked here too (throttled inside the notifier),
+        // not just on Library>Artists — Home is the screen actually opened every launch, so this is
+        // what makes the "+N" badge show up without a separate visit to the Artists tab.
+        viewModelScope.launch(Dispatchers.IO) {
+            val followedIds = database.artistsBookmarked(ArtistSortType.CREATE_DATE, true)
+                .first()
+                .filter { it.artist.isYouTubeArtist && !it.artist.isPodcastChannel }
+                .map { it.id }
+            newReleaseNotifier.refresh(followedIds)
+        }
 
         // Read snapshots once from DataStore for fast first paint
         viewModelScope.launch(Dispatchers.IO) {
@@ -1562,6 +1728,7 @@ class HomeViewModel @Inject constructor(
                 communityPlaylists.value = HomeCache.communityPlaylists
                 dischiPerTe.value = HomeCache.dischiPerTe
                 forYouShelves.value = HomeCache.forYouShelves.orEmpty()
+                refreshHeroCarousel()
                 isPhase1Complete.value = true
                 phase1Complete.value = true
                 phase2Complete.value = true
@@ -1588,6 +1755,13 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             kotlinx.coroutines.delay(8000)
             syncUtils.tryAutoSync()
+        }
+
+        // Off the cold-start critical path (delayed like tryAutoSync above) — cheap no-op most
+        // launches since it's due-checked against a 7-day cooldown in DataStore.
+        viewModelScope.launch(Dispatchers.IO) {
+            kotlinx.coroutines.delay(12000)
+            syncDiscoveryWeeklyIfNeeded()
         }
 
         viewModelScope.launch(Dispatchers.IO) {

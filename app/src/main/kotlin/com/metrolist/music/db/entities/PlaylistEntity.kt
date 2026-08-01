@@ -43,6 +43,7 @@ data class PlaylistEntity(
         const val STARRED_PLAYLIST_ID = "LP_STARRED"
         const val WEEKLY_MOST_PLAYLIST_ID = "LP_WEEKLY_MOST"
         const val MONTHLY_MOST_PLAYLIST_ID = "LP_MONTHLY_MOST"
+        const val DISCOVER_WEEKLY_PLAYLIST_ID = "LP_DISCOVER_WEEKLY"
 
         fun generatePlaylistId() = "LP" + RandomStringUtils.insecure().next(8, true, false)
     }

@@ -14,10 +14,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -27,7 +24,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -82,11 +78,11 @@ import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.constants.YtmSyncKey
-import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ArtistNewReleaseRingItem
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.LibraryArtistGridItem
 import com.metrolist.music.ui.component.LibraryArtistListItem
+import com.metrolist.music.ui.component.LibrarySuggestedFollowArtistItem
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
@@ -94,6 +90,7 @@ import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SortHeader
+import com.metrolist.music.ui.component.currentGridThumbnailHeight
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LibraryArtistsViewModel
@@ -182,15 +179,15 @@ fun LibraryArtistsScreen(
         }
     }
 
-    // "Artists you play a lot but forgot to follow" — one horizontal row. The ring's "+" follows
-    // right away (no detour through the artist page); long-press still dismisses the suggestion,
-    // mirroring the Albums screen's recently-listened row.
+    // "Artists you play a lot but forgot to follow" — one horizontal row. The "+" follows right
+    // away (no detour through the artist page); a visible trash icon dismisses the suggestion.
     val suggestedFollowSection: @Composable () -> Unit = {
         androidx.compose.foundation.layout.Column {
             NavigationTitle(
                 title = stringResource(R.string.suggested_follow_artists),
                 useIrideStyle = topNavigationBarEnabled,
             )
+            val suggestedFollowSize = currentGridThumbnailHeight()
             LazyRow(
                 contentPadding = PaddingValues(horizontal = if (topNavigationBarEnabled) 16.dp else 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -199,40 +196,13 @@ fun LibraryArtistsScreen(
                     items = suggestedFollowArtists,
                     key = { "suggested_follow_${it.id}" },
                 ) { artist ->
-                    Box {
-                        ArtistGridItem(
-                            artist = artist,
-                            showLikedIcon = false,
-                            modifier = Modifier.combinedClickable(
-                                onClick = { navController.navigate("artist/${artist.id}") },
-                                onLongClick = { viewModel.dismissSuggestedFollowArtist(artist.id) },
-                            ),
-                        )
-                        // Circular "+" sitting on the avatar's rim — same nested-circle language as
-                        // the new-release ring above, so the two rows read as one system. The 48dp
-                        // touch target lives on the IconButton itself; the 28dp bubble is only the
-                        // visual, so the tap area doesn't shrink to match the small ring look.
-                        IconButton(
-                            onClick = { viewModel.followSuggestedArtist(artist.id) },
-                            modifier = Modifier.align(Alignment.BottomEnd),
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(28.dp)
-                                    .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background, CircleShape)
-                                    .padding(3.dp)
-                                    .background(MaterialTheme.colorScheme.primary, CircleShape),
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.add),
-                                    contentDescription = stringResource(R.string.subscribe),
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-                        }
-                    }
+                    LibrarySuggestedFollowArtistItem(
+                        navController = navController,
+                        artist = artist,
+                        size = suggestedFollowSize,
+                        onFollow = { viewModel.followSuggestedArtist(artist.id) },
+                        onDismiss = { viewModel.dismissSuggestedFollowArtist(artist.id) },
+                    )
                 }
             }
         }
@@ -362,10 +332,14 @@ fun LibraryArtistsScreen(
                     LibraryViewType.GRID, LibraryViewType.GRID_WIDE ->
                         LazyVerticalGrid(
                             state = lazyGridState,
-                            columns = GridCells.Adaptive(
-                                minSize = GridThumbnailHeight +
-                                    if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
-                            ),
+                            columns = if (viewType == LibraryViewType.GRID_WIDE) {
+                                GridCells.Fixed(3)
+                            } else {
+                                GridCells.Adaptive(
+                                    minSize = GridThumbnailHeight +
+                                        if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
+                                )
+                            },
                             contentPadding = PaddingValues(
                                 start = 12.dp,
                                 end = 12.dp,
