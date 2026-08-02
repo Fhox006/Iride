@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.util.Collections
 import kotlin.random.Random
 
@@ -59,9 +60,18 @@ class DiscoveryWeeklyGenerator(
 
         seeds.map { seedSong ->
             launch(Dispatchers.IO) {
-                val endpoint = YouTube.next(WatchEndpoint(videoId = seedSong.id)).getOrNull()?.relatedEndpoint
-                    ?: return@launch
-                val related = YouTube.related(endpoint).getOrNull()?.songs ?: return@launch
+                val nextResult = YouTube.next(WatchEndpoint(videoId = seedSong.id))
+                val endpoint = nextResult.getOrNull()?.relatedEndpoint
+                    ?: run {
+                        nextResult.exceptionOrNull()?.let { Timber.tag("DiscoveryWeekly").w(it, "next() failed for seed ${seedSong.id}") }
+                        return@launch
+                    }
+                val relatedResult = YouTube.related(endpoint)
+                val related = relatedResult.getOrNull()?.songs
+                    ?: run {
+                        relatedResult.exceptionOrNull()?.let { Timber.tag("DiscoveryWeekly").w(it, "related() failed for seed ${seedSong.id}") }
+                        return@launch
+                    }
                 related
                     .filter { it.id !in excludedIds }
                     .filter { !hideExplicit || !it.explicit }

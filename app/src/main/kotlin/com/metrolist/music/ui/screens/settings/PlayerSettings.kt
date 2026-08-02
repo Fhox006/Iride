@@ -41,7 +41,6 @@ import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
-import com.metrolist.music.constants.MuzzaPlayerLogicKey
 import com.metrolist.music.constants.AudioNormalizationKey
 import com.metrolist.music.constants.AudioOffload
 import com.metrolist.music.constants.AudioQuality
@@ -67,6 +66,8 @@ import com.metrolist.music.constants.SimilarContent
 import com.metrolist.music.constants.SkipFadeDurationKey
 import com.metrolist.music.constants.SkipFadeKey
 import com.metrolist.music.constants.SkipSilenceInstantKey
+import com.metrolist.music.constants.ScratchBufferKey
+import com.metrolist.music.constants.ScratchBufferSize
 import com.metrolist.music.constants.SkipSilenceKey
 import com.metrolist.music.constants.SleepTimerCustomDaysKey
 import com.metrolist.music.constants.SleepTimerDayTimesKey
@@ -97,11 +98,10 @@ fun PlayerSettings(
     navController: NavController
 ) {
     val (advancedMode, _) = rememberPreference(AdvancedModeKey, defaultValue = false)
-    val (muzzaPlayerLogic, onMuzzaPlayerLogicChange) = rememberPreference(MuzzaPlayerLogicKey, defaultValue = true)
 
     val (audioQuality, onAudioQualityChange) = rememberEnumPreference(
         AudioQualityKey,
-        defaultValue = AudioQuality.AUTO
+        defaultValue = AudioQuality.HIGH
     )
     val (crossfadeEnabled, onCrossfadeEnabledChange) = rememberPreference(
         CrossfadeEnabledKey,
@@ -214,7 +214,28 @@ fun PlayerSettings(
         defaultValue = 30f
     )
 
+    val (scratchBuffer, onScratchBufferChange) = rememberEnumPreference(
+        ScratchBufferKey,
+        defaultValue = ScratchBufferSize.MEDIUM
+    )
+
     var showAudioQualityDialog by remember { mutableStateOf(false) }
+    var showScratchBufferDialog by remember { mutableStateOf(false) }
+
+    if (showScratchBufferDialog) {
+        EnumDialog(
+            onDismiss = { showScratchBufferDialog = false },
+            onSelect = {
+                onScratchBufferChange(it)
+                showScratchBufferDialog = false
+            },
+            title = stringResource(R.string.scratch_buffer),
+            current = scratchBuffer,
+            values = ScratchBufferSize.values().toList(),
+            valueText = { scratchBufferLabel(it) },
+            valueDescription = { scratchBufferDescription(it) }
+        )
+    }
 
     if (showAudioQualityDialog) {
         EnumDialog(
@@ -327,6 +348,15 @@ fun PlayerSettings(
                         )
                     },
                     onClick = { showAudioQualityDialog = true }
+                ))
+
+                add(Material3SettingsItem(
+                    icon = painterResource(R.drawable.album),
+                    title = { Text(stringResource(R.string.scratch_buffer)) },
+                    // Supporting text carries the current value, as the Audio quality row above
+                    // does; what each value means belongs in the dialog, not stacked here.
+                    description = { Text(scratchBufferLabel(scratchBuffer)) },
+                    onClick = { showScratchBufferDialog = true }
                 ))
 
                 // ── Fade ─────────────────────────────────────────────────────
@@ -598,27 +628,8 @@ fun PlayerSettings(
                     },
                     onClick = { onSeekExtraSeconds(!seekExtraSeconds) }
                 ))
-                add(Material3SettingsItem(
-                    icon = painterResource(R.drawable.speed),
-                    title = { Text(stringResource(R.string.muzza_player_logic)) },
-                    description = { Text(stringResource(R.string.muzza_player_logic_desc)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = muzzaPlayerLogic,
-                            onCheckedChange = onMuzzaPlayerLogicChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        if (muzzaPlayerLogic) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onMuzzaPlayerLogicChange(!muzzaPlayerLogic) }
-                ))
+                // Fast Playback Engine toggle hidden from UI — MuzzaPlayerLogicKey defaults to
+                // true (read directly by the playback engine), no longer user-configurable.
             }
         )
 
@@ -1044,3 +1055,25 @@ fun PlayerSettings(
         navController = navController,
     )
 }
+
+@Composable
+private fun scratchBufferLabel(size: ScratchBufferSize): String =
+    stringResource(
+        when (size) {
+            ScratchBufferSize.SHORT -> R.string.scratch_buffer_short
+            ScratchBufferSize.MEDIUM -> R.string.scratch_buffer_medium
+            ScratchBufferSize.LONG -> R.string.scratch_buffer_long
+            ScratchBufferSize.FULL -> R.string.scratch_buffer_full
+        }
+    )
+
+@Composable
+private fun scratchBufferDescription(size: ScratchBufferSize): String =
+    stringResource(
+        when (size) {
+            ScratchBufferSize.SHORT -> R.string.scratch_buffer_short_desc
+            ScratchBufferSize.MEDIUM -> R.string.scratch_buffer_medium_desc
+            ScratchBufferSize.LONG -> R.string.scratch_buffer_long_desc
+            ScratchBufferSize.FULL -> R.string.scratch_buffer_full_desc
+        }
+    )

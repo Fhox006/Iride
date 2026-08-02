@@ -626,7 +626,6 @@ fun HomeScreen(
                     isPlaying = isPlaying,
                     coroutineScope = scope,
                     thumbnailRatio = 1f,
-                    showPlayButton = !dischiPerTeStyle,
                     size = size,
                     fallbackArtistName = fallbackArtistName,
                     modifier = Modifier.combinedClickable(
@@ -711,7 +710,6 @@ fun HomeScreen(
                             isPlaying = isPlaying,
                             coroutineScope = scope,
                             size = dischiPerTeItemSize,
-                            showPlayButton = !topNavigationBarEnabled,
                             modifier = Modifier.combinedClickable(
                                 onClick = { navController.navigate("album/${album.id}") },
                                 onLongClick = {

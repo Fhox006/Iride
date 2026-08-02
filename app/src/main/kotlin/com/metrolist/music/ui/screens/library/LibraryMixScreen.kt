@@ -989,7 +989,6 @@ fun LibraryMixScreen(
                                             isPlaying = isPlaying,
                                             coroutineScope = coroutineScope,
                                             fillMaxWidth = true,
-                                            showPlayButton = false,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .combinedClickable(

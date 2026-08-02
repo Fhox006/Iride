@@ -17,6 +17,7 @@ import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import kotlinx.coroutines.flow.combine
+import timber.log.Timber
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.innertube.models.BrowseEndpoint
 import com.metrolist.innertube.models.YTItem
@@ -249,7 +250,14 @@ class HomeViewModel @Inject constructor(
                         hideVideoSongs = hideVideoSongs,
                         seed = java.time.LocalDate.now().toEpochDay() / 7,
                     )
-                    if (songs.isEmpty()) return@withLock
+                    if (songs.isEmpty()) {
+                        // Stamp the attempt even on failure — otherwise `due` never clears and
+                        // every Search screen open retries the full 15-seed network fan-out
+                        // forever, stuck showing "Creating your mix…" in a loop.
+                        Timber.tag("DiscoveryWeekly").w("generate() returned 0 songs, historyPool/network issue")
+                        context.dataStore.edit { it[LastDiscoveryWeeklySyncKey] = System.currentTimeMillis() }
+                        return@withLock
+                    }
 
                     val playlistId = PlaylistEntity.DISCOVER_WEEKLY_PLAYLIST_ID
                     val existingPlaylist = existingRow?.playlist

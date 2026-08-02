@@ -47,24 +47,18 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.HeroCarouselEnabledKey
-import com.metrolist.music.constants.AutoLinkFeaturedArtistsKey
 import com.metrolist.music.constants.ShowFeaturedArtistsInTopSongsKey
 import com.metrolist.music.constants.HideDurationForStandardSongsKey
-import com.metrolist.music.constants.ChipSortTypeKey
 import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.DensityScale
 import com.metrolist.music.constants.DensityScaleKey
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
-import com.metrolist.music.constants.LibraryFilter
-import com.metrolist.music.constants.RandomizeHomeOrderKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
 import com.metrolist.music.constants.ShowLikedPlaylistKey
-import com.metrolist.music.constants.ShowNewsTabKey
 import com.metrolist.music.constants.ShowTopPlaylistKey
 import com.metrolist.music.constants.ShowUploadedPlaylistKey
-import com.metrolist.music.constants.ShowWrappedCardKey
 import com.metrolist.music.constants.SwipeToRemoveSongKey
 import com.metrolist.music.constants.SwipeToSongKey
 import com.metrolist.music.ui.component.DefaultDialog
@@ -86,12 +80,8 @@ fun InterfaceSettings(
     val (advancedMode, _) = rememberPreference(AdvancedModeKey, defaultValue = false)
     val (defaultOpenTab, onDefaultOpenTabChange) =
         rememberEnumPreference(DefaultOpenTabKey, defaultValue = NavigationTab.HOME)
-    val (defaultChip, onDefaultChipChange) =
-        rememberEnumPreference(ChipSortTypeKey, defaultValue = LibraryFilter.LIBRARY)
     val (gridItemSize, onGridItemSizeChange) =
         rememberEnumPreference(GridItemsSizeKey, defaultValue = GridItemSize.BIG)
-    val (showNewsTab, onShowNewsTabChange) =
-        rememberPreference(ShowNewsTabKey, defaultValue = false)
     val (showLikedPlaylist, onShowLikedPlaylistChange) =
         rememberPreference(ShowLikedPlaylistKey, defaultValue = false)
     val (showDownloadedPlaylist, onShowDownloadedPlaylistChange) =
@@ -106,20 +96,12 @@ fun InterfaceSettings(
         rememberPreference(SwipeToSongKey, defaultValue = true)
     val (swipeToRemoveSong, onSwipeToRemoveSongChange) =
         rememberPreference(SwipeToRemoveSongKey, defaultValue = true)
-    val (showWrappedCard, onShowWrappedCardChange) =
-        rememberPreference(ShowWrappedCardKey, defaultValue = false)
-    val (randomizeHomeOrder, onRandomizeHomeOrderChange) =
-        rememberPreference(RandomizeHomeOrderKey, defaultValue = false)
     val (hideDurationForStandard, onHideDurationForStandardChange) =
         rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
-    val (autoLinkFeaturedArtists, onAutoLinkFeaturedArtistsChange) =
-        rememberPreference(AutoLinkFeaturedArtistsKey, defaultValue = true)
     val (showFeaturedArtistsInTopSongs, onShowFeaturedArtistsInTopSongsChange) =
         rememberPreference(ShowFeaturedArtistsInTopSongsKey, defaultValue = true)
     val (heroCarouselEnabled, onHeroCarouselEnabledChange) =
         rememberPreference(HeroCarouselEnabledKey, defaultValue = false)
-    val (betterLibraryBeta, onBetterLibraryBetaChange) =
-        rememberPreference(com.metrolist.music.constants.BetterLibraryBetaKey, defaultValue = false)
 
     val context = activity as Context
     val sharedPreferences = remember { context.getSharedPreferences("metrolist_settings", Context.MODE_PRIVATE) }
@@ -131,7 +113,6 @@ fun InterfaceSettings(
     var showRestartDialog by rememberSaveable { mutableStateOf(false) }
     var showDensityScaleDialog by rememberSaveable { mutableStateOf(false) }
     var showDefaultOpenTabDialog by rememberSaveable { mutableStateOf(false) }
-    var showDefaultChipDialog by rememberSaveable { mutableStateOf(false) }
     var showGridSizeDialog by rememberSaveable { mutableStateOf(false) }
 
     val onDensityScaleChange: (Float) -> Unit = { newScale ->
@@ -154,26 +135,6 @@ fun InterfaceSettings(
                     NavigationTab.HOME -> stringResource(R.string.home)
                     NavigationTab.SEARCH -> stringResource(R.string.search)
                     NavigationTab.LIBRARY -> stringResource(R.string.filter_library)
-                }
-            }
-        )
-    }
-
-    if (showDefaultChipDialog) {
-        EnumDialog(
-            onDismiss = { showDefaultChipDialog = false },
-            onSelect = { onDefaultChipChange(it); showDefaultChipDialog = false },
-            title = stringResource(R.string.default_lib_chips),
-            current = defaultChip,
-            values = LibraryFilter.values().toList(),
-            valueText = {
-                when (it) {
-                    LibraryFilter.SONGS -> stringResource(R.string.songs)
-                    LibraryFilter.ARTISTS -> stringResource(R.string.artists)
-                    LibraryFilter.ALBUMS -> stringResource(R.string.albums)
-                    LibraryFilter.PLAYLISTS -> stringResource(R.string.playlists)
-                    LibraryFilter.PODCASTS -> stringResource(R.string.filter_podcasts)
-                    LibraryFilter.LIBRARY -> stringResource(R.string.filter_library)
                 }
             }
         )
@@ -298,41 +259,6 @@ fun InterfaceSettings(
                     },
                     onClick = { showDefaultOpenTabDialog = true }
                 ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.tab),
-                    title = { Text(stringResource(R.string.default_lib_chips)) },
-                    description = {
-                        Text(
-                            when (defaultChip) {
-                                LibraryFilter.SONGS -> stringResource(R.string.songs)
-                                LibraryFilter.ARTISTS -> stringResource(R.string.artists)
-                                LibraryFilter.ALBUMS -> stringResource(R.string.albums)
-                                LibraryFilter.PLAYLISTS -> stringResource(R.string.playlists)
-                                LibraryFilter.PODCASTS -> stringResource(R.string.filter_podcasts)
-                                LibraryFilter.LIBRARY -> stringResource(R.string.filter_library)
-                            }
-                        )
-                    },
-                    onClick = { showDefaultChipDialog = true }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.newspaper),
-                    title = { Text(stringResource(R.string.show_news_tab)) },
-                    description = { Text(stringResource(R.string.show_news_tab_desc)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = showNewsTab, onCheckedChange = onShowNewsTabChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (showNewsTab) R.drawable.check else R.drawable.close),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onShowNewsTabChange(!showNewsTab) }
-                ),
                 if (advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.grid_view),
                     title = { Text(stringResource(R.string.grid_cell_size)) },
@@ -381,44 +307,7 @@ fun InterfaceSettings(
                         )
                     },
                     onClick = { onHeroCarouselEnabledChange(!heroCarouselEnabled) },
-                ),
-                if (advancedMode) Material3SettingsItem(
-                    icon = painterResource(R.drawable.star),
-                    title = { Text(stringResource(R.string.show_wrapped_card)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = showWrappedCard, onCheckedChange = onShowWrappedCardChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (showWrappedCard) R.drawable.check else R.drawable.close),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onShowWrappedCardChange(!showWrappedCard) }
-                ) else null,
-                if (advancedMode) Material3SettingsItem(
-                    icon = painterResource(R.drawable.shuffle_on),
-                    title = { Text(stringResource(R.string.randomize_home_order)) },
-                    description = { Text(stringResource(R.string.randomize_home_order_desc)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = randomizeHomeOrder, onCheckedChange = onRandomizeHomeOrderChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        if (randomizeHomeOrder) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onRandomizeHomeOrderChange(!randomizeHomeOrder) }
-                ) else null
+                )
             )
         )
 
@@ -526,7 +415,8 @@ fun InterfaceSettings(
             items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.swipe),
-                    title = { Text(stringResource(R.string.swipe_song_to_add)) },
+                    title = { Text(stringResource(R.string.swipe_song_to_add_title)) },
+                    description = { Text(stringResource(R.string.swipe_song_to_add)) },
                     trailingContent = {
                         IrideSwitch(
                             checked = swipeToSong, onCheckedChange = onSwipeToSongChange,
@@ -543,7 +433,8 @@ fun InterfaceSettings(
                 ),
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.swipe),
-                    title = { Text(stringResource(R.string.swipe_song_to_remove)) },
+                    title = { Text(stringResource(R.string.swipe_song_to_remove_title)) },
+                    description = { Text(stringResource(R.string.swipe_song_to_remove)) },
                     trailingContent = {
                         IrideSwitch(
                             checked = swipeToRemoveSong, onCheckedChange = onSwipeToRemoveSongChange,
@@ -577,24 +468,6 @@ fun InterfaceSettings(
                     onClick = { onHideDurationForStandardChange(!hideDurationForStandard) }
                 ),
                 Material3SettingsItem(
-                    icon = painterResource(R.drawable.link),
-                    title = { Text(stringResource(R.string.auto_link_featured_artists)) },
-                    description = { Text(stringResource(R.string.auto_link_featured_artists_desc)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = autoLinkFeaturedArtists, onCheckedChange = onAutoLinkFeaturedArtistsChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (autoLinkFeaturedArtists) R.drawable.check else R.drawable.close),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onAutoLinkFeaturedArtistsChange(!autoLinkFeaturedArtists) }
-                ),
-                Material3SettingsItem(
                     icon = painterResource(R.drawable.group),
                     title = { Text(stringResource(R.string.show_featured_artists_in_top_songs)) },
                     description = { Text(stringResource(R.string.show_featured_artists_in_top_songs_desc)) },
@@ -616,36 +489,7 @@ fun InterfaceSettings(
         )
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        // ── Lab ───────────────────────────────────────────────────────────
-        Material3SettingsGroup(
-            title = stringResource(R.string.settings_section_lab),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.bug_report),
-                    title = { Text(stringResource(R.string.better_library_beta)) },
-                    description = { Text(stringResource(R.string.better_library_beta_desc)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = betterLibraryBeta,
-                            onCheckedChange = onBetterLibraryBetaChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        if (betterLibraryBeta) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize),
-                                )
-                            },
-                        )
-                    },
-                    onClick = { onBetterLibraryBetaChange(!betterLibraryBeta) },
-                )
-            )
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
+        // Lab section removed from UI (Better Library Beta stays off via its stored default).
     }
 
     SettingsBackTopBar(

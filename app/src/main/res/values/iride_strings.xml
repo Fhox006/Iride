@@ -126,8 +126,10 @@
     <string name="enable_swipe_thumbnail">Enable swipe to change song</string>
     <string name="thumbnail_carousel_mode">Carousel thumbnail mode</string>
     <string name="thumbnail_carousel_mode_desc">Show prev/next covers peeking from sides with swipe animation</string>
+    <string name="swipe_song_to_add_title">Swipe to queue</string>
     <string name="swipe_song_to_add">Swipe left to add the song to the queue, or right to play it next</string>
-    <string name="swipe_song_to_remove">Swipe to remove the song from the playlist</string>
+    <string name="swipe_song_to_remove_title">Swipe to remove</string>
+    <string name="swipe_song_to_remove">Swipe a song to remove it from the playlist</string>
     <string name="lyrics_click_change">Change lyrics on tap</string>
     <string name="lyrics_from_provider">Lyrics from %s</string>
     <string name="lyrics_auto_scroll">Auto-scroll lyrics</string>
@@ -188,6 +190,7 @@
     <string name="token_shown">Tap again to copy or edit</string>
     <string name="token_adv_login_description">This is an ADVANCED login method. Instead of using the web portal, you can enter or update your login token directly. This can be useful for signing in across multiple devices quickly. Tokens in an unrecognized format will be rejected</string>
     <string name="yt_sync">Auto-sync with account</string>
+    <string name="settings_section_sync_data">Sync &amp; data</string>
     <string name="auto_sync">Auto sync</string>
     <string name="more_content">More content</string>
     <string name="other_content">Other content</string>
@@ -282,6 +285,8 @@
     <string name="history_duration">History duration</string>
     <string name="information">Information</string>
     <string name="description">Description</string>
+    <string name="album">Album</string>
+    <string name="duration">Duration</string>
     <string name="views">Views</string>
     <string name="likes">Likes</string>
     <string name="dislikes">Dislikes</string>
@@ -894,6 +899,8 @@
     <string name="credits_collaborators_section">Collaborators</string>
     <string name="credits_license_name">GNU General Public License v3.0</string>
     <string name="credits_license_desc">Free, open-source software. You may use, study, share, and improve it</string>
+    <string name="credits_donations">Donations</string>
+    <string name="credits_donations_desc">Support the project on Ko-fi</string>
     <string name="credits_discord">Discord server</string>
     <string name="credits_telegram">Telegram channel</string>
     <string name="credits_website">Website</string>
@@ -1072,4 +1079,11 @@
     <string name="comments_reply_count">%d replies</string>
     <string name="enable_comments">Enable comments</string>
     <string name="enable_comments_desc">Show YouTube comments for songs in the player (experimental, may not always load)</string>
+
+    <!-- Song menu redesign -->
+    <string name="add_note">Add note</string>
+    <string name="note_title_placeholder">Title</string>
+    <string name="note_description_placeholder">Add a description…</string>
+    <string name="view_ep">View EP</string>
+    <string name="view_single">View single</string>
 </resources>

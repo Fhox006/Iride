@@ -99,4 +99,15 @@ constructor(
             _isRefreshing.value = false
         }
     }
+
+    val categoryController = PlaylistCategoryController(database, playlist, viewModelScope)
+    val categories get() = categoryController.categories
+    val songCategoryIds get() = categoryController.songCategoryIds
+
+    fun createCategory(name: String, colorHex: String? = null) = categoryController.createCategory(name, colorHex)
+    fun removeCategory(category: com.metrolist.music.db.entities.PlaylistCategoryEntity) = categoryController.removeCategory(category)
+    fun addSongsToCategories(songIds: List<String>, categoryIds: List<String>) =
+        categoryController.addSongsToCategories(songIds, categoryIds)
+    fun reorderCategories(orderedCategoryIds: List<String>) = categoryController.reorderCategories(orderedCategoryIds)
+    fun syncAutoCategories(genreBySongId: Map<String, List<String>>) = categoryController.syncAutoCategories(genreBySongId)
 }

@@ -73,13 +73,14 @@ import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Song
-import com.metrolist.music.db.entities.SpeedDialItem
 import com.metrolist.music.extensions.toMediaItem
+import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.AlbumListItem
@@ -158,7 +159,7 @@ fun AlbumMenu(
         label = "",
     )
 
-    val isPinned by database.speedDialDao.isPinned(album.id).collectAsState(initial = false)
+    val (advancedMode) = rememberPreference(AdvancedModeKey, defaultValue = false)
 
     var showChoosePlaylistDialog by rememberSaveable {
         mutableStateOf(false)
@@ -277,24 +278,37 @@ fun AlbumMenu(
         showLikedIcon = false,
         badges = {},
         trailingContent = {
-            IconButton(
-                onClick = {
-                    database.query {
-                        update(album.album.toggleLike())
-                    }
-                },
-            ) {
-                Icon(
-                    painter = painterResource(if (album.album.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border),
-                    tint = if (newIrideUi) {
-                        LocalContentColor.current
-                    } else if (album.album.bookmarkedAt != null) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        LocalContentColor.current
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = {
+                        database.query {
+                            update(album.album.toggleLike())
+                        }
                     },
-                    contentDescription = null,
-                )
+                ) {
+                    Icon(
+                        painter = painterResource(if (album.album.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border),
+                        tint = if (album.album.bookmarkedAt != null) Color(0xFFE53E45) else LocalContentColor.current,
+                        contentDescription = null,
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        onDismiss()
+                        val intent =
+                            Intent().apply {
+                                action = Intent.ACTION_SEND
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/playlist?list=${album.album.playlistId}")
+                            }
+                        context.startActivity(Intent.createChooser(intent, null))
+                    },
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.share),
+                        contentDescription = null,
+                    )
+                }
             }
         },
     )
@@ -320,34 +334,11 @@ fun AlbumMenu(
                 bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
             ),
     ) {
-        item {
-            NewActionGrid(
-                actions =
-                    listOfNotNull(
-                        if (!isGuest) {
-                            NewAction(
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.play),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(28.dp),
-                                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
-                                text = stringResource(R.string.play),
-                                onClick = {
-                                    onDismiss()
-                                    if (songs.isNotEmpty()) {
-                                        playerConnection.playQueue(
-                                            ListQueue(
-                                                title = album.album.title,
-                                                items = songs.map(Song::toMediaItem),
-                                            ),
-                                        )
-                                    }
-                                },
-                            )
-
+        if (!isGuest) {
+            item {
+                NewActionGrid(
+                    actions =
+                        listOf(
                             NewAction(
                                 icon = {
                                     Icon(
@@ -372,59 +363,68 @@ fun AlbumMenu(
                                         )
                                     }
                                 },
-                            )
-                        } else {
-                            null
-                        },
-                        NewAction(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.share),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            text = stringResource(R.string.share),
-                            onClick = {
-                                onDismiss()
-                                val intent =
-                                    Intent().apply {
-                                        action = Intent.ACTION_SEND
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/playlist?list=${album.album.playlistId}")
-                                    }
-                                context.startActivity(Intent.createChooser(intent, null))
-                            },
-                        ),
-                    ),
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
-                columns = if (isGuest) 1 else 3,
-            )
-        }
-        item {
-            Material3MenuGroup(
-                items =
-                    listOfNotNull(
-                        if (!isGuest) {
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.play_next)) },
-                                description = { Text(text = stringResource(R.string.play_next_desc)) },
+                            ),
+                            NewAction(
                                 icon = {
                                     Icon(
                                         painter = painterResource(R.drawable.playlist_play),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(28.dp),
+                                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                text = stringResource(R.string.swipe_label_next).lowercase().replaceFirstChar { it.uppercase() },
+                                onClick = {
+                                    onDismiss()
+                                    playerConnection.playNext(songs.map { it.toMediaItem() })
+                                },
+                            ),
+                            NewAction(
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.radio),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(28.dp),
+                                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                text = stringResource(R.string.radio),
+                                onClick = {
+                                    onDismiss()
+                                    songs.firstOrNull()?.let { seed ->
+                                        playerConnection.startRadioForSong(seed.toMediaMetadata())
+                                    }
+                                },
+                            ),
+                        ),
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
+                )
+            }
+
+            item {
+                Material3MenuGroup(
+                    items =
+                        listOf(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.play)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.play),
                                         contentDescription = null,
                                     )
                                 },
                                 onClick = {
                                     onDismiss()
-                                    playerConnection.playNext(songs.map { it.toMediaItem() })
+                                    if (songs.isNotEmpty()) {
+                                        playerConnection.playQueue(
+                                            ListQueue(
+                                                title = album.album.title,
+                                                items = songs.map(Song::toMediaItem),
+                                            ),
+                                        )
+                                    }
                                 },
-                            )
-                        } else {
-                            null
-                        },
-                        if (!isGuest) {
+                            ),
                             Material3MenuItemData(
                                 title = { Text(text = stringResource(R.string.add_to_queue)) },
                                 description = { Text(text = stringResource(R.string.add_to_queue_desc)) },
@@ -438,61 +438,13 @@ fun AlbumMenu(
                                     onDismiss()
                                     playerConnection.addToQueue(songs.map { it.toMediaItem() })
                                 },
-                            )
-                        } else {
-                            null
-                        },
-                        Material3MenuItemData(
-                            title = { Text(text = stringResource(R.string.add_to_playlist)) },
-                            description = { Text(text = stringResource(R.string.add_to_playlist_desc)) },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.playlist_add),
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                showChoosePlaylistDialog = true
-                            },
+                            ),
                         ),
-                        Material3MenuItemData(
-                            title = {
-                                Text(
-                                    text = if (isPinned) "Unpin from Speed dial" else "Pin to Speed dial",
-                                )
-                            },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(if (isPinned) R.drawable.remove else R.drawable.add),
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                coroutineScope.launch(Dispatchers.IO) {
-                                    if (isPinned) {
-                                        database.speedDialDao.delete(album.id)
-                                    } else {
-                                        database.speedDialDao.insert(
-                                            SpeedDialItem(
-                                                id = album.id,
-                                                secondaryId = album.album.playlistId,
-                                                title = album.album.title,
-                                                subtitle = album.artists.joinToString(", ") { it.name },
-                                                thumbnailUrl = album.album.thumbnailUrl,
-                                                type = "ALBUM",
-                                                explicit = album.album.explicit,
-                                            ),
-                                        )
-                                    }
-                                }
-                                onDismiss()
-                            },
-                        ),
-                    ),
-            )
-        }
+                )
+            }
 
-        item { Spacer(modifier = Modifier.height(12.dp)) }
+            item { Spacer(modifier = Modifier.height(12.dp)) }
+        }
 
         item {
             Material3MenuGroup(
@@ -576,6 +528,19 @@ fun AlbumMenu(
                                 )
                             }
                         },
+                        Material3MenuItemData(
+                            title = { Text(text = stringResource(R.string.add_to_playlist)) },
+                            description = { Text(text = stringResource(R.string.add_to_playlist_desc)) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.playlist_add),
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = {
+                                showChoosePlaylistDialog = true
+                            },
+                        ),
                     ),
             )
         }
@@ -583,25 +548,86 @@ fun AlbumMenu(
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
         item {
-            // Export album as a playlist (CSV/M3U)
-            var showExportDialog by remember { mutableStateOf(false) }
             Material3MenuGroup(
                 items =
                     listOf(
                         Material3MenuItemData(
-                            title = { Text(text = stringResource(R.string.export_playlist)) },
+                            title = { Text(text = stringResource(R.string.view_artist)) },
+                            description = { Text(text = album.artists.joinToString { it.name }) },
                             icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.share),
-                                    contentDescription = null,
-                                )
+                                val artistThumbnail = album.artists.firstOrNull()?.thumbnailUrl
+                                if (artistThumbnail != null) {
+                                    AsyncImage(
+                                        model = artistThumbnail,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(CircleShape),
+                                    )
+                                } else {
+                                    Icon(
+                                        painter = painterResource(R.drawable.artist),
+                                        contentDescription = null,
+                                    )
+                                }
                             },
-                            onClick = { showExportDialog = true },
+                            onClick = {
+                                if (album.artists.size == 1) {
+                                    navController.navigate("artist/${album.artists[0].id}")
+                                    onDismiss()
+                                } else {
+                                    showSelectArtistDialog = true
+                                }
+                            },
                         ),
                     ),
             )
+        }
 
-            val exportPlaylistStr = stringResource(R.string.export_playlist)
+        if (advancedMode) {
+            item { Spacer(modifier = Modifier.height(12.dp)) }
+
+            item {
+                // Export album as a playlist (CSV/M3U)
+                var showExportDialog by remember { mutableStateOf(false) }
+                Material3MenuGroup(
+                    items =
+                        listOf(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.export_playlist)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.share),
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = { showExportDialog = true },
+                            ),
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.refetch)) },
+                                description = { Text(text = stringResource(R.string.refetch_desc)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.sync),
+                                        contentDescription = null,
+                                        modifier = Modifier.graphicsLayer(rotationZ = rotationAnimation),
+                                    )
+                                },
+                                onClick = {
+                                    refetchIconDegree -= 360
+                                    scope.launch(Dispatchers.IO) {
+                                        YouTube.album(album.id).onSuccess {
+                                            database.transaction {
+                                                update(album.album, it, album.artists)
+                                            }
+                                        }
+                                    }
+                                },
+                            ),
+                        ),
+                )
+
+                val exportPlaylistStr = stringResource(R.string.export_playlist)
 
             if (showExportDialog) {
                 ExportDialog(
@@ -674,55 +700,7 @@ fun AlbumMenu(
                     },
                 )
             }
-        }
-
-        item { Spacer(modifier = Modifier.height(12.dp)) }
-
-        item {
-            Material3MenuGroup(
-                items =
-                    listOf(
-                        Material3MenuItemData(
-                            title = { Text(text = stringResource(R.string.view_artist)) },
-                            description = { Text(text = album.artists.joinToString { it.name }) },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.artist),
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                if (album.artists.size == 1) {
-                                    navController.navigate("artist/${album.artists[0].id}")
-                                    onDismiss()
-                                } else {
-                                    showSelectArtistDialog = true
-                                }
-                            },
-                        ),
-                        Material3MenuItemData(
-                            title = { Text(text = stringResource(R.string.refetch)) },
-                            description = { Text(text = stringResource(R.string.refetch_desc)) },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.sync),
-                                    contentDescription = null,
-                                    modifier = Modifier.graphicsLayer(rotationZ = rotationAnimation),
-                                )
-                            },
-                            onClick = {
-                                refetchIconDegree -= 360
-                                scope.launch(Dispatchers.IO) {
-                                    YouTube.album(album.id).onSuccess {
-                                        database.transaction {
-                                            update(album.album, it, album.artists)
-                                        }
-                                    }
-                                }
-                            },
-                        ),
-                    ),
-            )
+            }
         }
     }
 }

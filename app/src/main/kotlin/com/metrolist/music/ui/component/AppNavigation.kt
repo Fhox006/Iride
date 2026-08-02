@@ -404,6 +404,11 @@ fun TopNavigationBar(
             Spacer(modifier = Modifier.weight(1f))
 
             // 48dp min touch target (Material 3) around each icon, kept visually smaller inside.
+            val searchTint by animateColorAsState(
+                targetValue = if (searchSelected) Color.White else Color.White.copy(alpha = 0.55f),
+                animationSpec = if (searchSelected) tween(220) else snap(),
+                label = "searchTint"
+            )
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -418,7 +423,7 @@ fun TopNavigationBar(
                 Icon(
                     painter = painterResource(id = Screens.Search.iconIdInactive),
                     contentDescription = stringResource(Screens.Search.titleId),
-                    tint = Color.White,
+                    tint = searchTint,
                     modifier = Modifier.size(24.dp)
                 )
             }

@@ -135,6 +135,20 @@ enum class AudioQuality {
 
 val AudioOffload = booleanPreferencesKey("enableOffload")
 
+val ScratchBufferKey = stringPreferencesKey("scratchBuffer")
+
+/**
+ * How much already-decoded audio the turntable read head can scrub back over, i.e. how far a
+ * scratch on the album disc can reach. [FULL] sizes the window to the track itself so the whole
+ * song stays manipulable, at the cost of holding it all as PCM.
+ */
+enum class ScratchBufferSize(val seconds: Int) {
+    SHORT(15),
+    MEDIUM(60),
+    LONG(180),
+    FULL(0),
+}
+
 val VarispeedKey = booleanPreferencesKey("varispeed")
 
 val PersistentQueueKey = booleanPreferencesKey("persistentQueue")

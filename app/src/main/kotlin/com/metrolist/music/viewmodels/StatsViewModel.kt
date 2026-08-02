@@ -158,6 +158,28 @@ constructor(
                 )
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    val mostPlayedCategories =
+        combine(
+            selectedOption,
+            indexChips,
+        ) { first, second -> Pair(first, second) }
+            .flatMapLatest { (selection, t) ->
+                database.mostPlayedCategories(
+                    statToPeriod(selection, t),
+                    limit = 8,
+                    toTimeStamp =
+                    if (selection == OptionStats.CONTINUOUS || t == 0) {
+                        LocalDateTime
+                            .now()
+                            .toInstant(
+                                ZoneOffset.UTC,
+                            ).toEpochMilli()
+                    } else {
+                        statToPeriod(selection, t - 1)
+                    },
+                )
+            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     val firstEvent =
         database
             .firstEvent()

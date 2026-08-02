@@ -76,6 +76,13 @@
     <string name="remove_download">Rimuovi download</string>
     <string name="import_playlist">Importa playlist</string>
     <string name="add_to_playlist">Aggiungi a playlist</string>
+    <string name="category_add">Add</string>
+    <string name="add_to_category">Aggiungi a categoria</string>
+    <string name="new_category">Nuova categoria</string>
+    <string name="category_name_hint">Nome categoria</string>
+    <string name="added_to_category">Aggiunto alla categoria</string>
+    <string name="search_categories">Cerca categorie</string>
+    <string name="action_add">Aggiungi</string>
     <string name="view_artist">Mostra artista</string>
     <string name="view_album">Mostra album</string>
     <string name="refetch">Aggiorna</string>

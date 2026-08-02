@@ -175,6 +175,7 @@ fun StatsScreen(
     val mostPlayedArtists by viewModel.filteredArtists.collectAsState()
     val mostPlayedAlbums by viewModel.filteredAlbums.collectAsState()
     val allArtists by viewModel.mostPlayedArtists.collectAsState()
+    val mostPlayedCategories by viewModel.mostPlayedCategories.collectAsState()
     val firstEvent by viewModel.firstEvent.collectAsState()
     val weeklyMostPlaylist by viewModel.weeklyMostPlaylist.collectAsState()
     val monthlyMostPlaylist by viewModel.monthlyMostPlaylist.collectAsState()
@@ -362,8 +363,11 @@ fun StatsScreen(
         ) {
             LazyColumn(
                 state = lazyListState,
-                contentPadding = LocalPlayerAwareWindowInsets.current
-                    .asPaddingValues(),
+                contentPadding = PaddingValues(
+                    top = 0.dp,
+                    bottom = LocalPlayerAwareWindowInsets.current
+                        .asPaddingValues().calculateBottomPadding(),
+                ),
                 modifier = Modifier.fillMaxSize()
             ) {
                 val filteredArtists =
@@ -530,6 +534,16 @@ fun StatsScreen(
                                     )
                                 }
                             )
+                        }
+
+                        // ── TOP GENRES (playlist categories) ──
+                        if (mostPlayedCategories.isNotEmpty()) {
+                            item {
+                                SectionHeader(title = stringResource(R.string.top_genres))
+                            }
+                            item {
+                                TopGenresSection(categories = mostPlayedCategories)
+                            }
                         }
 
                         // ── STATS DATA BOX ──

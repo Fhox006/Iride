@@ -70,6 +70,7 @@
     <string name="top_artists">Top Artists</string>
     <string name="top_albums">Top Albums</string>
     <string name="top_songs">Top Songs</string>
+    <string name="top_genres">Top Genres</string>
     <string name="listening_stats">Your Stats</string>
     <string name="stats_not_enough_data">Keep listening to discover your music story</string>
     <string name="listened">Listened</string>
@@ -158,6 +159,13 @@
     <string name="remove_download">Remove download</string>
     <string name="import_playlist">Import playlist</string>
     <string name="add_to_playlist">Add to playlist</string>
+    <string name="category_add">Add</string>
+    <string name="add_to_category">Add to category</string>
+    <string name="new_category">New category</string>
+    <string name="category_name_hint">Category name</string>
+    <string name="added_to_category">Added to category</string>
+    <string name="search_categories">Search categories</string>
+    <string name="action_add">Add</string>
     <string name="view_artist">View artist</string>
     <string name="view_album">View album</string>
     <string name="refetch">Refetch</string>
@@ -348,6 +356,15 @@
     <string name="audio_quality_auto">Auto</string>
     <string name="audio_quality_high">High</string>
     <string name="audio_quality_low">Low</string>
+    <string name="scratch_buffer">Scratch buffer</string>
+    <string name="scratch_buffer_short">Short</string>
+    <string name="scratch_buffer_medium">Medium</string>
+    <string name="scratch_buffer_long">Extended</string>
+    <string name="scratch_buffer_full">Whole track</string>
+    <string name="scratch_buffer_short_desc">Scratch back 15 seconds. Smallest memory use.</string>
+    <string name="scratch_buffer_medium_desc">Scratch back 1 minute.</string>
+    <string name="scratch_buffer_long_desc">Scratch back 3 minutes.</string>
+    <string name="scratch_buffer_full_desc">Keeps the whole song scratchable. Uses the most memory.</string>
     <string name="queue">Up Next</string>
     <string name="queue_recently_played">Recently played</string>
     <string name="queue_recently_played_more">Recently played  ↑</string>

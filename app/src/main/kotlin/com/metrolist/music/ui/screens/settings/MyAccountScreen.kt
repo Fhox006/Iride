@@ -225,6 +225,18 @@ fun MyAccountScreen(
         }
         val rowDividerColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.07f) else MaterialTheme.colorScheme.outlineVariant
 
+        // Category header — clarifies what the token/sync/other-content rows below actually are
+        Text(
+            text = stringResource(R.string.settings_section_sync_data),
+            style = if (topNavigationBarEnabled) {
+                MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily, letterSpacing = (-0.1).sp, fontWeight = FontWeight.Bold)
+            } else {
+                MaterialTheme.typography.labelLarge
+            },
+            color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.55f) else MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 6.dp, top = 4.dp)
+        )
+
         // Main settings card — unified style like Appearance/Playback/Content sections
         Card(
             modifier = Modifier.fillMaxWidth(),

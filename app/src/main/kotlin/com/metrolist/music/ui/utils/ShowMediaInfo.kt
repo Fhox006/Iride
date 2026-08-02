@@ -10,7 +10,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.text.format.Formatter
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -43,12 +43,16 @@ import com.metrolist.innertube.models.MediaInfo
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.AdvancedModeKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.FormatEntity
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.component.shimmer.TextPlaceholder
+import com.metrolist.music.utils.makeTimeString
+import com.metrolist.music.utils.rememberPreference
 
 @Composable
 fun ShowMediaInfo(videoId: String) {
@@ -67,6 +71,8 @@ fun ShowMediaInfo(videoId: String) {
 
     val playerConnection = LocalPlayerConnection.current
     val context = LocalContext.current
+    val (advancedMode) = rememberPreference(AdvancedModeKey, defaultValue = false)
+    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     LaunchedEffect(Unit, videoId) {
         info = YouTube.getMediaInfo(videoId).getOrNull()
@@ -92,71 +98,19 @@ fun ShowMediaInfo(videoId: String) {
                     .asPaddingValues()
             )
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
     ) {
         if (info != null && song != null) {
             item(contentType = "MediaDetails") {
                 Column {
-                    val baseList = listOf(
-                        stringResource(R.string.song_title) to song?.title,
-                        stringResource(R.string.song_artists) to song?.artists?.joinToString { it.name },
-                        stringResource(R.string.media_id) to song?.id
-                    )
-
-                    val baseIconsList = listOf(
-                        R.drawable.music_note,
-                        R.drawable.person,
-                        R.drawable.media3_icon_bookmark_filled,
-                    )
-
-                    val iconsList = listOf(
-                        R.drawable.media3_icon_feed,
-                        R.drawable.media3_icon_thumb_up_unfilled,
-                        R.drawable.media3_icon_thumb_down_unfilled,
-                        R.drawable.key,
-                        R.drawable.info,
-                        R.drawable.radio,
-                        R.drawable.gradient,
-                        R.drawable.contrast,
-                        R.drawable.volume_up,
-                        R.drawable.volume_mute,
-                        R.drawable.content_copy
-                    )
-
-                    val extendedList = if (currentFormat != null) {
-                        listOf(
-                            stringResource(R.string.views) to info?.viewCount?.let(::numberFormatter).orEmpty(),
-                            stringResource(R.string.likes) to info?.like?.let(::numberFormatter).orEmpty(),
-                            stringResource(R.string.dislikes) to info?.dislike?.let(::numberFormatter).orEmpty(),
-                            "Itag" to currentFormat?.itag?.toString(),
-                            stringResource(R.string.mime_type) to currentFormat?.mimeType,
-                            stringResource(R.string.codecs) to currentFormat?.codecs,
-                            stringResource(R.string.bitrate) to currentFormat?.bitrate?.let { "${it / 1000} Kbps" },
-                            stringResource(R.string.sample_rate) to currentFormat?.sampleRate?.let { "$it Hz" },
-                            stringResource(R.string.loudness) to currentFormat?.loudnessDb?.let { "$it dB" },
-                            stringResource(R.string.volume) to if (playerConnection != null) "${(playerConnection.player.volume * 100).toInt()}%" else null,
-                            stringResource(R.string.file_size) to
-                                    currentFormat?.contentLength?.let {
-                                        Formatter.formatShortFileSize(
-                                            context,
-                                            it
-                                        )
-                                    },
-                        )
-                    } else {
-                        emptyList()
-                    }
-
-                    val cardsBaseList = mutableListOf<Material3SettingsItem>()
-                    val cardsExtendedList = mutableListOf<Material3SettingsItem>()
                     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
-                    baseList.forEachIndexed { index, (label, text) ->
+                    @Composable
+                    fun copyable(label: String, text: String?, icon: Int): Material3SettingsItem {
                         val displayText = text ?: stringResource(R.string.unknown)
-                        cardsBaseList += Material3SettingsItem(
+                        return Material3SettingsItem(
                             title = { Text(label) },
                             description = { Text(displayText) },
-                            icon = painterResource(baseIconsList[index]),
+                            icon = painterResource(icon),
                             onClick = {
                                 cm.setPrimaryClip(ClipData.newPlainText("text", displayText))
                                 Toast.makeText(context, R.string.copied, Toast.LENGTH_SHORT).show()
@@ -164,40 +118,38 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    extendedList.forEachIndexed { index, (label, text) ->
-                        val displayText = text ?: stringResource(R.string.unknown)
-                        cardsExtendedList += Material3SettingsItem(
-                            title = { Text(label) },
-                            description = { Text(displayText) },
-                            icon = painterResource(iconsList[index]),
-                            onClick = {
-                                cm.setPrimaryClip(ClipData.newPlainText("text", displayText))
-                                Toast.makeText(context, R.string.copied, Toast.LENGTH_SHORT).show()
-                            },
-                        )
-                    }
+                    val generalItems = listOf(
+                        copyable(stringResource(R.string.song_title), song?.title, R.drawable.music_note),
+                        copyable(stringResource(R.string.song_artists), song?.artists?.joinToString { it.name }, R.drawable.person),
+                        copyable(stringResource(R.string.album), song?.song?.albumName, R.drawable.album),
+                        copyable(stringResource(R.string.duration), song?.song?.duration?.let { makeTimeString(it * 1000L) }, R.drawable.timer),
+                    )
 
                     Material3SettingsGroup(
                         title = stringResource(R.string.general),
-                        items = cardsBaseList
+                        items = generalItems
                     )
 
-                    Spacer(Modifier.height(8.dp))
-
-                    Material3SettingsGroup(
-                        title = stringResource(R.string.information),
-                        items = cardsExtendedList
-                    )
+                    val fileSize = currentFormat?.contentLength?.let { Formatter.formatShortFileSize(context, it) }
+                    val bitrate = currentFormat?.bitrate?.let { "${it / 1000} Kbps" }
+                    if (fileSize != null || bitrate != null) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = listOfNotNull(bitrate, fileSize).joinToString("  •  "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (newIrideUi) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = if (newIrideUi) 0.dp else 20.dp)
+                        )
+                    }
 
                     Spacer(Modifier.height(8.dp))
 
                     val descriptionText = info?.description ?: stringResource(R.string.unknown)
-
                     Material3SettingsGroup(
                         title = stringResource(R.string.description),
                         items = listOf(
                             Material3SettingsItem(
-                                title = { Text(stringResource(R.string.description)) },
+                                title = {},
                                 description = { Text(descriptionText) },
                                 onClick = {
                                     cm.setPrimaryClip(ClipData.newPlainText("text", descriptionText))
@@ -206,6 +158,30 @@ fun ShowMediaInfo(videoId: String) {
                             )
                         )
                     )
+
+                    if (advancedMode && currentFormat != null) {
+                        Spacer(Modifier.height(8.dp))
+
+                        val advancedItems = listOf(
+                            copyable(stringResource(R.string.media_id), song?.id, R.drawable.media3_icon_bookmark_filled),
+                            copyable(stringResource(R.string.views), info?.viewCount?.let(::numberFormatter), R.drawable.media3_icon_feed),
+                            copyable(stringResource(R.string.likes), info?.like?.let(::numberFormatter), R.drawable.media3_icon_thumb_up_unfilled),
+                            copyable(stringResource(R.string.dislikes), info?.dislike?.let(::numberFormatter), R.drawable.media3_icon_thumb_down_unfilled),
+                            copyable("Itag", currentFormat?.itag?.toString(), R.drawable.key),
+                            copyable(stringResource(R.string.mime_type), currentFormat?.mimeType, R.drawable.info),
+                            copyable(stringResource(R.string.codecs), currentFormat?.codecs, R.drawable.radio),
+                            copyable(stringResource(R.string.bitrate), bitrate, R.drawable.gradient),
+                            copyable(stringResource(R.string.sample_rate), currentFormat?.sampleRate?.let { "$it Hz" }, R.drawable.contrast),
+                            copyable(stringResource(R.string.loudness), currentFormat?.loudnessDb?.let { "$it dB" }, R.drawable.volume_up),
+                            copyable(stringResource(R.string.volume), if (playerConnection != null) "${(playerConnection.player.volume * 100).toInt()}%" else null, R.drawable.volume_mute),
+                            copyable(stringResource(R.string.file_size), fileSize, R.drawable.content_copy),
+                        )
+
+                        Material3SettingsGroup(
+                            title = stringResource(R.string.information),
+                            items = advancedItems
+                        )
+                    }
                 }
             }
         } else {

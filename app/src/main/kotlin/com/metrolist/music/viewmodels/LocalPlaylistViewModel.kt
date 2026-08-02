@@ -37,7 +37,7 @@ class LocalPlaylistViewModel
 @Inject
 constructor(
     @ApplicationContext context: Context,
-    database: MusicDatabase,
+    private val database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     val playlistId = savedStateHandle.get<String>("playlistId")!!
@@ -88,6 +88,17 @@ constructor(
                 PlaylistSongSortType.PLAY_TIME -> filteredSongs.sortedBy { it.song.song.totalPlayTime }
             }.reversed(sortDescending && sortType != PlaylistSongSortType.CUSTOM)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val categoryController = PlaylistCategoryController(database, playlistId, viewModelScope)
+    val categories get() = categoryController.categories
+    val songCategoryIds get() = categoryController.songCategoryIds
+
+    fun createCategory(name: String, colorHex: String? = null) = categoryController.createCategory(name, colorHex)
+    fun removeCategory(category: com.metrolist.music.db.entities.PlaylistCategoryEntity) = categoryController.removeCategory(category)
+    fun addSongsToCategories(songIds: List<String>, categoryIds: List<String>) =
+        categoryController.addSongsToCategories(songIds, categoryIds)
+    fun reorderCategories(orderedCategoryIds: List<String>) = categoryController.reorderCategories(orderedCategoryIds)
+    fun syncAutoCategories(genreBySongId: Map<String, List<String>>) = categoryController.syncAutoCategories(genreBySongId)
 
     init {
         viewModelScope.launch {

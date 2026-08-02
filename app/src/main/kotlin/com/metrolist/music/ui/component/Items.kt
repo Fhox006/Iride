@@ -14,8 +14,13 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -35,6 +40,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -158,7 +164,6 @@ import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
-import com.metrolist.music.playback.queues.LocalAlbumRadio
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.SnapLayoutInfoProvider
 import com.metrolist.music.ui.utils.rememberReducedMotion
@@ -167,7 +172,6 @@ import com.metrolist.music.utils.joinByBullet
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
-import com.metrolist.music.utils.reportException
 import com.metrolist.music.utils.TitleFeaturingParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -177,14 +181,17 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.metrolist.music.utils.TurntableSfx
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 
 const val ActiveBoxAlpha = 0.6f
 
-/** 0f→1f smoothed toggle for the "now playing" selection outline (thumbnail shrink + row border). */
+/**
+ * 0f→1f smoothed toggle for the "selected / loading" thumbnail outline (thumbnail shrink + row
+ * border). Only for that in-between state — once the track is actually sounding, [NowPlayingOverlay]
+ * takes over so the two states read as visually distinct (see [ItemThumbnail]).
+ */
 @Composable
 fun rememberSelectionProgress(isActive: Boolean): Float {
     val reducedMotion = rememberReducedMotion()
@@ -195,6 +202,85 @@ fun rememberSelectionProgress(isActive: Boolean): Float {
         label = "selectionOutline",
     )
     return progress
+}
+
+// Width and gap stay proportional to bar height (≈3:14 and ≈2:14) so the whole mark scales as
+// one unit instead of thin bars stretching tall on a big grid tile.
+private const val VisualizerWidthToHeight = 3f / 14f
+private const val VisualizerGapToHeight = 2f / 14f
+private val VisualizerBarMinHeight = 10.dp
+private val VisualizerBarDefaultHeight = 14.dp
+private val VisualizerBarMaxHeightCap = 22.dp
+private const val VisualizerBarMinFraction = 0.28f
+
+/**
+ * Squared, monospace-flavored equalizer bars — the "this one is actually sounding" tell.
+ * Deliberately not a stock play/sound icon: three flat-topped rectangles (no rounding) bouncing
+ * out of phase, matching the app's geometric styling instead of borrowing a system glyph.
+ */
+@Composable
+private fun AudioVisualizerBars(
+    modifier: Modifier = Modifier,
+    barHeight: Dp = VisualizerBarDefaultHeight,
+    color: Color = Color.White,
+) {
+    val reducedMotion = rememberReducedMotion()
+    val transition = rememberInfiniteTransition(label = "audioVisualizer")
+    val bar1 by transition.animateFloat(
+        initialValue = VisualizerBarMinFraction,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(420, easing = LinearEasing), RepeatMode.Reverse),
+        label = "audioVisualizerBar1",
+    )
+    val bar2 by transition.animateFloat(
+        initialValue = VisualizerBarMinFraction,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(640, easing = LinearEasing), RepeatMode.Reverse),
+        label = "audioVisualizerBar2",
+    )
+    val bar3 by transition.animateFloat(
+        initialValue = VisualizerBarMinFraction,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(520, easing = LinearEasing), RepeatMode.Reverse),
+        label = "audioVisualizerBar3",
+    )
+    // Reduced motion: static staggered bars still read as "playing" without any looping animation.
+    val fractions = if (reducedMotion) listOf(0.45f, 1f, 0.7f) else listOf(bar1, bar2, bar3)
+
+    Row(
+        modifier = modifier.height(barHeight),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(barHeight * VisualizerGapToHeight),
+    ) {
+        fractions.forEach { fraction ->
+            Box(
+                modifier = Modifier
+                    .width(barHeight * VisualizerWidthToHeight)
+                    .fillMaxHeight(fraction)
+                    .background(color)
+            )
+        }
+    }
+}
+
+/**
+ * Drawn over a thumbnail whose track is the one actually making sound — a dark scrim plus
+ * [AudioVisualizerBars], distinct from the lighter "selected / loading" border+shrink so the two
+ * states can't be confused (see [ItemThumbnail], [LocalThumbnail]).
+ */
+@Composable
+private fun NowPlayingOverlay(modifier: Modifier = Modifier) {
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.45f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Scales with the thumbnail — a fixed size would shrink to an unreadable speck on a
+        // 128dp grid tile, or crowd a 48dp list row.
+        val barHeight = (minOf(maxWidth, maxHeight) * 0.3f).coerceIn(VisualizerBarMinHeight, VisualizerBarMaxHeightCap)
+        AudioVisualizerBars(barHeight = barHeight)
+    }
 }
 
 /** How long the turntable needle-drop SFX plays before the first track actually starts. */
@@ -1106,7 +1192,6 @@ fun AlbumGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
-    showPlayButton: Boolean = true,
     size: Dp = currentGridThumbnailHeight(),
 ) = GridItem(
     title = {
@@ -1140,9 +1225,6 @@ fun AlbumGridItem(
     },
     badges = badges,
     thumbnailContent = {
-        val database = LocalDatabase.current
-        val playerConnection = LocalPlayerConnection.current ?: return@GridItem
-        val scope = rememberCoroutineScope()
         val squircleRadius = maxWidth * 0.06f
         val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
@@ -1153,24 +1235,6 @@ fun AlbumGridItem(
             shape = if (topNavigationBarEnabled) RoundedCornerShape(5.dp) else SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f),
             hairlineBorder = true
         )
-
-        if (showPlayButton) {
-            AlbumPlayButton(
-                visible = !isActive,
-                onClick = {
-                    TurntableSfx.play()
-                    scope.launch {
-                        val albumWithSongs = withContext(Dispatchers.IO) {
-                            database.albumWithSongs(album.id).firstOrNull()
-                        }
-                        delay(NeedleDropLeadInMs)
-                        albumWithSongs?.let {
-                            playerConnection.playQueue(LocalAlbumRadio(it))
-                        }
-                    }
-                }
-            )
-        }
     },
     fillMaxWidth = fillMaxWidth,
     size = size,
@@ -1596,7 +1660,6 @@ fun YouTubeGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
-    showPlayButton: Boolean = true,
     size: Dp = currentGridThumbnailHeight(),
     showTitle: Boolean = true,
     // Used when item.artists is null/empty (always true for albums parsed off
@@ -1667,9 +1730,6 @@ fun YouTubeGridItem(
     },
     badges = badges,
     thumbnailContent = {
-        val database = LocalDatabase.current
-        val playerConnection = LocalPlayerConnection.current ?: return@GridItem
-        val scope = rememberCoroutineScope()
         val squircleRadius = maxWidth * 0.06f
         val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
@@ -1689,28 +1749,6 @@ fun YouTubeGridItem(
         if (item is SongItem && !isActive) {
             OverlayPlayButton(
                 visible = true
-            )
-        }
-
-        if (showPlayButton) {
-            AlbumPlayButton(
-                visible = item is AlbumItem && !isActive,
-                onClick = {
-                    scope.launch(Dispatchers.IO) {
-                        var albumWithSongs = database.albumWithSongs(item.id).first()
-                        if (albumWithSongs?.songs.isNullOrEmpty()) {
-                            YouTube.album(item.id).onSuccess { albumPage ->
-                                database.transaction { insert(albumPage) }
-                                albumWithSongs = database.albumWithSongs(item.id).first()
-                            }.onFailure { reportException(it) }
-                        }
-                        albumWithSongs?.let {
-                            withContext(Dispatchers.Main) {
-                                playerConnection.playQueue(LocalAlbumRadio(it))
-                            }
-                        }
-                    }
-                }
             )
         }
     },
@@ -1867,7 +1905,9 @@ fun ItemThumbnail(
     } else {
         MaterialTheme.colorScheme.primary
     }
-    val selectionProgress = rememberSelectionProgress(isActive)
+    // Shrink/border reads as "selected or still loading" — once the track is actually sounding,
+    // NowPlayingOverlay below takes over so the two states can't be mistaken for each other.
+    val selectionProgress = rememberSelectionProgress(isActive && !isPlaying)
 
     Box(
         contentAlignment = Alignment.Center,
@@ -1961,6 +2001,10 @@ fun ItemThumbnail(
             )
         }
 
+        if (isActive && isPlaying && !isSelected) {
+            NowPlayingOverlay()
+        }
+
         if (isSelected) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -1997,7 +2041,7 @@ fun LocalThumbnail(
     } else {
         MaterialTheme.colorScheme.primary
     }
-    val selectionProgress = rememberSelectionProgress(isActive)
+    val selectionProgress = rememberSelectionProgress(isActive && !isPlaying)
 
     Box(
         contentAlignment = Alignment.Center,
@@ -2023,6 +2067,10 @@ fun LocalThumbnail(
                 .fillMaxSize()
                 .clip(shape)
         )
+
+        if (isActive && isPlaying) {
+            NowPlayingOverlay()
+        }
 
         if (showCenterPlay) {
             AnimatedVisibility(
@@ -2214,35 +2262,6 @@ fun BoxScope.OverlayEditButton(
     }
 }
 
-@Composable
-fun BoxScope.AlbumPlayButton(
-    visible: Boolean,
-    onClick: () -> Unit,
-) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(),
-        exit = fadeOut(),
-        modifier = Modifier
-            .align(Alignment.BottomEnd)
-            .padding(8.dp)
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = ActiveBoxAlpha))
-                .clickable(onClick = onClick)
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.play),
-                contentDescription = null,
-                tint = Color.White
-            )
-        }
-    }
-}
 
 // Same horizontally-snapping carousel mechanism as Home's "Picked for you" (LazyHorizontalGrid
 // + snap fling, `rows` tall pages), factored out so every song carousel in the app (Picked for
@@ -2339,6 +2358,11 @@ fun SwipeToSongBox(
             .draggable(
                 orientation = Orientation.Horizontal,
                 state = dragState,
+                onDragStarted = {
+                    // Guarantees a fresh gesture never inherits a still-fading flash from a prior
+                    // confirmed swipe on this row — a cancelled drag can never show any flash.
+                    confirmFlash.snapTo(0f)
+                },
                 onDragStopped = {
                     when {
                         offset.floatValue >= threshold -> {
@@ -2440,8 +2464,12 @@ private fun confirmSwipe(
     isPlaying: Boolean,
 ) {
     scope.launch {
-        flash.snapTo(0.55f)
-        flash.animateTo(0f, animationSpec = tween(durationMillis = 220))
+        // Fully opaque — anything less lets the NEXT/QUEUE label (still mid-scramble from
+        // reset()'s offset animation below) show through and read as a glitch. Held slightly
+        // longer than reset()'s 300ms so the row is fully closed again before the flash clears,
+        // instead of uncovering the panel for its last few frames.
+        flash.snapTo(1f)
+        flash.animateTo(0f, animationSpec = tween(durationMillis = 320))
     }
     if (!isPlaying) {
         scope.launch {

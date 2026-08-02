@@ -24,6 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -44,7 +45,7 @@ fun ExpandableText(
     var isExpanded by rememberSaveable { mutableStateOf(false) }
     var hasOverflow by rememberSaveable { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
-    val linkColor = MaterialTheme.colorScheme.primary
+    val linkColor = MaterialTheme.colorScheme.onBackground
     val bodyColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     val annotatedText: AnnotatedString = remember(text, runs, linkColor) {
@@ -55,7 +56,7 @@ fun ExpandableText(
                 runs.forEach { segment ->
                     if (segment.url != null) {
                         pushStringAnnotation(tag = "URL", annotation = segment.url)
-                        withStyle(SpanStyle(color = linkColor)) {
+                        withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {
                             append(segment.text)
                         }
                         pop()
@@ -95,7 +96,8 @@ fun ExpandableText(
             Text(
                 text = stringResource(if (isExpanded) R.string.show_less else R.string.show_more),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onBackground,
+                textDecoration = TextDecoration.Underline,
                 modifier = Modifier
                     .padding(top = 4.dp)
                     .clickable { isExpanded = !isExpanded }

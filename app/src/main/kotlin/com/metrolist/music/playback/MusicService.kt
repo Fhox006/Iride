@@ -87,6 +87,8 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.AndroidAutoTargetPlaylistKey
 import com.metrolist.music.constants.AudioNormalizationKey
 import com.metrolist.music.constants.AudioOffload
+import com.metrolist.music.constants.ScratchBufferKey
+import com.metrolist.music.constants.ScratchBufferSize
 import com.metrolist.music.constants.AudioQualityKey
 import com.metrolist.music.constants.AutoDownloadOnLikeKey
 import com.metrolist.music.constants.AutoLoadMoreKey
@@ -368,6 +370,25 @@ class MusicService :
         private set
     lateinit var scratchProcessor: ScratchAudioProcessor
         private set
+    private var scratchBufferSize = ScratchBufferSize.MEDIUM
+
+    /**
+     * Sizes the turntable's scrubbable window. [ScratchBufferSize.FULL] wants the whole track, so
+     * it can only be applied once a duration is known — hence this runs again on every media item
+     * transition, not just when the setting changes. Allocation happens off the playback thread;
+     * the processor swaps the new buffer in at its next flush.
+     */
+    private fun applyScratchBufferSize() {
+        if (!::scratchProcessor.isInitialized) return
+        val size = scratchBufferSize
+        val durationMs = player.duration
+        val seconds = when {
+            size != ScratchBufferSize.FULL -> size.seconds
+            durationMs > 0 -> (durationMs / 1000).toInt() + 5
+            else -> ScratchBufferSize.LONG.seconds
+        }
+        scope.launch(Dispatchers.Default) { scratchProcessor.requestHistorySeconds(seconds) }
+    }
     private var secondaryPlayer: ExoPlayer? = null
     private var fadingPlayer: ExoPlayer? = null
     private var isCrossfading = false
@@ -403,6 +424,11 @@ class MusicService :
     private var scrobbleManager: ScrobbleManager? = null
 
     val automixItems = MutableStateFlow<List<MediaItem>>(emptyList())
+
+    // True once Auto-Mix has been committed as the real, dynamic queue via commitAutomixAsQueue().
+    // Reset whenever an unrelated queue is started (playQueue) so the Radio button stops glowing
+    // once the user leaves radio-continuation playback.
+    val isAutoMixQueueActive = MutableStateFlow(false)
 
     // Tracks the original queue size to distinguish original items from auto-added ones
     private var originalQueueSize: Int = 0
@@ -787,6 +813,14 @@ class MusicService :
                 if (!enableInstant) {
                     silenceSkipJob?.cancel()
                 }
+            }
+
+        dataStore.data
+            .map { it[ScratchBufferKey].toEnum(ScratchBufferSize.MEDIUM) }
+            .distinctUntilChanged()
+            .collectLatest(scope) { size ->
+                scratchBufferSize = size
+                applyScratchBufferSize()
             }
 
         combine(
@@ -1415,6 +1449,7 @@ class MusicService :
 
         currentQueue = queue
         queueTitle = null
+        isAutoMixQueueActive.value = false
         val persistShuffleAcrossQueues = dataStore.get(PersistentShuffleAcrossQueuesKey, false)
         val previousShuffleEnabled = player.shuffleModeEnabled
         if (!persistShuffleAcrossQueues) {
@@ -1606,6 +1641,26 @@ class MusicService :
         } catch (_: Exception) {
             // Silent fail, mirrors getAutomix
         }
+    }
+
+    // Promotes the current Auto-Mix batch (in whatever order the UP NEXT panel left it in,
+    // after any manual drag reorder) into the real player queue, replacing whatever was
+    // queued after the currently playing song. This is what makes Radio actually "start":
+    // Auto-Mix stops being a suggestion list and becomes the live queue tail.
+    fun commitAutomixAsQueue() {
+        val items = automixItems.value
+        if (items.isEmpty() || !playerInitialized.value) return
+        val currentIndex = player.currentMediaItemIndex
+        val itemCount = player.mediaItemCount
+        if (itemCount > currentIndex + 1) {
+            player.removeMediaItems(currentIndex + 1, itemCount)
+        }
+        player.addMediaItems(currentIndex + 1, items)
+        if (player.shuffleModeEnabled) {
+            applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+        }
+        automixItems.value = emptyList()
+        isAutoMixQueueActive.value = true
     }
 
     fun getAutomixAlbum(albumId: String) {
@@ -2122,6 +2177,10 @@ class MusicService :
         previousEpisodeId = null
         previousEpisodePosition = 0L
 
+        // A gapless transition never flushes the sink, so the turntable's position correction has
+        // to be retired here or a scratch in one song would follow the cursor into the next.
+        if (::scratchProcessor.isInitialized) scratchProcessor.resetDrift()
+
         // Check if new item is an episode and restore its position
         val newMetadata = mediaItem?.metadata
         if (newMetadata?.isEpisode == true) {
@@ -2210,6 +2269,9 @@ class MusicService :
     override fun onPlaybackStateChanged(
         @Player.State playbackState: Int,
     ) {
+        // First point at which a "whole track" scratch buffer knows how big the track is.
+        if (playbackState == Player.STATE_READY) applyScratchBufferSize()
+
         // Force Repeat All if the player ignored it and ended playback
         if (playbackState == Player.STATE_ENDED) {
             val repeatMode = player.repeatMode
@@ -3195,14 +3257,11 @@ class MusicService :
             .setEnableFloatOutput(enableFloatOutput)
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
             // Default PCM buffer clamps to 250-750ms (4x min buffer size), so the AudioTrack
-            // hardware buffer holds up to 3/4s of already-decoded, pre-scratch audio that has
-            // to drain before a scratch gesture becomes audible, and refills in chunks too
-            // coarse to track a live drag smoothly. Shrinking the target buffer keeps that
-            // backlog (and so scratch latency/choppiness) close to the low end everywhere.
-            // The max also doubles as forward-scratch runway: ScratchAudioProcessor can only
-            // scrub "into the future" as far as audio has already been decoded ahead of what's
-            // audible, i.e. exactly this backlog — 150ms left almost no room before a forward
-            // scratch hit the wall, so this trades a bit of that latency win back for headroom.
+            // hardware buffer holds up to 3/4s of audio the turntable read head has already
+            // rendered, and every ms of it sits between a finger moving and the speed change
+            // being heard. Shrinking the target buffer keeps that lag low everywhere; forward
+            // runway is no longer a reason to keep it large, since the read head now sets the
+            // decoder's rate and pulls fresh audio towards itself as fast as it needs.
             .setAudioTrackBufferSizeProvider(
                 DefaultAudioTrackBufferSizeProvider.Builder()
                     .setMinPcmBufferDurationUs(60_000)

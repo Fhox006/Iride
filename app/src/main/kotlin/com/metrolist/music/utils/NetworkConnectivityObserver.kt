@@ -10,8 +10,12 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
@@ -29,17 +33,32 @@ class NetworkConnectivityObserver(context: Context) {
     private val _networkStatus = MutableStateFlow(true)
     val networkStatus: StateFlow<Boolean> = _networkStatus.asStateFlow()
 
+    // Fires on every raw onAvailable/onLost/onCapabilitiesChanged, unconditionally — unlike
+    // networkStatus above (a distinct-until-changed boolean) this does NOT collapse a Wi-Fi→mobile
+    // handover to a no-op. Android hands the new network off before tearing the old one down, so
+    // isCurrentlyConnected() reads true on both the onLost(wifi) and onAvailable(mobile) callbacks
+    // and the boolean never flips — meaning the OkHttp pool never got evicted and every request
+    // kept reusing sockets bound to the network that just disappeared.
+    private val _networkChanged = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    val networkChanged: SharedFlow<Unit> = _networkChanged.asSharedFlow()
+
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             _networkStatus.value = isCurrentlyConnected()
+            _networkChanged.tryEmit(Unit)
         }
 
         override fun onLost(network: Network) {
             _networkStatus.value = isCurrentlyConnected()
+            _networkChanged.tryEmit(Unit)
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
             _networkStatus.value = isCurrentlyConnected()
+            _networkChanged.tryEmit(Unit)
         }
     }
 

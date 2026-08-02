@@ -37,6 +37,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -65,13 +66,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp as lerpColor
-import androidx.compose.ui.unit.lerp as lerpTextUnit
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -80,6 +88,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontFamily
@@ -92,6 +101,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.lerp as lerpTextUnit
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.window.Dialog
@@ -101,6 +111,7 @@ import androidx.compose.ui.zIndex
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.navigation.NavController
@@ -108,16 +119,17 @@ import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
+import coil3.size.Size
 import coil3.toBitmap
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.IrideBaseBorderWidth
 import com.metrolist.music.extensions.metadata
 import com.metrolist.music.extensions.move
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
-import com.metrolist.music.playback.queues.ListQueue
 import androidx.compose.foundation.layout.BoxWithConstraints
 import com.metrolist.music.ui.component.BetterAnimatedGradientBackground
 import com.metrolist.music.ui.component.BottomSheetState
@@ -126,6 +138,7 @@ import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.Lyrics
 import com.metrolist.music.ui.component.LyricsPillController
+import com.metrolist.music.ui.component.PillCoverRadius
 import com.metrolist.music.ui.component.UnderlinePill
 import com.metrolist.music.ui.component.rememberGenreFilter
 import com.metrolist.music.ui.menu.PlayerMenu
@@ -137,6 +150,7 @@ import com.metrolist.music.ui.utils.pressScale
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.utils.makeTimeString
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
@@ -156,6 +170,46 @@ private val IrideMp3WheelSurfaceColor = IrideMp3SurfaceColor
 
 private const val IrideMp3CoverWidthFraction = 0.84f
 
+// Matches AlbumScreen's cover squircle radius exactly (see item 5: one shared cover border
+// language across the app) — also the END radius the bridge overlay's clip lerps toward.
+private val IrideCoverBorderRadius = 12.dp
+
+// How much of the expand/collapse `eased` progress the bridge overlay's ring gets before it's
+// gone — short on purpose, "quasi immediatamente": the ring's job is just to bridge the mini
+// pill's own ring into the move, not to survive the whole morph.
+private const val BridgeRingFadeOutProgress = 0.12f
+private val BridgeRingStrokeWidth = 2.5.dp
+
+/** Same technique as PillProgressDrawCache, minus its size/shape cache — this only ever draws
+ * for [BridgeRingFadeOutProgress] worth of a single expand/collapse, so recomputing the traced
+ * outline every frame is cheaper than the bookkeeping needed to cache it correctly. */
+private fun DrawScope.drawBridgeProgressRing(
+    cornerRadiusPx: Float,
+    strokeWidthPx: Float,
+    progress: Float,
+) {
+    val inset = strokeWidthPx / 2f
+    val path = Path().apply {
+        addRoundRect(
+            RoundRect(
+                left = inset,
+                top = inset,
+                right = size.width - inset,
+                bottom = size.height - inset,
+                cornerRadius = CornerRadius(cornerRadiusPx),
+            ),
+        )
+    }
+    val stroke = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+    drawPath(path, color = Color.White.copy(alpha = 0.2f), style = stroke)
+    if (progress > 0f) {
+        val measure = PathMeasure().apply { setPath(path, false) }
+        val segment = Path()
+        measure.getSegment(0f, measure.length * progress.coerceIn(0f, 1f), segment, true)
+        drawPath(segment, color = Color.White, style = stroke)
+    }
+}
+
 // Lifts the control wheel up off the bottom system-gesture strip (see call site) so its bottom
 // "more" zone stays fully tappable on gesture-nav devices.
 private val WheelBottomGestureClearance = 24.dp
@@ -168,6 +222,11 @@ class IrideBridgeState {
     var playerArt by mutableStateOf<Rect?>(null)
     var miniInfo by mutableStateOf<Rect?>(null)
     var playerInfo by mutableStateOf<Rect?>(null)
+
+    // Live playback fraction, reported every frame by the mini pill's own ring (PillPlayButton) —
+    // lets the bridge overlay's ring (drawn on the moving cover, see IrideMiniPlayerBridgeOverlay)
+    // start already in sync instead of snapping from 0 the instant the expand begins.
+    var progress by mutableStateOf(0f)
 
     var panelActive by mutableStateOf(false)
     // True while the lyrics FullScreenLyricsDialog (a separate Android Window drawn on top of
@@ -200,6 +259,9 @@ fun IrideMp3PlayerContent(
     isQueueActive: Boolean = false,
     onLyricsClick: () -> Unit = {},
     onQueueClick: () -> Unit = {},
+    // Bumped by the wheel's Radio button to jump the (already open) UP NEXT panel straight
+    // into Auto-Mix — see IrideQueuePreview's radioTrigger param.
+    radioTrigger: Int = 0,
     isFullScreen: Boolean = false,
     onToggleFullScreen: () -> Unit = {},
     isListenTogetherGuest: Boolean = false,
@@ -213,7 +275,10 @@ fun IrideMp3PlayerContent(
 ) {
     val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
-    var radioActive by remember { mutableStateOf(false) }
+    // Reflects whether Auto-Mix has actually been committed as the live queue (see
+    // MusicService.commitAutomixAsQueue) — not a local toggle, so the button only glows
+    // when Radio genuinely did something.
+    val radioActive by LocalPlayerConnection.current?.service?.isAutoMixQueueActive?.collectAsState() ?: remember { mutableStateOf(false) }
 
     // Overflow menu trigger, lives in the title row (a flat area outside the circular wheel and
     // outside the lyrics/queue panel) instead of as a wheel zone — the wheel's bottom "more" spot
@@ -274,8 +339,11 @@ fun IrideMp3PlayerContent(
                     .padding(top = 8.dp, bottom = 8.dp)
                     .aspectRatio(1f)
                     .align(Alignment.CenterHorizontally)
-                    .clip(irideSquircle(16.dp))
-                    .border(1.dp, IrideMp3PanelBorderColor, irideSquircle(16.dp)),
+                    .clip(irideSquircle(IrideCoverBorderRadius))
+                    // Same thin cover border as AlbumScreen (IrideBaseBorderWidth, white 0.22) —
+                    // one shared visual language for every cover in the New Iride UI, not this
+                    // screen's own weaker/thinner one.
+                    .border(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f), irideSquircle(IrideCoverBorderRadius)),
             ) {
                 Box(
                     modifier = Modifier
@@ -390,6 +458,7 @@ fun IrideMp3PlayerContent(
                         mediaMetadata = mediaMetadata,
                         modifier = Modifier.fillMaxSize(),
                         topClearance = 26.dp,
+                        radioTrigger = radioTrigger,
                     )
                 }
 
@@ -594,83 +663,90 @@ fun IrideMp3PlayerContent(
                 }
             }
 
-            // Own flow row instead of an overlay pinned to the wheel's TopCenter — the overlay
-            // approach only avoided the wheel's circle by relying on incidental slack between the
-            // box top and the (size-clamped) circle. On shorter screens that slack shrank to
-            // nothing and the labels sat on top of the wheel's radio zone. Giving this row its
-            // own real height means the wheel below is sized against what's actually left,
-            // guaranteeing no overlap regardless of screen height.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(IrideMp3CoverWidthFraction)
-                    .align(Alignment.CenterHorizontally)
-                    .padding(horizontal = 6.dp)
-                    .padding(top = 8.dp, bottom = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                IridePanelLabel(
-                    text = "LYRICS",
-                    isActive = isLyricsActive,
-                    onClick = onLyricsClick,
-                )
-                IridePanelLabel(
-                    text = "UP NEXT",
-                    isActive = isQueueActive,
-                    onClick = onQueueClick,
-                )
-            }
+            // This bottom chrome (LYRICS/UP NEXT toggle + click wheel) used to hard-hide the
+            // instant the drag reversed (an `if`-removal, no dissolve at all) or, in a later pass,
+            // fade out on a fixed short timer disconnected from the actual drag position — both
+            // read as an abrupt cut instead of tracking the gesture. It's a plain child of this
+            // content now, so it inherits the same scrub-driven alpha the whole card already gets
+            // from BottomSheet's own `graphicsLayer { alpha = ((progress - 0.15f) * 4) }` — the
+            // exact curve the collapsing miniplayer fades in against, so the two dissolve in lockstep
+            // with the finger, not on any separate clock.
+            Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                // Own flow row instead of an overlay pinned to the wheel's TopCenter — the overlay
+                // approach only avoided the wheel's circle by relying on incidental slack between the
+                // box top and the (size-clamped) circle. On shorter screens that slack shrank to
+                // nothing and the labels sat on top of the wheel's radio zone. Giving this row its
+                // own real height means the wheel below is sized against what's actually left,
+                // guaranteeing no overlap regardless of screen height.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(IrideMp3CoverWidthFraction)
+                        .align(Alignment.CenterHorizontally)
+                        .padding(horizontal = 6.dp)
+                        .padding(top = 8.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    IridePanelLabel(
+                        text = "LYRICS",
+                        isActive = isLyricsActive,
+                        onClick = onLyricsClick,
+                    )
+                    IridePanelLabel(
+                        text = "UP NEXT",
+                        isActive = isQueueActive,
+                        onClick = onQueueClick,
+                    )
+                }
 
-            BoxWithConstraints(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center,
-            ) {
-                // Wheel used to be a fixed 260.dp regardless of how much room this weighted
-                // box actually got. On shorter screens that overflowed the box (Box doesn't
-                // clip), pushing the bottom "more" zone past the visible/tappable area — the
-                // three-dot button looked present but taps never landed on it. Clamping to
-                // whatever space is really available keeps every wheel zone reachable.
-                // Base reference bumped 260 -> 352dp (+35%) per explicit ask: the click wheel
-                // (play/pause/skip/radio) needed to read as clearly bigger, not a marginal bump.
-                // Cover/info/label chrome above was shrunk (IrideMp3CoverWidthFraction 0.90 -> 0.78,
-                // tighter inter-row spacing) to free the vertical budget this needs; the 0.97 clamp
-                // factor still leaves a small margin so the circle doesn't touch the box edges.
-                val wheelSize = minOf(352.dp, maxHeight * 0.97f, maxWidth * 0.97f)
-                val scale = wheelSize / 260.dp
-                val buttonSize = 74.dp * scale
-                val iconSize = 25.dp * scale
-                val skipIconSize = 32.dp * scale
-                // Purely decorative now (center knob lost its click). Trimmed 150 -> 135dp so the
-                // hub reads smaller and leaves more ring band for the 4 zones to sit in.
-                val centerButtonSize = 135.dp * scale
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    // Wheel used to be a fixed 260.dp regardless of how much room this weighted
+                    // box actually got. On shorter screens that overflowed the box (Box doesn't
+                    // clip), pushing the bottom "more" zone past the visible/tappable area — the
+                    // three-dot button looked present but taps never landed on it. Clamping to
+                    // whatever space is really available keeps every wheel zone reachable.
+                    // Base reference bumped 260 -> 352dp (+35%) per explicit ask: the click wheel
+                    // (play/pause/skip/radio) needed to read as clearly bigger, not a marginal bump.
+                    // Cover/info/label chrome above was shrunk (IrideMp3CoverWidthFraction 0.90 -> 0.78,
+                    // tighter inter-row spacing) to free the vertical budget this needs; the 0.97 clamp
+                    // factor still leaves a small margin so the circle doesn't touch the box edges.
+                    val wheelSize = minOf(352.dp, maxHeight * 0.97f, maxWidth * 0.97f)
+                    val scale = wheelSize / 260.dp
+                    val buttonSize = 74.dp * scale
+                    val iconSize = 25.dp * scale
+                    val skipIconSize = 32.dp * scale
+                    // Purely decorative now (center knob lost its click). Trimmed 150 -> 135dp so the
+                    // hub reads smaller and leaves more ring band for the 4 zones to sit in.
+                    val centerButtonSize = 135.dp * scale
 
-                IrideClickWheel(
-                    isPlaying = isPlaying,
-                    isRadioActive = radioActive,
-                    isListenTogetherGuest = isListenTogetherGuest,
-                    isMuted = isMuted,
-                    onPlayPauseClick = onPlayPauseClick,
-                    onPreviousClick = onPreviousClick,
-                    onNextClick = onNextClick,
-                    onRadioClick = {
-                        radioActive = !radioActive
-                        onRadioClick()
-                    },
-                    wheelSize = wheelSize,
-                    buttonSize = buttonSize,
-                    iconSize = iconSize,
-                    skipIconSize = skipIconSize,
-                    centerButtonSize = centerButtonSize,
-                    modifier = Modifier.align(Alignment.Center),
-                )
+                    IrideClickWheel(
+                        isPlaying = isPlaying,
+                        isRadioActive = radioActive,
+                        isListenTogetherGuest = isListenTogetherGuest,
+                        isMuted = isMuted,
+                        onPlayPauseClick = onPlayPauseClick,
+                        onPreviousClick = onPreviousClick,
+                        onNextClick = onNextClick,
+                        onRadioClick = onRadioClick,
+                        wheelSize = wheelSize,
+                        buttonSize = buttonSize,
+                        iconSize = iconSize,
+                        skipIconSize = skipIconSize,
+                        centerButtonSize = centerButtonSize,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                }
+                // Extra clearance beyond the raw nav-bar inset: on gesture-nav devices the bottom
+                // strip is a system gesture zone that eats taps landing in it, and the wheel's bottom
+                // "more" zone sat low enough that only the top half of its icon cleared the strip —
+                // taps on the lower half never reached the button. Lifting the whole wheel up by this
+                // margin keeps the three-dot zone fully tappable.
+                Spacer(Modifier.height(bottomInset + WheelBottomGestureClearance))
             }
-            // Extra clearance beyond the raw nav-bar inset: on gesture-nav devices the bottom
-            // strip is a system gesture zone that eats taps landing in it, and the wheel's bottom
-            // "more" zone sat low enough that only the top half of its icon cleared the strip —
-            // taps on the lower half never reached the button. Lifting the whole wheel up by this
-            // margin keeps the three-dot zone fully tappable.
-            Spacer(Modifier.height(bottomInset + WheelBottomGestureClearance))
         }
     }
 }
@@ -895,19 +971,17 @@ internal fun IrideArtistText(
     )
 }
 
-private enum class IrideQueueLevel { BASE, RADIO, ARTIST }
-private enum class IrideRadioSubMode { STANDARD, CLOSE, DISCOVER }
-private enum class IrideArtistSubMode { TOP, UNHEARD, DEEP_CUTS }
-
 @Composable
 private fun IrideQueuePreview(
     mediaMetadata: MediaMetadata,
     modifier: Modifier = Modifier,
     topClearance: Dp = 0.dp,
+    // Bumped by the wheel's Radio button: a one-shot signal to jump straight into Auto-Mix
+    // (reset filter, regenerate, scroll down) without disturbing NOW or Continue Listening.
+    radioTrigger: Int = 0,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val database = LocalDatabase.current
-    val coroutineScope = rememberCoroutineScope()
     val queueWindows by playerConnection.queueWindows.collectAsState()
     val currentWindowIndex by playerConnection.currentWindowIndex.collectAsState()
 
@@ -923,125 +997,84 @@ private fun IrideQueuePreview(
         if (currentWindowIndex in queueWindows.indices) queueWindows[currentWindowIndex].uid else null
     }
 
-    var queueLevel by remember { mutableStateOf(IrideQueueLevel.BASE) }
-    var activeRadioSubMode by remember { mutableStateOf<IrideRadioSubMode?>(null) }
-    var activeArtistSubMode by remember { mutableStateOf<IrideArtistSubMode?>(null) }
-
-    fun applyUpcomingReorder(desiredUpcomingOrder: List<Int>) {
-        val upcomingStart = currentWindowIndex + 1
-        if (upcomingStart >= queueWindows.size || desiredUpcomingOrder.isEmpty()) return
-        if (playerConnection.player.shuffleModeEnabled) {
-            val newOrder = queueWindows.indices.map { i ->
-                if (i < upcomingStart) {
-                    queueWindows[i].firstPeriodIndex
-                } else {
-                    queueWindows[desiredUpcomingOrder[i - upcomingStart]].firstPeriodIndex
-                }
-            }
-            playerConnection.player.setShuffleOrder(
-                DefaultShuffleOrder(newOrder.toIntArray(), System.currentTimeMillis()),
-            )
-        } else {
-            val working = queueWindows.indices.toMutableList()
-            for (targetPos in upcomingStart until queueWindows.size) {
-                val desiredOriginalIndex = desiredUpcomingOrder[targetPos - upcomingStart]
-                val currentPos = working.indexOf(desiredOriginalIndex)
-                if (currentPos != -1 && currentPos != targetPos) {
-                    playerConnection.player.moveMediaItem(currentPos, targetPos)
-                    working.add(targetPos, working.removeAt(currentPos))
-                }
-            }
-        }
+    // History: one-shot load of the last 20 distinct songs played before this one — no
+    // pagination needed here (unlike the old queue sheet), this panel is short-lived.
+    var historyItems by remember { mutableStateOf<List<MediaMetadata>>(emptyList()) }
+    LaunchedEffect(mediaMetadata.id) {
+        val currentSongId = mediaMetadata.id
+        val page = database.events().first()
+            .distinctBy { it.song.id }
+            .filter { it.song.id != currentSongId }
+            .take(20)
+        historyItems = page.reversed().map { it.song.toMediaMetadata() }
     }
 
-    fun selectRadioMode(mode: IrideRadioSubMode) {
-        activeRadioSubMode = mode
-        playerConnection.startRadioSeamlessly()
-        when (mode) {
-            IrideRadioSubMode.STANDARD -> Unit
-            IrideRadioSubMode.CLOSE -> {
-                val currentArtistIds = mediaMetadata.artists.mapNotNull { it.id }.toSet()
-                val currentArtistNames = mediaMetadata.artists.map { it.name.lowercase() }.toSet()
-                val upcomingStart = currentWindowIndex + 1
-                val desiredOrder = queueWindows
-                    .drop(upcomingStart)
-                    .mapIndexed { offset, window -> (upcomingStart + offset) to window }
-                    .sortedByDescending { (_, window) ->
-                        window.mediaItem.metadata?.artists?.any { a ->
-                            (a.id != null && a.id in currentArtistIds) || a.name.lowercase() in currentArtistNames
-                        } == true
-                    }
-                    .map { it.first }
-                applyUpcomingReorder(desiredOrder)
-            }
-            IrideRadioSubMode.DISCOVER -> {
-                coroutineScope.launch {
-                    val upcomingStart = currentWindowIndex + 1
-                    val upcoming = queueWindows
-                        .drop(upcomingStart)
-                        .mapIndexed { offset, window -> (upcomingStart + offset) to window }
-                    val playTimes = upcoming.associate { (idx, window) ->
-                        val id = window.mediaItem.metadata?.id
-                        idx to (id?.let { database.song(it).first()?.song?.totalPlayTime } ?: 0L)
-                    }
-                    val desiredOrder = upcoming.map { it.first }.sortedBy { playTimes[it] ?: 0L }
-                    applyUpcomingReorder(desiredOrder)
-                }
-            }
+    // Auto-Mix filter chips — same filters/logic as the old queue sheet (Queue.kt), reused
+    // rather than duplicated, including real genre tags from GenreProvider.
+    val automix by playerConnection.service.automixItems.collectAsState()
+    // Live drag-reorder copy of automix, same pattern as mutableQueueWindows above — lets
+    // dragging a song set its priority before Radio commits this order into the real queue.
+    val mutableAutomixItems = remember { mutableStateListOf<MediaItem>() }
+    LaunchedEffect(automix) {
+        mutableAutomixItems.apply {
+            clear()
+            addAll(automix)
         }
     }
-
-    fun selectArtistMode(mode: IrideArtistSubMode) {
-        activeArtistSubMode = mode
-        // "That artist" means every artist credited on the currently playing song (the
-        // primary artist and any featured/collab singers) — not just the first one, so a
-        // collab track pulls from both artists' catalogs instead of arbitrarily picking one.
-        val artistIds = mediaMetadata.artists.mapNotNull { it.id }
-        if (artistIds.isEmpty()) return
-        coroutineScope.launch {
-            val songs = artistIds
-                .flatMap { database.artistSongsByPlayTimeAsc(it).first() }
-                .distinctBy { it.song.id }
-            val picked = when (mode) {
-                IrideArtistSubMode.TOP -> songs.asReversed().take(30)
-                IrideArtistSubMode.UNHEARD -> songs.filter { it.song.totalPlayTime == 0L }
-                IrideArtistSubMode.DEEP_CUTS -> songs.filter { it.song.totalPlayTime > 0L }.take(30)
-            }
-            if (picked.isNotEmpty()) {
-                playerConnection.playQueue(
-                    ListQueue(
-                        title = mediaMetadata.artists.firstOrNull()?.name,
-                        items = picked.map { it.toMediaItem() },
-                    ),
-                )
-            }
+    val familiarArtistNames = remember(historyItems, queueWindows) {
+        buildSet {
+            historyItems.forEach { md -> md.artists.forEach { add(it.name) } }
+            queueWindows.forEach { w -> w.mediaItem.metadata?.artists?.forEach { add(it.name) } }
         }
+    }
+    val automixGenreSongs = remember(mutableAutomixItems.toList()) {
+        mutableAutomixItems.map {
+            GenreSongInfo(id = it.mediaId, title = it.metadata?.title.orEmpty(), artist = it.metadata?.artists?.firstOrNull()?.name)
+        }
+    }
+    val automixGenreFilter = rememberGenreFilter(automixGenreSongs)
+    val dynamicGenreFilter = automixGenreFilter.sortedGenres.firstOrNull()?.uppercase()
+    val automixFilters = remember(dynamicGenreFilter) {
+        if (dynamicGenreFilter != null) AUTOMIX_STATIC_FILTERS + dynamicGenreFilter else AUTOMIX_STATIC_FILTERS
+    }
+    var selectedAutomixFilter by remember { mutableStateOf(AUTOMIX_FILTER_ALL) }
+    // Only ALL preserves list order (see filterAutomix) — that's also the only mode dragging
+    // is enabled in, so filteredAutomix and mutableAutomixItems always agree on order/positions
+    // whenever a drag could be in flight.
+    val filteredAutomix = remember(mutableAutomixItems.toList(), selectedAutomixFilter, familiarArtistNames, automixGenreFilter.genreBySongId) {
+        filterAutomix(mutableAutomixItems, selectedAutomixFilter, familiarArtistNames, automixGenreFilter.genreBySongId)
     }
 
     Column(modifier = modifier.padding(top = topClearance)) {
-        IrideQueueModePanel(
-            queueLevel = queueLevel,
-            activeRadioSubMode = activeRadioSubMode,
-            activeArtistSubMode = activeArtistSubMode,
-            onKeepQueue = {
-                queueLevel = IrideQueueLevel.BASE
-                activeRadioSubMode = null
-                activeArtistSubMode = null
-            },
-            onRadioToggle = {
-                queueLevel = if (queueLevel == IrideQueueLevel.RADIO) IrideQueueLevel.BASE else IrideQueueLevel.RADIO
-                activeArtistSubMode = null
-            },
-            onArtistToggle = {
-                queueLevel = if (queueLevel == IrideQueueLevel.ARTIST) IrideQueueLevel.BASE else IrideQueueLevel.ARTIST
-                activeRadioSubMode = null
-            },
-            onRadioSubModeSelect = ::selectRadioMode,
-            onArtistSubModeSelect = ::selectArtistMode,
+        Text(
+            text = "UP NEXT",
+            color = Color.White.copy(alpha = 0.6f),
+            fontFamily = SpaceMonoFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 10.sp,
+            letterSpacing = 1.sp,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
         )
 
-        if (mutableQueueWindows.isEmpty()) {
+        val lazyListState = rememberLazyListState()
+
+        // Radio wheel button: never restarts or reorders the currently playing song, but DOES
+        // actually start the radio now — Auto-Mix (in whatever order the drag above left it in)
+        // is promoted into the real player queue, replacing whatever was queued after the
+        // current song. Auto-Mix itself then empties out (it's not a suggestion list once
+        // committed, it IS the queue) until the next Radio press or natural refill.
+        LaunchedEffect(radioTrigger) {
+            if (radioTrigger == 0) return@LaunchedEffect
+            selectedAutomixFilter = AUTOMIX_FILTER_ALL
+            if (playerConnection.service.automixItems.value.isEmpty()) {
+                playerConnection.regenerateAutomix(mediaMetadata)
+            }
+            playerConnection.service.commitAutomixAsQueue()
+            delay(80)
+            lazyListState.animateScrollToItem(historyItems.size)
+        }
+
+        if (mutableQueueWindows.isEmpty() && historyItems.isEmpty() && automix.isEmpty()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text(
                     text = "QUEUE EMPTY",
@@ -1054,12 +1087,41 @@ private fun IrideQueuePreview(
             return@Column
         }
 
-        val lazyListState = rememberLazyListState()
         var dragInfo by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+        var automixDragging by remember { mutableStateOf(false) }
+        // Row indices in the LazyColumn are raw/global (history rows + the CONTINUE LISTENING
+        // header sit before the queue section, and the Auto-Mix filter/header rows sit before
+        // the Auto-Mix section) — the reorderable library hands back indices into the whole
+        // column, not into mutableQueueWindows/mutableAutomixItems directly, so both need this
+        // offset subtracted before touching either list. Missing this offset was the previous
+        // bug: dragging with any history loaded moved the wrong queue item (or crashed).
+        val queueOffset = historyItems.size + 1
+        val automixOffset = queueOffset + mutableQueueWindows.size + 2
         val reorderableState = rememberReorderableLazyListState(lazyListState = lazyListState) { from, to ->
-            val currentDragInfo = dragInfo
-            dragInfo = if (currentDragInfo == null) from.index to to.index else currentDragInfo.first to to.index
-            mutableQueueWindows.move(from.index, to.index)
+            val queueFrom = from.index - queueOffset
+            val queueTo = to.index - queueOffset
+            if (queueFrom in mutableQueueWindows.indices && queueTo in mutableQueueWindows.indices) {
+                val currentDragInfo = dragInfo
+                dragInfo = if (currentDragInfo == null) queueFrom to queueTo else currentDragInfo.first to queueTo
+                mutableQueueWindows.move(queueFrom, queueTo)
+                return@rememberReorderableLazyListState
+            }
+            // Auto-Mix priority reorder — only meaningful (and only enabled, see the drag
+            // handle below) while showing the unfiltered ALL order Radio will actually commit.
+            if (selectedAutomixFilter == AUTOMIX_FILTER_ALL) {
+                val automixFrom = from.index - automixOffset
+                val automixTo = to.index - automixOffset
+                if (automixFrom in mutableAutomixItems.indices && automixTo in mutableAutomixItems.indices) {
+                    automixDragging = true
+                    mutableAutomixItems.move(automixFrom, automixTo)
+                }
+            }
+        }
+
+        // History hidden by default — scroll past it once it's loaded, so opening the
+        // panel lands on CONTINUE LISTENING, not on the past.
+        LaunchedEffect(historyItems) {
+            if (historyItems.isNotEmpty()) lazyListState.scrollToItem(historyItems.size)
         }
 
         LaunchedEffect(reorderableState.isAnyItemDragging) {
@@ -1083,6 +1145,12 @@ private fun IrideQueuePreview(
                     }
                     dragInfo = null
                 }
+                if (automixDragging) {
+                    // mutableAutomixItems already holds the final dragged order — persist it
+                    // back to the service so Radio commits this order, not the fetched one.
+                    playerConnection.service.automixItems.value = mutableAutomixItems.toList()
+                    automixDragging = false
+                }
             }
         }
 
@@ -1091,6 +1159,76 @@ private fun IrideQueuePreview(
             modifier = Modifier.weight(1f).padding(start = 10.dp, end = 10.dp, top = 2.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            items(historyItems, key = { "history_${it.id}" }) { item ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .animateItem()
+                        // History → tap the row to play now (inserts next + skips into it,
+                        // rest of the future queue stays intact); the icon only adds it ahead.
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) {
+                            playerConnection.playNext(item.toMediaItem())
+                            playerConnection.player.seekToNextMediaItem()
+                        },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AsyncImage(
+                        model = item.thumbnailUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(34.dp).clip(irideSquircle(8.dp)),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = item.title,
+                            color = Color.White.copy(alpha = 0.55f),
+                            fontFamily = InterFontFamily,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (item.artists.any { it.name.isNotBlank() }) {
+                            Text(
+                                text = item.artists.joinToString(", ") { it.name },
+                                color = Color(0xFFB8B8B8).copy(alpha = 0.7f),
+                                fontFamily = InterFontFamily,
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    // History → "add to UP NEXT", never touches NOW.
+                    Icon(
+                        painter = painterResource(R.drawable.playlist_play),
+                        contentDescription = null,
+                        tint = IrideMp3DimIconColor,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) { playerConnection.playNext(item.toMediaItem()) },
+                    )
+                }
+            }
+
+            item(key = "continue_listening_header") {
+                Text(
+                    text = stringResource(R.string.queue_continue_listening).uppercase(),
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontFamily = SpaceMonoFontFamily,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 10.sp,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.animateItem(),
+                )
+            }
+
             itemsIndexed(mutableQueueWindows, key = { _, window -> window.uid.hashCode() }) { _, window ->
                 ReorderableItem(state = reorderableState, key = window.uid.hashCode()) {
                     val metadata = window.mediaItem.metadata
@@ -1146,85 +1284,101 @@ private fun IrideQueuePreview(
                     }
                 }
             }
-        }
-    }
-}
 
-@Composable
-private fun IrideQueueModePanel(
-    queueLevel: IrideQueueLevel,
-    activeRadioSubMode: IrideRadioSubMode?,
-    activeArtistSubMode: IrideArtistSubMode?,
-    onKeepQueue: () -> Unit,
-    onRadioToggle: () -> Unit,
-    onArtistToggle: () -> Unit,
-    onRadioSubModeSelect: (IrideRadioSubMode) -> Unit,
-    onArtistSubModeSelect: (IrideArtistSubMode) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = "QUEUE MODE",
-            color = Color.White.copy(alpha = 0.6f),
-            fontFamily = SpaceMonoFontFamily,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 10.sp,
-            letterSpacing = 1.sp,
-        )
-        Spacer(Modifier.height(4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            UnderlinePill(
-                text = "KEEP QUEUE",
-                selected = queueLevel == IrideQueueLevel.BASE,
-                onClick = onKeepQueue,
-            )
-            UnderlinePill(
-                text = "RADIO",
-                selected = queueLevel == IrideQueueLevel.RADIO,
-                onClick = onRadioToggle,
-            )
-            UnderlinePill(
-                text = "ARTIST",
-                selected = queueLevel == IrideQueueLevel.ARTIST,
-                onClick = onArtistToggle,
-            )
-        }
-        if (queueLevel == IrideQueueLevel.RADIO) {
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                UnderlinePill(
-                    text = "STANDARD",
-                    selected = activeRadioSubMode == IrideRadioSubMode.STANDARD,
-                    onClick = { onRadioSubModeSelect(IrideRadioSubMode.STANDARD) },
-                )
-                UnderlinePill(
-                    text = "CLOSE",
-                    selected = activeRadioSubMode == IrideRadioSubMode.CLOSE,
-                    onClick = { onRadioSubModeSelect(IrideRadioSubMode.CLOSE) },
-                )
-                UnderlinePill(
-                    text = "DISCOVER",
-                    selected = activeRadioSubMode == IrideRadioSubMode.DISCOVER,
-                    onClick = { onRadioSubModeSelect(IrideRadioSubMode.DISCOVER) },
-                )
-            }
-        }
-        if (queueLevel == IrideQueueLevel.ARTIST) {
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                UnderlinePill(
-                    text = "TOP",
-                    selected = activeArtistSubMode == IrideArtistSubMode.TOP,
-                    onClick = { onArtistSubModeSelect(IrideArtistSubMode.TOP) },
-                )
-                UnderlinePill(
-                    text = "UNHEARD",
-                    selected = activeArtistSubMode == IrideArtistSubMode.UNHEARD,
-                    onClick = { onArtistSubModeSelect(IrideArtistSubMode.UNHEARD) },
-                )
-                UnderlinePill(
-                    text = "DEEP CUTS",
-                    selected = activeArtistSubMode == IrideArtistSubMode.DEEP_CUTS,
-                    onClick = { onArtistSubModeSelect(IrideArtistSubMode.DEEP_CUTS) },
-                )
+            if (automix.isNotEmpty()) {
+                item(key = "automix_filters") {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .animateItem(),
+                    ) {
+                        automixFilters.forEach { filter ->
+                            UnderlinePill(
+                                text = filter,
+                                selected = selectedAutomixFilter == filter,
+                                onClick = { selectedAutomixFilter = filter },
+                            )
+                        }
+                    }
+                }
+
+                item(key = "automix_header") {
+                    Text(
+                        text = stringResource(R.string.queue_autoplay).uppercase(),
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontFamily = SpaceMonoFontFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 10.sp,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.animateItem(),
+                    )
+                }
+
+                itemsIndexed(filteredAutomix, key = { _, item -> "automix_${item.mediaId}" }) { _, item ->
+                    ReorderableItem(state = reorderableState, key = "automix_${item.mediaId}") {
+                        val metadata = item.metadata
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateItem()
+                                // Auto-Mix → tap the row to play now (same play-now affordance as
+                                // History/Queue rows above): inserts next + skips into it immediately.
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) {
+                                    val realIndex = automix.indexOfFirst { it.mediaId == item.mediaId }
+                                    if (realIndex != -1) {
+                                        playerConnection.service.playNextAutomix(item, realIndex)
+                                        playerConnection.player.seekToNextMediaItem()
+                                    }
+                                },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            AsyncImage(
+                                model = metadata?.thumbnailUrl,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(34.dp).clip(irideSquircle(8.dp)),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = metadata?.title.orEmpty(),
+                                    color = Color.White.copy(alpha = 0.75f),
+                                    fontFamily = InterFontFamily,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                if (metadata != null && metadata.artists.any { it.name.isNotBlank() }) {
+                                    Text(
+                                        text = metadata.artists.joinToString(", ") { it.name },
+                                        color = Color(0xFFB8B8B8),
+                                        fontFamily = InterFontFamily,
+                                        fontSize = 10.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
+                            // Drag priority only makes sense (and is only wired up) against the
+                            // unfiltered ALL order — the same order Radio commits into the queue.
+                            if (selectedAutomixFilter == AUTOMIX_FILTER_ALL) {
+                                Icon(
+                                    painter = painterResource(R.drawable.drag_handle),
+                                    contentDescription = null,
+                                    tint = IrideMp3DimIconColor,
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .draggableHandle(),
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1460,17 +1614,46 @@ fun IrideMiniPlayerBridgeOverlay(
         val artStart = bridgeState.miniArt ?: bridgeState.playerArt
         val artEnd = bridgeState.playerArt ?: artStart
         if (artStart != null && artEnd != null && !bridgeState.panelActive) {
+            // Fades out fast right at the start of the move instead of hanging around for the
+            // whole morph — the mini pill's own ring (PillPlayButton) takes back over the instant
+            // this one is gone, so it must never be caught visible mid-air with no ring anywhere.
+            val ringAlpha = (1f - eased / BridgeRingFadeOutProgress).coerceIn(0f, 1f)
             BridgedElement(start = artStart, end = artEnd, rootOffset = rootOffset, progress = eased) { scale ->
-                val onScreenRadius = lerp(14f, 16f, eased)
+                val onScreenRadius = lerp(PillCoverRadius.value, IrideCoverBorderRadius.value, eased)
                 val compensatedRadius = (onScreenRadius / scale.coerceAtLeast(0.01f)).coerceAtMost(200f)
+                val context = LocalContext.current
                 AsyncImage(
-                    model = metadata.thumbnailUrl,
+                    // Always requests the source at full quality regardless of this frame's box
+                    // size — early in the transition (before the expanded rect is known) this box
+                    // briefly measures at the mini pill's small size, and without an explicit
+                    // Size.ORIGINAL request Coil decodes/caches a small bitmap for it that then
+                    // visibly pops to sharp once the real size lands (the "grainy then upgrades"
+                    // regression).
+                    model = ImageRequest.Builder(context)
+                        .data(metadata.thumbnailUrl)
+                        .size(Size.ORIGINAL)
+                        .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(irideSquircle(compensatedRadius.dp)),
                 )
+                if (ringAlpha > 0f) {
+                    val strokeWidthDp = BridgeRingStrokeWidth / scale.coerceAtLeast(0.01f)
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .graphicsLayer { alpha = ringAlpha }
+                            .drawWithContent {
+                                drawBridgeProgressRing(
+                                    cornerRadiusPx = compensatedRadius.dp.toPx(),
+                                    strokeWidthPx = strokeWidthDp.toPx(),
+                                    progress = bridgeState.progress,
+                                )
+                            },
+                    )
+                }
             }
         }
 

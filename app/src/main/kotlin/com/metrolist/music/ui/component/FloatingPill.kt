@@ -57,6 +57,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -136,6 +137,12 @@ private val NavRowHeight = 56.dp
 val FloatingPillHeight = MiniPlayerHeight + NavRowHeight  // 64 + 56 = 120dp
 val FloatingPillBottomSpacing = 12.dp
 
+// Cover/ring geometry shared by PillPlayButton's clip+border and PillProgressDrawCache's traced
+// outline — kept as one constant so the progress ring always matches the cover's actual shape
+// (see IrideMp3Player.kt's bridge overlay, which mirrors this same radius for the expand/collapse
+// morph).
+internal val PillCoverRadius = 10.dp
+
 @Stable
 class PillProgressState(
     private val positionState: MutableLongState,
@@ -156,7 +163,7 @@ private class PillProgressDrawCache {
     private val pm = PathMeasure()
     private var total = 0f
     private var startOffset = 0f
-    private val shape = SquircleShape(radius = 14.dp, cornerSmoothing = 0.48f)
+    private val shape = SquircleShape(radius = PillCoverRadius, cornerSmoothing = 0.48f)
 
     fun draw(scope: DrawScope, progress: Float, primaryColor: Color, trackColor: Color, strokeWidth: Float) {
         val inset = with(scope) { 2.dp.toPx() }
@@ -170,7 +177,7 @@ private class PillProgressDrawCache {
             when (outline) {
                 is Outline.Generic -> trackPath.addPath(outline.path, Offset(inset, inset))
                 else -> {
-                    val r = with(scope) { 14.dp.toPx() }
+                    val r = with(scope) { PillCoverRadius.toPx() }
                     trackPath.addRoundRect(RoundRect(inset, inset, scope.size.width - inset, scope.size.height - inset, r, r))
                 }
             }
@@ -530,6 +537,10 @@ fun PillPlayerRow(
     // Same idea as [onArtPositioned] but for the title/artist block — lets the bridge overlay morph
     // the text (and cross-fade its font) between this collapsed position and the expanded player's.
     onInfoPositioned: ((Rect) -> Unit)? = null,
+    // New Iride UI bridge: reports the live playback fraction every frame so the bridge overlay's
+    // own progress ring (drawn on the moving cover, see IrideMiniPlayerBridgeOverlay) starts in
+    // sync with this row's ring instead of snapping to 0 the instant the expand begins.
+    onProgressChanged: ((Float) -> Unit)? = null,
 ) {
     // Non-null only when the caller is the New Iride UI's curtain peek row (see the doc comment
     // above) — used to switch to the sharp icon set that matches the expanded player's wheel,
@@ -547,22 +558,28 @@ fun PillPlayerRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
+                .padding(
+                    horizontal = if (isIrideStyle) 16.dp else 6.dp,
+                    vertical = if (isIrideStyle) 6.dp else 8.dp,
+                ),
         ) {
             PillPlayButton(
                 progressState = progressState,
                 mediaMetadata = displayMetadata,
                 primaryColor = primaryColor,
                 outlineColor = outlineColor,
+                isIrideStyle = isIrideStyle,
                 onArtPositioned = onArtPositioned,
+                onProgressChanged = onProgressChanged,
             )
 
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(12.dp))
 
             PillSongInfo(
                 mediaMetadata = displayMetadata,
                 onSurfaceColor = onSurfaceColor,
                 errorColor = errorColor,
+                isIrideStyle = isIrideStyle,
                 onInfoPositioned = onInfoPositioned,
                 modifier = Modifier.weight(1f),
             )
@@ -702,26 +719,42 @@ private fun PillPlayButton(
     mediaMetadata: MediaMetadata,
     primaryColor: Color,
     outlineColor: Color,
+    isIrideStyle: Boolean = false,
     onArtPositioned: ((Rect) -> Unit)? = null,
+    onProgressChanged: ((Float) -> Unit)? = null,
 ) {
     val trackColor = outlineColor.copy(alpha = 0.2f)
-    val strokeWidth = 3.dp
+    val strokeWidth = 2.5.dp
     val pillDrawCache = remember { PillProgressDrawCache() }
+    SideEffect { onProgressChanged?.invoke(progressState.progress) }
+    val outerSize = if (isIrideStyle) 50.dp else 42.dp
+    val innerSize = if (isIrideStyle) 46.dp else 38.dp
 
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(48.dp)
-            .drawWithContent {
-                drawContent()
-                pillDrawCache.draw(this, progressState.progress, primaryColor, trackColor, strokeWidth.toPx())
-            },
+            .size(outerSize)
+            .then(
+                // New Iride UI curtain: the bridge overlay draws its own copy of this ring on the
+                // moving cover (see IrideMiniPlayerBridgeOverlay) — drawing it here too would double
+                // it up while the player is expanding/collapsing, so this static copy only owns the
+                // ring at rest (onArtPositioned == null means the classic FloatingPill, which has no
+                // bridge overlay and always owns its own ring).
+                if (onArtPositioned == null) {
+                    Modifier.drawWithContent {
+                        drawContent()
+                        pillDrawCache.draw(this, progressState.progress, primaryColor, trackColor, strokeWidth.toPx())
+                    }
+                } else {
+                    Modifier
+                },
+            ),
     ) {
-        val imageShape = SquircleShape(radius = 14.dp, cornerSmoothing = 0.48f)
+        val imageShape = SquircleShape(radius = PillCoverRadius, cornerSmoothing = 0.48f)
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(44.dp)
+                .size(innerSize)
                 .then(
                     if (onArtPositioned != null) {
                         Modifier.irideReportRect(onArtPositioned).alpha(0f)
@@ -748,6 +781,7 @@ private fun PillSongInfo(
     mediaMetadata: MediaMetadata,
     onSurfaceColor: Color,
     errorColor: Color,
+    isIrideStyle: Boolean = false,
     modifier: Modifier = Modifier,
     onInfoPositioned: ((Rect) -> Unit)? = null,
 ) {
@@ -767,8 +801,8 @@ private fun PillSongInfo(
         Text(
             text = mediaMetadata.title,
             color = onSurfaceColor,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
+            fontSize = if (isIrideStyle) 20.sp else 14.sp,
+            fontWeight = if (isIrideStyle) FontWeight.SemiBold else FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Clip,
             modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
@@ -777,7 +811,7 @@ private fun PillSongInfo(
             Text(
                 text = mediaMetadata.artists.joinToString { it.name },
                 color = onSurfaceColor.copy(alpha = 0.7f),
-                fontSize = 12.sp,
+                fontSize = if (isIrideStyle) 16.sp else 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
                 modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),

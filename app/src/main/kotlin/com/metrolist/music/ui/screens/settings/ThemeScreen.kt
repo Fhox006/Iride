@@ -1,4 +1,5 @@
 package com.metrolist.music.ui.screens.settings
+import com.metrolist.music.ui.component.IrideSwitch
 
 import android.app.Activity
 import android.content.Intent
@@ -97,7 +98,6 @@ import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.PureBlackMiniPlayerKey
 import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.constants.IrideAnimationsKey
-import com.metrolist.music.constants.PlayerAutoHideTopPanelKey
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.constants.CompactTopNavigationBarKey
 import com.metrolist.music.ui.component.Material3SettingsGroup
@@ -954,17 +954,8 @@ private fun IrideThemeControls(
             checked = irideAnimations,
             onCheckedChange = onIrideAnimationsChange
         )
-        HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
-        // Read here rather than threaded down for the same reason as irideAnimations above: only
-        // this row and the curtain player itself (MainActivity) need it.
-        val (autoHideTopPanel, onAutoHideTopPanelChange) =
-            rememberPreference(PlayerAutoHideTopPanelKey, defaultValue = true)
-        IrideThemeToggleRow(
-            title = stringResource(R.string.player_auto_hide_top_panel),
-            description = stringResource(R.string.player_auto_hide_top_panel_desc),
-            checked = autoHideTopPanel,
-            onCheckedChange = onAutoHideTopPanelChange
-        )
+        // Auto-hide return panel row removed from UI (still defaults ON via PlayerAutoHideTopPanelKey,
+        // read directly by the curtain player in MainActivity — no settings control anymore).
         HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
         IrideThemeToggleRow(
             title = stringResource(R.string.main_top_gradient),
@@ -983,75 +974,16 @@ private fun IrideThemeControls(
 
     Spacer(modifier = Modifier.height(24.dp))
 
-    // ── Mode circles / palette / system toggles ───────────────────────────
+    // ── Palette / system toggles ───────────────────────────────────────────
+    // Theme Mode circle picker, Dynamic Icon and Dynamic Theme rows are hidden per settings
+    // cleanup — dark/pure-black mode still applies via its stored default, only the picker UI
+    // is gone. Only High Refresh Rate stays visible below.
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            IrideThemeSectionTitle(stringResource(R.string.theme_mode))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ModeCircle(
-                    darkMode = darkMode,
-                    pureBlack = pureBlack,
-                    targetMode = DarkMode.AUTO,
-                    targetPureBlack = pureBlack,
-                    onClick = { onDarkModeChange(DarkMode.AUTO) },
-                    showIcon = true
-                )
-
-                Box(
-                    modifier = Modifier
-                        .width(1.dp)
-                        .height(32.dp)
-                        .background(Color.White.copy(alpha = 0.15f))
-                )
-
-                ModeCircle(
-                    darkMode = darkMode,
-                    pureBlack = pureBlack,
-                    targetMode = DarkMode.OFF,
-                    targetPureBlack = false,
-                    onClick = {
-                        onDarkModeChange(DarkMode.OFF)
-                        onPureBlackChange(false)
-                    },
-                    showIcon = false
-                )
-
-                ModeCircle(
-                    darkMode = darkMode,
-                    pureBlack = pureBlack,
-                    targetMode = DarkMode.ON,
-                    targetPureBlack = false,
-                    onClick = {
-                        onDarkModeChange(DarkMode.ON)
-                        onPureBlackChange(false)
-                    },
-                    showIcon = false
-                )
-
-                ModeCircle(
-                    darkMode = darkMode,
-                    pureBlack = pureBlack,
-                    targetMode = DarkMode.ON,
-                    targetPureBlack = true,
-                    onClick = {
-                        onDarkModeChange(DarkMode.ON)
-                        onPureBlackChange(true)
-                    },
-                    showIcon = false
-                )
-            }
-        }
-
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             IrideThemeSectionTitle(stringResource(R.string.color_palette))
 
@@ -1084,24 +1016,10 @@ private fun IrideThemeControls(
             Spacer(modifier = Modifier.height(4.dp))
 
             IrideThemeToggleRow(
-                title = stringResource(R.string.enable_dynamic_icon),
-                checked = enableDynamicIcon,
-                onCheckedChange = onEnableDynamicIconChange
-            )
-            HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
-            IrideThemeToggleRow(
                 title = stringResource(R.string.enable_high_refresh_rate),
                 checked = enableHighRefreshRate,
                 onCheckedChange = onEnableHighRefreshRateChange
             )
-            if (!isUsingCustomColor) {
-                HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
-                IrideThemeToggleRow(
-                    title = stringResource(R.string.enable_dynamic_theme),
-                    checked = dynamicTheme,
-                    onCheckedChange = onDynamicThemeChange
-                )
-            }
         }
     }
 }
@@ -1154,13 +1072,9 @@ private fun IrideThemeToggleRow(
             }
         }
         Spacer(modifier = Modifier.width(8.dp))
-        Switch(
+        IrideSwitch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary
-            ),
             thumbContent = {
                 Icon(
                     painter = painterResource(if (checked) R.drawable.check else R.drawable.close),

@@ -41,6 +41,7 @@ import com.metrolist.music.utils.reportException
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
@@ -113,6 +114,18 @@ class App :
                         prefs[InnerTubeCookieKey]?.takeIf { it.isNotEmpty() }?.let { YouTube.cookie = it }
                         prefs[VisitorDataKey]?.takeIf { it.isNotEmpty() && it != "null" }?.let { YouTube.visitorData = it }
                     }
+                }
+        }
+
+        // Wi-Fi <-> mobile handovers don't always flip networkStatus's boolean (see comment on
+        // networkChanged), so they need their own eviction trigger. Debounced because a single
+        // handover fires onLost+onAvailable (and often a couple of onCapabilitiesChanged) within
+        // milliseconds of each other; evictAll() only needs to run once per transition.
+        applicationScope.launch(Dispatchers.IO) {
+            connectivityObserver.networkChanged
+                .debounce(300)
+                .collect {
+                    YouTube.evictConnections()
                 }
         }
     }

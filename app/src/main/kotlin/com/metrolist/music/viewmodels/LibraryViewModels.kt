@@ -199,20 +199,26 @@ constructor(
 
     val suggestedFollowArtists = combine(
         database.mostPlayedArtists(fromTimeStamp = 0L, limit = 50),
-        // Bookmarked-name lookup guards against a followed artist appearing here under a second,
-        // duplicate db row (a different YTM channel/browse id for the same real-world artist name)
-        // — filtering by id alone (bookmarkedAt on THIS row) misses that case.
+        // Bookmarked-name/channelId lookup guards against a followed artist appearing here under
+        // a second, duplicate db row (a different YTM channel/browse id for the same real-world
+        // artist) — filtering by id alone (bookmarkedAt on THIS row) misses that case. channelId
+        // is the stable YT identifier so it's checked first; name is a trimmed fallback for rows
+        // without one (e.g. privately-owned artists).
         database.artistsBookmarked(ArtistSortType.CREATE_DATE, true)
-            .map { bookmarked -> bookmarked.map { it.artist.name.lowercase() }.toSet() },
+            .map { bookmarked ->
+                bookmarked.map { it.artist.name.trim().lowercase() }.toSet() to
+                    bookmarked.mapNotNull { it.artist.channelId }.toSet()
+            },
         dismissedSuggestedFollowIds,
-    ) { played, bookmarkedNames, dismissed ->
+    ) { played, (bookmarkedNames, bookmarkedChannelIds), dismissed ->
         played.filter {
             it.artist.bookmarkedAt == null &&
                 !it.artist.isLocal &&
                 it.artist.isYouTubeArtist &&
                 it.songCount >= SUGGESTED_FOLLOW_MIN_PLAYS &&
                 it.id !in dismissed &&
-                it.artist.name.lowercase() !in bookmarkedNames
+                it.artist.channelId !in bookmarkedChannelIds &&
+                it.artist.name.trim().lowercase() !in bookmarkedNames
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 

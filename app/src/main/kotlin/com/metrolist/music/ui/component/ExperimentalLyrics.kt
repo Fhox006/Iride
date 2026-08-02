@@ -814,7 +814,10 @@ fun ExperimentalLyrics(
 
 
         AnimatedVisibility(
-            visible = effectivePillsVisible && !isFullScreen,
+            // Fullscreen hides the normal pills row (its own translate/collapse buttons live in
+            // FullScreenLyricsDialog's top row instead), but the selection-mode share action below
+            // must still surface there — otherwise long-press-to-share has no way to complete.
+            visible = effectivePillsVisible && (!isFullScreen || isSelectionModeActive),
             enter = slideInVertically { -it } + fadeIn(),
             exit = slideOutVertically { -it } + fadeOut(),
             modifier = Modifier
@@ -1033,11 +1036,11 @@ fun ExperimentalLyrics(
                                 velocityTracker.addPosition(down.uptimeMillis, down.position)
                                 verticalDrag(down.id) { change ->
                                     val dy = change.positionChange().y
+                                    // Scrolling the lyrics text always wins over the fullscreen dismiss
+                                    // gesture — closing already has a dedicated back press / collapse
+                                    // button, so it doesn't need to also steal this drag.
                                     if (dy < -8f) pillsVisible = false
-                                    else if (dy > 8f) {
-                                        pillsVisible = true
-                                        if (isFullScreen) onExitFullScreen()
-                                    }
+                                    else if (dy > 8f) pillsVisible = true
                                     userManualOffset = (userManualOffset + dy).coerceIn(safeMinOffset, safeMaxOffset)
                                     velocityTracker.addPosition(change.uptimeMillis, change.position)
                                     change.consume()

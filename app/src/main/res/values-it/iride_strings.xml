@@ -628,6 +628,8 @@
     <string name="credits_collaborators_section">Collaboratori</string>
     <string name="credits_license_name">Licenza GNU General Public License v3.0</string>
     <string name="credits_license_desc">Software gratuito e open source. Puoi usarlo, studiarlo, condividerlo e migliorarlo</string>
+    <string name="credits_donations">Donations</string>
+    <string name="credits_donations_desc">Sostieni il progetto su Ko-fi</string>
     <string name="credits_discord">Server Discord</string>
     <string name="credits_telegram">Canale Telegram</string>
     <string name="credits_website">Sito Web</string>
@@ -851,4 +853,11 @@
     <string name="comments_reply_count">%d risposte</string>
     <string name="enable_comments">Abilita commenti</string>
     <string name="enable_comments_desc">Mostra i commenti YouTube dei brani nel player (sperimentale, potrebbe non caricare sempre)</string>
+
+    <!-- Song menu redesign -->
+    <string name="add_note">Aggiungi nota</string>
+    <string name="note_title_placeholder">Titolo</string>
+    <string name="note_description_placeholder">Aggiungi una descrizione…</string>
+    <string name="view_ep">Mostra EP</string>
+    <string name="view_single">Mostra singolo</string>
 </resources>

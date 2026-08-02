@@ -72,6 +72,12 @@ data class SongEntity(
     val isCached: Boolean = false,
     @ColumnInfo(name = "starred", defaultValue = "0")
     val starred: Boolean = false,
+    @ColumnInfo(name = "noteTitle", defaultValue = "NULL")
+    val noteTitle: String? = null,
+    @ColumnInfo(name = "noteRating", defaultValue = "NULL")
+    val noteRating: Int? = null,
+    @ColumnInfo(name = "noteText", defaultValue = "NULL")
+    val noteText: String? = null,
 ) {
     fun localToggleLike() =
         copy(

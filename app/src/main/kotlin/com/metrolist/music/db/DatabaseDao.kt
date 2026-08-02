@@ -40,6 +40,10 @@ import com.metrolist.music.db.entities.FormatEntity
 import com.metrolist.music.db.entities.LyricsEntity
 import com.metrolist.music.db.entities.PlayCountEntity
 import com.metrolist.music.db.entities.Playlist
+import com.metrolist.music.db.entities.CategoryStats
+import com.metrolist.music.db.entities.PlaylistCategoryEntity
+import com.metrolist.music.db.entities.PlaylistCategorySongMap
+import com.metrolist.music.db.entities.PlaylistCategoryWithCount
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.db.entities.PlaylistSong
 import com.metrolist.music.db.entities.PlaylistSongMap
@@ -251,6 +255,53 @@ interface DatabaseDao {
     @Transaction
     @Query("SELECT * FROM playlist_song_map WHERE playlistId = :playlistId ORDER BY position")
     fun playlistSongs(playlistId: String): Flow<List<PlaylistSong>>
+
+    @Transaction
+    @Query(
+        """
+        SELECT playlist_category.*, COUNT(playlist_category_song_map.songId) AS songCount
+        FROM playlist_category
+        LEFT JOIN playlist_category_song_map ON playlist_category.id = playlist_category_song_map.categoryId
+        WHERE playlist_category.playlistId = :playlistId
+        GROUP BY playlist_category.id
+        ORDER BY playlist_category.position
+        """,
+    )
+    fun categoriesForPlaylist(playlistId: String): Flow<List<PlaylistCategoryWithCount>>
+
+    @Transaction
+    @Query(
+        """
+        SELECT playlist_category_song_map.*
+        FROM playlist_category_song_map
+        JOIN playlist_category ON playlist_category.id = playlist_category_song_map.categoryId
+        WHERE playlist_category.playlistId = :playlistId
+        """,
+    )
+    fun categorySongMapsForPlaylist(playlistId: String): Flow<List<PlaylistCategorySongMap>>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insert(category: PlaylistCategoryEntity)
+
+    @Update
+    fun update(category: PlaylistCategoryEntity)
+
+    @Delete
+    fun delete(category: PlaylistCategoryEntity)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insertCategorySongMaps(maps: List<PlaylistCategorySongMap>)
+
+    @Query("DELETE FROM playlist_category_song_map WHERE categoryId = :categoryId")
+    fun deleteCategorySongMaps(categoryId: String)
+
+    @Query("UPDATE playlist_category SET position = :position WHERE id = :categoryId")
+    fun updateCategoryPosition(categoryId: String, position: Int)
+
+    // No FK cascade on playlist_category (see its entity doc) — called explicitly when a real
+    // playlist is deleted. No-op for virtual auto-playlist ids, which are never deleted.
+    @Query("DELETE FROM playlist_category WHERE playlistId = :playlistId")
+    fun deleteCategoriesForPlaylist(playlistId: String)
 
     @Transaction
     @Query(
@@ -616,6 +667,31 @@ interface DatabaseDao {
         offset: Int = 0,
         toTimeStamp: Long? = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli(),
     ): Flow<List<Album>>
+
+    // Playlist categories double as the app's genre tags: songs are grouped by category
+    // name (case/whitespace-folded) so the same tag reused across different playlists
+    // (e.g. "Chill" in two playlists) counts as one genre in the stats breakdown.
+    @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
+    @Query(
+        """
+        SELECT MIN(pc.name) AS name,
+               MAX(pc.colorHex) AS colorHex,
+               COUNT(DISTINCT e.id) AS songCountListened,
+               SUM(e.playTime) AS timeListened
+        FROM event e
+        JOIN playlist_category_song_map map ON map.songId = e.songId
+        JOIN playlist_category pc ON pc.id = map.categoryId
+        WHERE e.timestamp > :fromTimeStamp AND e.timestamp <= :toTimeStamp
+        GROUP BY LOWER(TRIM(pc.name))
+        ORDER BY timeListened DESC
+        LIMIT :limit
+        """,
+    )
+    fun mostPlayedCategories(
+        fromTimeStamp: Long,
+        limit: Int = 8,
+        toTimeStamp: Long? = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli(),
+    ): Flow<List<CategoryStats>>
 
     @Query("SELECT SUM(playTime) FROM event WHERE timestamp >= :fromTimeStamp AND timestamp <= :toTimeStamp")
     fun getTotalPlayTimeInRange(fromTimeStamp: Long, toTimeStamp: Long): Flow<Long?>

@@ -214,6 +214,8 @@ configurations.configureEach {
 }
 
 dependencies {
+    testImplementation(libs.junit)
+
     implementation(libs.guava)
     implementation(libs.coroutines.guava)
     implementation(libs.concurrent.futures)

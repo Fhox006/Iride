@@ -80,6 +80,7 @@ import androidx.compose.ui.text.TextStyle
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -1114,7 +1115,6 @@ fun ArtistScreen(
                                             isActive = mediaMetadata?.album?.id == album.id,
                                             isPlaying = isPlaying,
                                             coroutineScope = coroutineScope,
-                                            showPlayButton = false,
                                             size = 180.dp,
                                             modifier =
                                                 Modifier
@@ -1421,7 +1421,6 @@ fun ArtistScreen(
                                                         isActive = mediaMetadata?.album?.id == album.id,
                                                         isPlaying = isPlaying,
                                                         coroutineScope = coroutineScope,
-                                                        showPlayButton = false,
                                                         size = 270.dp,
                                                         thumbnailShape = RoundedCornerShape(270.dp * 0.06f),
                                                         modifier = Modifier
@@ -1451,7 +1450,6 @@ fun ArtistScreen(
                                         val isAlbumSection = section.title.contains("Album", ignoreCase = true)
                                         val isSingleEpSection = section.title.contains("Single", ignoreCase = true) ||
                                                 section.title.contains("EP", ignoreCase = true)
-                                        val hidePlayButton = isAlbumSection || isSingleEpSection
                                         val isVideoSection = section.title.contains("Video", ignoreCase = true) ||
                                                 section.title.contains("Performance", ignoreCase = true)
                                         val rowState = rememberLazyListState()
@@ -1490,7 +1488,6 @@ fun ArtistScreen(
                                                     coroutineScope = coroutineScope,
                                                     thumbnailRatio = if (isVideoSection) 16f / 9f else 1f,
                                                     thumbnailCornerRadius = if (isVideoSection) 8.dp else 3.dp,
-                                                    showPlayButton = !hidePlayButton,
                                                     showNewMarker = item is AlbumItem && item.id in unseenAlbumIds,
                                                     newMarkerLabel = when {
                                                         item !is AlbumItem || item.id !in unseenAlbumIds -> null
@@ -1706,7 +1703,7 @@ fun ArtistScreen(
                                             text = formattedSubscribers ?: subscriberCount,
                                             style = MaterialTheme.typography.bodyMedium,
                                             fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.primary,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.padding(bottom = 16.dp),
                                         )
                                     }
@@ -1754,7 +1751,8 @@ fun ArtistScreen(
                                             Text(
                                                 text = "Read more on Wikipedia",
                                                 style = MaterialTheme.typography.labelLarge,
-                                                color = MaterialTheme.colorScheme.primary,
+                                                color = MaterialTheme.colorScheme.onBackground,
+                                                textDecoration = TextDecoration.Underline,
                                                 modifier = Modifier
                                                     .padding(top = 12.dp)
                                                     .clickable { uriHandler.openUri(wikiLink) }

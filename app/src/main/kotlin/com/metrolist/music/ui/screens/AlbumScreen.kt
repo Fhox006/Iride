@@ -63,6 +63,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -198,13 +199,17 @@ import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.exp
 
-// Real 33⅓ RPM turntable feel for the cover-peeking disc: how far it slides out from behind the
-// cover, how much the cover itself steps aside to make room, how fast it spins, and how much
-// track time one full revolution represents while scratching (see the drag handler below).
+// Turntable feel for the cover-peeking disc: how far it slides out from behind the cover, how much
+// the cover itself steps aside to make room, how fast it spins, and how much track time one full
+// revolution represents while scratching (see the drag handler below). The two speeds are one
+// setting in two units and must stay in step — 360 / DegreesPerSecond has to equal
+// MsPerRevolution / 1000, otherwise a free-spinning disc and a dragged disc disagree about how
+// much music a turn is worth, which is exactly what makes a scratch feel fake. Half real 33⅓ RPM:
+// a literal 1.8s/turn read as frantic on a phone-sized disc.
 private const val AlbumDiscPeekFraction = 0.30f
 private const val AlbumCoverShiftFraction = 0.12f
-private const val AlbumDiscDegreesPerSecond = 200f
-private const val AlbumDiscMsPerRevolution = 1800L
+private const val AlbumDiscDegreesPerSecond = 100f
+private const val AlbumDiscMsPerRevolution = 3600L
 private const val AlbumDiscFrictionPerSecond = 3.2f
 private const val AlbumDiscCoastSettleEpsilon = 0.02
 // Touch events can land only a few ms apart (batched input), and dividing a normal angle delta
@@ -212,9 +217,10 @@ private const val AlbumDiscCoastSettleEpsilon = 0.02
 // far off a single noisy sample can seed the release coast — without it, one bad sample right
 // before release could make the coast (and so the audio settling back to 1x) take seconds.
 private const val AlbumDiscMaxScratchVelocity = 12.0
-// >3x the processor's velocity time constant (25ms): enough margin for it to actually settle
-// near 1x before we hand back to real playback, short enough to not itself feel like a stall.
-private const val AlbumDiscAudioSettleMs = 120L
+// A finger resting on the platter reports no drag events at all, so silence for this long means
+// "held", not "still moving at the last speed I heard about" — without it the music kept running
+// under a stopped finger.
+private const val AlbumDiscHoldTimeoutMs = 70L
 // Slow, unhurried glide — the disc easing out from behind the cover is a small ceremony, not a
 // snap; EaseOutExpo's long soft landing reads as calm at this length where it'd read as sluggish
 // at the shared IrideMotion.Short/Medium durations used for on-screen movement elsewhere.
@@ -689,8 +695,14 @@ fun AlbumScreen(
                                 // spins, and the cover steps aside to make room for it.
                                 var discRotation by remember(albumWithSongs.album.id) { mutableFloatStateOf(0f) }
                                 var isScratchingDisc by remember(albumWithSongs.album.id) { mutableStateOf(false) }
-                                var wasSkipSilenceBeforeScratch by remember(albumWithSongs.album.id) { mutableStateOf(false) }
                                 val discOut = isThisAlbumPlaying || isScratchingDisc
+
+                                // Leaving the screen mid-gesture kills the coast coroutine with it, so the
+                                // platter would be left stopped or reversed and the music with it. The
+                                // engine's speed belongs to the engine, not to this composition.
+                                DisposableEffect(Unit) {
+                                    onDispose { playerConnection.service.scratchProcessor.setVelocity(1.0) }
+                                }
                                 val discRevealProgress by animateFloatAsState(
                                     targetValue = if (discOut) 1f else 0f,
                                     animationSpec = tween(AlbumDiscRevealMs, easing = IrideMotion.EaseOutExpo),
@@ -722,33 +734,16 @@ fun AlbumScreen(
                                             var lastEventUptimeMillis = 0L
                                             var lastVelocity = 1.0
                                             var coastJob: Job? = null
-                                            var audioSettleJob: Job? = null
+                                            var holdWatchJob: Job? = null
 
-                                            // Audio hand-back, decoupled from the visual coast below: the processor's own
-                                            // one-pole filter (tau ~25ms) reaches 1x in a couple hundred ms regardless of how
-                                            // fast the disc was spinning, so there's no reason to make the seek — and so real
-                                            // playback resuming — wait out the multi-second friction curve the wheel uses.
-                                            // Waiting on the slow curve was the "silence for a second before it's back to
-                                            // normal" complaint.
-                                            fun finishAudioScratch() {
-                                                val scratch = playerConnection.service.scratchProcessor
-                                                scratch.setVelocity(1.0)
-                                                audioSettleJob = coroutineScope.launch {
-                                                    delay(AlbumDiscAudioSettleMs)
-                                                    val offsetMs = scratch.endScratch()
-                                                    val player = playerConnection.player
-                                                    player.skipSilenceEnabled = wasSkipSilenceBeforeScratch
-                                                    if (offsetMs != 0L) {
-                                                        val newPosition = (player.currentPosition + offsetMs)
-                                                            .coerceIn(0L, player.duration.coerceAtLeast(0L))
-                                                        player.seekTo(newPosition)
-                                                    }
-                                                }
-                                            }
-
+                                            // Release is not a hand-back: the platter is the playback engine, so all that
+                                            // happens is the same friction curve the disc coasts on being fed to the engine
+                                            // as its speed until it reaches 1x. Nothing is confirmed, no position is
+                                            // recomputed, playback simply carries on from wherever the head ended up.
                                             fun startCoast() {
-                                                finishAudioScratch()
+                                                holdWatchJob?.cancel()
                                                 coastJob = coroutineScope.launch {
+                                                    val scratch = playerConnection.service.scratchProcessor
                                                     var velocity = lastVelocity
                                                     var lastFrame = withFrameNanos { it }
                                                     while (abs(velocity - 1.0) > AlbumDiscCoastSettleEpsilon) {
@@ -758,8 +753,10 @@ fun AlbumScreen(
                                                             velocity = 1.0 + (velocity - 1.0) * exp(-AlbumDiscFrictionPerSecond * dtSec)
                                                             val deltaDegrees = (velocity * dtSec * 1000.0 / AlbumDiscMsPerRevolution * 360f).toFloat()
                                                             discRotation = (discRotation + deltaDegrees + 360f) % 360f
+                                                            scratch.setVelocity(velocity)
                                                         }
                                                     }
+                                                    scratch.setVelocity(1.0)
                                                     isScratchingDisc = false
                                                 }
                                             }
@@ -768,16 +765,24 @@ fun AlbumScreen(
                                                 onDragStart = { startPosition ->
                                                     if (discRevealProgress < 0.4f) return@detectDragGestures
                                                     coastJob?.cancel()
-                                                    audioSettleJob?.cancel()
+                                                    holdWatchJob?.cancel()
                                                     center = Offset(size.width / 2f, size.height / 2f)
                                                     lastAngle = angleOfTouch(startPosition, center)
                                                     lastEventUptimeMillis = 0L
                                                     lastVelocity = 1.0
                                                     isScratchingDisc = true
-                                                    val player = playerConnection.player
-                                                    wasSkipSilenceBeforeScratch = player.skipSilenceEnabled
-                                                    player.skipSilenceEnabled = false
-                                                    playerConnection.service.scratchProcessor.beginScratch(player.currentPosition)
+                                                    // Touching the platter grabs it, like a hand landing on a record.
+                                                    playerConnection.service.scratchProcessor.setVelocity(0.0)
+                                                    holdWatchJob = coroutineScope.launch {
+                                                        while (true) {
+                                                            delay(AlbumDiscHoldTimeoutMs)
+                                                            val idleMs = android.os.SystemClock.uptimeMillis() - lastEventUptimeMillis
+                                                            if (lastEventUptimeMillis != 0L && idleMs >= AlbumDiscHoldTimeoutMs) {
+                                                                lastVelocity = 0.0
+                                                                playerConnection.service.scratchProcessor.setVelocity(0.0)
+                                                            }
+                                                        }
+                                                    }
                                                 },
                                                 onDrag = { change, _ ->
                                                     if (!isScratchingDisc) return@detectDragGestures

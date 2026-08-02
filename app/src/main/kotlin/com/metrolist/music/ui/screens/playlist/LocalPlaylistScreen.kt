@@ -17,7 +17,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +33,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -97,6 +100,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
@@ -153,6 +157,9 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.ActionPromptDialog
+import com.metrolist.music.ui.component.AddToCategorySheet
+import com.metrolist.music.ui.component.CategoryFilterState
+import com.metrolist.music.ui.component.CategoryPillsRow
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.DraggableScrollbar
 import com.metrolist.music.ui.component.EmptyPlaceholder
@@ -170,6 +177,7 @@ import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.rememberRubberBandPull
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.OverlayEditButton
+import com.metrolist.music.ui.component.SelectionIndicator
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.SongRowReorderButton
 import com.metrolist.music.ui.component.TextFieldDialog
@@ -319,6 +327,7 @@ fun LocalPlaylistScreen(
             }
         }
 
+    // Legacy-only: New Iride UI uses the persisted category system below instead.
     val genreFilter =
         rememberGenreFilter(
             remember(songs) {
@@ -326,6 +335,21 @@ fun LocalPlaylistScreen(
             },
             cacheKey = viewModel.playlistId,
         )
+
+    // Persisted, user-created playlist categories (New Iride UI). No skeleton/loading state on
+    // purpose — the Room Flow is subscribed eagerly from the ViewModel, so this is already
+    // populated (or genuinely empty) by the time this composes.
+    val categories by viewModel.categories.collectAsState()
+    val songCategoryIds by viewModel.songCategoryIds.collectAsState()
+    var selectedCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
+    val categoryFilter = CategoryFilterState(
+        categories = categories,
+        songCategoryIds = songCategoryIds,
+        selectedCategoryId = selectedCategoryId,
+        onSelect = { id -> selectedCategoryId = if (selectedCategoryId == id) null else id },
+    )
+    var showAddToCategorySheet by rememberSaveable { mutableStateOf(false) }
+    val addedToCategoryStr = stringResource(R.string.added_to_category)
 
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -619,7 +643,7 @@ fun LocalPlaylistScreen(
 
     val displayedSongs =
         (if (isSearching) filteredSongs else mutableSongs).filter {
-            genreFilter.matches(it.song.id)
+            if (topNavigationBarEnabled) categoryFilter.matches(it.song.id) else genreFilter.matches(it.song.id)
         }
 
     LaunchedEffect(displayedSongs) {
@@ -820,14 +844,21 @@ fun LocalPlaylistScreen(
                         }
                     }
 
-                    item(key = "genre_pills") {
-                        GenrePillsRow(
-                            state = genreFilter,
-                            modifier = Modifier
-                                .then(
-                                    if (topNavigationBarEnabled) Modifier.irideEnter(genrePillsProgress, 6.dp) else Modifier,
-                                ),
-                        )
+                    if (topNavigationBarEnabled) {
+                        item(key = "category_pills") {
+                            CategoryPillsRow(
+                                state = categoryFilter,
+                                onAddClick = { inSelectMode = true },
+                                modifier = Modifier.irideEnter(genrePillsProgress, 6.dp),
+                            )
+                        }
+                    } else {
+                        item(key = "genre_pills") {
+                            GenrePillsRow(
+                                state = genreFilter,
+                                modifier = Modifier,
+                            )
+                        }
                     }
                 }
             }
@@ -911,10 +942,17 @@ fun LocalPlaylistScreen(
                             isPlaying = isPlaying,
                             trailingContent = {
                                 if (inSelectMode) {
-                                    Checkbox(
-                                        checked = selection.contains(song.map.id),
-                                        onCheckedChange = onCheckedChange,
-                                    )
+                                    if (topNavigationBarEnabled) {
+                                        SelectionIndicator(
+                                            selected = selection.contains(song.map.id),
+                                            onClick = { onCheckedChange(!selection.contains(song.map.id)) },
+                                        )
+                                    } else {
+                                        Checkbox(
+                                            checked = selection.contains(song.map.id),
+                                            onCheckedChange = onCheckedChange,
+                                        )
+                                    }
                                 } else {
                                     val reordering = sortType == PlaylistSongSortType.CUSTOM && !locked &&
                                         !inSelectMode && !isSearching && editable
@@ -959,6 +997,17 @@ fun LocalPlaylistScreen(
                                                 inSelectMode = true
                                                 onCheckedChange(true)
                                                 selectionAnchorMapId = song.map.id
+                                            } else if (topNavigationBarEnabled && selection.contains(song.map.id)) {
+                                                // Long-press on an already-selected song is the
+                                                // select-all/deselect-all gesture that replaced the
+                                                // removed top bar checkbox (New Iride UI only).
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                if (selection.size == displayedSongs.size) {
+                                                    selection.clear()
+                                                } else {
+                                                    selection.clear()
+                                                    selection.addAll(displayedSongs.map { it.map.id })
+                                                }
                                             } else {
                                                 val anchorIndex =
                                                     selectionAnchorMapId?.let { anchorMapId ->
@@ -1098,7 +1147,41 @@ fun LocalPlaylistScreen(
             }
         }
         val topBarActions: @Composable RowScope.() -> Unit = {
-            if (inSelectMode) {
+            if (inSelectMode && topNavigationBarEnabled) {
+                // Single action replaces "select all" (now a long-press gesture, see the song row's
+                // onLongClick) and the ⋯ overflow menu.
+                val addToCategoryEnabled = selection.isNotEmpty()
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            enabled = addToCategoryEnabled,
+                            role = Role.Button,
+                        ) { showAddToCategorySheet = true }
+                        .padding(horizontal = 12.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.add),
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = if (addToCategoryEnabled) 0.9f else 0.3f),
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.add_to_category),
+                        style = TextStyle(
+                            fontFamily = SpaceMonoFontFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp,
+                        ),
+                        color = Color.White.copy(alpha = if (addToCategoryEnabled) 0.9f else 0.3f),
+                        maxLines = 1,
+                    )
+                }
+            } else if (inSelectMode) {
                 Checkbox(
                     checked = selection.size == songs.size && selection.isNotEmpty(),
                     onCheckedChange = {
@@ -1246,8 +1329,8 @@ fun LocalPlaylistScreen(
                     },
                     style = TextStyle(
                         fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
+                        fontWeight = if (inSelectMode) FontWeight.SemiBold else FontWeight.Bold,
+                        fontSize = if (inSelectMode) 14.sp else 18.sp,
                         letterSpacing = (-0.1).sp,
                     ),
                     color = MaterialTheme.colorScheme.onBackground,
@@ -1298,6 +1381,22 @@ fun LocalPlaylistScreen(
                     .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime))
                     .align(Alignment.BottomCenter),
         )
+
+        if (topNavigationBarEnabled) {
+            AddToCategorySheet(
+                isVisible = showAddToCategorySheet,
+                onDismissRequest = { showAddToCategorySheet = false },
+                categories = categories,
+                onCreateCategory = { name, colorHex -> viewModel.createCategory(name, colorHex).id },
+                onConfirm = { categoryIds ->
+                    val songIds = selection.mapNotNull { mapId -> songs.find { it.map.id == mapId }?.song?.id }
+                    viewModel.addSongsToCategories(songIds, categoryIds)
+                    showAddToCategorySheet = false
+                    onExitSelectionMode()
+                    coroutineScope.launch { snackbarHostState.showSnackbar(addedToCategoryStr) }
+                },
+            )
+        }
     }
 }
 

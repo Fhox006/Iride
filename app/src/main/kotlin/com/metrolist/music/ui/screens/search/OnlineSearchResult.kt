@@ -498,7 +498,6 @@ fun OnlineSearchResultsBody(
                     coroutineScope = coroutineScope,
                     thumbnailRatio = if (isVideo) 16f / 9f else 1f,
                     thumbnailCornerRadius = if (isVideo) 8.dp else 3.dp,
-                    showPlayButton = rowItem is SongItem,
                     size = when {
                         isAlbum -> 180.dp
                         isVideo -> 110.dp
@@ -582,7 +581,6 @@ fun OnlineSearchResultsBody(
                         coroutineScope = coroutineScope,
                         thumbnailRatio = 1f,
                         thumbnailCornerRadius = 6.dp,
-                        showPlayButton = false,
                         fillMaxWidth = true,
                         modifier = Modifier
                             .weight(1f)

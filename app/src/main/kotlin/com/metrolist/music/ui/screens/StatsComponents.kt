@@ -5,8 +5,10 @@
 
 package com.metrolist.music.ui.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -36,13 +38,23 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.AlbumEntity
 import com.metrolist.music.db.entities.ArtistEntity
+import com.metrolist.music.db.entities.CategoryStats
 import com.metrolist.music.db.entities.SongEntity
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import com.metrolist.music.ui.component.parseCategoryColor
+import com.metrolist.music.utils.makeReadableTimeString
 import com.metrolist.music.utils.rememberPreference
 import kotlin.math.min
 import kotlin.math.pow
@@ -614,5 +626,124 @@ fun StatItem(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
         )
+    }
+}
+
+// Validated dark-mode categorical palette (fixed hue order, CVD-checked) — assigned in rank
+// order to categories that were never given their own color in AddToCategorySheet.
+private val GenreChartPalette = listOf(
+    Color(0xFF3987E5), // blue
+    Color(0xFFD95926), // orange
+    Color(0xFF199E70), // aqua
+    Color(0xFFC98500), // yellow
+    Color(0xFFD55181), // magenta
+    Color(0xFF008300), // green
+    Color(0xFF9085E9), // violet
+    Color(0xFFE66767), // red
+)
+
+/**
+ * Ring chart + legend breakdown of listening time by playlist category ("genre" tag).
+ * A category keeps the color it was given in AddToCategorySheet/CategoryPills so it reads
+ * the same everywhere; uncolored ones fall back to [GenreChartPalette] in rank order.
+ */
+@Composable
+fun TopGenresSection(categories: List<CategoryStats>) {
+    if (categories.isEmpty()) return
+
+    val totalTime = categories.sumOf { it.timeListened ?: 0L }.coerceAtLeast(1L)
+    val slices = remember(categories) {
+        categories.mapIndexed { index, stat ->
+            val color = parseCategoryColor(stat.colorHex) ?: GenreChartPalette[index % GenreChartPalette.size]
+            val fraction = (stat.timeListened ?: 0L).toFloat() / totalTime.toFloat()
+            Triple(stat, color, fraction)
+        }
+    }
+    val ringDescription = slices.joinToString(", ") { (stat, _, fraction) ->
+        "${stat.name} ${(fraction * 100).toInt()}%"
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        val density = LocalDensity.current
+        val strokeWidth = 14.dp
+        val gapDegrees = if (slices.size > 1) 3f else 0f
+
+        Box(
+            modifier = Modifier
+                .size(132.dp)
+                .semantics { contentDescription = ringDescription },
+            contentAlignment = Alignment.Center,
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val strokePx = with(density) { strokeWidth.toPx() }
+                val diameter = size.minDimension - strokePx
+                val topLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
+                val arcSize = Size(diameter, diameter)
+                var startAngle = -90f
+                slices.forEach { (_, color, fraction) ->
+                    val sweep = (fraction * 360f - gapDegrees).coerceAtLeast(0f)
+                    drawArc(
+                        color = color,
+                        startAngle = startAngle,
+                        sweepAngle = sweep,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = strokePx, cap = StrokeCap.Round),
+                    )
+                    startAngle += fraction * 360f
+                }
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = makeReadableTimeString(totalTime),
+                    style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp),
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    text = stringResource(R.string.top_genres).uppercase(),
+                    style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 9.sp, letterSpacing = 0.5.sp),
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(20.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            slices.take(6).forEach { (stat, color, fraction) ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 5.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(9.dp)
+                            .clip(CircleShape)
+                            .background(color),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stat.name,
+                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
+                        color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "${(fraction * 100).toInt()}%",
+                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                    )
+                }
+            }
+        }
     }
 }

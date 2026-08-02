@@ -289,6 +289,12 @@ fun BottomSheetPlayer(
         mutableStateOf(0)
     }
 
+    // Bumped by the New Iride UI wheel's Radio button: tells the (opened) UP NEXT panel to
+    // jump straight into Auto-Mix instead of restarting playback.
+    var radioNonce by rememberSaveable {
+        mutableStateOf(0)
+    }
+
     var showComments by rememberSaveable {
         mutableStateOf(false)
     }
@@ -832,15 +838,27 @@ fun BottomSheetPlayer(
         mutableStateOf(false)
     }
 
+    // The engine's clock counts frames handed to the speaker, which is only the same thing as
+    // track time while the turntable head runs at 1x. Adding the head's running drift is what
+    // makes the cursor track a scratch live — forwards, backwards, and staying put when the disc
+    // is held — with nothing to reconcile once the finger lifts.
+    fun heardPosition(): Long {
+        val drift = playerConnection.service.scratchProcessor.driftMs
+        return (playerConnection.player.currentPosition + drift)
+            .coerceIn(0L, playerConnection.player.duration.coerceAtLeast(0L))
+    }
+
     // Position update - only for local playback
     // When casting, we use castPosition directly to avoid sync issues
     // Use isPlaying instead of playbackState to ensure continuous updates during playback
     LaunchedEffect(effectiveIsPlaying, isCasting) {
         if (!isCasting && effectiveIsPlaying) {
             while (isActive) {
-                delay(100) // Update more frequently for smoother progress bar
+                // A scratch moves the cursor far faster than playback does, so the poll has to be
+                // frame-ish or the progress bar staircases behind the disc.
+                delay(32)
                 if (sliderPosition == null) { // Only update if user isn't dragging
-                    position = playerConnection.player.currentPosition
+                    position = heardPosition()
                     duration = playerConnection.player.duration
                 }
             }
@@ -850,7 +868,7 @@ fun BottomSheetPlayer(
     // Also update position when playback state changes (e.g., song change, seek)
     LaunchedEffect(playbackState, mediaMetadata?.id) {
         if (!isCasting) {
-            position = playerConnection.player.currentPosition
+            position = heardPosition()
             duration = playerConnection.player.duration
         }
     }
@@ -1121,6 +1139,7 @@ fun BottomSheetPlayer(
                             onExpandClick = { if (currentMetadata != null) state.expandSoft() },
                             onArtPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniArt = r } },
                             onInfoPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniInfo = r } },
+                            onProgressChanged = bridgeState?.let { bs -> { p: Float -> bs.progress = p } },
                         )
                         }
                     }
@@ -2186,7 +2205,15 @@ fun BottomSheetPlayer(
                         onPreviousClick = { if (!isListenTogetherGuest) playerConnection.seekToPrevious() },
                         onNextClick = { if (!isListenTogetherGuest) playerConnection.seekToNext() },
                         onFavoriteClick = { playerConnection.service.toggleLike() },
-                        onRadioClick = { playerConnection.startRadioForSong(it) },
+                        onRadioClick = {
+                            // Radio is a shortcut into Auto-Mix, not a full queue replace: it
+                            // must never restart playback or touch Continue Listening/NOW.
+                            showQueue = true
+                            showInlineLyrics = false
+                            showComments = false
+                            radioNonce++
+                        },
+                        radioTrigger = radioNonce,
                         isListenTogetherGuest = isListenTogetherGuest,
                         isMuted = isMuted,
                         onSeek = { fraction ->

@@ -29,6 +29,8 @@ import com.metrolist.music.db.entities.Event
 import com.metrolist.music.db.entities.FormatEntity
 import com.metrolist.music.db.entities.LyricsEntity
 import com.metrolist.music.db.entities.PlayCountEntity
+import com.metrolist.music.db.entities.PlaylistCategoryEntity
+import com.metrolist.music.db.entities.PlaylistCategorySongMap
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.db.entities.PlaylistSongMap
 import com.metrolist.music.db.entities.PlaylistSongMapPreview
@@ -109,13 +111,15 @@ class MusicDatabase(
         RecognitionHistory::class,
         SpeedDialItem::class,
         PodcastEntity::class,
+        PlaylistCategoryEntity::class,
+        PlaylistCategorySongMap::class,
     ],
     views = [
         SortedSongArtistMap::class,
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = 42,
+    version = 45,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 2, to = 3),
@@ -158,6 +162,8 @@ class MusicDatabase(
         AutoMigration(from = 39, to = 40),
         AutoMigration(from = 40, to = 41),
         AutoMigration(from = 41, to = 42, spec = Migration41To42::class),
+        AutoMigration(from = 42, to = 43),
+        AutoMigration(from = 44, to = 45),
     ],
 )
 @TypeConverters(Converters::class)
@@ -168,40 +174,41 @@ abstract class InternalDatabase : RoomDatabase() {
     companion object {
         const val DB_NAME = "song.db"
 
+        fun buildInternal(context: Context): InternalDatabase =
+            Room
+                .databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
+                .addMigrations(
+                    MIGRATION_1_2,
+                    MIGRATION_21_24,
+                    MIGRATION_22_24,
+                    MIGRATION_24_25,
+                    MIGRATION_43_44,
+                ).fallbackToDestructiveMigration(dropAllTables = true)
+                .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+                .setTransactionExecutor(
+                    java.util.concurrent.Executors
+                        .newFixedThreadPool(4),
+                ).setQueryExecutor(
+                    java.util.concurrent.Executors
+                        .newFixedThreadPool(4),
+                ).addCallback(
+                    object : RoomDatabase.Callback() {
+                        override fun onOpen(db: SupportSQLiteDatabase) {
+                            super.onOpen(db)
+                            try {
+                                db.query("PRAGMA busy_timeout = 60000").close()
+                                db.query("PRAGMA cache_size = -16000").close()
+                                db.query("PRAGMA wal_autocheckpoint = 1000").close()
+                                db.query("PRAGMA synchronous = NORMAL").close()
+                            } catch (e: Exception) {
+                                Timber.tag("MusicDatabase").e(e, "Failed to set PRAGMA settings")
+                            }
+                        }
+                    },
+                ).build()
+
         fun newInstance(context: Context): MusicDatabase =
-            MusicDatabase(
-                delegate =
-                    Room
-                        .databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
-                        .addMigrations(
-                            MIGRATION_1_2,
-                            MIGRATION_21_24,
-                            MIGRATION_22_24,
-                            MIGRATION_24_25,
-                        ).fallbackToDestructiveMigration(dropAllTables = true)
-                        .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-                        .setTransactionExecutor(
-                            java.util.concurrent.Executors
-                                .newFixedThreadPool(4),
-                        ).setQueryExecutor(
-                            java.util.concurrent.Executors
-                                .newFixedThreadPool(4),
-                        ).addCallback(
-                            object : RoomDatabase.Callback() {
-                                override fun onOpen(db: SupportSQLiteDatabase) {
-                                    super.onOpen(db)
-                                    try {
-                                        db.query("PRAGMA busy_timeout = 60000").close()
-                                        db.query("PRAGMA cache_size = -16000").close()
-                                        db.query("PRAGMA wal_autocheckpoint = 1000").close()
-                                        db.query("PRAGMA synchronous = NORMAL").close()
-                                    } catch (e: Exception) {
-                                        Timber.tag("MusicDatabase").e(e, "Failed to set PRAGMA settings")
-                                    }
-                                }
-                            },
-                        ).build(),
-            )
+            MusicDatabase(delegate = buildInternal(context))
     }
 }
 
@@ -696,6 +703,37 @@ val MIGRATION_24_25 =
                 // Add the column allowing NULL values (since existing rows won't have this data)
                 db.execSQL("ALTER TABLE format ADD COLUMN perceptualLoudnessDb REAL DEFAULT NULL")
             }
+        }
+    }
+
+// SQLite has no ALTER TABLE ... DROP CONSTRAINT, so dropping playlist_category's FK to
+// PlaylistEntity (see its entity doc) needs a full recreate, which plain AutoMigration doesn't
+// generate reliably — hence a manual Migration instead of AutoMigration(43, 44).
+val MIGRATION_43_44 =
+    object : Migration(43, 44) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS playlist_category_new (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    playlistId TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    colorHex TEXT,
+                    position INTEGER NOT NULL,
+                    isAuto INTEGER NOT NULL,
+                    createdAt INTEGER
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO playlist_category_new (id, playlistId, name, colorHex, position, isAuto, createdAt)
+                SELECT id, playlistId, name, colorHex, position, 0, createdAt FROM playlist_category
+                """.trimIndent(),
+            )
+            db.execSQL("DROP TABLE playlist_category")
+            db.execSQL("ALTER TABLE playlist_category_new RENAME TO playlist_category")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_playlist_category_playlistId ON playlist_category (playlistId)")
         }
     }
 
