@@ -1,3 +1,22 @@
+## 0.1.0-alpha22
+
+### New features
+
+- **Notes on songs and albums**: attach a title, star rating (half-star precision) and free-text thoughts to any song or album, from the redesigned song/album menu
+- **Playlist categories**: replaced the old genre filter pills with real, persisted, user-created categories you can assign playlists to
+- **Turntable needle-drop sound**: pressing PLAY on an album now plays a small procedural "needle drop" sound effect (thunk + crackle-pops), matching the New Iride UI vinyl look
+- **Discover Weekly-style mix**: new generated discovery playlist pulling from your library and listening history
+- **In-app video playback**: watch the official YouTube video for a track directly in the app instead of leaving to YouTube
+- **Ko-fi / donations**: donations entry in Settings now has a small heart bounce animation to draw the eye — support the project if you'd like
+
+### Improvements
+
+- Player Appearance settings decluttered: removed dead/duplicate mini-player and slider style options, keeping one clear background style control
+- Consistent entrance motion (IrideMotion) extended to Library Artists, Playlists, Songs and the Cached Playlist screen, matching Artist/Album/Home
+- Cached Playlist screen visual rework to match the rest of the New Iride UI
+- Auto-playlist custom manual-order feature removed after sync issues; manual playlist reordering is unaffected
+- Various search, stats and library screen refinements
+
 ## 0.1.0-alpha21
 
 ### Improvements
