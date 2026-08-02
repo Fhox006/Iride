@@ -82,8 +82,10 @@ import com.metrolist.music.constants.CONTENT_TYPE_HEADER
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
+import com.metrolist.music.constants.AlbumTopGradientKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.LibraryViewType
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.extensions.matchesNormalizedQuery
@@ -100,6 +102,7 @@ import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.currentGridThumbnailHeight
 import com.metrolist.music.ui.component.frostedTopBarBackground
 import com.metrolist.music.ui.component.recordFrostBackdrop
@@ -142,6 +145,11 @@ fun LibraryAlbumsScreen(
     val betterLibraryBeta by rememberPreference(com.metrolist.music.constants.BetterLibraryBetaKey, defaultValue = false)
     val (topNavigationBarEnabled) = rememberPreference(com.metrolist.music.constants.TopNavigationBarKey, defaultValue = true)
     val currentGridHeight = currentGridThumbnailHeight()
+    val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(
+        PlayerBackgroundStyleKey,
+        defaultValue = com.metrolist.music.constants.PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+    )
 
     LaunchedEffect(Unit) {
         if (ytmSync) {
@@ -317,7 +325,6 @@ fun LibraryAlbumsScreen(
                         .fillMaxWidth()
                         .onGloballyPositioned { titleBottomPx = it.boundsInWindow().bottom },
                 )
-                Spacer(modifier = Modifier.height(12.dp))
             }
         }
 
@@ -334,6 +341,12 @@ fun LibraryAlbumsScreen(
                 .recordFrostBackdrop(frostBackdrop)
                 .graphicsLayer { alpha = screenProgress },
         ) {
+            if (albumTopGradientEnabled) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
+                )
+            }
             CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
                 when (viewType) {
                     LibraryViewType.LIST -> {

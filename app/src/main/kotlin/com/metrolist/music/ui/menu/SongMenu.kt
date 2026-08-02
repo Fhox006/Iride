@@ -14,15 +14,18 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -30,6 +33,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -55,9 +60,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -67,17 +74,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -127,6 +140,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import sv.lib.squircleshape.SquircleShape
 import timber.log.Timber
 import java.time.LocalDateTime
 
@@ -900,44 +914,104 @@ fun SongMenu(
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                     var isEditingNote by rememberSaveable(song.id) { mutableStateOf(false) }
-                    val coverWeight by animateFloatAsState(
-                        targetValue = if (isEditingNote) 0.0001f else 0.48f,
-                        animationSpec = tween(280),
-                        label = "coverWeight",
-                    )
-                    val noteWeight by animateFloatAsState(
-                        targetValue = if (isEditingNote) 1f else 0.52f,
-                        animationSpec = tween(280),
-                        label = "noteWeight",
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        AnimatedVisibility(
-                            visible = !isEditingNote,
-                            enter = fadeIn(tween(280, delayMillis = 80)),
-                            exit = fadeOut(tween(160)),
-                            modifier = Modifier.weight(coverWeight),
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        val density = LocalDensity.current
+                        val textMeasurer = rememberTextMeasurer()
+                        val standardCoverFraction = 0.48f
+                        val minCoverFraction = standardCoverFraction * 0.6f
+                        val noteTitle = song.song.noteTitle.orEmpty()
+                        val totalWidthPx = with(density) { maxWidth.toPx() }
+                        val titleMeasureStyle =
+                            MaterialTheme.typography.bodyLarge.copy(
+                                fontFamily = SpaceMonoFontFamily,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        val coverFraction =
+                            remember(noteTitle, totalWidthPx, titleMeasureStyle) {
+                                if (noteTitle.isBlank() || totalWidthPx <= 0f) {
+                                    standardCoverFraction
+                                } else {
+                                    val titleWidthPx =
+                                        textMeasurer
+                                            .measure(
+                                                text = AnnotatedString(noteTitle),
+                                                style = titleMeasureStyle,
+                                                maxLines = 1,
+                                            ).size.width
+                                            .toFloat()
+                                    val spacingPx = with(density) { 14.dp.toPx() }
+                                    val innerPaddingPx = with(density) { 32.dp.toPx() }
+                                    var fraction = standardCoverFraction
+                                    while (fraction > minCoverFraction) {
+                                        val noteBoxWidthPx = totalWidthPx * (1f - fraction) - spacingPx - innerPaddingPx
+                                        if (titleWidthPx <= noteBoxWidthPx) break
+                                        fraction -= 0.04f
+                                    }
+                                    fraction.coerceAtLeast(minCoverFraction)
+                                }
+                            }
+                        val coverWeight by animateFloatAsState(
+                            targetValue = if (isEditingNote) 0.0001f else coverFraction,
+                            animationSpec = tween(280),
+                            label = "coverWeight",
+                        )
+                        val noteWeight by animateFloatAsState(
+                            targetValue = if (isEditingNote) 1f else (1f - coverFraction),
+                            animationSpec = tween(280),
+                            label = "noteWeight",
+                        )
+                        // Cover art is a square (aspectRatio 1f), so its height equals its
+                        // measured width. Computed explicitly (not via IntrinsicSize.Min) because
+                        // AddNoteBox contains a BoxWithConstraints, and intrinsic measurement
+                        // passes crash on SubcomposeLayout-based content.
+                        val spacingPx = with(density) { 14.dp.toPx() }
+                        val coverHeightDp =
+                            with(density) { ((totalWidthPx - spacingPx) * coverFraction).toDp() }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
                         ) {
-                            AsyncImage(
-                                model = song.thumbnailUrl,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
+                            AnimatedVisibility(
+                                visible = !isEditingNote,
+                                enter = fadeIn(tween(280, delayMillis = 80)),
+                                exit = fadeOut(tween(160)),
+                                modifier = Modifier.weight(coverWeight),
+                            ) {
+                                AsyncImage(
+                                    model = song.thumbnailUrl,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .aspectRatio(1f)
+                                            .clip(SquircleShape(radius = 8.dp, cornerSmoothing = 0.48f)),
+                                )
+                            }
+                            AddNoteBox(
+                                key = song.id,
+                                initialTitle = song.song.noteTitle.orEmpty(),
+                                initialRating = song.song.noteRating,
+                                initialText = song.song.noteText.orEmpty(),
+                                onPersist = { noteTitleValue, noteRatingValue, noteTextValue ->
+                                    database.query {
+                                        update(
+                                            song.song.copy(
+                                                noteTitle = noteTitleValue.trim().ifBlank { null },
+                                                noteRating = noteRatingValue,
+                                                noteText = noteTextValue.trim().ifBlank { null },
+                                            ),
+                                        )
+                                    }
+                                },
+                                isEditing = isEditingNote,
+                                onEditingChange = { isEditingNote = it },
                                 modifier =
                                     Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(1f)
-                                        .clip(RoundedCornerShape(8.dp)),
+                                        .weight(noteWeight)
+                                        .then(if (isEditingNote) Modifier else Modifier.height(coverHeightDp)),
                             )
                         }
-                        AddNoteBox(
-                            song = song,
-                            database = database,
-                            isEditing = isEditingNote,
-                            onEditingChange = { isEditingNote = it },
-                            modifier = Modifier.weight(noteWeight),
-                        )
                     }
                 }
             }
@@ -965,21 +1039,21 @@ fun SongMenu(
             }
 
             item {
-                ArtistAlbumSwitchRow(
-                    song = song,
-                    orderedArtists = orderedArtists,
-                    onArtistClick = viewArtistItem.onClick ?: {},
-                    onAlbumClick = viewAlbumItem.onClick ?: {},
+                ProminentActionRow(
+                    icon = R.drawable.playlist_add,
+                    label = stringResource(R.string.add_to_playlist),
+                    onClick = { showChoosePlaylistDialog = true },
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
             item { Spacer(modifier = Modifier.height(14.dp)) }
 
             item {
-                ProminentActionRow(
-                    icon = R.drawable.playlist_add,
-                    label = stringResource(R.string.add_to_playlist),
-                    onClick = { showChoosePlaylistDialog = true },
+                ArtistAlbumSwitchRow(
+                    song = song,
+                    orderedArtists = orderedArtists,
+                    onArtistClick = viewArtistItem.onClick ?: {},
+                    onAlbumClick = viewAlbumItem.onClick ?: {},
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
@@ -1217,7 +1291,7 @@ private fun NewIrideSongMenuHeader(
 }
 
 @Composable
-private fun StackedArtistAvatars(
+internal fun StackedArtistAvatars(
     artists: List<ArtistEntity>,
     modifier: Modifier = Modifier,
     size: Dp = 30.dp,
@@ -1253,18 +1327,19 @@ private fun StackedArtistAvatars(
 }
 
 @Composable
-private fun SwitchTile(
+internal fun SwitchTile(
     label: String,
     onClick: () -> Unit,
     leading: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val tileShape = SquircleShape(radius = 14.dp, cornerSmoothing = 0.48f)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
             modifier
-                .clip(RoundedCornerShape(14.dp))
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(14.dp))
+                .clip(tileShape)
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), tileShape)
                 .clickable(onClick = onClick)
                 .padding(horizontal = 10.dp, vertical = 10.dp),
     ) {
@@ -1319,7 +1394,7 @@ private fun ArtistAlbumSwitchRow(
                     AsyncImage(
                         model = song.thumbnailUrl,
                         contentDescription = null,
-                        modifier = Modifier.size(30.dp).clip(RoundedCornerShape(8.dp)),
+                        modifier = Modifier.size(30.dp).clip(SquircleShape(radius = 8.dp, cornerSmoothing = 0.48f)),
                     )
                 },
                 modifier = Modifier.weight(1f),
@@ -1340,7 +1415,7 @@ private fun ProminentActionRow(
         modifier =
             modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(SquircleShape(radius = 16.dp, cornerSmoothing = 0.48f))
                 .background(Color.White.copy(alpha = 0.1f))
                 .clickable(onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 16.dp),
@@ -1361,33 +1436,64 @@ private fun ProminentActionRow(
 }
 
 @Composable
-private fun NoteRatingStars(
-    rating: Int?,
+internal fun NoteRatingStars(
+    rating: Float?,
     modifier: Modifier = Modifier,
     interactive: Boolean = false,
-    onRatingChange: (Int) -> Unit = {},
+    onRatingChange: (Float) -> Unit = {},
 ) {
+    val iconSize = 16.dp
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
         for (star in 1..5) {
+            // Continuous 0f..1f fill per star from the raw rating, so half-stars (tap) and
+            // arbitrary decimals (typed, e.g. 4.6) render identically without a separate asset.
+            val fillFraction = ((rating ?: 0f) - (star - 1)).coerceIn(0f, 1f)
             Box(
                 contentAlignment = Alignment.Center,
                 modifier =
                     Modifier
-                        .size(if (interactive) 28.dp else 16.dp)
-                        .then(if (interactive) Modifier.clickable { onRatingChange(star) } else Modifier),
+                        .size(if (interactive) 28.dp else iconSize)
+                        .then(
+                            if (interactive) {
+                                Modifier.pointerInput(star) {
+                                    detectTapGestures { offset ->
+                                        val newRating = (star - 1) + if (offset.x < size.width / 2f) 0.5f else 1f
+                                        onRatingChange(newRating)
+                                    }
+                                }
+                            } else {
+                                Modifier
+                            },
+                        ),
             ) {
-                Icon(
-                    painter = painterResource(if ((rating ?: 0) >= star) R.drawable.favorite else R.drawable.favorite_border),
-                    contentDescription = null,
-                    tint = if ((rating ?: 0) >= star) Color.White else Color.White.copy(alpha = 0.25f),
-                    modifier = Modifier.size(16.dp),
-                )
+                // Fixed-size slot matching the icon exactly, so the fill mask below stays
+                // left-anchored regardless of the outer (tap-target) box size.
+                Box(modifier = Modifier.size(iconSize)) {
+                    Icon(
+                        painter = painterResource(R.drawable.favorite_border),
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.25f),
+                        modifier = Modifier.size(iconSize),
+                    )
+                    if (fillFraction > 0f) {
+                        Box(
+                            modifier = Modifier.fillMaxHeight().fillMaxWidth(fillFraction).clipToBounds(),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.favorite),
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(iconSize),
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-private val noteFieldColors: @Composable () -> androidx.compose.material3.TextFieldColors = {
+internal val noteFieldColors: @Composable () -> androidx.compose.material3.TextFieldColors = {
     TextFieldDefaults.colors(
         focusedContainerColor = Color.Transparent,
         unfocusedContainerColor = Color.Transparent,
@@ -1400,53 +1506,85 @@ private val noteFieldColors: @Composable () -> androidx.compose.material3.TextFi
 }
 
 @Composable
-private fun AddNoteBox(
-    song: Song,
-    database: MusicDatabase,
+internal fun AddNoteBox(
+    key: Any,
+    initialTitle: String,
+    initialRating: Float?,
+    initialText: String,
+    onPersist: (title: String, rating: Float?, text: String) -> Unit,
     isEditing: Boolean,
     onEditingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var title by remember(song.id) { mutableStateOf(song.song.noteTitle.orEmpty()) }
-    var rating by remember(song.id) { mutableStateOf(song.song.noteRating) }
-    var ratingText by remember(song.id) { mutableStateOf(song.song.noteRating?.toString().orEmpty()) }
-    var description by remember(song.id) { mutableStateOf(song.song.noteText.orEmpty()) }
+    var title by remember(key) { mutableStateOf(initialTitle) }
+    var rating by remember(key) { mutableStateOf(initialRating) }
+    var ratingText by remember(key) { mutableStateOf(initialRating?.toString().orEmpty()) }
+    var description by remember(key) { mutableStateOf(initialText) }
+
+    val titleMaxLength = 26
+    var titleFlashActive by remember(key) { mutableStateOf(false) }
+    var titleFlashToken by remember(key) { mutableIntStateOf(0) }
+    LaunchedEffect(titleFlashToken) {
+        if (titleFlashToken == 0) return@LaunchedEffect
+        titleFlashActive = true
+        delay(150)
+        titleFlashActive = false
+    }
+    val titleColor by animateColorAsState(
+        targetValue = if (titleFlashActive) Color.Red else Color.White,
+        animationSpec = tween(if (titleFlashActive) 60 else 300),
+        label = "titleFlashColor",
+    )
 
     // ponytail: writes on every keystroke (cheap local Room update, no debounce). Add a
     // debounce if this ever shows up as jank on a low-end device.
     fun persist() {
-        database.query {
-            update(
-                song.song.copy(
-                    noteTitle = title.trim().ifBlank { null },
-                    noteRating = rating,
-                    noteText = description.trim().ifBlank { null },
-                ),
-            )
-        }
+        onPersist(title, rating, description)
     }
 
     val isEmpty = title.isBlank() && rating == null && description.isBlank()
+    val centerEmptyState = isEmpty && !isEditing
 
+    val boxShape = SquircleShape(radius = 20.dp, cornerSmoothing = 0.48f)
     Column(
         modifier =
             modifier
-                .clip(RoundedCornerShape(20.dp))
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
+                .clip(boxShape)
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), boxShape)
                 .then(if (!isEditing) Modifier.clickable { onEditingChange(true) } else Modifier)
                 .animateContentSize()
                 .padding(16.dp),
+        verticalArrangement = if (centerEmptyState) Arrangement.Center else Arrangement.Top,
+        horizontalAlignment = if (centerEmptyState) Alignment.CenterHorizontally else Alignment.Start,
     ) {
         when {
             isEditing -> {
                 TextField(
                     value = title,
-                    onValueChange = { title = it; persist() },
+                    onValueChange = { input ->
+                        if (input.length <= titleMaxLength) {
+                            title = input
+                            persist()
+                        } else {
+                            title = input.take(titleMaxLength)
+                            persist()
+                            titleFlashToken++
+                        }
+                    },
                     placeholder = {
                         Text(stringResource(R.string.note_title_placeholder), color = Color.White.copy(alpha = 0.35f))
                     },
                     singleLine = true,
-                    colors = noteFieldColors(),
+                    colors =
+                        TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            cursorColor = Color.White,
+                            focusedTextColor = titleColor,
+                            unfocusedTextColor = titleColor,
+                        ),
                     textStyle =
                         MaterialTheme.typography.bodyLarge.copy(
                             fontFamily = SpaceMonoFontFamily,
@@ -1469,16 +1607,30 @@ private fun AddNoteBox(
                     BasicTextField(
                         value = ratingText,
                         onValueChange = { input ->
-                            val digits = input.filter { it.isDigit() }.take(1)
-                            ratingText = digits
-                            rating = digits.toIntOrNull()?.coerceIn(1, 5)
-                            persist()
+                            val filtered =
+                                buildString {
+                                    var dotUsed = false
+                                    for (c in input) {
+                                        when {
+                                            c.isDigit() -> append(c)
+                                            c == '.' && !dotUsed && isNotEmpty() -> {
+                                                append(c)
+                                                dotUsed = true
+                                            }
+                                        }
+                                    }
+                                }.take(4)
+                            ratingText = filtered
+                            filtered.toFloatOrNull()?.let {
+                                rating = it.coerceIn(0f, 5f)
+                                persist()
+                            }
                         },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White, fontFamily = SpaceMonoFontFamily),
                         cursorBrush = SolidColor(Color.White),
-                        modifier = Modifier.width(20.dp),
+                        modifier = Modifier.width(34.dp),
                     )
                     Text(
                         text = "/5",
@@ -1523,40 +1675,71 @@ private fun AddNoteBox(
                     text = stringResource(R.string.add_note),
                     style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
                     color = Color.White.copy(alpha = 0.5f),
+                    textAlign = TextAlign.Center,
                 )
             }
 
             else -> {
-                if (title.isNotBlank()) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                }
-                if (rating != null) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        NoteRatingStars(rating = rating)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "$rating/5",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.6f),
-                        )
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val density = LocalDensity.current
+                    val titleStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold)
+                    val descriptionStyle = MaterialTheme.typography.bodyMedium
+                    val availableHeightPx = with(density) { maxHeight.toPx() }
+                    val titleMaxLines = if (title.isNotBlank()) 2 else 0
+                    val titleBlockPx =
+                        if (title.isNotBlank()) {
+                            with(density) { titleStyle.lineHeight.toPx() * titleMaxLines + 6.dp.toPx() }
+                        } else {
+                            0f
+                        }
+                    val ratingBlockPx = if (rating != null) with(density) { 22.dp.toPx() } else 0f
+                    val descriptionMaxLines =
+                        with(density) {
+                            ((availableHeightPx - titleBlockPx - ratingBlockPx) / descriptionStyle.lineHeight.toPx())
+                                .toInt()
+                                .coerceAtLeast(1)
+                        }
+
+                    Column {
+                        if (title.isNotBlank()) {
+                            Text(
+                                text = title,
+                                style = titleStyle,
+                                color = Color.White,
+                                maxLines = titleMaxLines,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                        }
+                        val ratingValue = rating
+                        if (ratingValue != null) {
+                            val ratingLabel =
+                                if (ratingValue % 1f == 0f) {
+                                    "${ratingValue.toInt()}/5"
+                                } else {
+                                    "${String.format(java.util.Locale.US, "%.1f", ratingValue)}/5"
+                                }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                NoteRatingStars(rating = rating)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = ratingLabel,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.6f),
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                        }
+                        if (description.isNotBlank()) {
+                            Text(
+                                text = description,
+                                style = descriptionStyle,
+                                color = Color.White.copy(alpha = 0.7f),
+                                maxLines = descriptionMaxLines,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.height(6.dp))
-                }
-                if (description.isNotBlank()) {
-                    Text(
-                        text = description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.7f),
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                    )
                 }
             }
         }

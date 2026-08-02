@@ -855,7 +855,7 @@
     <string name="enable_comments_desc">Mostra i commenti YouTube dei brani nel player (sperimentale, potrebbe non caricare sempre)</string>
 
     <!-- Song menu redesign -->
-    <string name="add_note">Aggiungi nota</string>
+    <string name="add_note">Add notes, ratings or thoughts…</string>
     <string name="note_title_placeholder">Titolo</string>
     <string name="note_description_placeholder">Aggiungi una descrizione…</string>
     <string name="view_ep">Mostra EP</string>

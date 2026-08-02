@@ -75,7 +75,7 @@ data class SongEntity(
     @ColumnInfo(name = "noteTitle", defaultValue = "NULL")
     val noteTitle: String? = null,
     @ColumnInfo(name = "noteRating", defaultValue = "NULL")
-    val noteRating: Int? = null,
+    val noteRating: Float? = null,
     @ColumnInfo(name = "noteText", defaultValue = "NULL")
     val noteText: String? = null,
 ) {

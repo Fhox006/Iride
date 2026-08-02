@@ -10,6 +10,10 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -53,6 +57,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +66,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -71,10 +77,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.utils.IrideMotion
+import com.metrolist.music.ui.utils.rememberReducedMotion
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import kotlinx.coroutines.delay
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
@@ -534,7 +543,7 @@ fun SettingsScreen(
         Material3SettingsGroup(
             items = listOf(
                 Material3SettingsItem(
-                    icon = painterResource(R.drawable.favorite),
+                    leadingContent = { DonationIconBounce() },
                     title = { Text(stringResource(R.string.credits_donations)) },
                     description = { Text(stringResource(R.string.credits_donations_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = {
@@ -560,4 +569,30 @@ fun SettingsScreen(
     }
     }
     }
+}
+
+/** One-shot on mount: heart pops yellow with a small bounce, then settles back to white/still. */
+@Composable
+private fun DonationIconBounce() {
+    val reducedMotion = rememberReducedMotion()
+    var targetTint by remember { mutableStateOf(Color.White) }
+    val tint by animateColorAsState(targetTint, tween(IrideMotion.Quick), label = "donationTint")
+    val scale = remember { Animatable(1f) }
+    LaunchedEffect(Unit) {
+        if (reducedMotion) return@LaunchedEffect
+        delay(400)
+        targetTint = Color(0xFFFFD54F)
+        scale.animateTo(1.22f, tween(120, easing = IrideMotion.EaseOutExpo))
+        scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+        delay(250)
+        targetTint = Color.White
+    }
+    Icon(
+        painter = painterResource(R.drawable.favorite),
+        contentDescription = null,
+        tint = tint,
+        modifier = Modifier
+            .size(22.dp)
+            .graphicsLayer { scaleX = scale.value; scaleY = scale.value }
+    )
 }

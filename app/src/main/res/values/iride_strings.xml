@@ -1081,7 +1081,7 @@
     <string name="enable_comments_desc">Show YouTube comments for songs in the player (experimental, may not always load)</string>
 
     <!-- Song menu redesign -->
-    <string name="add_note">Add note</string>
+    <string name="add_note">Add notes, ratings or thoughts…</string>
     <string name="note_title_placeholder">Title</string>
     <string name="note_description_placeholder">Add a description…</string>
     <string name="view_ep">View EP</string>
