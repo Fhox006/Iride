@@ -919,23 +919,21 @@ class MainActivity : ComponentActivity() {
                         preventDismissDrag = curtainMode,
                     )
 
-                // Force the curtain shut the moment the app leaves the foreground, instead of
-                // relying only on the cold-start correction in rememberBottomSheetState. That
-                // correction fixes a restored `expandedAnchor`, but an interrupted drag/fling
-                // (app backgrounded mid-gesture, before performFling ever runs) can leave the
-                // anchor still at `expanded` while visually settled elsewhere — closing it here
-                // means onSaveInstanceState never captures a bad value in the first place.
+                // Only force the curtain shut on backgrounding if it was JUST opened (accidental
+                // tap while the finger was really going for the home gesture/back — the panel sits
+                // right where that swipe starts). A deliberately-open player left open for over a
+                // second before backgrounding is intentional and must survive the round trip.
+                // Guards a real case too: a fling toward expand sets the anchor synchronously but
+                // the spring is still mid-flight when ON_STOP fires, so isExpanded reads false
+                // while the anchor already says expanded — that's still within the "just opened"
+                // window so it gets caught the same way.
                 val lifecycleOwner = LocalLifecycleOwner.current
                 DisposableEffect(playerBottomSheetState, lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
-                        // Checking isExpanded (settled at upperBound) misses this exact case:
-                        // a fling toward expand sets the anchor synchronously but the spring is
-                        // still mid-flight when ON_STOP fires, so isExpanded reads false while
-                        // the anchor already says expanded. Guard on "not settled collapsed or
-                        // dismissed" instead so any in-flight state gets forced shut too.
                         if (event == Lifecycle.Event.ON_STOP &&
                             !playerBottomSheetState.isCollapsed &&
-                            !playerBottomSheetState.isDismissed
+                            !playerBottomSheetState.isDismissed &&
+                            SystemClock.elapsedRealtime() - playerBottomSheetState.lastExpandedAtMs < 1000L
                         ) {
                             playerBottomSheetState.collapseSoft()
                         }

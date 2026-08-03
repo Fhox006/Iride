@@ -262,6 +262,12 @@ class BottomSheetState(
         1f - (animatable.upperBound!! - animatable.value) / (animatable.upperBound!! - collapsedBound)
     }
 
+    // Set whenever an expand is triggered. Lets callers tell "just opened, no time to interact
+    // yet" (e.g. an accidental tap while backgrounding) apart from "user has been sitting in the
+    // expanded player for a while and left it open on purpose".
+    var lastExpandedAtMs: Long = 0L
+        private set
+
     fun collapse(animationSpec: AnimationSpec<Dp>) {
         onAnchorChanged(collapsedAnchor)
         coroutineScope.launch {
@@ -270,6 +276,7 @@ class BottomSheetState(
     }
 
     fun expand(animationSpec: AnimationSpec<Dp>) {
+        lastExpandedAtMs = android.os.SystemClock.elapsedRealtime()
         onAnchorChanged(expandedAnchor)
         coroutineScope.launch {
             animatable.animateTo(animatable.upperBound!!, animationSpec)
