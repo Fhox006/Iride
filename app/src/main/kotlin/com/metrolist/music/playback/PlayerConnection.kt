@@ -63,6 +63,11 @@ class PlayerConnection(
     val service = binder.service
     private val playerReadinessFlow = service.isPlayerReady
 
+    // Fed directly by the ExoPlayer audio pipeline (VisualizerTapAudioProcessor) — no session
+    // attach/lifecycle to manage here, the service owns that.
+    val audioBandLevels: kotlinx.coroutines.flow.StateFlow<com.metrolist.music.playback.audio.AudioBandLevels> =
+        service.audioBandLevels
+
     /**
      * Safe player accessor checks readiness & handles errors.
      * Should be used by all player access within this class.

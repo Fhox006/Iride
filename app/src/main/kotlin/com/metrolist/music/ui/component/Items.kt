@@ -14,13 +14,9 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -164,6 +160,7 @@ import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
+import com.metrolist.music.playback.audio.AudioBandLevels
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.SnapLayoutInfoProvider
 import com.metrolist.music.ui.utils.rememberReducedMotion
@@ -177,6 +174,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlin.random.Random
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -215,8 +213,10 @@ private const val VisualizerBarMinFraction = 0.28f
 
 /**
  * Squared, monospace-flavored equalizer bars — the "this one is actually sounding" tell.
- * Deliberately not a stock play/sound icon: three flat-topped rectangles (no rounding) bouncing
- * out of phase, matching the app's geometric styling instead of borrowing a system glyph.
+ * Deliberately not a stock play/sound icon: three flat-topped rectangles (no rounding), matching
+ * the app's geometric styling instead of borrowing a system glyph. Each bar tracks a real band
+ * (bass/mid/treble) of the currently playing track via [AudioVisualizerAnalyzer], smoothed so it
+ * reads as a gentle pulse rather than a jumpy spectrum analyzer.
  */
 @Composable
 private fun AudioVisualizerBars(
@@ -225,26 +225,18 @@ private fun AudioVisualizerBars(
     color: Color = Color.White,
 ) {
     val reducedMotion = rememberReducedMotion()
-    val transition = rememberInfiniteTransition(label = "audioVisualizer")
-    val bar1 by transition.animateFloat(
-        initialValue = VisualizerBarMinFraction,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(420, easing = LinearEasing), RepeatMode.Reverse),
-        label = "audioVisualizerBar1",
-    )
-    val bar2 by transition.animateFloat(
-        initialValue = VisualizerBarMinFraction,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(640, easing = LinearEasing), RepeatMode.Reverse),
-        label = "audioVisualizerBar2",
-    )
-    val bar3 by transition.animateFloat(
-        initialValue = VisualizerBarMinFraction,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(520, easing = LinearEasing), RepeatMode.Reverse),
-        label = "audioVisualizerBar3",
-    )
-    // Reduced motion: static staggered bars still read as "playing" without any looping animation.
+    val playerConnection = LocalPlayerConnection.current
+    val bandLevels by (playerConnection?.audioBandLevels
+        ?: remember { MutableStateFlow(AudioBandLevels()) }).collectAsState()
+
+    val smoothSpec = tween<Float>(280, easing = LinearOutSlowInEasing)
+    fun smoothed(target: Float): Float {
+        val fraction = VisualizerBarMinFraction + target * (1f - VisualizerBarMinFraction)
+        return fraction
+    }
+    val bar1 by animateFloatAsState(smoothed(bandLevels.bass), smoothSpec, label = "audioVisualizerBar1")
+    val bar2 by animateFloatAsState(smoothed(bandLevels.mid), smoothSpec, label = "audioVisualizerBar2")
+    val bar3 by animateFloatAsState(smoothed(bandLevels.treble), smoothSpec, label = "audioVisualizerBar3")
     val fractions = if (reducedMotion) listOf(0.45f, 1f, 0.7f) else listOf(bar1, bar2, bar3)
 
     Row(
@@ -1021,14 +1013,11 @@ fun ArtistNewReleaseRingItem(
     val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val avatarSize = currentGridThumbnailHeight()
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
-            .padding(horizontal = 6.dp, vertical = 4.dp)
-            .width(avatarSize + 12.dp),
+        modifier = modifier.width(avatarSize),
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(avatarSize + 12.dp),
+            modifier = Modifier.size(avatarSize),
         ) {
             Box(
                 modifier = Modifier
@@ -1079,7 +1068,6 @@ fun ArtistNewReleaseRingItem(
             },
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
     }

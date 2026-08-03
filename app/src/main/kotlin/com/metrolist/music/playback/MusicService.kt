@@ -412,6 +412,12 @@ class MusicService :
 
     private val playerSilenceProcessors = HashMap<Player, SilenceDetectorAudioProcessor>()
 
+    // Shared sink so every ExoPlayer instance created over the service's lifetime (crossfade
+    // spins up a secondaryPlayer with its own processor chain) reports into the same flow.
+    private val audioBandLevelsFlow = MutableStateFlow(com.metrolist.music.playback.audio.AudioBandLevels())
+    val audioBandLevels: kotlinx.coroutines.flow.StateFlow<com.metrolist.music.playback.audio.AudioBandLevels> =
+        audioBandLevelsFlow.asStateFlow()
+
     private val instantSilenceSkipEnabled = MutableStateFlow(false)
 
     private var isAudioEffectSessionOpened = false
@@ -1111,6 +1117,7 @@ class MusicService :
 
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
         scratchProcessor = ScratchAudioProcessor()
+        val visualizerTap = com.metrolist.music.playback.audio.VisualizerTapAudioProcessor(audioBandLevelsFlow)
 
         // Set initial state
         runBlocking {
@@ -1123,7 +1130,7 @@ class MusicService :
             ExoPlayer
                 .Builder(this)
                 .setMediaSourceFactory(createMediaSourceFactory())
-                .setRenderersFactory(createRenderersFactory(eqProcessor, silenceProcessor, scratchProcessor))
+                .setRenderersFactory(createRenderersFactory(eqProcessor, silenceProcessor, scratchProcessor, visualizerTap))
                 .setHandleAudioBecomingNoisy(true)
                 .setWakeMode(C.WAKE_MODE_NETWORK)
                 .setAudioAttributes(
@@ -2180,6 +2187,10 @@ class MusicService :
         // A gapless transition never flushes the sink, so the turntable's position correction has
         // to be retired here or a scratch in one song would follow the cursor into the next.
         if (::scratchProcessor.isInitialized) scratchProcessor.resetDrift()
+
+        // Same story for the EQ meter: a gapless/crossfade transition doesn't flush the audio
+        // processor chain, so the bars would carry the outgoing track's levels into the new one.
+        audioBandLevelsFlow.value = com.metrolist.music.playback.audio.AudioBandLevels()
 
         // Check if new item is an episode and restore its position
         val newMetadata = mediaItem?.metadata
@@ -3247,6 +3258,7 @@ class MusicService :
         eqProcessor: CustomEqualizerAudioProcessor,
         silenceProcessor: SilenceDetectorAudioProcessor,
         scratchProcessor: ScratchAudioProcessor,
+        visualizerTap: com.metrolist.music.playback.audio.VisualizerTapAudioProcessor,
     ) = object : DefaultRenderersFactory(this) {
         override fun buildAudioSink(
             context: Context,
@@ -3273,6 +3285,8 @@ class MusicService :
                     // 2. Inject processor into audio pipeline
                     arrayOf(
                         eqProcessor,
+                        // Post-EQ so the bars reflect what's actually audible.
+                        visualizerTap,
                         silenceProcessor,
                         // Runs after the silence detector so scratch-induced fake silence never
                         // trips the auto long-silence skip.
