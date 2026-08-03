@@ -457,6 +457,39 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 4.dp else 8.dp))
 
+        // ── Advanced mode banner ─────────────────────────────────────────
+        if (advancedMode) {
+            Row(
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        if (topNavigationBarEnabled) Color.White.copy(alpha = 0.06f)
+                        else MaterialTheme.colorScheme.secondaryContainer
+                    )
+                    .padding(12.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.info),
+                    contentDescription = null,
+                    tint = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = stringResource(R.string.advanced_mode_banner),
+                    style = if (topNavigationBarEnabled) {
+                        MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily)
+                    } else {
+                        MaterialTheme.typography.bodySmall
+                    },
+                    color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
         // ── My Account ────────────────────────────────────────────────────
         Material3SettingsGroup(
             items = listOf(

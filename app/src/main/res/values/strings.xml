@@ -444,6 +444,7 @@
 
     <!-- Advanced Mode -->
     <string name="advanced_mode">Advanced Mode</string>
+    <string name="advanced_mode_banner">Advanced mode is on. Expect more settings and technical options across the app — this UI isn\'t tuned for casual, everyday use.</string>
     <string name="my_account">My Account</string>
     <string name="your_contents">Your Contents</string>
     <string name="playback">Playback</string>

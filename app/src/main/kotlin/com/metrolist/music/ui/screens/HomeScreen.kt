@@ -169,6 +169,8 @@ import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongCarousel
 import com.metrolist.music.ui.component.rubberBandOverscroll
+import com.metrolist.music.ui.component.shimmer.ShimmerHost
+import androidx.compose.ui.draw.clipToBounds
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.SpeedDialGridItem
 import com.metrolist.music.ui.component.YouTubeGridItem
@@ -293,6 +295,49 @@ private fun <E> IrideMoodChipsRow(
             )
         } else {
             Spacer(Modifier.height(2.dp))
+        }
+    }
+}
+
+// Reserves Quick Picks' final footprint (title + carousel) before quickPicks has loaded (null),
+// same technique as HeroCarouselSkeleton — otherwise the shelf pops in above "Mood & Playlists"
+// the moment phase 1 finishes and shoves it down a row.
+@Composable
+private fun QuickPicksSkeleton(contentPadding: Dp, modifier: Modifier = Modifier) {
+    ShimmerHost(modifier = modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = contentPadding)
+                .height(ListItemHeight * 4)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+        )
+    }
+}
+
+// Same reserved-slot technique for "On repeat for you" — its real cards are forYouBoxSize square
+// (the 2x2 tile grid) plus a 6dp spacer and a bodyLarge text line (24dp line-height in M3) below,
+// so the skeleton box matches that exact combined height.
+@Composable
+private fun ForYouShelfSkeleton(boxSize: Dp, contentPadding: Dp, modifier: Modifier = Modifier) {
+    ShimmerHost(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clipToBounds()
+                .padding(start = contentPadding),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            repeat(3) {
+                Box(
+                    modifier = Modifier
+                        .width(boxSize)
+                        .height(boxSize + 30.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                )
+            }
         }
     }
 }
@@ -823,8 +868,13 @@ fun HomeScreen(
                     )
                 }
             }
+            // Loading == not yet through phase 1 with nothing to show yet. Distinguishing this from
+            // "phase 1 finished, genuinely no shelves" is what lets the skeleton reserve the slot
+            // instead of the row popping in later and shoving Mood & Playlists down (see
+            // ForYouShelfSkeleton above).
+            val forYouLoading = !phase1Complete && forYouShelves.isEmpty()
             val forYouSection: LazyListScope.() -> Unit = {
-                forYouShelves.takeIf { it.isNotEmpty() }?.let { shelves ->
+                if (forYouLoading || forYouShelves.isNotEmpty()) {
                     item(key = "for_you_title") {
                         NavigationTitle(
                             title = stringResource(R.string.for_you_shelf_title),
@@ -838,26 +888,35 @@ fun HomeScreen(
                     }
                     item(key = "for_you_row") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("for_you")) {
-                            val forYouState = rememberLazyListState()
-                            // Never-ending carousel: once the user scrolls near the tail,
-                            // pull in the next batch of artist shelves so there's always more.
-                            LaunchedEffect(forYouState, shelves.size) {
-                                snapshotFlow { forYouState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-                                    .collect { lastVisible ->
-                                        if (lastVisible != null && lastVisible >= shelves.size - 3) {
-                                            viewModel.loadMoreForYouShelves()
+                            if (forYouLoading) {
+                                ForYouShelfSkeleton(
+                                    boxSize = forYouBoxSize,
+                                    contentPadding = irideGridItemStart,
+                                    modifier = homeRowMotion("for_you_carousel"),
+                                )
+                            } else {
+                                val shelves = forYouShelves
+                                val forYouState = rememberLazyListState()
+                                // Never-ending carousel: once the user scrolls near the tail,
+                                // pull in the next batch of artist shelves so there's always more.
+                                LaunchedEffect(forYouState, shelves.size) {
+                                    snapshotFlow { forYouState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+                                        .collect { lastVisible ->
+                                            if (lastVisible != null && lastVisible >= shelves.size - 3) {
+                                                viewModel.loadMoreForYouShelves()
+                                            }
                                         }
-                                    }
-                            }
-                            LazyRow(
-                                state = forYouState,
-                                contentPadding = PaddingValues(horizontal = irideGridItemStart),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                overscrollEffect = null,
-                                modifier = homeRowMotion("for_you_carousel")
-                                    .rubberBandOverscroll(Orientation.Horizontal, forYouState),
-                            ) {
-                                itemsIndexed(shelves, key = { index, shelf -> "for_you_${index}_${shelf.artist.id}" }) { _, shelf -> forYouBlock(shelf) }
+                                }
+                                LazyRow(
+                                    state = forYouState,
+                                    contentPadding = PaddingValues(horizontal = irideGridItemStart),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    overscrollEffect = null,
+                                    modifier = homeRowMotion("for_you_carousel")
+                                        .rubberBandOverscroll(Orientation.Horizontal, forYouState),
+                                ) {
+                                    itemsIndexed(shelves, key = { index, shelf -> "for_you_${index}_${shelf.artist.id}" }) { _, shelf -> forYouBlock(shelf) }
+                                }
                             }
                         }
                     }
@@ -1257,18 +1316,23 @@ fun HomeScreen(
                     }
                 }
 
-                quickPicks?.let { qp ->
-                    val filteredQp = qp.distinctBy { it.id }
-                    if (filteredQp.isNotEmpty()) {
+                // null == not yet loaded (reserve the skeleton slot); non-null-but-empty means phase
+                // 1 finished and there's genuinely nothing to show. Without this distinction the row
+                // pops in above Mood & Playlists the instant phase 1 finishes, pushing it down a row.
+                val filteredQp = quickPicks?.distinctBy { it.id }
+                val quickPicksLoading = quickPicks == null
+                if (quickPicksLoading || filteredQp?.isNotEmpty() == true) {
                         item(key = "quick_picks_title") {
-                            LaunchedEffect(filteredQp) {
-                                playerConnection?.prefetchStreamUrls(filteredQp.take(6).map { it.id })
+                            if (filteredQp != null) {
+                                LaunchedEffect(filteredQp) {
+                                    playerConnection?.prefetchStreamUrls(filteredQp.take(6).map { it.id })
+                                }
                             }
                             val title = stringResource(R.string.quick_picks)
                             NavigationTitle(
                                 title = title,
                                 modifier = homeTitleMotion("quick_picks"),
-                                onPlayAllClick = if (!isListenTogetherGuest) {
+                                onPlayAllClick = if (!isListenTogetherGuest && !filteredQp.isNullOrEmpty()) {
                                     { playerConnection?.playQueue(ListQueue(title = title, items = filteredQp.map { it.toMediaItem() })) }
                                 } else null,
                                 onRefreshClick = { viewModel.regenerateQuickPicks() },
@@ -1280,8 +1344,14 @@ fun HomeScreen(
                         }
                         item(key = "quick_picks_list") {
                             IrideCollapsibleSection(collapsed = isSectionCollapsed("quick_picks")) {
+                                if (quickPicksLoading) {
+                                    QuickPicksSkeleton(
+                                        contentPadding = irideListItemStart,
+                                        modifier = homeRowMotion("quick_picks_row"),
+                                    )
+                                } else {
                                 SongCarousel(
-                                    items = filteredQp,
+                                    items = filteredQp!!,
                                     key = { "home_quickpick_${it.id}" },
                                     contentPadding = PaddingValues(horizontal = irideListItemStart),
                                     gridState = quickPicksLazyGridState,

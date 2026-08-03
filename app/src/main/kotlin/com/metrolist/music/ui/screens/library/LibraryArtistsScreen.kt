@@ -194,7 +194,7 @@ fun LibraryArtistsScreen(
             )
             LazyRow(
                 contentPadding = PaddingValues(horizontal = if (topNavigationBarEnabled) 16.dp else 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(
                     items = newReleaseArtists,
