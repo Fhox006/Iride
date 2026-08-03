@@ -1,3 +1,18 @@
+## 0.1.0-alpha23
+
+### New features
+
+- **Real audio-reactive equalizer bars**: the now-playing bars pulse to the track's actual bass/mid/treble instead of a looping fake animation
+- **Notes overview screen**: My Account > Notes lists every album and track you've reviewed in one place, with long-press to delete
+- Add Note is now available from the full-screen player menu, not just the song three-dot menu
+
+### Improvements
+
+- Artist screen's album long-press menu now opens the in-app album menu (with note support) instead of the plain YouTube one
+- Curtain player: backgrounding the app no longer force-closes a deliberately open player, only an accidental tap during a home-gesture swipe
+- Home screen's Quick Picks / For You shelves reserve their space while loading instead of popping in and shifting rows below them
+- Settings shows a banner while Advanced Mode is on
+
 ## 0.1.0-alpha22
 
 ### New features
