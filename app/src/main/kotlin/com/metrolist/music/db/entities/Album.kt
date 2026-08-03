@@ -9,6 +9,7 @@ import androidx.compose.runtime.Immutable
 import androidx.room.Embedded
 import androidx.room.Junction
 import androidx.room.Relation
+import com.metrolist.innertube.models.AlbumItem
 
 @Immutable
 data class Album(
@@ -36,3 +37,19 @@ data class Album(
     override val thumbnailUrl: String?
         get() = album.thumbnailUrl
 }
+
+// Builds a not-yet-in-library Album for menus/panels that need one before the
+// user ever opens the album screen (which is what actually inserts the row).
+fun AlbumItem.toAlbumEntity() = Album(
+    album = AlbumEntity(
+        id = browseId,
+        playlistId = playlistId,
+        title = title,
+        year = year,
+        thumbnailUrl = thumbnail,
+        explicit = explicit,
+        songCount = if (albumType?.contains("Single", ignoreCase = true) == true) 1 else 0,
+        duration = 0,
+    ),
+    artists = artists?.mapNotNull { a -> a.id?.let { ArtistEntity(id = it, name = a.name) } } ?: emptyList(),
+)

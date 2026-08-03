@@ -11,6 +11,7 @@ import android.content.res.Configuration
 import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,6 +63,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -86,10 +88,12 @@ import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.SleepTimerDefaultKey
 import com.metrolist.music.constants.SleepTimerFadeOutKey
 import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.constants.VarispeedKey
 import com.metrolist.music.listentogether.ConnectionState
 import com.metrolist.music.listentogether.ListenTogetherEvent
@@ -102,13 +106,11 @@ import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.VolumeSlider
-import com.metrolist.music.ui.screens.settings.DarkMode
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import androidx.datastore.preferences.core.edit
-import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.utils.SharePlatform
 import com.metrolist.music.utils.SongLinkResolver
 import com.metrolist.music.utils.dataStore
-import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -147,7 +149,9 @@ fun PlayerMenu(
 
     val varispeedMode by rememberPreference(VarispeedKey, defaultValue = false)
     val repeatMode by playerConnection.repeatMode.collectAsState()
-    val (darkMode, onDarkModeChange) = rememberEnumPreference(DarkModeKey, DarkMode.ON)
+    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
+    val (advancedMode) = rememberPreference(AdvancedModeKey, defaultValue = false)
+    val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -412,7 +416,7 @@ fun PlayerMenu(
         )
     }
 
-    if (isQueueTrigger != true) {
+    if (isQueueTrigger != true && !newIrideUi) {
         Column(
             modifier =
                 Modifier
@@ -458,13 +462,300 @@ fun PlayerMenu(
                 accentColor = MaterialTheme.colorScheme.primary,
             )
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(12.dp))
     }
 
-    Spacer(modifier = Modifier.height(20.dp))
+    if (newIrideUi) {
+        LazyColumn(
+            contentPadding =
+                PaddingValues(
+                    start = 0.dp,
+                    top = 0.dp,
+                    end = 0.dp,
+                    bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
+                ),
+        ) {
+            item {
+                Column(modifier = Modifier.padding(horizontal = 4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = mediaMetadata.title,
+                                style =
+                                    MaterialTheme.typography.titleMedium.copy(
+                                        fontFamily = SpaceMonoFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = (-0.2).sp,
+                                    ),
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.basicMarquee(),
+                            )
+                            if (mediaMetadata.artists.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = mediaMetadata.artists.joinToString(", ") { it.name },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                        IconButton(onClick = { showSharePlatformDialog = true }) {
+                            Icon(
+                                painter = painterResource(R.drawable.share),
+                                tint = Color.White.copy(alpha = 0.85f),
+                                contentDescription = null,
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
+                    librarySong?.let { song ->
+                        CoverNoteRow(song = song, database = database)
+                    }
+                }
+            }
 
-    HorizontalDivider()
+            item { Spacer(modifier = Modifier.height(20.dp)) }
 
-    Spacer(modifier = Modifier.height(12.dp))
+            if (!isListenTogetherGuest) {
+                item {
+                    NewActionGrid(
+                        actions =
+                            listOf(
+                                NewAction(
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.bedtime),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(28.dp),
+                                            tint = Color.White.copy(alpha = 0.85f),
+                                        )
+                                    },
+                                    text = stringResource(R.string.sleep_timer),
+                                    onClick = { showSleepTimerDialog = true },
+                                ),
+                                NewAction(
+                                    icon = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    if (repeatMode == Player.REPEAT_MODE_ONE) R.drawable.repeat_one else R.drawable.repeat,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(28.dp),
+                                            tint =
+                                                if (repeatMode == Player.REPEAT_MODE_ONE) {
+                                                    MaterialTheme.colorScheme.primary
+                                                } else {
+                                                    Color.White.copy(alpha = 0.85f)
+                                                },
+                                        )
+                                    },
+                                    text = stringResource(R.string.repeat_one),
+                                    onClick = {
+                                        playerConnection.player.repeatMode =
+                                            if (repeatMode == Player.REPEAT_MODE_ONE) Player.REPEAT_MODE_OFF else Player.REPEAT_MODE_ONE
+                                    },
+                                ),
+                                NewAction(
+                                    icon = {
+                                        Box {
+                                            Icon(
+                                                painter = painterResource(R.drawable.group),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(28.dp),
+                                                tint = Color.White.copy(alpha = 0.85f),
+                                            )
+                                            if (pendingSuggestions.isNotEmpty()) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(12.dp),
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    modifier =
+                                                        Modifier
+                                                            .offset(x = 8.dp, y = (-6).dp)
+                                                            .align(Alignment.TopEnd),
+                                                ) {
+                                                    Text(
+                                                        text = pendingSuggestions.size.toString(),
+                                                        color = MaterialTheme.colorScheme.onPrimary,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    },
+                                    text = stringResource(R.string.listen_together),
+                                    onClick = { showListenTogetherDialog = true },
+                                ),
+                            ),
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                    )
+                }
+                item { Spacer(modifier = Modifier.height(16.dp)) }
+            }
+
+            item {
+                ProminentActionRow(
+                    icon = R.drawable.playlist_add,
+                    label = stringResource(R.string.add_to_playlist),
+                    onClick = { showChoosePlaylistDialog = true },
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+            }
+            item { Spacer(modifier = Modifier.height(14.dp)) }
+
+            librarySong?.let { song ->
+                item {
+                    ArtistAlbumSwitchRow(
+                        song = song,
+                        orderedArtists = emptyList(),
+                        onArtistClick = {
+                            if (artists.size == 1) {
+                                navController.navigate("artist/${artists[0].id}")
+                                playerBottomSheetState.collapseSoft()
+                                onDismiss()
+                            } else {
+                                showSelectArtistDialog = true
+                            }
+                        },
+                        onAlbumClick = {
+                            mediaMetadata.album?.let { album ->
+                                val isPodcast = !album.id.startsWith("MPREb_")
+                                if (isPodcast) {
+                                    navController.navigate("online_podcast/${album.id}")
+                                } else {
+                                    navController.navigate("album/${album.id}")
+                                }
+                                playerBottomSheetState.collapseSoft()
+                                onDismiss()
+                            }
+                        },
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                    )
+                }
+                item { Spacer(modifier = Modifier.height(10.dp)) }
+            }
+
+            item {
+                Material3MenuGroup(
+                    items =
+                        listOf(
+                            when (download?.state) {
+                                Download.STATE_COMPLETED ->
+                                    Material3MenuItemData(
+                                        title = { Text(text = stringResource(R.string.remove_download)) },
+                                        icon = {
+                                            Icon(
+                                                painter = painterResource(R.drawable.offline),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(24.dp),
+                                            )
+                                        },
+                                        onClick = {
+                                            DownloadService.sendRemoveDownload(
+                                                context, ExoDownloadService::class.java, mediaMetadata.id, false,
+                                            )
+                                        },
+                                    )
+                                Download.STATE_QUEUED, Download.STATE_DOWNLOADING ->
+                                    Material3MenuItemData(
+                                        title = { Text(text = stringResource(R.string.downloading)) },
+                                        icon = {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(24.dp),
+                                                strokeWidth = 2.dp,
+                                            )
+                                        },
+                                        onClick = {
+                                            DownloadService.sendRemoveDownload(
+                                                context, ExoDownloadService::class.java, mediaMetadata.id, false,
+                                            )
+                                        },
+                                    )
+                                else ->
+                                    Material3MenuItemData(
+                                        title = { Text(text = stringResource(R.string.action_download)) },
+                                        description = { Text(text = stringResource(R.string.download_desc)) },
+                                        icon = {
+                                            Icon(
+                                                painter = painterResource(R.drawable.download),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(24.dp),
+                                            )
+                                        },
+                                        onClick = {
+                                            database.transaction { insert(mediaMetadata) }
+                                            val downloadRequest =
+                                                DownloadRequest
+                                                    .Builder(mediaMetadata.id, mediaMetadata.id.toUri())
+                                                    .setCustomCacheKey(mediaMetadata.id)
+                                                    .setData(mediaMetadata.title.toByteArray())
+                                                    .build()
+                                            DownloadService.sendAddDownload(
+                                                context, ExoDownloadService::class.java, downloadRequest, false,
+                                            )
+                                        },
+                                    )
+                            },
+                        ),
+                )
+            }
+
+            item { Spacer(modifier = Modifier.height(12.dp)) }
+
+            item {
+                Material3MenuGroup(
+                    items =
+                        buildList {
+                            add(
+                                Material3MenuItemData(
+                                    title = { Text(text = stringResource(R.string.details)) },
+                                    description = { Text(text = stringResource(R.string.details_desc)) },
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.info),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    },
+                                    onClick = {
+                                        onShowDetailsDialog()
+                                        onDismiss()
+                                    },
+                                ),
+                            )
+                            if (isQueueTrigger != true && advancedMode) {
+                                add(
+                                    Material3MenuItemData(
+                                        title = { Text(text = stringResource(R.string.advanced)) },
+                                        description = { Text(text = stringResource(R.string.advanced_desc)) },
+                                        icon = {
+                                            Icon(
+                                                painter = painterResource(R.drawable.tune),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(24.dp),
+                                            )
+                                        },
+                                        onClick = {
+                                            if (!varispeedMode) showPitchTempoDialog = true
+                                            else showSpeedDialog = true
+                                        },
+                                    ),
+                                )
+                            }
+                        },
+                )
+            }
+        }
+        return
+    }
 
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -732,24 +1023,6 @@ fun PlayerMenu(
                                     }
                                 },
                             ),
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.night_mode)) },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.contrast),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
-                                        tint = if (darkMode == DarkMode.ON) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                    )
-                                },
-                                onClick = {
-                                    onDarkModeChange(if (darkMode == DarkMode.ON) DarkMode.OFF else DarkMode.ON)
-                                },
-                            ),
                         ),
                 )
             }
@@ -811,7 +1084,7 @@ fun PlayerMenu(
                             ),
                         )
 
-                        if (isQueueTrigger != true) {
+                        if (isQueueTrigger != true && advancedMode) {
                             add(
                                 Material3MenuItemData(
                                     title = { Text(text = stringResource(R.string.advanced)) },

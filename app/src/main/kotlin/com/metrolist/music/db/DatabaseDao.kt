@@ -101,6 +101,9 @@ interface DatabaseDao {
     @Query("SELECT * FROM song WHERE inLibrary IS NOT NULL ORDER BY totalPlayTime")
     fun songsByPlayTimeAsc(): Flow<List<Song>>
 
+    @Transaction
+    @Query("SELECT * FROM song WHERE noteTitle IS NOT NULL OR noteRating IS NOT NULL OR noteText IS NOT NULL ORDER BY rowId DESC")
+    fun songsWithNotes(): Flow<List<Song>>
 
     fun songs(
         sortType: SongSortType,
@@ -1010,6 +1013,10 @@ interface DatabaseDao {
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
     @Query("SELECT * FROM album WHERE EXISTS(SELECT * FROM song WHERE song.albumId = album.id AND song.inLibrary IS NOT NULL) ORDER BY duration")
     fun albumsByLengthAsc(): Flow<List<Album>>
+
+    @Transaction
+    @Query("SELECT * FROM album WHERE noteTitle IS NOT NULL OR noteRating IS NOT NULL OR noteText IS NOT NULL ORDER BY rowId DESC")
+    fun albumsWithNotes(): Flow<List<Album>>
 
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)

@@ -63,6 +63,7 @@ import com.metrolist.music.ui.screens.settings.LyricsSettings
 import com.metrolist.music.ui.screens.settings.PlayerAppearanceSettings
 import com.metrolist.music.ui.screens.settings.PlayerSettings
 import com.metrolist.music.ui.screens.settings.MyAccountScreen
+import com.metrolist.music.ui.screens.settings.NotesScreen
 import com.metrolist.music.ui.screens.settings.PrivacySettings
 import com.metrolist.music.ui.screens.settings.RomanizationSettings
 import com.metrolist.music.ui.screens.settings.SettingsScreen
@@ -139,6 +140,7 @@ fun NavGraphBuilder.NavigationBuilder(
 
     composable("history") { HistoryScreen(navController) }
     composable("stats") { StatsScreen(navController) }
+    composable("notes") { NotesScreen(navController) }
     composable("iride") {
         var readyToAnimate by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { delay(320); readyToAnimate = true }

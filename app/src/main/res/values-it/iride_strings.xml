@@ -860,4 +860,14 @@
     <string name="note_description_placeholder">Aggiungi una descrizione…</string>
     <string name="view_ep">Mostra EP</string>
     <string name="view_single">Mostra singolo</string>
+
+    <!-- Notes screen -->
+    <string name="notes_screen_title">Note</string>
+    <string name="notes_screen_desc">Le tue recensioni di album e brani</string>
+    <string name="notes_tab_albums">Album</string>
+    <string name="notes_tab_tracks">Brani</string>
+    <string name="notes_empty_albums">Nessuna nota su album</string>
+    <string name="notes_empty_tracks">Nessuna nota su brani</string>
+    <string name="notes_delete_title">Eliminare nota?</string>
+    <string name="notes_delete_message">Rimuove titolo, voto e testo scritti per questo elemento.</string>
 </resources>

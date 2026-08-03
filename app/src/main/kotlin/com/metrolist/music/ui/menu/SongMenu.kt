@@ -913,106 +913,7 @@ fun SongMenu(
                         onDismiss = onDismiss,
                     )
                     Spacer(modifier = Modifier.height(20.dp))
-                    var isEditingNote by rememberSaveable(song.id) { mutableStateOf(false) }
-                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                        val density = LocalDensity.current
-                        val textMeasurer = rememberTextMeasurer()
-                        val standardCoverFraction = 0.48f
-                        val minCoverFraction = standardCoverFraction * 0.6f
-                        val noteTitle = song.song.noteTitle.orEmpty()
-                        val totalWidthPx = with(density) { maxWidth.toPx() }
-                        val titleMeasureStyle =
-                            MaterialTheme.typography.bodyLarge.copy(
-                                fontFamily = SpaceMonoFontFamily,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        val coverFraction =
-                            remember(noteTitle, totalWidthPx, titleMeasureStyle) {
-                                if (noteTitle.isBlank() || totalWidthPx <= 0f) {
-                                    standardCoverFraction
-                                } else {
-                                    val titleWidthPx =
-                                        textMeasurer
-                                            .measure(
-                                                text = AnnotatedString(noteTitle),
-                                                style = titleMeasureStyle,
-                                                maxLines = 1,
-                                            ).size.width
-                                            .toFloat()
-                                    val spacingPx = with(density) { 14.dp.toPx() }
-                                    val innerPaddingPx = with(density) { 32.dp.toPx() }
-                                    var fraction = standardCoverFraction
-                                    while (fraction > minCoverFraction) {
-                                        val noteBoxWidthPx = totalWidthPx * (1f - fraction) - spacingPx - innerPaddingPx
-                                        if (titleWidthPx <= noteBoxWidthPx) break
-                                        fraction -= 0.04f
-                                    }
-                                    fraction.coerceAtLeast(minCoverFraction)
-                                }
-                            }
-                        val coverWeight by animateFloatAsState(
-                            targetValue = if (isEditingNote) 0.0001f else coverFraction,
-                            animationSpec = tween(280),
-                            label = "coverWeight",
-                        )
-                        val noteWeight by animateFloatAsState(
-                            targetValue = if (isEditingNote) 1f else (1f - coverFraction),
-                            animationSpec = tween(280),
-                            label = "noteWeight",
-                        )
-                        // Cover art is a square (aspectRatio 1f), so its height equals its
-                        // measured width. Computed explicitly (not via IntrinsicSize.Min) because
-                        // AddNoteBox contains a BoxWithConstraints, and intrinsic measurement
-                        // passes crash on SubcomposeLayout-based content.
-                        val spacingPx = with(density) { 14.dp.toPx() }
-                        val coverHeightDp =
-                            with(density) { ((totalWidthPx - spacingPx) * coverFraction).toDp() }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        ) {
-                            AnimatedVisibility(
-                                visible = !isEditingNote,
-                                enter = fadeIn(tween(280, delayMillis = 80)),
-                                exit = fadeOut(tween(160)),
-                                modifier = Modifier.weight(coverWeight),
-                            ) {
-                                AsyncImage(
-                                    model = song.thumbnailUrl,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .aspectRatio(1f)
-                                            .clip(SquircleShape(radius = 8.dp, cornerSmoothing = 0.48f)),
-                                )
-                            }
-                            AddNoteBox(
-                                key = song.id,
-                                initialTitle = song.song.noteTitle.orEmpty(),
-                                initialRating = song.song.noteRating,
-                                initialText = song.song.noteText.orEmpty(),
-                                onPersist = { noteTitleValue, noteRatingValue, noteTextValue ->
-                                    database.query {
-                                        update(
-                                            song.song.copy(
-                                                noteTitle = noteTitleValue.trim().ifBlank { null },
-                                                noteRating = noteRatingValue,
-                                                noteText = noteTextValue.trim().ifBlank { null },
-                                            ),
-                                        )
-                                    }
-                                },
-                                isEditing = isEditingNote,
-                                onEditingChange = { isEditingNote = it },
-                                modifier =
-                                    Modifier
-                                        .weight(noteWeight)
-                                        .then(if (isEditingNote) Modifier else Modifier.height(coverHeightDp)),
-                            )
-                        }
-                    }
+                    CoverNoteRow(song = song, database = database)
                 }
             }
 
@@ -1356,7 +1257,7 @@ internal fun SwitchTile(
 }
 
 @Composable
-private fun ArtistAlbumSwitchRow(
+internal fun ArtistAlbumSwitchRow(
     song: Song,
     orderedArtists: List<ArtistEntity>,
     onArtistClick: () -> Unit,
@@ -1404,7 +1305,7 @@ private fun ArtistAlbumSwitchRow(
 }
 
 @Composable
-private fun ProminentActionRow(
+internal fun ProminentActionRow(
     icon: Int,
     label: String,
     onClick: () -> Unit,
@@ -1503,6 +1404,114 @@ internal val noteFieldColors: @Composable () -> androidx.compose.material3.TextF
         focusedTextColor = Color.White,
         unfocusedTextColor = Color.White,
     )
+}
+
+@Composable
+internal fun CoverNoteRow(
+    song: Song,
+    database: MusicDatabase,
+    modifier: Modifier = Modifier,
+) {
+    var isEditingNote by rememberSaveable(song.id) { mutableStateOf(false) }
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val density = LocalDensity.current
+        val textMeasurer = rememberTextMeasurer()
+        val standardCoverFraction = 0.48f
+        val minCoverFraction = standardCoverFraction * 0.6f
+        val noteTitle = song.song.noteTitle.orEmpty()
+        val totalWidthPx = with(density) { maxWidth.toPx() }
+        val titleMeasureStyle =
+            MaterialTheme.typography.bodyLarge.copy(
+                fontFamily = SpaceMonoFontFamily,
+                fontWeight = FontWeight.Bold,
+            )
+        val coverFraction =
+            remember(noteTitle, totalWidthPx, titleMeasureStyle) {
+                if (noteTitle.isBlank() || totalWidthPx <= 0f) {
+                    standardCoverFraction
+                } else {
+                    val titleWidthPx =
+                        textMeasurer
+                            .measure(
+                                text = AnnotatedString(noteTitle),
+                                style = titleMeasureStyle,
+                                maxLines = 1,
+                            ).size.width
+                            .toFloat()
+                    val spacingPx = with(density) { 14.dp.toPx() }
+                    val innerPaddingPx = with(density) { 32.dp.toPx() }
+                    var fraction = standardCoverFraction
+                    while (fraction > minCoverFraction) {
+                        val noteBoxWidthPx = totalWidthPx * (1f - fraction) - spacingPx - innerPaddingPx
+                        if (titleWidthPx <= noteBoxWidthPx) break
+                        fraction -= 0.04f
+                    }
+                    fraction.coerceAtLeast(minCoverFraction)
+                }
+            }
+        val coverWeight by animateFloatAsState(
+            targetValue = if (isEditingNote) 0.0001f else coverFraction,
+            animationSpec = tween(280),
+            label = "coverWeight",
+        )
+        val noteWeight by animateFloatAsState(
+            targetValue = if (isEditingNote) 1f else (1f - coverFraction),
+            animationSpec = tween(280),
+            label = "noteWeight",
+        )
+        // Cover art is a square (aspectRatio 1f), so its height equals its
+        // measured width. Computed explicitly (not via IntrinsicSize.Min) because
+        // AddNoteBox contains a BoxWithConstraints, and intrinsic measurement
+        // passes crash on SubcomposeLayout-based content.
+        val spacingPx = with(density) { 14.dp.toPx() }
+        val coverHeightDp =
+            with(density) { ((totalWidthPx - spacingPx) * coverFraction).toDp() }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            AnimatedVisibility(
+                visible = !isEditingNote,
+                enter = fadeIn(tween(280, delayMillis = 80)),
+                exit = fadeOut(tween(160)),
+                modifier = Modifier.weight(coverWeight),
+            ) {
+                AsyncImage(
+                    model = song.thumbnailUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .clip(SquircleShape(radius = 8.dp, cornerSmoothing = 0.48f)),
+                )
+            }
+            AddNoteBox(
+                key = song.id,
+                initialTitle = song.song.noteTitle.orEmpty(),
+                initialRating = song.song.noteRating,
+                initialText = song.song.noteText.orEmpty(),
+                onPersist = { noteTitleValue, noteRatingValue, noteTextValue ->
+                    database.query {
+                        update(
+                            song.song.copy(
+                                noteTitle = noteTitleValue.trim().ifBlank { null },
+                                noteRating = noteRatingValue,
+                                noteText = noteTextValue.trim().ifBlank { null },
+                            ),
+                        )
+                    }
+                },
+                isEditing = isEditingNote,
+                onEditingChange = { isEditingNote = it },
+                modifier =
+                    Modifier
+                        .weight(noteWeight)
+                        .then(if (isEditingNote) Modifier else Modifier.height(coverHeightDp)),
+            )
+        }
+    }
 }
 
 @Composable

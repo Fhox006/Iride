@@ -436,6 +436,20 @@ fun MyAccountScreen(
                     onClick = { navController.navigate("stats") }
                 ),
                 Material3SettingsItem(
+                    icon = painterResource(R.drawable.music_note),
+                    title = { Text(stringResource(R.string.notes_screen_title)) },
+                    description = { Text(stringResource(R.string.notes_screen_desc), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_forward),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    onClick = { navController.navigate("notes") }
+                ),
+                Material3SettingsItem(
                     icon = painterResource(R.drawable.integration),
                     title = { Text(stringResource(R.string.integrations)) },
                     description = { Text(stringResource(R.string.settings_integrations_desc), style = MaterialTheme.typography.bodySmall) },

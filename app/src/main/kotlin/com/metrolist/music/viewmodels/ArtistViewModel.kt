@@ -24,6 +24,7 @@ import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.data.remote.MusicBrainzRepository
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.ArtistEntity
+import com.metrolist.music.db.entities.toAlbumEntity
 import com.metrolist.music.extensions.filterExplicit
 import com.metrolist.music.extensions.filterExplicitAlbums
 import com.metrolist.music.utils.NewReleaseNotifier
@@ -244,21 +245,7 @@ class ArtistViewModel @Inject constructor(
                 else -> AlbumReleaseType.ALBUM
             }
 
-            RecentAlbumInfo(
-                com.metrolist.music.db.entities.Album(
-                    album = com.metrolist.music.db.entities.AlbumEntity(
-                        id = item.browseId,
-                        playlistId = item.playlistId,
-                        title = item.title,
-                        year = item.year,
-                        thumbnailUrl = item.thumbnail,
-                        explicit = item.explicit,
-                        songCount = if (type == AlbumReleaseType.SINGLE) 1 else 0,
-                        duration = 0
-                    )
-                ),
-                type,
-            )
+            RecentAlbumInfo(item.toAlbumEntity(), type)
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 

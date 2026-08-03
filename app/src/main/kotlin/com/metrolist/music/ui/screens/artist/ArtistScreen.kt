@@ -114,6 +114,7 @@ import com.metrolist.music.constants.ShowArtistSubscriberCountKey
 import com.metrolist.music.constants.ShowMonthlyListenersKey
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
+import com.metrolist.music.db.entities.toAlbumEntity
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.ListQueue
@@ -141,7 +142,6 @@ import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.component.shimmer.TextPlaceholder
 import com.metrolist.music.ui.menu.AlbumMenu
 import com.metrolist.music.ui.menu.SongMenu
-import com.metrolist.music.ui.menu.YouTubeAlbumMenu
 import com.metrolist.music.ui.menu.YouTubeArtistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
@@ -1431,8 +1431,8 @@ fun ArtistScreen(
                                                                 onLongClick = {
                                                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                                     menuState.show {
-                                                                        YouTubeAlbumMenu(
-                                                                            albumItem = album,
+                                                                        AlbumMenu(
+                                                                            originalAlbum = album.toAlbumEntity(),
                                                                             navController = navController,
                                                                             onDismiss = menuState::dismiss,
                                                                         )
@@ -1565,8 +1565,8 @@ fun ArtistScreen(
                                                                             }
 
                                                                             is AlbumItem -> {
-                                                                                YouTubeAlbumMenu(
-                                                                                    albumItem = item,
+                                                                                AlbumMenu(
+                                                                                    originalAlbum = item.toAlbumEntity(),
                                                                                     navController = navController,
                                                                                     onDismiss = menuState::dismiss,
                                                                                 )

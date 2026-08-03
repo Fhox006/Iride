@@ -1086,4 +1086,14 @@
     <string name="note_description_placeholder">Add a description…</string>
     <string name="view_ep">View EP</string>
     <string name="view_single">View single</string>
+
+    <!-- Notes screen -->
+    <string name="notes_screen_title">Notes</string>
+    <string name="notes_screen_desc">Your album and track reviews</string>
+    <string name="notes_tab_albums">Album</string>
+    <string name="notes_tab_tracks">Track</string>
+    <string name="notes_empty_albums">No album notes yet</string>
+    <string name="notes_empty_tracks">No track notes yet</string>
+    <string name="notes_delete_title">Delete note?</string>
+    <string name="notes_delete_message">This removes the title, rating and text you wrote for this.</string>
 </resources>
