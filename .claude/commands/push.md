@@ -1,46 +1,40 @@
 ---
-description: Autonomous release — commit, bump version, build fossRelease APK, tag, push, publish GitHub pre-release
+description: Autonomous release — commit, bump version, push tag, let GitHub Actions build/sign/release
 ---
 
-Autonomo. Utente è via, NON fare domande, NON chiedere conferma. Scegli default sensati e procedi fino in fondo. Segui [[project_release_process]] (memory) come recipe di riferimento, ma verifica sempre lo stato reale del repo prima di agire (non fidarti ciecamente di numeri in memory, potrebbero essere vecchi).
+Autonomo. Utente è via, NON fare domande, MAI. Niente "vuoi che...", "preferisci...", "devo...". Scegli default sensato e procedi fino in fondo, anche per scelte non ovvie (changelog wording, raggruppamento commit, ecc). Solo per azioni distruttive irreversibili (force-push, reset --hard) fermati — tutto il resto di questo comando è già approvato dall'utente invocandolo.
 
-Obiettivo finale: nuovo tag GitHub con pre-release e `Iride.apk` (fossRelease, NON fossDebug) scaricabile.
+Obiettivo: nuovo tag pushato che fa buildare, firmare e pubblicare la release **a GitHub Actions** (`.github/workflows/release.yml`, trigger su push di tag `v*`). NON buildare/firmare in locale — è lento, blocca la sessione, e il vero flusso già pronto nel repo è CI. Repo: `Fhox006/Iride`.
 
 ## Step
 
-1. **Commit lavoro corrente.** `git status` + `git diff` per capire cosa è cambiato (file modificati elencati + eventuali file untracked come nuovi screen/feature). Raggruppa in commit sensati per tipo di modifica (feat/fix/chore), messaggio conciso in inglese, focus sul "why" se non ovvio. Non includere file di build/apk vecchi o segreti.
+1. **Commit lavoro corrente.** `git status` + `git diff` per capire cosa è cambiato (modificati + untracked). Raggruppa in commit sensati per tema (feat/fix/chore/polish), messaggio conciso in inglese, focus sul "why" se non ovvio. Non committare apk/build output/segreti.
 
-2. **Bump versione.** Leggi `versionCode`/`versionName` attuali in `app/build.gradle.kts`. Incrementa `versionCode` di 1, `versionName` alpha successiva (es. alpha22 → alpha23). Aggiorna il file.
+2. **Bump versione.** Leggi `versionCode`/`versionName` in `app/build.gradle.kts`. Incrementa `versionCode` di 1, `versionName` alpha successiva (alphaN → alphaN+1).
 
-3. **Changelog.** Prepend nuova sezione in cima a `changelog.md` (stesso formato delle sezioni esistenti: `## <versionName>`, poi `### New features` / `### Improvements` / `### Fixes` a seconda di cosa serve). Ricava il contenuto da `git log` dei commit dall'ultimo tag `v*` a oggi + dal diff committato allo step 1. Breve, orientato a utente finale, non lista tecnica di file. Non perderci troppo tempo — poche righe chiare bastano.
+3. **Changelog.** Prepend sezione in `changelog.md`, stesso formato delle sezioni esistenti (`## <versionName>`, poi `### New features` / `### Improvements` / `### Fixes`). Ricava contenuto da `git log`/diff dei commit dello step 1. Breve, orientato a utente finale. Non perderci troppo tempo.
 
-4. Commit version+changelog: `chore: bump version to <versionName> (versionCode <N>)`.
+4. Commit: `chore: bump version to <versionName> (versionCode <N>)`.
 
-5. **Build fossRelease** (MAI fossDebug — vedi [[bug_debug_apk_shipped_alpha22]]):
+5. **Push branch + tag**:
    ```
-   JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew.bat :app:assembleFossRelease
+   git push origin <branch-corrente>
+   git tag -a v<versionName> -m "Iride <versionName human-readable>"
+   git push origin v<versionName>
    ```
-   Output atteso: `app/build/outputs/apk/foss/release/app-foss-release.apk`.
+   Il push del tag triggera `release.yml`: build fossRelease, sign con `ANDROID_SIGNING_KEY`/`KEY_ALIAS`/ecc (secrets repo, continuità OTA garantita da CI, non serve replicarla in locale), crea GitHub pre-release con asset `Iride.apk` + changelog estratto automaticamente dalla sezione appena scritta.
 
-6. **Verifica prima di spedire** (obbligatorio, non skippare):
-   - `aapt2 dump badging <apk>` → appId deve essere `com.iride.music` (NO `.debug`), label `Iride` (NON "Iride Debug").
-   - `apksigner.bat verify --print-certs <apk>` → stesso cert di sempre (continuità OTA per utenti esistenti).
-   Se una delle due non torna, NON procedere: build è fossDebug o mis-signed, indaga (probabile signingConfig rotto) e ricostruisci.
+6. **Monitora il run** invece di aspettare bloccato:
+   - Token: `printf "protocol=https\nhost=github.com\n\n" | git credential fill` → campo password.
+   - Trova il run: `GET /repos/Fhox006/Iride/actions/workflows/release.yml/runs?per_page=1` (o filtra per `head_branch=v<versionName>`).
+   - Lancialo come **comando bash in background** (poll ogni ~20s su `GET /actions/runs/<id>`, break quando `status=completed`) così non blocchi la sessione — non fare sleep nel foreground.
+   - Se `conclusion=failure`: leggi i job/annotations del run (`/actions/runs/<id>/jobs`), diagnosi root cause (es. step "Build FOSS release APK" — vedi fallimento noto alpha22), fixa se possibile e ripush un tag patch (`v<versionName>` non è riusabile: bump ulteriore versionCode/versionName, nuovo tag), altrimenti riporta il problema chiaro all'utente. Non lasciare mai un tag rotto silenzioso.
 
-7. Copia apk a `iride.apk` in repo root. Commit: `chore: add signed <versionName> release APK (iride.apk)`.
-
-8. Tag annotato `v<versionName>` su quel commit. Push: `git push origin <branch-corrente>` + `git push origin v<versionName>`.
-
-9. **GitHub pre-release** (no `gh` CLI installato, usa REST API + curl):
-   - Token: `printf "protocol=https\nhost=github.com\n\n" | git credential fill` → campo password (`gho_...`).
-   - POST `https://api.github.com/repos/Fhox006/Iride/releases`: `tag_name=v<versionName>`, `name=Iride <versionName human-readable>`, `body=<sezione changelog appena scritta>`, `prerelease=true`.
-   - Upload asset: POST a `https://uploads.github.com/repos/Fhox006/Iride/releases/<id>/assets?name=Iride.apk` (capital I), content-type `application/vnd.android.package-archive`, body = bytes di `iride.apk`.
-   - Scrivi json/body temporanei sotto scratchpad dir (non `/tmp`, Windows Git Bash lo rimappa male). `python` (non `python3`) per JSON building se serve.
-
-10. Fine: riporta a utente (in caveman/ponytail style com'è la sessione) tag creato + link release + versionCode/versionName, in 2-3 righe max.
+7. Fine: riporta tag, versionCode/versionName, link release, in 2-3 righe max (stile sessione corrente).
 
 ## Guardrail
 
-- Se build Kotlin daemon si corrompe → ferma, non ritentare in loop, riassumi stato e stop (vedi regola sessione).
-- Se qualcosa nello step 6 non torna → stop, non pubblicare mai un debug apk come release.
-- Non serve chiedere nulla all'utente in nessun punto di questo comando: se manca un'informazione, scegli il default più sicuro (es. changelog minimale ma corretto) e procedi.
+- Mai buildare/firmare APK in locale per una release pubblica salvo che l'utente lo chieda esplicitamente o CI sia irreparabilmente rotta E l'utente lo sappia — CI è la fonte di verità del certificato di firma ora.
+- Se build Kotlin daemon si corrompe (solo se per qualche motivo si builda in locale) → ferma, non ritentare in loop, riassumi stato e stop.
+- Se `release.yml` fallisce → NON ripiegare in silenzio su un flusso alternativo che pubblica un apk diverso/non firmato correttamente: capisci perché ha fallito prima di pubblicare qualsiasi cosa.
+- Nessuna domanda in nessun punto: se manca un'info, scegli il default più sicuro e procedi, menzionalo in una riga nel riepilogo finale se rilevante.
