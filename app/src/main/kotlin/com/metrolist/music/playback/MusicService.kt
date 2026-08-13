@@ -1670,6 +1670,11 @@ class MusicService :
         isAutoMixQueueActive.value = true
     }
 
+    fun clearRadioState() {
+        isAutoMixQueueActive.value = false
+        automixItems.value = emptyList()
+    }
+
     fun getAutomixAlbum(albumId: String) {
         scope.launch(SilentHandler) {
             YouTube

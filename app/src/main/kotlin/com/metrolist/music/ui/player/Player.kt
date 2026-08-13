@@ -487,8 +487,11 @@ fun BottomSheetPlayer(
     }
     val gradientColorsCache = remember { mutableMapOf<String, List<Color>>() }
 
-    if (!canSkipNext && automix.isNotEmpty()) {
-        playerConnection.service.addToQueueAutomix(automix[0], 0)
+    val isAutoMixQueueActive by playerConnection.service.isAutoMixQueueActive.collectAsState()
+    LaunchedEffect(canSkipNext, automix, isAutoMixQueueActive) {
+        if (!canSkipNext && automix.isNotEmpty() && isAutoMixQueueActive) {
+            playerConnection.service.addToQueueAutomix(automix[0], 0)
+        }
     }
 
     val defaultGradientColors = listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surfaceVariant)
@@ -2202,8 +2205,22 @@ fun BottomSheetPlayer(
                                 playerConnection.togglePlayPause()
                             }
                         },
-                        onPreviousClick = { if (!isListenTogetherGuest) playerConnection.seekToPrevious() },
-                        onNextClick = { if (!isListenTogetherGuest) playerConnection.seekToNext() },
+                        onPreviousClick = {
+                            if (!isListenTogetherGuest) {
+                                if (playerConnection.service.isAutoMixQueueActive.value) {
+                                    playerConnection.service.clearRadioState()
+                                }
+                                playerConnection.seekToPrevious()
+                            }
+                        },
+                        onNextClick = {
+                            if (!isListenTogetherGuest) {
+                                if (playerConnection.service.isAutoMixQueueActive.value) {
+                                    playerConnection.service.clearRadioState()
+                                }
+                                playerConnection.seekToNext()
+                            }
+                        },
                         onFavoriteClick = { playerConnection.service.toggleLike() },
                         onRadioClick = {
                             // Radio is a shortcut into Auto-Mix, not a full queue replace: it

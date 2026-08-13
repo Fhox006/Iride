@@ -14,46 +14,6 @@ import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.floor
 
-/**
- * The playback engine's variable-speed read head — a turntable platter sitting between the decoder
- * and the speaker.
- *
- * There is exactly one audio stream and one read head. Every decoded frame lands in [history]
- * (indexed by absolute frame since the last flush) and the head reads back out of it at
- * [velocity]. Normal playback is not a special case: it is the head running at exactly 1.0, where
- * `pos` advances by exactly one frame per output frame, the interpolation fraction is exactly zero
- * and the output is bit-identical to the input. Scratching only changes the number [setVelocity]
- * feeds in. Nothing is layered on top of playback, nothing is synthesized, nothing gets resynced
- * afterwards — 0.5 really is the song at half speed, -1.0 really is the song backwards, and on
- * release the head simply keeps going from wherever it ended up. No seek, ever.
- *
- * ## Why the decoder follows the head instead of the other way round
- *
- * The trick that makes the single-stream illusion hold is that we choose how many output frames to
- * emit per input buffer. The audio sink drains output in real time, so the output:input ratio *is*
- * the decoder's speed:
- *
- * - head at 1x  -> emit one frame per input frame; decoder runs at 1x. Passthrough.
- * - head at 3x  -> emit a third; the sink drains it in a third of the time and asks for input three
- *   times as fast, so the decoder sprints and the head always has fresh audio ahead of it. This is
- *   what a forward scratch needs, and it is why forward no longer collides with a player that
- *   "keeps advancing on its own" — there is only one thing advancing.
- * - head at 0 or in reverse -> emit [MaxExpansion] frames per input frame; the decoder crawls at
- *   1/[MaxExpansion] speed instead of racing forward and trampling the history the head is
- *   currently scrubbing over.
- *
- * ## Position
- *
- * ExoPlayer's clock counts frames handed to the speaker, so after a gesture that netted, say, two
- * seconds backwards it is off by exactly how far the head moved differently from wall clock. That
- * running difference is published as [driftMs] and the UI adds it to `player.currentPosition`; the
- * on-screen cursor therefore moves with the disc, forwards or backwards, live, and nothing needs to
- * be "confirmed" when the finger lifts.
- *
- * ponytail: the drift is a display correction, not a correction of the engine's own clock, so a
- * scratch that nets several seconds shifts where ExoPlayer thinks the track ends by that much.
- * Fixing that for real means a seek, which is exactly the jump this design exists to remove.
- */
 @UnstableApi
 @Suppress("DEPRECATION")
 class ScratchAudioProcessor : AudioProcessor {

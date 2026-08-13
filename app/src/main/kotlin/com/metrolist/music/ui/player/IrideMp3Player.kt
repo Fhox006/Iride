@@ -1063,13 +1063,17 @@ private fun IrideQueuePreview(
         // is promoted into the real player queue, replacing whatever was queued after the
         // current song. Auto-Mix itself then empties out (it's not a suggestion list once
         // committed, it IS the queue) until the next Radio press or natural refill.
+        var lastHandledRadioTrigger by remember { mutableStateOf(0) }
         LaunchedEffect(radioTrigger) {
-            if (radioTrigger == 0) return@LaunchedEffect
+            if (radioTrigger == 0 || radioTrigger == lastHandledRadioTrigger) return@LaunchedEffect
+            lastHandledRadioTrigger = radioTrigger
             selectedAutomixFilter = AUTOMIX_FILTER_ALL
             if (playerConnection.service.automixItems.value.isEmpty()) {
                 playerConnection.regenerateAutomix(mediaMetadata)
             }
-            playerConnection.service.commitAutomixAsQueue()
+            if (playerConnection.service.automixItems.value.isNotEmpty()) {
+                playerConnection.service.commitAutomixAsQueue()
+            }
             delay(80)
             lazyListState.animateScrollToItem(historyItems.size)
         }
@@ -1240,7 +1244,12 @@ private fun IrideQueuePreview(
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
-                            ) { playerConnection.player.seekToDefaultPosition(window.firstPeriodIndex) },
+                            ) {
+                                if (playerConnection.service.isAutoMixQueueActive.value) {
+                                    playerConnection.service.clearRadioState()
+                                }
+                                playerConnection.player.seekToDefaultPosition(window.firstPeriodIndex)
+                            },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         AsyncImage(
