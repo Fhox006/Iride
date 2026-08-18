@@ -2425,6 +2425,7 @@ fun SwipeToSongBox(
             techStyled = topNavigationBarEnabled,
             offset = offset,
             threshold = threshold,
+            reverse = true,
         )
 
         Box(
@@ -2487,9 +2488,11 @@ private fun reset(offset: MutableState<Float>, scope: CoroutineScope) {
 }
 
 // NEXT/QUEUE reveal panel behind a swiped song row. `techStyled` (New Iride UI) adds a thin
-// HUD hairline frame and a passcode-style scramble reveal driven by drag distance (not time):
-// letters lock in left-to-right as `offset` approaches `threshold`, unrevealed letters cycle
-// through random glyphs. Classic Material UI keeps a plain fade with no framing or reveal.
+// HUD hairline frame and a passcode-style scramble reveal driven by drag distance (not time).
+// NEXT (drag right) locks letters left-to-right; QUEUE (drag left) passes `reverse = true` so
+// the reveal mirrors — letters lock from the trailing edge inward, growing leftward from the
+// panel's right edge in step with the swipe direction. Classic Material UI keeps a plain
+// fade with no framing or reveal.
 @Composable
 private fun SwipeRevealPanel(
     modifier: Modifier,
@@ -2504,6 +2507,7 @@ private fun SwipeRevealPanel(
     techStyled: Boolean,
     offset: State<Float>,
     threshold: Float,
+    reverse: Boolean = false,
 ) {
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
@@ -2538,7 +2542,8 @@ private fun SwipeRevealPanel(
                 fontFamily = fontFamily,
                 letterSpacing = letterSpacing,
                 color = tint,
-                modifier = Modifier.padding(horizontal = 24.dp)
+                modifier = Modifier.padding(horizontal = 24.dp),
+                reverse = reverse,
             )
         } else {
             Text(
@@ -2561,6 +2566,11 @@ private const val REVEAL_BOOST = 1.25f
 // Passcode-style reveal: how many letters are locked follows drag progress (offset/threshold),
 // not a timer, so it reads as "decoding" the further you swipe. Locked letters show the real
 // label; the rest keep re-rolling random glyphs on a fixed tick until they lock too.
+//
+// [reverse] mirrors the reveal for swipe-left gestures (QUEUE): letters lock from the trailing
+// edge of the string inward and the rendered text is right-aligned, so the locked block grows
+// leftward from the panel's right edge in step with the drag direction instead of growing
+// rightward inside a right-anchored widget (which would shift letters around as they lock).
 @Composable
 private fun PasscodeSwipeLabel(
     label: String,
@@ -2572,6 +2582,7 @@ private fun PasscodeSwipeLabel(
     letterSpacing: TextUnit,
     color: Color,
     modifier: Modifier = Modifier,
+    reverse: Boolean = false,
 ) {
     val reducedMotion = rememberReducedMotion()
     // Boosted so the full word locks in before the drag reaches the actual commit threshold —
@@ -2597,16 +2608,31 @@ private fun PasscodeSwipeLabel(
     } else {
         (progress * label.length).toInt().coerceIn(0, label.length)
     }
-    val displayed = remember(label, lockedCount, tick) {
-        buildString {
-            append(label.take(lockedCount))
-            for (i in lockedCount until label.length) {
-                append(SCRAMBLE_GLYPHS[Random(tick * 31 + i).nextInt(SCRAMBLE_GLYPHS.length)])
+    val displayed = remember(label, lockedCount, tick, reverse) {
+        if (reverse) {
+            // Lock from the trailing edge of the string inward (E → U → U → Q for "QUEUE"),
+            // with scrambled glyphs on the leading side. Combined with TextAlign.End below
+            // and the caller's right-anchored panel, this makes the locked block grow
+            // leftward from the row's right edge as the user drags left.
+            buildString {
+                val unlocked = label.length - lockedCount
+                for (i in 0 until unlocked) {
+                    append(SCRAMBLE_GLYPHS[Random(tick * 31 + i).nextInt(SCRAMBLE_GLYPHS.length)])
+                }
+                append(label.takeLast(lockedCount))
+            }
+        } else {
+            buildString {
+                append(label.take(lockedCount))
+                for (i in lockedCount until label.length) {
+                    append(SCRAMBLE_GLYPHS[Random(tick * 31 + i).nextInt(SCRAMBLE_GLYPHS.length)])
+                }
             }
         }
     }
     Text(
         text = displayed,
+        textAlign = if (reverse) TextAlign.End else TextAlign.Start,
         style = style,
         fontFamily = fontFamily,
         fontWeight = FontWeight.Black,

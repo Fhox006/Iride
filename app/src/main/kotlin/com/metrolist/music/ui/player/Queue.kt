@@ -1380,6 +1380,7 @@ fun InlineQueuePanel(
     val currentWindowIndex by playerConnection.currentWindowIndex.collectAsState()
     val queueTitle by playerConnection.queueTitle.collectAsState()
     val queueWindows by playerConnection.queueWindows.collectAsState()
+    val isRadio by playerConnection.service.isAutoMixQueueActive.collectAsState()
     val automix by playerConnection.service.automixItems.collectAsState()
 
     val listenTogetherManager = LocalListenTogetherManager.current
@@ -1670,7 +1671,7 @@ fun InlineQueuePanel(
         pills = {
             PlayerPill(
                 icon = R.drawable.radio,
-                isActive = false,
+                isActive = isRadio,
                 enabled = !isListenTogetherGuest,
                 textButtonColor = textButtonColor,
                 iconButtonColor = iconButtonColor,

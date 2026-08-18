@@ -1245,9 +1245,6 @@ private fun IrideQueuePreview(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
                             ) {
-                                if (playerConnection.service.isAutoMixQueueActive.value) {
-                                    playerConnection.service.clearRadioState()
-                                }
                                 playerConnection.player.seekToDefaultPosition(window.firstPeriodIndex)
                             },
                         verticalAlignment = Alignment.CenterVertically,

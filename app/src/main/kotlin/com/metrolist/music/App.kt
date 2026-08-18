@@ -90,7 +90,7 @@ class App :
         // Warm the player-sheet anchor so a cold start with no saved value falls back to the
         // dismissed position (classic UI), and a cold start with a saved value restores it
         // before any Composable can flash the wrong layout.
-        playerAnchorCache = dataStore.get(PlayerAnchorKey, oepncodedismissedAnchor)
+        playerAnchorCache = dataStore.get(PlayerAnchorKey, dismissedAnchor)
 
         Timber.plant(Timber.DebugTree())
 
