@@ -53,7 +53,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -101,6 +100,7 @@ import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.irideEnter
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.rememberEnterProgress
 import com.metrolist.music.ui.utils.revealMask
 import com.metrolist.music.utils.rememberEnumPreference
@@ -416,20 +416,15 @@ fun CachePlaylistScreen(
     if (topNavigationBarEnabled) {
         // New Iride UI hero pattern — see LibraryAlbumsScreen.kt for the canonical version this
         // was copied from, including the crash note below.
-        val density = LocalDensity.current
         val frostBackdrop = rememberFrostBackdrop()
         var titleBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
         var topBarBottomPx by remember { mutableStateOf(0f) }
-        val titleCoverRangePx = with(density) { 24.dp.toPx() }
-        val topBarRevealProgress by remember {
+        val headerTitleCovered by remember {
             derivedStateOf {
-                if (lazyListState.firstVisibleItemIndex > 0) {
-                    1f
-                } else {
-                    ((topBarBottomPx + titleCoverRangePx - titleBottomPx) / titleCoverRangePx).coerceIn(0f, 1f)
-                }
+                lazyListState.firstVisibleItemIndex > 0 || titleBottomPx <= topBarBottomPx
             }
         }
+        val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
         val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
 
         val heroHeader: @Composable () -> Unit = {

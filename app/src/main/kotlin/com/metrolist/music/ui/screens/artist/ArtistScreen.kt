@@ -182,6 +182,7 @@ import com.metrolist.music.ui.utils.headerEnter
 import com.metrolist.music.ui.utils.irideEnter
 import com.metrolist.music.ui.utils.irideEnterScale
 import com.metrolist.music.ui.utils.pressScale
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.rememberEnterProgress
 import com.metrolist.music.ui.utils.rememberGrainBrush
 import com.metrolist.music.ui.utils.rememberReducedMotion
@@ -406,26 +407,17 @@ fun ArtistScreen(
     // Single source for the whole bar's arrival — glass, back button and title all key off the same
     // crossing instead of the glass reacting to raw scroll offset while the title waited on the name.
     // That split is what read as the bar arriving "in anticipo": the blur was already up over the
-    // photo before NOME ARTISTA had even started leaving.
-    val titleCoverRangePx = with(density) { 24.dp.toPx() }
-    val topBarRevealProgress by remember {
+    // photo before NOME ARTISTA had even started leaving. Show/hide tweens at a fixed duration
+    // instead of following the scroll pixel-by-pixel.
+    val headerTitleCovered by remember {
         derivedStateOf {
-            if (!headerRevealed) {
-                // Navigating back to an artist you'd already scrolled restores that scroll offset
-                // (LazyListState is saveable) before this composition's own frostBackdrop
-                // GraphicsLayer — which is NOT saveable — has recorded a single real frame. Gating on
-                // `headerRevealed` (the same one-shot "screen has landed" flag the header entrance
-                // already waits on) means the glass can only turn on after a real frame exists to blur.
-                0f
-            } else if (lazyListState.firstVisibleItemIndex > 0) {
-                // Header item disposed off the top: nameBottomPx would otherwise hold its last
-                // recorded (and stale) value.
-                1f
-            } else {
-                ((topBarBottomPx + titleCoverRangePx - nameBottomPx) / titleCoverRangePx).coerceIn(0f, 1f)
-            }
+            headerRevealed && (
+                lazyListState.firstVisibleItemIndex > 0 ||
+                    nameBottomPx <= topBarBottomPx
+                )
         }
     }
+    val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
     LaunchedEffect(artistName) {
         if (artistName != null && !headerRevealed) {
             // Longest chain in the cascade: typing, then the release panel at +140 over Medium.
@@ -1015,6 +1007,7 @@ fun ArtistScreen(
                                     // the same horizontal drag, same conflict Home's Quick Picks
                                     // carousel already had to turn this off for.
                                     isSwipeable = false,
+                                    hairlineBorder = true,
                                     trailingContent = {
                                         IconButton(
                                             onClick = {
@@ -1187,6 +1180,7 @@ fun ArtistScreen(
                                         showNewMarker = song.id in unseenSongIds,
                                         newMarkerLabel = if (song.id in unseenSongIds) stringResource(R.string.artist_release_type_feat) else null,
                                         showAlbumInSubtitle = true,
+                                        hairlineBorder = true,
                                         trailingContent = {
                                             IconButton(
                                                 onClick = {
@@ -1330,6 +1324,7 @@ fun ArtistScreen(
                                                 // songs carousel above.
                                                 isSwipeable = false,
                                                 showNewMarker = song.id in unseenSongIds,
+                                                hairlineBorder = true,
                                                 trailingContent = {
                                                     IconButton(
                                                         onClick = {
@@ -1423,6 +1418,7 @@ fun ArtistScreen(
                                                         coroutineScope = coroutineScope,
                                                         size = 270.dp,
                                                         thumbnailShape = RoundedCornerShape(270.dp * 0.06f),
+                                                        hairlineBorder = true,
                                                         modifier = Modifier
                                                             .combinedClickable(
                                                                 onClick = {
@@ -1488,6 +1484,7 @@ fun ArtistScreen(
                                                     coroutineScope = coroutineScope,
                                                     thumbnailRatio = if (isVideoSection) 16f / 9f else 1f,
                                                     thumbnailCornerRadius = if (isVideoSection) 8.dp else 3.dp,
+                                                    hairlineBorder = true,
                                                     showNewMarker = item is AlbumItem && item.id in unseenAlbumIds,
                                                     newMarkerLabel = when {
                                                         item !is AlbumItem || item.id !in unseenAlbumIds -> null
@@ -2031,7 +2028,7 @@ fun RecentAlbumPanel(
                     SquircleShape(radius = 6.dp, cornerSmoothing = 0.48f)
                 },
                 modifier = Modifier.size(if (useMonospace) 108.dp else 96.dp),
-                hairlineBorder = useMonospace,
+                hairlineBorder = true,
             )
 
             Column(

@@ -29,11 +29,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -412,6 +409,11 @@ fun rememberBottomSheetState(
     expandedBound: Dp,
     collapsedBound: Dp = dismissedBound,
     initialAnchor: Int = dismissedAnchor,
+    // Fires on every transition between dismissed/collapsed/expanded so the caller can mirror the
+    // new anchor into DataStore and survive a real process kill (rememberSaveable alone only
+    // covers config-change recreation). Default no-op keeps this composable drop-in for callers
+    // that don't need cross-process persistence.
+    onAnchorPersist: (Int) -> Unit = {},
     // When true, an interactive drag can never pull the sheet below collapsedBound — no swipe-to-
     // dismiss-by-dragging. Used by the New Iride UI curtain player: dragging down past the collapsed
     // mini player used to shrink it away and silently stop playback, reading as "throwing the song
@@ -422,38 +424,18 @@ fun rememberBottomSheetState(
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
 
-    var previousAnchor by rememberSaveable {
-        mutableIntStateOf(initialAnchor)
-    }
-
-    // Never restore to full-screen expanded on cold start — nav bar must be visible at startup.
-    // One-shot (plain remember, not rememberSaveable): runs once per composition lifetime, so a
-    // real process cold-start still corrects, but a legitimately-expanded sheet is never clobbered.
-    // The old unconditional version ran on every recomposition: it flipped expandedAnchor ->
-    // collapsedAnchor the instant the user opened the player, so previousAnchor never persisted as
-    // expanded during a live session — then any bounds change (fullscreen lyrics dialog hiding
-    // system bars) recomputed the remember() block against the stale collapsed anchor and snapped
-    // the open player shut (which in turn closed lyrics + dismissed the fullscreen dialog).
-    var startupCorrected by remember { mutableStateOf(false) }
-    if (!startupCorrected) {
-        if (previousAnchor == expandedAnchor) {
-            previousAnchor = collapsedAnchor
-        }
-        startupCorrected = true
-    }
-
-    val initialValue = when (previousAnchor) {
+    val initialValue = when (initialAnchor) {
         expandedAnchor -> expandedBound
         collapsedAnchor -> collapsedBound
         else -> dismissedBound
     }
 
-    val animatable = remember {
+    val animatable = remember(initialAnchor, dismissedBound, expandedBound, collapsedBound) {
         Animatable(initialValue, Dp.VectorConverter)
     }
 
-    return remember(dismissedBound, expandedBound, collapsedBound, coroutineScope) {
-        val targetValue = when (previousAnchor) {
+    return remember(initialAnchor, dismissedBound, expandedBound, collapsedBound, coroutineScope) {
+        val targetValue = when (initialAnchor) {
             expandedAnchor -> expandedBound
             collapsedAnchor -> collapsedBound
             dismissedAnchor -> dismissedBound
@@ -476,7 +458,7 @@ fun rememberBottomSheetState(
                     animatable.snapTo(if (preventDismissDrag) target.coerceAtLeast(collapsedBound) else target)
                 }
             },
-            onAnchorChanged = { previousAnchor = it },
+            onAnchorChanged = onAnchorPersist,
             coroutineScope = coroutineScope,
             animatable = animatable,
             collapsedBound = collapsedBound

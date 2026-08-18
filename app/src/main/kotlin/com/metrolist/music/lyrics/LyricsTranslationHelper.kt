@@ -241,8 +241,9 @@ object LyricsTranslationHelper {
                         _hasActiveTranslations.value = true
                         _status.value = TranslationStatus.Success
 
-                        // Persist cached translations to DB so loadTranslationsFromDatabase can't
-                        // overwrite them with a stale empty entity (e.g. after an untranslate race).
+                        // Persist cached translations to DB. Re-read the lyrics row right
+                        // before upserting so a fresher lyrics upsert from the provider during
+                        // the API call doesn't get clobbered by a stale snapshot.
                         if (songId.isNotBlank() && database != null) {
                             try {
                                 val currentLyrics = database.lyrics(songId).first()
@@ -404,16 +405,15 @@ object LyricsTranslationHelper {
 
                     result
                         .onSuccess { translatedLines ->
-                            // Check if composition is still active before updating state
-                            if (!isCompositionActive) {
-                                return@onSuccess
-                            }
-
-                            // Cache the translations
-                            val cacheKey = getCacheKey(fullText, mode, targetLanguage)
-                            translationCache[cacheKey] = translatedLines
-
-                            // Save to database if songId is provided
+                            // Save to database FIRST, before any UI-state checks. The user
+                            // paid for an API call and may close the lyrics view before the
+                            // success status flash fires; the translation must land in the DB
+                            // regardless of composition lifetime.
+                            //
+                            // Re-read the lyrics row right before the upsert: the lyric provider
+                            // may have already written a fresher entity while the API call was
+                            // in flight, and copying from a stale snapshot would resurrect
+                            // older lyrics+provider and re-wipe translations on the next fetch.
                             if (songId.isNotBlank() && database != null) {
                                 try {
                                     val currentLyrics = database.lyrics(songId).first()
@@ -427,13 +427,22 @@ object LyricsTranslationHelper {
                                                 ),
                                             )
                                         }
-                                        // Signal that translations have been saved
                                         _translationSaved.tryEmit(Unit)
                                     }
                                 } catch (e: Exception) {
                                     Timber.e(e, "Failed to save translated lyrics to database")
                                 }
                             }
+
+                            // Composition torn down while the API call was running — DB write
+                            // already done above, skip UI updates that would touch a dead view.
+                            if (!isCompositionActive) {
+                                return@onSuccess
+                            }
+
+                            // Cache the translations for this session
+                            val cacheKey = getCacheKey(fullText, mode, targetLanguage)
+                            translationCache[cacheKey] = translatedLines
 
                             // Map translations back to original non-empty entries only
                             val expectedCount = nonEmptyEntries.size

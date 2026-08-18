@@ -1096,4 +1096,11 @@
     <string name="notes_empty_tracks">No track notes yet</string>
     <string name="notes_delete_title">Delete note?</string>
     <string name="notes_delete_message">This removes the title, rating and text you wrote for this.</string>
+
+    <!-- Download all favorite albums -->
+    <string name="download_all_favorite_albums">Download all favorite albums</string>
+    <string name="download_all_favorite_albums_started">Downloading all favorite albums…</string>
+    <string name="all_favorite_albums_downloaded">All favorite albums downloaded</string>
+    <string name="remove_all_favorite_albums_confirm">Do you really want to remove all favorite albums from downloads?</string>
+    <string name="no_favorite_albums_to_download">No favorite albums to download</string>
 </resources>

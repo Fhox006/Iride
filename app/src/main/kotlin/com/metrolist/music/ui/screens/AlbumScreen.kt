@@ -96,7 +96,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -182,6 +181,7 @@ import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.headerEnter
 import com.metrolist.music.ui.utils.irideEnter
 import com.metrolist.music.ui.utils.irideEnterScale
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.rememberEnterProgress
 import com.metrolist.music.ui.utils.rememberSectionEnter
 import com.metrolist.music.ui.utils.revealMask
@@ -267,7 +267,6 @@ fun AlbumScreen(
     // composition can't be used as a "seen" proxy — this tracks the LazyColumn's actual on-screen
     // bounds so each row can check itself against it.
     var listViewportBounds by remember { mutableStateOf<Rect?>(null) }
-    val density = LocalDensity.current
     val frostBackdrop = rememberFrostBackdrop()
     // Stretch of the vertical rubber band, hoisted so the header art can answer the pull.
     val headerPull = rememberRubberBandPull()
@@ -282,23 +281,19 @@ fun AlbumScreen(
 
     // Window-space Y of the header title's bottom edge and of the top bar's bottom edge — the bar's
     // glass and mirrored title fade in exactly when the big title goes behind the bar (same crossing
-    // ArtistScreen uses), instead of a flat scroll-distance threshold.
+    // ArtistScreen uses), and tweens in/out at a fixed duration instead of following the scroll
+    // pixel-by-pixel.
     var nameBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
     var topBarBottomPx by remember { mutableStateOf(0f) }
-    val titleCoverRangePx = with(density) { 24.dp.toPx() }
-    val topBarRevealProgress by remember {
+    val headerTitleCovered by remember {
         derivedStateOf {
-            if (!headerRevealed) {
-                0f
-            } else if (lazyListState.firstVisibleItemIndex > 0) {
-                // Header item scrolled off and disposed: nameBottomPx would otherwise hold its last
-                // (stale) recorded value.
-                1f
-            } else {
-                ((topBarBottomPx + titleCoverRangePx - nameBottomPx) / titleCoverRangePx).coerceIn(0f, 1f)
-            }
+            headerRevealed && (
+                lazyListState.firstVisibleItemIndex > 0 ||
+                    nameBottomPx <= topBarBottomPx
+                )
         }
     }
+    val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
 
     val albumTitle = albumWithSongs?.album?.title
     // Everything in the header waits for the title to finish typing, so the block reads as one

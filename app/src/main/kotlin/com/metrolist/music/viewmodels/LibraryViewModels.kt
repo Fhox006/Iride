@@ -65,10 +65,12 @@ import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import com.metrolist.music.utils.reportException
+import androidx.core.net.toUri
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -344,7 +346,7 @@ class LibraryAlbumsViewModel
 @Inject
 constructor(
     @ApplicationContext private val context: Context,
-    database: MusicDatabase,
+    private val database: MusicDatabase,
     private val syncUtils: SyncUtils,
 ) : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
@@ -372,6 +374,100 @@ constructor(
 
     val downloadedAlbums = database.albumsDownloadedByDateDesc()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val likedAlbumsSongs = database.songsInBookmarkedAlbums()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    private val _isProcessingDownloads = MutableStateFlow(false)
+    val isProcessingDownloads = _isProcessingDownloads.asStateFlow()
+
+    fun downloadAllFavoriteAlbums() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val albums = allAlbums.value
+            if (albums.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(
+                        context,
+                        com.metrolist.music.R.string.no_favorite_albums_to_download,
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                }
+                return@launch
+            }
+            _isProcessingDownloads.value = true
+            withContext(Dispatchers.Main) {
+                android.widget.Toast.makeText(
+                    context,
+                    com.metrolist.music.R.string.download_all_favorite_albums_started,
+                    android.widget.Toast.LENGTH_SHORT,
+                ).show()
+            }
+            try {
+                val allSongs = mutableListOf<com.metrolist.music.db.entities.Song>()
+                for (album in albums) {
+                    var songs = database.albumSongs(album.id).first()
+                    if (songs.isEmpty()) {
+                        runCatching {
+                            val ytResult = YouTube.album(album.id)
+                            val albumPage = ytResult.getOrNull()
+                            if (albumPage != null) {
+                                val current = database.album(album.id).first()
+                                database.transaction {
+                                    if (current == null) {
+                                        insert(albumPage)
+                                    } else {
+                                        update(current.album, albumPage, current.artists)
+                                    }
+                                }
+                                songs = database.albumSongs(album.id).first()
+                            }
+                        }
+                    }
+                    allSongs.addAll(songs)
+                }
+                val distinctSongs = allSongs.distinctBy { it.id }
+                distinctSongs.forEach { song ->
+                    val downloadRequest = androidx.media3.exoplayer.offline.DownloadRequest
+                        .Builder(song.id, song.id.toUri())
+                        .setCustomCacheKey(song.id)
+                        .setData(song.song.title.toByteArray())
+                        .build()
+                    androidx.media3.exoplayer.offline.DownloadService.sendAddDownload(
+                        context,
+                        com.metrolist.music.playback.ExoDownloadService::class.java,
+                        downloadRequest,
+                        false,
+                    )
+                }
+            } finally {
+                _isProcessingDownloads.value = false
+            }
+        }
+    }
+
+    fun removeAllFavoriteAlbumsDownloads() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _isProcessingDownloads.value = true
+            try {
+                val songIds = mutableSetOf<String>()
+                songIds.addAll(likedAlbumsSongs.value.map { it.id })
+                for (album in allAlbums.value) {
+                    val songs = database.albumSongs(album.id).first()
+                    songIds.addAll(songs.map { it.id })
+                }
+                songIds.forEach { songId ->
+                    androidx.media3.exoplayer.offline.DownloadService.sendRemoveDownload(
+                        context,
+                        com.metrolist.music.playback.ExoDownloadService::class.java,
+                        songId,
+                        false,
+                    )
+                }
+            } finally {
+                _isProcessingDownloads.value = false
+            }
+        }
+    }
 
     fun sync() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedAlbums() }

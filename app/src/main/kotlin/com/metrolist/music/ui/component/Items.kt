@@ -726,6 +726,7 @@ fun SongListItem(
     showInLibraryIcon: Boolean = false,
     trailingContent: @Composable RowScope.() -> Unit = {},
     showDivider: Boolean = true,
+    hairlineBorder: Boolean = false,
 ) {
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
     AutoLinkFeaturedArtistEffect(song)
@@ -755,6 +756,7 @@ fun SongListItem(
                     shape = SquircleShape(radius = ThumbnailCornerRadius, cornerSmoothing = 0.5f),
                     modifier = Modifier.size(ListThumbnailSize),
                     showLikedStar = showLikedIcon && song.song.liked,
+                    hairlineBorder = hairlineBorder,
                 )
             },
             trailingContent = {
@@ -1540,6 +1542,7 @@ fun YouTubeListItem(
             Icon.Download(download?.state)
         }
     },
+    hairlineBorder: Boolean = item is AlbumItem,
 ) {
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
 
@@ -1585,7 +1588,8 @@ fun YouTubeListItem(
                     isActive = isActive,
                     isPlaying = isPlaying,
                     shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(ThumbnailCornerRadius),
-                    modifier = Modifier.size(ListThumbnailSize)
+                    modifier = Modifier.size(ListThumbnailSize),
+                    hairlineBorder = hairlineBorder,
                 )
             },
             trailingContent = trailingContent,
@@ -1653,6 +1657,7 @@ fun YouTubeGridItem(
     // Used when item.artists is null/empty (always true for albums parsed off
     // an artist's own page) so the subtitle isn't left artist-less.
     fallbackArtistName: String? = null,
+    hairlineBorder: Boolean = item is AlbumItem,
 ) {
     val squareVideoThumbnail by rememberPreference(SquareVideoThumbnailKey, defaultValue = true)
     val defaultRatio = if (item is SongItem) 16f / 9 else 1f
@@ -1732,6 +1737,7 @@ fun YouTubeGridItem(
                 topNavigationBarEnabled -> RoundedCornerShape(5.dp)
                 else -> SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f)
             },
+            hairlineBorder = hairlineBorder,
         )
 
         if (item is SongItem && !isActive) {

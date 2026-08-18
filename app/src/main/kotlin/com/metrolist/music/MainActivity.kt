@@ -153,6 +153,7 @@ import com.metrolist.music.constants.ExperimentalLyricsKey
 import com.metrolist.music.constants.DataSyncIdKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.OnboardingCompletedKey
+import com.metrolist.music.constants.PlayerAnchorKey
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.ShowNewsTabKey
 import com.metrolist.music.constants.ListenTogetherUsernameKey
@@ -900,11 +901,17 @@ class MainActivity : ComponentActivity() {
                 val playerBottomSheetState =
                     rememberBottomSheetState(
                         dismissedBound = 0.dp,
-                        // New Iride UI: the curtain is never dismissed to nothing — it always sits
-                        // collapsed (showing a placeholder peek row when no track is loaded) from the
-                        // very first frame, instead of starting at dismissedAnchor and briefly falling
-                        // back to the classic FloatingPill until a track shows up.
-                        initialAnchor = if (curtainMode) collapsedAnchor else dismissedAnchor,
+                        // Restore the player's open/closed/expanded state from DataStore (seeded
+                        // synchronously at process start in App.onCreate) instead of forcing a
+                        // fresh dismiss on cold start — keeps the player's position stable
+                        // across app close/reopen. Curtain mode never presents a fully dismissed
+                        // sheet anyway, so collapse the saved dismissed value into a collapsed
+                        // peek instead so the mp3 placeholder is visible from frame 0.
+                        initialAnchor = if (curtainMode) {
+                            if (App.playerAnchorCache == dismissedAnchor) collapsedAnchor else App.playerAnchorCache
+                        } else {
+                            App.playerAnchorCache
+                        },
                         collapsedBound = if (!showRail) {
                             bottomInset + (if (isTopLevelRoute && !topNavigationBarEnabled) FloatingPillHeight else MiniPlayerHeight) + FloatingPillBottomSpacing +
                                 (if (curtainMode) CurtainCornerRevealHeight else 0.dp)
@@ -917,6 +924,12 @@ class MainActivity : ComponentActivity() {
                         // landscape/rail mode keeps the old self-positioning full-expand behavior.
                         expandedBound = if (curtainMode) maxHeight - AppPeekHeight else maxHeight,
                         preventDismissDrag = curtainMode,
+                        onAnchorPersist = { anchor ->
+                            App.setPlayerAnchorCache(anchor)
+                            lifecycleScope.launch(Dispatchers.IO) {
+                                dataStore.edit { it[PlayerAnchorKey] = anchor }
+                            }
+                        },
                     )
 
                 // Only force the curtain shut on backgrounding if it was JUST opened (accidental
@@ -927,15 +940,24 @@ class MainActivity : ComponentActivity() {
                 // the spring is still mid-flight when ON_STOP fires, so isExpanded reads false
                 // while the anchor already says expanded — that's still within the "just opened"
                 // window so it gets caught the same way.
+                //
+                // Belt-and-suspenders flush on every ON_STOP: covers an in-flight DataStore write
+                // that hasn't landed before process death, so the next cold start restores the
+                // exact state the user left behind even if the OS yanks the process between the
+                // last anchor change and the disk flush.
                 val lifecycleOwner = LocalLifecycleOwner.current
                 DisposableEffect(playerBottomSheetState, lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
-                        if (event == Lifecycle.Event.ON_STOP &&
-                            !playerBottomSheetState.isCollapsed &&
-                            !playerBottomSheetState.isDismissed &&
-                            SystemClock.elapsedRealtime() - playerBottomSheetState.lastExpandedAtMs < 1000L
-                        ) {
-                            playerBottomSheetState.collapseSoft()
+                        if (event == Lifecycle.Event.ON_STOP) {
+                            if (!playerBottomSheetState.isCollapsed &&
+                                !playerBottomSheetState.isDismissed &&
+                                SystemClock.elapsedRealtime() - playerBottomSheetState.lastExpandedAtMs < 1000L
+                            ) {
+                                playerBottomSheetState.collapseSoft()
+                            }
+                            lifecycleScope.launch(Dispatchers.IO) {
+                                dataStore.edit { it[PlayerAnchorKey] = App.playerAnchorCache }
+                            }
                         }
                     }
                     lifecycleOwner.lifecycle.addObserver(observer)
@@ -1067,9 +1089,11 @@ class MainActivity : ComponentActivity() {
                             if (!playerBottomSheetState.isDismissed) {
                                 playerBottomSheetState.dismiss()
                             }
-                        } else if (playerBottomSheetState.isDismissed) {
-                            playerBottomSheetState.collapseSoft()
                         }
+                        // Classic mode + metadata loaded: leave the sheet alone. The previous
+                        // behavior bounced dismissed -> collapsed here, which silently undid an
+                        // explicit user dismiss every time the saved queue restored — the
+                        // remembered anchor in DataStore is the source of truth now.
                     }
                 }
 

@@ -46,7 +46,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -62,6 +61,7 @@ import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.irideEnter
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.rememberEnterProgress
 import com.metrolist.music.ui.utils.revealMask
 import androidx.compose.runtime.Composable
@@ -258,25 +258,20 @@ fun LibraryArtistsScreen(
     if (topNavigationBarEnabled) {
         // New Iride UI hero pattern — see LibraryAlbumsScreen.kt for the canonical version this
         // was copied from, including the crash note below.
-        val density = LocalDensity.current
         val frostBackdrop = rememberFrostBackdrop()
         var titleBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
         var topBarBottomPx by remember { mutableStateOf(0f) }
-        val titleCoverRangePx = with(density) { 24.dp.toPx() }
-        val topBarRevealProgress by remember {
+        val headerTitleCovered by remember {
             derivedStateOf {
                 val scrolledPastHeader = if (viewType == LibraryViewType.LIST) {
                     lazyListState.firstVisibleItemIndex > 0
                 } else {
                     lazyGridState.firstVisibleItemIndex > 0
                 }
-                if (scrolledPastHeader) {
-                    1f
-                } else {
-                    ((topBarBottomPx + titleCoverRangePx - titleBottomPx) / titleCoverRangePx).coerceIn(0f, 1f)
-                }
+                scrolledPastHeader || titleBottomPx <= topBarBottomPx
             }
         }
+        val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
         val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
 
         val heroHeader: @Composable () -> Unit = {

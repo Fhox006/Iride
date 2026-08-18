@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 sealed class LyricsSearchStatus {
     object Idle : LyricsSearchStatus()
@@ -153,8 +154,17 @@ class LyricsViewModel @Inject constructor(
                     else -> LyricsSearchStatus.FoundPlain
                 }
                 if (cachedTier == LyricsTier.SYNCED_WORD) return@launch
-                // Non-WORD cache: delete so providers can upsert freely with fresher/better result
-                database.query { delete(cached) }
+                // Non-WORD cache: delete so providers can upsert freely with fresher/better result.
+                // EXCEPT when the cached row already carries a user-saved translation — deleting
+                // it leaves a window (until the provider upserts) where translations live in
+                // memory only. If the provider fails or the user kills the app mid-fetch, the
+                // translation is gone forever. Keep the row; any later upsert already carries
+                // the preserved translation fields.
+                if (cached.translatedLyrics.isNullOrBlank()) {
+                    database.query { delete(cached) }
+                } else {
+                    Timber.d("Skipping cached lyrics delete: row has saved translations (${cached.translationLanguage}/${cached.translationMode})")
+                }
             }
             // getLyricsProgressive always runs unless we returned early on SYNCED_WORD above
 

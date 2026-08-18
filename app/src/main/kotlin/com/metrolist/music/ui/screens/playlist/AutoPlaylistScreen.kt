@@ -82,7 +82,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -156,6 +155,7 @@ import com.metrolist.music.ui.utils.irideEnter
 import com.metrolist.music.ui.utils.irideEnterScale
 import com.metrolist.music.ui.utils.isScrollingUp
 import com.metrolist.music.ui.utils.prefetchThumbnails
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.rememberEnterProgress
 import com.metrolist.music.ui.utils.revealMask
 import com.metrolist.music.utils.makeTimeString
@@ -219,10 +219,8 @@ fun AutoPlaylistScreen(
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    val density = LocalDensity.current
     var nameBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
     var topBarBottomPx by remember { mutableStateOf(0f) }
-    val titleCoverRangePx = with(density) { 24.dp.toPx() }
     val headerPull = rememberRubberBandPull()
 
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
@@ -551,18 +549,16 @@ fun AutoPlaylistScreen(
     }
 
     val state = rememberLazyListState()
-    // Same crossing math as AlbumScreen/LocalPlaylistScreen: a continuous pixel-accurate ramp as
-    // the header name goes behind the bar, instead of a flat item-index threshold. No typing/
-    // reveal gate here — this header's name has no entrance animation to wait on.
-    val topBarRevealProgress by remember {
+    // Same crossing math as AlbumScreen/LocalPlaylistScreen: the overlay (glass + mirrored title)
+    // shows once the header name is behind the bar or scrolled past, and tweens in/out at a fixed
+    // duration instead of following the scroll pixel-by-pixel. No typing/reveal gate here — this
+    // header's name has no entrance animation to wait on.
+    val headerTitleCovered by remember {
         derivedStateOf {
-            if (state.firstVisibleItemIndex > 1) {
-                1f
-            } else {
-                ((topBarBottomPx + titleCoverRangePx - nameBottomPx) / titleCoverRangePx).coerceIn(0f, 1f)
-            }
+            state.firstVisibleItemIndex > 1 || nameBottomPx <= topBarBottomPx
         }
     }
+    val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
 
     // Every leading LazyColumn item ahead of the song rows themselves — search_bar (New Iride UI
     // only) + playlist_header + control_panel (both hidden while searching) + songs_header +

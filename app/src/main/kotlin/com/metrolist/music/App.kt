@@ -38,6 +38,7 @@ import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import com.metrolist.music.utils.keepPreferencesWarm
 import com.metrolist.music.utils.reportException
+import com.metrolist.music.ui.component.dismissedAnchor
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -85,6 +86,11 @@ class App :
 
         // Warm the New Iride UI preference before setContent() ever runs (see companion doc).
         topNavigationBarEnabledCache = dataStore.get(TopNavigationBarKey, true)
+
+        // Warm the player-sheet anchor so a cold start with no saved value falls back to the
+        // dismissed position (classic UI), and a cold start with a saved value restores it
+        // before any Composable can flash the wrong layout.
+        playerAnchorCache = dataStore.get(PlayerAnchorKey, oepncodedismissedAnchor)
 
         Timber.plant(Timber.DebugTree())
 
@@ -333,6 +339,18 @@ class App :
         @Volatile
         var topNavigationBarEnabledCache: Boolean = true
             private set
+
+        // Mirror of PlayerAnchorKey for synchronous first-frame reads (see
+        // playerBottomSheetState's initialAnchor in MainActivity). Updated in lockstep with the
+        // DataStore write that fires from BottomSheetState.onAnchorChanged so config changes pick
+        // up the latest user choice without an extra disk round-trip.
+        @Volatile
+        var playerAnchorCache: Int = dismissedAnchor
+            private set
+
+        fun setPlayerAnchorCache(value: Int) {
+            playerAnchorCache = value
+        }
 
         suspend fun forgetAccount(context: Context) {
             Timber.d("forgetAccount: Starting logout process")

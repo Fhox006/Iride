@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Spacer
@@ -32,12 +33,14 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -45,6 +48,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,7 +62,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -68,8 +71,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.media3.exoplayer.offline.Download
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
@@ -91,6 +96,7 @@ import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.ui.component.CollapsingScreenHeader
+import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.EmptyPlaceholder
 import com.metrolist.music.ui.component.IrideCollapsibleSection
 import com.metrolist.music.ui.component.LibraryAlbumGridItem
@@ -111,6 +117,7 @@ import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.irideEnter
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.rememberEnterProgress
 import com.metrolist.music.ui.utils.revealMask
 import com.metrolist.music.utils.rememberEnumPreference
@@ -174,6 +181,77 @@ fun LibraryAlbumsScreen(
             val artistNames = album.artists.map { it.name }.toTypedArray()
             matchesNormalizedQuery(normalizedQuery, album.album.title, *artistNames)
         }.distinctBy { it.id }
+    }
+
+    val downloadUtil = LocalDownloadUtil.current
+    val likedAlbumsSongs by viewModel.likedAlbumsSongs.collectAsState()
+    val isProcessingDownloads by viewModel.isProcessingDownloads.collectAsState()
+    var downloadState by remember { mutableIntStateOf(Download.STATE_STOPPED) }
+    var showRemoveDownloadDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(likedAlbumsSongs, isProcessingDownloads) {
+        if (isProcessingDownloads) {
+            downloadState = Download.STATE_DOWNLOADING
+            return@LaunchedEffect
+        }
+        if (likedAlbumsSongs.isEmpty()) {
+            downloadState = Download.STATE_STOPPED
+            return@LaunchedEffect
+        }
+        downloadUtil.downloads.collect { downloads ->
+            downloadState =
+                if (likedAlbumsSongs.all { downloads[it.id]?.state == Download.STATE_COMPLETED }) {
+                    Download.STATE_COMPLETED
+                } else if (likedAlbumsSongs.any {
+                        downloads[it.id]?.state == Download.STATE_QUEUED ||
+                            downloads[it.id]?.state == Download.STATE_DOWNLOADING
+                    }
+                ) {
+                    Download.STATE_DOWNLOADING
+                } else {
+                    Download.STATE_STOPPED
+                }
+        }
+    }
+
+    val onDownloadAllClick: () -> Unit = {
+        when (downloadState) {
+            Download.STATE_COMPLETED -> {
+                showRemoveDownloadDialog = true
+            }
+            Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                viewModel.removeAllFavoriteAlbumsDownloads()
+            }
+            else -> {
+                viewModel.downloadAllFavoriteAlbums()
+            }
+        }
+    }
+
+    if (showRemoveDownloadDialog) {
+        DefaultDialog(
+            onDismiss = { showRemoveDownloadDialog = false },
+            content = {
+                Text(
+                    text = stringResource(R.string.remove_all_favorite_albums_confirm),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                TextButton(onClick = { showRemoveDownloadDialog = false }) {
+                    Text(text = stringResource(R.string.cancel))
+                }
+                TextButton(
+                    onClick = {
+                        showRemoveDownloadDialog = false
+                        viewModel.removeAllFavoriteAlbumsDownloads()
+                    },
+                ) {
+                    Text(text = stringResource(R.string.remove_download))
+                }
+            },
+        )
     }
 
     val sortOptions = listOf(
@@ -284,25 +362,20 @@ fun LibraryAlbumsScreen(
         // lower on the page; a compact frosted bar (back arrow + small title) fades in only
         // once the big title has scrolled behind it — same crossing pattern as AlbumScreen/
         // ArtistScreen's topBarRevealProgress.
-        val density = LocalDensity.current
         val frostBackdrop = rememberFrostBackdrop()
         var titleBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
         var topBarBottomPx by remember { mutableStateOf(0f) }
-        val titleCoverRangePx = with(density) { 24.dp.toPx() }
-        val topBarRevealProgress by remember {
+        val headerTitleCovered by remember {
             derivedStateOf {
                 val scrolledPastHeader = if (viewType == LibraryViewType.LIST) {
                     lazyListState.firstVisibleItemIndex > 0
                 } else {
                     lazyGridState.firstVisibleItemIndex > 0
                 }
-                if (scrolledPastHeader) {
-                    1f
-                } else {
-                    ((topBarBottomPx + titleCoverRangePx - titleBottomPx) / titleCoverRangePx).coerceIn(0f, 1f)
-                }
+                scrolledPastHeader || titleBottomPx <= topBarBottomPx
             }
         }
+        val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
         val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
 
         val heroHeader: @Composable () -> Unit = {
@@ -583,6 +656,29 @@ fun LibraryAlbumsScreen(
                         .irideEnter(topBarRevealProgress, 6.dp)
                         .revealMask(topBarRevealProgress),
                 )
+                IconButton(onClick = onDownloadAllClick) {
+                    when (downloadState) {
+                        Download.STATE_COMPLETED -> {
+                            Icon(
+                                painter = painterResource(R.drawable.offline),
+                                contentDescription = stringResource(R.string.all_favorite_albums_downloaded),
+                            )
+                        }
+                        Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White,
+                            )
+                        }
+                        else -> {
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_circle_down),
+                                contentDescription = stringResource(R.string.download_all_favorite_albums),
+                            )
+                        }
+                    }
+                }
                 IconButton(onClick = { isSearchActive = true }) {
                     Icon(
                         painter = painterResource(R.drawable.search),
@@ -615,6 +711,31 @@ fun LibraryAlbumsScreen(
                                     stringResource(R.string.navigate_back)
                                 else null,
                             )
+                        }
+                    },
+                    trailingContent = {
+                        IconButton(onClick = onDownloadAllClick) {
+                            when (downloadState) {
+                                Download.STATE_COMPLETED -> {
+                                    Icon(
+                                        painter = painterResource(R.drawable.offline),
+                                        contentDescription = stringResource(R.string.all_favorite_albums_downloaded),
+                                    )
+                                }
+                                Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp,
+                                        color = Color.White,
+                                    )
+                                }
+                                else -> {
+                                    Icon(
+                                        painter = painterResource(R.drawable.arrow_circle_down),
+                                        contentDescription = stringResource(R.string.download_all_favorite_albums),
+                                    )
+                                }
+                            }
                         }
                     },
                 )

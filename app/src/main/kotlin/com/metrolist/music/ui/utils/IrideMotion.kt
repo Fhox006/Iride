@@ -9,6 +9,7 @@ import android.graphics.Bitmap
 import android.provider.Settings
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -188,6 +189,31 @@ fun rememberEnterProgress(
         targetValue = if (started) 1f else 0f,
         animationSpec = tween(durationMillis, delayMillis, easing),
         label = "irideEnter",
+    )
+    return progress
+}
+
+/**
+ * 0f or 1f based on [active], animated between the two with a fixed [durationMillis]. The trigger
+ * fires once per [active] transition, so show/hide reads as one motion independent of whatever is
+ * flipping the boolean (scroll, layout, focus, …).
+ *
+ * Used by top-bar frosted overlays that should pop in/out in a constant time even when the
+ * triggering signal moves quickly or slowly.
+ */
+@Composable
+fun rememberDiscreteProgress(
+    active: Boolean,
+    durationMillis: Int = IrideMotion.Short,
+    easing: Easing = FastOutSlowInEasing,
+): Float {
+    val reducedMotion = rememberReducedMotion()
+    val target = if (active) 1f else 0f
+    if (reducedMotion) return target
+    val progress by animateFloatAsState(
+        targetValue = target,
+        animationSpec = tween(durationMillis, easing = easing),
+        label = "irideDiscreteProgress",
     )
     return progress
 }

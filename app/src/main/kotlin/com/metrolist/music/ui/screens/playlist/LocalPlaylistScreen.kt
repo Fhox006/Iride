@@ -93,7 +93,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -195,6 +194,7 @@ import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.headerEnter
 import com.metrolist.music.ui.utils.irideEnter
 import com.metrolist.music.ui.utils.irideEnterScale
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.rememberEnterProgress
 import com.metrolist.music.ui.utils.rememberSectionEnter
 import com.metrolist.music.ui.utils.revealMask
@@ -294,13 +294,11 @@ fun LocalPlaylistScreen(
         }
     }
 
-    // Window-space Y of the header title's bottom edge and of the top bar's bottom edge — same
-    // crossing math as AlbumScreen: the bar's glass and mirrored title fade in exactly when the
-    // big title goes behind the bar, instead of a flat scroll-distance/item-index threshold.
-    val density = LocalDensity.current
+    // Window-space Y of the header title's bottom edge and of the top bar's bottom edge — the
+    // overlay (glass + mirrored title) shows once the big title is behind the bar or scrolled past,
+    // and tweens in/out at a fixed duration instead of following the scroll pixel-by-pixel.
     var nameBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
     var topBarBottomPx by remember { mutableStateOf(0f) }
-    val titleCoverRangePx = with(density) { 24.dp.toPx() }
     val headerPull = rememberRubberBandPull()
 
     val coroutineScope = rememberCoroutineScope()
@@ -567,19 +565,17 @@ fun LocalPlaylistScreen(
     val lazyListState = rememberLazyListState()
     // Same crossing math as AlbumScreen: 0 until the header has played its one-shot reveal, 1 once
     // the header item (search_bar + playlist_header) has scrolled past and been disposed —
-    // nameBottomPx would otherwise hold its last (stale) recorded value — and a continuous
-    // pixel-accurate ramp in between, instead of a flat item-index threshold.
-    val topBarRevealProgress by remember {
+    // nameBottomPx would otherwise hold its last (stale) recorded value — and the show/hide tweens
+    // at a fixed duration instead of following the scroll pixel-by-pixel.
+    val headerTitleCovered by remember {
         derivedStateOf {
-            if (!headerRevealed) {
-                0f
-            } else if (lazyListState.firstVisibleItemIndex > 1) {
-                1f
-            } else {
-                ((topBarBottomPx + titleCoverRangePx - nameBottomPx) / titleCoverRangePx).coerceIn(0f, 1f)
-            }
+            headerRevealed && (
+                lazyListState.firstVisibleItemIndex > 1 ||
+                    nameBottomPx <= topBarBottomPx
+                )
         }
     }
+    val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
     var dragInfo by remember {
         mutableStateOf<Pair<Int, Int>?>(null)
     }
