@@ -2433,7 +2433,7 @@ fun SwipeToSongBox(
                 .offset { IntOffset(offset.floatValue.roundToInt(), 0) }
                 .fillMaxWidth()
                 .drawBehind {
-                    if (contentBg != null && offset.floatValue != 0f) {
+                    if (contentBg != null) {
                         drawRect(contentBg)
                     }
                 },
