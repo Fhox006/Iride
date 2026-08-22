@@ -1,3 +1,18 @@
+## 0.1.0-alpha24
+
+### New features
+
+- **Update inside the app**: the "New version available" popup now downloads the APK itself with a live progress percentage, then walks you through installing — including the "allow installing apps" permission step, a Retry action, and clear errors when storage is full or the connection drops. Downloads run through the system download manager with a progress notification and resume safely if the app closes.
+- **Smart Boot** (Settings > Interface, on by default): noticeably faster startup — Featured loads instantly from a saved snapshot, shelves hold their place with shimmer placeholders instead of popping in and shifting content, no artificial stagger delays, and the chip row is fetched once per cold start. Turn it off to restore the original launch behavior (takes effect after restart).
+
+### Improvements
+
+- Cold start in light mode no longer flashes black/white before the real theme appears
+- Queue rows keep a fully transparent background at rest and mid-drag: no leftover translucent rectangle behind equalizer bars or queue numbers on the page background
+- Hero carousel restores instantly from its snapshot at startup
+- Auto-Mix suggestions no longer survive app restarts, and any new queue (playlist, album, search) cleanly disarms an active radio
+- Mini player to full player morph: title/artist lines converge smoothly instead of drifting apart in the mini state, with no ellipsis jump mid-animation
+
 ## 0.1.0-alpha23
 
 ### New features
