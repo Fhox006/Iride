@@ -49,7 +49,9 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -109,6 +111,7 @@ data class SyncState(
 class SyncUtils @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
+    private val connectivityObserver: NetworkConnectivityObserver,
 ) {
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
         if (throwable !is CancellationException) {
@@ -131,10 +134,25 @@ class SyncUtils @Inject constructor(
     private val pendingYouTubeAdds = ConcurrentHashMap<String, MutableSet<String>>()
     private val pendingRemovals = ConcurrentHashMap<String, MutableSet<Triple<String, String, String>>>()
 
+    // Outcome of the most recent full sync attempt: true = every category synced, false =
+    // at least one category failed, null = no attempt yet in this process. The connectivity
+    // observer uses it to decide whether a reconnect needs an immediate re-sync.
+    @Volatile
+    private var lastFullSyncSucceeded: Boolean? = null
+
+    // Operations queued but not yet picked up by the worker. Repeated refresh taps during an
+    // outage used to stack identical long-running jobs behind each other; duplicates collapse.
+    private val queuedOperations = ConcurrentHashMap<SyncOperation, Unit>()
+
     companion object {
         private const val MAX_RETRIES = 3
         private const val INITIAL_RETRY_DELAY_MS = 1000L
         private const val DB_OPERATION_DELAY_MS = 50L
+
+        // Hard cap for one full sync pass. Without it a single pass attempted during a network
+        // outage occupied the only sync worker for many minutes, so user-triggered refreshes
+        // queued behind it and appeared to do nothing.
+        private const val FULL_SYNC_TIMEOUT_MS = 120_000L
     }
     private fun markPlaylistModifying(playlistId: String) {
         playlistsBeingModified.getOrPut(playlistId) { AtomicInteger(0) }.incrementAndGet()
@@ -158,6 +176,27 @@ class SyncUtils @Inject constructor(
             }
 
         startProcessingQueue()
+
+        // Auto-recovery: after an outage or Wi-Fi↔mobile handover nothing re-triggered the
+        // library sync, so it stayed broken (cooldown armed by the failed attempt, stale
+        // credentials) until the process was restarted. When the network comes back, resync
+        // immediately if the previous full sync failed, otherwise fall back to the normal
+        // cooldown-gated auto sync.
+        syncScope.launch {
+            connectivityObserver.networkStatus
+                .drop(1)
+                .debounce(2_000L)
+                .collect { connected ->
+                    if (!connected) return@collect
+                    if (!isLoggedIn()) return@collect
+                    if (lastFullSyncSucceeded == false) {
+                        Timber.d("Network restored after a failed full sync — re-syncing now")
+                        performFullSync()
+                    } else {
+                        tryAutoSync()
+                    }
+                }
+        }
     }
 
     private fun startProcessingQueue() {
@@ -165,6 +204,7 @@ class SyncUtils @Inject constructor(
             while (isActive) {
                 try {
                     for (operation in syncChannel) {
+                        queuedOperations.remove(operation)
                         try {
                             processOperation(operation)
                         } catch (e: CancellationException) {
@@ -180,6 +220,25 @@ class SyncUtils @Inject constructor(
                     delay(1000L)
                 }
             }
+        }
+    }
+
+    /**
+     * Queue [operation] unless an identical operation is already waiting to be processed.
+     * The marker is removed as soon as the worker dequeues the item, so an operation that
+     * is *running* can still be enqueued again by a later request — only true duplicates
+     * waiting in the queue collapse.
+     */
+    private fun enqueueUnique(operation: SyncOperation) {
+        if (queuedOperations.putIfAbsent(operation, Unit) != null) {
+            Timber.d("Skipping duplicate queued sync operation: $operation")
+            return
+        }
+        syncScope.launch {
+            if (processingJob?.isActive != true) {
+                startProcessingQueue()
+            }
+            syncChannel.send(operation)
         }
     }
 
@@ -277,15 +336,20 @@ class SyncUtils @Inject constructor(
         _syncState.value = _syncState.value.update()
     }
 
+    /**
+     * Heuristic against data loss: when the remote list is drastically smaller than the local
+     * one, the fetch was almost certainly truncated or served without auth (degraded network,
+     * session hiccup) even though it wasn't empty. Removing everything "not in remote" in that
+     * state would un-like / un-save real user content, so removals are skipped for that pass.
+     * Only meaningful for reasonably sized libraries.
+     */
+    private fun remoteListLooksTruncated(remoteCount: Int, localCount: Int): Boolean =
+        localCount >= 10 && remoteCount < localCount / 5
+
     // Public API methods - Queue operations
 
     fun performFullSync() {
-        syncScope.launch {
-            if (processingJob?.isActive != true) {
-                startProcessingQueue()
-            }
-            syncChannel.send(SyncOperation.FullSync)
-        }
+        enqueueUnique(SyncOperation.FullSync)
     }
 
     suspend fun performFullSyncSuspend() {
@@ -313,10 +377,7 @@ class SyncUtils @Inject constructor(
                 return@launch
             }
 
-            if (processingJob?.isActive != true) {
-                startProcessingQueue()
-            }
-            syncChannel.send(SyncOperation.FullSync)
+            enqueueUnique(SyncOperation.FullSync)
         }
     }
 
@@ -325,120 +386,82 @@ class SyncUtils @Inject constructor(
     }
 
     fun likeSong(s: SongEntity) {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.LikeSong(s))
-        }
+        enqueueUnique(SyncOperation.LikeSong(s))
     }
 
     fun subscribeChannel(channelId: String, subscribe: Boolean) {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.SubscribeChannel(channelId, subscribe))
-        }
+        enqueueUnique(SyncOperation.SubscribeChannel(channelId, subscribe))
     }
 
     fun savePodcast(podcastId: String, save: Boolean) {
         Timber.d("[PODCAST_TOGGLE] SyncUtils.savePodcast called: podcastId=$podcastId, save=$save")
-        syncScope.launch {
-            Timber.d("[PODCAST_TOGGLE] Sending SavePodcast operation to channel")
-            syncChannel.send(SyncOperation.SavePodcast(podcastId, save))
-        }
+        Timber.d("[PODCAST_TOGGLE] Sending SavePodcast operation to queue")
+        enqueueUnique(SyncOperation.SavePodcast(podcastId, save))
     }
 
     fun saveEpisode(episodeId: String, save: Boolean, setVideoId: String? = null) {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.SaveEpisode(episodeId, save, setVideoId))
-        }
+        enqueueUnique(SyncOperation.SaveEpisode(episodeId, save, setVideoId))
     }
 
     fun syncLikedSongs() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.LikedSongs)
-        }
+        enqueueUnique(SyncOperation.LikedSongs)
     }
 
     fun syncLibrarySongs() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.LibrarySongs)
-        }
+        enqueueUnique(SyncOperation.LibrarySongs)
     }
 
     fun syncUploadedSongs() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.UploadedSongs)
-        }
+        enqueueUnique(SyncOperation.UploadedSongs)
     }
 
     fun syncLikedAlbums() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.LikedAlbums)
-        }
+        enqueueUnique(SyncOperation.LikedAlbums)
     }
 
     fun syncUploadedAlbums() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.UploadedAlbums)
-        }
+        enqueueUnique(SyncOperation.UploadedAlbums)
     }
 
     fun syncArtistsSubscriptions() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.ArtistsSubscriptions)
-        }
+        enqueueUnique(SyncOperation.ArtistsSubscriptions)
     }
 
     fun syncSavedPlaylists() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.SavedPlaylists)
-        }
+        enqueueUnique(SyncOperation.SavedPlaylists)
     }
 
     fun syncAutoSyncPlaylists() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.AutoSyncPlaylists)
-        }
+        enqueueUnique(SyncOperation.AutoSyncPlaylists)
     }
 
     fun syncAllAlbums() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.LikedAlbums)
-            syncChannel.send(SyncOperation.UploadedAlbums)
-        }
+        enqueueUnique(SyncOperation.LikedAlbums)
+        enqueueUnique(SyncOperation.UploadedAlbums)
     }
 
     fun syncAllArtists() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.ArtistsSubscriptions)
-        }
+        enqueueUnique(SyncOperation.ArtistsSubscriptions)
     }
 
     fun syncPodcastSubscriptions() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.PodcastSubscriptions)
-        }
+        enqueueUnique(SyncOperation.PodcastSubscriptions)
     }
 
     fun syncEpisodesForLater() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.EpisodesForLater)
-        }
+        enqueueUnique(SyncOperation.EpisodesForLater)
     }
 
     fun cleanupDuplicatePlaylists() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.CleanupDuplicates)
-        }
+        enqueueUnique(SyncOperation.CleanupDuplicates)
     }
 
     fun clearAllSyncedContent() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.ClearAllSynced)
-        }
+        enqueueUnique(SyncOperation.ClearAllSynced)
     }
 
     fun clearPodcastData() {
-        syncScope.launch {
-            syncChannel.send(SyncOperation.ClearPodcastData)
-        }
+        enqueueUnique(SyncOperation.ClearPodcastData)
     }
 
     // Suspend versions for direct calls
@@ -572,48 +595,97 @@ class SyncUtils @Inject constructor(
         }
 
         updateState { copy(overallStatus = SyncStatus.Syncing, currentOperation = "Starting full sync") }
+        // Reset per-category statuses so an Error left over from a previous failed run can't
+        // make this run look failed (and a previous success can't hide a new failure).
+        updateState {
+            copy(
+                likedSongs = SyncStatus.Idle,
+                librarySongs = SyncStatus.Idle,
+                uploadedSongs = SyncStatus.Idle,
+                likedAlbums = SyncStatus.Idle,
+                uploadedAlbums = SyncStatus.Idle,
+                artists = SyncStatus.Idle,
+                playlists = SyncStatus.Idle,
+            )
+        }
 
-        try {
-            // Sync in sequence to avoid overwhelming the API and database
-            executeSyncLikedSongs()
-            delay(DB_OPERATION_DELAY_MS)
+        // Hard cap on the whole pass: each sub-sync retries internally, so during an outage
+        // this used to occupy the single sync worker for many minutes. Bounding it lets the
+        // worker move on (and lets a later reconnect attempt retry sooner).
+        val completedInTime = try {
+            withTimeout(FULL_SYNC_TIMEOUT_MS) {
+                // Sync in sequence to avoid overwhelming the API and database
+                executeSyncLikedSongs()
+                delay(DB_OPERATION_DELAY_MS)
 
-            executeSyncLibrarySongs()
-            delay(DB_OPERATION_DELAY_MS)
+                executeSyncLibrarySongs()
+                delay(DB_OPERATION_DELAY_MS)
 
-            executeSyncUploadedSongs()
-            delay(DB_OPERATION_DELAY_MS)
+                executeSyncUploadedSongs()
+                delay(DB_OPERATION_DELAY_MS)
 
-            executeSyncLikedAlbums()
-            delay(DB_OPERATION_DELAY_MS)
+                executeSyncLikedAlbums()
+                delay(DB_OPERATION_DELAY_MS)
 
-            executeSyncUploadedAlbums()
-            delay(DB_OPERATION_DELAY_MS)
+                executeSyncUploadedAlbums()
+                delay(DB_OPERATION_DELAY_MS)
 
-            executeSyncArtistsSubscriptions()
-            delay(DB_OPERATION_DELAY_MS)
+                executeSyncArtistsSubscriptions()
+                delay(DB_OPERATION_DELAY_MS)
 
-            executeSyncPodcastSubscriptions()
-            delay(DB_OPERATION_DELAY_MS)
+                executeSyncPodcastSubscriptions()
+                delay(DB_OPERATION_DELAY_MS)
 
-            executeSyncEpisodesForLater()
-            delay(DB_OPERATION_DELAY_MS)
+                executeSyncEpisodesForLater()
+                delay(DB_OPERATION_DELAY_MS)
 
-            executeSyncSavedPlaylists()
-            delay(DB_OPERATION_DELAY_MS)
+                executeSyncSavedPlaylists()
+                delay(DB_OPERATION_DELAY_MS)
 
-            executeSyncAutoSyncPlaylists()
+                executeSyncAutoSyncPlaylists()
+                true
+            }
+        } catch (e: TimeoutCancellationException) {
+            Timber.w("Full sync timed out after ${FULL_SYNC_TIMEOUT_MS}ms")
+            false
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.e(e, "Error during full sync")
+            false
+        }
 
+        // Each sub-sync reports its own outcome into the state; if any category ended in an
+        // error the pass counts as failed. A failed pass must NOT stamp LastFullSyncKey:
+        // tryAutoSync's cooldown would otherwise block every automatic re-sync for 30
+        // minutes after a pure network outage.
+        val state = _syncState.value
+        val hadErrors = listOf(
+            state.likedSongs,
+            state.librarySongs,
+            state.uploadedSongs,
+            state.likedAlbums,
+            state.uploadedAlbums,
+            state.artists,
+            state.playlists,
+        ).any { it is SyncStatus.Error }
+
+        lastFullSyncSucceeded = completedInTime && !hadErrors
+
+        if (lastFullSyncSucceeded == true) {
             updateState { copy(overallStatus = SyncStatus.Completed, currentOperation = "") }
             context.dataStore.edit { settings ->
                 settings[LastFullSyncKey] = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
             }
             Timber.d("Full sync completed successfully")
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Timber.e(e, "Error during full sync")
-            updateState { copy(overallStatus = SyncStatus.Error(e.message ?: "Unknown error"), currentOperation = "") }
+        } else {
+            updateState {
+                copy(
+                    overallStatus = SyncStatus.Error("Some categories failed to sync"),
+                    currentOperation = "",
+                )
+            }
+            Timber.w("Full sync did not complete cleanly — LastFullSyncKey not updated so re-sync is not blocked by the cooldown")
         }
     }
 
@@ -736,13 +808,19 @@ class SyncUtils @Inject constructor(
                     return@withContext
                 }
 
-                // Remove likes from songs not in remote
-                localSongs.filterNot { it.id in remoteIds }.forEach { song ->
-                    try {
-                        database.update(song.song.localToggleLike())
-                        delay(DB_OPERATION_DELAY_MS)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to update song: ${song.id}")
+                // Guard: drastically smaller remote = likely truncated fetch; removals skip,
+                // adds still run.
+                if (remoteListLooksTruncated(remoteSongs.size, localSongs.size)) {
+                    Timber.w("Liked songs sync: remote has ${remoteSongs.size} items vs ${localSongs.size} local — skipping removals to prevent data loss")
+                } else {
+                    // Remove likes from songs not in remote
+                    localSongs.filterNot { it.id in remoteIds }.forEach { song ->
+                        try {
+                            database.update(song.song.localToggleLike())
+                            delay(DB_OPERATION_DELAY_MS)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Failed to update song: ${song.id}")
+                        }
                     }
                 }
 
@@ -805,12 +883,18 @@ class SyncUtils @Inject constructor(
                         return@withContext
                     }
 
-                    localSongs.filterNot { it.id in remoteIds }.forEach { song ->
-                        try {
-                            database.update(song.song.toggleLibrary())
-                            delay(DB_OPERATION_DELAY_MS)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to update song: ${song.id}")
+                    // Guard: drastically smaller remote = likely truncated fetch; removals skip,
+                    // adds still run.
+                    if (remoteListLooksTruncated(remoteSongs.size, localSongs.size)) {
+                        Timber.w("Library songs sync: remote has ${remoteSongs.size} items vs ${localSongs.size} local — skipping removals to prevent data loss")
+                    } else {
+                        localSongs.filterNot { it.id in remoteIds }.forEach { song ->
+                            try {
+                                database.update(song.song.toggleLibrary())
+                                delay(DB_OPERATION_DELAY_MS)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to update song: ${song.id}")
+                            }
                         }
                     }
 
@@ -871,13 +955,19 @@ class SyncUtils @Inject constructor(
                         return@withContext
                     }
 
-                    // Remove uploaded flag from songs no longer in remote
-                    localSongs.filterNot { it.id in remoteIds }.forEach { song ->
-                        try {
-                            database.update(song.song.toggleUploaded())
-                            delay(DB_OPERATION_DELAY_MS)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to update song: ${song.id}")
+                    // Guard: drastically smaller remote = likely truncated fetch; removals skip,
+                    // adds still run.
+                    if (remoteListLooksTruncated(remoteSongs.size, localSongs.size)) {
+                        Timber.w("Uploaded songs sync: remote has ${remoteSongs.size} items vs ${localSongs.size} local — skipping removals to prevent data loss")
+                    } else {
+                        // Remove uploaded flag from songs no longer in remote
+                        localSongs.filterNot { it.id in remoteIds }.forEach { song ->
+                            try {
+                                database.update(song.song.toggleUploaded())
+                                delay(DB_OPERATION_DELAY_MS)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to update song: ${song.id}")
+                            }
                         }
                     }
 
@@ -951,12 +1041,18 @@ class SyncUtils @Inject constructor(
                         return@withContext
                     }
 
-                    localAlbums.filterNot { it.id in remoteIds }.forEach { album ->
-                        try {
-                            database.update(album.album.localToggleLike())
-                            delay(DB_OPERATION_DELAY_MS)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to update album: ${album.id}")
+                    // Guard: drastically smaller remote = likely truncated fetch; removals skip,
+                    // adds still run.
+                    if (remoteListLooksTruncated(remoteAlbums.size, localAlbums.size)) {
+                        Timber.w("Liked albums sync: remote has ${remoteAlbums.size} items vs ${localAlbums.size} local — skipping removals to prevent data loss")
+                    } else {
+                        localAlbums.filterNot { it.id in remoteIds }.forEach { album ->
+                            try {
+                                database.update(album.album.localToggleLike())
+                                delay(DB_OPERATION_DELAY_MS)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to update album: ${album.id}")
+                            }
                         }
                     }
 
@@ -1019,12 +1115,18 @@ class SyncUtils @Inject constructor(
                         return@withContext
                     }
 
-                    localAlbums.filterNot { it.id in remoteIds }.forEach { album ->
-                        try {
-                            database.update(album.album.toggleUploaded())
-                            delay(DB_OPERATION_DELAY_MS)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to update album: ${album.id}")
+                    // Guard: drastically smaller remote = likely truncated fetch; removals skip,
+                    // adds still run.
+                    if (remoteListLooksTruncated(remoteAlbums.size, localAlbums.size)) {
+                        Timber.w("Uploaded albums sync: remote has ${remoteAlbums.size} items vs ${localAlbums.size} local — skipping removals to prevent data loss")
+                    } else {
+                        localAlbums.filterNot { it.id in remoteIds }.forEach { album ->
+                            try {
+                                database.update(album.album.toggleUploaded())
+                                delay(DB_OPERATION_DELAY_MS)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to update album: ${album.id}")
+                            }
                         }
                     }
 
@@ -1087,12 +1189,18 @@ class SyncUtils @Inject constructor(
                         return@withContext
                     }
 
-                    localArtists.filterNot { it.id in remoteIds }.forEach { artist ->
-                        try {
-                            database.update(artist.artist.localToggleLike())
-                            delay(DB_OPERATION_DELAY_MS)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to update artist: ${artist.id}")
+                    // Guard: drastically smaller remote = likely truncated fetch; removals skip,
+                    // adds still run.
+                    if (remoteListLooksTruncated(remoteArtists.size, localArtists.size)) {
+                        Timber.w("Artists sync: remote has ${remoteArtists.size} items vs ${localArtists.size} local — skipping removals to prevent data loss")
+                    } else {
+                        localArtists.filterNot { it.id in remoteIds }.forEach { artist ->
+                            try {
+                                database.update(artist.artist.localToggleLike())
+                                delay(DB_OPERATION_DELAY_MS)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to update artist: ${artist.id}")
+                            }
                         }
                     }
 
@@ -1421,17 +1529,22 @@ class SyncUtils @Inject constructor(
                         }
                     }
 
-                    // Cleanup: Remove local episodes that are no longer in Episodes for Later
-                    val localToRemove = localSavedEpisodes.filterNot { it.id in remoteIds }
-                    Timber.d("[EPISODES_SYNC] Cleanup: removing ${localToRemove.size} episodes not in VLSE")
-                    localToRemove.forEach { song ->
-                        try {
-                            database.transaction {
-                                update(song.song.copy(inLibrary = null))
+                    // Cleanup: Remove local episodes that are no longer in Episodes for Later.
+                    // Truncated-fetch guard applies: skip removals if remote looks partial.
+                    if (remoteListLooksTruncated(remoteEpisodes.size, localSavedEpisodes.size)) {
+                        Timber.w("[EPISODES_SYNC] remote has ${remoteEpisodes.size} episodes vs ${localSavedEpisodes.size} local — skipping cleanup to prevent data loss")
+                    } else {
+                        val localToRemove = localSavedEpisodes.filterNot { it.id in remoteIds }
+                        Timber.d("[EPISODES_SYNC] Cleanup: removing ${localToRemove.size} episodes not in VLSE")
+                        localToRemove.forEach { song ->
+                            try {
+                                database.transaction {
+                                    update(song.song.copy(inLibrary = null))
+                                }
+                                Timber.d("[EPISODES_SYNC] Removed episode from library: ${song.id}")
+                            } catch (e: Exception) {
+                                Timber.e(e, "[EPISODES_SYNC] Failed to cleanup episode: ${song.id}")
                             }
-                            Timber.d("[EPISODES_SYNC] Removed episode from library: ${song.id}")
-                        } catch (e: Exception) {
-                            Timber.e(e, "[EPISODES_SYNC] Failed to cleanup episode: ${song.id}")
                         }
                     }
 
@@ -1466,16 +1579,23 @@ class SyncUtils @Inject constructor(
                     val remoteIds = remotePlaylists.map { it.id }.toSet()
 
                     val localPlaylists = database.playlistsByNameAsc().first()
-                    localPlaylists.filterNot { it.playlist.browseId in remoteIds }
-                        .filterNot { it.playlist.browseId == null }
-                        .forEach { playlist ->
-                            try {
-                                database.update(playlist.playlist.localToggleLike())
-                                delay(DB_OPERATION_DELAY_MS)
-                            } catch (e: Exception) {
-                                Timber.e(e, "Failed to update playlist: ${playlist.id}")
+
+                    // Guard: drastically smaller remote = likely truncated fetch; removals skip,
+                    // adds still run.
+                    if (remoteListLooksTruncated(remotePlaylists.size, localPlaylists.count { it.playlist.browseId != null })) {
+                        Timber.w("Saved playlists sync: remote has ${remotePlaylists.size} playlists vs local — skipping removals to prevent data loss")
+                    } else {
+                        localPlaylists.filterNot { it.playlist.browseId in remoteIds }
+                            .filterNot { it.playlist.browseId == null }
+                            .forEach { playlist ->
+                                try {
+                                    database.update(playlist.playlist.localToggleLike())
+                                    delay(DB_OPERATION_DELAY_MS)
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Failed to update playlist: ${playlist.id}")
+                                }
                             }
-                        }
+                    }
 
                     for (playlist in remotePlaylists) {
                         try {

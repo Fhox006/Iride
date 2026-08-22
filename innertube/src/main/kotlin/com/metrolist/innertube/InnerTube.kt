@@ -115,14 +115,9 @@ class InnerTube {
                 
                 // Retry on connection failure
                 retryOnConnectionFailure(true)
-                
-                // Cache configuration for better performance
-                cache(
-                    okhttp3.Cache(
-                        directory = java.io.File(System.getProperty("java.io.tmpdir"), "http_cache"),
-                        maxSize = 50L * 1024L * 1024L // 50 MB
-                    )
-                )
+
+                // No OkHttp disk cache here: java.io.tmpdir is not a reliable app-writable
+                // location on Android and API responses are POSTs (never cached anyway).
                 
                 // Apply proxy configuration
                 this@InnerTube.proxy?.let { proxyConfig ->
@@ -183,9 +178,13 @@ class InnerTube {
      * Simple retry wrapper for transient IO errors (socket aborts, timeouts).
      * Retries the given block up to [maxAttempts] times with exponential backoff.
      * Cancellation is respected since [delay] will throw if the coroutine is cancelled.
+     *
+     * Defaults to 2 attempts: with a 20s request timeout, 3 attempts could keep a single
+     * call (and the sequential sync queue behind it) busy for over a minute during an
+     * outage. Endpoints that must be more persistent (e.g. [player]) pass 3 explicitly.
      */
     private suspend fun <T> withRetry(
-        maxAttempts: Int = 3,
+        maxAttempts: Int = 2,
         initialDelay: Long = 500L,
         factor: Double = 2.0,
         block: suspend () -> T,
@@ -234,7 +233,7 @@ class InnerTube {
         playlistId: String?,
         signatureTimestamp: Int?,
         poToken: String? = null,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 3) {
         httpClient.post("player") {
             ytClient(client, setLogin = true)
             setBody(

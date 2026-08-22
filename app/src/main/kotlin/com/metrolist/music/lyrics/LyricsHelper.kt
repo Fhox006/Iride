@@ -15,7 +15,6 @@ import com.metrolist.music.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.utils.resize
-import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.reportException
 import coil3.imageLoader
@@ -70,7 +69,6 @@ class LyricsHelper
 @Inject
 constructor(
     @ApplicationContext private val context: Context,
-    private val networkConnectivity: NetworkConnectivityObserver,
 ) {
     private var lyricsProviders =
         listOf(
@@ -294,18 +292,9 @@ constructor(
             return LyricsWithProvider(cached.lyrics, cached.providerName)
         }
 
-        // Check network connectivity before making network requests
-        // Use synchronous check as fallback if flow doesn't emit
-        val isNetworkAvailable = try {
-            networkConnectivity.isCurrentlyConnected()
-        } catch (e: Exception) {
-            // If network check fails, try to proceed anyway
-            true
-        }
-
-        if (!isNetworkAvailable) {
-            return LyricsWithProvider(LYRICS_NOT_FOUND, PROVIDER_NONE)
-        }
+        // No connectivity gate here: a transient false negative during a Wi-Fi↔mobile handover
+        // used to mark the song as "lyrics not found" without even trying. Requests fail fast
+        // on their own now, and each provider below already handles its own failures.
 
         val result = withTimeoutOrNull(MAX_LYRICS_FETCH_MS) {
             val cleanedTitle = LyricsUtils.cleanTitleForSearch(mediaMetadata.title)
@@ -387,19 +376,8 @@ constructor(
             return
         }
 
-        // Check network connectivity before making network requests
-        // Use synchronous check as fallback if flow doesn't emit
-        val isNetworkAvailable = try {
-            networkConnectivity.isCurrentlyConnected()
-        } catch (e: Exception) {
-            // If network check fails, try to proceed anyway
-            true
-        }
-
-        if (!isNetworkAvailable) {
-            // Still try to proceed in case of false negative
-            return
-        }
+        // No connectivity gate here either (same rationale as getLyrics): attempt the
+        // providers regardless and let their own error handling deal with being offline.
 
         val allResult = mutableListOf<LyricsResult>()
         currentLyricsJob = CoroutineScope(SupervisorJob()).launch {

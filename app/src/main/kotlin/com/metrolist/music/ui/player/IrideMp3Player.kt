@@ -66,6 +66,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -101,7 +102,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.lerp as lerpTextUnit
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.window.Dialog
@@ -163,6 +163,10 @@ private val IrideMp3PanelBorderColor = Color.White.copy(alpha = 0.14f)
 // Bumped from 0.55 — under direct sunlight/glare the low-alpha icons on the (also lightened)
 // wheel background were washing out to near-invisible.
 private val IrideMp3DimIconColor = Color.White.copy(alpha = 0.75f)
+
+// Shared artist-line grey — single source of truth for both the static info block and the
+// bridge overlay, so the expanded state renders identically no matter which path draws it.
+private val IrideArtistTextColor = Color(0xFFB8B8B8)
 
 // Flat grey surface, matching the rest of the New Iride UI (AlbumScreen panels/chips): a solid
 // fill plus a single hairline border instead of a gradient disc.
@@ -594,7 +598,7 @@ fun IrideMp3PlayerContent(
                     }
                     IrideArtistText(
                         mediaMetadata = mediaMetadata,
-                        color = Color(0xFFB8B8B8),
+                        color = IrideArtistTextColor,
                         fontSize = 12.sp,
                         onArtistClick = onArtistClick,
                         modifier = Modifier.fillMaxWidth(),
@@ -1681,6 +1685,11 @@ fun IrideMiniPlayerBridgeOverlay(
 
 private const val IrideCoverTextSplit = 0.28f
 
+// Total horizontal space the bridge's more/favorite actions occupy once fully revealed
+// (6.dp gap + two 36.dp targets). Reserved through an animated-width box so the weighted
+// title never loses its width in a single frame mid-morph.
+private val IrideBridgeInfoActionsWidth = 78.dp
+
 @Composable
 private fun BridgedInfoBlock(
     metadata: MediaMetadata,
@@ -1731,60 +1740,84 @@ private fun BridgedInfoBlock(
             .width(with(density) { width.toDp() }),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // Fixed end-state size scaled via graphicsLayer instead of animating fontSize:
+            // animating fontSize re-measures and re-rasterizes the text every frame (stuttery
+            // glyphs, shifting ellipsis/letter spacing), while a GPU transform scales it
+            // smoothly with zero relayout.
             Text(
                 text = metadata.title,
                 color = lerpColor(miniTitleColor, Color.White, progress),
                 fontFamily = InterFontFamily,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = lerpTextUnit(14.sp, 16.sp, progress),
+                fontSize = 16.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .graphicsLayer {
+                        val scale = lerp(14f / 16f, 1f, progress)
+                        scaleX = scale
+                        scaleY = scale
+                        transformOrigin = TransformOrigin(0f, 0f)
+                    },
             )
-            if (progress > 0.6f && playerConnection != null) {
-                val iconAlpha = ((progress - 0.6f) / 0.4f).coerceIn(0f, 1f)
+            // The actions live in an animated-width reservation instead of entering the tree at
+            // progress > 0.6: composing fixed 36.dp boxes mid-morph instantly shrank the
+            // weighted title, making its ellipsis jump for one frame. Growing the reservation
+            // keeps every layout step continuous while the icons fade/slide in.
+            if (playerConnection != null) {
+                val iconReveal = ((progress - 0.6f) / 0.4f).coerceIn(0f, 1f)
                 Box(
-                    contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .padding(start = 6.dp)
-                        .graphicsLayer { alpha = iconAlpha }
-                        .size(36.dp)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                        ) { onMoreClick() },
+                        .width(IrideBridgeInfoActionsWidth * iconReveal)
+                        .clipToBounds(),
+                    contentAlignment = Alignment.CenterEnd,
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.7f),
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .graphicsLayer { alpha = iconAlpha }
-                        .size(36.dp)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                        ) { playerConnection.service.toggleLike() },
-                ) {
-                    Icon(
-                        painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
-                        contentDescription = null,
-                        tint = if (isFavorite) Color.White else Color.White.copy(alpha = 0.7f),
-                        modifier = Modifier.size(20.dp),
-                    )
+                    Row {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .padding(start = 6.dp)
+                                .graphicsLayer { alpha = iconReveal }
+                                .size(36.dp)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) { onMoreClick() },
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.more_vert),
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .graphicsLayer { alpha = iconReveal }
+                                .size(36.dp)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) { playerConnection.service.toggleLike() },
+                        ) {
+                            Icon(
+                                painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
+                                contentDescription = null,
+                                tint = if (isFavorite) Color.White else Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
                 }
             }
         }
         if (metadata.artists.any { it.name.isNotBlank() }) {
             IrideArtistText(
                 mediaMetadata = metadata,
-                color = lerpColor(miniArtistColor, Color.Gray, progress),
-                fontSize = lerpTextUnit(12.sp, 12.sp, progress),
+                color = lerpColor(miniArtistColor, IrideArtistTextColor, progress),
+                fontSize = 12.sp,
                 onArtistClick = { artistId ->
                     if (progress < 1f) {
                         playerBottomSheetState.expandSoft()

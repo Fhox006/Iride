@@ -203,6 +203,7 @@ import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.collapsedAnchor
 import com.metrolist.music.ui.component.dismissedAnchor
+import com.metrolist.music.ui.component.expandedAnchor
 import com.metrolist.music.ui.component.rememberBottomSheetState
 import com.metrolist.music.ui.component.rememberDeviceCornerInfo
 import com.metrolist.music.ui.component.shimmer.ShimmerTheme
@@ -232,6 +233,7 @@ import com.metrolist.music.viewmodels.HomeViewModel
 import com.metrolist.music.viewmodels.SharedContentViewModel
 import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -405,9 +407,27 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // The expanded player is a session-only state: it lives in App.playerAnchorCache (so
+    // configuration changes and quick background round-trips keep the panel open) but must
+    // never reach DataStore, otherwise any process death / hard reset would cold-start
+    // straight into the open MP3 player panel.
+    private fun persistableAnchor(anchor: Int): Int =
+        if (anchor == expandedAnchor) collapsedAnchor else anchor
+
     override fun onDestroy() {
         if (isFinishing) {
             listenTogetherManager.disconnect()
+            // Closing the app ends the player's session: drop the in-memory expanded anchor so
+            // reopening (even with the process still alive behind the foreground playback
+            // service) starts from the collapsed peek instead of the full-screen panel.
+            // lifecycleScope is already tearing down here, hence the throwaway scope for the
+            // disk write — disk never stores "expanded" anyway (see persistableAnchor), this
+            // just keeps it in sync with the cache.
+            val anchor = persistableAnchor(App.playerAnchorCache)
+            App.setPlayerAnchorCache(anchor)
+            CoroutineScope(Dispatchers.IO).launch {
+                dataStore.edit { it[PlayerAnchorKey] = anchor }
+            }
         }
         super.onDestroy()
         val stopServiceOnClear =
@@ -901,12 +921,15 @@ class MainActivity : ComponentActivity() {
                 val playerBottomSheetState =
                     rememberBottomSheetState(
                         dismissedBound = 0.dp,
-                        // Restore the player's open/closed/expanded state from DataStore (seeded
-                        // synchronously at process start in App.onCreate) instead of forcing a
-                        // fresh dismiss on cold start — keeps the player's position stable
-                        // across app close/reopen. Curtain mode never presents a fully dismissed
-                        // sheet anyway, so collapse the saved dismissed value into a collapsed
-                        // peek instead so the mp3 placeholder is visible from frame 0.
+                        // Restore the player's position across configuration changes and
+                        // background round-trips from the in-memory anchor cache (seeded
+                        // synchronously at process start in App.onCreate). Deliberate closes
+                        // (swipe from recents / back) clear it in onDestroy, and disk never
+                        // stores "expanded" (see persistableAnchor), so a new session always
+                        // opens with just the collapsed peek instead of the full panel.
+                        // Curtain mode never presents a fully dismissed sheet anyway, so
+                        // collapse the saved dismissed value into a collapsed peek instead so
+                        // the mp3 placeholder is visible from frame 0.
                         initialAnchor = if (curtainMode) {
                             if (App.playerAnchorCache == dismissedAnchor) collapsedAnchor else App.playerAnchorCache
                         } else {
@@ -927,7 +950,7 @@ class MainActivity : ComponentActivity() {
                         onAnchorPersist = { anchor ->
                             App.setPlayerAnchorCache(anchor)
                             lifecycleScope.launch(Dispatchers.IO) {
-                                dataStore.edit { it[PlayerAnchorKey] = anchor }
+                                dataStore.edit { it[PlayerAnchorKey] = persistableAnchor(anchor) }
                             }
                         },
                     )
@@ -942,9 +965,9 @@ class MainActivity : ComponentActivity() {
                 // window so it gets caught the same way.
                 //
                 // Belt-and-suspenders flush on every ON_STOP: covers an in-flight DataStore write
-                // that hasn't landed before process death, so the next cold start restores the
-                // exact state the user left behind even if the OS yanks the process between the
-                // last anchor change and the disk flush.
+                // that hasn't landed before process death, so the next cold start finds disk in
+                // sync with what the user actually left behind (clamped via persistableAnchor —
+                // "expanded" never survives a process death).
                 val lifecycleOwner = LocalLifecycleOwner.current
                 DisposableEffect(playerBottomSheetState, lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
@@ -956,7 +979,9 @@ class MainActivity : ComponentActivity() {
                                 playerBottomSheetState.collapseSoft()
                             }
                             lifecycleScope.launch(Dispatchers.IO) {
-                                dataStore.edit { it[PlayerAnchorKey] = App.playerAnchorCache }
+                                dataStore.edit {
+                                    it[PlayerAnchorKey] = persistableAnchor(App.playerAnchorCache)
+                                }
                             }
                         }
                     }

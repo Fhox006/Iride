@@ -41,10 +41,8 @@ object UnisonLyrics {
 
             defaultRequest {
                 url("https://unison.boidu.dev")
-                headers {
-                    append("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                    append("Accept", "application/json")
-                }
+                headers.append("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                headers.append("Accept", "application/json")
             }
 
             expectSuccess = false

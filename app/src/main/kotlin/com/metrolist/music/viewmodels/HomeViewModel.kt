@@ -1388,10 +1388,10 @@ class HomeViewModel @Inject constructor(
             }
             allLocalItems.value = (quickPicks.value.orEmpty() + keepListening.value.orEmpty())
                 .filter { it is Song || it is Album }
+            // DB-derived lists only: lastLoadedAt must NOT be bumped here, otherwise a failed
+            // network phase still leaves HomeCache "fresh" and stale content keeps being served.
             HomeCache.quickPicks = quickPicks.value
             HomeCache.keepListening = keepListening.value
-            HomeCache.lastLoadedAt = System.currentTimeMillis()
-            context.dataStore.edit { it[HomeCacheLastLoadedKey] = HomeCache.lastLoadedAt }
             isPhase1Complete.value = true
         } finally {
             isLoading.value = false
@@ -1507,7 +1507,12 @@ class HomeViewModel @Inject constructor(
                 moodChip?.let { chip ->
                     loadMoodPage(chip.endpoint?.params, chip.title, hideExplicit, hideVideoSongs, hideYoutubeShorts)
                 }
+                // Freshness is only earned by a successful network fetch: bumping the
+                // timestamp here (instead of after the DB-only phase) means a failed run
+                // leaves HomeCache stale so the next load actually retries.
                 HomeCache.homePage = homePage.value
+                HomeCache.lastLoadedAt = System.currentTimeMillis()
+                context.dataStore.edit { it[HomeCacheLastLoadedKey] = HomeCache.lastLoadedAt }
                 refreshHeroCarousel()
             }.onFailure { reportException(it) }
         }
@@ -1633,30 +1638,35 @@ class HomeViewModel @Inject constructor(
         isRefreshing.value = true
         randomSeed.value = System.currentTimeMillis()
         viewModelScope.launch(Dispatchers.IO) {
-            // If a chip is selected, reload the chip's content instead of the default home
-            val currentChip = selectedChip.value
-            if (currentChip != null) {
-                val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-                val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-                val nextSections = YouTube.home(params = currentChip.endpoint?.params).getOrNull()
-                if (nextSections != null) {
-                    homePage.value = nextSections.copy(
-                        chips = homePage.value?.chips,
-                        sections = nextSections.sections.mapNotNull { section ->
-                            val filteredItems = section.items
-                                .filterExplicit(hideExplicit)
-                                .filterVideoSongs(hideVideoSongs)
-                                .filterYoutubeShorts(hideYoutubeShorts)
-                            if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
-                        }
-                    )
+            try {
+                // If a chip is selected, reload the chip's content instead of the default home
+                val currentChip = selectedChip.value
+                if (currentChip != null) {
+                    val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                    val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+                    val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+                    val nextSections = YouTube.home(params = currentChip.endpoint?.params).getOrNull()
+                    if (nextSections != null) {
+                        homePage.value = nextSections.copy(
+                            chips = homePage.value?.chips,
+                            sections = nextSections.sections.mapNotNull { section ->
+                                val filteredItems = section.items
+                                    .filterExplicit(hideExplicit)
+                                    .filterVideoSongs(hideVideoSongs)
+                                    .filterYoutubeShorts(hideYoutubeShorts)
+                                if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
+                            }
+                        )
+                    }
+                } else {
+                    load()
                 }
-            } else {
-                load()
+                refreshHeroCarousel(System.currentTimeMillis(), force = true)
+            } finally {
+                // Always reset: an exception escaping load() used to leave isRefreshing stuck
+                // at true and every later pull-to-refresh silently no-op.
+                isRefreshing.value = false
             }
-            refreshHeroCarousel(System.currentTimeMillis(), force = true)
-            isRefreshing.value = false
         }
         // Run sync when user manually refreshes
         viewModelScope.launch(Dispatchers.IO) {

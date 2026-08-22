@@ -13,6 +13,7 @@ import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.music.data.remote.MusicBrainzRepository
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.utils.NewReleaseNotifier
+import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -20,10 +21,12 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -33,6 +36,7 @@ constructor(
     private val database: MusicDatabase,
     private val musicBrainzRepository: MusicBrainzRepository,
     private val newReleaseNotifier: NewReleaseNotifier,
+    private val networkConnectivity: NetworkConnectivityObserver,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     val albumId = savedStateHandle.get<String>("albumId")!!
@@ -61,6 +65,21 @@ constructor(
 
     init {
         fetchFromYouTube()
+
+        // Self-heal: a fetch attempted during an outage/handover used to leave the page in a
+        // terminal error state until the user tapped retry (or restarted the app). When
+        // connectivity comes back, retry automatically. StateFlow already dedupes values,
+        // so drop(1) is all that's needed to skip the initial emission.
+        viewModelScope.launch {
+            networkConnectivity.networkStatus
+                .drop(1)
+                .collect { connected ->
+                    if (connected && _hasError.value) {
+                        Timber.d("Network restored — auto-retrying album fetch for %s", albumId)
+                        retry()
+                    }
+                }
+        }
     }
 
     fun retry() {
@@ -72,7 +91,9 @@ constructor(
     private fun fetchFromYouTube() {
         viewModelScope.launch {
             try {
-                withTimeout(30_000L) {
+                // Generous enough for two full InnerTube attempts (2 × 20s + backoff) plus DB work;
+                // a tighter bound here turned every flaky-network moment into a guaranteed error.
+                withTimeout(60_000L) {
                     val album = database.album(albumId).first()
                     val ytResult = YouTube.album(albumId)
 
