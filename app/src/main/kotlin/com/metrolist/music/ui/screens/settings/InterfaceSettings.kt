@@ -47,6 +47,7 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.HeroCarouselEnabledKey
+import com.metrolist.music.constants.SmartBootKey
 import com.metrolist.music.constants.ShowFeaturedArtistsInTopSongsKey
 import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.DefaultOpenTabKey
@@ -102,6 +103,8 @@ fun InterfaceSettings(
         rememberPreference(ShowFeaturedArtistsInTopSongsKey, defaultValue = true)
     val (heroCarouselEnabled, onHeroCarouselEnabledChange) =
         rememberPreference(HeroCarouselEnabledKey, defaultValue = false)
+    val (smartBootEnabled, onSmartBootEnabledChange) =
+        rememberPreference(SmartBootKey, defaultValue = true)
 
     val context = activity as Context
     val sharedPreferences = remember { context.getSharedPreferences("metrolist_settings", Context.MODE_PRIVATE) }
@@ -307,6 +310,40 @@ fun InterfaceSettings(
                         )
                     },
                     onClick = { onHeroCarouselEnabledChange(!heroCarouselEnabled) },
+                )
+            )
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ── Smart boot ───────────────────────────────────────────────────
+        // Master switch for the launch-path optimizations: instant "Featured for you" from the
+        // saved snapshot, shimmer placeholders instead of sections popping in, no artificial
+        // stagger delays, single chip fetch on cold start, unified card spacing. Turning it off
+        // restores the original launch behavior completely (takes effect next app start).
+        Material3SettingsGroup(
+            title = stringResource(R.string.smart_boot),
+            items = listOf(
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.speed),
+                    title = { Text(stringResource(R.string.smart_boot)) },
+                    description = { Text(stringResource(R.string.smart_boot_desc)) },
+                    trailingContent = {
+                        IrideSwitch(
+                            checked = smartBootEnabled,
+                            onCheckedChange = onSmartBootEnabledChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        if (smartBootEnabled) R.drawable.check else R.drawable.close
+                                    ),
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                    contentDescription = null,
+                                )
+                            },
+                        )
+                    },
+                    onClick = { onSmartBootEnabledChange(!smartBootEnabled) },
                 )
             )
         )

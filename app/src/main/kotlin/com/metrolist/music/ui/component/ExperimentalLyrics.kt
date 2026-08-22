@@ -1155,6 +1155,8 @@ fun ExperimentalLyrics(
                                             } else if (changeLyrics && !isGuest) {
                                                 if (item.time < playerConnection.player.duration - 30000L) {
                                                     playerConnection.seekTo(item.time - (currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS).coerceAtLeast(0))
+                                                    scrollTargetIndex = index
+                                                    deferredCurrentLineIndex = index
                                                     isAutoScrollEnabled = true
                                                     userManualOffset = 0f
                                                     lastPreviewTime = 0L

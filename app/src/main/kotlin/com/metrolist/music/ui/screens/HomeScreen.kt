@@ -144,6 +144,7 @@ import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
+import com.metrolist.music.constants.SmartBootKey
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Artist
@@ -327,7 +328,7 @@ private fun ForYouShelfSkeleton(boxSize: Dp, contentPadding: Dp, modifier: Modif
                 .fillMaxWidth()
                 .clipToBounds()
                 .padding(start = contentPadding),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             repeat(3) {
                 Box(
@@ -337,6 +338,52 @@ private fun ForYouShelfSkeleton(boxSize: Dp, contentPadding: Dp, modifier: Modif
                         .clip(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 )
+            }
+        }
+    }
+}
+
+// Generic reserved slot for the sections that previously had no placeholder at all ("Keep
+// listening", "Daily discover", ...) and used to pop in mid-scroll as each network job
+// finished. Reserves a title bar plus one row of cards approximating the section's real
+// footprint; small residuals are absorbed by animateItem(). Smart Boot only.
+@Composable
+private fun HomeSectionSkeleton(
+    rowHeight: Dp,
+    contentPadding: Dp,
+    modifier: Modifier = Modifier,
+) {
+    ShimmerHost(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(start = contentPadding)
+                    .width(140.dp)
+                    .height(24.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clipToBounds()
+                    .padding(start = contentPadding),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                repeat(3) {
+                    Box(
+                        modifier = Modifier
+                            .width(rowHeight)
+                            .height(rowHeight)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    )
+                }
             }
         }
     }
@@ -388,6 +435,13 @@ fun HomeScreen(
     val phase1Complete by viewModel.phase1Complete.collectAsStateWithLifecycle()
     val isHeroCarouselEnabled by viewModel.isHeroCarouselEnabled.collectAsStateWithLifecycle()
     val heroCarouselItems by viewModel.heroCarouselItems.collectAsStateWithLifecycle()
+    val phase2DailyDiscoverDone by viewModel.phase2DailyDiscoverDone.collectAsStateWithLifecycle()
+    val phase2CommunityDone by viewModel.phase2CommunityDone.collectAsStateWithLifecycle()
+    val phase2SimilarDone by viewModel.phase2SimilarDone.collectAsStateWithLifecycle()
+    val phase2DischiPerTeDone by viewModel.phase2DischiPerTeDone.collectAsStateWithLifecycle()
+    // Smart Boot: when on, sections still loading hold a shimmer slot instead of popping in
+    // mid-scroll, and the unified card spacing is applied. Off = original behavior.
+    val smartBootEnabled by rememberPreference(SmartBootKey, defaultValue = true)
 
     val accountNameFlow by viewModel.accountName.collectAsStateWithLifecycle()
     val accountImageUrlFlow by viewModel.accountImageUrl.collectAsStateWithLifecycle()
@@ -771,6 +825,17 @@ fun HomeScreen(
             }
 
             val dischiPerTeSection: LazyListScope.() -> Unit = {
+                // Smart Boot: hold the slot with shimmer while the generator job runs instead of
+                // letting the shelf pop in mid-scroll.
+                if (smartBootEnabled && phase1Complete && !phase2DischiPerTeDone && dischiPerTe == null) {
+                    item(key = "dischi_per_te_skeleton") {
+                        HomeSectionSkeleton(
+                            rowHeight = currentGridHeight + 44.dp,
+                            contentPadding = irideGridItemStart,
+                            modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
+                        )
+                    }
+                }
                 dischiPerTe?.takeIf { it.isNotEmpty() }?.let { discs ->
                     item(key = "dischi_per_te_title") {
                         NavigationTitle(
@@ -910,7 +975,10 @@ fun HomeScreen(
                                 LazyRow(
                                     state = forYouState,
                                     contentPadding = PaddingValues(horizontal = irideGridItemStart),
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    // Smart Boot unifies card gaps across all Home rows to 12dp;
+                                    // off restores the original per-row value.
+                                    horizontalArrangement =
+                                        Arrangement.spacedBy(if (smartBootEnabled) 12.dp else 16.dp),
                                     overscrollEffect = null,
                                     modifier = homeRowMotion("for_you_carousel")
                                         .rubberBandOverscroll(Orientation.Horizontal, forYouState),
@@ -1468,7 +1536,12 @@ fun HomeScreen(
                                     LazyRow(
                                         state = moodMixesState,
                                         contentPadding = PaddingValues(horizontal = irideGridItemStart),
-                                        horizontalArrangement = Arrangement.spacedBy(if (topNavigationBarEnabled) 4.dp else 12.dp),
+                                        horizontalArrangement =
+                                            Arrangement.spacedBy(
+                                                if (smartBootEnabled) 12.dp
+                                                else if (topNavigationBarEnabled) 4.dp
+                                                else 12.dp
+                                            ),
                                         overscrollEffect = null,
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -1529,6 +1602,15 @@ fun HomeScreen(
                 if (forYouShelfPosition == "after_mood") forYouSection()
 
                 // ── Other sections (appear as data arrives, no stagger) ──────
+                if (smartBootEnabled && keepListening == null) {
+                    item(key = "keep_listening_skeleton") {
+                        HomeSectionSkeleton(
+                            rowHeight = currentGridHeight + 56.dp,
+                            contentPadding = irideGridItemStart,
+                            modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
+                        )
+                    }
+                }
                 keepListening?.takeIf { it.isNotEmpty() }?.let { kl ->
                     item(key = "keep_listening_title") {
                         NavigationTitle(
@@ -1570,6 +1652,14 @@ fun HomeScreen(
                     }
                 }
 
+                if (smartBootEnabled && forgottenFavorites == null) {
+                    item(key = "forgotten_favorites_skeleton") {
+                        QuickPicksSkeleton(
+                            contentPadding = irideListItemStart,
+                            modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
+                        )
+                    }
+                }
                 forgottenFavorites?.takeIf { it.isNotEmpty() }?.let { ff ->
                     item(key = "forgotten_favorites_title") {
                         val title = stringResource(R.string.forgotten_favorites)
@@ -1695,6 +1785,15 @@ fun HomeScreen(
                 }
                 if (forYouShelfPosition == "after_account_playlists") forYouSection()
 
+                if (smartBootEnabled && phase1Complete && !phase2DailyDiscoverDone && dailyDiscover == null) {
+                    item(key = "daily_discover_skeleton") {
+                        HomeSectionSkeleton(
+                            rowHeight = currentGridHeight + 30.dp,
+                            contentPadding = irideGridItemStart,
+                            modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
+                        )
+                    }
+                }
                 dailyDiscover?.takeIf { it.isNotEmpty() }?.let { discoverList ->
                     item(key = "daily_discover_title") {
                         val title = stringResource(R.string.your_daily_discover)
@@ -1780,6 +1879,15 @@ fun HomeScreen(
                 if (dischiPerTePosition == "after_daily_discover") dischiPerTeSection()
                 if (forYouShelfPosition == "after_daily_discover") forYouSection()
 
+                if (smartBootEnabled && phase1Complete && !phase2CommunityDone && communityPlaylists == null) {
+                    item(key = "community_playlists_skeleton") {
+                        HomeSectionSkeleton(
+                            rowHeight = currentGridHeight + 44.dp,
+                            contentPadding = irideGridItemStart,
+                            modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
+                        )
+                    }
+                }
                 communityPlaylists?.takeIf { it.isNotEmpty() }?.let { playlists ->
                     item(key = "community_playlists_title") {
                         NavigationTitle(
@@ -1833,6 +1941,15 @@ fun HomeScreen(
 
                 if (dischiPerTePosition == "after_community") dischiPerTeSection()
 
+                if (smartBootEnabled && phase1Complete && !phase2SimilarDone && similarRecommendations == null) {
+                    item(key = "similar_recommendations_skeleton") {
+                        HomeSectionSkeleton(
+                            rowHeight = currentGridHeight + 44.dp,
+                            contentPadding = irideGridItemStart,
+                            modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
+                        )
+                    }
+                }
                 similarRecommendations?.forEachIndexed { index, rec ->
                     item(key = "similar_to_title_$index") {
                         NavigationTitle(

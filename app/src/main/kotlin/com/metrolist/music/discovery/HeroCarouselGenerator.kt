@@ -35,6 +35,7 @@ class HeroCarouselGenerator(
         dischiPerTe: List<DischiPerTeItem>,
         seed: Long,
         seenAsFirstIds: Set<String>,
+        includeGenrePool: Boolean = true,
     ): Result {
         val random = Random(seed)
         val oneYearAgo = System.currentTimeMillis() - 365L * 24 * 60 * 60 * 1000
@@ -132,7 +133,12 @@ class HeroCarouselGenerator(
         // "Nuove uscite del genere preferito": tag a handful of new releases with a genre
         // via GenreProvider (same lookup GenrePillsRow uses for playlists) and keep the
         // ones matching the genre the user's most-played songs skew towards.
-        val genreNewReleaseCandidates = buildGenreNewReleases(explorePage, random)
+        //
+        // This pool is by far the slowest to build (up to ~23 uncached HTTP lookups behind
+        // it). Smart Boot first paints the carousel without it, then appends these cards
+        // later — see HomeViewModel.refreshHeroCarousel(includeGenrePool = false).
+        val genreNewReleaseCandidates =
+            if (includeGenrePool) buildGenreNewReleases(explorePage, random) else emptyList()
 
         val pools = listOf(
             newReleaseCandidates, inRotationCandidates, recommendedAlbumCandidates,

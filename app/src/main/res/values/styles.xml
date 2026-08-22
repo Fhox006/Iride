@@ -15,6 +15,14 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
+    <!-- Light-mode launch variant of Theme.Metrolist (implicit parent via dot notation): only the
+         window/splash background changes, to the app's baseline light surface, so light-theme
+         users don't get a one-frame dark flash at startup. Chosen programmatically in
+         MainActivity.onCreate from the saved theme preference. -->
+    <style name="Theme.Metrolist.Light">
+        <item name="android:windowBackground">#FFFBFF</item>
+    </style>
+
     <!-- Widget Theme with Material 3 colors fallback for API < 31 -->
     <style name="Theme.Widget.Metrolist" parent="@android:style/Theme.DeviceDefault.DayNight">
         <item name="android:colorBackground">#E6E1E5</item>

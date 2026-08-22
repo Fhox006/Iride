@@ -275,6 +275,23 @@
     <string name="hide_changelog">Hide changelog</string>
     <string name="view_changelog">View changelog</string>
     <string name="failed_to_check_updates">Failed to check for updates: %s</string>
+    <string name="update_dialog_title_new_version">New version available</string>
+    <string name="update_dialog_version_available">Iride %s is available.</string>
+    <string name="update_dialog_experimental_build">This build may be experimental.</string>
+    <string name="update_dialog_no_compatible_package">No compatible package found for this build.</string>
+    <string name="update_dialog_back">Back</string>
+    <string name="update_action_download">Download</string>
+    <string name="update_action_install">Install</string>
+    <string name="update_action_retry">Retry</string>
+    <string name="update_state_downloading_percent">Downloading… %d%%</string>
+    <string name="update_state_ready_to_install">Update downloaded — tap to install</string>
+    <string name="update_permission_explanation">To install the update, allow Iride to install apps on the next screen.</string>
+    <string name="update_action_allow">Allow</string>
+    <string name="update_download_started">Update download started</string>
+    <string name="update_download_failed">Could not download the update</string>
+    <string name="update_download_error_no_space">Not enough free space</string>
+    <string name="update_download_error_connection">Connection error</string>
+    <string name="update_download_notification_description">Downloading the new version…</string>
 
     <string name="all_time">All time</string>
     <string name="past_24_hours">Past 24 hours</string>
@@ -875,6 +892,10 @@
     <string name="randomize_home_order_desc">Randomly reorder home screen sections using weighted priorities</string>
     <string name="hero_carousel_title">Hero carousel</string>
     <string name="hero_carousel_desc">A rotating banner with new releases and picks for you</string>
+
+    <!-- Smart boot -->
+    <string name="smart_boot">Smart boot</string>
+    <string name="smart_boot_desc">Faster startup: Featured loads instantly, sections keep their place while loading, fewer duplicate downloads. Turn off to restore the original behavior (restart to apply fully)</string>
 
     <!-- Daily Discover -->
     <string name="daily_discover_sounds_like">Sounds like %1$s</string>

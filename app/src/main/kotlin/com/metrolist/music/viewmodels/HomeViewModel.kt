@@ -45,6 +45,8 @@ import com.metrolist.music.constants.MoodSnapshotKey
 import com.metrolist.music.constants.QuickPicks
 import com.metrolist.music.constants.QuickPicksKey
 import com.metrolist.music.constants.HeroCarouselEnabledKey
+import com.metrolist.music.constants.HeroCarouselSnapshotKey
+import com.metrolist.music.constants.SmartBootKey
 import com.metrolist.music.constants.LastDiscoveryWeeklySyncKey
 import com.metrolist.music.constants.SeenNewReleaseFirstIdsKey
 import com.metrolist.music.constants.RandomizeHomeOrderKey
@@ -92,6 +94,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.SharingStarted
@@ -143,6 +146,16 @@ class HomeViewModel @Inject constructor(
     val phase1Complete = MutableStateFlow(false)
     val phase2Complete = MutableStateFlow(false)
     val visibleSections: MutableStateFlow<Set<String>> = MutableStateFlow(setOf("speed_dial", "mood_and_genres", "discovery"))
+
+    // Smart Boot master switch (Settings > Appearance > Interface). When off, every launch-path
+    // optimization below is skipped and Home behaves exactly like before: reactive hero
+    // generation with genre lookups inline, artificial stagger delays, duplicate chip fetches
+    // and no per-section skeletons.
+    // Read once, synchronously: load() is scheduled from init and must already know the flag,
+    // mirroring the blocking first-composition preference reads used elsewhere at startup.
+    private val smartBootEnabled: Boolean = runBlocking {
+        context.dataStore.data.first()[SmartBootKey] ?: true
+    }
 
     private val quickPicksEnum = context.dataStore.data.map {
         it[QuickPicksKey].toEnum(QuickPicks.QUICK_PICKS)
@@ -307,6 +320,11 @@ class HomeViewModel @Inject constructor(
             return
         }
         lastHeroCarouselSeed = seed
+        // Smart Boot: the genre pool is the slow part of generation (up to ~23 uncached HTTP
+        // lookups behind it), so the very first paint skips it and appendHeroCarousel adds
+        // those cards once they resolve. Without Smart Boot the original single full
+        // generation is kept.
+        val skipGenrePool = smartBootEnabled && !force && !heroCarouselFirstGenDone
         viewModelScope.launch(Dispatchers.IO) {
             val seenAsFirstIds = context.dataStore.data.first()[SeenNewReleaseFirstIdsKey] ?: emptySet()
             val result = heroCarouselGenerator.generate(
@@ -315,9 +333,11 @@ class HomeViewModel @Inject constructor(
                 dischiPerTe = dischiPerTe.value.orEmpty(),
                 seed = seed,
                 seenAsFirstIds = seenAsFirstIds,
+                includeGenrePool = !skipGenrePool,
             )
             heroCarouselItems.value = result.items
             heroCarouselFirstGenDone = true
+            if (smartBootEnabled) persistHeroCarouselSnapshot(seed, result.items)
             if (result.seenAsFirstIds != seenAsFirstIds) {
                 context.dataStore.edit { it[SeenNewReleaseFirstIdsKey] = result.seenAsFirstIds }
             }
@@ -340,7 +360,25 @@ class HomeViewModel @Inject constructor(
             val appended = fresh.items.filterNot { it.stableKey() in existingKeys }
             if (appended.isNotEmpty()) {
                 heroCarouselItems.value = (heroCarouselItems.value + appended).take(10)
+                if (smartBootEnabled) persistHeroCarouselSnapshot(lastHeroCarouselSeed, heroCarouselItems.value)
             }
+        }
+    }
+
+    // Smart Boot persistence: the last generated carousel is stored as JSON so the next cold
+    // start paints "Featured for you" instantly from disk instead of leaving its skeleton up
+    // until the whole network pipeline finishes. Same pattern as SpeedDialSnapshot/MoodSnapshot.
+    @kotlinx.serialization.Serializable
+    private data class HeroCarouselSnapshot(
+        val seed: Long,
+        val items: List<HeroCarouselItem>,
+    )
+
+    private fun persistHeroCarouselSnapshot(seed: Long, items: List<HeroCarouselItem>) {
+        if (items.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val json = runCatching { snapshotJson.encodeToString(HeroCarouselSnapshot(seed, items)) }.getOrNull() ?: return@launch
+            context.dataStore.edit { it[HeroCarouselSnapshotKey] = json }
         }
     }
 
@@ -812,13 +850,20 @@ class HomeViewModel @Inject constructor(
     private var communityPlaylistsLaunchJob: kotlinx.coroutines.Job? = null
     private var similarRecommendationsLaunchJob: kotlinx.coroutines.Job? = null
     private var dischiPerTeLaunchJob: kotlinx.coroutines.Job? = null
-    private var phase2DailyDiscoverDone = false
-    private var phase2CommunityDone = false
-    private var phase2SimilarDone = false
-    private var phase2DischiPerTeDone = false
+
+    // Phase-2 completion flags, observable by the UI so Home can hold a skeleton slot per
+    // section while its (lazy, network-backed) job is still running instead of letting the
+    // section pop in mid-scroll. They flip in a finally block, so a failed request also
+    // clears its skeleton instead of leaving it up forever.
+    val phase2DailyDiscoverDone = MutableStateFlow(false)
+    val phase2CommunityDone = MutableStateFlow(false)
+    val phase2SimilarDone = MutableStateFlow(false)
+    val phase2DischiPerTeDone = MutableStateFlow(false)
 
     private fun checkPhase2Complete() {
-        if (phase2DailyDiscoverDone && phase2CommunityDone && phase2SimilarDone && phase2DischiPerTeDone) {
+        if (phase2DailyDiscoverDone.value && phase2CommunityDone.value &&
+            phase2SimilarDone.value && phase2DischiPerTeDone.value
+        ) {
             phase2Complete.value = true
         }
     }
@@ -1313,40 +1358,52 @@ class HomeViewModel @Inject constructor(
         when {
             sectionId == "daily_discover" && dailyDiscoverLaunchJob == null -> {
                 dailyDiscoverLaunchJob = viewModelScope.launch(Dispatchers.IO) {
-                    phase1Complete.filter { it }.first()
-                    kotlinx.coroutines.delay(1500L)
-                    getDailyDiscover()
-                    HomeCache.dailyDiscover = dailyDiscover.value
-                    phase2DailyDiscoverDone = true
-                    checkPhase2Complete()
+                    try {
+                        phase1Complete.filter { it }.first()
+                        if (!smartBootEnabled) kotlinx.coroutines.delay(1500L)
+                        getDailyDiscover()
+                        HomeCache.dailyDiscover = dailyDiscover.value
+                    } finally {
+                        phase2DailyDiscoverDone.value = true
+                        checkPhase2Complete()
+                    }
                 }
             }
             sectionId == "from_the_community" && communityPlaylistsLaunchJob == null -> {
                 communityPlaylistsLaunchJob = viewModelScope.launch(Dispatchers.IO) {
-                    phase1Complete.filter { it }.first()
-                    kotlinx.coroutines.delay(1500L)
-                    getCommunityPlaylists()
-                    HomeCache.communityPlaylists = communityPlaylists.value
-                    phase2CommunityDone = true
-                    checkPhase2Complete()
+                    try {
+                        phase1Complete.filter { it }.first()
+                        if (!smartBootEnabled) kotlinx.coroutines.delay(1500L)
+                        getCommunityPlaylists()
+                        HomeCache.communityPlaylists = communityPlaylists.value
+                    } finally {
+                        phase2CommunityDone.value = true
+                        checkPhase2Complete()
+                    }
                 }
             }
             sectionId.startsWith("similar_recommendation_") && similarRecommendationsLaunchJob == null -> {
                 similarRecommendationsLaunchJob = viewModelScope.launch(Dispatchers.IO) {
-                    phase1Complete.filter { it }.first()
-                    kotlinx.coroutines.delay(1500L)
-                    getSimilarRecommendations()
-                    phase2SimilarDone = true
-                    checkPhase2Complete()
+                    try {
+                        phase1Complete.filter { it }.first()
+                        if (!smartBootEnabled) kotlinx.coroutines.delay(1500L)
+                        getSimilarRecommendations()
+                    } finally {
+                        phase2SimilarDone.value = true
+                        checkPhase2Complete()
+                    }
                 }
             }
             sectionId == "dischi_per_te" && dischiPerTeLaunchJob == null -> {
                 dischiPerTeLaunchJob = viewModelScope.launch(Dispatchers.IO) {
-                    phase1Complete.filter { it }.first()
-                    kotlinx.coroutines.delay(1500L)
-                    getDischiPerTe()
-                    phase2DischiPerTeDone = true
-                    checkPhase2Complete()
+                    try {
+                        phase1Complete.filter { it }.first()
+                        if (!smartBootEnabled) kotlinx.coroutines.delay(1500L)
+                        getDischiPerTe()
+                    } finally {
+                        phase2DischiPerTeDone.value = true
+                        checkPhase2Complete()
+                    }
                 }
             }
         }
@@ -1358,10 +1415,10 @@ class HomeViewModel @Inject constructor(
         isLoading.value = true
         phase1Complete.value = false
         phase2Complete.value = false
-        phase2DailyDiscoverDone = false
-        phase2CommunityDone = false
-        phase2SimilarDone = false
-        phase2DischiPerTeDone = false
+        phase2DailyDiscoverDone.value = false
+        phase2CommunityDone.value = false
+        phase2SimilarDone.value = false
+        phase2DischiPerTeDone.value = false
         dailyDiscoverLaunchJob?.cancel(); dailyDiscoverLaunchJob = null
         communityPlaylistsLaunchJob?.cancel(); communityPlaylistsLaunchJob = null
         similarRecommendationsLaunchJob?.cancel(); similarRecommendationsLaunchJob = null
@@ -1493,19 +1550,30 @@ class HomeViewModel @Inject constructor(
                     }
                 }
 
-                if (selectedChip.value == null) {
+                val savedParamsForChip = cachedMoodSnapshot.value?.chipParams
+                val preferredChip = if (!savedParamsForChip.isNullOrEmpty())
+                    transformedChips?.firstOrNull { it.endpoint?.params == savedParamsForChip }
+                else null
+
+                if (smartBootEnabled) {
+                    // Smart Boot: the chip page used to be fetched twice back to back — once by
+                    // toggleChip (to swap the raw feed) and once by loadMoodPage (to fill the
+                    // Mood row). Both always resolved to the same chip, so a single fetch now
+                    // feeds both consumers. Same end state, half the cold-start requests.
+                    (preferredChip ?: transformedChips?.firstOrNull())?.let { chip ->
+                        applyChipWithSingleFetch(chip, hideExplicit, hideVideoSongs, hideYoutubeShorts)
+                    }
+                } else {
+                    if (selectedChip.value == null) {
+                        (preferredChip ?: transformedChips?.firstOrNull())?.let { chip -> toggleChip(chip) }
+                    }
                     val savedParams = cachedMoodSnapshot.value?.chipParams
-                    val preferredChip = if (!savedParams.isNullOrEmpty())
-                        transformedChips?.firstOrNull { it.endpoint?.params == savedParams }
-                    else null
-                    (preferredChip ?: transformedChips?.firstOrNull())?.let { chip -> toggleChip(chip) }
-                }
-                val savedParams = cachedMoodSnapshot.value?.chipParams
-                val moodChip = if (!savedParams.isNullOrEmpty())
-                    transformedChips?.firstOrNull { it.endpoint?.params == savedParams } ?: transformedChips?.firstOrNull()
-                else transformedChips?.firstOrNull()
-                moodChip?.let { chip ->
-                    loadMoodPage(chip.endpoint?.params, chip.title, hideExplicit, hideVideoSongs, hideYoutubeShorts)
+                    val moodChip = if (!savedParams.isNullOrEmpty())
+                        transformedChips?.firstOrNull { it.endpoint?.params == savedParams } ?: transformedChips?.firstOrNull()
+                    else transformedChips?.firstOrNull()
+                    moodChip?.let { chip ->
+                        loadMoodPage(chip.endpoint?.params, chip.title, hideExplicit, hideVideoSongs, hideYoutubeShorts)
+                    }
                 }
                 // Freshness is only earned by a successful network fetch: bumping the
                 // timestamp here (instead of after the DB-only phase) means a failed run
@@ -1525,7 +1593,7 @@ class HomeViewModel @Inject constructor(
 
         // Phase 3: Heavy — scaglionato, ben lontano dal caricamento immagini
         viewModelScope.launch(Dispatchers.IO) {
-            kotlinx.coroutines.delay(4500)
+            if (!smartBootEnabled) kotlinx.coroutines.delay(4500)
             enrichQuickPicksFromNetwork()
             HomeCache.quickPicks = quickPicks.value
         }
@@ -1600,6 +1668,62 @@ class HomeViewModel @Inject constructor(
             if (chip.title.contains("Podcast", ignoreCase = true)) {
                 fetchPodcastData()
             }
+        }
+    }
+
+    /**
+     * Smart Boot cold start: applies the preferred chip with ONE network fetch where the old
+     * path used two (toggleChip + loadMoodPage). Updates both consumers of that page:
+     *  - feed half (what toggleChip did): swap homePage, mark chip selected, podcast hook
+     *  - mood half (what loadMoodPage did): fill moodPage/moodMixItems, persist snapshot
+     * Deliberately does NOT touch moodPageJob/isMoodLoading: an early cached-params load may
+     * still be in flight — its own finally resets the spinner, and since it targets the same
+     * params its late result is identical to this one.
+     */
+    private fun applyChipWithSingleFetch(
+        chip: HomePage.Chip,
+        hideExplicit: Boolean,
+        hideVideoSongs: Boolean,
+        hideYoutubeShorts: Boolean,
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val nextSections = try {
+                withTimeout(15_000L) { YouTube.home(params = chip.endpoint?.params).getOrNull() }
+            } catch (e: TimeoutCancellationException) {
+                null
+            } ?: return@launch
+
+            val filteredSections = nextSections.sections.mapNotNull { section ->
+                val filteredItems = section.items
+                    .filterExplicit(hideExplicit)
+                    .filterVideoSongs(hideVideoSongs)
+                    .filterYoutubeShorts(hideYoutubeShorts)
+                if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
+            }
+
+            // Feed half
+            previousHomePage.value = homePage.value
+            homePage.value = nextSections.copy(chips = homePage.value?.chips, sections = filteredSections)
+            selectedChip.value = chip
+            if (chip.title.contains("Podcast", ignoreCase = true)) {
+                fetchPodcastData()
+            }
+
+            // Mood row half
+            val params = chip.endpoint?.params
+            val moodFilteredPage = nextSections.copy(chips = null, sections = filteredSections)
+            lastMoodChipParams = params
+            moodPage.value = moodFilteredPage
+            moodMixItems.value = filteredSections
+                .flatMap { it.items }
+                .filterIsInstance<PlaylistItem>()
+                .take(10)
+                .takeIf { it.isNotEmpty() } ?: moodMixItems.value
+            context.dataStore.edit { prefs ->
+                prefs[LastMoodChipTitleKey] = chip.title
+                if (params != null) prefs[LastMoodChipParamsKey] = params
+            }
+            saveMoodSnapshotAfterLoad(chip.title, params, moodFilteredPage)
         }
     }
 
@@ -1735,6 +1859,18 @@ class HomeViewModel @Inject constructor(
             if (HomeCache.lastLoadedAt == 0L) {
                 HomeCache.lastLoadedAt = context.dataStore.get(HomeCacheLastLoadedKey, 0L)
             }
+            // Smart Boot: paint "Featured for you" instantly from the last generated snapshot,
+            // before any network work. heroCarouselFirstGenDone stays false so the first fresh
+            // generation still replaces this content once real data arrives.
+            if (smartBootEnabled && isHeroCarouselEnabled.value) {
+                context.dataStore.get(HeroCarouselSnapshotKey, "")?.takeIf { it.isNotEmpty() }?.let { json ->
+                    runCatching { snapshotJson.decodeFromString<HeroCarouselSnapshot>(json) }.getOrNull()
+                        ?.takeIf { it.items.isNotEmpty() }?.let { snapshot ->
+                            heroCarouselItems.value = snapshot.items
+                            lastHeroCarouselSeed = snapshot.seed
+                        }
+                }
+            }
             if (!HomeCache.isStale() && HomeCache.homePage != null) {
                 homePage.value = HomeCache.homePage
                 quickPicks.value = HomeCache.quickPicks
@@ -1746,14 +1882,18 @@ class HomeViewModel @Inject constructor(
                 communityPlaylists.value = HomeCache.communityPlaylists
                 dischiPerTe.value = HomeCache.dischiPerTe
                 forYouShelves.value = HomeCache.forYouShelves.orEmpty()
-                refreshHeroCarousel()
+                // force = true: this path never starts the network pipeline, so no later
+                // arrival would fire appendHeroCarousel — generate the full list (genre pool
+                // included, mostly served by GenreProvider's disk cache) in one shot, exactly
+                // like the pre-Smart-Boot behavior.
+                refreshHeroCarousel(force = true)
                 isPhase1Complete.value = true
                 phase1Complete.value = true
                 phase2Complete.value = true
-                phase2DailyDiscoverDone = true
-                phase2CommunityDone = true
-                phase2SimilarDone = true
-                phase2DischiPerTeDone = true
+                phase2DailyDiscoverDone.value = true
+                phase2CommunityDone.value = true
+                phase2SimilarDone.value = true
+                phase2DischiPerTeDone.value = true
                 isLoading.value = false
             } else {
                 load()

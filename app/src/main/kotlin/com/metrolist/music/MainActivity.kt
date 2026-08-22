@@ -7,8 +7,12 @@ package com.metrolist.music
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.DownloadManager
+import android.content.BroadcastReceiver
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.Build
@@ -222,6 +226,7 @@ import com.metrolist.music.ui.theme.extractThemeColor
 import com.metrolist.music.ui.utils.appBarScrollBehavior
 import com.metrolist.music.ui.utils.resetHeightOffset
 import com.metrolist.music.utils.SyncUtils
+import com.metrolist.music.utils.UpdateDownloader
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
@@ -242,6 +247,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.net.URLDecoder
@@ -284,6 +290,7 @@ class MainActivity : ComponentActivity() {
     private var playerConnectionSnapshot by mutableStateOf<PlayerConnection?>(null)
     
     private var isServiceBound = false
+    private var updateDownloadReceiver: BroadcastReceiver? = null
 
     private val serviceConnection =
         object : ServiceConnection {
@@ -337,6 +344,27 @@ class MainActivity : ComponentActivity() {
             playerConnection = null
             playerConnectionSnapshot = null
         }
+    }
+
+    private fun registerUpdateDownloadReceiver() {
+        updateDownloadReceiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context?,
+                    intent: Intent?,
+                ) {
+                    val downloadId = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L) ?: return
+                    if (UpdateDownloader.onDownloadCompleted(this@MainActivity, downloadId)) {
+                        UpdateDownloader.promptInstall(this@MainActivity)
+                    }
+                }
+            }
+        ContextCompat.registerReceiver(
+            this,
+            updateDownloadReceiver,
+            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
     }
 
     override fun onStart() {
@@ -415,6 +443,10 @@ class MainActivity : ComponentActivity() {
         if (anchor == expandedAnchor) collapsedAnchor else anchor
 
     override fun onDestroy() {
+        updateDownloadReceiver?.let {
+            runCatching { unregisterReceiver(it) }
+        }
+        updateDownloadReceiver = null
         if (isFinishing) {
             listenTogetherManager.disconnect()
             // Closing the app ends the player's session: drop the in-memory expanded anchor so
@@ -454,12 +486,36 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Pick the launch window background from the saved theme BEFORE the first frame is
+        // published: the base theme's windowBackground is black, which flashed against the
+        // light surface in light mode. One small blocking read at launch, same pattern as
+        // rememberPreference's first-composition read.
+        runBlocking {
+            val prefs = dataStore.data.first()
+            val darkModeRaw = prefs[DarkModeKey]
+            val systemDark =
+                (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                    android.content.res.Configuration.UI_MODE_NIGHT_YES
+            val useDark = when (darkModeRaw) {
+                "ON" -> true
+                "OFF" -> false
+                else -> systemDark // AUTO follows the system
+            }
+            if (!useDark && !(prefs[PureBlackKey] ?: false)) {
+                setTheme(R.style.Theme_Metrolist_Light)
+            }
+        }
         super.onCreate(savedInstanceState)
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Initialize Listen Together manager
         listenTogetherManager.initialize()
+
+        if (BuildConfig.UPDATER_AVAILABLE) {
+            UpdateDownloader.cleanupStaleDownloads(this)
+            registerUpdateDownloadReceiver()
+        }
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             val locale =
@@ -1752,14 +1808,25 @@ class MainActivity : ComponentActivity() {
                             releaseInfo = pendingUpdateRelease!!,
                             downloadUrl = pendingUpdateDownloadUrl,
                             onDismiss = { updateDialogDismissedThisSession = true },
-                            onInstall = {
-                                updateDialogDismissedThisSession = true
-                                pendingUpdateDownloadUrl?.let { url ->
-                                    startActivity(
-                                        Intent(Intent.ACTION_VIEW, url.toUri()).apply {
-                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        }
-                                    )
+                            onStartDownload = {
+                                val url = pendingUpdateDownloadUrl ?: return@AppUpdateDialog
+                                coroutineScope.launch {
+                                    runCatching {
+                                        UpdateDownloader.enqueueUpdate(
+                                            applicationContext,
+                                            url,
+                                            pendingUpdateRelease!!.versionName,
+                                        )
+                                    }.onSuccess {
+                                        updateDialogDismissedThisSession = true
+                                        snackbarHostState.showSnackbar(
+                                            applicationContext.getString(R.string.update_download_started),
+                                        )
+                                    }.onFailure {
+                                        snackbarHostState.showSnackbar(
+                                            applicationContext.getString(R.string.update_download_failed),
+                                        )
+                                    }
                                 }
                             },
                         )

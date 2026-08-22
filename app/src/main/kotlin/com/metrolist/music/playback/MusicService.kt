@@ -1033,26 +1033,8 @@ class MusicService :
                 }
             }
 
-            val automixFile = filesDir.resolve(PERSISTENT_AUTOMIX_FILE)
-            if (automixFile.exists()) {
-                runCatching {
-                    automixFile.inputStream().use { fis ->
-                        ObjectInputStream(fis).use { oos ->
-                            oos.readObject() as PersistQueue
-                        }
-                    }
-                }.onSuccess { queue ->
-                    runCatching {
-                        automixItems.value = queue.items.map { it.toMediaItem() }
-                    }.onFailure { error ->
-                        Timber.tag(TAG).w(error, "Failed to restore automix queue, clearing data")
-                        clearPersistedQueueFiles()
-                    }
-                }.onFailure { error ->
-                    Timber.tag(TAG).w(error, "Failed to read automix queue, clearing data")
-                    clearPersistedQueueFiles()
-                }
-            }
+            // Radio state is intentionally not persisted: Auto-Mix suggestions die with the
+            // session and must be re-armed manually via the Radio button.
 
             // Restore player state
             val playerStateFile = filesDir.resolve(PERSISTENT_PLAYER_STATE_FILE)
@@ -1456,7 +1438,9 @@ class MusicService :
 
         currentQueue = queue
         queueTitle = null
-        isAutoMixQueueActive.value = false
+        // Radio must not survive a manual queue change: any new queue (playlist tap,
+        // album, search...) kills both the active-radio flag and pending Auto-Mix items.
+        clearRadioState()
         val persistShuffleAcrossQueues = dataStore.get(PersistentShuffleAcrossQueuesKey, false)
         val previousShuffleEnabled = player.shuffleModeEnabled
         if (!persistShuffleAcrossQueues) {
@@ -3365,14 +3349,6 @@ class MusicService :
                 position = player.currentPosition,
             )
 
-        val persistAutomix =
-            PersistQueue(
-                title = "automix",
-                items = automixItems.value.mapNotNull { it.metadata },
-                mediaItemIndex = 0,
-                position = 0,
-            )
-
         val persistPlayerState =
             PersistPlayerState(
                 playWhenReady = player.playWhenReady,
@@ -3386,7 +3362,7 @@ class MusicService :
 
         val writeToDisk = writeToDisk@{
             try {
-                writeQueueFiles(persistQueue, persistAutomix, persistPlayerState)
+                writeQueueFiles(persistQueue, persistPlayerState)
             } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "Error during queue save operation")
                 reportException(e)
@@ -3402,7 +3378,6 @@ class MusicService :
 
     private fun writeQueueFiles(
         persistQueue: PersistQueue,
-        persistAutomix: PersistQueue,
         persistPlayerState: PersistPlayerState,
     ) {
         runCatching {
@@ -3417,17 +3392,9 @@ class MusicService :
             reportException(it)
         }
 
-        runCatching {
-            filesDir.resolve(PERSISTENT_AUTOMIX_FILE).outputStream().use { fos ->
-                ObjectOutputStream(fos).use { oos ->
-                    oos.writeObject(persistAutomix)
-                }
-            }
-            Timber.tag(TAG).d("Automix saved successfully")
-        }.onFailure {
-            Timber.tag(TAG).e(it, "Failed to save automix")
-            reportException(it)
-        }
+        // The automix file is no longer written: radio state is session-only now.
+        // Leftover files from previous versions are deleted so they can't be read again.
+        runCatching { filesDir.resolve(PERSISTENT_AUTOMIX_FILE).delete() }
 
         runCatching {
             filesDir.resolve(PERSISTENT_PLAYER_STATE_FILE).outputStream().use { fos ->

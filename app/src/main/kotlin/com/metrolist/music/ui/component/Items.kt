@@ -87,8 +87,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -107,8 +111,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -256,16 +262,20 @@ private fun AudioVisualizerBars(
 }
 
 /**
- * Drawn over a thumbnail whose track is the one actually making sound — a dark scrim plus
- * [AudioVisualizerBars], distinct from the lighter "selected / loading" border+shrink so the two
- * states can't be confused (see [ItemThumbnail], [LocalThumbnail]).
+ * Drawn over a thumbnail whose track is the one actually making sound — [AudioVisualizerBars]
+ * plus, over real artwork only, a dark scrim that keeps the bars readable on bright covers
+ * (see [ItemThumbnail], [LocalThumbnail]). Index-only rows (album track lists) skip the scrim:
+ * a translucent box behind the bars there reads as a pointless rectangle on the page background.
  */
 @Composable
-private fun NowPlayingOverlay(modifier: Modifier = Modifier) {
+private fun NowPlayingOverlay(
+    modifier: Modifier = Modifier,
+    showScrim: Boolean = true,
+) {
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.45f)),
+            .then(if (showScrim) Modifier.background(Color.Black.copy(alpha = 0.45f)) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         // Scales with the thumbnail — a fixed size would shrink to an unreadable speck on a
@@ -336,6 +346,11 @@ fun VinylPeekDisc(
                     drawRect(VinylPeekDiscBaseBottom)
                     val outerRadius = this.size.minDimension / 2f * 0.97f
                     val labelRadius = this.size.minDimension / 2f * VinylPeekDiscLabelFraction
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.07f),
+                        radius = labelRadius + 15.dp.toPx(),
+                        center = center,
+                    )
                     repeat(VinylPeekDiscGrooveCount) { i ->
                         val t = i / (VinylPeekDiscGrooveCount - 1f)
                         val radius = outerRadius - (outerRadius - labelRadius - 4.dp.toPx()) * t
@@ -1988,7 +2003,10 @@ fun ItemThumbnail(
             )
         }
 
-        if (albumIndex != null) {
+        // Index-only rows (album track lists): while this track is sounding the bars replace the
+        // number cleanly — no scrim box behind them on the page background.
+        val showIndexNumber = albumIndex != null && !(isActive && isPlaying && !isSelected)
+        if (showIndexNumber) {
             Text(
                 text = albumIndex.toString(),
                 style = MaterialTheme.typography.labelLarge
@@ -1996,7 +2014,7 @@ fun ItemThumbnail(
         }
 
         if (isActive && isPlaying && !isSelected) {
-            NowPlayingOverlay()
+            NowPlayingOverlay(showScrim = albumIndex == null)
         }
 
         if (isSelected) {
@@ -2344,7 +2362,6 @@ fun SwipeToSongBox(
     val labelLetterSpacing = if (topNavigationBarEnabled) 0.5.sp else 0.sp
     val nextLabel = stringResource(R.string.swipe_label_next)
     val queueLabel = stringResource(R.string.swipe_label_queue)
-    val contentBg = if (topNavigationBarEnabled) Color.Black else null
 
     Box(
         modifier = modifier
@@ -2378,65 +2395,88 @@ fun SwipeToSongBox(
                 }
             )
     ) {
-        // Fixed-size panels — span the full row at all times instead of growing with drag
-        // distance, and both always stay in composition (only their alpha animates) so
-        // dragging never adds/removes a subtree. The sliding content Box (drawn after these,
-        // so it sits on top in z-order) is what actually reveals/covers them.
-        //
-        // The row itself has a transparent background in New Iride UI, so this panel alone
-        // would show through behind the cover/title/artist too and clash with their white
-        // text. The content Box below carries its own black backing sized to its own bounds
-        // (only while swiping), so NEXT/QUEUE keeps a plain white backdrop while the song
-        // info stays readable on black.
+        // Both panels stay composed at all times (only alpha animates — no subtree churn while
+        // dragging) and are full-row, but they live inside a container clipped to just the strip
+        // the finger has uncovered. Nothing opaque ever sits behind the sliding song content, so
+        // the row stays transparent at rest AND mid-drag: the page gradient shows through, and
+        // neither panel can bleed through behind the title/artist text. Each panel keeps its own
+        // directional fade, so an opaque QUEUE layer can never cover NEXT.
         //
         // Visibility is exposed as derivedStateOf booleans instead of reading offset.floatValue
-        // directly here — the boolean only flips twice per gesture (at each sign change), so
-        // animateFloatAsState below recomposes on that rare flip, never per drag pixel. That
-        // animated float replaces the old instant graphicsLayer{alpha=0/1} snap with a short
-        // dissolve, and in New Iride UI drives a tech-HUD frame + typewriter reveal so the flash
-        // reads as a designed transition instead of a glitch.
+        // directly here — each boolean only flips twice per gesture (at its sign change), so the
+        // animateFloatAsState fades below recompose on that rare flip, never per drag pixel. The
+        // strip shape reads offset at draw time, so the clip tracks the finger without
+        // recomposition too.
         val nextVisible by remember { derivedStateOf { offset.floatValue > 0f } }
         val queueVisible by remember { derivedStateOf { offset.floatValue < 0f } }
+        val nextAlpha by animateFloatAsState(
+            targetValue = if (nextVisible) 1f else 0f,
+            animationSpec = tween(durationMillis = 160),
+            label = "swipeNextAlpha",
+        )
+        val queueAlpha by animateFloatAsState(
+            targetValue = if (queueVisible) 1f else 0f,
+            animationSpec = tween(durationMillis = 160),
+            label = "swipeQueueAlpha",
+        )
+        val revealStrip = remember {
+            object : Shape {
+                override fun createOutline(
+                    size: Size,
+                    layoutDirection: LayoutDirection,
+                    density: Density,
+                ): Outline {
+                    val path = Path()
+                    val drag = offset.floatValue
+                    if (drag > 0f) {
+                        path.addRect(Rect(0f, 0f, drag.coerceAtMost(size.width), size.height))
+                    } else if (drag < 0f) {
+                        val stripWidth = (-drag).coerceAtMost(size.width)
+                        path.addRect(Rect(size.width - stripWidth, 0f, size.width, size.height))
+                    }
+                    return Outline.Generic(path)
+                }
+            }
+        }
 
-        SwipeRevealPanel(
-            modifier = Modifier.matchParentSize(),
-            visible = nextVisible,
-            alignment = Alignment.CenterStart,
-            background = nextBg,
-            tint = nextTint,
-            label = nextLabel,
-            style = labelStyle,
-            fontFamily = labelFontFamily,
-            letterSpacing = labelLetterSpacing,
-            techStyled = topNavigationBarEnabled,
-            offset = offset,
-            threshold = threshold,
-        )
-        SwipeRevealPanel(
-            modifier = Modifier.matchParentSize(),
-            visible = queueVisible,
-            alignment = Alignment.CenterEnd,
-            background = queueBg,
-            tint = queueTint,
-            label = queueLabel,
-            style = labelStyle,
-            fontFamily = labelFontFamily,
-            letterSpacing = labelLetterSpacing,
-            techStyled = topNavigationBarEnabled,
-            offset = offset,
-            threshold = threshold,
-            reverse = true,
-        )
+        Box(modifier = Modifier.matchParentSize().clip(revealStrip)) {
+            SwipeRevealPanel(
+                modifier = Modifier.matchParentSize(),
+                visible = nextVisible,
+                alpha = nextAlpha,
+                alignment = Alignment.CenterStart,
+                background = nextBg,
+                tint = nextTint,
+                label = nextLabel,
+                style = labelStyle,
+                fontFamily = labelFontFamily,
+                letterSpacing = labelLetterSpacing,
+                techStyled = topNavigationBarEnabled,
+                offset = offset,
+                threshold = threshold,
+            )
+            SwipeRevealPanel(
+                modifier = Modifier.matchParentSize(),
+                visible = queueVisible,
+                alpha = queueAlpha,
+                alignment = Alignment.CenterEnd,
+                background = queueBg,
+                tint = queueTint,
+                label = queueLabel,
+                style = labelStyle,
+                fontFamily = labelFontFamily,
+                letterSpacing = labelLetterSpacing,
+                techStyled = topNavigationBarEnabled,
+                offset = offset,
+                threshold = threshold,
+                reverse = true,
+            )
+        }
 
         Box(
             modifier = Modifier
                 .offset { IntOffset(offset.floatValue.roundToInt(), 0) }
-                .fillMaxWidth()
-                .drawBehind {
-                    if (contentBg != null) {
-                        drawRect(contentBg)
-                    }
-                },
+                .fillMaxWidth(),
             content = content
         )
 
@@ -2497,6 +2537,7 @@ private fun reset(offset: MutableState<Float>, scope: CoroutineScope) {
 private fun SwipeRevealPanel(
     modifier: Modifier,
     visible: Boolean,
+    alpha: Float,
     alignment: Alignment,
     background: Color,
     tint: Color,
@@ -2509,11 +2550,6 @@ private fun SwipeRevealPanel(
     threshold: Float,
     reverse: Boolean = false,
 ) {
-    val alpha by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(durationMillis = 160),
-        label = "swipePanelAlpha"
-    )
     Box(
         modifier = modifier
             .graphicsLayer { this.alpha = alpha }

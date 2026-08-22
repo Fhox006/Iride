@@ -5,7 +5,11 @@
 
 package com.metrolist.music.models
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 sealed class HeroCarouselItem {
+    @Serializable
     data class NewRelease(
         val albumId: String,
         val title: String,
@@ -13,6 +17,7 @@ sealed class HeroCarouselItem {
         val coverUrl: String?,
     ) : HeroCarouselItem()
 
+    @Serializable
     data class InRotation(
         val albumId: String,
         val title: String,
@@ -20,6 +25,7 @@ sealed class HeroCarouselItem {
         val coverUrl: String?,
     ) : HeroCarouselItem()
 
+    @Serializable
     data class RecommendedAlbum(
         val albumId: String,
         val title: String,
@@ -27,18 +33,21 @@ sealed class HeroCarouselItem {
         val coverUrl: String?,
     ) : HeroCarouselItem()
 
+    @Serializable
     data class TrendingArtist(
         val artistId: String,
         val artistName: String,
         val coverUrl: String?,
     ) : HeroCarouselItem()
 
+    @Serializable
     data class ArtistRadio(
         val artistId: String,
         val artistName: String,
         val coverUrl: String?,
     ) : HeroCarouselItem()
 
+    @Serializable
     data class GenreNewRelease(
         val albumId: String,
         val title: String,

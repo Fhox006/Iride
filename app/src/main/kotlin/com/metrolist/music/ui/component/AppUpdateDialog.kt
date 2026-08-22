@@ -23,17 +23,29 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.metrolist.music.R
 import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.utils.ReleaseInfo
+import com.metrolist.music.utils.UpdateDownloadState
+import com.metrolist.music.utils.UpdateDownloader
 import com.metrolist.music.utils.rememberPreference
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import sv.lib.squircleshape.SquircleShape
 
 private fun ReleaseInfo.isPreviewBuild(): Boolean {
@@ -47,9 +59,20 @@ fun AppUpdateDialog(
     releaseInfo: ReleaseInfo,
     downloadUrl: String?,
     onDismiss: () -> Unit,
-    onInstall: () -> Unit,
+    onStartDownload: () -> Unit,
 ) {
+    val context = LocalContext.current
     val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
+
+    var downloadState by remember { mutableStateOf<UpdateDownloadState>(UpdateDownloadState.Idle) }
+    var canInstallPackages by remember { mutableStateOf(UpdateDownloader.canInstallPackages(context)) }
+    LaunchedEffect(downloadUrl) {
+        while (isActive) {
+            downloadState = UpdateDownloader.queryDownloadState(context)
+            canInstallPackages = UpdateDownloader.canInstallPackages(context)
+            delay(1_000)
+        }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -87,28 +110,63 @@ fun AppUpdateDialog(
                 modifier = Modifier.padding(24.dp),
             ) {
                 Text(
-                    text = "New version available",
+                    text = stringResource(R.string.update_dialog_title_new_version),
                     style = titleStyle,
                     color = titleColor,
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "Iride ${releaseInfo.versionName} is available.",
+                    text = stringResource(R.string.update_dialog_version_available, releaseInfo.versionName),
                     style = bodyStyle,
                     color = bodyColor,
                 )
                 if (releaseInfo.isPreviewBuild()) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "This build may be experimental.",
+                        text = stringResource(R.string.update_dialog_experimental_build),
                         style = smallStyle,
                         color = bodyColor,
                     )
                 }
-                if (downloadUrl == null) {
+                when (val state = downloadState) {
+                    is UpdateDownloadState.Downloading -> {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.update_state_downloading_percent, state.progressPercent),
+                            style = smallStyle,
+                            color = bodyColor,
+                        )
+                    }
+                    is UpdateDownloadState.Failed -> {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = state.reason ?: stringResource(R.string.update_download_failed),
+                            style = smallStyle,
+                            color = bodyColor,
+                        )
+                    }
+                    is UpdateDownloadState.ReadyToInstall -> {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.update_state_ready_to_install),
+                            style = smallStyle,
+                            color = bodyColor,
+                        )
+                        if (!canInstallPackages) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.update_permission_explanation),
+                                style = smallStyle,
+                                color = mutedColor,
+                            )
+                        }
+                    }
+                    is UpdateDownloadState.Idle -> Unit
+                }
+                if (downloadUrl == null && downloadState != UpdateDownloadState.ReadyToInstall) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "No compatible package found for this build.",
+                        text = stringResource(R.string.update_dialog_no_compatible_package),
                         style = smallStyle,
                         color = mutedColor,
                     )
@@ -127,12 +185,29 @@ fun AppUpdateDialog(
                             ButtonDefaults.textButtonColors()
                         },
                     ) {
-                        Text("Back", style = if (topNavigationBarEnabled) MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily) else MaterialTheme.typography.labelLarge)
+                        Text(
+                            stringResource(R.string.update_dialog_back),
+                            style = if (topNavigationBarEnabled) MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily) else MaterialTheme.typography.labelLarge,
+                        )
                     }
                     Spacer(Modifier.width(8.dp))
+                    val actionEnabled = when (downloadState) {
+                        is UpdateDownloadState.ReadyToInstall -> true
+                        is UpdateDownloadState.Downloading -> false
+                        else -> downloadUrl != null
+                    }
                     Button(
-                        onClick = onInstall,
-                        enabled = downloadUrl != null,
+                        onClick = {
+                            when {
+                                downloadState is UpdateDownloadState.ReadyToInstall && canInstallPackages ->
+                                    UpdateDownloader.promptInstall(context)
+                                downloadState is UpdateDownloadState.ReadyToInstall ->
+                                    UpdateDownloader.openInstallPermissionSettings(context)
+                                downloadState is UpdateDownloadState.Downloading -> Unit
+                                else -> onStartDownload()
+                            }
+                        },
+                        enabled = actionEnabled,
                         shape = if (topNavigationBarEnabled) RoundedCornerShape(50) else ButtonDefaults.shape,
                         colors = if (topNavigationBarEnabled) {
                             ButtonDefaults.buttonColors(
@@ -145,7 +220,21 @@ fun AppUpdateDialog(
                             ButtonDefaults.buttonColors()
                         },
                     ) {
-                        Text("Install", style = if (topNavigationBarEnabled) MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold) else MaterialTheme.typography.labelLarge)
+                        Text(
+                            text = when (val state = downloadState) {
+                                is UpdateDownloadState.ReadyToInstall ->
+                                    if (canInstallPackages) {
+                                        stringResource(R.string.update_action_install)
+                                    } else {
+                                        stringResource(R.string.update_action_allow)
+                                    }
+                                is UpdateDownloadState.Downloading ->
+                                    stringResource(R.string.update_state_downloading_percent, state.progressPercent)
+                                is UpdateDownloadState.Failed -> stringResource(R.string.update_action_retry)
+                                is UpdateDownloadState.Idle -> stringResource(R.string.update_action_download)
+                            },
+                            style = if (topNavigationBarEnabled) MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold) else MaterialTheme.typography.labelLarge,
+                        )
                     }
                 }
             }

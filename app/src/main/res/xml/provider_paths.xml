@@ -12,4 +12,7 @@
     <external-files-path
         name="external_files_documents"
         path="Documents/MetrolistExports/" />
+    <external-files-path
+        name="update_apk"
+        path="update/" />
 </paths>

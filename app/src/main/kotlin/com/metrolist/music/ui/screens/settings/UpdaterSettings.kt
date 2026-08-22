@@ -29,8 +29,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -53,9 +55,13 @@ import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.utils.UpdateDownloadState
+import com.metrolist.music.utils.UpdateDownloader
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -209,6 +215,105 @@ fun UpdaterScreen(
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
+        }
+
+        if (updateAvailable) {
+            val downloadState by produceState<UpdateDownloadState>(UpdateDownloadState.Idle, updateAvailable) {
+                while (isActive) {
+                    value = UpdateDownloader.queryDownloadState(context)
+                    delay(1_000)
+                }
+            }
+            var canInstallPackages by remember {
+                mutableStateOf(UpdateDownloader.canInstallPackages(context))
+            }
+            LaunchedEffect(updateAvailable) {
+                while (isActive) {
+                    canInstallPackages = UpdateDownloader.canInstallPackages(context)
+                    delay(1_000)
+                }
+            }
+
+            when (val state = downloadState) {
+                is UpdateDownloadState.Downloading ->
+                    Text(
+                        text = stringResource(R.string.update_state_downloading_percent, state.progressPercent),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                is UpdateDownloadState.Failed ->
+                    Text(
+                        text = state.reason ?: stringResource(R.string.update_download_failed),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                is UpdateDownloadState.ReadyToInstall -> {
+                    Text(
+                        text = stringResource(R.string.update_state_ready_to_install),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                    if (!canInstallPackages) {
+                        Text(
+                            text = stringResource(R.string.update_permission_explanation),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                }
+                is UpdateDownloadState.Idle -> Unit
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    when {
+                        downloadState is UpdateDownloadState.ReadyToInstall && canInstallPackages ->
+                            UpdateDownloader.promptInstall(context)
+                        downloadState is UpdateDownloadState.ReadyToInstall ->
+                            UpdateDownloader.openInstallPermissionSettings(context)
+                        else ->
+                            downloadUrl?.let { url ->
+                                val version = latestVersion
+                                if (version != null) {
+                                    coroutineScope.launch {
+                                        runCatching {
+                                            UpdateDownloader.enqueueUpdate(context, url, version)
+                                        }
+                                    }
+                                }
+                            }
+                    }
+                },
+                enabled =
+                    when (downloadState) {
+                        is UpdateDownloadState.ReadyToInstall -> true
+                        is UpdateDownloadState.Downloading -> false
+                        else -> downloadUrl != null
+                    },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+            ) {
+                Text(
+                    when (val state = downloadState) {
+                        is UpdateDownloadState.ReadyToInstall ->
+                            if (canInstallPackages) {
+                                stringResource(R.string.update_action_install)
+                            } else {
+                                stringResource(R.string.update_action_allow)
+                            }
+                        is UpdateDownloadState.Downloading ->
+                            stringResource(R.string.update_state_downloading_percent, state.progressPercent)
+                        is UpdateDownloadState.Failed -> stringResource(R.string.update_action_retry)
+                        is UpdateDownloadState.Idle -> stringResource(R.string.update_action_download)
+                    },
+                )
+            }
         }
 
         if (updateAvailable && latestVersion != null) {
