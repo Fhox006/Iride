@@ -1,0 +1,13 @@
+FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\ui\screens\StatsScreen.kt
+LINES: 545
+NOTE: songCountListened is non-null Int; removed dead Elvis + redundant conversions.
+<<<ORIGINAL
+545:                             val totalSongsPlayed = mostPlayedSongsStats.sumOf { (it.songCountListened ?: 0).toLong() }.toInt()
+ORIGINAL>>>
+
+FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\ui\screens\artist\ArtistScreen.kt
+LINES: 565
+NOTE: inside `if (artistName != null)` block (line 543), expression always true.
+<<<ORIGINAL
+565:                                                 play = artistName != null,
+ORIGINAL>>>

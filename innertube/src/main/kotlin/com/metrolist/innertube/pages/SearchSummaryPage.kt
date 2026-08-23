@@ -251,14 +251,9 @@ data class SearchSummaryPage(
                     ?.splitBySeparator()
                     ?: return null
             return when {
-                // CRITICAL: Check isEpisode BEFORE isSong because both have videoId and no browseEndpoint
-                // Episodes are identified by firstSubtitle == "Episode" in unfiltered search
                 renderer.isEpisode -> {
                     val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
-                    // Check if firstSubtitle is "Episode" (unfiltered) or something else (filtered)
-                    // Unfiltered: [Episode][date][podcast]  -> date at index 1, podcast at index 2
-                    // Filtered:   [date][podcast]           -> date at index 0, podcast at index 1
                     val firstSubtitle = secondaryLine.getOrNull(0)?.firstOrNull()?.text
                     val isUnfilteredSearch = firstSubtitle == "Episode"
                     val dateIndex = if (isUnfilteredSearch) 1 else 0
@@ -274,7 +269,7 @@ data class SearchSummaryPage(
                                 ?.runs
                                 ?.firstOrNull()
                                 ?.text ?: return null,
-                        author = null,  // Episodes don't have a separate author - the podcast is the source
+                        author = null,
                         podcast =
                             secondaryLine.getOrNull(podcastIndex)?.firstOrNull()?.takeIf {
                                 it.navigationEndpoint?.browseEndpoint != null
@@ -312,7 +307,6 @@ data class SearchSummaryPage(
                 }
 
                 renderer.isSong -> {
-                    // Extract library tokens using the new method that properly handles multiple toggle items
                     val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
                     val thirdLine =
                         renderer.flexColumns

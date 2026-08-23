@@ -138,7 +138,6 @@ fun OnboardingScreen(navController: NavController) {
             }
         }
 
-        // Page indicators
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier

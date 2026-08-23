@@ -186,7 +186,6 @@ fun ListenTogetherScreen(
     val isInRoom = listenTogetherManager.isInRoom
     val isHost = roomState?.hostId == userId
 
-    // User action menu dialog
     if (selectedUserForMenu != null && selectedUsername != null) {
         UserActionDialog(
             username = selectedUsername ?: "",
@@ -251,12 +250,10 @@ fun ListenTogetherScreen(
             ),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // Header
         item {
             HeaderSection(isInRoom = isInRoom)
         }
 
-        // Connection status card
         item {
             ConnectionStatusCard(
                 connectionState = connectionState,
@@ -279,7 +276,6 @@ fun ListenTogetherScreen(
         }
 
         if (isInRoom) {
-            // Room status card
             roomState?.let { room ->
                 item {
                     RoomStatusCard(
@@ -289,7 +285,6 @@ fun ListenTogetherScreen(
                     )
                 }
 
-                // Connected users
                 val connectedUsers = room.users.filter { it.isConnected }
                 val currentUserIdValue = userId ?: ""
                 item {
@@ -306,7 +301,6 @@ fun ListenTogetherScreen(
                     )
                 }
 
-                // Pending join requests (host only)
                 if (isHost && pendingJoinRequests.isNotEmpty()) {
                     item {
                         PendingJoinRequestsSection(
@@ -317,7 +311,6 @@ fun ListenTogetherScreen(
                     }
                 }
 
-                // Pending suggestions (host only)
                 if (isHost && pendingSuggestions.isNotEmpty()) {
                     item {
                         PendingSuggestionsSection(
@@ -328,7 +321,6 @@ fun ListenTogetherScreen(
                     }
                 }
 
-                // Leave room button
                 item {
                     Button(
                         onClick = { listenTogetherManager.leaveRoom() },
@@ -353,7 +345,6 @@ fun ListenTogetherScreen(
                 }
             }
         } else {
-            // Join/Create room section
             item {
                 JoinCreateRoomSection(
                     usernameInput = usernameInput,
@@ -409,7 +400,6 @@ fun ListenTogetherScreen(
             }
         }
 
-        // Settings link
         item {
             SettingsLinkCard(
                 onClick = { navController.navigate("settings/integrations/listen_together") },
@@ -1071,7 +1061,6 @@ private fun JoinCreateRoomSection(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Username input
             OutlinedTextField(
                 value = usernameInput,
                 onValueChange = onUsernameChange,
@@ -1106,7 +1095,6 @@ private fun JoinCreateRoomSection(
                         .onFocusChanged { if (it.isFocused) onFieldFocused() },
             )
 
-            // Room code input
             OutlinedTextField(
                 value = roomCodeInput,
                 onValueChange = { if (it.length <= 8) onRoomCodeChange(it.uppercase()) },
@@ -1142,7 +1130,6 @@ private fun JoinCreateRoomSection(
                         .onFocusChanged { if (it.isFocused) onFieldFocused() },
             )
 
-            // Waiting for approval indicator
             AnimatedVisibility(
                 visible = isJoiningRoom,
                 enter = fadeIn() + slideInVertically(),
@@ -1178,7 +1165,6 @@ private fun JoinCreateRoomSection(
                 }
             }
 
-            // Error message
             AnimatedVisibility(
                 visible = joinErrorMessage != null,
                 enter = fadeIn() + slideInVertically(),
@@ -1215,11 +1201,9 @@ private fun JoinCreateRoomSection(
                 }
             }
 
-            // Action buttons
             val hasUsername = usernameInput.trim().isNotBlank() || savedUsername.isNotBlank()
             val hasRoomCode = roomCodeInput.length == 8
 
-            // Create Room button - visible when username is provided
             AnimatedVisibility(visible = hasUsername && !hasRoomCode) {
                 Button(
                     onClick = onCreateRoom,
@@ -1241,7 +1225,6 @@ private fun JoinCreateRoomSection(
                 }
             }
 
-            // Join Room button - visible when username and room code are provided
             AnimatedVisibility(visible = hasUsername && hasRoomCode) {
                 Button(
                     onClick = onJoinRoom,
@@ -1351,7 +1334,6 @@ private fun UserActionDialog(
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // Kick button
             Surface(
                 modifier =
                     Modifier
@@ -1387,7 +1369,6 @@ private fun UserActionDialog(
                 }
             }
 
-            // Permanently kick button
             Surface(
                 modifier =
                     Modifier
@@ -1422,7 +1403,6 @@ private fun UserActionDialog(
                 }
             }
 
-            // Transfer ownership button
             Surface(
                 modifier =
                     Modifier

@@ -36,9 +36,6 @@ data class GeniusFeaturedSong(
 class GeniusRepository @Inject constructor() {
     private val baseUrl = "https://api.genius.com"
 
-    // ponytail: an artist's Genius song list can run into the hundreds for prolific/veteran acts;
-    // cap pages fetched per call so one artist's refresh can't dominate the whole cycle. Callers
-    // decide how many pages a given pass can afford (baseline vs recurring refresh).
     private fun requestJson(path: String, accessToken: String): JSONObject? {
         var connection: HttpURLConnection? = null
         return try {
@@ -62,8 +59,6 @@ class GeniusRepository @Inject constructor() {
         val hits = requestJson("/search?q=$encoded", accessToken)
             ?.optJSONObject("response")?.optJSONArray("hits") ?: return null
 
-        // Prefer an exact (case-insensitive) name match over Genius' own result ordering — a
-        // fuzzy top hit here would silently attribute another artist's whole catalog to us.
         for (i in 0 until hits.length()) {
             val primaryArtist = hits.optJSONObject(i)?.optJSONObject("result")?.optJSONObject("primary_artist")
                 ?: continue
@@ -98,7 +93,7 @@ class GeniusRepository @Inject constructor() {
             for (i in 0 until songs.length()) {
                 val song = songs.optJSONObject(i) ?: continue
                 val primaryArtist = song.optJSONObject("primary_artist") ?: continue
-                if (primaryArtist.optInt("id") == artistId) continue // their own release, not a feature
+                if (primaryArtist.optInt("id") == artistId) continue
                 results += GeniusFeaturedSong(
                     geniusId = song.optInt("id"),
                     title = song.optString("title"),

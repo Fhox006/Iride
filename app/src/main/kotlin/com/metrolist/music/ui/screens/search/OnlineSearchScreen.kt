@@ -120,9 +120,6 @@ fun OnlineSearchScreen(
     onDismiss: () -> Unit,
     pureBlack: Boolean,
     isFocused: Boolean = false,
-    // New Iride UI: leading scrollable item (TopNavigationBar + search box) — see SearchScreen,
-    // which renders this in place of its own pinned header so it scrolls away with the rest of the
-    // list instead of staying fixed on top, exactly like HomeScreen.
     header: (@Composable () -> Unit)? = null,
     viewModel: OnlineSearchSuggestionViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),
@@ -160,9 +157,6 @@ fun OnlineSearchScreen(
         }
     }
 
-    // Search's HomeViewModel instance is scoped to this nav entry, separate from Home's —
-    // it can't rely on Home's 12s-delayed cold-start job to have run. Trigger it directly
-    // so the Discovery Weekly card doesn't depend on Home ever having been opened long enough.
     LaunchedEffect(Unit) {
         homeViewModel.syncDiscoveryWeeklyIfNeeded()
     }
@@ -173,11 +167,6 @@ fun OnlineSearchScreen(
         }
     }
 
-    // Header is a movableContentOf (see SearchScreen) — must NOT be a LazyColumn item. Lazy
-    // layouts subcompose each item in their own recycled slot table; moving/disposing that slot
-    // independently of the movable content's remembered anchor crashed with "Could not resolve
-    // state for movable content" when navigating away from Search (e.g. to Library). Pinned as a
-    // fixed sibling instead, same fix already used by OnlineSearchResultsBody/LocalSearchScreen.
     Column(
         modifier =
             Modifier
@@ -199,13 +188,6 @@ fun OnlineSearchScreen(
             .rubberBandOverscroll(Orientation.Vertical, lazyListState),
     ) {
         if (query.isEmpty() && !isFocused) {
-            // === EXPLORE SECTION: Discovery Weekly first, then moods, no history ===
-            // Discovery Weekly is prepended into the same 2-per-row grid as the mood/genre
-            // cards (not a separate row) so it lands as the section's first box and shares
-            // their exact cell size/spacing by construction rather than by copied values.
-            // Always a slot for Discovery Weekly (real card once generated, "creating…"
-            // placeholder until then) — the user wants it visibly always there, not silently
-            // absent while the first generation is still running in the background.
             val discoveryWeeklyEntry: Any =
                 discoveryWeeklyPlaylist?.takeIf { it.songCount > 0 } ?: DiscoveryWeeklyPending
             val moods = explorePage?.moodAndGenres.orEmpty()
@@ -322,7 +304,6 @@ fun OnlineSearchScreen(
                 }
             }
         } else {
-            // === SEARCH SECTION: history + suggestions + results ===
 
             if (viewState.isUrlQuery && viewState.parsedUrlItem != null) {
                 item(key = "parsed_url_header") {
@@ -851,8 +832,6 @@ fun OnlineSearchScreen(
     }
 }
 
-// Marks the Discovery Weekly grid slot as "not generated yet" so it always occupies the box
-// instead of the grid silently shrinking by one while the background generation is running.
 private object DiscoveryWeeklyPending
 
 @Composable
@@ -907,10 +886,6 @@ private fun SearchMoodCard(
     }
 }
 
-// First box in the Search explore grid: the auto-generated weekly mix. Same cell size as
-// SearchMoodCard (shares the grid row above), but its background is the blurred 4-cover mosaic
-// language from the Starred/Liked cover (GlassPlaylistCover) instead of a flat tint — a visual
-// cue that this box holds a personal, ever-changing mix rather than a static category.
 @Composable
 private fun DiscoveryWeeklyCard(
     thumbnails: List<String>,
@@ -979,9 +954,6 @@ private fun DiscoveryWeeklyCard(
             Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.45f)))
         }
 
-        // White only reads over the photo mosaic or the iride near-black tint — over the flat
-        // classic-style secondaryContainer (a light role in most themes) it fails contrast, same
-        // trap SearchMoodCard avoids by using onSecondaryContainer instead of a hardcoded color.
         val onCardColor = if (mosaicThumbnails.isNotEmpty() || useIrideStyle) {
             Color.White
         } else {
@@ -1041,8 +1013,6 @@ fun SuggestionItem(
     onFillTextField: () -> Unit,
     pureBlack: Boolean,
     useIrideStyle: Boolean = false,
-    // Set once a history row has an opened item attached (song/artist/album/playlist) — its
-    // cover/avatar replaces the generic clock icon, same as Spotify's search history.
     thumbnailUrl: String? = null,
     isArtistThumbnail: Boolean = false,
 ) {
@@ -1078,9 +1048,6 @@ fun SuggestionItem(
                     .clip(if (isArtistThumbnail) CircleShape else RoundedCornerShape(4.dp)),
             )
         } else if (useIrideStyle) {
-            // New Iride UI: no leading history/search icon repeated on every row (it added noise
-            // without conveying anything useful) — text alone, indented to match the rest of the
-            // iride search rows (chips/search box/list items all start at 20.dp).
             Spacer(modifier = Modifier.width(20.dp))
         } else {
             Icon(

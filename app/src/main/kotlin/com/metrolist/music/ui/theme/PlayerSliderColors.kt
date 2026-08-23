@@ -46,7 +46,6 @@ object PlayerSliderColors {
                 Color.White.copy(alpha = 0.4f)
             }
         }
-        
         return SliderDefaults.colors(
             activeTrackColor = activeColor,
             activeTickColor = activeColor,

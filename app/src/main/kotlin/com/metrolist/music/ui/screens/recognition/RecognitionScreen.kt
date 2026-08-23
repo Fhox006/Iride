@@ -106,9 +106,6 @@ fun RecognitionScreen(
     val database = LocalDatabase.current
     val coroutineScope = rememberCoroutineScope()
 
-    // Only reset in Ready state: Listening/Processing belong to a running widget-service
-    // recognition that must not be cancelled; Success/NoMatch/Error are results pending
-    // display and history saving.
     LaunchedEffect(Unit) {
         if (com.metrolist.music.recognition.MusicRecognitionService.recognitionStatus.value
                 is RecognitionStatus.Ready
@@ -125,7 +122,6 @@ fun RecognitionScreen(
         }
     }
 
-    // Observe recognition status from service for real-time updates (Listening -> Processing -> Result)
     val recognitionStatus by com.metrolist.music.recognition.MusicRecognitionService.recognitionStatus
         .collectAsState()
 
@@ -175,7 +171,6 @@ fun RecognitionScreen(
     }
 
     fun saveToHistory(result: RecognitionResult) {
-        // Skip if the widget service already persisted this result to avoid a duplicate entry
         if (com.metrolist.music.recognition.MusicRecognitionService.resultSavedExternally) return
         coroutineScope.launch(Dispatchers.IO) {
             database.query {
@@ -262,7 +257,6 @@ fun RecognitionScreen(
                         SuccessState(
                             result = status.result,
                             onPlayOnApp = { result ->
-                                // Search for the track on YouTube Music
                                 val searchQuery = "${result.title} ${result.artist}"
                                 navController.navigate("search/${java.net.URLEncoder.encode(searchQuery, "UTF-8")}")
                             },
@@ -387,12 +381,10 @@ private fun ListeningState(onCancel: () -> Unit, useIrideStyle: Boolean = false)
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        // Container large enough for scaled animation (200dp * 1.2 = 240dp)
         Box(
             modifier = Modifier.size(260.dp),
             contentAlignment = Alignment.Center,
         ) {
-            // Outer pulsing ring
             Box(
                 modifier =
                     Modifier
@@ -404,7 +396,6 @@ private fun ListeningState(onCancel: () -> Unit, useIrideStyle: Boolean = false)
                         ),
             )
 
-            // Inner pulsing ring
             Box(
                 modifier =
                     Modifier
@@ -416,7 +407,6 @@ private fun ListeningState(onCancel: () -> Unit, useIrideStyle: Boolean = false)
                         ),
             )
 
-            // Main button
             Box(
                 modifier =
                     Modifier
@@ -554,7 +544,6 @@ private fun SuccessState(
     onSaveToHistory: (RecognitionResult) -> Unit,
     useIrideStyle: Boolean = false,
 ) {
-    // Save to history when success is shown
     LaunchedEffect(result) {
         onSaveToHistory(result)
     }
@@ -564,7 +553,6 @@ private fun SuccessState(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.padding(horizontal = 16.dp),
     ) {
-        // Album art
         Card(
             modifier =
                 Modifier
@@ -587,7 +575,6 @@ private fun SuccessState(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Track info
         Text(
             text = result.title,
             style = if (useIrideStyle) {
@@ -628,7 +615,6 @@ private fun SuccessState(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Action buttons - stacked vertically
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxWidth(),
@@ -707,7 +693,6 @@ private fun SuccessState(
                     Text(stringResource(R.string.re_listen))
                 }
 
-                // Close button - Material 3 Expressive outlined style
                 OutlinedButton(
                     onClick = onClose,
                     modifier = Modifier.fillMaxWidth(),

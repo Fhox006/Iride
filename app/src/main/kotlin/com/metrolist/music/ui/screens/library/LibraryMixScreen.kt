@@ -161,15 +161,9 @@ fun LibraryMixScreen(
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val topNavBarController = com.metrolist.music.LocalTopNavBarController.current
-    // New Iride UI: sections start flush with the "Library" label in TopNavigationBar (20dp),
-    // instead of the classic UI's 12dp — mirrors HomeScreen's irideStart.
     val irideStart = 20.dp
     var viewType by rememberEnumPreference(MixViewTypeKey, LibraryViewType.GRID)
     val isListView = viewType == LibraryViewType.LIST
-    // Grid cards need a visible gutter between rows; list rows already get their own breathing
-    // room from the row composables themselves, so no extra gap is added there. This keeps the
-    // "Recently Added" header sitting at the same distance from the content in both view types
-    // instead of the grid inheriting an extra row-to-row gap that the list doesn't have.
     val contentGutter = if (isListView) 0.dp else 12.dp
     val (sortType, onSortTypeChange) =
         rememberEnumPreference(
@@ -188,9 +182,6 @@ fun LibraryMixScreen(
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
 
     var isLibraryFilter by viewModel.isLibraryMode
-    // Covers the gap between navigation and first layout, same as Home/Artist/Album. Keyed by
-    // filter so switching Library<->Downloaded still replays once each, but IrideTabEntrance (not
-    // `remember`) means switching to another bottom-nav tab and back doesn't replay it as a "reload".
     val libraryTabKey = "library_$isLibraryFilter"
     val screenProgress = if (IrideTabEntrance.wasRevealed(libraryTabKey)) {
         1f
@@ -198,8 +189,6 @@ fun LibraryMixScreen(
         rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
             .also { if (it >= 1f) IrideTabEntrance.markRevealed(libraryTabKey) }
     }
-    // Library vs Downloaded is a full content swap (like Artist's online/local toggle) — each gets
-    // its own section-seen set so switching filters still replays that branch's entrance.
     val revealedSections = remember(isLibraryFilter) { IrideTabEntrance.sectionsFor(libraryTabKey) }
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -220,11 +209,6 @@ fun LibraryMixScreen(
             hardResetArmed = true
         } else if (hardResetArmed) {
             hardResetArmed = false
-            // A true hard reset: kill the process and let Android relaunch it fresh, same as
-            // force-stopping the app from system settings and reopening it. Clearing caches or
-            // recreating the Activity in-process still leaves Hilt singletons (YouTube auth
-            // state, OkHttp pools, DownloadUtil, etc.) alive — only process death actually
-            // resets those.
             val restartIntent = hardResetContext.packageManager
                 .getLaunchIntentForPackage(hardResetContext.packageName)
                 ?.let { Intent.makeRestartActivityTask(it.component) }
@@ -237,9 +221,6 @@ fun LibraryMixScreen(
     val topSize by viewModel.topValue.collectAsState(initial = 50)
     val lastLikedDate by viewModel.lastLikedDate.collectAsState()
     val lastLikedThumbnails by viewModel.lastLikedThumbnails.collectAsState()
-    // New Iride UI only: "Liked Songs" reads as "Starred" here. R.string.liked is shared with the
-    // legacy UI (and other screens), so it is left untouched and only this pinned entry's display
-    // text is swapped.
     val likedPlaylistName = stringResource(R.string.starred)
     val likedPlaylist = remember(lastLikedDate, likedPlaylistName, lastLikedThumbnails) {
         Playlist(
@@ -322,8 +303,6 @@ fun LibraryMixScreen(
             strength = Collator.PRIMARY
         }
     }
-    // "Scaricati": album entries only (full or partial downloads, i.e. >= 2 tracks) — stray
-    // single-song downloads never appear in the recents grid.
     val base = if (!isLibraryFilter) {
         downloadedAlbums
     } else {
@@ -338,7 +317,6 @@ fun LibraryMixScreen(
                     is Artist -> item.artist.bookmarkedAt
                     is Playlist -> item.playlist.createdAt
                     is Song -> item.song.dateDownload ?: item.song.inLibrary ?: LocalDateTime.now()
-                    else -> LocalDateTime.now()
                 }
             }
         }
@@ -350,7 +328,6 @@ fun LibraryMixScreen(
                         is Artist -> item.artist.name
                         is Playlist -> item.playlist.name
                         is Song -> item.song.title
-                        else -> ""
                     }
                 },
             )
@@ -362,7 +339,6 @@ fun LibraryMixScreen(
                     is Artist -> item.artist.lastUpdateTime
                     is Playlist -> item.playlist.lastUpdateTime
                     is Song -> item.song.dateDownload ?: item.song.inLibrary ?: LocalDateTime.now()
-                    else -> LocalDateTime.now()
                 }
             }
         }
@@ -386,15 +362,10 @@ fun LibraryMixScreen(
 
                     is Artist -> matchesNormalizedQuery(normalizedQuery, item.artist.name)
                     is Playlist -> matchesNormalizedQuery(normalizedQuery, item.playlist.name)
-                    else -> true
                 }
             }
 
         if (normalizedQuery.isBlank()) {
-            // Pinned first regardless of sort/date: as a synthetic entry its createdAt tracks
-            // lastLikedDate, so under CREATE_DATE sort it can rank behind anything touched more
-            // recently (a newly bookmarked album, a new playlist) and read as "gone" even though
-            // it's still in the list, just scrolled past.
             val distinct = matchedItems.distinctBy { it.id }
             val (pinned, rest) = distinct.partition { it is Playlist && it.playlist.id == PlaylistEntity.LIKED_PLAYLIST_ID }
             pinned + rest
@@ -471,10 +442,6 @@ fun LibraryMixScreen(
     Scaffold(
         modifier = Modifier,
         topBar = {
-          // New Iride UI: no pinned header here at all — TopNavigationBar and the library/downloaded
-          // toggle are rendered as regular scrollable items in the content below instead (see the
-          // "library" exclusion in MainActivity's outer topBar condition), so they scroll away
-          // together with the rest of the page exactly like HomeScreen's own copy.
         },
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
@@ -494,15 +461,8 @@ fun LibraryMixScreen(
                     .then(Modifier.graphicsLayer { alpha = screenProgress }),
         ) {
             CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
-                // A single LazyVerticalGrid backs both the "list" and "grid" looks (list = a
-                // 1-column grid). Switching viewType or the library/downloaded filter therefore
-                // just reflows this one composable instead of tearing down and rebuilding a whole
-                // different lazy layout — no more forced-looking reload, and header spacing can no
-                // longer drift between the two view types since they share the same arrangement.
                 LazyVerticalGrid(
                     state = lazyGridState,
-                    // Same edge-pull as every other top-level scroll (Home/Artist/Album) — this
-                    // grid was the one missing it.
                     modifier = Modifier.rubberBandOverscroll(Orientation.Vertical, lazyGridState),
                     columns = when (viewType) {
                         LibraryViewType.LIST -> GridCells.Fixed(1)
@@ -520,12 +480,6 @@ fun LibraryMixScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
-                    // Gate only on the static pref, never on topNavBarController's nullity — see
-                    // the matching comment in HomeScreen.kt/SearchScreen.kt. The controller goes
-                    // transiently null mid back-navigation; dropping this item out of the grid for
-                    // that one frame shifted the filter toggle and every shelf below it up by one
-                    // slot, then back down once the controller returned — painting over the header
-                    // mid-transition. Null-safe fallbacks instead.
                     item(key = "top_nav_bar", span = { GridItemSpan(maxLineSpan) }) {
                         TopNavigationBar(
                             navigationItems = topNavBarController?.navigationItems ?: emptyList(),
@@ -537,10 +491,6 @@ fun LibraryMixScreen(
                                 .animateItem(placementSpec = IrideMotion.PlacementSpec)
                                 .irideEnter(rememberSectionEnter("top_nav_bar", revealedSections), 8.dp),
                             containerColor = Color.Transparent,
-                            // The grid below already reserves irideStart as its own start/end
-                            // contentPadding — this bar's default 20dp would otherwise stack on
-                            // top of it, unlike HomeScreen's copy (whose grid has no horizontal
-                            // contentPadding at all).
                             horizontalPadding = 0.dp,
                         )
                     }
@@ -904,8 +854,6 @@ fun LibraryMixScreen(
                                 }
 
                                 is Artist -> {
-                                    // Not surfaced as a row in list view — only via the "Artists"
-                                    // category entry above, matching the pre-unification behavior.
                                     if (!isListView) {
                                         ArtistGridItem(
                                             artist = item,

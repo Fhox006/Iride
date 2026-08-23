@@ -31,19 +31,9 @@ object SearchPage {
                 ?.splitBySeparator()
                 ?: return null
         return when {
-            // CRITICAL: Check isEpisode BEFORE isSong — both can match isSong (watchEndpoint or
-            // null navigationEndpoint), so episodes must be identified first.
             renderer.isEpisode -> {
                 val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
-                // The subtitle line structure differs between filtered and unfiltered search:
-                //   Unfiltered: ["Episode", "·", "Jan 2025", "·", "Podcast Name", "·", "1:00:00"]
-                //     → secondaryLine = [["Episode"], ["Jan 2025"], ["Podcast Name"], ["1:00:00"]]
-                //   Filtered:   ["Jan 2025", "·", "Podcast Name"]
-                //     → secondaryLine = [["Jan 2025"], ["Podcast Name"]]
-                //
-                // Strategy: locate the podcast section by its PODCAST_SHOW_DETAIL_PAGE link;
-                // the date is in the section immediately before it.
                 val podcastSectionIndex = secondaryLine.indexOfFirst { section ->
                     section.any { run ->
                         run.navigationEndpoint?.browseEndpoint
@@ -67,7 +57,6 @@ object SearchPage {
                 else null
 
                 EpisodeItem(
-                    // In filtered search, playlistItemData is absent; fall back to watchEndpoint.
                     id = renderer.playlistItemData?.videoId
                         ?: renderer.navigationEndpoint?.watchEndpoint?.videoId
                         ?: return null,
@@ -93,8 +82,6 @@ object SearchPage {
                         renderer.badges?.find {
                             it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                         } != null,
-                    // In filtered search the overlay play button may be absent; fall back to the
-                    // item's own watchEndpoint so the episode is always playable.
                     endpoint = renderer.overlay
                         ?.musicItemThumbnailOverlayRenderer
                         ?.content

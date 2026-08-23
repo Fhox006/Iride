@@ -205,23 +205,23 @@ fun MyAccountScreen(
         )
 
         val rowIconTint: @Composable (Boolean) -> Color = { enabled ->
-            if (enabled) Color.White.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.5f)
+            if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
         }
         val rowTextColor: @Composable (Boolean) -> Color = { enabled ->
-            if (enabled) Color.White else Color.White.copy(alpha = 0.5f)
+            if (enabled) MaterialTheme.colorScheme.onSurface
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
         }
         val rowTextStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontSize = 15.sp, letterSpacing = (-0.1).sp, fontWeight = FontWeight.Bold)
-        val rowDividerColor = Color.White.copy(alpha = 0.07f)
+        val rowDividerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f)
 
-        // Category header — clarifies what the token/sync/other-content rows below actually are
         Text(
             text = stringResource(R.string.settings_section_sync_data),
             style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily, letterSpacing = (-0.1).sp, fontWeight = FontWeight.Bold),
-            color = Color.White.copy(alpha = 0.55f),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
             modifier = Modifier.padding(bottom = 6.dp, top = 4.dp)
         )
 
-        // Main settings card — unified style like Appearance/Playback/Content sections
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -232,7 +232,6 @@ fun MyAccountScreen(
         ) {
             Column(Modifier.fillMaxWidth()) {
 
-                // Other Content (advanced only)
                 if (advancedMode) {
                     Row(
                         modifier = Modifier
@@ -278,7 +277,6 @@ fun MyAccountScreen(
                     HorizontalDivider(color = rowDividerColor, modifier = Modifier.padding(horizontal = 16.dp))
                 }
 
-                // Auto sync
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -315,7 +313,6 @@ fun MyAccountScreen(
                     )
                 }
 
-                // Show token (advanced only, expands inline)
                 if (advancedMode) {
                     HorizontalDivider(color = rowDividerColor, modifier = Modifier.padding(horizontal = 16.dp))
 
@@ -340,12 +337,12 @@ fun MyAccountScreen(
                                 color = rowTextColor(isLoggedIn)
                             )
                             if (isLoggedIn) {
-                                Text(
-                                    text = if (showToken) stringResource(R.string.token_shown)
-                                           else stringResource(R.string.token_hidden),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.4f)
-                                )
+                                 Text(
+                                     text = if (showToken) stringResource(R.string.token_shown)
+                                            else stringResource(R.string.token_hidden),
+                                     style = MaterialTheme.typography.bodySmall,
+                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                 )
                             }
                         }
                         Icon(
@@ -354,7 +351,7 @@ fun MyAccountScreen(
                             ),
                             contentDescription = null,
                              tint = if (!isLoggedIn) rowIconTint(false)
-                                    else Color.White.copy(alpha = 0.35f),
+                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -389,7 +386,7 @@ fun MyAccountScreen(
                                 Icon(
                                     painter = painterResource(R.drawable.arrow_forward),
                                     contentDescription = null,
-                                    tint = Color.White.copy(alpha = 0.35f),
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -480,7 +477,6 @@ fun MyAccountScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Login / Logout button
         if (isLoggedIn) {
             Material3SettingsGroup(
                 items = listOf(
@@ -532,5 +528,5 @@ fun MyAccountScreen(
         title = stringResource(R.string.my_account),
         navController = navController,
     )
-    } // Box
+    }
 }

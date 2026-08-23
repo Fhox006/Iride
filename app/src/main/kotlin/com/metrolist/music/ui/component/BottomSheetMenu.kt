@@ -144,11 +144,6 @@ fun BottomSheetMenu(
                     .background(Color.White.copy(alpha = 0.3f))
             )
         },
-        // fillMaxHeight in BOTH modes. The Iride wrap-content variant looked tighter but was the
-        // root of the dead-button bug: a wrap-content ModalBottomSheet has no valid expanded anchor,
-        // so swiping it up desynced the draggable from its buttons and killed taps. Matching classic's
-        // full-height sheet gives a real partial+expanded anchor pair — buttons always live, and the
-        // partial state makes it dismiss on a small swipe instead of a full-height drag.
         modifier = modifier.fillMaxHeight()
     ) {
         Column(

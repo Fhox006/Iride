@@ -40,7 +40,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
 
-        // LastFM API keys from GitHub Secrets
         val lastFmKey = localProperties.getProperty("LASTFM_API_KEY") ?: System.getenv("LASTFM_API_KEY") ?: ""
         val lastFmSecret = localProperties.getProperty("LASTFM_SECRET") ?: System.getenv("LASTFM_SECRET") ?: ""
         if (lastFmKey.isBlank()) {
@@ -54,7 +53,6 @@ android {
 
     flavorDimensions += listOf("variant")
     productFlavors {
-        // FOSS variant (default) - F-Droid compatible, no Google Play Services
         create("foss") {
             dimension = "variant"
             isDefault = true
@@ -62,14 +60,12 @@ android {
             buildConfigField("Boolean", "UPDATER_AVAILABLE", "true")
         }
 
-        // GMS variant - with Google Cast support (requires Google Play Services)
         create("gms") {
             dimension = "variant"
             buildConfigField("Boolean", "CAST_AVAILABLE", "true")
             buildConfigField("Boolean", "UPDATER_AVAILABLE", "true")
         }
 
-        // IzzyOnDroid variant - no Google Cast, no built-in updater (store handles updates)
         create("izzy") {
             dimension = "variant"
             buildConfigField("Boolean", "CAST_AVAILABLE", "false")
@@ -194,9 +190,6 @@ android {
             excludes += "META-INF/LICENSE.md"
             excludes += "META-INF/INDEX.LIST"
             excludes += "META-INF/io.netty.versions.properties"
-            // The IPADIC dictionary binaries account for ~12 MB compressed (55% of the APK)
-            // and are only needed by Japanese lyrics romanization. They are stripped here and
-            // fetched on demand from Maven Central by JapaneseDictManager.
             excludes += "com/atilika/kuromoji/ipadic/[a-zA-Z]+[.]bin"
         }
     }
@@ -215,12 +208,6 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
     }
 }
 
-// Android provides org.json as a platform API (/apex/com.android.art/javalib/core-libart.jar).
-// The standalone org.json:json artefact bundles an older Apache Harmony copy of JSONArray that
-// contains an internal `myArrayList` field absent from the platform class.  Without obfuscation
-// R8 inlines against this internal field; at runtime the platform class is resolved instead,
-// producing a NoSuchFieldError.  Excluding the artefact globally ensures only the platform
-// class is ever referenced.
 configurations.configureEach {
     exclude(group = "org.json", module = "json")
 }
@@ -267,7 +254,6 @@ dependencies {
     implementation(libs.media3.session)
     implementation(libs.media3.okhttp)
 
-    // Google Cast - only included in GMS flavor (not available in F-Droid/FOSS builds)
     "gmsImplementation"(libs.media3.cast)
     "gmsImplementation"(libs.mediarouter)
     "gmsImplementation"(libs.cast.framework)
@@ -298,7 +284,6 @@ dependencies {
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.json)
 
-    // Protobuf for message serialization (lite version for Android)
     implementation(libs.protobuf.javalite)
     implementation(libs.protobuf.kotlin.lite)
 

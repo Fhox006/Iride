@@ -89,9 +89,6 @@ fun LocalSearchScreen(
     onDismiss: () -> Unit,
     isFromCache: Boolean = false,
     pureBlack: Boolean,
-    // New Iride UI: leading scrollable item (TopNavigationBar + search box) — see SearchScreen,
-    // which renders this in place of its own pinned header so it scrolls away with the rest of the
-    // list instead of staying fixed on top, exactly like HomeScreen.
     header: (@Composable () -> Unit)? = null,
     viewModel: LocalSearchViewModel = hiltViewModel(),
 ) {
@@ -146,12 +143,6 @@ fun LocalSearchScreen(
     }
 
     if (header != null) {
-        // Header is a movableContentOf (see SearchScreen) — it must NOT be placed as a
-        // LazyColumn item. Lazy layouts subcompose each item in their own recycled slot table,
-        // and moving/disposing that slot independently of the movable content's remembered
-        // anchor is what crashed with "Could not resolve state for movable content" when
-        // navigating away from Search (e.g. to Library). Pinned as a fixed sibling instead,
-        // exactly like OnlineSearchResultsBody already does for the same reason.
         Column(
             modifier =
                 Modifier
@@ -273,8 +264,6 @@ private fun LazyListScope.localSearchResultItems(
     useIrideStyle: Boolean = false,
 ) {
             if (result.filter == LocalFilter.ALL) {
-                // Smart Search style: each category is a NavigationTitle + horizontal carousel of
-                // grid cards, matching the online Smart Search shelves instead of flat 3-item lists.
                 result.map.forEach { (filter, items) ->
                     item(key = "title_$filter") {
                         NavigationTitle(

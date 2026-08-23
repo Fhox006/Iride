@@ -17,8 +17,6 @@ object TitleFeaturingParser {
     private val trailingPattern =
         Regex("""\s+(?:feat\.?|featuring|ft\.?)\s+(.+)$""", RegexOption.IGNORE_CASE)
 
-    // Splits a raw captured credit into individual names: "Frezza, G.Mineiro" or "Frezza & G.Mineiro"
-    // both credit two separate artists, not one combined name.
     private val nameSeparator = Regex("""\s*(?:,|&|/)\s*""")
 
     private fun splitNames(raw: String): List<String> =

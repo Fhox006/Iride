@@ -55,7 +55,6 @@ data class DeviceCornerInfo(
 fun rememberDeviceCornerInfo(): DeviceCornerInfo {
     val density = LocalDensity.current
     val view = LocalView.current
-    // WindowInsets.systemBars triggers recomposition whenever the inset changes.
     val bottomInsetPx = WindowInsets.systemBars.getBottom(density).toFloat()
 
     val blPx: Float
@@ -133,9 +132,6 @@ fun rememberDeviceMatchedBottomPanelShape(
     }
 }
 
-// ──────────────────────────────────────────────────────────────────────────────────────────────
-// Debug / tuning composable — call from any Screen or @Preview to inspect live values on device
-// ──────────────────────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun DeviceCornerDebugPanel(

@@ -28,18 +28,16 @@ data class ReleaseAsset(
     val downloadUrl: String,
     val size: Long,
     val architecture: String,
-    val variant: String // "foss" or "gms"
+    val variant: String
 )
 
 object Updater {
     private val client = HttpClient()
     var lastCheckTime = -1L
         private set
-    
     private var cachedReleaseInfo: ReleaseInfo? = null
     private var cachedAllReleases: List<ReleaseInfo> = emptyList()
-    
-    private const val CHECK_INTERVAL_MILLIS = 2 * 60 * 60 * 1000L // 2 hours
+    private const val CHECK_INTERVAL_MILLIS = 2 * 60 * 60 * 1000L
     private const val GITHUB_API_BASE = "https://api.github.com/repos/Fhox006/Iride"
 
     /**
@@ -70,7 +68,6 @@ object Updater {
             }
         }
 
-        // base equal — stable > pre-release (semver); extract numeric suffix for correct ordering
         return when {
             pre1 == null && pre2 == null -> 0
             pre1 == null -> 1
@@ -114,18 +111,12 @@ object Updater {
      */
     private fun parseAssets(assetsArray: JSONArray): List<ReleaseAsset> {
         val assets = mutableListOf<ReleaseAsset>()
-        
         for (i in 0 until assetsArray.length()) {
             val asset = assetsArray.getJSONObject(i)
             val name = asset.getString("name")
-            
-            // Skip non-APK files
             if (!name.endsWith(".apk")) continue
-            
             val downloadUrl = asset.getString("browser_download_url")
             val size = asset.getLong("size")
-            
-            // Parse architecture and variant from filename
             val (arch, variant) = when {
                 name == "Iride.apk" -> "universal" to "foss"
                 name == "Iride-GMS.apk" -> "universal" to "gms"
@@ -133,12 +124,10 @@ object Updater {
                 name.startsWith("app-gms") && name.endsWith("-release.apk") -> "universal" to "gms"
                 else -> null to null
             }
-            
             if (arch != null && variant != null) {
                 assets.add(ReleaseAsset(name, downloadUrl, size, arch, variant))
             }
         }
-        
         return assets
     }
 
@@ -148,15 +137,12 @@ object Updater {
     suspend fun getLatestRelease(forceRefresh: Boolean = false): Result<ReleaseInfo> =
         withContext(Dispatchers.IO) {
             runCatching {
-                // Return cached if available and not forcing refresh
                 if (cachedReleaseInfo != null && !forceRefresh) {
                     return@runCatching cachedReleaseInfo!!
                 }
-                
                 val response = client.get("$GITHUB_API_BASE/releases/latest")
                     .bodyAsText()
                 val json = JSONObject(response)
-                
                 val releaseInfo = ReleaseInfo(
                     tagName = json.getString("tag_name"),
                     versionName = json.getString("name"),
@@ -165,7 +151,6 @@ object Updater {
                     assets = parseAssets(json.getJSONArray("assets")),
                     preRelease = json.optBoolean("prerelease", false),
                 )
-                
                 cachedReleaseInfo = releaseInfo
                 lastCheckTime = System.currentTimeMillis()
                 releaseInfo
@@ -181,21 +166,17 @@ object Updater {
                 if (cachedAllReleases.isNotEmpty() && !forceRefresh) {
                     return@runCatching cachedAllReleases
                 }
-                
                 val releases = mutableListOf<ReleaseInfo>()
                 var page = 1
                 var hasMore = true
-                
-                while (hasMore && page <= 10) { // Limit to 10 pages
+                while (hasMore && page <= 10) {
                     val response = client.get("$GITHUB_API_BASE/releases?page=$page&per_page=30")
                         .bodyAsText()
                     val json = JSONArray(response)
-                    
                     if (json.length() == 0) {
                         hasMore = false
                         break
                     }
-                    
                     for (i in 0 until json.length()) {
                         val releaseObj = json.getJSONObject(i)
                         releases.add(ReleaseInfo(
@@ -207,10 +188,8 @@ object Updater {
                             preRelease = releaseObj.optBoolean("prerelease", false),
                         ))
                     }
-                    
                     page++
                 }
-                
                 cachedAllReleases = releases
                 releases
             }
@@ -221,7 +200,6 @@ object Updater {
      */
     fun getDownloadUrlForCurrentVariant(releaseInfo: ReleaseInfo): String? {
         val (currentArch, currentVariant) = getCurrentAppVariant()
-        
         return releaseInfo.assets
             .find { it.architecture == currentArch && it.variant == currentVariant }
             ?.downloadUrl
@@ -240,10 +218,8 @@ object Updater {
     suspend fun checkForUpdate(forceRefresh: Boolean = false): Result<Pair<ReleaseInfo?, Boolean>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                // Check if we should fetch (2 hour interval)
                 val shouldFetch = forceRefresh || 
                     (System.currentTimeMillis() - lastCheckTime) > CHECK_INTERVAL_MILLIS
-                
                 if (!shouldFetch && cachedReleaseInfo != null) {
                     val hasUpdate = isUpdateAvailable(
                         BuildConfig.VERSION_NAME,
@@ -251,7 +227,6 @@ object Updater {
                     )
                     return@runCatching cachedReleaseInfo!! to hasUpdate
                 }
-                
                 val result = getLatestRelease(forceRefresh = true)
                 if (result.isSuccess) {
                     val releaseInfo = result.getOrThrow()
@@ -273,7 +248,6 @@ object Updater {
     fun getLatestDownloadUrl(): String? {
         return cachedReleaseInfo?.let { getDownloadUrlForCurrentVariant(it) }
     }
-    
     /**
      * Get the latest release info (cached)
      */

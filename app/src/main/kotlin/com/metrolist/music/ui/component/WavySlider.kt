@@ -57,28 +57,20 @@ fun WavySlider(
     val stroke = remember(strokeWidthPx) { 
         Stroke(width = strokeWidthPx, cap = StrokeCap.Round) 
     }
-    
     val normalizedValue = ((value - valueRange.start) / (valueRange.endInclusive - valueRange.start))
         .coerceIn(0f, 1f)
-    
     var isDragging by remember { mutableStateOf(false) }
     var dragValue by remember { mutableFloatStateOf(normalizedValue) }
-    
     val displayValue = if (isDragging) dragValue else normalizedValue
-    
     val animatedAmplitude by animateFloatAsState(
         targetValue = if (isPlaying) 1f else 0f,
         animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec,
         label = "amplitude"
     )
-    
     val activeColor = colors.activeTrackColor
     val inactiveColor = colors.inactiveTrackColor
     val thumbColor = colors.thumbColor
-    
-    // Calculate container height to accommodate thumb
     val containerHeight = maxOf(WavyProgressIndicatorDefaults.LinearContainerHeight, thumbRadius * 2)
-    
     val baseModifier = modifier
         .fillMaxWidth()
         .height(containerHeight)
@@ -136,12 +128,9 @@ fun WavySlider(
             wavelength = wavelength,
             waveSpeed = waveSpeed
         )
-        
-        // Draw circular thumb - synced with progress indicator position
         Canvas(modifier = Modifier.fillMaxSize()) {
             val thumbX = size.width * displayValue
             val thumbY = size.height / 2
-            
             drawCircle(
                 color = thumbColor,
                 radius = thumbRadiusPx,

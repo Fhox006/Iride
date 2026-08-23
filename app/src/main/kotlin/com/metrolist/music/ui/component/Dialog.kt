@@ -55,6 +55,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -84,14 +88,14 @@ fun DefaultDialog(
         Surface(
             modifier = Modifier.padding(24.dp),
             shape = RoundedCornerShape(16.dp),
-            color = Color(0xFF0A0A0A),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 0.dp,
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.strokeHairline),
         ) {
-            val iconColor = Color.White.copy(alpha = 0.85f)
-            val titleColor = Color.White
-            val contentColor = Color.White.copy(alpha = 0.85f)
-            val buttonColor = Color.White
+            val iconColor = MaterialTheme.colorScheme.textPrimary
+            val titleColor = MaterialTheme.colorScheme.textPrimary
+            val contentColor = MaterialTheme.colorScheme.textPrimary
+            val buttonColor = MaterialTheme.colorScheme.textPrimary
 
             CompositionLocalProvider(LocalContentColor provides contentColor) {
             Column(
@@ -120,7 +124,6 @@ fun DefaultDialog(
                             )
                         ) {
                             Box(
-                                // Align the title to the center when an icon is present.
                                 Modifier.align(if (icon == null) Alignment.Start else Alignment.CenterHorizontally),
                             ) {
                                 title()
@@ -225,11 +228,11 @@ fun ListDialog(
         Surface(
             modifier = Modifier.padding(24.dp),
             shape = RoundedCornerShape(16.dp),
-            color = Color(0xFF0A0A0A),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 0.dp,
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.strokeHairline),
         ) {
-            val contentColor = Color.White.copy(alpha = 0.85f)
+            val contentColor = MaterialTheme.colorScheme.textPrimary
             CompositionLocalProvider(LocalContentColor provides contentColor) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -277,7 +280,6 @@ fun TextFieldDialog(
     isInputValid: (String) -> Boolean = { it.isNotEmpty() },
     keyboardType: KeyboardType = KeyboardType.Text,
     onDone: (String) -> Unit = {},
-    // new multi-field support
     textFields: List<Pair<String, TextFieldValue>>? = null,
     onTextFieldsChange: ((Int, TextFieldValue) -> Unit)? = null,
     onDoneMultiple: ((List<String>) -> Unit)? = null,
@@ -289,15 +291,15 @@ fun TextFieldDialog(
 
     val focusRequester = remember { FocusRequester() }
     val fieldColors = OutlinedTextFieldDefaults.colors(
-        focusedTextColor = Color.White,
-        unfocusedTextColor = Color.White.copy(alpha = 0.85f),
-        cursorColor = Color.White,
-        focusedBorderColor = Color.White.copy(alpha = 0.6f),
-        unfocusedBorderColor = Color.White.copy(alpha = 0.25f),
-        focusedPlaceholderColor = Color.White.copy(alpha = 0.55f),
-        unfocusedPlaceholderColor = Color.White.copy(alpha = 0.55f),
-        focusedLabelColor = Color.White.copy(alpha = 0.6f),
-        unfocusedLabelColor = Color.White.copy(alpha = 0.55f),
+        focusedTextColor = MaterialTheme.colorScheme.textPrimary,
+        unfocusedTextColor = MaterialTheme.colorScheme.textPrimary,
+        cursorColor = MaterialTheme.colorScheme.textPrimary,
+        focusedBorderColor = MaterialTheme.colorScheme.textPrimary,
+        unfocusedBorderColor = MaterialTheme.colorScheme.strokeCard,
+        focusedPlaceholderColor = MaterialTheme.colorScheme.textSecondary,
+        unfocusedPlaceholderColor = MaterialTheme.colorScheme.textSecondary,
+        focusedLabelColor = MaterialTheme.colorScheme.textSecondary,
+        unfocusedLabelColor = MaterialTheme.colorScheme.textSecondary,
     )
     val fieldTextStyle = LocalTextStyle.current.copy(fontFamily = SpaceMonoFontFamily)
 
@@ -372,14 +374,13 @@ fun TextFieldDialog(
                     )
                 }
             } else {
-                // Wrap in Box with pointerInput to prevent double-click crashes in TextClassifier
                 Box(
                     modifier =
                         Modifier
                             .fillMaxWidth()
                             .pointerInput(Unit) {
                                 detectTapGestures(
-                                    onDoubleTap = { /* Consume double-tap to prevent TextClassifier crash */ },
+                                    onDoubleTap = {  },
                                 )
                             },
                 ) {

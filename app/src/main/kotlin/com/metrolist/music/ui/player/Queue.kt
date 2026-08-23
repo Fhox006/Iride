@@ -166,23 +166,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.material3.Button
 
 
-// A single reorderable list backs the "recently played", queue, and autoplay sections of
-// InlineQueuePanel, so a history song can be dragged down into the real queue, and an
-// autoplay suggestion can be dragged up into it, dropped straight at the position it lands on.
 private sealed class QueueSlot(val key: Any) {
     class History(val metadata: MediaMetadata) : QueueSlot("inline_history_${metadata.id}")
     class QueueEntry(val window: Timeline.Window) : QueueSlot(window.uid.hashCode())
     class Automix(val item: androidx.media3.common.MediaItem) : QueueSlot("inline_automix_${item.mediaId}")
 }
 
-// Auto-Mix filter chips. ALL/POPULAR pass the list through unfiltered (the API already
-// returns it in relevance order). DISCOVER/FAMILIAR check the artist against what's already
-// in this listening session (history + queue), no network needed. PARTY/WORKOUT/the trailing
-// genre chip match against real tags from GenreProvider (Last.fm/iTunes) - Iride has no
-// genre data anywhere else, so this is the only honest source; there is no "workout" tag,
-// so it's approximated from adjacent high-energy genre tags rather than faked.
-// Not private: IrideMp3Player.kt's queue preview reuses the exact same filter set/logic
-// instead of duplicating it, so the two UP NEXT surfaces can't drift.
 const val AUTOMIX_FILTER_ALL = "ALL"
 const val AUTOMIX_FILTER_POPULAR = "POPULAR"
 const val AUTOMIX_FILTER_DISCOVER = "DISCOVER"
@@ -218,7 +207,6 @@ fun filterAutomix(
         AUTOMIX_FILTER_WORKOUT -> items.filter { item ->
             genreBySongId[item.mediaId]?.any { tag -> WORKOUT_TAG_KEYWORDS.any { tag.contains(it, true) } } == true
         }
-        // Trailing dynamic chip: exact match against a real detected genre tag.
         else -> items.filter { item -> genreBySongId[item.mediaId]?.any { it.equals(filter, true) } == true }
     }
     return filtered.ifEmpty { items }
@@ -298,8 +286,6 @@ fun InlineQueuePanel(
 
     val lazyListState = rememberLazyListState()
 
-    // History shown inline above queue, draggable like a real queue item —
-    // dropping one past the divider promotes it into the real player queue.
     var historyItems by remember { mutableStateOf<List<MediaMetadata>>(emptyList()) }
     var historyPageOffset by remember { mutableStateOf(0) }
     var isLoadingHistory by remember { mutableStateOf(false) }
@@ -311,22 +297,20 @@ fun InlineQueuePanel(
         isLoadingHistory = true
         coroutineScope.launch {
             val currentSongId = playerConnection.mediaMetadata.value?.id
-            val page = playerConnection.service.database.events().first()
-                .distinctBy { it.song.id }
+            val page = playerConnection.service.database
+                .recentEventsPerSong(historyPageOffset + historyPageSize + 1)
+                .first()
                 .filter { it.song.id != currentSongId }
                 .drop(historyPageOffset)
                 .take(historyPageSize)
             if (page.size < historyPageSize) hasMoreHistory = false
             if (page.isNotEmpty()) {
-                // Capture scroll position before prepending so we can restore it
                 val firstIdx = lazyListState.firstVisibleItemIndex
                 val firstOffset = lazyListState.firstVisibleItemScrollOffset
                 val oldSize = historyItems.size
-                // page is DESC (newest first); reverse so oldest is at top of list
                 historyItems = page.reversed().map { it.song.toMediaMetadata() } + historyItems
                 val added = historyItems.size - oldSize
                 historyPageOffset += page.size
-                // Compensate scroll so visible item doesn't jump
                 if (added > 0 && firstIdx > 0) {
                     lazyListState.scrollToItem(firstIdx + added, firstOffset)
                 }
@@ -335,9 +319,6 @@ fun InlineQueuePanel(
         }
     }
 
-    // The moment the playing song changes (skip, auto-advance, jump-ahead...), drop the
-    // one that just finished into the history list immediately rather than waiting for
-    // the next DB reload — the new current song is always the first item below it.
     val currentMediaMetadata by playerConnection.mediaMetadata.collectAsState()
     var lastKnownMetadata by remember { mutableStateOf(currentMediaMetadata) }
     LaunchedEffect(currentMediaMetadata?.id) {
@@ -348,10 +329,6 @@ fun InlineQueuePanel(
         lastKnownMetadata = currentMediaMetadata
     }
 
-    // Auto-Mix filter chips. FAMILIAR = artist already heard this session (history + queue,
-    // no network needed). PARTY/WORKOUT/the trailing chip match real genre tags resolved by
-    // GenreProvider (Last.fm/iTunes) — the trailing chip's label IS the top detected genre
-    // for the current Auto-Mix batch, so it genuinely reflects what's playing.
     val familiarArtistNames = remember(historyItems, queueWindows) {
         buildSet {
             historyItems.forEach { md -> md.artists.forEach { add(it.name) } }
@@ -363,8 +340,6 @@ fun InlineQueuePanel(
             GenreSongInfo(id = it.mediaId, title = it.metadata?.title.orEmpty(), artist = it.metadata?.artists?.firstOrNull()?.name)
         }
     }
-    // No cacheKey: automix batches change per song, so a persisted pill order would go
-    // stale immediately — live-resorting for the current batch only is what's wanted here.
     val automixGenreFilter = rememberGenreFilter(automixGenreSongs)
     val dynamicGenreFilter = automixGenreFilter.sortedGenres.firstOrNull()?.uppercase()
     val automixFilters = remember(dynamicGenreFilter) {
@@ -378,13 +353,8 @@ fun InlineQueuePanel(
     val dragScrollZone = LocalConfiguration.current.screenHeightDp.dp * 0.15f
     val dragAutoScroller = rememberScroller(
         scrollableState = lazyListState,
-        // Auto-scroll while dragging a queue item near the edges was ~4x too fast;
-        // slow it to ~25% of the library default (75% slower).
         pixelAmountProvider = { lazyListState.layoutInfo.viewportSize.height * 0.0125f },
     )
-    // Single reorderable list backing both sections. History slots may move freely,
-    // including past the divider into the queue zone (that's how a recent song gets
-    // promoted); queue slots are clamped so they can never move above the divider.
     val combinedList = remember { mutableStateListOf<QueueSlot>() }
     var draggedSlotKey by remember { mutableStateOf<Any?>(null) }
 
@@ -405,13 +375,8 @@ fun InlineQueuePanel(
             val automixStartIdx = combinedList.indexOfFirst { it is QueueSlot.Automix }
                 .let { if (it == -1) combinedList.size else it }
             val toIdx = when (moving) {
-                // Can move within history, or down into the queue zone (promotion) —
-                // never past the autoplay divider.
                 is QueueSlot.History -> toIdxRaw.coerceAtMost((automixStartIdx - 1).coerceAtLeast(0))
-                // Clamped to the queue zone — can't cross into history above or autoplay below.
                 is QueueSlot.QueueEntry -> toIdxRaw.coerceIn(firstQueueIdx, (automixStartIdx - 1).coerceAtLeast(firstQueueIdx))
-                // Can move within autoplay, or up into the queue zone (promotion) —
-                // never above the first queue entry.
                 is QueueSlot.Automix -> toIdxRaw.coerceAtLeast(firstQueueIdx)
             }
             if (fromIdx != toIdx) combinedList.move(fromIdx, toIdx)
@@ -424,19 +389,14 @@ fun InlineQueuePanel(
             draggedSlotKey = null
             val idx = key?.let { k -> combinedList.indexOfFirst { it.key == k } } ?: -1
             if (idx != -1) {
-                // Already-played windows before currentWindowIndex are hidden from the
-                // visible queue section, so visible/relative positions need this offset
-                // added back to land on the right absolute index in the real timeline.
                 val hiddenBefore = currentWindowIndex.coerceAtLeast(0)
                 when (val slot = combinedList[idx]) {
                     is QueueSlot.History -> {
                         val firstQueueIdx = combinedList.indexOfFirst { it is QueueSlot.QueueEntry }
                             .let { if (it == -1) combinedList.size else it }
                         if (idx < firstQueueIdx) {
-                            // Still above the divider — cosmetic reorder of the history list.
                             historyItems = combinedList.filterIsInstance<QueueSlot.History>().map { it.metadata }
                         } else {
-                            // Dropped into the queue zone — promote it to a real queue item.
                             val insertionIndex = combinedList.take(idx).count { it is QueueSlot.QueueEntry }
                             playerConnection.player.addMediaItem(insertionIndex + hiddenBefore, slot.metadata.toMediaItem())
                             historyItems = historyItems.filterNot { it.id == slot.metadata.id }
@@ -467,14 +427,11 @@ fun InlineQueuePanel(
                         val automixStartIdxNow = combinedList.indexOfFirst { it is QueueSlot.Automix }
                             .let { if (it == -1) combinedList.size else it }
                         if (idx < automixStartIdxNow) {
-                            // Dropped above the autoplay divider — promote it into the real queue.
                             val insertionIndex = combinedList.take(idx).count { it is QueueSlot.QueueEntry }
                             playerConnection.player.addMediaItem(insertionIndex + hiddenBefore, slot.item)
                             playerConnection.service.automixItems.value =
                                 playerConnection.service.automixItems.value.filterNot { it.mediaId == slot.item.mediaId }
                         }
-                        // Still within the autoplay section — order isn't persisted; combinedList
-                        // resyncs from automixItems on the next recomposition anyway.
                     }
                 }
             }
@@ -483,8 +440,6 @@ fun InlineQueuePanel(
 
     LaunchedEffect(queueWindows, currentWindowIndex, historyItems, filteredAutomix) {
         if (!reorderableState.isAnyItemDragging) {
-            // Hide already-played windows from the queue section — the current song is
-            // always the first entry below the divider, never buried mid-list.
             val visibleQueueWindows = if (currentWindowIndex in queueWindows.indices) {
                 queueWindows.drop(currentWindowIndex)
             } else {
@@ -499,15 +454,7 @@ fun InlineQueuePanel(
         }
     }
 
-    // Center the currently playing song every time the queue is (re-)opened — keyed on
-    // openNonce rather than Unit so this fires again even if the panel stayed composed.
-    // History is intentionally NOT eagerly preloaded here anymore: doing so used to prepend
-    // items above the current song right after the initial scroll landed, shoving the
-    // playing song down out of view instead of keeping it centered at the top.
     LaunchedEffect(openNonce) {
-        // Layout: index 0 = spacer, then history items (none loaded yet on a fresh open),
-        // then the divider row, then the CONTINUE LISTENING header, then the current song
-        // as the first queue entry.
         val targetIndex = historyItems.size + 3
         val itemInfo = lazyListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == targetIndex }
         if (itemInfo == null) {
@@ -527,7 +474,6 @@ fun InlineQueuePanel(
         )
     }
 
-    // Load history when user scrolls near top of list
     LaunchedEffect(lazyListState) {
         snapshotFlow { lazyListState.firstVisibleItemIndex }
             .collect { index ->
@@ -546,8 +492,6 @@ fun InlineQueuePanel(
                 iconButtonColor = iconButtonColor,
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    // Radio is a shortcut into Auto-Mix, not a full queue replace: it must
-                    // never restart or change the song that's currently playing.
                     val currentIndex = playerConnection.player.currentMediaItemIndex
                     val currentMetadata = playerConnection.player.getMediaItemAt(currentIndex).metadata
                     if (currentMetadata != null) {
@@ -594,8 +538,6 @@ fun InlineQueuePanel(
             )
         },
         content = {
-        // Persistent title, stays put while History/Continue Listening/Auto-Mix scroll
-        // underneath it — dragging down toward History never scrolls the panel's own name away.
         Column(modifier = Modifier.fillMaxSize()) {
             Text(
                 text = stringResource(R.string.queue).uppercase(),
@@ -703,7 +645,6 @@ fun InlineQueuePanel(
             )
         }
 
-        // Queue list
         val defaultFling = ScrollableDefaults.flingBehavior()
             LazyColumn(
                 state = lazyListState,
@@ -724,8 +665,6 @@ fun InlineQueuePanel(
             ) {
                 item(key = "inline_spacer_top") { Spacer(Modifier.height(4.dp)) }
 
-                // Recently played + queue — one reorderable list. The divider marks the
-                // boundary and is (re-)rendered at whatever the current split is.
                 val dividerRow: @Composable () -> Unit = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

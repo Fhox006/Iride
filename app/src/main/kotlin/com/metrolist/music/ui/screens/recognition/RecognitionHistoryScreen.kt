@@ -207,7 +207,6 @@ fun RecognitionHistoryScreen(navController: NavController) {
                     RecognitionHistoryItem(
                         item = item,
                         onClick = {
-                            // Search for the track on YouTube Music
                             val searchQuery = "${item.title} ${item.artist}"
                             navController.navigate("search/${java.net.URLEncoder.encode(searchQuery, "UTF-8")}")
                         },
@@ -248,7 +247,6 @@ private fun RecognitionHistoryItem(
                     .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Album art
             AsyncImage(
                 model = item.coverArtUrl,
                 contentDescription = null,
@@ -261,7 +259,6 @@ private fun RecognitionHistoryItem(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Track info
             Column(
                 modifier = Modifier.weight(1f),
             ) {
@@ -286,7 +283,6 @@ private fun RecognitionHistoryItem(
                 )
             }
 
-            // Delete action
             IconButton(onClick = onDelete) {
                 Icon(
                     painter = painterResource(R.drawable.delete),

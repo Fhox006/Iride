@@ -88,9 +88,6 @@ fun BoxScope.HideOnScrollFAB(
     label: String? = null,
     onClick: () -> Unit,
     onRecognitionClick: (() -> Unit)? = null,
-    // New Iride UI opt-in: renders the plain (no label, no onRecognitionClick) case as
-    // [IrideFlatFAB] instead of the default Material FAB. Off by default so the other
-    // (non-search) call sites of this composable are unaffected.
     useIrideStyle: Boolean = false,
 ) {
     AnimatedVisibility(

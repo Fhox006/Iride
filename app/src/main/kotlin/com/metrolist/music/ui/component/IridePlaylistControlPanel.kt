@@ -111,8 +111,6 @@ private fun IridePlayButton(
             painter = painterResource(if (isPlaying) R.drawable.ic_iride_pause else R.drawable.ic_iride_play),
             contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.play),
             tint = Color.White,
-            // Optical nudge: the play glyph's mass sits left of true center, reads off-center in a
-            // symmetric circle unless shifted right. The pause glyph is already symmetric.
             modifier = Modifier
                 .size(26.dp)
                 .offset(x = if (isPlaying) 0.dp else 1.5.dp),

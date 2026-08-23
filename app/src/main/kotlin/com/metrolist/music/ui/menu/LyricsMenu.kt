@@ -88,7 +88,6 @@ fun LyricsMenu(
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
-    
     var respectAgentPositioning by rememberPreference(RespectAgentPositioningKey, true)
     var showIntervalIndicator by rememberPreference(ShowIntervalIndicatorKey, true)
 
@@ -191,8 +190,6 @@ fun LyricsMenu(
 
                 TextButton(
                     onClick = {
-                        // Try search regardless of network status indicator
-                        // as it might be a false negative
                         viewModel.search(
                             searchMediaMetadata.id,
                             titleField.text,
@@ -201,8 +198,6 @@ fun LyricsMenu(
                             searchMediaMetadata.album?.title
                         )
                         showSearchResultDialog = true
-                        
-                        // Show warning only if network is definitely unavailable
                         if (!isNetworkAvailable) {
                             Toast.makeText(context, context.getString(R.string.error_no_internet), Toast.LENGTH_SHORT).show()
                         }
@@ -343,7 +338,6 @@ fun LyricsMenu(
 
     var lyricsOffset by rememberSaveable { mutableIntStateOf(songProvider()?.lyricsOffset ?: 0) }
 
-    // Sync isChecked with song changes
     LaunchedEffect(songProvider()) {
         isChecked = songProvider()?.romanizeLyrics ?: true
     }

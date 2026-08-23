@@ -15,10 +15,6 @@ import com.metrolist.innertube.models.YTItem
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.SearchHistory
 
-// Spotify-style history: once a search leads somewhere, its row remembers the destination
-// (title/thumbnail/type) instead of the raw query text — re-opening it jumps straight back to
-// that item instead of re-running the search. Keyed on the same `query` unique index the DAO
-// already uses, so this just replaces the plain-text row written at submit time, if any.
 fun MusicDatabase.recordSearchHistoryOpen(searchQuery: String, item: YTItem) {
     if (searchQuery.isBlank()) return
     val type = when (item) {

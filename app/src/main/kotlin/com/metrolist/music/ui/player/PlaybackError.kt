@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.player
 
+import android.content.ClipData
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,16 +19,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.PlaybackException
 import com.metrolist.music.R
+import kotlinx.coroutines.launch
 
 /**
  * Minimal, transient top banner shown over the (still visible) album artwork when
@@ -41,7 +44,8 @@ fun PlaybackErrorBanner(
     retry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
 
     Surface(
         modifier = modifier
@@ -71,7 +75,13 @@ fun PlaybackErrorBanner(
                 modifier = Modifier.weight(1f)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            IconButton(onClick = { clipboardManager.setText(AnnotatedString(buildDebugDump(error))) }) {
+            IconButton(onClick = {
+                scope.launch {
+                    clipboard.setClipEntry(
+                        ClipEntry(ClipData.newPlainText("debug info", buildDebugDump(error)))
+                    )
+                }
+            }) {
                 Icon(
                     painter = painterResource(R.drawable.content_copy),
                     contentDescription = "Copy debug info",

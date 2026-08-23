@@ -110,22 +110,12 @@ fun AccountScreen(
     val topNavBarController = LocalTopNavBarController.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    // Retry loading if data is still null when screen opens (e.g. previous attempt failed).
-    // Checked per-field (OR, not AND) because under a degraded connection some requests
-    // (e.g. playlists) can succeed while others (albums, artists) time out — requiring all
-    // three to be null left the failed ones stuck forever since a partial success never
-    // re-triggered refresh().
     LaunchedEffect(Unit) {
         if (playlists == null || albums == null || artists == null) {
             viewModel.refresh()
         }
     }
 
-    // Reached from Home's "Your YouTube Playlists" shortcut (not part of the main tab bar) — a
-    // pushed sub-page in both classic and New Iride UI mode. In Iride mode it still gets its own
-    // TopNavigationBar so the tabs stay visible, part of the scrollable page instead of a pinned
-    // bar. Real app settings are still one tap away via the gear icon in the header. (The Account
-    // tab itself opens SettingsScreen, styled separately in SettingsScreen.kt.)
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         snapAnimationSpec = tween(durationMillis = 200),
     )
@@ -347,7 +337,6 @@ private fun androidx.compose.foundation.lazy.grid.LazyGridScope.AccountContentGr
             }
 
             AccountContentType.PODCASTS -> {
-                // Show RDPN "New Episodes" playlist if available
                 rdpnPlaylist?.let { rdpn ->
                     item(
                         key = "rdpn_playlist",
@@ -362,7 +351,6 @@ private fun androidx.compose.foundation.lazy.grid.LazyGridScope.AccountContentGr
                     }
                 }
 
-                // Show SE "Episodes for Later" playlist if available
                 sePlaylist?.let { se ->
                     item(
                         key = "se_playlist",
@@ -377,7 +365,6 @@ private fun androidx.compose.foundation.lazy.grid.LazyGridScope.AccountContentGr
                     }
                 }
 
-                // Subscribed podcast shows
                 if (podcastPlaylists.isNotEmpty()) {
                     item(
                         key = "podcasts_header",
@@ -407,7 +394,6 @@ private fun androidx.compose.foundation.lazy.grid.LazyGridScope.AccountContentGr
                     }
                 }
 
-                // Podcast channels
                 if (podcastChannels.isNotEmpty()) {
                     item(
                         key = "channels_header",

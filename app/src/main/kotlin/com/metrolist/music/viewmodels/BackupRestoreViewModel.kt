@@ -103,7 +103,7 @@ class BackupRestoreViewModel @Inject constructor(
             Timber.tag("RESTORE").i("Starting restore from URI: $uri, clearAuthData: $clearAuthData")
             context.applicationContext.contentResolver.openInputStream(uri)?.use { raw ->
                 raw.zipInputStream().use { inputStream ->
-                    var entry = tryOrNull { inputStream.nextEntry } // prevent ZipException
+                    var entry = tryOrNull { inputStream.nextEntry }
                     var foundAny = false
                     while (entry != null) {
                         Timber.tag("RESTORE").i("Found zip entry: ${entry.name}")
@@ -119,7 +119,6 @@ class BackupRestoreViewModel @Inject constructor(
                             InternalDatabase.DB_NAME -> {
                                 Timber.tag("RESTORE").i("Restoring DB (entry = ${entry.name})")
                                 foundAny = true
-                                // capture path before closing DB to avoid reopening race
                                 val dbPath = database.openHelper.writableDatabase.path
                                 runBlocking(Dispatchers.IO) { database.checkpoint() }
                                 database.close()
@@ -133,7 +132,7 @@ class BackupRestoreViewModel @Inject constructor(
                                 Timber.tag("RESTORE").i("Skipping unexpected entry: ${entry.name}")
                             }
                         }
-                        entry = tryOrNull { inputStream.nextEntry } // prevent ZipException
+                        entry = tryOrNull { inputStream.nextEntry }
                     }
                     if (!foundAny) {
                         Timber.tag("RESTORE").w("No expected entries found in archive")
@@ -143,7 +142,6 @@ class BackupRestoreViewModel @Inject constructor(
                 Timber.tag("RESTORE").e("Could not open input stream for uri: $uri")
             }
 
-            // Clear stale auth data to prevent playback issues
             if (clearAuthData) {
                 Timber.tag("RESTORE").i("Clearing auth data to prevent stale session issues")
                 runBlocking(Dispatchers.IO) {
@@ -179,10 +177,8 @@ class BackupRestoreViewModel @Inject constructor(
                             val bytes = inputStream.readBytes()
                             val content = bytes.decodeToString(throwOnInvalidSequence = false)
 
-                            // Check for auth data (SAPISID cookie indicates logged in)
                             val hasAuthData = content.contains("SAPISID=")
 
-                            // Extract cookie string from backup
                             val cookie = if (hasAuthData) {
                                 extractCookieFromPrefs(content)
                             } else null
@@ -207,16 +203,12 @@ class BackupRestoreViewModel @Inject constructor(
     }
 
     private fun extractCookieFromPrefs(content: String): String? {
-        // Find innerTubeCookie key and extract the cookie value.
-        // The proto format has the key followed by type markers and then the string value.
         val keyMarker = "innerTubeCookie"
         val keyIndex = content.indexOf(keyMarker)
         if (keyIndex == -1) return null
 
         val afterKey = content.substring(keyIndex + keyMarker.length)
 
-        // Cookie starts after some proto markers and contains semicolon-separated values.
-        // Look for the first cookie key pattern like "__Secure-" or "HSID=" etc.
         val cookiePatterns = listOf("__Secure-", "HSID=", "SSID=", "SID=", "SAPISID=")
         var cookieStart = -1
         for (pattern in cookiePatterns) {
@@ -227,7 +219,6 @@ class BackupRestoreViewModel @Inject constructor(
         }
         if (cookieStart == -1) return null
 
-        // Find the end of the cookie (next control character or next key).
         val cookieContent = afterKey.substring(cookieStart)
         val cookieEnd = cookieContent.indexOfFirst {
             it.code < 32 && it != '\t' && it != '\n' && it != '\r'
@@ -236,19 +227,16 @@ class BackupRestoreViewModel @Inject constructor(
         val rawCookie = if (cookieEnd > 0) {
             cookieContent.substring(0, cookieEnd)
         } else {
-            cookieContent.take(5000) // Reasonable max length
+            cookieContent.take(5000)
         }
-        // Remove any control characters (newlines, etc.) that are invalid in HTTP headers.
         return rawCookie.replace(Regex("[\\x00-\\x1F\\x7F]"), "").trim()
     }
 
     suspend fun fetchAccountInfoFromBackup(cookie: String): BackupPreviewInfo? {
         return runCatching {
-            // Parse cookie to get SAPISID for auth header
             val cookieMap = parseCookieString(cookie)
             val sapisid = cookieMap["SAPISID"] ?: return@runCatching null
 
-            // Generate SAPISIDHASH auth header
             val origin = "https://music.youtube.com"
             val currentTime = System.currentTimeMillis() / 1000
             val sapisidHash = sha1("$currentTime $sapisid $origin")
@@ -272,11 +260,9 @@ class BackupRestoreViewModel @Inject constructor(
             val response = client.newCall(request).execute()
             val responseBody = response.body?.string() ?: return@runCatching null
 
-            // Parse the JSON response
             val json = Json { ignoreUnknownKeys = true }
             val jsonResponse = json.parseToJsonElement(responseBody).jsonObject
 
-            // Navigate to activeAccountHeaderRenderer
             val header = jsonResponse["actions"]
                 ?.jsonArray?.getOrNull(0)
                 ?.jsonObject?.get("openPopupAction")

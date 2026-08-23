@@ -277,13 +277,8 @@ class MainActivity : ComponentActivity() {
     private var pendingIntent: Intent? = null
     private var latestVersionName by mutableStateOf(BuildConfig.VERSION_NAME)
 
-    // Keep PlayerConnection as regular property - NOT mutableStateOf to prevent UI recomposition
-    // when it becomes null during onStop. Only update the snapshot for Compose when needed.
     private var playerConnection: PlayerConnection? = null
-    
-    // This is the snapshot we pass to Compose - changes here trigger recomposition
     private var playerConnectionSnapshot by mutableStateOf<PlayerConnection?>(null)
-    
     private var isServiceBound = false
     private var updateDownloadReceiver: BroadcastReceiver? = null
 
@@ -298,11 +293,9 @@ class MainActivity : ComponentActivity() {
                         playerConnection = PlayerConnection(this@MainActivity, service, database, lifecycleScope)
                         playerConnectionSnapshot = playerConnection
                         Timber.tag("MainActivity").d("PlayerConnection created successfully")
-                        // Connect Listen Together manager to player
                         listenTogetherManager.setPlayerConnection(playerConnection)
                     } catch (e: Exception) {
                         Timber.tag("MainActivity").e(e, "Failed to create PlayerConnection")
-                        // Retry after a delay of 500ms
                         lifecycleScope.launch {
                             delay(500)
                             try {
@@ -318,7 +311,6 @@ class MainActivity : ComponentActivity() {
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
-                // Disconnect Listen Together manager
                 listenTogetherManager.setPlayerConnection(null)
                 playerConnection?.dispose()
                 playerConnection = null
@@ -364,8 +356,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        // Request notification permission on Android 13+ only for users who already
-        // completed onboarding (new users handle this in the onboarding flow)
         if (dataStore.get(OnboardingCompletedKey, false)) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -374,9 +364,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Only start service if not already running — redundant startForegroundService() on a
-        // running service re-triggers onStartCommand(), which on Android 12+ can interrupt active
-        // coroutine flows and cause library/lyrics collectors to drop and never re-subscribe.
         if (!MusicService.isRunning) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 ContextCompat.startForegroundService(this, Intent(this, MusicService::class.java))
@@ -384,8 +371,6 @@ class MainActivity : ComponentActivity() {
                 startService(Intent(this, MusicService::class.java))
             }
         }
-        
-        // Bind to service - if already bound, this is a no-op but ensures we stay connected
         if (!isServiceBound) {
             bindService(
                 Intent(this, MusicService::class.java),
@@ -407,8 +392,6 @@ class MainActivity : ComponentActivity() {
             val cookie = prefs[InnerTubeCookieKey]
             val visitorData = prefs[VisitorDataKey]
 
-            // Always re-inject auth state — guards against in-memory loss after Activity recreation
-            // without a DataStore change (distinctUntilChanged would suppress re-emission).
             if (!cookie.isNullOrEmpty()) {
                 YouTube.cookie = cookie
             }
@@ -430,10 +413,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // The expanded player is a session-only state: it lives in App.playerAnchorCache (so
-    // configuration changes and quick background round-trips keep the panel open) but must
-    // never reach DataStore, otherwise any process death / hard reset would cold-start
-    // straight into the open MP3 player panel.
     private fun persistableAnchor(anchor: Int): Int =
         if (anchor == expandedAnchor) collapsedAnchor else anchor
 
@@ -444,12 +423,6 @@ class MainActivity : ComponentActivity() {
         updateDownloadReceiver = null
         if (isFinishing) {
             listenTogetherManager.disconnect()
-            // Closing the app ends the player's session: drop the in-memory expanded anchor so
-            // reopening (even with the process still alive behind the foreground playback
-            // service) starts from the collapsed peek instead of the full-screen panel.
-            // lifecycleScope is already tearing down here, hence the throwaway scope for the
-            // disk write — disk never stores "expanded" anyway (see persistableAnchor), this
-            // just keeps it in sync with the cache.
             val anchor = persistableAnchor(App.playerAnchorCache)
             App.setPlayerAnchorCache(anchor)
             CoroutineScope(Dispatchers.IO).launch {
@@ -481,10 +454,6 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Pick the launch window background from the saved theme BEFORE the first frame is
-        // published: the base theme's windowBackground is black, which flashed against the
-        // light surface in light mode. One small blocking read at launch, same pattern as
-        // rememberPreference's first-composition read.
         runBlocking {
             val prefs = dataStore.data.first()
             val darkModeRaw = prefs[DarkModeKey]
@@ -494,7 +463,7 @@ class MainActivity : ComponentActivity() {
             val useDark = when (darkModeRaw) {
                 "ON" -> true
                 "OFF" -> false
-                else -> systemDark // AUTO follows the system
+                else -> systemDark
             }
             if (!useDark && !(prefs[PureBlackKey] ?: false)) {
                 setTheme(R.style.Theme_Metrolist_Light)
@@ -504,7 +473,6 @@ class MainActivity : ComponentActivity() {
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        // Initialize Listen Together manager
         listenTogetherManager.initialize()
 
         if (BuildConfig.UPDATER_AVAILABLE) {
@@ -578,8 +546,6 @@ class MainActivity : ComponentActivity() {
                     if (ready) {
                         content.viewTreeObserver.removeOnPreDrawListener(this)
                     } else {
-                        // Guarantees the next traversal actually happens instead of waiting on an
-                        // unrelated invalidation.
                         content.postInvalidateOnAnimation()
                     }
                     return ready
@@ -682,7 +648,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
+        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
         val isSystemInDarkTheme = isSystemInDarkTheme()
         val useDarkTheme =
             remember(darkTheme, isSystemInDarkTheme) {
@@ -714,11 +680,6 @@ class MainActivity : ComponentActivity() {
         var targetThemeColor by rememberSaveable(stateSaver = ColorSaver) {
             mutableStateOf(selectedThemeColor)
         }
-        // The seed color feeds rememberDynamicColorScheme, which regenerates the entire Material
-        // palette on every distinct value — so tweening the seed means ~36 full palette builds, and
-        // every composable reading MaterialTheme recomposes with each one. On a cold start that
-        // lands exactly on top of first layout (the artwork color is extracted right as the service
-        // binds). Snap to the first color instead; only later track changes are worth animating.
         var animateThemeColor by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) {
             delay(1200)
@@ -807,25 +768,20 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
 
                 LaunchedEffect(Unit) {
-                    // SimpMusic Removal Migration
                     if (dataStore.data.first()[SimpMusicMigrationDoneKey] != true) {
                         dataStore.edit { settings ->
-                            // Remove SimpMusic from serialized order string and append Paxsenix if missing
                             val currentOrder = settings[LyricsProviderOrderKey] ?: ""
                             if (currentOrder.contains("SimpMusic") || !currentOrder.contains("Paxsenix")) {
                                 val orderList = currentOrder.split(",")
                                     .map { it.trim() }
                                     .filter { it.isNotBlank() && it != "SimpMusic" }
                                     .toMutableList()
-                                
                                 if (!orderList.contains("Paxsenix")) {
                                     orderList.add("Paxsenix")
                                 }
-                                
                                 settings[LyricsProviderOrderKey] = orderList.joinToString(",")
                             }
 
-                            // Reset preferred provider if it was SimpMusic
                             if (settings[PreferredLyricsProviderKey] == "SIMPMUSIC") {
                                 settings[PreferredLyricsProviderKey] = PreferredLyricsProvider.LRCLIB.name
                             }
@@ -850,7 +806,6 @@ class MainActivity : ComponentActivity() {
                             (it != Screens.ListenTogether || !listenTogetherInTopBar) &&
                                 (it != Screens.News || showNewsTab)
                         }
-                        // New Iride UI: Home, Library, Search, then Account last.
                         filtered.sortedBy { screen ->
                             when (screen) {
                                 Screens.Home -> 0
@@ -916,9 +871,6 @@ class MainActivity : ComponentActivity() {
                 val isTopLevelRoute by remember {
                     derivedStateOf {
                         currentRoute == null ||
-                            // "settings" (the Account tab's real destination) is treated as
-                            // top-level too, so it gets the same fade transition and its own
-                            // scrollable TopNavigationBar copy as Home/Library/Search.
                             navigationItems.any { it.route == currentRoute } ||
                             currentRoute?.startsWith("search/") == true
                     }
@@ -927,15 +879,8 @@ class MainActivity : ComponentActivity() {
 
                 val showRail = isLandscape && !inSearchScreen
 
-                // New Iride UI: the player becomes a fixed curtain layer behind the whole app
-                // (portrait/top-level only — the landscape rail's MiniPlayer peek is untouched).
                 val curtainMode = !showRail
 
-                // New Iride UI: the app layer's corner cut is styled after this device's own
-                // screen bezel radius (android.view.RoundedCorner, API 31+) instead of a fixed
-                // value, so it reads as a continuation of the phone's own curvature rather than
-                // an arbitrary UI shape. Not every OEM reports this accurately, so 0/unavailable
-                // falls back to a fixed default.
                 val curtainCornerInfo = rememberDeviceCornerInfo()
                 val curtainCornerRadiusStart = with(density) {
                     curtainCornerInfo.bottomLeftRadiusPx.takeIf { it > 0f }?.toDp() ?: 28.dp
@@ -961,15 +906,6 @@ class MainActivity : ComponentActivity() {
                 val playerBottomSheetState =
                     rememberBottomSheetState(
                         dismissedBound = 0.dp,
-                        // Restore the player's position across configuration changes and
-                        // background round-trips from the in-memory anchor cache (seeded
-                        // synchronously at process start in App.onCreate). Deliberate closes
-                        // (swipe from recents / back) clear it in onDestroy, and disk never
-                        // stores "expanded" (see persistableAnchor), so a new session always
-                        // opens with just the collapsed peek instead of the full panel.
-                        // Curtain mode never presents a fully dismissed sheet anyway, so
-                        // collapse the saved dismissed value into a collapsed peek instead so
-                        // the mp3 placeholder is visible from frame 0.
                         initialAnchor = if (curtainMode) {
                             if (App.playerAnchorCache == dismissedAnchor) collapsedAnchor else App.playerAnchorCache
                         } else {
@@ -981,10 +917,6 @@ class MainActivity : ComponentActivity() {
                         } else {
                             bottomInset + MiniPlayerHeight
                         },
-                        // New Iride UI: the player "curtain" can never cover the whole screen — a
-                        // sliver (AppPeekHeight) of app content stays visible at the top always.
-                        // Only applies where the curtain mechanism is actually engaged (portrait) —
-                        // landscape/rail mode keeps the old self-positioning full-expand behavior.
                         expandedBound = if (curtainMode) maxHeight - AppPeekHeight else maxHeight,
                         preventDismissDrag = curtainMode,
                         onAnchorPersist = { anchor ->
@@ -995,19 +927,6 @@ class MainActivity : ComponentActivity() {
                         },
                     )
 
-                // Only force the curtain shut on backgrounding if it was JUST opened (accidental
-                // tap while the finger was really going for the home gesture/back — the panel sits
-                // right where that swipe starts). A deliberately-open player left open for over a
-                // second before backgrounding is intentional and must survive the round trip.
-                // Guards a real case too: a fling toward expand sets the anchor synchronously but
-                // the spring is still mid-flight when ON_STOP fires, so isExpanded reads false
-                // while the anchor already says expanded — that's still within the "just opened"
-                // window so it gets caught the same way.
-                //
-                // Belt-and-suspenders flush on every ON_STOP: covers an in-flight DataStore write
-                // that hasn't landed before process death, so the next cold start finds disk in
-                // sync with what the user actually left behind (clamped via persistableAnchor —
-                // "expanded" never survives a process death).
                 val lifecycleOwner = LocalLifecycleOwner.current
                 DisposableEffect(playerBottomSheetState, lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
@@ -1029,17 +948,8 @@ class MainActivity : ComponentActivity() {
                     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
                 }
 
-                // New Iride UI: the curtain is always mounted, whether or not a track is loaded — it
-                // never falls back to the classic FloatingPill. With nothing playing it just sits
-                // collapsed showing a placeholder peek row (see BottomSheetPlayer's collapsedContent),
-                // so the very first frame after cold start already reads as "the mp3 mini player",
-                // never the rounded pill.
                 val curtainActive = curtainMode
 
-                // New Iride UI: after 5s static in the fully expanded player, fade out the app-peek
-                // strip (TopNavigationBar + drag handle) that's needed to return to the app, leaving
-                // a clean player view. Starting a downward drag (progress dropping off 1f) cancels
-                // the pending fade and brings it back immediately.
                 val (autoHideTopPanel) = rememberPreference(PlayerAutoHideTopPanelKey, defaultValue = true)
                 val isPlayerSettledExpanded by remember(playerBottomSheetState) {
                     derivedStateOf { playerBottomSheetState.progress >= 0.999f }
@@ -1059,22 +969,14 @@ class MainActivity : ComponentActivity() {
                     label = "playerTopPanelAlpha",
                 )
 
-                // New Iride UI bridge: shared between BottomSheetPlayer (which reports the mini
-                // and expanded rects of the cover art) and IrideMiniPlayerBridgeOverlay (which
-                // draws a single moving cover, behind the app, between the two) — see
-                // IrideMp3Player.kt for the full explanation.
                 val irideBridgeState = remember { IrideBridgeState() }
 
                 val playerAwareWindowInsets =
                     remember(bottomInset, showRail, isTopLevelRoute, curtainActive, playerBottomSheetState.isDismissed) {
                         var bottom = bottomInset
                         if (curtainActive) {
-                            // The app layer's own box is already shortened by collapsedBound (see
-                            // Scaffold's modifier below) — screens never overlap the player here,
-                            // so no extra bottom padding is needed at all.
                             bottom = 0.dp
                         } else if (!showRail) {
-                            // FloatingPill always occupies space at the bottom
                             bottom += MiniPlayerHeight + FloatingPillBottomSpacing
                         } else {
                             if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight
@@ -1098,7 +1000,6 @@ class MainActivity : ComponentActivity() {
                         },
                     )
 
-                // Navigation tracking
                 LaunchedEffect(navBackStackEntry) {
                     if (inSearchScreen) {
                         val searchQuery =
@@ -1120,7 +1021,6 @@ class MainActivity : ComponentActivity() {
                         onQueryChange(TextFieldValue())
                     }
 
-                    // Reset scroll behavior for main navigation items
                     if (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route }) {
                         if (navigationItems.fastAny { it.route == previousTab }) {
                             topAppBarScrollBehavior.state.resetHeightOffset()
@@ -1129,24 +1029,15 @@ class MainActivity : ComponentActivity() {
 
                     topAppBarScrollBehavior.state.resetHeightOffset()
 
-                    // Track previous tab for animations
                     navController.currentBackStackEntry?.destination?.route?.let {
                         setPreviousTab(it)
                     }
                 }
 
-                // Reacts continuously to the actual current-track state instead of checking it once
-                // at connection time — the saved queue is restored asynchronously by MusicService
-                // (it waits for playerInitialized, then calls playQueue), so currentMediaItem is
-                // still null at the instant playerConnection binds on a cold start. A one-shot check
-                // here used to latch the sheet as "user-dismissed" before the restore completed,
-                // leaving the New Iride UI stuck on the classic layout until manually toggled.
                 LaunchedEffect(playerConnection, curtainMode) {
                     val connection = playerConnection ?: return@LaunchedEffect
                     connection.mediaMetadata.collectLatest { metadata ->
                         if (curtainMode) {
-                            // New Iride UI: never dismiss the curtain — bounce back to collapsed
-                            // (placeholder peek) instead, regardless of whether a track is loaded.
                             if (playerBottomSheetState.isDismissed) {
                                 playerBottomSheetState.collapseSoft()
                             }
@@ -1155,10 +1046,6 @@ class MainActivity : ComponentActivity() {
                                 playerBottomSheetState.dismiss()
                             }
                         }
-                        // Classic mode + metadata loaded: leave the sheet alone. The previous
-                        // behavior bounced dismissed -> collapsed here, which silently undid an
-                        // explicit user dismiss every time the saved queue restored — the
-                        // remembered anchor in DataStore is the source of truth now.
                     }
                 }
 
@@ -1226,8 +1113,6 @@ class MainActivity : ComponentActivity() {
                 val onNavItemClick: (Screens, Boolean) -> Unit =
                     remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState, navBackStackEntry) {
                         nav@{ screen: Screens, isSelected: Boolean ->
-                            // Refuse to switch tabs while a Home/Library/Search/Account rubber-band
-                            // pull is still dragging or springing back — see RubberBandNavGate.
                             if (RubberBandNavGate.isActive) return@nav
                             if (playerBottomSheetState.isExpanded) {
                                 playerBottomSheetState.collapseSoft()
@@ -1263,15 +1148,6 @@ class MainActivity : ComponentActivity() {
                                     restoreState = true
                                 }
 
-                                // New Iride UI: each tab's title/tab-bar row lives as a plain
-                                // scrollable item inside the tab's own list (see the "library"/
-                                // "search" exclusions in this Scaffold's outer topBar condition),
-                                // so its own restored scroll offset decides whether the title is
-                                // visible after a switch. Without this, switching tabs could land
-                                // mid-scroll on one tab and at the top on another, making the title
-                                // row appear at a different height depending on which tab you came
-                                // from. Force every tab to land scrolled-to-top so the title is
-                                // always in the same spot right after switching.
                                 val newEntry = try {
                                     navController.currentBackStackEntry
                                 } catch (e: Exception) {
@@ -1285,10 +1161,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                // Remembered rather than rebuilt inline: a fresh instance on every recomposition of
-                // this function is a new value for the local, which recomposes every
-                // TopNavigationBar in the app (each tab root renders its own) for changes that have
-                // nothing to do with navigation.
                 val topNavBarController = remember(navigationItems, currentRoute, onNavItemClick, compactTopNavigationBar, accountImageUrl) {
                     TopNavBarController(
                         navigationItems = navigationItems,
@@ -1310,9 +1182,6 @@ class MainActivity : ComponentActivity() {
                     LocalListenTogetherManager provides listenTogetherManager,
                     LocalTopNavBarController provides topNavBarController,
                 ) {
-                    // New Iride UI: player "curtain" mounted first (behind everything) as a fixed,
-                    // full-screen layer. The app content below (Scaffold) sits on top of it and
-                    // translates up on drag to reveal it — the curtain itself never moves.
                     if (curtainActive && currentRoute != "wrapped") {
                         BottomSheetPlayer(
                             state = playerBottomSheetState,
@@ -1322,10 +1191,6 @@ class MainActivity : ComponentActivity() {
                             bridgeState = if (curtainMode) irideBridgeState else null,
                         )
 
-                        // New Iride UI: draws the single moving cover on top of the curtain but
-                        // still *behind* the app (Scaffold, declared right below) — it morphs
-                        // between the collapsed and expanded cover position/size without ever
-                        // needing to draw over the app itself.
                         IrideMiniPlayerBridgeOverlay(
                             bridgeState = irideBridgeState,
                             sheetProgress = playerBottomSheetState.progress,
@@ -1338,14 +1203,6 @@ class MainActivity : ComponentActivity() {
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
                             Column {
-                                // "library", "search_input" and "settings" are excluded here for the same
-                                // reason as "home": each renders its own copy of TopNavigationBar inside
-                                // its own Scaffold (see LibraryMixScreen, SearchScreen, SettingsScreen), so
-                                // its paddingValues correctly reserve space for it and it scrolls away together with the
-                                // rest of that screen's content instead of staying pinned on top of it.
-                                // Rendering it a second time here — pinned in this outer Scaffold, whose
-                                // content Row never applies this topBar's paddingValues — would draw a
-                                // duplicate copy on top of that screen's own content.
                                 if (!showRail && isTopLevelRoute && currentRoute != "wrapped" && currentRoute != "onboarding" && currentRoute != "home" && currentRoute != "library" && currentRoute != Screens.Search.route && currentRoute != "settings") {
                                     TopNavigationBar(
                                         navigationItems = navigationItems,
@@ -1405,23 +1262,9 @@ class MainActivity : ComponentActivity() {
                         },
                         modifier =
                             if (curtainActive) {
-                                // App layer: fixed height (leaves a collapsedBound-tall gap at the
-                                // bottom where the curtain peeks through), rounded bottom corners,
-                                // translates up (never scales/shrinks) as the curtain is dragged —
-                                // capped so AppPeekHeight always stays visible at the top.
-                                // The app content itself dissolves to black as the curtain expands
-                                // (drawn inside this same clipped graphicsLayer, so the rounded
-                                // corners fade correctly too) instead of a separate black panel on
-                                // top — there's no second layer to composite.
                                 Modifier
                                     .align(Alignment.TopStart)
                                     .fillMaxWidth()
-                                    // Extends past collapsedBound by CurtainCornerRevealHeight so
-                                    // the app layer's bottom edge lands flush with the collapsed
-                                    // curtain's drag handle instead of leaving a bare curtain-
-                                    // colored strip above it (collapsedBound reserves that strip
-                                    // for the corner curve, but the curve itself only eats into the
-                                    // far left/right edges — the centered handle is never under it).
                                     .height(maxHeight - playerBottomSheetState.collapsedBound + CurtainCornerRevealHeight)
                                     .graphicsLayer {
                                         shape = RoundedCornerShape(bottomStart = curtainCornerRadiusStart, bottomEnd = curtainCornerRadiusEnd)
@@ -1431,11 +1274,6 @@ class MainActivity : ComponentActivity() {
                                             .toPx()
                                         alpha = topPanelAlpha
                                     }
-                                    // Dissolve the app content to black as the curtain expands. The
-                                    // seam border itself is no longer drawn here — see the unclipped
-                                    // overlay Box declared right after this Scaffold, which keeps the
-                                    // border always visible (not just mid-drag) and fully outside the
-                                    // clipped shape (not clipped away at the rounded corners).
                                     .drawWithContent {
                                         drawContent()
                                         val dissolve = playerBottomSheetState.progress.coerceIn(0f, 1f)
@@ -1472,7 +1310,6 @@ class MainActivity : ComponentActivity() {
                                                 restoreState = true
                                             }
 
-                                            // Same title-sync fix as onNavItemClick above.
                                             val newEntry = try {
                                                 navController.currentBackStackEntry
                                             } catch (e: Exception) {
@@ -1509,8 +1346,6 @@ class MainActivity : ComponentActivity() {
                                 Modifier
                                     .weight(1f),
                             ) {
-                                // Mounted once, persistently, so its animation clocks never
-                                // restart when switching tabs — only alpha changes.
                                 TopScreenGradientBackground(
                                     mediaMetadata = topGradientMediaMetadata,
                                     playerBackground = playerBackgroundStyle,
@@ -1523,7 +1358,6 @@ class MainActivity : ComponentActivity() {
 
                                 fun topLevelIndex(route: String?) = navigationItems.indexOfFirst { it.route == route }
 
-                                // NavHost with animations (Material 3 Expressive style)
                                 NavHost(
                                     navController = navController,
                                     startDestination =
@@ -1536,7 +1370,6 @@ class MainActivity : ComponentActivity() {
                                                 else -> Screens.Home
                                             }.route
                                         },
-                                    // Enter Transition - instant between tabs, slide for sub-screens
                                     enterTransition = {
                                         val currentRouteIndex = topLevelIndex(targetState.destination.route)
                                         val previousRouteIndex = topLevelIndex(initialState.destination.route)
@@ -1549,7 +1382,6 @@ class MainActivity : ComponentActivity() {
                                             slideInHorizontally { -it / 8 } + fadeIn(tween(200))
                                         }
                                     },
-                                    // Exit Transition - instant between tabs, slide for sub-screens
                                     exitTransition = {
                                         val currentRouteIndex = topLevelIndex(initialState.destination.route)
                                         val targetRouteIndex = topLevelIndex(targetState.destination.route)
@@ -1562,7 +1394,6 @@ class MainActivity : ComponentActivity() {
                                             slideOutHorizontally { it / 8 } + fadeOut(tween(200))
                                         }
                                     },
-                                    // Pop Enter Transition - instant between tabs
                                     popEnterTransition = {
                                         val currentRouteIndex = topLevelIndex(targetState.destination.route)
                                         val previousRouteIndex = topLevelIndex(initialState.destination.route)
@@ -1575,7 +1406,6 @@ class MainActivity : ComponentActivity() {
                                             slideInHorizontally { -it / 8 } + fadeIn(tween(200))
                                         }
                                     },
-                                    // Pop Exit Transition - instant between tabs
                                     popExitTransition = {
                                         val currentRouteIndex = topLevelIndex(initialState.destination.route)
                                         val targetRouteIndex = topLevelIndex(targetState.destination.route)
@@ -1602,17 +1432,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // New Iride UI: the seam border between app and player, drawn as its own
-                    // unclipped layer directly on top of the app layer instead of inside its
-                    // clipped drawWithContent. Two problems that fixes: (1) a centered stroke drawn
-                    // inside a clip=true graphicsLayer has its outer half clipped away, leaving only
-                    // a faint interior sliver, and rounded corners eat into it further — pushing the
-                    // path outward here (positive outset, larger radius) puts the whole stroke
-                    // outside the app shape's true edge, so it survives the corner curve intact.
-                    // (2) the border used to fade in/out with drag progress (invisible at rest); a
-                    // constant alpha keeps it visible at all times for accessibility. Shares the
-                    // exact same height/translationY expressions as the app layer's own modifier
-                    // above so the seam it traces always lines up with the app layer's real edge.
                     if (curtainActive) {
                         Box(
                             modifier = Modifier
@@ -1655,19 +1474,6 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // New Iride UI: the app-layer sliver (AppPeekHeight) that stays visible at the
-                    // top while the curtain player is expanded is not really usable as an app
-                    // screen (it's just the translated bottom edge of the app content, already
-                    // dissolving to black via the Scaffold's own drawWithContent above) — dragging
-                    // already collapses it, but a plain tap there used to fall through to whatever
-                    // app content happened to be underneath instead of collapsing the player. This
-                    // catcher is purely a hit target (no drawing of its own) so a tap here reliably
-                    // collapses the player instead of hitting whatever's underneath.
-                    // Only mounted while actually expanded: a disabled Modifier.clickable still
-                    // registers a pointer input node and swallows taps meant for whatever's
-                    // beneath it (here, TopNavigationBar's nav buttons, which live inside this
-                    // same top AppPeekHeight strip) even though its onClick never fires — so
-                    // gating via the composable's presence, not just `enabled`, is required.
                     if (curtainActive && !playerBottomSheetState.isCollapsed && !irideBridgeState.lyricsFullScreenActive) {
                         Box(
                             modifier = Modifier
@@ -1683,21 +1489,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // New Iride UI: drag-handle indicator for the curtain player. Drawn on its own
-                    // layer above the app content (zIndex) instead of inside the curtain's own
-                    // collapsedContent, because that content sits *behind* the app layer and fades
-                    // out by ~25% drag progress — the handle used to vanish mid-gesture right when
-                    // the user most needed the "this is a drag handle" affordance. Staying mounted
-                    // for the whole curtainActive lifetime and gliding linearly (matching the sheet's
-                    // own 1:1 drag progress, no easing) from its collapsed spot up to just under the
-                    // app-peek sliver means it reads as functional in both drag directions — pulling
-                    // it down from the top closes the player exactly like pulling it up opens it.
                     if (curtainActive) {
                         val handleProgress = playerBottomSheetState.progress.coerceIn(0f, 1f)
-                        // Flush with the top of the miniplayer strip (just below the app layer's
-                        // own bottom edge, which lands at collapsedBound - CurtainCornerRevealHeight)
-                        // instead of higher up inside the app layer's rounded-corner reveal zone —
-                        // the handle belongs to the miniplayer/player section, not the app section.
                         val collapsedHandleY = maxHeight - playerBottomSheetState.collapsedBound + CurtainCornerRevealHeight + 6.dp
                         val expandedHandleY = AppPeekHeight + CurtainCornerRevealHeight + 6.dp
                         val handleY = collapsedHandleY + (expandedHandleY - collapsedHandleY) * handleProgress
@@ -1929,12 +1722,6 @@ class MainActivity : ComponentActivity() {
 }
 
 val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }
-// Deliberately NOT static: this one is the only app-wide local whose value actually changes at
-// runtime — it flips null -> instance the moment MusicService binds, a few hundred ms into a cold
-// start. A staticCompositionLocalOf invalidates its entire subtree unconditionally on any change,
-// so that single flip used to tear down and recompose the whole UI mid-launch (nav bar, feed and
-// mini player all blinking out and back). A regular compositionLocalOf recomposes only the
-// surfaces that actually read the connection.
 val LocalPlayerConnection = compositionLocalOf<PlayerConnection?> { error("No PlayerConnection provided") }
 val LocalPlayerAwareWindowInsets = compositionLocalOf<WindowInsets> { error("No WindowInsets provided") }
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }

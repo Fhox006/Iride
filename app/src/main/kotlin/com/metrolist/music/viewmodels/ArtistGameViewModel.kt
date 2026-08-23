@@ -127,7 +127,6 @@ class ArtistGameViewModel @Inject constructor(
             viewModelScope.async { YouTube.album(browseId).getOrNull()?.songs.orEmpty() }
         }.awaitAll().flatten()
 
-        // Real tracks only — no music videos, no video-only uploads, no blank-title junk entries.
         val pool = (directSongs + albumSongs)
             .filterVideoSongs(disableVideos = true)
             .filter { song ->
@@ -154,7 +153,6 @@ class ArtistGameViewModel @Inject constructor(
             return
         }
 
-        // Resolve + fully buffer every round's audio now, so the game itself never waits on the network.
         val prepared = rounds.map { round ->
             viewModelScope.async {
                 val uri = audioService.resolveStreamUrl(round.correct.id) ?: return@async null
@@ -225,11 +223,6 @@ class ArtistGameViewModel @Inject constructor(
         uiState = playing.copy(result = RoundResult(songId, correct))
         val nextIndex = playing.roundIndex + 1
         val hasNext = nextIndex < playing.totalRounds
-        // Correct answer: fire off next round's audio the instant it turns green, so it has the
-        // full transition window to actually start (not just reach STATE_READY) before the round
-        // switches. Fast taps (<200ms) used to race the blind delay below and switch rounds while
-        // the ExoPlayer was still grabbing audio focus / starting its AudioTrack — startAudioJob
-        // gets joined below so the switch waits for real playback, not just a timer.
         val startAudioJob = if (correct && hasNext) {
             viewModelScope.launch { audioService.playPreparedAwaitStart(rounds[nextIndex].correct.id) }
         } else {
@@ -285,7 +278,7 @@ class ArtistGameViewModel @Inject constructor(
         uiState = GameUiState.Finished(
             totalMs = totalMs,
             isNewBest = isNewBest,
-            bestScoreMs = if (isNewBest) totalMs else previousBest!!,
+            bestScoreMs = if (isNewBest) totalMs else previousBest,
             correctCount = correctCount,
             totalRounds = rounds.size,
         )

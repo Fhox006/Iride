@@ -13,7 +13,7 @@ data class UnisonApiResponse(
 @Serializable
 data class UnisonResponseData(
     val lyrics: String? = null,
-    val format: String? = null, // "ttml" | "lrc" | "plain"
-    val syncType: String? = null, // "richsync" | "linesync" | "plain"
+    val format: String? = null,
+    val syncType: String? = null,
     val duration: Double? = null,
 )

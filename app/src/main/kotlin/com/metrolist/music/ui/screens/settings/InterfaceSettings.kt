@@ -124,7 +124,6 @@ fun InterfaceSettings(
         showRestartDialog = true
     }
 
-    // ── Dialogs ────────────────────────────────────────────────────────────
 
     if (showDefaultOpenTabDialog) {
         EnumDialog(
@@ -226,7 +225,6 @@ fun InterfaceSettings(
         }
     }
 
-    // ── Screen ────────────────────────────────────────────────────────────
 
     Column(
         Modifier
@@ -244,7 +242,6 @@ fun InterfaceSettings(
             )
         )
 
-        // ── Navigation ─────────────────────────────────────────────────────
         Material3SettingsGroup(
             title = stringResource(R.string.settings_section_navigation),
             items = listOfNotNull(
@@ -286,7 +283,6 @@ fun InterfaceSettings(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ── Home ─────────────────────────────────────────────────────────
         Material3SettingsGroup(
             title = stringResource(R.string.home),
             items = listOfNotNull(
@@ -316,11 +312,6 @@ fun InterfaceSettings(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ── Smart boot ───────────────────────────────────────────────────
-        // Master switch for the launch-path optimizations: instant "Featured for you" from the
-        // saved snapshot, shimmer placeholders instead of sections popping in, no artificial
-        // stagger delays, single chip fetch on cold start, unified card spacing. Turning it off
-        // restores the original launch behavior completely (takes effect next app start).
         Material3SettingsGroup(
             title = stringResource(R.string.smart_boot),
             items = listOf(
@@ -348,105 +339,9 @@ fun InterfaceSettings(
             )
         )
 
-        /* HIDDEN - auto_playlists group (show liked/downloaded/top/cached/uploaded playlist toggles)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // ── Playlists ──────────────────────────────────────────────────────
-        Material3SettingsGroup(
-            title = stringResource(R.string.auto_playlists),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.favorite),
-                    title = { Text(stringResource(R.string.show_liked_playlist)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = showLikedPlaylist, onCheckedChange = onShowLikedPlaylistChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (showLikedPlaylist) R.drawable.check else R.drawable.close),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onShowLikedPlaylistChange(!showLikedPlaylist) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.offline),
-                    title = { Text(stringResource(R.string.show_downloaded_playlist)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = showDownloadedPlaylist, onCheckedChange = onShowDownloadedPlaylistChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (showDownloadedPlaylist) R.drawable.check else R.drawable.close),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onShowDownloadedPlaylistChange(!showDownloadedPlaylist) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.trending_up),
-                    title = { Text(stringResource(R.string.show_top_playlist)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = showTopPlaylist, onCheckedChange = onShowTopPlaylistChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (showTopPlaylist) R.drawable.check else R.drawable.close),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onShowTopPlaylistChange(!showTopPlaylist) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.cached),
-                    title = { Text(stringResource(R.string.show_cached_playlist)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = showCachedPlaylist, onCheckedChange = onShowCachedPlaylistChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (showCachedPlaylist) R.drawable.check else R.drawable.close),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onShowCachedPlaylistChange(!showCachedPlaylist) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.backup),
-                    title = { Text(stringResource(R.string.show_uploaded_playlist)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = showUploadedPlaylist, onCheckedChange = onShowUploadedPlaylistChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (showUploadedPlaylist) R.drawable.check else R.drawable.close),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onShowUploadedPlaylistChange(!showUploadedPlaylist) }
-                )
-            )
-        )
-        END HIDDEN */
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ── Interactions ───────────────────────────────────────────────────
         Material3SettingsGroup(
             title = stringResource(R.string.settings_section_behavior),
             items = listOf(
@@ -526,7 +421,6 @@ fun InterfaceSettings(
         )
 
         Spacer(modifier = Modifier.height(16.dp))
-        // Lab section removed from UI (Better Library Beta stays off via its stored default).
     }
 
     SettingsBackTopBar(

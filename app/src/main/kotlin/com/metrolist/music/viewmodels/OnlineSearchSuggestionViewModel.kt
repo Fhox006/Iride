@@ -3,6 +3,8 @@
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
+@file:OptIn(ExperimentalCoroutinesApi::class, kotlinx.coroutines.FlowPreview::class)
+
 package com.metrolist.music.viewmodels
 
 import android.content.Context
@@ -29,6 +31,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -49,6 +52,7 @@ class OnlineSearchSuggestionViewModel
         init {
             viewModelScope.launch {
                 query
+                    .debounce(250)
                     .flatMapLatest { query ->
                         if (query.isEmpty()) {
                             database.searchHistory().map { history ->
@@ -57,10 +61,8 @@ class OnlineSearchSuggestionViewModel
                                 )
                             }
                         } else {
-                            // Check if query is a YouTube URL
                             val parsedUrl = YouTubeUrlParser.parse(query)
                             if (parsedUrl != null) {
-                                // Fetch content from YouTube URL
                                 val parsedItem = fetchParsedUrlItem(parsedUrl)
                                 database
                                     .searchHistory(query)
@@ -114,7 +116,6 @@ class OnlineSearchSuggestionViewModel
         private suspend fun fetchParsedUrlItem(parsedUrl: YouTubeUrlParser.ParsedUrl): YTItem? =
             when (parsedUrl) {
                 is YouTubeUrlParser.ParsedUrl.Video -> {
-                    // Use next() to get the song details from a video ID
                     YouTube
                         .next(WatchEndpoint(videoId = parsedUrl.id))
                         .getOrNull()
@@ -123,7 +124,6 @@ class OnlineSearchSuggestionViewModel
                 }
 
                 is YouTubeUrlParser.ParsedUrl.Playlist -> {
-                    // Fetch playlist details
                     YouTube
                         .playlist(parsedUrl.id)
                         .getOrNull()
@@ -131,13 +131,10 @@ class OnlineSearchSuggestionViewModel
                 }
 
                 is YouTubeUrlParser.ParsedUrl.Album -> {
-                    // For albums, we need to get the browseId from the playlist
-                    // First, try to get the album page
                     val albumResult = YouTube.album("MPREb_${parsedUrl.id}")
                     if (albumResult.isSuccess) {
                         albumResult.getOrNull()?.album
                     } else {
-                        // If that fails, treat it as a playlist
                         YouTube
                             .playlist(parsedUrl.id)
                             .getOrNull()
@@ -146,16 +143,12 @@ class OnlineSearchSuggestionViewModel
                 }
 
                 is YouTubeUrlParser.ParsedUrl.Artist -> {
-                    // Fetch artist details
                     if (parsedUrl.id.startsWith("MPRE")) {
-                        // It's a browse ID
                         YouTube
                             .artist(parsedUrl.id)
                             .getOrNull()
                             ?.artist
                     } else {
-                        // It's a channel ID, we need to find the browse ID
-                        // For now, try using the channel ID as browse ID
                         YouTube
                             .artist(parsedUrl.id)
                             .getOrNull()

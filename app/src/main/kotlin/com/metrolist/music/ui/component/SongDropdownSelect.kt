@@ -81,7 +81,7 @@ fun SongSelectDropdown(
         ) {
             Column(
                 modifier = Modifier
-                    .heightIn(max = 160.dp) // the scroll "box"
+                    .heightIn(max = 160.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 visibleSongs.forEach { song ->
@@ -105,7 +105,7 @@ fun SongSelectDropdown(
                                         text = it,
                                         maxLines = 1,
                                         color = androidx.compose.ui.graphics.Color.Gray,
-                                        overflow = TextOverflow.Ellipsis // Highly recommended for multi-artist names
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
@@ -116,7 +116,7 @@ fun SongSelectDropdown(
 
                 if (remainingCount > 0) {
                     DropdownMenuItem(
-                        onClick = { /* no-op */ },
+                        onClick = {  },
                         enabled = false,
                         text = {
                             Text(

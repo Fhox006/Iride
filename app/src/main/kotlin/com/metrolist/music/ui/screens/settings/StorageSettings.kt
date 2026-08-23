@@ -103,7 +103,6 @@ fun StorageSettings(
     var clearImageCacheDialog by remember { mutableStateOf(false) }
     var clearResolvedTrackCacheDialog by remember { mutableStateOf(false) }
 
-    // State for the confirmation dialog
     var showCacheWarningDialog by remember { mutableStateOf(false) }
     var cacheType by remember { mutableStateOf("") }
     var cacheUsage by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
@@ -275,7 +274,6 @@ fun StorageSettings(
         )
     }
 
-    // Confirmation Dialog
     if (showCacheWarningDialog) {
         AlertDialog(
             onDismissRequest = { showCacheWarningDialog = false },

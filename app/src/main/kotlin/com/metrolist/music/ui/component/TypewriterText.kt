@@ -70,7 +70,6 @@ fun TypewriterText(
     textAlign: TextAlign = TextAlign.Start,
 ) {
     val reducedMotion = rememberReducedMotion()
-    // Seeded rather than started at 0, so a non-animating instance never draws one empty frame.
     var typed by remember { mutableIntStateOf(if (animate) 0 else text.length) }
     var cursorVisible by remember { mutableStateOf(false) }
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
@@ -83,7 +82,6 @@ fun TypewriterText(
         }
         typed = 0
         cursorVisible = true
-        // Long names speed up rather than outstaying their welcome.
         val step = minOf(MS_PER_CHAR, MAX_TOTAL_MS / text.length)
         repeat(text.length) {
             delay(step)
@@ -123,8 +121,6 @@ fun TypewriterText(
                 drawRect(
                     color = color,
                     topLeft = caret.topLeft,
-                    // Space Mono advances 0.6em; the caret rect is the line box, so half its
-                    // height lands within a hair of one character cell.
                     size = Size(caret.height * 0.5f, caret.height),
                 )
             },

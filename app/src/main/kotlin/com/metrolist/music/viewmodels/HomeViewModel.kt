@@ -138,8 +138,6 @@ class HomeViewModel @Inject constructor(
 
     val isRefreshing = MutableStateFlow(false)
     val isLoading = MutableStateFlow(false)
-    // Section ids currently being manually regenerated via the section's own refresh button
-    // (e.g. "quick_picks", "dischi_per_te") — drives the spinning refresh icon per section.
     val regeneratingSections = MutableStateFlow<Set<String>>(emptySet())
     val isRandomizing = MutableStateFlow(false)
     val isPhase1Complete = MutableStateFlow(false)
@@ -147,12 +145,6 @@ class HomeViewModel @Inject constructor(
     val phase2Complete = MutableStateFlow(false)
     val visibleSections: MutableStateFlow<Set<String>> = MutableStateFlow(setOf("speed_dial", "mood_and_genres", "discovery"))
 
-    // Smart Boot master switch (Settings > Appearance > Interface). When off, every launch-path
-    // optimization below is skipped and Home behaves exactly like before: reactive hero
-    // generation with genre lookups inline, artificial stagger delays, duplicate chip fetches
-    // and no per-section skeletons.
-    // Read once, synchronously: load() is scheduled from init and must already know the flag,
-    // mirroring the blocking first-composition preference reads used elsewhere at startup.
     private val smartBootEnabled: Boolean = runBlocking {
         context.dataStore.data.first()[SmartBootKey] ?: true
     }
@@ -196,7 +188,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // Official API data for podcast sections
     val savedPodcastShows = MutableStateFlow<List<com.metrolist.innertube.models.PodcastItem>>(emptyList())
     val episodesForLater = MutableStateFlow<List<SongItem>>(emptyList())
 
@@ -237,18 +228,12 @@ class HomeViewModel @Inject constructor(
         .playlist(PlaylistEntity.DISCOVER_WEEKLY_PLAYLIST_ID)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
-    // Regenerates the Discovery Weekly playlist once every 7 days (or immediately if it has
-    // never been built), same cooldown mechanism as the Weekly/Monthly Most playlists in
-    // StatsViewModel. Safe to call on every cold start — it's a no-op most of the time.
     fun syncDiscoveryWeeklyIfNeeded(force: Boolean = false) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 discoveryWeeklySyncMutex.withLock {
                     val prefs = context.dataStore.data.first()
                     val lastSyncMillis = prefs[LastDiscoveryWeeklySyncKey]
-                    // songCount, not just row existence — a row can exist with 0 songs (e.g. a
-                    // past generation that came up empty) and the 7-day cooldown would otherwise
-                    // lock that empty state in for a week before trying again.
                     val existingRow = database.playlist(PlaylistEntity.DISCOVER_WEEKLY_PLAYLIST_ID).first()
                     val playlistReady = existingRow != null && existingRow.songCount > 0
                     val due = lastSyncMillis == null ||
@@ -264,9 +249,6 @@ class HomeViewModel @Inject constructor(
                         seed = java.time.LocalDate.now().toEpochDay() / 7,
                     )
                     if (songs.isEmpty()) {
-                        // Stamp the attempt even on failure — otherwise `due` never clears and
-                        // every Search screen open retries the full 15-seed network fan-out
-                        // forever, stuck showing "Creating your mix…" in a loop.
                         Timber.tag("DiscoveryWeekly").w("generate() returned 0 songs, historyPool/network issue")
                         context.dataStore.edit { it[LastDiscoveryWeeklySyncKey] = System.currentTimeMillis() }
                         return@withLock
@@ -299,19 +281,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // Per-launch, not per-day: a date-derived seed reproduced the exact same shuffle order on
-    // every cold start within the same day, so "Featured for you" looked frozen no matter how
-    // many times the app was reopened.
     private fun defaultHeroCarouselSeed() = System.currentTimeMillis()
 
     private var lastHeroCarouselSeed = defaultHeroCarouselSeed()
 
-    // Cold start fires several async arrivals (cache restore, explorePage, homePage,
-    // dischiPerTe) that each used to trigger a full regenerate — same seed, but a
-    // different pool mix each time reshuffles the whole list, silently swapping out
-    // the card the user is already looking at. Only the first successful generation
-    // (or an explicit force, e.g. pull-to-refresh) replaces the list; every later
-    // arrival only appends newly available cards to the end via [appendHeroCarousel].
     private var heroCarouselFirstGenDone = false
 
     fun refreshHeroCarousel(seed: Long = lastHeroCarouselSeed, force: Boolean = false) {
@@ -320,10 +293,6 @@ class HomeViewModel @Inject constructor(
             return
         }
         lastHeroCarouselSeed = seed
-        // Smart Boot: the genre pool is the slow part of generation (up to ~23 uncached HTTP
-        // lookups behind it), so the very first paint skips it and appendHeroCarousel adds
-        // those cards once they resolve. Without Smart Boot the original single full
-        // generation is kept.
         val skipGenrePool = smartBootEnabled && !force && !heroCarouselFirstGenDone
         viewModelScope.launch(Dispatchers.IO) {
             val seenAsFirstIds = context.dataStore.data.first()[SeenNewReleaseFirstIdsKey] ?: emptySet()
@@ -344,8 +313,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // Panels only ever get added on the right, never reordered or replaced — cards
-    // already shown keep their position no matter what data arrives afterwards.
     private fun appendHeroCarousel() {
         viewModelScope.launch(Dispatchers.IO) {
             val seenAsFirstIds = context.dataStore.data.first()[SeenNewReleaseFirstIdsKey] ?: emptySet()
@@ -365,9 +332,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // Smart Boot persistence: the last generated carousel is stored as JSON so the next cold
-    // start paints "Featured for you" instantly from disk instead of leaving its skeleton up
-    // until the whole network pipeline finishes. Same pattern as SpeedDialSnapshot/MoodSnapshot.
     @kotlinx.serialization.Serializable
     private data class HeroCarouselSnapshot(
         val seed: Long,
@@ -442,9 +406,6 @@ class HomeViewModel @Inject constructor(
         context.dataStore.edit { it[MoodSnapshotKey] = json }
     }
 
-    // Mixes actually rendered by the "Your Mood" row. Kept separate from moodPage so a chip
-    // switch can hydrate instantly from the last cached snapshot instead of showing a blank
-    // loader every time, and so the row never has to swap between differently-sized content.
     val moodMixItems = MutableStateFlow<List<PlaylistItem>?>(null)
     val isMoodLoading = MutableStateFlow(false)
     private var moodPageJob: kotlinx.coroutines.Job? = null
@@ -459,22 +420,11 @@ class HomeViewModel @Inject constructor(
             isMoodLoading.value = false
             return
         }
-        // Cancel any still-in-flight load for a previously selected chip first. Without this,
-        // switching chips quickly could let an older/slower request finish after a newer one and
-        // overwrite its result — or, worse, its `finally` block flips isMoodLoading back to false
-        // while the newer request is still genuinely loading, making the row look "done" with
-        // stale content instead of showing the spinner for the chip actually selected.
         moodPageJob?.cancel()
         moodPageJob = viewModelScope.launch(Dispatchers.IO) {
             val myJob = coroutineContext[kotlinx.coroutines.Job]
             isMoodLoading.value = true
             try {
-                // YouTube.home() has no built-in timeout of its own. If the request stalls (dead
-                // connection, slow/no network), isMoodLoading would otherwise never resolve and
-                // the Mood row would spin forever — this is the "gets stuck in infinite loading"
-                // bug: bounding it here guarantees the section always reaches a loaded, empty, or
-                // (falling through to the catch below) still-showing-previous-content state
-                // within a bounded time instead of hanging indefinitely.
                 val result = withTimeout(15_000L) { YouTube.home(params = params) }
                 result.onSuccess { nextSections ->
                     val filteredPage = nextSections.copy(
@@ -491,8 +441,6 @@ class HomeViewModel @Inject constructor(
                         .flatMap { it.items }
                         .filterIsInstance<PlaylistItem>()
                         .take(10)
-                    // Only replace what's on screen once the new mixes are actually in hand —
-                    // never swap to an empty list just because this particular chip came back thin.
                     if (mixItems.isNotEmpty()) moodMixItems.value = mixItems
                     if (chipTitle != null) {
                         context.dataStore.edit { prefs ->
@@ -502,19 +450,11 @@ class HomeViewModel @Inject constructor(
                         saveMoodSnapshotAfterLoad(chipTitle, params, filteredPage)
                     }
                 }.onFailure {
-                    // Leave whatever was already on screen (cached snapshot or the previous
-                    // chip's mixes) in place instead of clearing it — a failed refresh shouldn't
-                    // blank out a section that had valid content a moment ago. lastMoodChipParams
-                    // was already updated above, but moodPage.value stays null/stale here, so the
-                    // early-return guard at the top of this function won't skip a retry later.
                     reportException(it)
                 }
             } catch (e: TimeoutCancellationException) {
                 reportException(e)
             } finally {
-                // Guard against a just-cancelled/late job clobbering a newer one's loading state
-                // (see comment above) — only the most recently launched load is allowed to flip
-                // isMoodLoading back to false.
                 if (moodPageJob === myJob) isMoodLoading.value = false
             }
         }
@@ -566,8 +506,6 @@ class HomeViewModel @Inject constructor(
                 filled.addAll(available.take(needed))
             }
 
-            // Fallback to YouTube home page songs when local DB has no data (e.g. fresh install).
-            // Preferred over Quick Picks so the two sections don't cannibalize each other's pool.
             if (filled.size < targetSize && home != null) {
                 val needed = targetSize - filled.size
                 val homeSongs = home.sections.flatMap { it.items }
@@ -710,9 +648,7 @@ class HomeViewModel @Inject constructor(
             }
 
         val finalItems = mutableListOf<HomeSection>()
-        // Pin SpeedDial only when a cached snapshot gives immediate content
         if (hasCachedSpeedDial && list.contains(HomeSection.SpeedDial)) finalItems.add(HomeSection.SpeedDial)
-        // Always pin QuickPicks second regardless of random order
         if (list.contains(HomeSection.QuickPicks)) finalItems.add(HomeSection.QuickPicks)
 
         finalItems.addAll(sortedList.filter { section ->
@@ -751,7 +687,6 @@ class HomeViewModel @Inject constructor(
     suspend fun getRandomItem(): YTItem? {
         try {
             isRandomizing.value = true
-            // Visual feedback for the animation
             kotlinx.coroutines.delay(1000)
 
             val userSongs = mutableListOf<YTItem>()
@@ -794,7 +729,6 @@ class HomeViewModel @Inject constructor(
 
             otherSources.addAll(allYtItems.value)
 
-            // Probability: 80% User Songs, 20% Other Sources
             val item = if (userSongs.isNotEmpty() && (otherSources.isEmpty() || Random.nextFloat() < 0.8f)) {
                 userSongs.distinctBy { it.id }.shuffled().firstOrNull()
             } else {
@@ -841,9 +775,7 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
-    // Track last processed cookie to avoid unnecessary updates
     private var lastProcessedCookie: String? = null
-    // Track if we're currently processing account data
     private var isProcessingAccountData = false
 
     private var dailyDiscoverLaunchJob: kotlinx.coroutines.Job? = null
@@ -851,10 +783,6 @@ class HomeViewModel @Inject constructor(
     private var similarRecommendationsLaunchJob: kotlinx.coroutines.Job? = null
     private var dischiPerTeLaunchJob: kotlinx.coroutines.Job? = null
 
-    // Phase-2 completion flags, observable by the UI so Home can hold a skeleton slot per
-    // section while its (lazy, network-backed) job is still running instead of letting the
-    // section pop in mid-scroll. They flip in a finally block, so a failed request also
-    // clears its skeleton instead of leaving it up forever.
     val phase2DailyDiscoverDone = MutableStateFlow(false)
     val phase2CommunityDone = MutableStateFlow(false)
     val phase2SimilarDone = MutableStateFlow(false)
@@ -905,10 +833,6 @@ class HomeViewModel @Inject constructor(
         return if (tiles.size < 3) null else ForYouShelfItem(artist, tiles)
     }
 
-    // Pool is the whole library (listened + followed + everything else with local plays),
-    // not just the top 25 — so the "On repeat for you" carousel has real material to page
-    // through. Once loadMoreForYouShelves() exhausts the pool it wraps back to the start
-    // (reshuffled, new album tiles) so scrolling forward never hits a hard stop.
     private suspend fun buildForYouArtistPool(): List<Artist> {
         val fromTimeStamp = System.currentTimeMillis() - 86400000L * 30
         val toTimeStamp = System.currentTimeMillis()
@@ -945,8 +869,6 @@ class HomeViewModel @Inject constructor(
             val toTimeStamp = System.currentTimeMillis()
             val newShelves = mutableListOf<ForYouShelfItem>()
             var scanned = 0
-            // Scan up to one full lap of the pool looking for 10 more valid shelves; wrap the
-            // cursor (reshuffling) once exhausted so the carousel keeps producing content.
             while (newShelves.size < 10 && scanned < forYouArtistPool.size) {
                 if (forYouPoolCursor >= forYouArtistPool.size) {
                     forYouArtistPool = forYouArtistPool.shuffled()
@@ -997,8 +919,6 @@ class HomeViewModel @Inject constructor(
         if (likedSongs.isEmpty()) return
 
         val seeds = likedSongs.shuffled().distinctBy { it.id }.take(5)
-        
-        // Use a synchronized list to collect results safely from concurrent coroutines
         val items = java.util.Collections.synchronizedList(mutableListOf<DailyDiscoverItem>())
 
         kotlinx.coroutines.coroutineScope {
@@ -1015,7 +935,6 @@ class HomeViewModel @Inject constructor(
                                 }
                                 .shuffled()
 
-                            // Simple check to avoid immediate duplicate of seed
                             val recommendation = recommendations.firstOrNull { rec ->
                                 rec.id != seed.id
                             }
@@ -1034,8 +953,6 @@ class HomeViewModel @Inject constructor(
                 }
             }.forEach { it.join() }
         }
-        
-        // Final deduplication just in case multiple seeds recommended the same song
         dailyDiscover.value = items.toList().distinctBy { it.recommendation.id }.shuffled()
     }
 
@@ -1052,7 +969,7 @@ class HomeViewModel @Inject constructor(
                     .ifEmpty { relatedSongs.shuffled().take(20) }
             }
             QuickPicks.LAST_LISTEN -> {
-                val song = database.events().first().firstOrNull()?.song
+                val song = database.latestEvent().first()?.song
                 if (song != null && database.hasRelatedSongs(song.id)) {
                     quickPicks.value = database.getRelatedSongs(song.id).first().filterVideoSongs(hideVideoSongs).shuffled().take(20)
                 }
@@ -1063,7 +980,7 @@ class HomeViewModel @Inject constructor(
     private suspend fun enrichQuickPicksFromNetwork() {
         if (quickPicksEnum.first() != QuickPicks.QUICK_PICKS) return
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-        val recentSong = database.events().first().firstOrNull()?.song ?: return
+        val recentSong = database.latestEvent().first()?.song ?: return
         val endpoint = YouTube.next(WatchEndpoint(videoId = recentSong.id)).getOrNull()?.relatedEndpoint ?: return
         val ytSimilarSongs = mutableListOf<Song>()
         YouTube.related(endpoint).onSuccess { page ->
@@ -1129,7 +1046,6 @@ class HomeViewModel @Inject constructor(
                     }
                 }
             }
-            
             songSeeds.map { seed ->
                 launch(Dispatchers.IO) {
                     val endpoint = YouTube.next(WatchEndpoint(videoId = seed.id)).getOrNull()?.relatedEndpoint
@@ -1161,7 +1077,6 @@ class HomeViewModel @Inject constructor(
                     YouTube.playlist(playlist.id).onSuccess { page ->
                         val songs = page.songs.take(10)
                         if (songs.isNotEmpty()) {
-                            // Use song count from the playlist page if available, otherwise use original
                             val songCountText = page.playlist.songCountText ?: playlist.songCountText
                             val updatedPlaylist = playlist.copy(songCountText = songCountText)
                             playlists.add(CommunityPlaylistItem(updatedPlaylist, songs))
@@ -1428,7 +1343,6 @@ class HomeViewModel @Inject constructor(
         val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
         val fromTimeStamp = System.currentTimeMillis() - 86400000L * 7 * 2
 
-        // Phase 1: DB-only — unblocks UI as fast as possible
         try {
             coroutineScope {
                 launch(Dispatchers.IO) { getQuickPicks() }
@@ -1445,8 +1359,6 @@ class HomeViewModel @Inject constructor(
             }
             allLocalItems.value = (quickPicks.value.orEmpty() + keepListening.value.orEmpty())
                 .filter { it is Song || it is Album }
-            // DB-derived lists only: lastLoadedAt must NOT be bumped here, otherwise a failed
-            // network phase still leaves HomeCache "fresh" and stale content keeps being served.
             HomeCache.quickPicks = quickPicks.value
             HomeCache.keepListening = keepListening.value
             isPhase1Complete.value = true
@@ -1455,7 +1367,6 @@ class HomeViewModel @Inject constructor(
             phase1Complete.value = true
         }
 
-        // Mood: parte subito con cached params, senza aspettare YouTube.home()
         val cachedMoodParams = cachedMoodSnapshot.value?.chipParams
         val cachedMoodTitle = cachedMoodSnapshot.value?.chipTitle
         if (!cachedMoodParams.isNullOrEmpty()) {
@@ -1464,14 +1375,11 @@ class HomeViewModel @Inject constructor(
             }
         }
 
-        // Phase 2a: DB secondario — nessuna rete, parte subito
         viewModelScope.launch(Dispatchers.IO) {
             getForgottenFavorites()
             HomeCache.forgottenFavorites = forgottenFavorites.value
         }
 
-        // Phase 2b: Rete — parte subito, in parallelo col Mood, così non arriva
-        // in coda dietro un ritardo artificiale
         viewModelScope.launch(Dispatchers.IO) {
             YouTube.explore().onSuccess { page ->
                 explorePage.value = page.copy(newReleaseAlbums = page.newReleaseAlbums.filterExplicit(hideExplicit))
@@ -1487,8 +1395,6 @@ class HomeViewModel @Inject constructor(
                     val recovered = syncUtils.reInjectCredentials()
                     if (recovered) homeResult = YouTube.home()
                 } else {
-                    // Anonymous: stale/expired visitorData can cause failures on reopen.
-                    // Fetch fresh visitor data and retry once.
                     YouTube.visitorData().getOrNull()?.let { fresh ->
                         YouTube.visitorData = fresh
                         context.dataStore.edit { it[VisitorDataKey] = fresh }
@@ -1496,8 +1402,6 @@ class HomeViewModel @Inject constructor(
                     homeResult = YouTube.home()
                 }
             }
-            // Anonymous users: if the response succeeded but returned no sections,
-            // also try refreshing visitor data once (stale session can return empty content).
             if (homeResult.isSuccess && YouTube.cookie == null &&
                 homeResult.getOrNull()?.sections?.isEmpty() == true) {
                 YouTube.visitorData().getOrNull()?.let { fresh ->
@@ -1521,9 +1425,6 @@ class HomeViewModel @Inject constructor(
                 )
                 homePage.value = transformedPage
 
-                // Cold start fallback: fresh installs have no local history, so Quick Picks
-                // would otherwise stay empty forever. Seed it from the home feed and let it
-                // get replaced by real listening data over time.
                 if (quickPicks.value.isNullOrEmpty()) {
                     val homeSongs = transformedPage.sections.flatMap { it.items }
                         .filterIsInstance<SongItem>()
@@ -1556,10 +1457,6 @@ class HomeViewModel @Inject constructor(
                 else null
 
                 if (smartBootEnabled) {
-                    // Smart Boot: the chip page used to be fetched twice back to back — once by
-                    // toggleChip (to swap the raw feed) and once by loadMoodPage (to fill the
-                    // Mood row). Both always resolved to the same chip, so a single fetch now
-                    // feeds both consumers. Same end state, half the cold-start requests.
                     (preferredChip ?: transformedChips?.firstOrNull())?.let { chip ->
                         applyChipWithSingleFetch(chip, hideExplicit, hideVideoSongs, hideYoutubeShorts)
                     }
@@ -1575,9 +1472,6 @@ class HomeViewModel @Inject constructor(
                         loadMoodPage(chip.endpoint?.params, chip.title, hideExplicit, hideVideoSongs, hideYoutubeShorts)
                     }
                 }
-                // Freshness is only earned by a successful network fetch: bumping the
-                // timestamp here (instead of after the DB-only phase) means a failed run
-                // leaves HomeCache stale so the next load actually retries.
                 HomeCache.homePage = homePage.value
                 HomeCache.lastLoadedAt = System.currentTimeMillis()
                 context.dataStore.edit { it[HomeCacheLastLoadedKey] = HomeCache.lastLoadedAt }
@@ -1591,14 +1485,11 @@ class HomeViewModel @Inject constructor(
             }
         }
 
-        // Phase 3: Heavy — scaglionato, ben lontano dal caricamento immagini
         viewModelScope.launch(Dispatchers.IO) {
             if (!smartBootEnabled) kotlinx.coroutines.delay(4500)
             enrichQuickPicksFromNetwork()
             HomeCache.quickPicks = quickPicks.value
         }
-        // getDailyDiscover, getCommunityPlaylists, getSimilarRecommendations are now
-        // lazy — started via onSectionBecameVisible() when the user scrolls to them.
     }
 
     private val _isLoadingMore = MutableStateFlow(false)
@@ -1664,7 +1555,6 @@ class HomeViewModel @Inject constructor(
             )
             selectedChip.value = chip
 
-            // Fetch podcast-specific data when podcasts chip is selected
             if (chip.title.contains("Podcast", ignoreCase = true)) {
                 fetchPodcastData()
             }
@@ -1701,7 +1591,6 @@ class HomeViewModel @Inject constructor(
                 if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
             }
 
-            // Feed half
             previousHomePage.value = homePage.value
             homePage.value = nextSections.copy(chips = homePage.value?.chips, sections = filteredSections)
             selectedChip.value = chip
@@ -1709,7 +1598,6 @@ class HomeViewModel @Inject constructor(
                 fetchPodcastData()
             }
 
-            // Mood row half
             val params = chip.endpoint?.params
             val moodFilteredPage = nextSections.copy(chips = null, sections = filteredSections)
             lastMoodChipParams = params
@@ -1728,14 +1616,12 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun fetchPodcastData() {
-        // Fetch saved podcast shows from official API
         YouTube.savedPodcastShows().onSuccess { shows ->
             savedPodcastShows.value = shows
         }.onFailure {
             reportException(it)
         }
 
-        // Fetch episodes for later from official API
         YouTube.episodesForLater().onSuccess { episodes ->
             episodesForLater.value = episodes
         }.onFailure {
@@ -1763,7 +1649,6 @@ class HomeViewModel @Inject constructor(
         randomSeed.value = System.currentTimeMillis()
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // If a chip is selected, reload the chip's content instead of the default home
                 val currentChip = selectedChip.value
                 if (currentChip != null) {
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
@@ -1787,12 +1672,9 @@ class HomeViewModel @Inject constructor(
                 }
                 refreshHeroCarousel(System.currentTimeMillis(), force = true)
             } finally {
-                // Always reset: an exception escaping load() used to leave isRefreshing stuck
-                // at true and every later pull-to-refresh silently no-op.
                 isRefreshing.value = false
             }
         }
-        // Run sync when user manually refreshes
         viewModelScope.launch(Dispatchers.IO) {
             syncUtils.tryAutoSync()
         }
@@ -1807,9 +1689,6 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
-        // New releases from followed artists are checked here too (throttled inside the notifier),
-        // not just on Library>Artists — Home is the screen actually opened every launch, so this is
-        // what makes the "+N" badge show up without a separate visit to the Artists tab.
         viewModelScope.launch(Dispatchers.IO) {
             val followedIds = database.artistsBookmarked(ArtistSortType.CREATE_DATE, true)
                 .first()
@@ -1818,7 +1697,6 @@ class HomeViewModel @Inject constructor(
             newReleaseNotifier.refresh(followedIds)
         }
 
-        // Read snapshots once from DataStore for fast first paint
         viewModelScope.launch(Dispatchers.IO) {
             val prefs = context.dataStore.data.first()
             prefs[SpeedDialSnapshotKey]?.let { json ->
@@ -1837,7 +1715,6 @@ class HomeViewModel @Inject constructor(
             prefs[AccountPhotoUrlKey]?.takeIf { it.isNotEmpty() }?.let { accountImageUrl.value = it }
         }
 
-        // Save speed dial snapshot when live items change
         viewModelScope.launch(Dispatchers.IO) {
             speedDialItems
                 .filter { it.isNotEmpty() }
@@ -1854,14 +1731,10 @@ class HomeViewModel @Inject constructor(
                 }
         }
 
-        // Load home data
         viewModelScope.launch(Dispatchers.IO) {
             if (HomeCache.lastLoadedAt == 0L) {
                 HomeCache.lastLoadedAt = context.dataStore.get(HomeCacheLastLoadedKey, 0L)
             }
-            // Smart Boot: paint "Featured for you" instantly from the last generated snapshot,
-            // before any network work. heroCarouselFirstGenDone stays false so the first fresh
-            // generation still replaces this content once real data arrives.
             if (smartBootEnabled && isHeroCarouselEnabled.value) {
                 context.dataStore.get(HeroCarouselSnapshotKey, "")?.takeIf { it.isNotEmpty() }?.let { json ->
                     runCatching { snapshotJson.decodeFromString<HeroCarouselSnapshot>(json) }.getOrNull()
@@ -1882,10 +1755,6 @@ class HomeViewModel @Inject constructor(
                 communityPlaylists.value = HomeCache.communityPlaylists
                 dischiPerTe.value = HomeCache.dischiPerTe
                 forYouShelves.value = HomeCache.forYouShelves.orEmpty()
-                // force = true: this path never starts the network pipeline, so no later
-                // arrival would fire appendHeroCarousel — generate the full list (genre pool
-                // included, mostly served by GenreProvider's disk cache) in one shot, exactly
-                // like the pre-Smart-Boot behavior.
                 refreshHeroCarousel(force = true)
                 isPhase1Complete.value = true
                 phase1Complete.value = true
@@ -1915,8 +1784,6 @@ class HomeViewModel @Inject constructor(
             syncUtils.tryAutoSync()
         }
 
-        // Off the cold-start critical path (delayed like tryAutoSync above) — cheap no-op most
-        // launches since it's due-checked against a 7-day cooldown in DataStore.
         viewModelScope.launch(Dispatchers.IO) {
             kotlinx.coroutines.delay(12000)
             syncDiscoveryWeeklyIfNeeded()
@@ -1980,7 +1847,6 @@ class HomeViewModel @Inject constructor(
         }
 
 
-        // Listen for HideYoutubeShorts preference changes and reload account playlists instantly
         viewModelScope.launch(Dispatchers.IO) {
             context.dataStore.data
                 .map { it[HideYoutubeShortsKey] ?: false }

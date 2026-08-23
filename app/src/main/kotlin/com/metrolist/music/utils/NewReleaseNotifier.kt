@@ -42,9 +42,9 @@ data class FeaturedSongInfo(
     val title: String,
     val thumbnailUrl: String,
     val albumId: String? = null,
-    val albumTitle: String? = null, // null => standalone single feature, not on someone else's album
+    val albumTitle: String? = null,
     val otherArtists: List<NameId> = emptyList(),
-    val year: Int? = null, // best-effort chronological sort key
+    val year: Int? = null,
     val firstSeenMs: Long,
 )
 
@@ -74,8 +74,6 @@ data class ArtistReleaseState(
     val initialized: Boolean = false,
     val knownFeaturedSongIds: Set<String> = emptySet(),
     val featuredSongs: List<FeaturedSongInfo> = emptyList(),
-    // Genius song ids already processed (whether or not a playable YTM match was found), so a
-    // credit Genius knows about but YTM search can't resolve isn't retried every single cycle.
     val knownGeniusSongIds: Set<Int> = emptySet(),
 )
 
@@ -102,26 +100,14 @@ class NewReleaseNotifier @Inject constructor(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
-    // ponytail: SQLite IN() caps at ~999 binds; new-release backlog realistically stays far below,
-    // but clamp so a pathological store can never crash the query.
     private val maxReconcileIds = 900
 
-    // ponytail: bound the persisted Featuring list so a prolific artist's collab history doesn't
-    // grow the DataStore blob unbounded. Newest (by firstSeenMs) kept.
     private val maxFeaturedSongsPerArtist = 200
 
-    // ponytail: bound extra album fetches per refresh cycle for feature detection — a "Featured on"
-    // shelf realistically lists a handful of albums, not hundreds.
     private val maxFeatureAlbumFetchesPerArtist = 20
 
-    // One-time baseline scan (first refresh after following an artist) can afford to look at more
-    // albums than a recurring 4h cycle — it happens once, not every window, and existing without it
-    // is exactly what caused backlog collabs to trickle in as false "new" over following cycles.
     private val maxFeatureAlbumFetchesBaseline = 100
 
-    // ponytail: Genius pages are cheap (metadata only) compared to the YTM album fetches above, but
-    // each candidate still costs a YTM search call to resolve a playable id, so that's the real
-    // limiter. Baseline gets more room (one-time, same reasoning as the album cap above).
     private val maxGeniusPagesPerCycle = 2
     private val maxGeniusPagesBaseline = 6
     private val maxGeniusResolveAttemptsPerCycle = 10
@@ -331,14 +317,12 @@ class NewReleaseNotifier @Inject constructor(
         val store = parse(prefsSnapshot[ArtistNewReleasesKey]).toMutableMap()
         var unseenSongDots = parseIds(prefsSnapshot[UnseenSongDotsKey])
         val geniusToken = prefsSnapshot[GeniusApiTokenKey].orEmpty()
-        // Forget artists that were unfollowed.
         store.keys.retainAll(followed)
 
         for (artistId in followed) {
             val page = YouTube.artist(artistId).getOrNull() ?: continue
             val artistName = page.artist.title
 
-            // Owned releases — Album/Single/EP shelves.
             val currentAlbumIds = page.sections
                 .filter { section ->
                     val t = section.title
@@ -354,11 +338,6 @@ class NewReleaseNotifier @Inject constructor(
 
             val state = store[artistId] ?: ArtistReleaseState()
             if (!state.initialized) {
-                // First time we see this artist: baseline both owned releases AND existing features
-                // so neither back-catalog shows up as "new" later. Skipping the feature baseline
-                // here (as before) was the bug: knownFeaturedSongIds started empty, so every collab
-                // the throttled per-cycle album scan (20/refresh) eventually reached over following
-                // 4h windows got flagged "new" even though it was old backlog, not a real release.
                 val baselineFeatures = discoverFeatures(
                     page, artistId, currentAlbumIds, knownAlbumIds = emptySet(), now,
                     albumFetchCap = maxFeatureAlbumFetchesBaseline,
@@ -385,10 +364,6 @@ class NewReleaseNotifier @Inject constructor(
                 YouTube.album(albumId).getOrNull()?.songs?.map { it.id }.orEmpty()
             }
 
-            // Features: any track anywhere on the page crediting this artist but not as primary.
-            // Bare SongItem shelves (e.g. the artist's own catalog appearing elsewhere) are checked
-            // directly; AlbumItem shelves not already known to be owned by this artist require
-            // fetching the album to see its actual tracklist and credits.
             val discoveredFeatures = discoverFeatures(
                 page, artistId, currentAlbumIds, knownAlbumIds = state.knownAlbumIds, now,
                 albumFetchCap = maxFeatureAlbumFetchesPerArtist,

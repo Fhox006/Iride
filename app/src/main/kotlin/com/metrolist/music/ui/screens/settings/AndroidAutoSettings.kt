@@ -154,7 +154,6 @@ fun AndroidAutoSettings(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
     ) {
-        // Visible sections
         Material3SettingsGroup(
             title = stringResource(R.string.android_auto_visible_sections),
             items = listOf(
@@ -240,7 +239,6 @@ fun AndroidAutoSettings(
 
         Spacer(Modifier.height(27.dp))
 
-        // Quick-add destination playlist
         var showTargetPlaylistDialog by remember { mutableStateOf(false) }
 
         if (showTargetPlaylistDialog) {
@@ -297,7 +295,6 @@ fun AndroidAutoSettings(
 
         Spacer(Modifier.height(27.dp))
 
-        // YouTube playlists
         Material3SettingsGroup(
             title = stringResource(R.string.your_youtube_playlists),
             items = listOf(

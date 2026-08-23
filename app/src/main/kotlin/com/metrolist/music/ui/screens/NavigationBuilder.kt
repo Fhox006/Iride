@@ -109,7 +109,7 @@ fun NavGraphBuilder.NavigationBuilder(
         route = Screens.Search.route,
     ) { backStackEntry ->
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
-        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
+        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
         val isSystemInDarkTheme = isSystemInDarkTheme()
 
         val useDarkTheme = remember(darkTheme, isSystemInDarkTheme) {
@@ -232,7 +232,6 @@ fun NavGraphBuilder.NavigationBuilder(
         ArtistGameScreen(navController)
     }
 
-    // Only pass scrollBehavior to screens that actually use it
     composable(
         route = "artist/{artistId}/albums",
         arguments = listOf(navArgument("artistId") { type = NavType.StringType })
@@ -425,7 +424,6 @@ fun NavGraphBuilder.NavigationBuilder(
         SpotifyImportScreen(navController = navController)
     }
 
-    // Library sub-screens (no scrollBehavior needed)
     composable("library_playlists") {
         LibraryPlaylistsScreen(navController = navController)
     }

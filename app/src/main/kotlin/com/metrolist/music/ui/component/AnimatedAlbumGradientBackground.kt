@@ -160,30 +160,23 @@ private fun downscaleBitmap(bitmap: Bitmap, maxSide: Int = 96): Bitmap {
 private fun normalizeColorForBackground(color: Color): Color {
     val hsl = colorToHsl(color)
 
-    // CASO 1: nero con artefatto JPEG (tinta scurissima) → nero pulito
     if (hsl.l < 0.16f && hsl.s > 0.12f) {
         return hslToColor(HslColor(hsl.h, 0f, 0.12f))
     }
 
-    // CASO 2: nero / molto scuro → mantieni scuro
     if (hsl.l < 0.16f) {
         return hslToColor(HslColor(hsl.h, hsl.s.coerceAtMost(0.10f), 0.13f))
     }
 
-    // CASO 3: bianco / quasi-bianco / pastello slavato → WhiteMappedGray
     if (hsl.l > 0.72f && hsl.s < 0.40f) {
         return WhiteMappedGray
     }
 
-    // CASO 4: neutro (grigio) → Tieni la tinta originale, normalizza solo L in range ristretto
     if (hsl.s < 0.09f) {
-        // Massimo 2 grigi: uno scuro (0b0b0b) e uno medio (818483)
-        // Mantieni la tinta originale degli altri grigi
-        val targetL = hsl.l.coerceIn(0.16f, 0.51f)  // range medio tra i 2 grigi estremi
+        val targetL = hsl.l.coerceIn(0.16f, 0.51f)
         return hslToColor(HslColor(hsl.h, hsl.s, targetL))
     }
 
-    // CASO 5: colore già intenso (s >= 0.60) → preserva tonalità, abbassa solo L
     if (hsl.s >= 0.60f) {
         val targetL = when {
             hsl.l > 0.70f -> (hsl.l - 0.25f).coerceIn(0.28f, 0.50f)
@@ -193,7 +186,6 @@ private fun normalizeColorForBackground(color: Color): Color {
         return hslToColor(HslColor(hsl.h, hsl.s, targetL))
     }
 
-    // CASO 6: colore normale (0.09 <= s < 0.60)
     val targetL = when {
         hsl.l > 0.72f -> (hsl.l - 0.28f).coerceIn(0.22f, 0.52f)
         hsl.l > 0.55f -> (hsl.l - 0.18f).coerceIn(0.22f, 0.52f)
@@ -205,10 +197,6 @@ private fun normalizeColorForBackground(color: Color): Color {
     return hslToColor(HslColor(hsl.h, targetS, targetL))
 }
 
-// ─────────────────────────────────────────────────────────────
-// Rimossa postProcessColor - ora i grigi mantengono la loro tinta
-// La deduplicazione tiene MAX 2 grigi (scuro + medio)
-// ─────────────────────────────────────────────────────────────
 
 private fun deduplicateGrays(colors: List<ExtractedColor>): List<ExtractedColor> {
     var darkGrayCount = 0
@@ -217,7 +205,7 @@ private fun deduplicateGrays(colors: List<ExtractedColor>): List<ExtractedColor>
 
     colors.forEach { ec ->
         val hsl = colorToHsl(ec.color)
-        if (hsl.s < 0.09f) {  // è un grigio
+        if (hsl.s < 0.09f) {
             when {
                 hsl.l < 0.16f && darkGrayCount < 1 -> {
                     result += ec
@@ -228,14 +216,12 @@ private fun deduplicateGrays(colors: List<ExtractedColor>): List<ExtractedColor>
                     midGrayCount++
                 }
                 hsl.l > 0.55f -> {
-                    // grigio chiaro → mappalo a WhiteMappedGray se non già presente
                     if (result.none { colorDistanceHsl(it.color, WhiteMappedGray) < 10f }) {
                         result += ec.copy(color = WhiteMappedGray)
                     }
                 }
             }
         } else {
-            // colore saturo → tieni sempre
             result += ec
         }
     }
@@ -330,7 +316,6 @@ private fun buildBackgroundSpec(bitmap: Bitmap): BackgroundSpec {
     return BackgroundSpec(baseBackground, extracted)
 }
 
-// ======================= COMPOSABLE PRINCIPALE =======================
 
 @Composable
 fun HomeAnimatedAlbumGradient(
@@ -348,7 +333,6 @@ fun HomeAnimatedAlbumGradient(
         val colors = withContext(Dispatchers.IO) {
             runCatching { extractColors(thumbnail).take(3).map { it.color } }.getOrNull() ?: emptyList()
         }
-        // only overwrite if extraction succeeded — keep old colors until new ones are ready
         if (colors.isNotEmpty()) extractedColors = colors
     }
 
@@ -374,11 +358,9 @@ fun HomeAnimatedAlbumGradient(
 
     val overlayAlpha = if (isDark) 0.55f else 0.40f
 
-    // Soften album colors slightly toward background before drawing
     val color0 = blend(c0, bgColor, 0.15f)
     val color1 = blend(c1, bgColor, 0.15f)
 
-    // Capture outside Canvas lambda (MaterialTheme inaccessible inside DrawScope)
     val canvasBg = bgColor
 
     Canvas(
@@ -389,7 +371,6 @@ fun HomeAnimatedAlbumGradient(
         val w = size.width
         val h = size.height
 
-        // Left blob — drifts gently right with shift
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(color0.copy(alpha = overlayAlpha), Color.Transparent),
@@ -400,7 +381,6 @@ fun HomeAnimatedAlbumGradient(
             center = Offset(w * (0.20f + 0.12f * shift), h * 0.28f),
         )
 
-        // Right blob — drifts gently left with shift
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(color1.copy(alpha = overlayAlpha * 0.88f), Color.Transparent),
@@ -411,7 +391,6 @@ fun HomeAnimatedAlbumGradient(
             center = Offset(w * (0.78f - 0.10f * shift), h * 0.18f),
         )
 
-        // Vertical fade: transparent at top → background at bottom
         drawRect(
             brush = Brush.verticalGradient(
                 colorStops = arrayOf(
@@ -526,68 +505,3 @@ fun AnimatedAlbumGradientBackground(
     }
 }
 
-/*
-@Composable
-private fun DebugColorPipelineDialog(
-    rawColors        : List<ExtractedColor>,
-    normalizedColors : List<ExtractedColor>,
-    baseBackground   : Color,
-    onDismiss        : () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF111114))
-                .padding(16.dp)
-        ) {
-            Text(
-                "🎨  DEBUG — Color Pipeline",
-                color      = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize   = 13.sp,
-                fontFamily = FontFamily.Monospace
-            )
-            Spacer(Modifier.height(12.dp))
-
-            Text("① Colori campionati (raw):",
-                color = Color(0xFFFFD060), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-            Spacer(Modifier.height(4.dp))
-            rawColors.forEachIndexed { i, ec ->
-                ColorSwatch(ec.color, "Raw[$i]", "pop:${ec.population}  ${ec.color.normalizeLabel()}")
-            }
-
-            Spacer(Modifier.height(12.dp))
-            Text("② Dopo normalize + postProcess + dedup:",
-                color = Color(0xFF60D0FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-            Spacer(Modifier.height(4.dp))
-            normalizedColors.forEachIndexed { i, ec ->
-                ColorSwatch(ec.color, "Final[$i]", ec.color.normalizeLabel())
-            }
-
-            Spacer(Modifier.height(12.dp))
-            Text("③ baseBackground (blend → Black 65%):",
-                color = Color(0xFF90FF90), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-            Spacer(Modifier.height(4.dp))
-            ColorSwatch(baseBackground, "Base")
-
-            Spacer(Modifier.height(16.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                Text(
-                    "  Chiudi  ",
-                    color      = Color(0xFFFFD060),
-                    fontWeight = FontWeight.Bold,
-                    fontSize   = 12.sp,
-                    fontFamily = FontFamily.Monospace,
-                    modifier   = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF2A2A2E))
-                        .clickable { onDismiss() }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
-        }
-    }
-}
-*/

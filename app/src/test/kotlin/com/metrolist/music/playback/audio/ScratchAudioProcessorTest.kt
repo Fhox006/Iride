@@ -48,8 +48,6 @@ class ScratchAudioProcessorTest {
     @Test
     fun `normal playback is a bit-exact passthrough`() {
         val processor = newProcessor()
-        // The head deliberately sits a few ms behind the newest frame, so the first buffers are
-        // absorbed building that lag; everything after must come out untouched and in order.
         val output = processor.pump(buffers = 20)
         assertTrue("expected audio out", output.size > framesPerBuffer * 15)
 
@@ -62,14 +60,11 @@ class ScratchAudioProcessorTest {
 
     @Test
     fun `output length tracks head speed so the decoder follows`() {
-        // 1x: one output frame per input frame, or playback itself would drift.
         val normal = newProcessor()
         normal.pump(buffers = 10)
         val normalSteady = normal.pump(buffers = 10).size
         assertEquals(framesPerBuffer * 10, normalSteady)
 
-        // Held still: output expands, which is what throttles the decoder instead of letting it
-        // race forward over the history the head is scrubbing.
         val held = newProcessor()
         held.pump(buffers = 10)
         held.setVelocity(0.0)
@@ -77,7 +72,6 @@ class ScratchAudioProcessorTest {
         val heldSteady = held.pump(buffers = 5).size
         assertTrue("expected expansion, got $heldSteady", heldSteady > framesPerBuffer * 5)
 
-        // Fast forward: output shrinks, so the sink drains it quickly and pulls the decoder along.
         val fast = newProcessor()
         fast.pump(buffers = 10)
         fast.setVelocity(4.0)
@@ -89,14 +83,12 @@ class ScratchAudioProcessorTest {
     @Test
     fun `reverse replays recorded frames backwards and rewinds the reported position`() {
         val processor = newProcessor()
-        // Play far enough in that reversing has real history behind it rather than hitting frame 0.
         processor.pump(buffers = 200)
         assertTrue("forward playback should not drift", Math.abs(processor.driftMs) < 100)
 
         processor.setVelocity(-1.0)
         val reversed = processor.pump(buffers = 10, fromFrame = 200 * framesPerBuffer)
 
-        // Skip the ramp down through 0 into reverse, then the ramp must run downwards.
         val settled = reversed.takeLast(2000).map { it.toInt() }
         var descending = 0
         settled.zipWithNext { a, b -> if (b < a) descending++ }

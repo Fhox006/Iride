@@ -31,10 +31,6 @@ import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sin
 
-// 4-sprite Apple Music-style background.
-// Structure: PixiJS LyricsScene reference (4 copies of album art, orbit + rotation).
-// Blur: Modifier.blur (same API as LyricsLine). Saturation: graphicsLayer colorFilter.
-// Periods: 2π / (speed * 30fps). Speeds: [0.003, 0.008, 0.006, 0.004] rad/frame.
 @Composable
 fun BetterAnimatedGradientBackground(
     thumbnail: Bitmap?,
@@ -47,30 +43,24 @@ fun BetterAnimatedGradientBackground(
 
     val infinite = rememberInfiniteTransition(label = "better_anim_grad")
 
-    // Periods 2.5× slower than PixiJS reference — more hypnotic on mobile.
-    // RepeatMode.Reverse: no visible jump at loop boundary.
-    // sprite 0: CW slow drift
     val angle0 by infinite.animateFloat(
         initialValue = 0f,
         targetValue = (PI * 2).toFloat(),
         animationSpec = infiniteRepeatable(tween(174_533, easing = LinearEasing), RepeatMode.Reverse),
         label = "bag_a0",
     )
-    // sprite 1: CCW medium
     val angle1 by infinite.animateFloat(
         initialValue = 0f,
         targetValue = (PI * 2).toFloat(),
         animationSpec = infiniteRepeatable(tween(65_450, easing = LinearEasing), RepeatMode.Reverse),
         label = "bag_a1",
     )
-    // sprite 2: CCW orbit
     val angle2 by infinite.animateFloat(
         initialValue = 0f,
         targetValue = (PI * 2).toFloat(),
         animationSpec = infiniteRepeatable(tween(87_268, easing = LinearEasing), RepeatMode.Reverse),
         label = "bag_a2",
     )
-    // sprite 3: CW orbit
     val angle3 by infinite.animateFloat(
         initialValue = 0f,
         targetValue = (PI * 2).toFloat(),
@@ -99,14 +89,12 @@ fun BetterAnimatedGradientBackground(
             val h = size.height
             val maxDim = max(w, h)
 
-            // Dark base — ensures no pure-black bleed if blur clips at edge
             drawRect(Color(0xFF0D0D0D))
 
             val isCrossfading = incomingAlbumImage != null && crossfadeProgress > 0f
             val currentAlpha = if (isCrossfading) 1f - crossfadeProgress else 1f
 
             albumImage?.let { image ->
-                // sprite 0 — centered, 3.0× maxDim
                 val sz0 = (maxDim * 3.0f).toInt()
                 withTransform({
                     translate(w / 2f, h / 2f)
@@ -115,7 +103,6 @@ fun BetterAnimatedGradientBackground(
                     drawImage(image, dstOffset = IntOffset(-sz0 / 2, -sz0 / 2), dstSize = IntSize(sz0, sz0), filterQuality = FilterQuality.Low, alpha = currentAlpha)
                 }
 
-                // sprite 1 — centered, 2.5× maxDim, faster CCW rotation
                 val sz1 = (maxDim * 2.5f).toInt()
                 withTransform({
                     translate(w / 2f, h / 2f)
@@ -124,7 +111,6 @@ fun BetterAnimatedGradientBackground(
                     drawImage(image, dstOffset = IntOffset(-sz1 / 2, -sz1 / 2), dstSize = IntSize(sz1, sz1), filterQuality = FilterQuality.Low, alpha = currentAlpha)
                 }
 
-                // sprite 2 — orbiting CCW, 2.2× maxDim
                 val oa2 = -(angle2 * 0.75f).toDouble()
                 val cx2 = w / 2f + (maxDim * 0.18f) * cos(oa2).toFloat()
                 val cy2 = h / 2f + (maxDim * 0.18f) * sin(oa2).toFloat()
@@ -136,7 +122,6 @@ fun BetterAnimatedGradientBackground(
                     drawImage(image, dstOffset = IntOffset(-sz2 / 2, -sz2 / 2), dstSize = IntSize(sz2, sz2), filterQuality = FilterQuality.Low, alpha = currentAlpha)
                 }
 
-                // sprite 3 — orbiting CW, 2.0× maxDim
                 val oa3 = (angle3 * 0.5f).toDouble()
                 val cx3 = w / 2f + (maxDim * 0.22f) * cos(oa3).toFloat()
                 val cy3 = h / 2f + (maxDim * 0.22f) * sin(oa3).toFloat()
@@ -149,9 +134,8 @@ fun BetterAnimatedGradientBackground(
                 }
             }
 
-            // Draw incoming bitmap sprites on top during crossfade
             if (isCrossfading) {
-                incomingAlbumImage?.let { incoming ->
+                incomingAlbumImage.let { incoming ->
                     val sz0 = (maxDim * 3.0f).toInt()
                     withTransform({
                         translate(w / 2f, h / 2f)
@@ -192,7 +176,6 @@ fun BetterAnimatedGradientBackground(
                 }
             }
 
-            // Darkness overlay for text legibility
             drawRect(Color.Black.copy(alpha = 0.30f))
         }
     }

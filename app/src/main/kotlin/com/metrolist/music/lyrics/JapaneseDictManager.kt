@@ -11,8 +11,9 @@ import com.atilika.kuromoji.dict.ConnectionCosts
 import com.atilika.kuromoji.dict.InsertedDictionary
 import com.atilika.kuromoji.dict.TokenInfoDictionary
 import com.atilika.kuromoji.dict.UnknownDictionary
-import com.atilika.kuromoji.fst.FST
+import com.atilika.kuromoji.ipadic.Token
 import com.atilika.kuromoji.ipadic.Tokenizer
+import com.atilika.kuromoji.trie.DoubleArrayTrie
 import com.atilika.kuromoji.util.ResourceResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -47,14 +48,11 @@ object JapaneseDictManager {
     private const val DICT_JAR_URL =
         "https://repo1.maven.org/maven2/com/atilika/kuromoji/kuromoji-ipadic/0.9.0/kuromoji-ipadic-0.9.0.jar"
 
-    // SHA-1 of the Maven Central artifact; guards against truncated or tampered downloads.
     private const val DICT_JAR_SHA1 = "f0ce8fadfc1f1f9f77b25fd4e78a129cc0f76062"
     private const val DICT_ENTRY_PREFIX = "com/atilika/kuromoji/ipadic/"
     private const val DICT_JAR_NAME = "kuromoji_ipadic.jar"
     private const val TEMP_JAR_NAME = "kuromoji_ipadic.tmp"
 
-    // Same defaults as the stock ipadic builder; its penalty fields are private so the
-    // constants are replicated here.
     private const val KANJI_LENGTH_THRESHOLD = 2
     private const val KANJI_PENALTY = 3000
     private const val OTHER_LENGTH_THRESHOLD = 7
@@ -85,7 +83,6 @@ object JapaneseDictManager {
         val file = dictJarFile(context)
         val valid = file.exists() && sha1Hex(file).equals(DICT_JAR_SHA1, ignoreCase = true)
         if (file.exists() && !valid) {
-            // Corrupt or incomplete download: discard so it can be fetched again.
             file.delete()
             Timber.tag(TAG).w("Discarded invalid Japanese dictionary at %s", file.absolutePath)
         }
@@ -160,7 +157,7 @@ object JapaneseDictManager {
      * Returns null when the dictionary has not been downloaded yet so callers can fall
      * back to leaving the text unchanged.
      */
-    suspend fun tokenize(text: String): List<com.atilika.kuromoji.ipadic.Token>? =
+    suspend fun tokenize(text: String): List<Token>? =
         withContext(Dispatchers.Default) {
             getOrCreateTokenizer()?.tokenize(text)
         }
@@ -168,17 +165,23 @@ object JapaneseDictManager {
     private suspend fun getOrCreateTokenizer(): Tokenizer? {
         tokenizer?.let { return it }
         return tokenizerMutex.withLock {
-            tokenizer ?: run {
-                val context = appContext ?: return null
-                if (!isDownloaded()) return null
-                try {
-                    OnDemandDictionaryBuilder(dictJarFile(context)).build().also {
-                        tokenizer = it
-                        Timber.tag(TAG).i("Japanese tokenizer ready")
-                    }
-                } catch (e: Exception) {
-                    Timber.tag(TAG).e(e, "Failed to build Japanese tokenizer")
+            val existing = tokenizer
+            if (existing != null) {
+                existing
+            } else {
+                val context = appContext
+                if (context == null || !isDownloaded()) {
                     null
+                } else {
+                    try {
+                        OnDemandDictionaryBuilder(dictJarFile(context)).build().also {
+                            tokenizer = it
+                            Timber.tag(TAG).i("Japanese tokenizer ready")
+                        }
+                    } catch (e: Exception) {
+                        Timber.tag(TAG).e(e, "Failed to build Japanese tokenizer")
+                        null
+                    }
                 }
             }
         }
@@ -217,11 +220,7 @@ object JapaneseDictManager {
                     super.close()
                     zip.close()
                 }
-            }.buffered(BUFFER_SIZE.toLong())
-        }
-
-        companion object {
-            private const val BUFFER_SIZE = 64 * 1024
+            }.buffered(ZIP_STREAM_BUFFER_SIZE)
         }
     }
 
@@ -240,7 +239,7 @@ object JapaneseDictManager {
                     OTHER_PENALTY,
                 )
             try {
-                fst = FST.newInstance(resolver)
+                doubleArrayTrie = DoubleArrayTrie.newInstance(resolver)
                 connectionCosts = ConnectionCosts.newInstance(resolver)
                 tokenInfoDictionary = TokenInfoDictionary.newInstance(resolver)
                 characterDefinitions = CharacterDefinitions.newInstance(resolver)
@@ -255,3 +254,4 @@ object JapaneseDictManager {
 }
 
 private const val DEFAULT_BUFFER_SIZE = 128 * 1024
+private const val ZIP_STREAM_BUFFER_SIZE = 64 * 1024

@@ -51,7 +51,6 @@ fun RandomizeGridItem(
             tint = MaterialTheme.colorScheme.onSecondaryContainer
         )
 
-        // Loading Indicator overlay
         Box(modifier = Modifier.alpha(loadingAlpha)) {
             LoadingIndicator(
                 modifier = Modifier.size(48.dp),

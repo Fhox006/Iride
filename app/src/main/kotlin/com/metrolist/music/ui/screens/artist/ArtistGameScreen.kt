@@ -405,7 +405,7 @@ private fun PlayingContent(
                 )
                 if (isSelected) {
                     Icon(
-                        painter = painterResource(if (result!!.correct) R.drawable.check else R.drawable.close),
+                        painter = painterResource(if (result.correct) R.drawable.check else R.drawable.close),
                         contentDescription = null,
                         tint = if (result.correct) Color(0xFF4CAF50) else Color(0xFFE53935),
                     )

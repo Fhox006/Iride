@@ -265,7 +265,6 @@ fun ExperimentalLyrics(
     val lyrics by lyricsViewModel.displayedLyrics.collectAsState()
     val lyricsText = lyrics?.trim()
 
-    // DB entity kept only for provider label and translation persistence
     val lyricsEntity = currentLyricsEntity
 
     val lyricsMenuViewModel: LyricsMenuViewModel = hiltViewModel()
@@ -341,11 +340,6 @@ fun ExperimentalLyrics(
     var showDebugOverlay by remember { mutableStateOf(false) }
     var geminiSetupCompleted by rememberPreference(GeminiSetupCompletedKey, false)
 
-    // Kept alive for the whole composition lifetime (LaunchedEffect(Unit)) so the
-    // manualTrigger SharedFlow always has an active collector. Restarting this effect
-    // whenever a pref changed used to unsubscribe/resubscribe, and any click that landed
-    // in that gap was silently lost (replay = 0). Reads below go through delegated
-    // State getters, so they still see the latest values at collection time.
     LaunchedEffect(Unit) {
         LyricsTranslationHelper.manualTrigger.collectLatest {
             val effectiveApiKey = if (aiProvider == "DeepL") deeplApiKey else openRouterApiKey
@@ -373,8 +367,6 @@ fun ExperimentalLyrics(
         }
     }
 
-    // Translation failed (bad key, quota, network, wrong model/URL...): reopen the setup
-    // dialog so the user can fix the config instead of getting a transient error card only.
     LaunchedEffect(translationStatus) {
         if (translationStatus is LyricsTranslationHelper.TranslationStatus.Error) {
             showApiSetupDialog = true
@@ -544,16 +536,12 @@ fun ExperimentalLyrics(
 
             val shouldScroll = when {
                 isSeeking -> true
-                // If current target just ended and there are other active lines, scroll to the new max
                 !isCurrentTargetStillActive && anyStillActive && scrollMax > scrollTargetIndex -> true
 
-                // If current target just ended and no other active lines
                 !isCurrentTargetStillActive && !anyStillActive && previousScrollActiveIndices.isNotEmpty() -> true
 
-                // If we don't have a target yet and lines became active
                 scrollTargetIndex == -1 && anyStillActive -> true
 
-                // New line started while nothing was active before
                 previousScrollActiveIndices.isEmpty() && anyStillActive && scrollMax > scrollTargetIndex -> true
 
                 else -> false
@@ -814,9 +802,6 @@ fun ExperimentalLyrics(
 
 
         AnimatedVisibility(
-            // Fullscreen hides the normal pills row (its own translate/collapse buttons live in
-            // FullScreenLyricsDialog's top row instead), but the selection-mode share action below
-            // must still surface there — otherwise long-press-to-share has no way to complete.
             visible = effectivePillsVisible && (!isFullScreen || isSelectionModeActive),
             enter = slideInVertically { -it } + fadeIn(),
             exit = slideOutVertically { -it } + fadeOut(),
@@ -892,9 +877,8 @@ fun ExperimentalLyrics(
                             },
                         )
                     }
-                } // end if(showPills)
+                }
 
-                // Action buttons below pills
                 val anySelected = selectedIndices.isNotEmpty()
                 if (showPills) {
                     AnimatedVisibility(
@@ -948,7 +932,7 @@ fun ExperimentalLyrics(
                             }
                         }
                     }
-                } // end if(showPills)
+                }
 
                 AnimatedVisibility(
                     visible = isSelectionModeActive,
@@ -1036,9 +1020,6 @@ fun ExperimentalLyrics(
                                 velocityTracker.addPosition(down.uptimeMillis, down.position)
                                 verticalDrag(down.id) { change ->
                                     val dy = change.positionChange().y
-                                    // Scrolling the lyrics text always wins over the fullscreen dismiss
-                                    // gesture — closing already has a dedicated back press / collapse
-                                    // button, so it doesn't need to also steal this drag.
                                     if (dy < -8f) pillsVisible = false
                                     else if (dy > 8f) pillsVisible = true
                                     userManualOffset = (userManualOffset + dy).coerceIn(safeMinOffset, safeMaxOffset)
@@ -1127,9 +1108,6 @@ fun ExperimentalLyrics(
                                         currentPositionState = currentPositionState,
                                         lyricsOffset = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS,
                                         playerConnection = playerConnection,
-                                        // Small (in-card, non-fullscreen) player view reads
-                                        // cramped at full size — 30% smaller there, back to
-                                        // normal once expanded to the fullscreen dialog.
                                         lyricsTextSize = (if (isFullScreen) 32.4f else 32.4f * 0.7f) * textScale,
                                         lyricsLineSpacing = 1.05f,
                                         expressiveAccent = expressiveAccent,
@@ -1211,7 +1189,6 @@ fun ExperimentalLyrics(
             }
             }
         } else if (lyricsVisible) {
-            // lyrics string arrived but async parse not yet done — show shimmer briefly
             Column(modifier = Modifier.padding(top = 160.dp)) {
                 ShimmerHost {
                     repeat(10) {

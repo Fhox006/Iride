@@ -36,10 +36,6 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  */
 @OptIn(ExperimentalEncodingApi::class)
 class InnerTube {
-    // Held here (instead of built inline in createClient) so it can be evicted when the device
-    // changes network. Sockets opened on a network that has since gone away stay in the pool and
-    // get reused by every later request, which then hangs until the connect timeout — repeatedly,
-    // for the whole process lifetime. That is the "app works again only after force close" case.
     private val connectionPool = okhttp3.ConnectionPool(
         5,
         2,
@@ -71,7 +67,6 @@ class InnerTube {
             httpClient.close()
             httpClient = createClient()
         }
-    
     var proxyAuth: String? = null
 
     var useLoginForBrowse: Boolean = false
@@ -93,38 +88,19 @@ class InnerTube {
             deflate(0.8F)
         }
 
-        // Enhanced network configuration for better performance
         engine {
             config {
-                // Connection pool settings for better connection reuse
                 connectionPool(this@InnerTube.connectionPool)
 
-                // Timeout configurations. Muzza (this fork's upstream sibling) leaves these at
-                // OkHttp's own defaults (10s connect/read/write) and never gets stuck after a
-                // network switch. A pooled socket left over from a dead network still opens the
-                // TCP connection fine (short connectTimeout catches that) but then hangs on the
-                // read waiting for bytes that never arrive; a 60s read timeout meant every retry
-                // attempt (withRetry does 3) could hang up to 60s each, so browse/library/lyrics
-                // calls looked permanently stuck for up to ~3 minutes after resume/reconnect.
                 connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
                 readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
                 writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                
-                // Enable HTTP/2 for better performance
                 protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))
-                
-                // Retry on connection failure
                 retryOnConnectionFailure(true)
 
-                // No OkHttp disk cache here: java.io.tmpdir is not a reliable app-writable
-                // location on Android and API responses are POSTs (never cached anyway).
-                
-                // Apply proxy configuration
                 this@InnerTube.proxy?.let { proxyConfig ->
                     proxy(proxyConfig)
                 }
-                
-                // Apply proxy authentication
                 this@InnerTube.proxyAuth?.let { auth ->
                     proxyAuthenticator { _, response ->
                         response.request.newBuilder()
@@ -135,7 +111,6 @@ class InnerTube {
             }
         }
 
-        // Request timeout configuration (mirrors the OkHttp engine timeouts above)
         install(HttpTimeout) {
             requestTimeoutMillis = 20000
             connectTimeoutMillis = 10000
@@ -144,7 +119,6 @@ class InnerTube {
 
         defaultRequest {
             url(YouTubeClient.API_URL_YOUTUBE_MUSIC)
-            // Add common headers for better compatibility
             header("Accept", "application/json")
             header("Accept-Language", "en-US,en;q=0.9")
             header("Cache-Control", "no-cache")
@@ -155,7 +129,7 @@ class InnerTube {
         contentType(ContentType.Application.Json)
         headers {
             append("X-Goog-Api-Format-Version", "1")
-            append("X-YouTube-Client-Name", client.clientId /* Not a typo. The Client-Name header does contain the client id. */)
+            append("X-YouTube-Client-Name", client.clientId )
             append("X-YouTube-Client-Version", client.clientVersion)
             append("X-Origin", YouTubeClient.ORIGIN_YOUTUBE_MUSIC)
             append("Referer", YouTubeClient.REFERER_YOUTUBE_MUSIC)
@@ -632,7 +606,6 @@ class InnerTube {
             )
         }
     }
-    
     suspend fun getUploadCustomThumbnailLink(
         client: YouTubeClient,
         contentLength: Int

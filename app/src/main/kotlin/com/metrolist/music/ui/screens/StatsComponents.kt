@@ -65,8 +65,8 @@ import kotlin.math.pow
  * cornerSmoothing maps to n: 0.60 â†’ nâ‰ˆ5, 0.72 â†’ nâ‰ˆ8
  */
 private class SquircleShapeImpl(
-    private val cornerRadiusFraction: Float = 0.25f, // fraction of min(width, height)
-    private val n: Double = 6.0                       // superellipse exponent; 5â€“8 for squircle
+    private val cornerRadiusFraction: Float = 0.25f,
+    private val n: Double = 6.0
 ) : Shape {
     override fun createOutline(
         size: androidx.compose.ui.geometry.Size,
@@ -93,12 +93,11 @@ private fun squirclePath(size: androidx.compose.ui.geometry.Size, cornerFraction
         return Pair(x, y)
     }
 
-    // Build 4 corner arcs
     val corners = listOf(
-        Triple(r, r, Math.PI),          // top-left,     start angle = Ï€
-        Triple(w - r, r, 3 * Math.PI / 2),  // top-right
-        Triple(w - r, h - r, 0.0),      // bottom-right
-        Triple(r, h - r, Math.PI / 2)   // bottom-left
+        Triple(r, r, Math.PI),
+        Triple(w - r, r, 3 * Math.PI / 2),
+        Triple(w - r, h - r, 0.0),
+        Triple(r, h - r, Math.PI / 2)
     )
 
     var first = true
@@ -264,9 +263,6 @@ fun TopSongCard(rank: Int, song: SongEntity, artists: List<ArtistEntity>, onClic
 
 @Composable
 fun SectionHeader(title: String) {
-    // Matches the "eyebrow" section-title idiom used across the app in New Iride UI
-    // (Material3SettingsGroup's IrideSettingsGroup title, ArtistScreen's "Information"
-    // header): small bold monospace, low-alpha white.
     Text(
         text = title,
         style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp, letterSpacing = (-0.1).sp),
@@ -286,9 +282,6 @@ fun StatsDataBox(
     val hours = totalMinutes / 60
     val minutes = totalMinutes % 60
 
-    // Flattened: no primaryContainer Card, bare row of 4 tiles with hairline vertical
-    // dividers between them instead of a card boundary — mirrors IrideSettingsGroup's
-    // divider-instead-of-card-gap approach, just rotated for a horizontal row.
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -391,17 +384,15 @@ fun StatItem(
     }
 }
 
-// Validated dark-mode categorical palette (fixed hue order, CVD-checked) — assigned in rank
-// order to categories that were never given their own color in AddToCategorySheet.
 private val GenreChartPalette = listOf(
-    Color(0xFF3987E5), // blue
-    Color(0xFFD95926), // orange
-    Color(0xFF199E70), // aqua
-    Color(0xFFC98500), // yellow
-    Color(0xFFD55181), // magenta
-    Color(0xFF008300), // green
-    Color(0xFF9085E9), // violet
-    Color(0xFFE66767), // red
+    Color(0xFF3987E5),
+    Color(0xFFD95926),
+    Color(0xFF199E70),
+    Color(0xFFC98500),
+    Color(0xFFD55181),
+    Color(0xFF008300),
+    Color(0xFF9085E9),
+    Color(0xFFE66767),
 )
 
 /**

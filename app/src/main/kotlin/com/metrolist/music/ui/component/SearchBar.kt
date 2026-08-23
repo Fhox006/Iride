@@ -98,7 +98,6 @@ fun TopSearch(
                     onActiveChange = onActiveChange,
                     enabled = enabled,
                     placeholder = placeholder,
-                    // Icons are handled in navigationIcon and actions if preferred, or here for inline
                     leadingIcon = null,
                     trailingIcon = null,
                     colors = TextFieldDefaults.colors(
@@ -129,7 +128,6 @@ fun TopSearch(
             scrollBehavior = scrollBehavior,
             windowInsets = windowInsets
         )
-        
         if (active) {
             Box(
                 modifier = Modifier
@@ -141,7 +139,6 @@ fun TopSearch(
                     content()
                  }
             }
-            
             BackHandler(enabled = active) {
                 onActiveChange(false)
             }
@@ -241,7 +238,6 @@ private fun SearchBarInputField(
     }
 }
 
-// Measurement specs
 val InputFieldHeight = 48.dp
 internal val TopAppBarVerticalPadding: Dp = 8.dp
 internal val TopAppBarHorizontalPadding: Dp = 12.dp

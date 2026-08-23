@@ -30,8 +30,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sign
 
-// Apple's UIScrollView rubber-band curve: f(x) = x*d*c / (d + c*x). Lower c = less bite at
-// the very first pixels of pull (easier to slip past the edge before the curve tightens).
 private const val RUBBER_BAND_CONSTANT = 0.2f
 
 class RubberBandPull internal constructor(
@@ -52,10 +50,6 @@ class RubberBandPull internal constructor(
 @Composable
 fun rememberRubberBandPull(): RubberBandPull = remember { RubberBandPull(Animatable(0f)) }
 
-// Shared across every vertical rubberBandOverscroll instance (Home/Library/Search/Account's own
-// top-level scroll). Lets the bottom/top nav bar refuse to switch tabs while a drag-up/down pull
-// is still in progress or springing back — a tab switch mid-pull used to cut the rubber-band
-// animation off and yank the new screen in underneath the still-moving content.
 object RubberBandNavGate {
     private var activeCount by mutableIntStateOf(0)
     val isActive: Boolean get() = activeCount > 0
@@ -94,8 +88,6 @@ private class RubberBandConnection(
 ) : NestedScrollConnection {
     private val settle = spring<Float>(dampingRatio = 1f, stiffness = Spring.StiffnessLow)
 
-    // Only vertical pulls gate tab switching — horizontal shelf swipes inside Home happen
-    // constantly during normal browsing and were never meant to lock the tab bar.
     private var isPulling = false
 
     private fun setPulling(active: Boolean) {
@@ -145,8 +137,6 @@ private class RubberBandConnection(
         return available
     }
 
-    // Fling that dies against the edge (list can't consume it) — same case UIScrollView
-    // resolves by feeding leftover velocity into its bounce spring instead of a hard stop.
     override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
         val v = available.axis
         if (v == 0f) return Velocity.Zero

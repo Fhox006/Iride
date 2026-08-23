@@ -108,7 +108,6 @@ class OnlinePodcastViewModel @Inject constructor(
             }
 
             Timber.d("[PODCAST_TOGGLE] Database updated, calling syncUtils.savePodcast(${currentPodcast.id}, $shouldBeSaved)")
-            // Sync with YouTube (handles login check internally)
             syncUtils.savePodcast(currentPodcast.id, shouldBeSaved)
         }
     }

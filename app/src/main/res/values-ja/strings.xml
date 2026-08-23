@@ -1,37 +1,86 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Upstream InnerTune strings -->
+<!-- Do not add new features here -->
+<!-- Try to re-use strings here, but be careful on its usage e.g. verb vs noun -->
+<!-- "InnerTune" is replaced with "Iride" -->
+<!-- Translators: Do not modify this file for translations, use InnerTune's Weblate instead. -->
+
 <resources>
+    <!-- Bottom navigation -->
     <string name="home">ホーム</string>
     <string name="new_home">Home</string>
     <string name="old_home">Old Home</string>
+    <string name="what_new">新着</string>
     <string name="songs">曲</string>
+    <string name="all_tracks">全曲</string>
     <string name="artists">アーティスト</string>
     <string name="albums">アルバム</string>
     <string name="playlists">プレイリスト</string>
     <string name="mixes">Mixes</string>
-    <plurals name="n_selected">
-        <item quantity="other">%d個を選択中</item>
+
+    <!-- Top bar -->
+        <plurals name="n_selected">
+        </item>%d個を選択中</item>
     </plurals>
+
+    <!-- Home -->
     <string name="history">履歴</string>
     <string name="stats">統計</string>
     <string name="mood_and_genres">ムードとジャンル</string>
+    <string name="discovery_weekly">ディスカバリーウィークリー</string>
+    <string name="discovery_weekly_creating">ミックスを作成しています…</string>
     <string name="account">アカウント</string>
+    <string name="account_content">マイ YouTube ライブラリ</string>
     <string name="quick_picks">おすすめ</string>
     <string name="quick_picks_empty">何曲か再生するとおすすめの曲を生成します</string>
-    <string name="new_release_albums">新作のアルバム</string>
     <string name="forgotten_favorites">忘れられているお気に入り</string>
     <string name="keep_listening">最近聴いたもの</string>
+    <string name="discs_for_you">あなたへのおすすめディスク</string>
+    <string name="for_you_shelf_title">リピート再生中の曲</string>
+    <string name="recommended_albums">おすすめのアルバム</string>
+    <string name="recently_listened_albums">最近聴いたアルバム</string>
+    <string name="clear_recently_listened_albums">クリア</string>
     <string name="your_youtube_playlists">YouTubeのプレイリスト</string>
     <string name="similar_to">関連</string>
+    <string name="new_release_albums">新作のアルバム</string>
+    <string name="artist_latest_release">最新リリース</string>
+    <string name="artist_release_type_album">アルバム</string>
+    <string name="artist_release_type_ep">EP</string>
+    <string name="artist_release_type_single">シングル</string>
+    <string name="artist_release_type_feat">フィーチャリング</string>
+    <string name="genius_section_title">フィーチャリング検出（Genius）</string>
+    <string name="genius_api_key">Genius API トークン</string>
+    <string name="genius_api_key_description">アーティスト自身の YouTube Music ページに表示されない「feat.」クレジットを検出します。無料のトークンは genius.com/api-clients から取得できます。</string>
+    <string name="essential_albums">必聴アルバム</string>
+    <string name="featuring">フィーチャリング</string>
+    <string name="suggested_follow_artists">よく聴いています。フォローしますか？</string>
+    <string name="new_from_followed_artists">フォロー中のアーティストの新着</string>
+
+    <!-- History -->
     <string name="today">今日</string>
     <string name="yesterday">昨日</string>
     <string name="this_week">今週</string>
     <string name="last_week">先週</string>
+
+    <!-- Stats -->
     <string name="most_played_songs">最も聴いた曲</string>
     <string name="most_played_artists">最も聴いたアーティスト</string>
     <string name="most_played_albums">最も聴いたアルバム</string>
+    <string name="top_artists">上位アーティスト</string>
+    <string name="top_albums">上位アルバム</string>
+    <string name="top_songs">上位の曲</string>
+    <string name="top_genres">上位ジャンル</string>
+    <string name="listening_stats">統計情報</string>
+    <string name="stats_not_enough_data">聴き続けるとあなたの音楽ストーリーが見えてきます</string>
+    <string name="listened">聴取時間</string>
+    <string name="songs_played">再生曲数</string>
+
+    <!-- Search -->
     <string name="search">検索</string>
     <string name="search_yt_music">YouTube Musicを検索…</string>
     <string name="search_library">ライブラリを検索…</string>
+    <string name="online">オンライン</string>
     <string name="filter_library">ライブラリ</string>
     <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">ダウンロード済み</string>
@@ -45,27 +94,62 @@
     <string name="filter_featured_playlists">おすすめのプレイリスト</string>
     <string name="filter_bookmarked">ブックマーク済み</string>
     <string name="no_results_found">見つかりませんでした</string>
+
+    <!-- Library -->
     <string name="library_song_empty">曲のライブラリはここに表示されます</string>
     <string name="library_artist_empty">アーティストのライブラリはここに表示されます</string>
     <string name="library_album_empty">アルバムのライブラリはここに表示されます</string>
     <string name="library_playlist_empty">プレイリストはここに表示されます</string>
+
+    <!-- Artist screen -->
     <string name="from_your_library">ライブラリから</string>
+
+    <!-- Album screen -->
     <string name="other_versions">別のバージョン</string>
+    <string name="similar_albums">こちらもおすすめ</string>
+
+    <!-- Playlist -->
     <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">ダウンロードした曲</string>
     <string name="playlist_is_empty">プレイリストが空です</string>
     <string name="remove_download_playlist_confirm">”%s”のプレイリスト上のすべての曲をダウンロード済みから削除しますか？</string>
     <string name="delete_playlist_confirm">”%s”のプレイリストを削除しますか？</string>
+
+    <!-- Button -->
     <string name="retry">再試行</string>
     <string name="radio">ラジオ</string>
     <string name="shuffle">シャッフル再生</string>
     <string name="reset">リセット</string>
+
+    <!-- Guess the song game -->
+    <string name="guess_game">曲当てゲーム</string>
+    <string name="guess_game_subtitle">曲を当てて、アーティストをどれだけ知っているか確かめてみましょう</string>
+    <string name="guess_game_best_score">あなたのベストスコア：%1$s</string>
+    <string name="guess_game_best_label">自己ベスト</string>
+    <string name="guess_game_no_score">スコアはまだありません</string>
+    <string name="guess_game_play_now">今すぐプレイ</string>
+        <plurals name="guess_game_songs_left">
+        </item>残り%1$d曲です</item>
+        </item>残り%1$d曲です</item>
+    </plurals>
+    <string name="guess_game_hint_default">続けるには曲を当ててください</string>
+    <string name="guess_game_hint_wrong">不正解です！3秒お待ちください</string>
+    <string name="guess_game_new_best">自己ベスト更新！</string>
+    <string name="guess_game_result_correct">%1$d/%2$d</string>
+    <string name="guess_game_result_correct_label">正解</string>
+    <string name="guess_game_not_enough_songs">このゲームをプレイするのに十分な曲が見つかりませんでした</string>
+    <string name="guess_game_loading_hint">読み込みには少し時間がかかることがあります。すべての曲を事前に完全に読み込むため、各ラウンドはバッファリングなしですぐに始まります。</string>
+
+    <!-- Menu -->
     <string name="details">詳細</string>
     <string name="edit">編集</string>
     <string name="start_radio">ラジオを再生</string>
     <string name="play">再生</string>
+    <string name="pause">一時停止</string>
     <string name="play_next">次に再生</string>
     <string name="add_to_queue">キューに追加</string>
+    <string name="swipe_label_next">次</string>
+    <string name="swipe_label_queue">キュー</string>
     <string name="add_to_library">ライブラリに追加</string>
     <string name="add_all_to_library">すべてライブラリに追加</string>
     <string name="remove_from_library">ライブラリから削除</string>
@@ -75,18 +159,36 @@
     <string name="remove_download">ダウンロードを削除</string>
     <string name="import_playlist">プレイリストをインポート</string>
     <string name="add_to_playlist">プレイリストに追加</string>
+    <string name="category_add">追加</string>
+    <string name="add_to_category">カテゴリに追加</string>
+    <string name="new_category">新しいカテゴリ</string>
+    <string name="category_name_hint">カテゴリ名</string>
+    <string name="added_to_category">カテゴリに追加しました</string>
+    <string name="search_categories">カテゴリを検索</string>
+    <string name="action_add">追加</string>
     <string name="view_artist">アーティストを表示</string>
     <string name="view_album">アルバムを表示</string>
     <string name="refetch">再取得</string>
     <string name="share">共有</string>
+    <string name="share_choose_platform">共有先を選択</string>
+    <string name="share_platform_youtube_music">YouTube Music</string>
+    <string name="share_platform_spotify">Spotify</string>
+    <string name="share_platform_apple_music">Apple Music</string>
+    <string name="share_platform_soundcloud">SoundCloud</string>
+    <string name="share_link_resolving">リンクを探しています…</string>
+    <string name="share_link_not_found">このプラットフォームではこの曲のリンクが見つかりませんでした</string>
     <string name="delete">削除</string>
     <string name="remove_from_history">履歴から削除</string>
     <string name="remove_from_playlist">プレイリストから削除</string>
     <string name="remove_from_queue">キューから削除</string>
     <string name="search_online">オンラインで検索</string>
     <string name="action_sync">同期</string>
+    <string name="library_refresh">ライブラリを更新</string>
+    <string name="library_refreshing">更新中…</string>
     <string name="advanced">高度</string>
     <string name="tempo_and_pitch">再生速度と音程</string>
+
+    <!-- Sort menu -->
     <string name="sort_by_create_date">追加日時</string>
     <string name="sort_by_name">曲名</string>
     <string name="sort_by_artist">アーティスト</string>
@@ -95,6 +197,8 @@
     <string name="sort_by_length">長さ</string>
     <string name="sort_by_play_time">再生時間</string>
     <string name="sort_by_custom">カスタム</string>
+
+    <!-- Dialog -->
     <string name="media_id">メディアID</string>
     <string name="mime_type">MIMEタイプ</string>
     <string name="codecs">コーデック</string>
@@ -105,62 +209,76 @@
     <string name="file_size">ファイルサイズ</string>
     <string name="unknown">不明</string>
     <string name="copied">クリップボードにコピー</string>
+
     <string name="edit_lyrics">歌詞を編集</string>
     <string name="search_lyrics">歌詞を検索</string>
+
     <string name="edit_song">曲を編集</string>
     <string name="song_title">曲名</string>
     <string name="song_artists">曲のアーティスト</string>
     <string name="error_song_title_empty">曲名は空白にできません。</string>
     <string name="error_song_artist_empty">アーティストは空白にできません。</string>
     <string name="save">保存</string>
+
     <string name="choose_playlist">プレイリストを選択</string>
     <string name="edit_playlist">このプレイリストを編集します</string>
     <string name="create_playlist">プレイリストを作成</string>
     <string name="playlist_name">プレイリストの名前</string>
     <string name="error_playlist_name_empty">プレイリストの名前は空白にできません。</string>
+
     <string name="edit_artist">アーティストを編集</string>
     <string name="artist_name">アーティスト名</string>
     <string name="error_artist_name_empty">アーティスト名は空白にできません。</string>
+
     <string name="duplicates">重複</string>
     <string name="skip_duplicates">重複をスキップ</string>
     <string name="add_anyway">気にせず追加</string>
     <string name="duplicates_description_single">曲はすでにプレイリストにあります</string>
     <string name="duplicates_description_multiple">%dの曲はすでにプレイリストにあります</string>
-    <plurals name="n_song">
-        <item quantity="other">%d曲</item>
+
+    <!-- Noun -->
+        <plurals name="n_song">
+        </item>%d曲</item>
     </plurals>
-    <plurals name="n_artist">
-        <item quantity="other">%d人のアーティスト</item>
+        <plurals name="n_artist">
+        </item>%d人のアーティスト</item>
     </plurals>
-    <plurals name="n_album">
-        <item quantity="other">%d件のアルバム</item>
+        <plurals name="n_album">
+        </item>%d件のアルバム</item>
     </plurals>
-    <plurals name="n_playlist">
-        <item quantity="other">%d件のプレイリスト</item>
+        <plurals name="n_playlist">
+        </item>%d件のプレイリスト</item>
     </plurals>
-    <plurals name="n_week">
-        <item quantity="other">%d週間</item>
+        <plurals name="n_week">
+        </item>%d週間</item>
     </plurals>
-    <plurals name="n_month">
-        <item quantity="other">%dか月</item>
+        <plurals name="n_month">
+        </item>%dか月</item>
     </plurals>
-    <plurals name="n_year">
-        <item quantity="other">%d年</item>
+        <plurals name="n_year">
+        </item>%d年</item>
     </plurals>
+
+    <!-- Snackbar -->
     <string name="playlist_imported">プレイリストをインポートしました</string>
     <string name="removed_song_from_playlist">プレイリストから”%s”を削除しました</string>
     <string name="playlist_synced">プレイリストを同期しました</string>
     <string name="undo">元に戻す</string>
+
+    <!-- Player -->
     <string name="lyrics_not_found">歌詞が見つかりません</string>
+    <string name="lyrics_searching">…</string>
     <string name="sleep_timer">スリープタイマー</string>
     <string name="end_of_song">曲の終わり</string>
-    <plurals name="minute">
-        <item quantity="other">%d分</item>
+        <plurals name="minute">
+        </item>%d分</item>
     </plurals>
     <string name="error_no_stream">ストリームが利用できません</string>
     <string name="error_no_internet">ネットワーク接続がありません</string>
     <string name="error_timeout">タイムアウトしました</string>
     <string name="error_unknown">不明なエラー</string>
+
+    <!-- Player action -->
     <string name="action_like">Star</string>
     <string name="action_like_all">Star all</string>
     <string name="action_remove_like">Remove star</string>
@@ -170,12 +288,23 @@
     <string name="repeat_mode_off">リピート オフ</string>
     <string name="repeat_mode_one">現在の曲をリピート</string>
     <string name="repeat_mode_all">キューをリピート</string>
+
+    <!-- Queue Title -->
     <string name="queue_all_songs">すべての曲</string>
     <string name="queue_searched_songs">検索した曲</string>
+
+    <!-- Notification name -->
     <string name="music_player">音楽プレーヤー</string>
+
+    <!-- Settings -->
     <string name="settings">設定</string>
     <string name="appearance">外観</string>
     <string name="theme">テーマ</string>
+    <string name="theme_desc">アプリのテーマをカスタマイズできます</string>
+    <string name="theme_colors">テーマとカラー</string>
+    <string name="theme_mode">テーマモード</string>
+    <string name="color_palette">カラーパレット</string>
+    <string name="use_system_colors">システムの色を使用</string>
     <string name="enable_dynamic_theme">動的テーマ</string>
     <string name="dark_theme">ダークテーマ</string>
     <string name="dark_theme_on">オン</string>
@@ -198,9 +327,14 @@
     <string name="grid_cell_size">グリッドのマス目のサイズ</string>
     <string name="small">小</string>
     <string name="big">大</string>
+
     <string name="content">コンテンツ</string>
+    <string name="action_logout">ログアウト</string>
+    <string name="action_login">ログイン</string>
     <string name="login">ログイン</string>
     <string name="not_logged_in">ログインしていません</string>
+    <string name="login_failed">ログインに失敗しました</string>
+
     <string name="content_language">コンテンツの既定の言語</string>
     <string name="content_country">コンテンツの既定の国</string>
     <string name="system_default">システムに従う</string>
@@ -208,12 +342,34 @@
     <string name="proxy_type">プロキシの種類</string>
     <string name="proxy_url">プロキシのURL</string>
     <string name="restart_to_take_effect">適用するにはアプリを再起動してください</string>
+
     <string name="player_and_audio">プレーヤーとオーディオ</string>
     <string name="audio_quality">音質</string>
     <string name="audio_quality_auto">自動</string>
     <string name="audio_quality_high">高</string>
     <string name="audio_quality_low">低</string>
+    <string name="scratch_buffer">スクラッチバッファ</string>
+    <string name="scratch_buffer_short">短め</string>
+    <string name="scratch_buffer_medium">中</string>
+    <string name="scratch_buffer_long">長め</string>
+    <string name="scratch_buffer_full">全曲</string>
+    <string name="scratch_buffer_short_desc">15秒前までスクラッチ（巻き戻し）できます。メモリ使用量が最小です。</string>
+    <string name="scratch_buffer_medium_desc">1分前までスクラッチできます。</string>
+    <string name="scratch_buffer_long_desc">3分前までスクラッチできます。</string>
+    <string name="scratch_buffer_full_desc">曲全体が常にスクラッチ可能になります。メモリ使用量が最大です。</string>
     <string name="queue">再生キュー</string>
+    <string name="queue_recently_played">最近再生した曲</string>
+    <string name="queue_recently_played_more">最近再生した曲  ↑</string>
+    <string name="queue_scroll_for_history">上にスクロールすると履歴が表示されます</string>
+    <string name="queue_autoplay">オートミックス</string>
+    <string name="queue_continue_listening">聴き続ける</string>
+    <string name="queue_filter_all">すべて</string>
+    <string name="queue_filter_popular">人気</string>
+    <string name="queue_filter_discover">発見</string>
+    <string name="queue_filter_familiar">おなじみ</string>
+    <string name="queue_filter_party">パーティー</string>
+    <string name="queue_filter_workout">ワークアウト</string>
+    <string name="queue_filter_deep_cuts">埋もれた名曲</string>
     <string name="persistent_queue">再生キューを保持</string>
     <string name="persistent_queue_desc">アプリ起動時に前回のキューを復元</string>
     <string name="auto_load_more">曲を自動で追加</string>
@@ -224,6 +380,7 @@
     <string name="auto_skip_next_on_error_desc">継続的な音楽体験を維持します</string>
     <string name="stop_music_on_task_clear">タスクを削除したら再生を停止</string>
     <string name="equalizer">イコライザー</string>
+
     <string name="storage">ストレージ</string>
     <string name="cache">キャッシュ</string>
     <string name="image_cache">画像のキャッシュ</string>
@@ -236,6 +393,7 @@
     <string name="max_song_cache_size">曲の最大キャッシュサイズ</string>
     <string name="clear_song_cache">曲のキャッシュを削除</string>
     <string name="size_used">%s使用中</string>
+
     <string name="privacy">プライバシー</string>
     <string name="listen_history">再生履歴</string>
     <string name="pause_listen_history">再生履歴の記録を停止</string>
@@ -245,11 +403,17 @@
     <string name="pause_search_history">検索履歴の記録を停止</string>
     <string name="clear_search_history">検索履歴をすべて削除</string>
     <string name="clear_search_history_confirm">検索履歴をすべて削除しますか？</string>
+    <string name="use_login_for_browse">表示されるコンテンツをアカウントと連携する</string>
+    <string name="use_login_for_browse_desc">例えば、Premiumのアカウントでログインしたときに、Premium限定のアルバムが表示されるようになります。</string>
     <string name="disable_screenshot">スクリーンショットを禁止</string>
     <string name="disable_screenshot_desc">スクリーンショットと最近使用したアプリ画面での表示を無効にします。</string>
     <string name="enable_lrclib">歌詞の提供元にLrcLibを使用</string>
     <string name="enable_kugou">歌詞の提供元にKuGouを使用</string>
     <string name="hide_explicit">露骨な内容のコンテンツを非表示</string>
+    <string name="hide_explicit_desc">露骨な表現を含む曲を検索結果やブラウズ結果から除外します</string>
+    <string name="show_explicit_badge">露骨な表現を示すバッジを表示</string>
+    <string name="show_explicit_badge_desc">露骨な表現を含む曲に「E」アイコンを表示します</string>
+
     <string name="backup_restore">バックアップと復元</string>
     <string name="action_backup">バックアップ</string>
     <string name="action_restore">復元</string>
@@ -257,20 +421,49 @@
     <string name="backup_create_success">バックアップの作成に成功しました</string>
     <string name="backup_create_failed">バックアップを作成できませんでした</string>
     <string name="restore_failed">バックアップの復元に失敗しました</string>
+
     <string name="discord_integration">Discordと連携</string>
     <string name="discord_information">Metrolistは、Discordアカウントのステータスを設定するためにKizzyRPCライブラリを使用しています。Discordのゲートウェイ接続を利用するため、Discordの利用規約に違反する可能性があります。ただし、これを理由にユーザーのアカウントが停止された事例は確認されていません。自己責任で使用してください。\n\nMetrolistはトークンのみを取得し、それ以外の情報はすべてデバイス内に保存されます。</string>
     <string name="dismiss">非表示</string>
     <string name="options">オプション</string>
     <string name="preview">プレビュー</string>
-    <string name="login_failed">ログインに失敗しました</string>
-    <string name="action_logout">ログアウト</string>
     <string name="enable_discord_rpc">再生状況を共有</string>
+
     <string name="about">アプリについて</string>
     <string name="app_version">アプリのバージョン</string>
+
     <string name="new_version_available">アップデートがあります</string>
+
+    <!-- Advanced Mode -->
+    <string name="advanced_mode">詳細モード</string>
+    <string name="advanced_mode_banner">詳細モードが有効になっています。アプリ全体でより多くの設定や技術的なオプションが表示されるようになります。この UI は日常的な使用向けには調整されていません。</string>
+    <string name="my_account">マイアカウント</string>
+    <string name="your_contents">あなたのコンテンツ</string>
+    <string name="playback">再生</string>
+    <string name="default_category">デフォルトカテゴリ</string>
+    <string name="music_section">音楽</string>
+    <string name="interface_section">インターフェース</string>
+    <string name="lyrics_translation">歌詞の翻訳</string>
+    <string name="behavior">動作</string>
+
     <string name="translation_models">翻訳モデル</string>
     <string name="clear_translation_models">翻訳モデルを削除</string>
-    <string name="use_login_for_browse_desc">例えば、Premiumのアカウントでログインしたときに、Premium限定のアルバムが表示されるようになります。</string>
-    <string name="use_login_for_browse">表示されるコンテンツをアカウントと連携する</string>
-    <string name="action_login">ログイン</string>
+
+    <!-- New settings for track resolution -->
+    <string name="resolve_video_songs">動画の曲を音声に置き換え</string>
+    <string name="resolve_video_songs_desc">動画トラックを自動的に検出して音声版に置き換えます</string>
+    <string name="hide_video_only_results">動画のみの結果を非表示</string>
+    <string name="hide_video_only_results_desc">音声版がなく動画版のみのトラックを非表示にします（解決に失敗した場合）</string>
+    <string name="hide_videos_in_library">ライブラリ/プレイリストで動画を非表示</string>
+    <string name="hide_videos_in_library_desc">ライブラリと作成したプレイリストにも動画の非表示ロジックを適用します</string>
+    <string name="resolved_track_cache">解決済みトラックのキャッシュ</string>
+    <string name="max_resolved_track_cache_size">最大キャッシュサイズ</string>
+    <string name="clear_resolved_track_cache">解決済みトラックのキャッシュを消去</string>
+    <string name="clear_resolved_track_cache_dialog">解決済みトラックのキャッシュを本当に消去しますか？消去すると、動画の音声版が再検索されるようになります。</string>
+    <string name="searching_synced_lyrics">同期歌詞を検索しています…</string>
+
+    <string name="main_top_gradient">メイン画面の上部グラデーション</string>
+    <string name="main_top_gradient_desc">ホーム、ライブラリ、検索、ニュースの上部に、現在の曲のプレーヤーのグラデーションをさりげなくブレンドして背景に表示します</string>
+    <string name="album_top_gradient">アルバム画面の上部グラデーション</string>
+    <string name="album_top_gradient_desc">アルバム、シングル、EP 画面の上部に、表示中のアルバムのプレーヤーのグラデーションをさりげなくブレンドして背景に表示します</string>
 </resources>

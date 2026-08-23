@@ -142,7 +142,6 @@ class ScratchAudioProcessor : AudioProcessor {
         try {
             ShortArray((rate.toLong() * seconds * channels).toInt())
         } catch (error: OutOfMemoryError) {
-            // "Whole track" on a long song can genuinely not fit; a short window still scratches.
             try {
                 ShortArray(rate * MinHistorySeconds * channels)
             } catch (fallbackError: OutOfMemoryError) {
@@ -191,9 +190,6 @@ class ScratchAudioProcessor : AudioProcessor {
         appendToHistory(inputBuffer, inputFrames)
         inputBuffer.position(inputBuffer.limit())
 
-        // The head's forward appetite sets the decoder's speed (see the class doc). Negative and
-        // zero fall through to MinRatio, so reversing throttles the decoder rather than letting it
-        // race ahead over the very history the head is reading.
         val ratio = velocity.coerceAtLeast(MinRatio)
         outputCarry += inputFrames / ratio
         if (needsHeadLag) {
@@ -221,7 +217,6 @@ class ScratchAudioProcessor : AudioProcessor {
 
     private fun render(outputFrames: Int) {
         val out = replaceOutputBuffer(outputFrames * 2 * channelCount)
-        // Fixed for the whole call: writeFrame only moves on the next queueInput.
         val minFrame = (writeFrame - historyFrames).coerceAtLeast(0L).toDouble()
         val maxFrame = (writeFrame - 1).coerceAtLeast(0L).toDouble()
         val maxFrameIndex = maxFrame.toLong()
@@ -237,8 +232,6 @@ class ScratchAudioProcessor : AudioProcessor {
         }
         velocity = speed
         pos = head
-        // Everything the speaker consumed advanced wall-clock (and so ExoPlayer's clock) by
-        // outputFrames, while the song really moved by however far the head went.
         driftFrames += (head - startHead) - outputFrames
         driftMs = (driftFrames / sampleRate * 1000.0).toLong()
         out.flip()

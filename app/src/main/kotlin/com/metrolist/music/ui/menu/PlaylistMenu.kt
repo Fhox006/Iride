@@ -246,12 +246,9 @@ fun PlaylistMenu(
                         showDeletePlaylistDialog = false
                         onDismiss()
                         database.transaction {
-                            // First toggle the like using the same logic as the like button
                             if (playlist.playlist.bookmarkedAt != null) {
-                                // Using the same toggleLike() method that's used in the like button
                                 update(playlist.playlist.toggleLike())
                             }
-                            // Then delete the playlist (no FK cascade on playlist_category, see its entity doc)
                             deleteCategoriesForPlaylist(playlist.playlist.id)
                             delete(playlist.playlist)
                         }
@@ -579,7 +576,6 @@ fun PlaylistMenu(
                                 },
                             )
                         }
-                        // Export playlist
                         add(
                             Material3MenuItemData(
                                 title = { Text(text = stringResource(R.string.export_playlist)) },

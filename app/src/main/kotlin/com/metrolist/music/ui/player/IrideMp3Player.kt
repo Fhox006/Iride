@@ -160,27 +160,16 @@ import sv.lib.squircleshape.SquircleShape
 internal val IrideMp3BackgroundColor = Color(0xFF0A0A0A)
 private val IrideMp3SurfaceColor = Color(0xFF1C1C1F)
 private val IrideMp3PanelBorderColor = Color.White.copy(alpha = 0.14f)
-// Bumped from 0.55 — under direct sunlight/glare the low-alpha icons on the (also lightened)
-// wheel background were washing out to near-invisible.
 private val IrideMp3DimIconColor = Color.White.copy(alpha = 0.75f)
 
-// Shared artist-line grey — single source of truth for both the static info block and the
-// bridge overlay, so the expanded state renders identically no matter which path draws it.
 private val IrideArtistTextColor = Color(0xFFB8B8B8)
 
-// Flat grey surface, matching the rest of the New Iride UI (AlbumScreen panels/chips): a solid
-// fill plus a single hairline border instead of a gradient disc.
 private val IrideMp3WheelSurfaceColor = IrideMp3SurfaceColor
 
 private const val IrideMp3CoverWidthFraction = 0.84f
 
-// Matches AlbumScreen's cover squircle radius exactly (see item 5: one shared cover border
-// language across the app) — also the END radius the bridge overlay's clip lerps toward.
 private val IrideCoverBorderRadius = 12.dp
 
-// How much of the expand/collapse `eased` progress the bridge overlay's ring gets before it's
-// gone — short on purpose, "quasi immediatamente": the ring's job is just to bridge the mini
-// pill's own ring into the move, not to survive the whole morph.
 private const val BridgeRingFadeOutProgress = 0.12f
 private val BridgeRingStrokeWidth = 2.5.dp
 
@@ -214,8 +203,6 @@ private fun DrawScope.drawBridgeProgressRing(
     }
 }
 
-// Lifts the control wheel up off the bottom system-gesture strip (see call site) so its bottom
-// "more" zone stays fully tappable on gesture-nav devices.
 private val WheelBottomGestureClearance = 24.dp
 
 private fun irideSquircle(radius: Dp) = SquircleShape(radius = radius, cornerSmoothing = 0.48f)
@@ -227,17 +214,9 @@ class IrideBridgeState {
     var miniInfo by mutableStateOf<Rect?>(null)
     var playerInfo by mutableStateOf<Rect?>(null)
 
-    // Live playback fraction, reported every frame by the mini pill's own ring (PillPlayButton) —
-    // lets the bridge overlay's ring (drawn on the moving cover, see IrideMiniPlayerBridgeOverlay)
-    // start already in sync instead of snapping from 0 the instant the expand begins.
     var progress by mutableStateOf(0f)
 
     var panelActive by mutableStateOf(false)
-    // True while the lyrics FullScreenLyricsDialog (a separate Android Window drawn on top of
-    // everything) is showing. MainActivity's app-peek-height "tap to collapse" catcher sits in
-    // the same Activity window underneath that dialog and has no other way to know a fullscreen
-    // overlay is up — without this flag a tap landing in that strip during the dialog's
-    // open/close transition collapses the whole player and drops the lyrics with it.
     var lyricsFullScreenActive by mutableStateOf(false)
 }
 
@@ -263,8 +242,6 @@ fun IrideMp3PlayerContent(
     isQueueActive: Boolean = false,
     onLyricsClick: () -> Unit = {},
     onQueueClick: () -> Unit = {},
-    // Bumped by the wheel's Radio button to jump the (already open) UP NEXT panel straight
-    // into Auto-Mix — see IrideQueuePreview's radioTrigger param.
     radioTrigger: Int = 0,
     isFullScreen: Boolean = false,
     onToggleFullScreen: () -> Unit = {},
@@ -279,16 +256,8 @@ fun IrideMp3PlayerContent(
 ) {
     val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
-    // Reflects whether Auto-Mix has actually been committed as the live queue (see
-    // MusicService.commitAutomixAsQueue) — not a local toggle, so the button only glows
-    // when Radio genuinely did something.
     val radioActive by LocalPlayerConnection.current?.service?.isAutoMixQueueActive?.collectAsState() ?: remember { mutableStateOf(false) }
 
-    // Overflow menu trigger, lives in the title row (a flat area outside the circular wheel and
-    // outside the lyrics/queue panel) instead of as a wheel zone — the wheel's bottom "more" spot
-    // sat right where the round wheel and the square center play/pause button's touch target
-    // overlapped, so taps there were unreliable and only landed from the outer edge. A plain row
-    // button has no competing hit-test geometry, so a tap always reaches it.
     val onMoreClick = {
         menuState.show {
             PlayerMenu(
@@ -309,8 +278,6 @@ fun IrideMp3PlayerContent(
     val reducedMotion = rememberReducedMotion()
 
     val panelActive = isLyricsActive || isQueueActive
-    // Fullscreen only ever applies to lyrics, never queue — queue always stays in its normal
-    // card, and its own fullscreen affordance (button + expand) was removed entirely below.
     val fullScreenActive = isFullScreen && isLyricsActive
 
     SideEffect {
@@ -335,18 +302,11 @@ fun IrideMp3PlayerContent(
 
             Box(
                 modifier = Modifier
-                    // True lyrics fullscreen is a separate edge-to-edge Dialog (see
-                    // FullScreenLyricsDialog below), not an in-card expand — a box that merely
-                    // grows within the player's own bounds reads as "still boxed in", not an
-                    // actual fullscreen. This card therefore always stays the normal cover size.
                     .fillMaxWidth(IrideMp3CoverWidthFraction)
                     .padding(top = 8.dp, bottom = 8.dp)
                     .aspectRatio(1f)
                     .align(Alignment.CenterHorizontally)
                     .clip(irideSquircle(IrideCoverBorderRadius))
-                    // Same thin cover border as AlbumScreen (IrideBaseBorderWidth, white 0.22) —
-                    // one shared visual language for every cover in the New Iride UI, not this
-                    // screen's own weaker/thinner one.
                     .border(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f), irideSquircle(IrideCoverBorderRadius)),
             ) {
                 Box(
@@ -407,12 +367,6 @@ fun IrideMp3PlayerContent(
                         .alpha(lyricsAlpha)
                         .background(IrideMp3BackgroundColor),
                 ) {
-                    // Skipped entirely while the fullscreen dialog is up (see above) and, more
-                    // importantly, unmounted whenever the panel is fully hidden: rememberInfiniteTransition
-                    // keeps redrawing the Canvas (120.dp blur + 4 rotating full-size sprite draws)
-                    // every frame for as long as it stays composed, alpha=0 does not stop that —
-                    // leaving it always mounted meant this heaviest animation on screen ran
-                    // continuously for the whole player session, not just while LYRICS was open.
                     if (!fullScreenActive && (isLyricsActive || lyricsAlpha > 0f)) {
                         BetterAnimatedGradientBackground(
                             thumbnail = lyricsBgBitmap,
@@ -422,17 +376,9 @@ fun IrideMp3PlayerContent(
                             sliderPositionProvider = lyricsSliderPositionProvider,
                             showLyrics = true,
                             showPills = false,
-                            // The card itself never expands anymore — real fullscreen is the
-                            // separate FullScreenLyricsDialog below, so this inline copy always
-                            // stays in its normal (non-fullscreen) layout.
                             isFullScreen = false,
                             pillsController = lyricsPillController,
-                            // 15% larger than the default in-card size for a more comfortable read —
-                            // scoped to this player only (the fullscreen dialog copy keeps its own size).
                             textScale = 1.15f,
-                            // Sits a bit higher than the fullscreen copy (top = 34.dp there) —
-                            // this card is small, so lyrics start closer to the top edge instead
-                            // of leaving a big empty gap above the first line.
                             modifier = Modifier.fillMaxSize().padding(top = 22.dp, start = 12.dp),
                         )
                     }
@@ -466,9 +412,6 @@ fun IrideMp3PlayerContent(
                     )
                 }
 
-                // Fullscreen is a lyrics-only affordance now — queue never offers it, so this
-                // whole control fades/disables away outside of the lyrics panel instead of also
-                // reacting to isQueueActive (which panelActive would).
                 val fullscreenAlpha by animateFloatAsState(
                     targetValue = if (!isLyricsActive) {
                         0f
@@ -489,9 +432,6 @@ fun IrideMp3PlayerContent(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Bigger tap target (was 26.dp/14.dp icon — too small to reliably hit) and a
-                    // semi-transparent chip instead of an opaque one, matching the rest of the
-                    // panel's overlay buttons.
                     Box(
                         modifier = Modifier
                             .size(40.dp)
@@ -609,9 +549,6 @@ fun IrideMp3PlayerContent(
 
                 val rawProgress = dragFraction
                     ?: if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
-                // Plain tween, no release bounce — the old scaleY pulse Animatable added a 3-step
-                // spring sequence on every seek that ran concurrently with drag recomposition and
-                // the animated background, and was the main source of visible jank while scrubbing.
                 val progress by animateFloatAsState(
                     targetValue = rawProgress,
                     animationSpec = tween(if (dragFraction != null || reducedMotion) 0 else IrideMotion.Long, easing = IrideMotion.EaseOutQuart),
@@ -667,21 +604,7 @@ fun IrideMp3PlayerContent(
                 }
             }
 
-            // This bottom chrome (LYRICS/UP NEXT toggle + click wheel) used to hard-hide the
-            // instant the drag reversed (an `if`-removal, no dissolve at all) or, in a later pass,
-            // fade out on a fixed short timer disconnected from the actual drag position — both
-            // read as an abrupt cut instead of tracking the gesture. It's a plain child of this
-            // content now, so it inherits the same scrub-driven alpha the whole card already gets
-            // from BottomSheet's own `graphicsLayer { alpha = ((progress - 0.15f) * 4) }` — the
-            // exact curve the collapsing miniplayer fades in against, so the two dissolve in lockstep
-            // with the finger, not on any separate clock.
             Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                // Own flow row instead of an overlay pinned to the wheel's TopCenter — the overlay
-                // approach only avoided the wheel's circle by relying on incidental slack between the
-                // box top and the (size-clamped) circle. On shorter screens that slack shrank to
-                // nothing and the labels sat on top of the wheel's radio zone. Giving this row its
-                // own real height means the wheel below is sized against what's actually left,
-                // guaranteeing no overlap regardless of screen height.
                 Row(
                     modifier = Modifier
                         .fillMaxWidth(IrideMp3CoverWidthFraction)
@@ -708,23 +631,11 @@ fun IrideMp3PlayerContent(
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    // Wheel used to be a fixed 260.dp regardless of how much room this weighted
-                    // box actually got. On shorter screens that overflowed the box (Box doesn't
-                    // clip), pushing the bottom "more" zone past the visible/tappable area — the
-                    // three-dot button looked present but taps never landed on it. Clamping to
-                    // whatever space is really available keeps every wheel zone reachable.
-                    // Base reference bumped 260 -> 352dp (+35%) per explicit ask: the click wheel
-                    // (play/pause/skip/radio) needed to read as clearly bigger, not a marginal bump.
-                    // Cover/info/label chrome above was shrunk (IrideMp3CoverWidthFraction 0.90 -> 0.78,
-                    // tighter inter-row spacing) to free the vertical budget this needs; the 0.97 clamp
-                    // factor still leaves a small margin so the circle doesn't touch the box edges.
                     val wheelSize = minOf(352.dp, maxHeight * 0.97f, maxWidth * 0.97f)
                     val scale = wheelSize / 260.dp
                     val buttonSize = 74.dp * scale
                     val iconSize = 25.dp * scale
                     val skipIconSize = 32.dp * scale
-                    // Purely decorative now (center knob lost its click). Trimmed 150 -> 135dp so the
-                    // hub reads smaller and leaves more ring band for the 4 zones to sit in.
                     val centerButtonSize = 135.dp * scale
 
                     IrideClickWheel(
@@ -744,11 +655,6 @@ fun IrideMp3PlayerContent(
                         modifier = Modifier.align(Alignment.Center),
                     )
                 }
-                // Extra clearance beyond the raw nav-bar inset: on gesture-nav devices the bottom
-                // strip is a system gesture zone that eats taps landing in it, and the wheel's bottom
-                // "more" zone sat low enough that only the top half of its icon cleared the strip —
-                // taps on the lower half never reached the button. Lifting the whole wheel up by this
-                // margin keeps the three-dot zone fully tappable.
                 Spacer(Modifier.height(bottomInset + WheelBottomGestureClearance))
             }
         }
@@ -774,9 +680,6 @@ private fun FullScreenLyricsDialog(
     val progress = remember { Animatable(0f) }
     var closing by remember { mutableStateOf(false) }
 
-    // Routes every close path (back press, close button, tap-to-exit inside Lyrics) through the
-    // same shrink-back-down animation before actually tearing the dialog down, so closing mirrors
-    // the expand-in instead of just vanishing.
     fun requestClose() {
         if (closing) return
         closing = true
@@ -803,9 +706,6 @@ private fun FullScreenLyricsDialog(
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
             decorFitsSystemWindows = false,
-            // Content always fills the whole screen, so there is no "outside" area a real tap
-            // could land on — leaving this on only risks a stray dismiss-on-open if a click gets
-            // delivered before the first layout pass sizes the content to the full window.
             dismissOnClickOutside = false,
         ),
     ) {
@@ -828,11 +728,6 @@ private fun FullScreenLyricsDialog(
 
         val pillController = remember { LyricsPillController() }
 
-        // Plain fade + scale-from-center — the previous version morphed scaleX/scaleY/
-        // translateX/translateY from the small in-card rect every frame, computed on top of
-        // an already-heavy blurred background animation underneath (see the inline lyrics Box
-        // above, now skipped while this dialog is open). That combination is what read as
-        // laggy; a flat fade+scale is materially cheaper and still reads as an entrance.
         val p = progress.value
         Box(
             modifier = Modifier
@@ -862,16 +757,10 @@ private fun FullScreenLyricsDialog(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .windowInsetsPadding(WindowInsets.systemBars)
-                    // Lowered a bit from the top edge (was a flat 16.dp) so it doesn't sit
-                    // flush against the status bar strip.
                     .padding(top = 26.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Always visible (was gated behind pillController.hasTranslations, so it could
-                // never be tapped to actually *request* a translation) — matches the old
-                // classic player's translate pill, which is always present and just toggles
-                // between "translate" and "revert" depending on hasTranslations.
                 Box(
                     modifier = Modifier
                         .size(40.dp)
@@ -940,7 +829,6 @@ internal fun IrideArtistText(
     var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     var tapPosition by remember { mutableStateOf<Offset?>(null) }
     val interactionSource = remember { MutableInteractionSource() }
-    // Underline while held so the press reads as "release to open artist screen".
     val isPressed by interactionSource.collectIsPressedAsState()
 
     Text(
@@ -984,8 +872,6 @@ private fun IrideQueuePreview(
     mediaMetadata: MediaMetadata,
     modifier: Modifier = Modifier,
     topClearance: Dp = 0.dp,
-    // Bumped by the wheel's Radio button: a one-shot signal to jump straight into Auto-Mix
-    // (reset filter, regenerate, scroll down) without disturbing NOW or Continue Listening.
     radioTrigger: Int = 0,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -1005,23 +891,16 @@ private fun IrideQueuePreview(
         if (currentWindowIndex in queueWindows.indices) queueWindows[currentWindowIndex].uid else null
     }
 
-    // History: one-shot load of the last 20 distinct songs played before this one — no
-    // pagination needed here (unlike the old queue sheet), this panel is short-lived.
     var historyItems by remember { mutableStateOf<List<MediaMetadata>>(emptyList()) }
     LaunchedEffect(mediaMetadata.id) {
         val currentSongId = mediaMetadata.id
-        val page = database.events().first()
-            .distinctBy { it.song.id }
+        val page = database.recentEventsPerSong(31).first()
             .filter { it.song.id != currentSongId }
             .take(20)
         historyItems = page.reversed().map { it.song.toMediaMetadata() }
     }
 
-    // Auto-Mix filter chips — same filters/logic as the old queue sheet (Queue.kt), reused
-    // rather than duplicated, including real genre tags from GenreProvider.
     val automix by playerConnection.service.automixItems.collectAsState()
-    // Live drag-reorder copy of automix, same pattern as mutableQueueWindows above — lets
-    // dragging a song set its priority before Radio commits this order into the real queue.
     val mutableAutomixItems = remember { mutableStateListOf<MediaItem>() }
     LaunchedEffect(automix) {
         mutableAutomixItems.apply {
@@ -1046,9 +925,6 @@ private fun IrideQueuePreview(
         if (dynamicGenreFilter != null) AUTOMIX_STATIC_FILTERS + dynamicGenreFilter else AUTOMIX_STATIC_FILTERS
     }
     var selectedAutomixFilter by remember { mutableStateOf(AUTOMIX_FILTER_ALL) }
-    // Only ALL preserves list order (see filterAutomix) — that's also the only mode dragging
-    // is enabled in, so filteredAutomix and mutableAutomixItems always agree on order/positions
-    // whenever a drag could be in flight.
     val filteredAutomix = remember(mutableAutomixItems.toList(), selectedAutomixFilter, familiarArtistNames, automixGenreFilter.genreBySongId) {
         filterAutomix(mutableAutomixItems, selectedAutomixFilter, familiarArtistNames, automixGenreFilter.genreBySongId)
     }
@@ -1066,14 +942,6 @@ private fun IrideQueuePreview(
 
         val lazyListState = rememberLazyListState()
 
-        // Radio wheel button: never restarts or reorders the currently playing song, but DOES
-        // actually start the radio now — Auto-Mix (in whatever order the drag above left it in)
-        // is promoted into the real player queue, replacing whatever was queued after the
-        // current song. Auto-Mix itself then empties out (it's not a suggestion list once
-        // committed, it IS the queue) until the next Radio press or natural refill.
-        // Saveable so it stays in lockstep with the saveable radioNonce in Player.kt — if this
-        // reset while the nonce survived, reopening the queue panel would replay a stale radio
-        // request and silently re-arm the radio after the user had switched to another queue.
         var lastHandledRadioTrigger by rememberSaveable { mutableStateOf(0) }
         LaunchedEffect(radioTrigger) {
             if (radioTrigger == 0 || radioTrigger == lastHandledRadioTrigger) return@LaunchedEffect
@@ -1104,12 +972,6 @@ private fun IrideQueuePreview(
 
         var dragInfo by remember { mutableStateOf<Pair<Int, Int>?>(null) }
         var automixDragging by remember { mutableStateOf(false) }
-        // Row indices in the LazyColumn are raw/global (history rows + the CONTINUE LISTENING
-        // header sit before the queue section, and the Auto-Mix filter/header rows sit before
-        // the Auto-Mix section) — the reorderable library hands back indices into the whole
-        // column, not into mutableQueueWindows/mutableAutomixItems directly, so both need this
-        // offset subtracted before touching either list. Missing this offset was the previous
-        // bug: dragging with any history loaded moved the wrong queue item (or crashed).
         val queueOffset = historyItems.size + 1
         val automixOffset = queueOffset + mutableQueueWindows.size + 2
         val reorderableState = rememberReorderableLazyListState(lazyListState = lazyListState) { from, to ->
@@ -1121,8 +983,6 @@ private fun IrideQueuePreview(
                 mutableQueueWindows.move(queueFrom, queueTo)
                 return@rememberReorderableLazyListState
             }
-            // Auto-Mix priority reorder — only meaningful (and only enabled, see the drag
-            // handle below) while showing the unfiltered ALL order Radio will actually commit.
             if (selectedAutomixFilter == AUTOMIX_FILTER_ALL) {
                 val automixFrom = from.index - automixOffset
                 val automixTo = to.index - automixOffset
@@ -1133,8 +993,6 @@ private fun IrideQueuePreview(
             }
         }
 
-        // History hidden by default — scroll past it once it's loaded, so opening the
-        // panel lands on CONTINUE LISTENING, not on the past.
         LaunchedEffect(historyItems) {
             if (historyItems.isNotEmpty()) lazyListState.scrollToItem(historyItems.size)
         }
@@ -1161,8 +1019,6 @@ private fun IrideQueuePreview(
                     dragInfo = null
                 }
                 if (automixDragging) {
-                    // mutableAutomixItems already holds the final dragged order — persist it
-                    // back to the service so Radio commits this order, not the fetched one.
                     playerConnection.service.automixItems.value = mutableAutomixItems.toList()
                     automixDragging = false
                 }
@@ -1179,8 +1035,6 @@ private fun IrideQueuePreview(
                     modifier = Modifier
                         .fillMaxWidth()
                         .animateItem()
-                        // History → tap the row to play now (inserts next + skips into it,
-                        // rest of the future queue stays intact); the icon only adds it ahead.
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -1217,7 +1071,6 @@ private fun IrideQueuePreview(
                             )
                         }
                     }
-                    // History → "add to UP NEXT", never touches NOW.
                     Icon(
                         painter = painterResource(R.drawable.playlist_play),
                         contentDescription = null,
@@ -1340,8 +1193,6 @@ private fun IrideQueuePreview(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .animateItem()
-                                // Auto-Mix → tap the row to play now (same play-now affordance as
-                                // History/Queue rows above): inserts next + skips into it immediately.
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
@@ -1381,8 +1232,6 @@ private fun IrideQueuePreview(
                                     )
                                 }
                             }
-                            // Drag priority only makes sense (and is only wired up) against the
-                            // unfiltered ALL order — the same order Radio commits into the queue.
                             if (selectedAutomixFilter == AUTOMIX_FILTER_ALL) {
                                 Icon(
                                     painter = painterResource(R.drawable.drag_handle),
@@ -1418,13 +1267,8 @@ private fun IrideClickWheel(
     centerButtonSize: Dp,
     modifier: Modifier = Modifier,
 ) {
-    // Ring band between the outer rim and the center hole: (wheelSize - centerButtonSize) / 2.
-    // The 4 zones sit centered in that band's outer half, so they read as pushed out toward the
-    // rim instead of hugging a flat edge margin that ignored how big the hole was.
     val ringWidth = (wheelSize - centerButtonSize) / 2
     val zoneEdgeInset = ringWidth / 6
-    // Spread the 4 zones outward from center as a set, like widening the wheel's effective
-    // diameter for just the buttons, so they land mid-band in the gray ring instead of hugging it.
     val zoneSpread = buttonSize * 0.14f
 
     Box(
@@ -1477,9 +1321,6 @@ private fun IrideClickWheel(
                 edgeInset = zoneEdgeInset,
                 offsetY = zoneSpread,
                 onClick = onPlayPauseClick,
-                // Wide bottom strip: the empty bottom-left/right of the wheel (prev/next sit at
-                // mid-height, not down here) becomes part of the play/pause target so a near-miss
-                // no longer collapses the player.
                 hitWidth = buttonSize * 2.2f,
             ) {
                 Icon(
@@ -1520,19 +1361,11 @@ private fun IrideClickWheel(
 private fun BoxScope.WheelZone(
     alignment: Alignment,
     size: Dp,
-    // Distance from the wheel's outer edge to the zone's center — centers it in the outer half
-    // of the ring band (between the rim and the center hole) instead of a flat margin that
-    // ignored how big that band actually was.
     edgeInset: Dp,
     onClick: () -> Unit,
     enabled: Boolean = true,
-    // Touch target size; defaults to the icon size. The bottom play/pause zone widens it so a tap
-    // landing slightly left/right of the icon still hits instead of falling through to the
-    // player's background collapse-on-tap and dropping to the mini player.
     hitWidth: Dp = size,
     hitHeight: Dp = size,
-    // Nudges the zone off its raw edge-aligned spot, in sync with the other 3 zones, so the ring
-    // of buttons reads as a slightly wider circle centered in the gray band.
     offsetX: Dp = 0.dp,
     offsetY: Dp = 0.dp,
     content: @Composable () -> Unit,
@@ -1550,8 +1383,6 @@ private fun BoxScope.WheelZone(
                 enabled = enabled,
                 onClick = onClick,
             ),
-        // Anchor the icon to the zone's own edge so a widened hit box grows inward (toward the
-        // wheel center) without shifting the icon off its spot.
         contentAlignment = alignment,
     ) {
         Box(
@@ -1610,9 +1441,6 @@ fun IrideMiniPlayerBridgeOverlay(
     val playerConnection = LocalPlayerConnection.current ?: return
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val metadata = mediaMetadata ?: return
-    // Reduced motion: the container-transform morph becomes an instant cut between the mini and
-    // player layouts instead of tracking drag position — snapping `eased` to the nearer endpoint
-    // collapses every lerp below to that endpoint's value with no interpolation drawn.
     val reducedMotion = rememberReducedMotion()
     val eased = if (reducedMotion) {
         if (sheetProgress >= 0.5f) 1f else 0f
@@ -1631,21 +1459,12 @@ fun IrideMiniPlayerBridgeOverlay(
         val artStart = bridgeState.miniArt ?: bridgeState.playerArt
         val artEnd = bridgeState.playerArt ?: artStart
         if (artStart != null && artEnd != null && !bridgeState.panelActive) {
-            // Fades out fast right at the start of the move instead of hanging around for the
-            // whole morph — the mini pill's own ring (PillPlayButton) takes back over the instant
-            // this one is gone, so it must never be caught visible mid-air with no ring anywhere.
             val ringAlpha = (1f - eased / BridgeRingFadeOutProgress).coerceIn(0f, 1f)
             BridgedElement(start = artStart, end = artEnd, rootOffset = rootOffset, progress = eased) { scale ->
                 val onScreenRadius = lerp(PillCoverRadius.value, IrideCoverBorderRadius.value, eased)
                 val compensatedRadius = (onScreenRadius / scale.coerceAtLeast(0.01f)).coerceAtMost(200f)
                 val context = LocalContext.current
                 AsyncImage(
-                    // Always requests the source at full quality regardless of this frame's box
-                    // size — early in the transition (before the expanded rect is known) this box
-                    // briefly measures at the mini pill's small size, and without an explicit
-                    // Size.ORIGINAL request Coil decodes/caches a small bitmap for it that then
-                    // visibly pops to sharp once the real size lands (the "grainy then upgrades"
-                    // regression).
                     model = ImageRequest.Builder(context)
                         .data(metadata.thumbnailUrl)
                         .size(Size.ORIGINAL)
@@ -1692,20 +1511,10 @@ fun IrideMiniPlayerBridgeOverlay(
 
 private const val IrideCoverTextSplit = 0.28f
 
-// Total horizontal space the bridge's more/favorite actions occupy once fully revealed
-// (6.dp gap + two 36.dp targets). Reserved through an animated-width box so the weighted
-// title never loses its width in a single frame mid-morph.
 private val IrideBridgeInfoActionsWidth = 78.dp
 
-// Fallback vertical convergence (px are measured from the real text layouts at runtime): used
-// only for the first frame, before the title/artist TextLayoutResults are available. Each line
-// translates toward their shared center by half of this amount at progress 0 and relaxes back
-// to the laid-out positions by progress 1.
 private val IrideBridgeInfoLineConvergence = 6.dp
 
-// Baseline-to-baseline distance between the title and the artist line in the collapsed mini
-// state — tight on purpose ("a few pixels" of ink gap). The morph interpolates the measured
-// natural distance down to this value, split evenly between the two lines.
 private val IrideBridgeInfoMiniBaselineGap = 10.sp
 
 @Composable
@@ -1728,9 +1537,6 @@ private fun BridgedInfoBlock(
     var titleLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     var artistLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
-    // Measured convergence: how far apart the title/artist baselines naturally sit, minus the
-    // tight mini-state target. Split evenly between the two lines and relaxed back to zero as
-    // progress reaches 1, so the expanded state keeps its original spacing untouched.
     val lineConvergencePx = run {
         val title = titleLayoutResult
         val artist = artistLayoutResult
@@ -1783,10 +1589,6 @@ private fun BridgedInfoBlock(
         }
         Box(modifier = Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Fixed end-state size scaled via graphicsLayer instead of animating fontSize:
-                // animating fontSize re-measures and re-rasterizes the text every frame (stuttery
-                // glyphs, shifting ellipsis/letter spacing), while a GPU transform scales it
-                // smoothly with zero relayout.
                 Text(
                     text = metadata.title,
                     color = lerpColor(miniTitleColor, Color.White, progress),
@@ -1806,15 +1608,9 @@ private fun BridgedInfoBlock(
                             translationY = lineConvergencePx / 2f * (1f - progress)
                         },
                 )
-                // Width-only reservation for the end actions. A Spacer is measured but never
-                // influences the row's height — composing fixed-size boxes here would make the
-                // row taller than the title line and shift it vertically whenever the icons
-                // enter/leave composition, breaking both the spacing and the smoothness.
                 Spacer(Modifier.width(IrideBridgeInfoActionsWidth * iconReveal))
             }
             if (playerConnection != null) {
-                // Overlay so the fixed-size click targets never influence the row height; they
-                // fade in centered on the title line, exactly where the player's static actions sit.
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier

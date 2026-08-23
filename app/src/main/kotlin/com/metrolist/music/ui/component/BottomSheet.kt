@@ -64,19 +64,8 @@ fun BottomSheet(
     collapsedContent: @Composable BoxScope.() -> Unit,
     isExpandable: Boolean = true,
     clickableHeight: Dp = state.collapsedBound,
-    // When false, this composable never moves/clips itself (used for the "curtain" player layer
-    // that stays fixed behind the app content — the app layer does the moving instead) and does
-    // not attach its own drag gesture (the caller attaches it to the visible peek content instead).
     selfPositions: Boolean = true,
-    // Reserves space at the top of the expanded [content] — used in New Iride UI mode where the
-    // player is a fixed full-screen layer but its content must start below AppPeekHeight (the
-    // app-layer sliver that always stays visible at the top, since the player itself never moves).
     contentTopPadding: Dp = 0.dp,
-    // When true, [background] is drawn fully opaque at every drag position instead of fading in
-    // over the first ~10-61% of progress. Used by the New Iride UI curtain player: its collapsed
-    // peek content already paints the same dark background, so the generic fade-in left a gap at
-    // low progress where nothing was drawn yet — briefly showing raw black instead of the curtain's
-    // own color and reading as a mismatched, separate background peeking through at the seam.
     backgroundAlwaysOpaque: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -85,7 +74,6 @@ fun BottomSheet(
     Box(
         modifier = modifier
             .graphicsLayer {
-                // background fades during about 10%-61% progress (unless backgroundAlwaysOpaque)
                 alpha = if (backgroundAlwaysOpaque) {
                     1f
                 } else {
@@ -98,7 +86,6 @@ fun BottomSheet(
     Box(
         modifier = modifier
             .fillMaxSize()
-            // Use graphicsLayer for offset to ensure hardware acceleration and 120Hz support
             .graphicsLayer {
                 if (selfPositions) {
                     translationY = (state.expandedBound - state.value)
@@ -108,15 +95,6 @@ fun BottomSheet(
             }
             .pointerInput(state, isExpandable) {
                 if (!isExpandable) return@pointerInput
-                // Plain detectVerticalDragGestures claims the gesture at the platform's default
-                // touch slop (~8dp) — a real finger's ordinary jitter during a tap on a button
-                // anywhere in this full-surface Box crosses that easily, canceling the button's
-                // own click mid-press (Compose cancels a pressed clickable the moment an ancestor
-                // consumes a position change for that pointer) and, on release, can even read as a
-                // downward fling into performFling(onDismiss) — closing the whole player from what
-                // was meant to be a tap. Requiring a much larger, unambiguous vertical move before
-                // this Box claims the pointer lets ordinary taps reach their target reliably, while
-                // real swipes (expand/collapse/dismiss) still clear it well within a normal gesture.
                 handleBottomSheetDrag(
                     state = state,
                     dragSlopPx = 32.dp.toPx(),
@@ -136,7 +114,6 @@ fun BottomSheet(
             BackHandler(onBack = state::collapseSoft)
         }
 
-        // main content
         if (!state.isCollapsed) {
             BoxWithConstraints(
                 modifier = Modifier
@@ -157,23 +134,12 @@ fun BottomSheet(
                     .fillMaxWidth()
                     .height(state.collapsedBound)
                     .then(
-                        // When the sheet doesn't self-translate (curtain mode), this Box would
-                        // otherwise sit at the top of the full-screen container (Box's default
-                        // TopStart alignment) instead of at the bottom where the visible "gap" the
-                        // app layer leaves actually is.
                         if (!selfPositions) Modifier.align(Alignment.BottomStart) else Modifier
                     ),
             ) {
                 Box(
                     modifier = Modifier
                         .graphicsLayer {
-                            // Matches the expanded content's own fade-in start (progress 0.15,
-                            // just below) instead of the old faster 0.25 cutoff — that gap used to
-                            // leave both this collapsed row AND the expanded content (including
-                            // whatever queue/lyrics panel was open) partially visible and stacked
-                            // on top of each other for a stretch of the drag, so shrinking the
-                            // player with a panel open showed its dark background ghosting through
-                            // behind the miniplayer row.
                             alpha = 1f - (state.progress / 0.15f).coerceIn(0f, 1f)
                         }
                         .clickable(
@@ -275,9 +241,6 @@ class BottomSheetState(
         1f - (animatable.upperBound!! - animatable.value) / (animatable.upperBound!! - collapsedBound)
     }
 
-    // Set whenever an expand is triggered. Lets callers tell "just opened, no time to interact
-    // yet" (e.g. an accidental tap while backgrounding) apart from "user has been sitting in the
-    // expanded player for a while and left it open on purpose".
     var lastExpandedAtMs: Long = 0L
         private set
 
@@ -318,7 +281,6 @@ class BottomSheetState(
             animatable.animateTo(animatable.lowerBound!!)
         }
     }
-    
     suspend fun dismissAndWait() {
         onAnchorChanged(dismissedAnchor)
         animatable.animateTo(animatable.lowerBound!!)
@@ -423,16 +385,7 @@ fun rememberBottomSheetState(
     expandedBound: Dp,
     collapsedBound: Dp = dismissedBound,
     initialAnchor: Int = dismissedAnchor,
-    // Fires on every transition between dismissed/collapsed/expanded so the caller can mirror the
-    // new anchor into DataStore and survive a real process kill (rememberSaveable alone only
-    // covers config-change recreation). Default no-op keeps this composable drop-in for callers
-    // that don't need cross-process persistence.
     onAnchorPersist: (Int) -> Unit = {},
-    // When true, an interactive drag can never pull the sheet below collapsedBound — no swipe-to-
-    // dismiss-by-dragging. Used by the New Iride UI curtain player: dragging down past the collapsed
-    // mini player used to shrink it away and silently stop playback, reading as "throwing the song
-    // away" instead of just refusing to close further. Opening (drag up) is untouched, and dismiss()
-    // can still be invoked programmatically (e.g. an explicit close action) regardless of this flag.
     preventDismissDrag: Boolean = false,
 ): BottomSheetState {
     val density = LocalDensity.current

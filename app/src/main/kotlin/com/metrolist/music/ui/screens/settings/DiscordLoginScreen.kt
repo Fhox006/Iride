@@ -69,8 +69,6 @@ fun DiscordLoginScreen(navController: NavController) {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
 
-                // Fix for Motorola devices - UA parsing issue breaks Discord login
-                // See: https://github.com/dead8309/Kizzy/issues/345#issuecomment-2699729072
                 if (Build.MANUFACTURER.equals(MOTOROLA, ignoreCase = true)) {
                     settings.userAgentString = SAMSUNG_USER_AGENT
                 }

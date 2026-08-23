@@ -3,6 +3,8 @@
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
+@file:OptIn(ExperimentalCoroutinesApi::class, kotlinx.coroutines.FlowPreview::class)
+
 package com.metrolist.music.viewmodels
 
 import android.content.Context
@@ -24,6 +26,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -50,7 +53,10 @@ constructor(
             context.dataStore.data.map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged()
         ) { query, filter, hideVideoSongs ->
             Triple(query, filter, hideVideoSongs)
-        }.flatMapLatest { (query, filter, hideVideoSongs) ->
+        }
+            // Empty queries skip the delay so switching filters stays instant.
+            .debounce { (query, _, _) -> if (query.isEmpty()) 0L else 250L }
+            .flatMapLatest { (query, filter, hideVideoSongs) ->
             if (query.isEmpty()) {
                 flowOf(LocalSearchResult("", filter, emptyMap()))
             } else {
@@ -72,10 +78,6 @@ constructor(
                     LocalFilter.ALBUM -> database.searchAlbums(query)
                     LocalFilter.ARTIST -> database.searchArtists(query)
                     LocalFilter.PLAYLIST -> database.searchPlaylists(query)
-                    // Downloaded songs, plus songs merely cached from playback (not explicitly
-                    // downloaded) — "cached" isn't a DB column, so that half is checked against
-                    // the player's on-disk cache here. Albums only count once fully downloaded
-                    // (searchDownloadedAlbums), matching "Recently Downloaded" in Library.
                     LocalFilter.DOWNLOAD ->
                         combine(
                             database.searchSongsForDownloadFilter(query),

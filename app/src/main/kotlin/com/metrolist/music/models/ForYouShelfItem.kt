@@ -10,6 +10,5 @@ import com.metrolist.music.db.entities.LocalItem
 
 data class ForYouShelfItem(
     val artist: Artist,
-    // Exactly 3 albums by `artist`, most-listened first, no duplicates.
     val tiles: List<LocalItem>,
 )

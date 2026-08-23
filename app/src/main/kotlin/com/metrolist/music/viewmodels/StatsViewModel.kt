@@ -185,11 +185,11 @@ constructor(
             .firstEvent()
             .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
-    val selectedArtists = mutableStateListOf<Artist>() // Current artist selection
+    val selectedArtists = mutableStateListOf<Artist>()
 
     val filteredSongs = combine(
-        mostPlayedSongsStats, // Unfiltered songs
-        snapshotFlow { selectedArtists.toList() } // Selected artists
+        mostPlayedSongsStats,
+        snapshotFlow { selectedArtists.toList() }
     ) { songs, selected ->
         if (selected.isEmpty()) {
             songs
@@ -201,8 +201,8 @@ constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val filteredArtists = combine(
-        mostPlayedArtists, // Unfiltered list of artists
-        snapshotFlow { selectedArtists.toList() } // Selected artists
+        mostPlayedArtists,
+        snapshotFlow { selectedArtists.toList() }
     ) { artists, selected ->
         if (selected.isEmpty()) {
             artists
@@ -214,8 +214,8 @@ constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val filteredAlbums = combine(
-        mostPlayedAlbums, // Unfiltered list of albums
-        snapshotFlow { selectedArtists.toList() } // Selected artists
+        mostPlayedAlbums,
+        snapshotFlow { selectedArtists.toList() }
     ) { albums, selected ->
         if (selected.isEmpty()) {
             albums
@@ -309,7 +309,6 @@ constructor(
                     )
                 }
 
-                // Only write "last sync" when it was a scheduled sync, not a forced rebuild
                 if (!force) {
                     context.dataStore.edit { settings ->
                         if (shouldSyncWeekly) settings[LastWeeklyMostPlaylistSyncKey] = nowEpochMillis

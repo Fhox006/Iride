@@ -136,8 +136,6 @@ fun ThumbnailCarousel(
         MediaItemsData(items, items.indexOf(current))
     }
 
-    // Lags behind mediaItemsData: holds the old list during skip animation so the
-    // correct artwork slides in rather than the page snapping instantly with a reload.
     var displayedMediaItemsData by remember { mutableStateOf(mediaItemsData) }
     val displayedItems = displayedMediaItemsData.items
     val displayedCurrentIndex = displayedMediaItemsData.currentIndex
@@ -199,8 +197,6 @@ fun ThumbnailCarousel(
             return@LaunchedEffect
         }
 
-        // Animate on OLD list in the correct direction.
-        // For swipe: pager already at target page, animateScrollToPage is a no-op.
         val oldItems = oldData.items
         val oldIdx = oldData.currentIndex
         when (newCurrentId) {
@@ -420,7 +416,6 @@ fun ThumbnailCarousel(
             CarouselSeekEffectOverlay(seekDirection = seekDirection)
         }
 
-        // Minimal, transient error banner - never hides the artwork or swaps the screen.
         AnimatedVisibility(
             visible = error != null,
             enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),

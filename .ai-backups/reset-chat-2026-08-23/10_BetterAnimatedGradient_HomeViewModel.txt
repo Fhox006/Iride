@@ -1,0 +1,13 @@
+FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\ui\component\BetterAnimatedGradientBackground.kt
+LINES: 138
+NOTE: safe call unnecessary (isCrossfading implies incomingAlbumImage non-null).
+<<<ORIGINAL
+138:                 incomingAlbumImage?.let { incoming ->
+ORIGINAL>>>
+
+FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\viewmodels\HomeViewModel.kt
+LINES: 369
+NOTE: joinToString returns non-null String; second `?.takeIf` unnecessary.
+<<<ORIGINAL
+369:             subtitle = item.artists?.joinToString(", ") { it.name }?.takeIf { it.isNotEmpty() },
+ORIGINAL>>>

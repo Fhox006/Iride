@@ -38,7 +38,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -49,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.textSecondary
 
 @Composable
 fun NavigationTitle(
@@ -77,8 +77,6 @@ fun NavigationTitle(
             .padding(
                 start = if (useIrideStyle) 20.dp else 12.dp,
                 end = if (useIrideStyle) 20.dp else 12.dp,
-                // Iride style: keep spacing from the section above (top) but pull the content
-                // right below this title much closer (bottom) instead of matching top/bottom.
                 top = topPadding ?: if (useIrideStyle) 26.dp else 12.dp,
                 bottom = bottomPadding ?: if (useIrideStyle) 2.dp else 12.dp,
             )
@@ -109,7 +107,7 @@ fun NavigationTitle(
                     MaterialTheme.typography.titleLarge
                 },
                 fontWeight = FontWeight.Bold,
-                color = if (useIrideStyle) Color.White.copy(alpha = 0.55f) else MaterialTheme.colorScheme.primary,
+                color = if (useIrideStyle) MaterialTheme.colorScheme.textSecondary else MaterialTheme.colorScheme.primary,
                 overflow = TextOverflow.Ellipsis,
                 maxLines = 1,
             )
@@ -120,7 +118,7 @@ fun NavigationTitle(
                 Icon(
                     painter = painterResource(R.drawable.play),
                     contentDescription = stringResource(R.string.play_all),
-                    tint = Color.White.copy(alpha = 0.6f),
+                    tint = MaterialTheme.colorScheme.textSecondary,
                     modifier = Modifier
                         .size(20.dp)
                         .clickable(
@@ -165,7 +163,7 @@ fun NavigationTitle(
             Icon(
                 painter = painterResource(R.drawable.refresh),
                 contentDescription = stringResource(R.string.refresh),
-                tint = if (useIrideStyle) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.primary,
+                tint = if (useIrideStyle) MaterialTheme.colorScheme.textSecondary else MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .size(20.dp)
                     .graphicsLayer { rotationZ = rotation }
@@ -186,7 +184,7 @@ fun NavigationTitle(
             Icon(
                 painter = painterResource(R.drawable.expand_more),
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.6f),
+                tint = MaterialTheme.colorScheme.textSecondary,
                 modifier = Modifier
                     .size(18.dp)
                     .graphicsLayer { rotationZ = rotation }
@@ -200,15 +198,12 @@ fun NavigationTitle(
             Icon(
                 painter = painterResource(R.drawable.arrow_forward),
                 contentDescription = null,
-                tint = if (useIrideStyle) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.primary
+                tint = if (useIrideStyle) MaterialTheme.colorScheme.textSecondary else MaterialTheme.colorScheme.primary
             )
         }
     }
 }
 
-// New Iride UI: collapses a section's body while keeping its NavigationTitle row visible.
-// Shared by HomeScreen and LibraryAlbumsScreen (any screen using the NavigationTitle collapse
-// arrow above should pair it with this).
 @Composable
 fun IrideCollapsibleSection(
     collapsed: Boolean,

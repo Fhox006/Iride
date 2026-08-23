@@ -24,8 +24,6 @@ fun Lyrics(
     onExitFullScreen: () -> Unit = {},
     showPills: Boolean = true,
     pillsController: LyricsPillController? = null,
-    // Multiplies the lyric line text size. 1f everywhere except the Iride MP3 player's in-card
-    // lyrics, which ask for a slightly larger read. Only affects ExperimentalLyrics.
     textScale: Float = 1f,
 ) {
     val (experimentalLyrics, _) = rememberPreference(key = ExperimentalLyricsKey, defaultValue = true)

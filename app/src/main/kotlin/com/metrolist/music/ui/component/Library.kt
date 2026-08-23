@@ -42,9 +42,6 @@ import com.metrolist.music.ui.menu.PlaylistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import kotlinx.coroutines.CoroutineScope
 
-// Small "+N" pill used for the new-release badges (library title + per-artist card). Monospace to
-// match the Iride UI type system; falls back fine in the classic UI too. Flat monochrome — no accent
-// hue, same convention as Icon.Starred()/Explicit()/New() — so it reads as information, not promotion.
 @Composable
 fun NewReleaseBadge(
     count: Int,
@@ -225,9 +222,6 @@ fun LibraryAlbumGridItem(
         )
 )
 
-// "Continue Listening" carousel card (Library Albums screen): a plain AlbumGridItem plus a
-// small dismiss button pinned to the thumbnail's corner. Removing an album here only calls
-// [onDismiss] — it never touches favorites or play history, see LibraryAlbumsViewModel.
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LibraryContinueListeningAlbumItem(
@@ -274,10 +268,6 @@ fun LibraryContinueListeningAlbumItem(
     }
 }
 
-// "Suggested follow artists" (Library Artists screen): artists you play a lot but haven't
-// followed, rendered as ordinary library tiles appended to the roster. The tiny "+" follows on
-// tap; the tiny "x" dismisses the suggestion; both live in the same badge slot as the "+N"
-// new-release badge so a suggestion is visually indistinguishable from a followed artist.
 @Composable
 private fun SuggestedFollowActions(
     onFollow: () -> Unit,

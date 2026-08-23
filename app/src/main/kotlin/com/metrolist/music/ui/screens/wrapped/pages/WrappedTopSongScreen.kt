@@ -122,8 +122,6 @@ fun WrappedTopSongScreen(topSong: SongWithStats?, isVisible: Boolean) {
                 )
             }
 
-            // Artists are not available in SongWithStats, so this part is removed.
-            // A possible improvement would be to fetch artist data separately.
 
             Spacer(modifier = Modifier.height(8.dp))
 

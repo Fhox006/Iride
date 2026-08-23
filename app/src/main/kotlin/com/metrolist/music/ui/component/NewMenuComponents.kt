@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.sp
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.utils.rememberPreference
 
-// Enhanced Action Button - Material 3 Expressive Design
 @Composable
 fun NewActionButton(
     icon: @Composable () -> Unit,
@@ -115,7 +114,6 @@ fun NewActionButton(
     }
 }
 
-// Enhanced Menu Item - Material 3 Expressive Design
 @Composable
 fun NewMenuItem(
     modifier: Modifier = Modifier,
@@ -139,7 +137,6 @@ fun NewMenuItem(
     )
 }
 
-// Enhanced Menu Section Header - Material 3 Expressive Design
 @Composable
 fun NewMenuSectionHeader(
     text: String,
@@ -157,7 +154,6 @@ fun NewMenuSectionHeader(
     )
 }
 
-// Enhanced Action Grid - Material 3 Expressive Design
 @Composable
 fun NewActionGrid(
     actions: List<NewAction>,
@@ -200,7 +196,6 @@ fun NewActionGrid(
                     )
                 }
 
-                // Fill remaining space if row is not full
                 repeat(columns - row.size) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
@@ -209,7 +204,6 @@ fun NewActionGrid(
     }
 }
 
-// Enhanced Action Data Class
 data class NewAction(
     val icon: @Composable () -> Unit,
     val text: String,
@@ -219,7 +213,6 @@ data class NewAction(
     val contentColor: Color = Color.Unspecified,
 )
 
-// Enhanced Menu Content - Material 3 Expressive Design
 @Composable
 fun NewMenuContent(
     headerContent: @Composable (() -> Unit)? = null,
@@ -231,13 +224,10 @@ fun NewMenuContent(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // Header
         headerContent?.invoke()
 
-        // Action Grid
         actionGrid?.invoke()
 
-        // Divider if both header and actions exist
         if (headerContent != null && actionGrid != null) {
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 16.dp),
@@ -245,12 +235,10 @@ fun NewMenuContent(
             )
         }
 
-        // Menu Items
         menuItems?.invoke()
     }
 }
 
-// Enhanced Icon Button - Material 3 Expressive Design
 @Composable
 fun NewIconButton(
     icon: @Composable () -> Unit,
@@ -298,7 +286,6 @@ fun NewIconButton(
     }
 }
 
-// Enhanced Menu Container - Material 3 Expressive Design
 @Composable
 fun NewMenuContainer(
     content: @Composable () -> Unit,

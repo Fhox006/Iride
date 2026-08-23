@@ -40,25 +40,17 @@ class HeroCarouselGenerator(
         val random = Random(seed)
         val oneYearAgo = System.currentTimeMillis() - 365L * 24 * 60 * 60 * 1000
 
-        // Broader pool of artists the user genuinely listens to (not just a handful
-        // of plays), used to keep "new releases" tied to their actual taste instead
-        // of YouTube's generic global feed.
         val knownArtists = database.mostPlayedArtists(fromTimeStamp = oneYearAgo, limit = 25).first()
             .filter { it.artist.isYouTubeArtist }
             .filterGenuineFavorites()
         val knownArtistIds = knownArtists.map { it.id }.toSet()
 
-        // "More New": new releases from artists the user actually follows.
         val newReleaseCandidates = explorePage?.newReleaseAlbums
             ?.distinctBy { it.browseId }
             ?.let { albums ->
                 if (knownArtistIds.isEmpty()) {
-                    // New user with no listening history yet: fall back to the
-                    // generic feed rather than showing nothing.
                     albums
                 } else {
-                    // Only keep albums where a followed artist is the primary
-                    // credit, not a mere featuring on someone else's release.
                     albums.filter { it.artists?.firstOrNull()?.id in knownArtistIds }
                         .ifEmpty { albums }
                 }
@@ -74,8 +66,6 @@ class HeroCarouselGenerator(
                 )
             }.orEmpty()
 
-        // "Album in rotazione": albums straight from the user's own recent/stale plays —
-        // the local half of the "Dischi per te" shelf's mix, never a playlist.
         val inRotationCandidates = dischiPerTe.filterIsInstance<DischiPerTeItem.Local>()
             .shuffled(random)
             .take(3)
@@ -88,8 +78,6 @@ class HeroCarouselGenerator(
                 )
             }
 
-        // "Album consigliati in base agli ascolti recenti": the algorithmic half of the
-        // same "Dischi per te" shelf (similar/unheard artists derived from recent plays).
         val recommendedAlbumCandidates = dischiPerTe.filterIsInstance<DischiPerTeItem.Remote>()
             .shuffled(random)
             .take(3)
@@ -103,9 +91,6 @@ class HeroCarouselGenerator(
                 )
             }
 
-        // "Artisti emergenti o in tendenza": artists surfaced on the personalized home
-        // feed that the user doesn't already follow — the closest proxy to "trending"
-        // available without a dedicated trending-artists endpoint.
         val trendingArtistCandidates = homePage?.sections
             ?.flatMap { it.items }
             ?.filterIsInstance<ArtistItem>()
@@ -130,13 +115,6 @@ class HeroCarouselGenerator(
             )
         }
 
-        // "Nuove uscite del genere preferito": tag a handful of new releases with a genre
-        // via GenreProvider (same lookup GenrePillsRow uses for playlists) and keep the
-        // ones matching the genre the user's most-played songs skew towards.
-        //
-        // This pool is by far the slowest to build (up to ~23 uncached HTTP lookups behind
-        // it). Smart Boot first paints the carousel without it, then appends these cards
-        // later — see HomeViewModel.refreshHeroCarousel(includeGenrePool = false).
         val genreNewReleaseCandidates =
             if (includeGenrePool) buildGenreNewReleases(explorePage, random) else emptyList()
 
@@ -147,10 +125,6 @@ class HeroCarouselGenerator(
 
         if (pools.isEmpty()) return Result(emptyList(), seenAsFirstIds)
 
-        // Draw each candidate at most once. Padding out to a fixed 10 by reusing a pool
-        // once it ran dry (e.g. a single "Liked Songs" card) made the carousel repeat the
-        // same slide several times — the carousel is now only as long as the real variety
-        // available (capped at 10), with no two consecutive cards from the same pool.
         val result = mutableListOf<HeroCarouselItem>()
         var lastPoolIndex = -1
 
@@ -160,8 +134,6 @@ class HeroCarouselGenerator(
             val poolIndex = availableIndices.random(random)
             val pool = pools[poolIndex]
 
-            // The album shown as the very first card must rotate: never repeat one
-            // already presented in that position.
             val pickIndex = if (result.isEmpty()) {
                 pool.indexOfFirst { it !is HeroCarouselItem.NewRelease || it.albumId !in seenAsFirstIds }
                     .takeIf { it != -1 } ?: 0

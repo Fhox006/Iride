@@ -75,20 +75,11 @@ import kotlin.math.exp
 import kotlin.math.sin
 import kotlin.math.PI
 
-// Apple-Music-style micro letter lift ("rainbow" arc): attack/release envelope is timed against the
-// word's own span. Gate is on the word's sung DURATION, not its character count — a short word held
-// for a long time gets the arc, a long word sung quickly does not. Words shorter than
-// WAVE_DURATION_MIN_MS get zero lift; amplitude ramps in and reaches full height at
-// WAVE_DURATION_FULL_MS.
 private const val WAVE_ATTACK_MS = 350f
 private const val WAVE_RELEASE_MS = 220f
 private const val WAVE_MAX_AMP_DP = 2.2f
 private const val WAVE_DURATION_MIN_MS = 1000f
 private const val WAVE_DURATION_FULL_MS = 1600f
-// Attack/release are capped as a fraction of the word's own on-screen duration so a fast word
-// (short span) always ramps fully to 0 and back to 0 within its own span instead of getting cut
-// off mid-ramp when the next word starts (which read as a "jump"). Kept short in absolute terms
-// too, so the lift starts responding right away instead of appearing to trigger late.
 private const val WAVE_ATTACK_RELEASE_SPAN_FRACTION = 0.35f
 
 private fun easeOutCubic(t: Float): Float {
@@ -98,23 +89,15 @@ private fun easeOutCubic(t: Float): Float {
 
 private fun smoothstep(t: Float): Float = t * t * (3f - 2f * t)
 
-// Whole-word glow: only long words get an extra brightening layered across the entire word as it's
-// sung; short/medium words show only the sweep bar, nothing else.
 private const val LONG_WORD_GLOW_CHARS = 9
 private const val LONG_WORD_GLOW_BOOST = 0.22f
 
-// Unlit word text is brighter than before it was quite dim: bump the resting alpha so the white
-// reveal reads as a clear jump rather than a faint nudge.
 private const val NOT_STARTED_ALPHA_FACTOR = 0.82f
 
-// The karaoke sweep is one continuous bar across the whole word (fixed pixel feather, independent of
-// letter width) so it reads as a single light passing behind the text instead of a per-letter flicker.
 private const val SWEEP_FEATHER_FRACTION = 0.35f
 private const val SWEEP_FEATHER_MIN_DP = 8f
 private const val SWEEP_FEATHER_MAX_DP = 32f
 
-// Transient bloom: a soft blurred glow riding the currently-sung word, gated to longer words and
-// peaking mid-word so it never sits on-screen as a static halo.
 private const val BLOOM_MIN_CHARS = 6
 private const val BLOOM_MAX_CHARS = 14
 private const val BLOOM_MAX_ALPHA = 0.45f
@@ -592,8 +575,6 @@ private fun WordLevelLyrics(
                 if (wIdx == -1) continue
                 val b = layoutResult.getBoundingBox(clusterCharOffsets[k])
                 val bb = bounds[wIdx]
-                // Bidi/mixed-direction runs (multi-speaker lines) can return b.left > b.right;
-                // normalize before tracking min/max or wordBoundsPx ends up with left > right.
                 val bLeft = minOf(b.left, b.right)
                 val bRight = maxOf(b.left, b.right)
                 if (bLeft < bb[0]) bb[0] = bLeft
@@ -753,15 +734,10 @@ private fun WordLevelLyrics(
                             if (spanDurationMs > WAVE_DURATION_MIN_MS) {
                                 val timeIntoWord = (smoothPosition - spanStartMs).toFloat()
                                 val timeToEnd = (spanEndMs - smoothPosition).toFloat()
-                                // Cap attack/release to a fraction of the word's own span so short/fast
-                                // words always complete their in-and-out ramp within their own duration.
                                 val attackMs = minOf(WAVE_ATTACK_MS, spanDurationMs * WAVE_ATTACK_RELEASE_SPAN_FRACTION)
                                 val releaseMs = minOf(WAVE_RELEASE_MS, spanDurationMs * WAVE_ATTACK_RELEASE_SPAN_FRACTION)
                                 val rawAttack = (timeIntoWord / attackMs).coerceIn(0f, 1f)
                                 val rawRelease = (timeToEnd / releaseMs).coerceIn(0f, 1f)
-                                // easeOutCubic responds immediately (non-zero slope at t=0) so the lift
-                                // never reads as "starting late"; smoothstep on release eases the tail
-                                // out to zero instead of ending on a linear-ramp kink (the old "scatti").
                                 val attack = easeOutCubic(rawAttack)
                                 val release = smoothstep(rawRelease)
                                 val envelope = attack * release
@@ -782,14 +758,10 @@ private fun WordLevelLyrics(
                         val cTop = charBounds.top + waveOffset
                         val cBottom = charBounds.bottom + (if (hasDescender) descentPadPx else 0f) + waveOffset
 
-                        // Bidi/mixed-direction runs (e.g. multi-speaker lines) can return a
-                        // bounding box with left > right; normalize or coerceIn below throws.
                         val left = minOf(charBounds.left, charBounds.right)
                         val right = maxOf(charBounds.left, charBounds.right)
 
                         if (isWordSung) {
-                            // Word already fully sung: no feather tail, stays solid so it never
-                            // dips back toward the dim alpha at the word's own end.
                             clipRect(left = left, top = cTop, right = right, bottom = cBottom) {
                                 drawText(layoutResult, topLeft = Offset(0f, waveOffset), color = expressiveAccent)
                             }

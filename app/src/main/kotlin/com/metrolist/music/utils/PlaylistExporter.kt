@@ -22,10 +22,8 @@ object PlaylistExporter {
         try {
             val csvContent =
                 buildString {
-                    // Add CSV header
                     append("Title,Artist,Album,YouTube Video ID\n")
 
-                    // Add each song as a CSV row
                     songs.forEach { playlistSong ->
                         val song = playlistSong.song.song
                         val artists = playlistSong.song.artists
@@ -41,7 +39,6 @@ object PlaylistExporter {
                     }
                 }
 
-            // Save to file
             val file = createExportFile(context, "$playlistName.csv")
             FileWriter(file).use { it.write(csvContent) }
 
@@ -58,10 +55,8 @@ object PlaylistExporter {
         try {
             val m3uContent =
                 buildString {
-                    // Add M3U header
                     append("#EXTM3U\n")
 
-                    // Add each song as M3U entry
                     songs.forEach { playlistSong ->
                         val song = playlistSong.song.song
                         val artists = playlistSong.song.artists
@@ -72,7 +67,6 @@ object PlaylistExporter {
                     }
                 }
 
-            // Save to file
             val file = createExportFile(context, "$playlistName.m3u")
             FileWriter(file).use { it.write(m3uContent) }
 
@@ -90,10 +84,8 @@ fun exportYouTubePlaylistAsCSV(
     try {
         val csvContent =
             buildString {
-                // Add CSV header
                 append("Title,Artist,Album,YouTube Video ID\n")
 
-                // Add each song as a CSV row
                 songs.forEach { songItem ->
                     append("\"${songItem.title.replace("\"", "\"\"")}\"")
                     append(",")
@@ -106,7 +98,6 @@ fun exportYouTubePlaylistAsCSV(
                 }
             }
 
-        // Save to file
         val file = createExportFile(context, "$playlistName.csv")
         FileWriter(file).use { it.write(csvContent) }
 
@@ -123,21 +114,16 @@ fun exportYouTubePlaylistAsM3U(
     try {
         val m3uContent =
             buildString {
-                // Add M3U header
                 append("#EXTM3U\n")
 
-                // Add each song as M3U entry
                 songs.forEach { songItem ->
                     append("#EXTINF:${songItem.duration},")
                     append("${songItem.artists.joinToString(" - ") { it.name }} - ${songItem.title}")
                     append("\n")
-                    // For M3U, we would typically include a URL, but since we don't have direct URLs,
-                    // we'll use a placeholder that indicates this is a YouTube Music track
                     append("#YTM:${songItem.id}\n")
                 }
             }
 
-        // Save to file
         val file = createExportFile(context, "$playlistName.m3u")
         FileWriter(file).use { it.write(m3uContent) }
 
@@ -150,13 +136,11 @@ private fun createExportFile(
     context: Context,
     filename: String,
 ): File {
-    // Create directory if it doesn't exist
     val exportDir = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "MetrolistExports")
     if (!exportDir.exists()) {
         exportDir.mkdirs()
     }
 
-    // Create file with unique name (add timestamp if file exists)
     val baseFilename = filename.substringBeforeLast('.')
     val extension = filename.substringAfterLast('.', "")
     var exportFile = File(exportDir, filename)
@@ -215,7 +199,6 @@ fun saveToPublicDocuments(
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
                 }
 
-            // Use the primary external volume for generic files
             val collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
             val destUri =
                 resolver.insert(collection, values)
@@ -227,14 +210,11 @@ fun saveToPublicDocuments(
                 }
             } ?: return Result.failure(IOException("Failed to open output stream for MediaStore uri"))
 
-            // Mark as not pending so it becomes visible
             val complete = ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }
             resolver.update(destUri, complete, null, null)
 
             Result.success(destUri)
         } else {
-            // Best-effort fallback: keep the file in app-scoped Documents and return a sharable uri
-            // Older Android versions would require WRITE_EXTERNAL_STORAGE for true public Documents
             Result.success(getExportFileUri(context, source))
         }
     } catch (e: Exception) {

@@ -1,0 +1,45 @@
+=== EVENTO DI RECUPERO (23/08/2026) ===
+A causa di un errore procedurale, i file OriginalLyrics.kt e AlbumScreen.kt sono stati
+sovrascritti per sbaglio durante questa sessione. Le versioni con modifiche non committate
+di altre sessioni parallel sono andate perse (1919 e 1307 righe).
+Recupero eseguito: ripristino da git HEAD (ultimo commit) con `git restore`.
+Stato di partenza valido per /reset chat = versione HEAD ripristinata:
+- OriginalLyrics.kt: 1986 righe (HEAD)
+- AlbumScreen.kt: 1406 righe (HEAD)
+
+FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\ui\component\OriginalLyrics.kt
+LINES: 899-921 (versione HEAD ripristinata)
+NOTE: replaced dead `if (lyrics == null)` branch with bare `run { }` scope block.
+<<<ORIGINAL
+                if (lyrics == null) {
+                    item {
+                        ShimmerHost {
+                            repeat(10) {
+                                Box(
+                                    contentAlignment =
+                                        when (lyricsTextPosition) {
+                                            LyricsPosition.LEFT -> Alignment.CenterStart
+                                            LyricsPosition.CENTER -> Alignment.Center
+                                            LyricsPosition.RIGHT -> Alignment.CenterEnd
+                                        },
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 24.dp, vertical = 4.dp),
+                                ) {
+                                    TextPlaceholder()
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    val lyricsOffset = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS
+ORIGINAL>>>
+
+FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\ui\screens\AlbumScreen.kt
+LINES: 979, 990 (versione HEAD ripristinata)
+NOTE: dropped unnecessary safe call; removed always-true null check.
+<<<ORIGINAL
+979:                                                 albumWithSongs?.songs?.size ?: 0,
+990:                                             if (!isListenTogetherGuest && album != null) {
+ORIGINAL>>>

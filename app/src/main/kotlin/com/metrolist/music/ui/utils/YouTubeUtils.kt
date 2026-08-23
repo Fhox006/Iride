@@ -33,7 +33,6 @@ fun String.resize(
             "$this=s$size"
         }
     }
-    // Standard YouTube video thumbnails: upgrade to maxresdefault for large display sizes
     if (this.contains("i.ytimg.com")) {
         val maxSize = maxOf(width ?: 0, height ?: 0)
         if (maxSize >= 480) {

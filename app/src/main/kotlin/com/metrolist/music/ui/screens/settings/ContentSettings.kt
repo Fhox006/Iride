@@ -109,7 +109,6 @@ fun ContentSettings(
     navController: NavController
 ) {
     val context = LocalContext.current
-    // Used only before Android 13
     val (appLanguage, onAppLanguageChange) = rememberPreference(key = AppLanguageKey, defaultValue = SYSTEM_DEFAULT)
 
     val (contentLanguage, onContentLanguageChange) = rememberPreference(key = ContentLanguageKey, defaultValue = "system")
@@ -944,133 +943,6 @@ fun ContentSettings(
             }
         }
 
-        /*
-        Material3SettingsGroup(
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.hide_image),
-                    title = { Text(stringResource(R.string.hide_youtube_shorts)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = hideYoutubeShorts,
-                            onCheckedChange = onHideYoutubeShortsChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (hideYoutubeShorts) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onHideYoutubeShortsChange(!hideYoutubeShorts) }
-                )
-            )
-        )
-
-        Spacer(modifier = Modifier.height(27.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.artist_page_settings),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.info),
-                    title = { Text(stringResource(R.string.show_artist_description)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = showArtistDescription,
-                            onCheckedChange = onShowArtistDescriptionChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (showArtistDescription) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onShowArtistDescriptionChange(!showArtistDescription) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.person),
-                    title = { Text(stringResource(R.string.show_artist_subscriber_count)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = showArtistSubscriberCount,
-                            onCheckedChange = onShowArtistSubscriberCountChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (showArtistSubscriberCount) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onShowArtistSubscriberCountChange(!showArtistSubscriberCount) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.person),
-                    title = { Text(stringResource(R.string.show_artist_monthly_listeners)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = showMonthlyListeners,
-                            onCheckedChange = onShowMonthlyListenersChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (showMonthlyListeners) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onShowMonthlyListenersChange(!showMonthlyListeners) }
-                )
-            )
-        )
-
-        Spacer(modifier = Modifier.height(27.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.app_language),
-            items = listOf(
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.language),
-                        title = { Text(stringResource(R.string.app_language)) },
-                        onClick = {
-                            context.startActivity(
-                                Intent(
-                                    Settings.ACTION_APP_LOCALE_SETTINGS,
-                                    "package:${context.packageName}".toUri()
-                                )
-                            )
-                        }
-                    )
-                } else {
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.language),
-                        title = { Text(stringResource(R.string.app_language)) },
-                        description = {
-                            Text(
-                                LanguageCodeToName.getOrElse(appLanguage) { stringResource(R.string.system_default) }
-                            )
-                        },
-                        onClick = { showAppLanguageDialog = true }
-                    )
-                }
-            )
-        )
-        */
 
         AnimatedVisibility(visible = advancedMode) {
             Column {
@@ -1144,13 +1016,6 @@ fun ContentSettings(
                             description = { Text(stringResource(R.string.lyrics_provider_priority_desc)) },
                             onClick = { showProviderPriorityDialog = true }
                         ),
-                        /*
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.language_korean_latin),
-                            title = { Text(stringResource(R.string.lyrics_romanization)) },
-                            onClick = { navController.navigate("settings/content/romanization") }
-                        )
-                        */
                     )
                 )
 

@@ -84,7 +84,7 @@ object KuGou {
         keyword: Keyword, duration: Int
     ): SearchLyricsResponse.Candidate? {
         searchSongs(keyword).data.info.forEach { song ->
-            if (duration == -1 || abs(song.duration - duration) <= DURATION_TOLERANCE) { // if duration == -1, we don't care duration
+            if (duration == -1 || abs(song.duration - duration) <= DURATION_TOLERANCE) {
                 val candidate = searchLyricsByHash(song.hash).candidates.firstOrNull()
                 if (candidate != null) return candidate
             }
@@ -120,7 +120,7 @@ object KuGou {
             parameter("client", "pc")
             parameter(
                 "duration", duration.takeIf { it != -1 }?.times(1000)
-            ) // if duration == -1, we don't care duration
+            )
             val searchQuery = buildString {
                 append(keyword.title)
                 append(" - ")
@@ -182,7 +182,6 @@ object KuGou {
     private fun String.normalize(): String =
         lines().filter { line -> line.matches(ACCEPTED_REGEX) && !INSTRUMENTAL_REGEX.containsMatchIn(line) }
             .let { lines ->
-                // Remove useless information such as singer, writer, composer, guitar, etc.
                 var headCutLine = 0
                 for (i in min(HEAD_CUT_LIMIT, lines.lastIndex) downTo 0) {
                     if (lines[i].matches(BANNED_REGEX)) {
@@ -207,7 +206,6 @@ object KuGou {
     @Suppress("RegExpRedundantEscape")
     private val ACCEPTED_REGEX = "\\[(\\d\\d):(\\d\\d)\\.(\\d{2,3})\\].*".toRegex()
     private val BANNED_REGEX = ".+].+[:：].+".toRegex()
-    // KuGou marks many non-Chinese songs as instrumental ("pure music") when it can't find real lyrics
     private val INSTRUMENTAL_REGEX = "(纯音乐|純音樂)".toRegex()
 
     private const val DURATION_TOLERANCE = 8

@@ -42,8 +42,6 @@ constructor(
     val albumId = savedStateHandle.get<String>("albumId")!!
     val playlistId = MutableStateFlow("")
 
-    // Same global dot set as the artist page's Top Songs/Featuring rows — cleared when a song row
-    // actually scrolls into view here, not on play.
     val unseenSongIds = newReleaseNotifier.unseenSongIds
         .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
 
@@ -66,10 +64,6 @@ constructor(
     init {
         fetchFromYouTube()
 
-        // Self-heal: a fetch attempted during an outage/handover used to leave the page in a
-        // terminal error state until the user tapped retry (or restarted the app). When
-        // connectivity comes back, retry automatically. StateFlow already dedupes values,
-        // so drop(1) is all that's needed to skip the initial emission.
         viewModelScope.launch {
             networkConnectivity.networkStatus
                 .drop(1)
@@ -91,8 +85,6 @@ constructor(
     private fun fetchFromYouTube() {
         viewModelScope.launch {
             try {
-                // Generous enough for two full InnerTube attempts (2 × 20s + backoff) plus DB work;
-                // a tighter bound here turned every flaky-network moment into a guaranteed error.
                 withTimeout(60_000L) {
                     val album = database.album(albumId).first()
                     val ytResult = YouTube.album(albumId)

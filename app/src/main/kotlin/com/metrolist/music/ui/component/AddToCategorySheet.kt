@@ -56,6 +56,10 @@ import com.metrolist.music.R
 import com.metrolist.music.db.entities.PlaylistCategoryWithCount
 import com.metrolist.music.ui.screens.search.IrideSearchBox
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.fillSelected
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
+import com.metrolist.music.ui.theme.textTertiary
 
 /**
  * "Add to category" bottom sheet (New Iride UI selection-mode flow): search, pick one or more
@@ -76,7 +80,6 @@ fun AddToCategorySheet(
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
-    // Reset per-visit state once the sheet closes so the next open starts clean.
     if (!isVisible && (query.text.isNotEmpty() || selectedIds.value.isNotEmpty())) {
         query = TextFieldValue()
         selectedIds.value = emptySet()
@@ -101,8 +104,8 @@ fun AddToCategorySheet(
     AnimatedBottomSheet(
         isVisible = isVisible,
         onDismissRequest = onDismissRequest,
-        containerColor = Color(0xFF0A0A0A),
-        contentColor = Color.White.copy(alpha = 0.85f),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.textPrimary,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         dragHandle = {
             Box(
@@ -110,7 +113,7 @@ fun AddToCategorySheet(
                     .padding(vertical = 12.dp)
                     .size(width = 40.dp, height = 4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(Color.White.copy(alpha = 0.3f)),
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)),
             )
         },
         modifier = Modifier.fillMaxHeight(fraction = 0.7f),
@@ -126,7 +129,7 @@ fun AddToCategorySheet(
                     fontFamily = SpaceMonoFontFamily,
                     fontWeight = FontWeight.Bold,
                 ),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.textPrimary,
             )
             Spacer(Modifier.height(12.dp))
             IrideSearchBox(
@@ -159,7 +162,7 @@ fun AddToCategorySheet(
                     .padding(bottom = 20.dp)
                     .height(52.dp)
                     .clip(RoundedCornerShape(percent = 50))
-                    .background(if (enabled) Color.White else Color.White.copy(alpha = 0.15f))
+                    .background(if (enabled) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.fillSelected)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -174,7 +177,7 @@ fun AddToCategorySheet(
                         fontFamily = SpaceMonoFontFamily,
                         fontWeight = FontWeight.Bold,
                     ),
-                    color = if (enabled) Color.Black else Color.White.copy(alpha = 0.4f),
+                    color = if (enabled) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.textTertiary,
                 )
             }
         }
@@ -216,13 +219,13 @@ private fun CategoryRow(
             modifier = Modifier
                 .size(10.dp)
                 .clip(CircleShape)
-                .background(dotColor ?: Color.White.copy(alpha = 0.25f)),
+                .background(dotColor ?: MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)),
         )
         Spacer(Modifier.width(12.dp))
         Text(
             text = entry.category.name,
             style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
@@ -230,7 +233,7 @@ private fun CategoryRow(
         Text(
             text = pluralStringResource(R.plurals.n_song, entry.songCount, entry.songCount),
             style = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily),
-            color = Color.White.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.textSecondary,
         )
         Spacer(Modifier.width(12.dp))
         SelectionIndicator(selected = selected, onClick = onToggle, size = 20.dp)
@@ -254,14 +257,14 @@ private fun NewCategoryRow(onClick: () -> Unit) {
         Icon(
             painter = painterResource(R.drawable.add),
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.85f),
+            tint = MaterialTheme.colorScheme.textPrimary,
             modifier = Modifier.size(20.dp),
         )
         Spacer(Modifier.width(12.dp))
         Text(
             text = stringResource(R.string.new_category),
             style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
-            color = Color.White.copy(alpha = 0.85f),
+            color = MaterialTheme.colorScheme.textPrimary,
         )
     }
 }
@@ -302,7 +305,7 @@ private fun CreateCategoryDialog(
                             .size(32.dp)
                             .border(
                                 width = if (selected) 2.dp else 0.dp,
-                                color = Color.White.copy(alpha = if (selected) 0.9f else 0f),
+                                color = if (selected) MaterialTheme.colorScheme.textPrimary else Color.Transparent,
                                 shape = CircleShape,
                             )
                             .padding(4.dp)

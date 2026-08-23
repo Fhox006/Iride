@@ -195,8 +195,6 @@ fun <E> IrideSegmentedToggle(
     spacing: androidx.compose.ui.unit.Dp = 16.dp,
 ) {
     val density = LocalDensity.current
-    // index -> (x offset, width), both in px, relative to the shared Row — reported by each label
-    // so the indicator below knows where to glide to.
     val labelBoundsPx = remember { androidx.compose.runtime.mutableStateMapOf<Int, Pair<Float, Float>>() }
     val selectedIndex = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
     val targetBounds = labelBoundsPx[selectedIndex]

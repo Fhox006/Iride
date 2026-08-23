@@ -159,9 +159,6 @@ fun LibraryPlaylistsScreen(
     val playlists by viewModel.allPlaylists.collectAsState()
     val downloadedPlaylistIds by viewModel.downloadedPlaylistIds.collectAsState()
 
-    // New Iride UI only: "Liked Songs" reads as "Starred" here. R.string.liked is shared with the
-    // legacy UI (and other screens), so it is left untouched and only this pinned entry's display
-    // text is swapped.
     val likedName = stringResource(R.string.starred)
     val lastLikedThumbnails by viewModel.lastLikedThumbnails.collectAsState()
     val likedPlaylistPinned = remember(likedName, lastLikedThumbnails) {
@@ -262,8 +259,6 @@ fun LibraryPlaylistsScreen(
         )
     }
 
-    // New Iride UI hero pattern — see LibraryAlbumsScreen.kt for the canonical version this
-    // was copied from, including the crash note below.
     val frostBackdrop = rememberFrostBackdrop()
     var titleBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
     var topBarBottomPx by remember { mutableStateOf(0f) }
@@ -303,9 +298,6 @@ fun LibraryPlaylistsScreen(
         }
     }
 
-    // The frosted bar below must be a sibling of this Box, never a child: nesting the bar's
-    // frostedTopBarBackground draw inside the still-recording recordFrostBackdrop Box re-enters
-    // the same RenderNode mid-record and crashes.
     Box(modifier = Modifier.fillMaxSize()) {
     Box(
         modifier = Modifier
@@ -550,7 +542,7 @@ fun LibraryPlaylistsScreen(
                 }
             }
         }
-    } // close inner recording Box
+    }
 
         val backProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
         LibrarySearchHeader(
@@ -606,5 +598,5 @@ fun LibraryPlaylistsScreen(
                 )
             }
         }
-    } // close outer plain Box
+    }
 }

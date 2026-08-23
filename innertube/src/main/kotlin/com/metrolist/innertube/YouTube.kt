@@ -155,7 +155,6 @@ object YouTube {
         response.contents?.tabbedSearchResultsRenderer?.tabs?.firstOrNull()
             ?.tabRenderer?.content?.sectionListRenderer?.contents?.forEach { section ->
                 if (section.musicCardShelfRenderer != null) {
-                    // Top result card - keep as single section
                     val items = listOfNotNull(SearchSummaryPage.fromMusicCardShelfRenderer(section.musicCardShelfRenderer))
                         .plus(
                             section.musicCardShelfRenderer.contents
@@ -183,10 +182,8 @@ object YouTube {
                     val apiTitle = section.musicShelfRenderer.title?.runs?.firstOrNull()?.text
 
                     if (apiTitle != null) {
-                        // API provided a title, use single section
                         allSummaries.add(SearchSummary(title = apiTitle, items = items))
                     } else {
-                        // No title - group items by type into separate sections
                         val grouped = items.groupBy { item ->
                             when (item) {
                                 is EpisodeItem -> "Episodes"
@@ -202,7 +199,6 @@ object YouTube {
                             }
                         }
 
-                        // Add each group as a separate section in a logical order
                         val sectionOrder = listOf("Songs", "Videos", "Albums", "Artists", "Playlists", "Podcasts", "Episodes", "Profiles", YouTubeConstants.DEFAULT_OTHER_RESULTS)
                         sectionOrder.forEach { sectionName ->
                             grouped[sectionName]?.let { groupItems ->
@@ -215,7 +211,6 @@ object YouTube {
                 }
             }
 
-        // Merge sections with the same title
         val mergedSummaries = allSummaries
             .groupBy { it.title }
             .map { (title, sections) ->
@@ -224,7 +219,6 @@ object YouTube {
                     items = sections.flatMap { it.items }.distinctBy { it.id }
                 )
             }
-            // Reorder to maintain logical order
             .sortedBy { summary ->
                 when (summary.title) {
                     YouTubeConstants.DEFAULT_TOP_RESULT -> 0
@@ -314,12 +308,6 @@ object YouTube {
                 thumbnail = response.contents.twoColumnBrowseResultsRenderer.tabs.firstOrNull()?.tabRenderer?.content?.sectionListRenderer?.contents?.firstOrNull()?.musicResponsiveHeaderRenderer?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.lastOrNull()?.url!!,
                 explicit = false, // TODO: Extract explicit badge for albums from YouTube response
             )
-            // Secondary contents: index 0 is the tracklist shelf, followed by zero, one, or
-            // two carousels ("Other versions" and "You might also like"). "Other versions"
-            // is only present when it actually exists, so its position shifts — it can't be
-            // assumed to be at a fixed index. When both carousels exist, "Other versions"
-            // comes first and "You might also like" comes last; when only one carousel is
-            // present, it's always "You might also like".
             val carousels = response.contents.twoColumnBrowseResultsRenderer.secondaryContents
                 ?.sectionListRenderer?.contents
                 ?.drop(1)
@@ -355,16 +343,13 @@ object YouTube {
             .contents.firstOrNull()?.musicPlaylistShelfRenderer?.contents?.getContinuation()
         val seenContinuations = mutableSetOf<String>()
         var requestCount = 0
-        val maxRequests = 50 // Prevent excessive API calls
-        
+        val maxRequests = 50
         while (continuation != null && requestCount < maxRequests) {
-            // Prevent infinite loops by tracking seen continuations
             if (continuation in seenContinuations) {
                 break
             }
             seenContinuations.add(continuation)
             requestCount++
-            
             response = innerTube.browse(
                 client = WEB_REMIX,
                 continuation = continuation,
@@ -393,14 +378,10 @@ object YouTube {
             ?.let(::mapRuns)
             ?: response.header?.musicImmersiveHeaderRenderer?.description?.runs?.let(::mapRuns)
 
-        // Check subscription state from multiple locations:
-        // 1. musicImmersiveHeaderRenderer.subscriptionButton (regular artists)
-        // 2. musicVisualHeaderRenderer.subscriptionButton (podcast channels)
         val immersiveSubscribed = response.header?.musicImmersiveHeaderRenderer?.subscriptionButton?.subscribeButtonRenderer?.subscribed
         val visualSubscribed = response.header?.musicVisualHeaderRenderer?.subscriptionButton?.subscribeButtonRenderer?.subscribed
         val isSubscribed = immersiveSubscribed ?: visualSubscribed ?: false
 
-        // Also extract channelId from visual header if not in immersive header
         val channelIdFromVisual = response.header?.musicVisualHeaderRenderer?.subscriptionButton?.subscribeButtonRenderer?.channelId
 
         ArtistPage(
@@ -443,12 +424,10 @@ object YouTube {
         val response = innerTube.browse(WEB_REMIX, endpoint.browseId, endpoint.params).body<BrowseResponse>()
         val sectionContent = response.contents?.singleColumnBrowseResultsRenderer?.tabs?.firstOrNull()
             ?.tabRenderer?.content?.sectionListRenderer?.contents?.firstOrNull()
-        
         val gridRenderer = sectionContent?.gridRenderer
         val musicCarouselShelfRenderer = sectionContent?.musicCarouselShelfRenderer
         val musicPlaylistShelfRenderer = sectionContent?.musicPlaylistShelfRenderer
         val musicShelfRenderer = sectionContent?.musicShelfRenderer
-        
         when {
             gridRenderer != null -> {
                 ArtistItemsPage(
@@ -646,12 +625,10 @@ object YouTube {
         Timber.d("Response received, twoColumnBrowseResultsRenderer: ${response.contents?.twoColumnBrowseResultsRenderer != null}")
         Timber.d("singleColumnBrowseResultsRenderer: ${response.contents?.singleColumnBrowseResultsRenderer != null}")
 
-        // Try twoColumn first (standard layout)
         var header = response.contents?.twoColumnBrowseResultsRenderer?.tabs?.firstOrNull()
             ?.tabRenderer?.content?.sectionListRenderer?.contents?.firstOrNull()
             ?.musicResponsiveHeaderRenderer
 
-        // Fallback to singleColumn layout
         if (header == null) {
             header = response.contents?.singleColumnBrowseResultsRenderer?.tabs?.firstOrNull()
                 ?.tabRenderer?.content?.sectionListRenderer?.contents?.firstOrNull()
@@ -661,12 +638,10 @@ object YouTube {
 
         Timber.d("Header title: ${header?.title?.runs?.firstOrNull()?.text}")
 
-        // Debug: Log button structure
         header?.buttons?.forEachIndexed { i, button ->
             Timber.d("[PODCAST] Button[$i]: menuRenderer=${button.menuRenderer != null}, toggleButtonRenderer=${button.toggleButtonRenderer != null}, playButtonRenderer=${button.musicPlayButtonRenderer != null}")
             button.menuRenderer?.items?.forEachIndexed { j, item ->
                 Timber.d("[PODCAST] Button[$i].menuItems[$j]: toggle=${item.toggleMenuServiceItemRenderer?.defaultIcon?.iconType}, nav=${item.menuNavigationItemRenderer?.icon?.iconType}")
-                // Check for SUBSCRIBE button (like artists have)
                 if (item.toggleMenuServiceItemRenderer?.defaultIcon?.iconType == "SUBSCRIBE") {
                     val channelIds = item.toggleMenuServiceItemRenderer.defaultServiceEndpoint.subscribeEndpoint?.channelIds
                     Timber.d("[PODCAST] Found SUBSCRIBE button! channelIds=$channelIds")
@@ -677,25 +652,21 @@ object YouTube {
             }
         }
 
-        // Extract channelId and subscription state for subscription (like artists)
         val subscribeToggle = header?.buttons?.flatMap { button ->
             button.menuRenderer?.items ?: emptyList()
         }?.find {
             it.toggleMenuServiceItemRenderer?.defaultIcon?.iconType == "SUBSCRIBE"
         }?.toggleMenuServiceItemRenderer
         val channelId = subscribeToggle?.defaultServiceEndpoint?.subscribeEndpoint?.channelIds?.firstOrNull()
-        // isSelected indicates user is currently subscribed (toggle is in "toggled" state)
         val isChannelSubscribed = subscribeToggle?.isSelected == true
         Timber.d("[PODCAST] Extracted channelId for subscription: $channelId, isSubscribed: $isChannelSubscribed")
 
-        // Extract library tokens from the header's menu buttons OR toggle buttons
         var libraryTokens = header?.buttons?.flatMap { button ->
             button.menuRenderer?.items ?: emptyList()
         }?.let { menuItems ->
             PageHelper.extractLibraryTokensFromMenuItems(menuItems)
         }
 
-        // Also check for standalone toggle buttons (used by some podcasts)
         if (libraryTokens?.addToken == null && libraryTokens?.removeToken == null) {
             header?.buttons?.forEach { button ->
                 button.toggleButtonRenderer?.let { toggle ->
@@ -704,10 +675,8 @@ object YouTube {
                         val defaultToken = toggle.defaultServiceEndpoint?.feedbackEndpoint?.feedbackToken
                         val toggledToken = toggle.toggledServiceEndpoint?.feedbackEndpoint?.feedbackToken
                         libraryTokens = if (PageHelper.isAddLibraryIcon(iconType)) {
-                            // BOOKMARK_BORDER: default=add, toggled=remove
                             PageHelper.LibraryFeedbackTokens(defaultToken, toggledToken)
                         } else {
-                            // BOOKMARK: default=remove, toggled=add
                             PageHelper.LibraryFeedbackTokens(toggledToken, defaultToken)
                         }
                         Timber.d("[PODCAST] Found toggle button with library tokens - add: ${libraryTokens.addToken != null}, remove: ${libraryTokens.removeToken != null}")
@@ -740,7 +709,6 @@ object YouTube {
             channelId = channelId,
         )
 
-        // Try twoColumn for episodes
         val secondaryContents = response.contents?.twoColumnBrowseResultsRenderer?.secondaryContents
         Timber.d("secondaryContents null: ${secondaryContents == null}")
         Timber.d("secondaryContents.sectionListRenderer null: ${secondaryContents?.sectionListRenderer == null}")
@@ -759,14 +727,12 @@ object YouTube {
         var episodeContents = secondaryContents?.sectionListRenderer
             ?.contents?.firstOrNull()?.musicShelfRenderer?.contents
 
-        // Try musicPlaylistShelfRenderer
         if (episodeContents == null) {
             episodeContents = secondaryContents?.sectionListRenderer
                 ?.contents?.firstOrNull()?.musicPlaylistShelfRenderer?.contents
             Timber.d("Trying musicPlaylistShelfRenderer: ${episodeContents?.size ?: 0}")
         }
 
-        // Fallback to singleColumn
         if (episodeContents == null) {
             episodeContents = response.contents?.singleColumnBrowseResultsRenderer?.tabs?.firstOrNull()
                 ?.tabRenderer?.content?.sectionListRenderer?.contents
@@ -776,7 +742,6 @@ object YouTube {
 
         Timber.d("Episode contents count: ${episodeContents?.size ?: 0}")
 
-        // Get episodes from musicMultiRowListItemRenderer (used for podcasts)
         val multiRowItems = episodeContents?.mapNotNull { it.musicMultiRowListItemRenderer } ?: emptyList()
         Timber.d("multiRowItems count: ${multiRowItems.size}")
 
@@ -876,7 +841,6 @@ object YouTube {
     }
 
     suspend fun browse(browseId: String, params: String?): Result<BrowseResult> = runCatching {
-        // Use authentication for library endpoints
         val needsLogin = browseId.startsWith("FEmusic_library") || browseId == "VLSE" || browseId == "VLRDPN"
         val response = innerTube.browse(WEB_REMIX, browseId = browseId, params = params, setLogin = needsLogin).body<BrowseResponse>()
         val sectionContents = response.contents?.singleColumnBrowseResultsRenderer?.tabs?.firstOrNull()?.tabRenderer?.content?.sectionListRenderer?.contents
@@ -890,7 +854,6 @@ object YouTube {
                             items = content.gridRenderer.items
                                 .mapNotNull(GridRenderer.Item::musicTwoRowItemRenderer)
                                 .mapNotNull { renderer ->
-                                    // Try LibraryPage first (more lenient for library endpoints), fall back to RelatedPage
                                     LibraryPage.fromMusicTwoRowItemRenderer(renderer)
                                         ?: RelatedPage.fromMusicTwoRowItemRenderer(renderer)
                                 }
@@ -921,7 +884,7 @@ object YouTube {
 
                     content.musicPlaylistShelfRenderer != null -> {
                         BrowseResult.Item(
-                            title = null, // MusicPlaylistShelfRenderer doesn't have a title
+                            title = null,
                             items = content.musicPlaylistShelfRenderer.contents.getItems()
                                 .mapNotNull(LibraryPage.Companion::fromMusicResponsiveListItemRenderer)
                         )
@@ -997,7 +960,7 @@ object YouTube {
                 )
             }
 
-            else -> { // contents?.musicShelfContinuation != null
+            else -> {
                 LibraryContinuationPage(
                     items = contents?.musicShelfContinuation?.contents!!
                         .mapNotNull (MusicShelfRenderer.Content::musicResponsiveListItemRenderer)
@@ -1019,28 +982,18 @@ object YouTube {
 
         val gridItems = response.continuationContents?.sectionListContinuation?.contents?.firstOrNull()
             ?.gridRenderer?.items
-        
         if (gridItems == null) {
             return@runCatching LibraryPage(
                 items = emptyList(),
                 continuation = null
             )
         }
-        
         val items = gridItems.mapNotNull {
             it.musicTwoRowItemRenderer?.let { renderer ->
                 LibraryPage.fromMusicTwoRowItemRenderer(renderer)
             }
         }.toMutableList()
 
-        /*
-         * We need to fetch the artist page when accessing the library because it allows to have
-         * a proper playEndpoint, which is needed to correctly report the playing indicator in
-         * the home page.
-         *
-         * Despite this, we need to use the old thumbnail because it's the proper format for a
-         * square picture, which is what we need.
-         */
         items.forEachIndexed { index, item ->
             if (item is ArtistItem) {
                 artist(item.id).getOrNull()?.artist?.let { fetchedArtist ->
@@ -1064,14 +1017,11 @@ object YouTube {
         ).body<BrowseResponse>()
 
         val sections = mutableListOf<ChartsPage.ChartSection>()
-    
         response.contents?.singleColumnBrowseResultsRenderer?.tabs?.firstOrNull()
             ?.tabRenderer?.content?.sectionListRenderer?.contents?.forEach { content ->
-            
                 content.musicCarouselShelfRenderer?.let { renderer ->
                     val title = renderer.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs?.firstOrNull()?.text
                         ?: return@forEach
-                
                     val items = renderer.contents.mapNotNull { item ->
                         when {
                             item.musicResponsiveListItemRenderer != null -> 
@@ -1081,7 +1031,6 @@ object YouTube {
                             else -> null
                         }
                     }.filterNotNull()
-                
                     if (items.isNotEmpty()) {
                         sections.add(
                             ChartsPage.ChartSection(
@@ -1092,17 +1041,14 @@ object YouTube {
                         )
                     }
                 }
-            
                 content.gridRenderer?.let { renderer ->
                     val title = renderer.header?.gridHeaderRenderer?.title?.runs?.firstOrNull()?.text
                         ?: return@let
-                
                     val items = renderer.items.mapNotNull { item ->
                         item.musicTwoRowItemRenderer?.let { renderer ->
                             convertMusicTwoRowItem(renderer)
                         }
                     }.filterNotNull()
-                
                     if (items.isNotEmpty()) {
                         sections.add(
                             ChartsPage.ChartSection(
@@ -1136,7 +1082,6 @@ object YouTube {
                     val firstColumn = renderer.flexColumns.getOrNull(0)
                         ?.musicResponsiveListItemFlexColumnRenderer
                         ?.text ?: return null
-                
                     val secondColumn = renderer.flexColumns.getOrNull(1)
                         ?.musicResponsiveListItemFlexColumnRenderer
                         ?.text ?: return null
@@ -1284,7 +1229,6 @@ object YouTube {
     }
 
     suspend fun subscribeChannel(channelId: String, subscribe: Boolean, params: String? = null) = runCatching {
-        // Default params from YouTube Music API - required for subscription to work
         val subscribeParams = params ?: "EgIIAhgA"
         if (subscribe)
             innerTube.subscribeChannel(WEB_REMIX, channelId, subscribeParams)
@@ -1459,7 +1403,6 @@ object YouTube {
             setLogin = true
         ).body<BrowseResponse>()
 
-        // Try all known header renderers in priority order
         val thumbnail: String? =
             response.header?.musicImmersiveHeaderRenderer?.thumbnail
                 ?.musicThumbnailRenderer?.getThumbnailUrl()
@@ -1467,7 +1410,6 @@ object YouTube {
                     ?.musicThumbnailRenderer?.getThumbnailUrl()
                 ?: response.header?.musicDetailHeaderRenderer?.thumbnail
                     ?.croppedSquareThumbnailRenderer?.thumbnail?.thumbnails?.lastOrNull()?.url
-                // Fall back: thumbnail of the first episode in the list
                 ?: response.contents?.twoColumnBrowseResultsRenderer?.secondaryContents
                     ?.sectionListRenderer?.contents?.firstOrNull()
                     ?.musicShelfRenderer?.contents?.firstOrNull()
@@ -1503,14 +1445,12 @@ object YouTube {
             setLogin = true
         ).body<BrowseResponse>()
 
-        // VLSE uses musicPlaylistShelfRenderer, not musicShelfRenderer
         val contents = response.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer
             ?.contents?.firstOrNull()
 
         val shelfContents = contents?.musicPlaylistShelfRenderer?.contents
             ?: contents?.musicShelfRenderer?.contents
 
-        // Parse musicResponsiveListItemRenderer (standard playlist format)
         shelfContents?.mapNotNull { it.musicResponsiveListItemRenderer }
             ?.mapNotNull { renderer ->
                 val videoId = renderer.playlistItemData?.videoId ?: return@mapNotNull null
@@ -1667,7 +1607,6 @@ object YouTube {
         val songs = items.map { it.first }
         val currentIndex = items.indexOfFirst { it.second }.takeIf { it != -1 }
 
-        // load automix items
         playlistPanelRenderer.contents.lastOrNull()?.automixPreviewVideoRenderer?.content?.automixPlaylistVideoRenderer?.navigationEndpoint?.watchPlaylistEndpoint?.let { watchPlaylistEndpoint ->
             return@runCatching next(watchPlaylistEndpoint).getOrThrow().let { result ->
                 result.copy(
@@ -1691,14 +1630,8 @@ object YouTube {
         )
     }
 
-    // WEB with cookie auth enabled, used only for comments so the "add comment" box
-    // (and its createCommentParams) is present when the user is logged in. The plain
-    // WEB client used by getMediaInfo() stays anonymous on purpose.
     private val WEB_LOGIN_AWARE = WEB.copy(loginSupported = true)
 
-    // The initial comments continuation token is a deterministic protobuf encoding of the
-    // video ID (same construction yt-dlp/YouTube.js use) — scraping it from the watch page
-    // response is unnecessary and depends on undocumented field names that can drift.
     @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
     private fun commentsContinuationToken(videoId: String): String {
         val videoIdBytes = videoId.toByteArray(Charsets.US_ASCII)
@@ -1848,7 +1781,7 @@ object YouTube {
 
     suspend fun queue(videoIds: List<String>? = null, playlistId: String? = null): Result<List<SongItem>> = runCatching {
         if (videoIds != null) {
-            assert(videoIds.size <= MAX_GET_QUEUE_SIZE) // Max video limit
+            assert(videoIds.size <= MAX_GET_QUEUE_SIZE)
         }
         innerTube.getQueue(WEB_REMIX, videoIds, playlistId).body<GetQueueResponse>().queueDatas
             .mapNotNull {
@@ -1859,7 +1792,6 @@ object YouTube {
     }
 
     suspend fun transcript(videoId: String): Result<String> = runCatching {
-        // timedtext API works for music videos; get_transcript returns 400 FAILED_PRECONDITION on them
         val timedTextResult = runCatching {
             val response = innerTube.getTimedText(videoId).body<com.metrolist.innertube.models.TimedTextResponse>()
             val events = response.events ?: throw IllegalStateException("no events in timedtext response")
@@ -1873,7 +1805,6 @@ object YouTube {
         }
         if (timedTextResult.isSuccess) return@runCatching timedTextResult.getOrThrow()
 
-        // Fallback: get_transcript works for non-music YT videos with captions enabled
         val response = innerTube.getTranscript(WEB, videoId).body<GetTranscriptResponse>()
         response.actions?.firstOrNull()?.updateEngagementPanelAction?.content
             ?.transcriptRenderer?.body?.transcriptBodyRenderer?.cueGroups
@@ -1913,14 +1844,11 @@ object YouTube {
      * This is more reliable than using cached tokens which might be stale
      */
     suspend fun addSongToLibrary(videoId: String): Result<Boolean> = runCatching {
-        // Get fresh song data with menu tokens using next endpoint
         val nextResult = next(WatchEndpoint(videoId = videoId)).getOrThrow()
         val song = nextResult.items.find { it.id == videoId }
             ?: throw Exception("Song not found in next response")
-        
         val addToken = song.libraryAddToken
             ?: throw Exception("Add to library token not available")
-        
         feedback(listOf(addToken)).getOrThrow()
     }
 
@@ -1928,14 +1856,11 @@ object YouTube {
      * Remove a song from library by fetching fresh feedback tokens from the next endpoint
      */
     suspend fun removeSongFromLibrary(videoId: String): Result<Boolean> = runCatching {
-        // Get fresh song data with menu tokens using next endpoint
         val nextResult = next(WatchEndpoint(videoId = videoId)).getOrThrow()
         val song = nextResult.items.find { it.id == videoId }
             ?: throw Exception("Song not found in next response")
-        
         val removeToken = song.libraryRemoveToken
             ?: throw Exception("Remove from library token not available")
-        
         feedback(listOf(removeToken)).getOrThrow()
     }
 
@@ -1956,9 +1881,6 @@ object YouTube {
     }
 
     suspend fun getTasteProfile(): Result<TasteProfile> = runCatching {
-        // Browse the taste builder page
-        // Note: Full parsing requires additional model support for musicTastebuilderShelfRenderer
-        // This returns an empty profile for now - can be enhanced when models are added
         innerTube.browse(
             client = WEB_REMIX,
             browseId = "FEmusic_tastebuilder",
@@ -2067,19 +1989,16 @@ object YouTube {
     ): Result<Boolean> = runCatching {
         onProgress?.invoke(0f)
 
-        // Step 1: Initialize upload (5% of progress)
         val initResponse = innerTube.initSongUpload(filename, data.size.toLong())
         val uploadUrl = initResponse.headers["X-Goog-Upload-URL"]
             ?: throw Exception("Failed to get upload URL")
 
         onProgress?.invoke(0.05f)
 
-        // Step 2: Upload file data (5% to 100% of progress)
         val uploadResponse = innerTube.uploadSongData(
             uploadUrl = uploadUrl,
             data = data,
             onProgress = { uploadProgress ->
-                // Map upload progress (0-1) to overall progress (0.05-1.0)
                 onProgress?.invoke(0.05f + uploadProgress * 0.95f)
             }
         )

@@ -97,7 +97,6 @@ fun BackupAndRestore(
         mutableIntStateOf(0)
     }
 
-    // CSV column mapping state
     var csvImportState by remember { mutableStateOf<CsvImportState?>(null) }
     var showCsvColumnMapping by rememberSaveable { mutableStateOf(false) }
     var showCsvImportProgress by rememberSaveable { mutableStateOf(false) }
@@ -105,7 +104,6 @@ fun BackupAndRestore(
     val csvRecentLogs = remember { mutableStateListOf<ConvertedSongLog>() }
     var pendingCsvUri by remember { mutableStateOf<android.net.Uri?>(null) }
 
-    // Restore confirmation dialog state
     var showRestoreConfirmDialog by rememberSaveable { mutableStateOf(false) }
     var pendingRestoreUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var backupPreviewInfo by remember { mutableStateOf<BackupPreviewInfo?>(null) }
@@ -129,7 +127,6 @@ fun BackupAndRestore(
                 backupPreviewInfo = preview
                 showRestoreConfirmDialog = true
 
-                // Fetch account info asynchronously if backup has auth data
                 accountCheckFailed = false
                 if (preview.hasAuthData && preview.cookie != null) {
                     isLoadingAccountInfo = true
@@ -275,7 +272,6 @@ fun BackupAndRestore(
         songTitle = currentImportSong,
     )
 
-    // CSV column mapping dialog
     csvImportState?.let { state ->
         CsvColumnMappingDialog(
             isVisible = showCsvColumnMapping,
@@ -317,17 +313,14 @@ fun BackupAndRestore(
         )
     }
 
-    // CSV import progress dialog
     CsvImportProgressDialog(
         isVisible = showCsvImportProgress,
         progress = csvImportProgress,
         recentLogs = csvRecentLogs.toList(),
         onDismiss = {
-            // Cannot dismiss while importing
         },
     )
 
-    // Restore confirmation dialog
     if (showRestoreConfirmDialog) {
         DefaultDialog(
             onDismiss = {
@@ -369,14 +362,12 @@ fun BackupAndRestore(
                 }
             },
         ) {
-            // Supporting text
             Text(
                 text = stringResource(R.string.restore_confirm_message),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
             )
 
-            // Show warning about account sign out if account found
             if (backupPreviewInfo?.accountName != null) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -386,7 +377,6 @@ fun BackupAndRestore(
                 )
             }
 
-            // Show loading or account info
             if (isLoadingAccountInfo) {
                 Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -412,7 +402,6 @@ fun BackupAndRestore(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
 
-            // Show "No account found" if check failed OR backup has no auth data
             val hasNoAccount =
                 backupPreviewInfo?.let {
                     !it.hasAuthData || (it.hasAuthData && it.accountName == null && !isLoadingAccountInfo)
@@ -432,7 +421,6 @@ fun BackupAndRestore(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
 
-            // Show account info if backup contains auth data and we have account details
             backupPreviewInfo?.let { preview ->
                 if (!isLoadingAccountInfo && preview.hasAuthData && preview.accountName != null) {
                     Spacer(modifier = Modifier.height(16.dp))

@@ -126,7 +126,6 @@ fun WrappedIntro(onNext: () -> Unit) {
             label = "intro rotation"
         )
 
-        // Background "2025" text
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
@@ -141,24 +140,22 @@ fun WrappedIntro(onNext: () -> Unit) {
                     text = stringResource(id = R.string.wrapped_year),
                     style = TextStyle.Default.copy(
                         fontFamily = bbhBartle,
-                        fontSize = 800.sp, // Increased size
+                        fontSize = 800.sp,
                         color = Color.White,
                         drawStyle = Stroke(width = 2f)
                     ),
-                    modifier = Modifier.width(this.maxHeight) // Use height for width due to rotation
+                    modifier = Modifier.width(this.maxHeight)
                 )
             }
         }
 
 
 
-        // Main Content Column
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // App Icon
             AnimatedVisibility(
                 visible = visible,
                 enter = fadeIn(animationSpec = tween(FADE_IN_DURATION, delayMillis = ICON_DELAY)) + slideInVertically(animationSpec = tween(SLIDE_IN_DURATION, delayMillis = ICON_DELAY))
@@ -172,7 +169,6 @@ fun WrappedIntro(onNext: () -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Metrolist Title with Layered Effect
             AnimatedVisibility(
                 visible = visible,
                 enter = fadeIn(animationSpec = tween(FADE_IN_DURATION, delayMillis = TITLE_DELAY)) + slideInVertically(animationSpec = tween(SLIDE_IN_DURATION, delayMillis = TITLE_DELAY))
@@ -193,7 +189,6 @@ fun WrappedIntro(onNext: () -> Unit) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Subtitle
             AnimatedVisibility(
                 visible = visible,
                 enter = fadeIn(animationSpec = tween(FADE_IN_DURATION, delayMillis = SUBTITLE_DELAY)) + slideInVertically(animationSpec = tween(SLIDE_IN_DURATION, delayMillis = SUBTITLE_DELAY))
@@ -207,7 +202,6 @@ fun WrappedIntro(onNext: () -> Unit) {
             }
         }
 
-        // "Let's go!" Button at the bottom
         AnimatedVisibility(
             visible = visible,
             enter = fadeIn(animationSpec = tween(FADE_IN_DURATION, delayMillis = BUTTON_DELAY)) + slideInVertically(animationSpec = tween(SLIDE_IN_DURATION, delayMillis = BUTTON_DELAY)) { it },

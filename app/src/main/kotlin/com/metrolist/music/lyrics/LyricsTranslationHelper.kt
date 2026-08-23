@@ -51,10 +51,8 @@ object LyricsTranslationHelper {
     private var translationJob: kotlinx.coroutines.Job? = null
     private var isCompositionActive = true
 
-    // Cache translations in memory to avoid redundant API calls during a session
     private val translationCache = ConcurrentHashMap<String, List<String>>()
 
-    // Map of language codes to full names for better AI understanding
     private val LanguageCodeToName = mapOf(
         "en" to "English",
         "es" to "Spanish",
@@ -123,17 +121,14 @@ object LyricsTranslationHelper {
      * This allows updating the UI progressively during streaming.
      */
     private fun tryParsePartialTranslation(content: String, expectedLines: Int): List<String> {
-        // AI usually returns lines separated by newlines or numbered lists
         val lines = content.lines()
             .map { it.trim() }
             .filter { it.isNotBlank() }
-            // Remove common AI formatting like "1. ", "Line 1: ", etc.
             .map { line ->
                 line.replace(Regex("^\\d+\\.\\s*"), "")
                     .replace(Regex("^Line\\s+\\d+:\\s*", RegexOption.IGNORE_CASE), "")
                     .replace(Regex("^-\\s*"), "")
             }
-        
         return lines
     }
 
@@ -148,17 +143,13 @@ object LyricsTranslationHelper {
             lyrics.forEach { it.translatedTextFlow.value = null }
             return
         }
-        
-        // Only load if language and mode match
         if (lyricsEntity.translationLanguage != targetLanguage || lyricsEntity.translationMode != mode) {
             _hasActiveTranslations.value = false
             lyrics.forEach { it.translatedTextFlow.value = null }
             return
         }
-        
         val translatedLines = lyricsEntity.translatedLyrics.split("\n")
         val nonEmptyEntries = lyrics.filter { it.text.isNotBlank() }
-        
         if (translatedLines.size >= nonEmptyEntries.size) {
             var transIndex = 0
             lyrics.forEach { entry ->
@@ -167,8 +158,6 @@ object LyricsTranslationHelper {
                     transIndex++
                 }
             }
-            
-            // Also cache them
             val fullText = nonEmptyEntries.joinToString("\n") { it.text }
             val cacheKey = getCacheKey(fullText, mode, targetLanguage)
             translationCache[cacheKey] = translatedLines
@@ -196,13 +185,11 @@ object LyricsTranslationHelper {
         translationJob?.cancel()
         _status.value = TranslationStatus.Translating
 
-        // Clear existing translations to indicate re-translation
         lyrics.forEach { it.translatedTextFlow.value = null }
 
         translationJob =
             scope.launch(Dispatchers.IO) {
                 try {
-                    // Validate inputs
                     val effectiveApiKey = if (provider == "DeepL") deeplApiKey else apiKey
                     if (effectiveApiKey.isBlank()) {
                         _status.value = TranslationStatus.Error(context.getString(com.metrolist.music.R.string.ai_error_api_key_required))
@@ -214,7 +201,6 @@ object LyricsTranslationHelper {
                         return@launch
                     }
 
-                    // Filter out empty lines and keep track of their indices
                     val nonEmptyEntries =
                         lyrics.mapIndexedNotNull { index, entry ->
                             if (entry.text.isNotBlank()) index to entry else null
@@ -225,14 +211,11 @@ object LyricsTranslationHelper {
                         return@launch
                     }
 
-                    // Create text from non-empty lines only
                     val fullText = nonEmptyEntries.joinToString("\n") { it.second.text }
 
-                    // Check cache first
                     val cacheKey = getCacheKey(fullText, mode, targetLanguage)
                     val cachedTranslations = translationCache[cacheKey]
                     if (cachedTranslations != null && cachedTranslations.size >= nonEmptyEntries.size) {
-                        // Use cached translations
                         nonEmptyEntries.forEachIndexed { idx, (originalIndex, _) ->
                             if (idx < cachedTranslations.size) {
                                 lyrics[originalIndex].translatedTextFlow.value = cachedTranslations[idx]
@@ -241,9 +224,6 @@ object LyricsTranslationHelper {
                         _hasActiveTranslations.value = true
                         _status.value = TranslationStatus.Success
 
-                        // Persist cached translations to DB. Re-read the lyrics row right
-                        // before upserting so a fresher lyrics upsert from the provider during
-                        // the API call doesn't get clobbered by a stale snapshot.
                         if (songId.isNotBlank() && database != null) {
                             try {
                                 val currentLyrics = database.lyrics(songId).first()
@@ -271,13 +251,11 @@ object LyricsTranslationHelper {
                         return@launch
                     }
 
-                    // Validate language for all modes
                     if (targetLanguage.isBlank()) {
                         _status.value = TranslationStatus.Error(context.getString(com.metrolist.music.R.string.ai_error_language_required))
                         return@launch
                     }
 
-                    // Convert language code to full language name for better AI understanding
                     val fullLanguageName =
                         LanguageCodeToName[targetLanguage]
                             ?: try {
@@ -290,7 +268,6 @@ object LyricsTranslationHelper {
                     val result =
                         if (provider == "DeepL") {
                             Timber.d("Using DeepL for translation")
-                            // DeepL only supports translation mode
                             DeepLService.translate(
                                 text = fullText,
                                 targetLanguage = targetLanguage,
@@ -299,7 +276,6 @@ object LyricsTranslationHelper {
                             )
                         } else if (provider == "Mistral") {
                             Timber.d("Using Mistral for translation")
-                            // Use Mistral API directly
                             MistralService.translate(
                                 text = fullText,
                                 targetLanguage = fullLanguageName,
@@ -310,7 +286,6 @@ object LyricsTranslationHelper {
                             )
                         } else if (useStreaming && provider != "Custom") {
                             Timber.d("Using streaming for translation with provider: $provider")
-                            // Use streaming for supported providers
                             var translatedLines: List<String>? = null
                             var hasError = false
                             var errorMessage = ""
@@ -330,18 +305,12 @@ object LyricsTranslationHelper {
                                     Timber.v("Received streaming chunk: $chunk")
                                     when (chunk) {
                                         is OpenRouterStreamingService.StreamChunk.Content -> {
-                                            // Accumulate content for progressive parsing
                                             contentAccumulator.append(chunk.text)
 
-                                            // Don't reveal partial lines for the first ~1.5s: early
-                                            // chunks are mid-token (stray "[", numbering, markdown
-                                            // fences) and read as a glitch if shown immediately.
-                                            // Enough usually accumulates by then to parse clean lines.
                                             if (System.currentTimeMillis() - streamStartTime >= 1500L) {
                                                 val partialContent = contentAccumulator.toString()
                                                 val partialResult = tryParsePartialTranslation(partialContent, nonEmptyEntries.size)
                                                 if (partialResult.isNotEmpty()) {
-                                                    // Update lyrics with partial translations as they become available
                                                     partialResult.forEachIndexed { idx, translation ->
                                                         if (idx < nonEmptyEntries.size && translation.isNotBlank()) {
                                                             val originalIndex = nonEmptyEntries[idx].first
@@ -391,7 +360,6 @@ object LyricsTranslationHelper {
                             }
                         } else {
                             Timber.d("Using non-streaming for translation")
-                            // Use non-streaming for Custom provider or when streaming is disabled
                             OpenRouterService.translate(
                                 text = fullText,
                                 targetLanguage = fullLanguageName,
@@ -405,15 +373,6 @@ object LyricsTranslationHelper {
 
                     result
                         .onSuccess { translatedLines ->
-                            // Save to database FIRST, before any UI-state checks. The user
-                            // paid for an API call and may close the lyrics view before the
-                            // success status flash fires; the translation must land in the DB
-                            // regardless of composition lifetime.
-                            //
-                            // Re-read the lyrics row right before the upsert: the lyric provider
-                            // may have already written a fresher entity while the API call was
-                            // in flight, and copying from a stale snapshot would resurrect
-                            // older lyrics+provider and re-wipe translations on the next fetch.
                             if (songId.isNotBlank() && database != null) {
                                 try {
                                     val currentLyrics = database.lyrics(songId).first()
@@ -434,22 +393,17 @@ object LyricsTranslationHelper {
                                 }
                             }
 
-                            // Composition torn down while the API call was running — DB write
-                            // already done above, skip UI updates that would touch a dead view.
                             if (!isCompositionActive) {
                                 return@onSuccess
                             }
 
-                            // Cache the translations for this session
                             val cacheKey = getCacheKey(fullText, mode, targetLanguage)
                             translationCache[cacheKey] = translatedLines
 
-                            // Map translations back to original non-empty entries only
                             val expectedCount = nonEmptyEntries.size
 
                             when {
                                 translatedLines.size >= expectedCount -> {
-                                    // Perfect match or more - map to non-empty entries
                                     nonEmptyEntries.forEachIndexed { idx, (originalIndex, _) ->
                                         lyrics[originalIndex].translatedTextFlow.value = translatedLines[idx]
                                     }
@@ -458,7 +412,6 @@ object LyricsTranslationHelper {
                                 }
 
                                 translatedLines.size < expectedCount -> {
-                                    // Fewer translations than expected - map what we have
                                     translatedLines.forEachIndexed { idx, translation ->
                                         if (idx < nonEmptyEntries.size) {
                                             val originalIndex = nonEmptyEntries[idx].first
@@ -470,7 +423,6 @@ object LyricsTranslationHelper {
                                 }
                             }
 
-                            // Auto-hide success message after 3 seconds
                             delay(3000)
                             if (_status.value is TranslationStatus.Success && isCompositionActive) {
                                 _status.value = TranslationStatus.Idle
@@ -483,11 +435,9 @@ object LyricsTranslationHelper {
 
                             val errorMessage = error.message ?: context.getString(com.metrolist.music.R.string.ai_error_unknown)
 
-                            // Show error in UI
                             _status.value = TranslationStatus.Error(errorMessage)
                         }
                 } catch (e: Exception) {
-                    // Ignore cancellation exceptions or if composition is no longer active
                     if (e !is kotlinx.coroutines.CancellationException && isCompositionActive) {
                         val errorMessage = e.message ?: context.getString(com.metrolist.music.R.string.ai_error_translation_failed)
                         _status.value = TranslationStatus.Error(errorMessage)

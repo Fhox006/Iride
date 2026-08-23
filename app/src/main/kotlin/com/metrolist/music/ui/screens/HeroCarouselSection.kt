@@ -58,10 +58,6 @@ import sv.lib.squircleshape.SquircleShape
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
-// Dark charcoal used for the text-legibility scrim and badge pill, in place of pure
-// black — same token as IrideMp3Player's surface / AnimatedAlbumGradientBackground's
-// DarkGrayBlack, so the carousel reads as part of the same dark surface family instead
-// of a flat black box. Verified >=8:1 contrast for white text even over a white cover.
 private val HeroScrimColor = Color(0xFF1C1C1E)
 
 @Composable
@@ -129,11 +125,6 @@ fun HeroCarouselSection(
     }
 }
 
-// Reserves Hero Carousel's exact final footprint (title + card + dot row) before its data has
-// loaded, so it never pops in above sections that were ready sooner (e.g. Picked for you, which
-// loads from the DB and is typically ready before the network-backed hero items are) and pushes
-// them down. Height must stay pixel-identical to the real content below, or swapping skeleton for
-// content still reflows everything under it.
 @Composable
 fun HeroCarouselSkeleton(modifier: Modifier = Modifier) {
     val cardHeight = 148.dp
@@ -151,7 +142,6 @@ fun HeroCarouselSkeleton(modifier: Modifier = Modifier) {
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             )
         }
-        // Matches the real dot-indicator row's footprint (10dp top padding + 8dp dot size).
         Spacer(modifier = Modifier.height(18.dp))
     }
 }
@@ -222,8 +212,6 @@ private fun HeroCard(
     }
 
     val cardHeight = 148.dp
-    // Radius/smoothing matched to the rest of New Iride UI's big content cards (AlbumScreen,
-    // Player, OnlinePlaylistScreen all use 12dp/0.45-0.48).
     val cardShape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.48f)
 
     val cardModifier = Modifier
@@ -233,8 +221,6 @@ private fun HeroCard(
         .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), cardShape)
         .clickable(onClick = onClick)
 
-    // No Card/elevation anywhere else — a flat, bordered Box replaces the
-    // shadowed Material Card so this shelf stops standing out from its neighbors.
     Box(modifier = cardModifier) {
         HeroCardContent(coverUrl, badgeIcon, badgeLabel, title, subtitle)
     }
@@ -274,15 +260,10 @@ private fun HeroCardContent(
             )
         }
 
-        // Iride: darken only the lower half where the title sits, capped at a lighter alpha,
-        // so the cover art stays visible instead of a full-height black wash.
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    // Same peak darkness as classic (0.78) so white title/subtitle text keeps
-                    // its contrast ratio on bright covers — only the darkened *area* shrinks,
-                    // confined to the lower half instead of washing the whole card.
                     Brush.verticalGradient(
                         0f to Color.Transparent,
                         0.55f to Color.Transparent,
@@ -295,10 +276,6 @@ private fun HeroCardContent(
             modifier = Modifier
                 .padding(12.dp)
                 .align(Alignment.TopStart)
-                // Flat charcoal backing so the label stays legible over light/white covers —
-                // the border-only pill let bright art wash out the white text underneath.
-                // 0.85 alpha: the minimum that keeps the white label at >=4.5:1 contrast
-                // even against a pure-white cover (worst case).
                 .background(HeroScrimColor.copy(alpha = 0.85f), RoundedCornerShape(3.dp))
                 .border(
                     BorderStroke(0.8.dp, Color.White.copy(alpha = 0.55f)),

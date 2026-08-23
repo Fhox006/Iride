@@ -205,7 +205,6 @@ fun LyricsImageCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(cardCornerRadius))
     ) {
-        // Background layer
         Box(modifier = Modifier.matchParentSize()) {
             when (backgroundStyle) {
                 LyricsBackgroundStyle.SOLID -> Box(modifier = Modifier.fillMaxSize().background(backgroundSolidColor))
@@ -223,13 +222,11 @@ fun LyricsImageCard(
             }
         }
 
-        // Content layer
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(padding)
         ) {
-            // Header
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
@@ -268,7 +265,6 @@ fun LyricsImageCard(
                 }
             }
 
-            // Lyrics
             val lyricFontSize = when {
                 lyricText.length < 80 -> 30.sp
                 lyricText.length < 180 -> 25.sp
@@ -289,7 +285,6 @@ fun LyricsImageCard(
                     .padding(bottom = 24.dp)
             )
 
-            // Footer
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -318,7 +313,6 @@ fun LyricsImageCard(
             }
         }
 
-        // Overlay border
         Box(
             modifier = Modifier
                 .matchParentSize()

@@ -25,8 +25,6 @@ class PlaylistCategoryController(
     private val playlistId: String,
     scope: CoroutineScope,
 ) {
-    // Eagerly subscribed so the Room read starts the moment the ViewModel is created — the pill
-    // row never shows a loading state, it just renders whatever is already in the tiny local table.
     val categories: StateFlow<List<PlaylistCategoryWithCount>> =
         database
             .categoriesForPlaylist(playlistId)

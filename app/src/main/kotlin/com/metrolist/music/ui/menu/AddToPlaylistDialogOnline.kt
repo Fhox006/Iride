@@ -295,7 +295,6 @@ fun AddToPlaylistDialogOnline(
                             onDismiss()
                             val songsTot = songs.count()
                             if (songsTot == 0) return@launch
-                            
                             val songsIdx = AtomicInteger(0)
                             val semaphore = kotlinx.coroutines.sync.Semaphore(15)
                             onProgressStart(true)
@@ -444,7 +443,6 @@ fun AddToPlaylistDialogOnline(
         )
     }
 
-    // duplicate songs warning
     if (showDuplicateDialog) {
         DefaultDialog(
             title = { Text(stringResource(R.string.duplicates)) },

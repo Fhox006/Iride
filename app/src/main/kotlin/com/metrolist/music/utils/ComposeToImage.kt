@@ -73,9 +73,6 @@ object ComposeToImage {
             val mainTextColor = textColor ?: defaultTextColor
             val secondaryTxtColor = secondaryTextColor ?: defaultSecondaryTextColor
 
-            // Use the app's Inter font (same family as LyricsImageCard's live preview) so the
-            // exported PNG matches what the user sees in the share dialog, instead of silently
-            // falling back to the system default typeface.
             val interRegular = try {
                 ResourcesCompat.getFont(context, R.font.inter_variable)
             } catch (_: Exception) {
@@ -83,7 +80,6 @@ object ComposeToImage {
             } ?: Typeface.DEFAULT
             val interBold = Typeface.create(interRegular, Typeface.BOLD)
 
-            // --- Paint Setup ---
             val titlePaint = TextPaint().apply {
                 color = mainTextColor
                 textSize = 80f
@@ -116,8 +112,7 @@ object ComposeToImage {
                 isAntiAlias = true
             }
 
-            // --- Layout Calculations ---
-            val headerTextMaxWidth = contentWidth - 300f // space for cover art
+            val headerTextMaxWidth = contentWidth - 300f
 
             val titleLayout = StaticLayout.Builder
                 .obtain(songTitle, 0, songTitle.length, titlePaint, headerTextMaxWidth.toInt())
@@ -150,7 +145,6 @@ object ComposeToImage {
             val bitmap = createBitmap(imageWidth, imageHeight.toInt())
             val canvas = Canvas(bitmap)
 
-            // Pre-load cover art
             var coverArtBitmap: Bitmap? = null
             if (coverArtUrl != null) {
                 try {
@@ -161,7 +155,6 @@ object ComposeToImage {
                 } catch (_: Exception) {}
             }
 
-            // Draw Background
             val backgroundRect = RectF(0f, 0f, imageWidth.toFloat(), imageHeight)
             val backgroundPaint = Paint().apply { isAntiAlias = true }
 
@@ -196,7 +189,6 @@ object ComposeToImage {
                 }
             }
 
-            // --- Draw Header ---
             val coverArtSize = 260f
             coverArtBitmap?.let {
                 val rect = RectF(padding, padding, padding + coverArtSize, padding + coverArtSize)
@@ -219,20 +211,16 @@ object ComposeToImage {
             artistLayout.draw(canvas)
             canvas.restore()
 
-            // --- Draw Lyrics ---
             val lyricsY = padding + headerHeight + spacing
             canvas.save()
             canvas.translate(padding, lyricsY)
             lyricsLayout.draw(canvas)
             canvas.restore()
 
-            // --- Draw Footer ---
             val footerY = lyricsY + lyricsHeight + spacing
             val logoSize = 90f
             val logoRect = RectF(padding, footerY, padding + logoSize, footerY + logoSize)
-            
             canvas.drawOval(logoRect, Paint().apply { color = secondaryTxtColor; isAntiAlias = true })
-            
             ContextCompat.getDrawable(context, R.drawable.small_icon)?.toBitmap()?.let {
                 val logoPaint = Paint().apply {
                     colorFilter = PorterDuffColorFilter(bgColor, PorterDuff.Mode.SRC_IN)
@@ -348,7 +336,6 @@ object ComposeToImage {
             val centerX = imageWidth / 2f
             var cursorY = padding
 
-            // Avatar bubble
             val avatarRect = RectF(centerX - avatarSize / 2f, cursorY, centerX + avatarSize / 2f, cursorY + avatarSize)
             if (avatarBitmap != null) {
                 canvas.save()
@@ -361,12 +348,10 @@ object ComposeToImage {
             canvas.drawOval(avatarRect, Paint().apply { color = onBackgroundColor; style = Paint.Style.STROKE; strokeWidth = 4f; isAntiAlias = true })
             cursorY += avatarSize + 50f
 
-            // Artist name
             cursorY -= namePaint.ascent()
             canvas.drawText(artistName, centerX, cursorY, namePaint)
             cursorY += namePaint.descent() + 40f
 
-            // New best badge
             if (isNewBest) {
                 val badgeText = context.getString(R.string.guess_game_new_best).uppercase()
                 val badgeWidth = badgePaint.measureText(badgeText) + 80f
@@ -377,17 +362,14 @@ object ComposeToImage {
                 cursorY += 90f + 40f
             }
 
-            // Time
             cursorY -= timePaint.ascent()
             canvas.drawText(timeText, centerX, cursorY, timePaint)
             cursorY += timePaint.descent() + 20f
 
-            // Label
             cursorY -= labelPaint.ascent()
             canvas.drawText(context.getString(R.string.guess_game), centerX, cursorY, labelPaint)
             cursorY += labelPaint.descent() + 50f
 
-            // Stats box — songs guessed correctly, same layout language as the in-app result screen
             val statsBoxRect = RectF(centerX - 260f, cursorY, centerX + 260f, cursorY + statsBoxHeight)
             canvas.drawRoundRect(statsBoxRect, 28f, 28f, Paint().apply { color = 0x0FFFFFFF; isAntiAlias = true })
             var statsCursorY = statsBoxRect.top + 40f
@@ -403,20 +385,11 @@ object ComposeToImage {
             canvas.drawText(context.getString(R.string.guess_game_result_correct_label), centerX, statsCursorY, statLabelPaint)
             cursorY += statsBoxHeight + 60f
 
-            // Footer
             canvas.drawText("IRIDE", centerX, imageHeight - padding + 10f, appNamePaint)
 
             return@withContext bitmap
         }
 
-    // Stack Blur v1.0 from http://www.quasimondo.com/StackBlurForCanvas/StackBlurDemo.html
-    // Java Author: Mario Klingemann <mario at quasimondo.com>
-    // http://incubator.quasimondo.com
-    //
-    // created Feburary 29, 2004
-    // Android port : Yahel Bouaziz <yahel at kayenko.com>
-    // http://www.kayenko.com
-    // ported to Kotlin and adapted
     private fun fastBlur(
         sentBitmap: Bitmap,
         scale: Float,

@@ -48,11 +48,12 @@ import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.PlaylistCategoryWithCount
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textTertiary
 
 /** Filter state for the persisted, user-created playlist category pills (see [CategoryPillsRow]). */
 data class CategoryFilterState(
     val categories: List<PlaylistCategoryWithCount>,
-    // songId -> categoryIds it belongs to.
     val songCategoryIds: Map<String, List<String>>,
     val selectedCategoryId: String?,
     val onSelect: (String) -> Unit,
@@ -116,7 +117,7 @@ private fun AddCategoryPill(
                 fontFamily = SpaceMonoFontFamily,
                 letterSpacing = 0.5.sp,
             ),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.textPrimary,
             fontWeight = FontWeight.SemiBold,
         )
         Text(
@@ -125,7 +126,7 @@ private fun AddCategoryPill(
                 fontFamily = SpaceMonoFontFamily,
                 letterSpacing = 0.5.sp,
             ),
-            color = Color.White.copy(alpha = 0.85f),
+            color = MaterialTheme.colorScheme.textPrimary,
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -142,7 +143,7 @@ private fun CategoryPill(
     val density = LocalDensity.current
     var textWidthPx by remember(name) { mutableStateOf(0) }
     val textColor by animateColorAsState(
-        targetValue = if (selected) Color.White else Color.White.copy(alpha = 0.55f),
+        targetValue = if (selected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
         animationSpec = spring(stiffness = 400f),
         label = "categoryPillTextColor",
     )
@@ -197,7 +198,7 @@ private fun CategoryPill(
             modifier = Modifier
                 .height(2.dp)
                 .width(with(density) { textWidthPx.toDp() })
-                .background(Color.White.copy(alpha = underlineAlpha)),
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = underlineAlpha)),
         )
     }
 }

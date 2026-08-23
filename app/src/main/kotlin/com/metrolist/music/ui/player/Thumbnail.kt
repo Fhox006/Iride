@@ -128,7 +128,6 @@ private fun calculateThumbnailDimensions(
     cornerRadius: Dp = ThumbnailCornerRadius,
     isLandscape: Boolean = false
 ): ThumbnailDimensions {
-    // In landscape, use height as the constraining dimension for a square thumbnail
     val effectiveSize = if (isLandscape) {
         minOf(containerWidth, containerHeight) - (horizontalPadding * 2)
     } else {
@@ -154,11 +153,9 @@ private fun getMediaItems(
     val timeline = player.currentTimeline
     val currentIndex = player.currentMediaItemIndex
     val shuffleModeEnabled = player.shuffleModeEnabled
-    
     val currentMediaItem = try {
         player.currentMediaItem
     } catch (e: Exception) { null }
-    
     val previousMediaItem = if (swipeThumbnail && !timeline.isEmpty) {
         val previousIndex = timeline.getPreviousWindowIndex(
             currentIndex,
@@ -183,7 +180,6 @@ private fun getMediaItems(
 
     val items = listOfNotNull(previousMediaItem, currentMediaItem, nextMediaItem)
     val currentMediaIndex = items.indexOf(currentMediaItem)
-    
     return MediaItemsData(items, currentMediaIndex)
 }
 
@@ -213,15 +209,12 @@ fun Thumbnail(
     val context = LocalContext.current
     val layoutDirection = LocalLayoutDirection.current
 
-    // Collect states
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val error by playerConnection.error.collectAsState()
     val queueTitle by playerConnection.queueTitle.collectAsState()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
 
-    // Preferences - computed once
-    // Disable swipe for Listen Together guests
     val swipeThumbnailPref by rememberPreference(SwipeThumbnailKey, true)
     val swipeThumbnail = swipeThumbnailPref && !isListenTogetherGuest
     val hidePlayerThumbnail by rememberPreference(HidePlayerThumbnailKey, false)
@@ -231,21 +224,15 @@ fun Thumbnail(
         defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT
     )
 
-    // Pre-calculate text color based on background style
     val textBackgroundColor = getTextColor(playerBackground)
-    
-    // Calculate media items data - recomputed on every track change
     val mediaItemsData = remember(mediaMetadata, swipeThumbnail) {
         getMediaItems(playerConnection.player, swipeThumbnail)
     }
 
-    // Grid state
     val thumbnailLazyGridState = rememberLazyGridState(initialFirstVisibleItemIndex = mediaItemsData.currentIndex.coerceAtLeast(0))
-    
     val mediaItems = mediaItemsData.items
     val currentMediaIndex = mediaItemsData.currentIndex
 
-    // Preload next track artwork into Coil cache to eliminate blank flash on skip
     val nextItem = mediaItems.getOrNull(currentMediaIndex + 1)
     LaunchedEffect(nextItem?.mediaId) {
         val url = nextItem?.mediaMetadata?.artworkUri?.toString()?.resize(1080, 1080) ?: return@LaunchedEffect
@@ -257,7 +244,6 @@ fun Thumbnail(
         context.imageLoader.enqueue(request)
     }
 
-    // Snap behavior - created once per grid state
     val thumbnailSnapLayoutInfoProvider = remember(thumbnailLazyGridState) {
         ThumbnailSnapLayoutInfoProvider(
             lazyGridState = thumbnailLazyGridState,
@@ -268,11 +254,9 @@ fun Thumbnail(
         )
     }
 
-    // Current item tracking - derived state for efficiency
     val currentItem by remember { derivedStateOf { thumbnailLazyGridState.firstVisibleItemIndex } }
     val itemScrollOffset by remember { derivedStateOf { thumbnailLazyGridState.firstVisibleItemScrollOffset } }
 
-    // Handle swipe to change song
     LaunchedEffect(itemScrollOffset) {
         if (!thumbnailLazyGridState.isScrollInProgress || !swipeThumbnail || itemScrollOffset != 0 || currentMediaIndex < 0) return@LaunchedEffect
 
@@ -283,7 +267,6 @@ fun Thumbnail(
         }
     }
 
-    // Update position when song changes
     var isFirstComposition by remember { mutableStateOf(true) }
     val currentTrackId = mediaMetadata?.id
     LaunchedEffect(currentTrackId) {
@@ -302,18 +285,15 @@ fun Thumbnail(
         }
     }
 
-    // Seek effect state
     var showSeekEffect by remember { mutableStateOf(false) }
     var seekDirection by remember { mutableStateOf("") }
 
     Box(
         modifier = modifier
             .graphicsLayer {
-                // Use hardware layer for entire Thumbnail to ensure smooth 120Hz animations
                 compositingStrategy = CompositingStrategy.Offscreen
             }
     ) {
-        // Main thumbnail view - always visible, playback errors never replace the artwork
         AnimatedVisibility(
             visible = true,
             enter = fadeIn(),
@@ -327,7 +307,6 @@ fun Thumbnail(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = if (isLandscape) Arrangement.Center else Arrangement.Top
             ) {
-                // Now Playing header - hide in landscape mode
                 if (!isLandscape) {
                     ThumbnailHeader(
                         queueTitle = queueTitle,
@@ -335,8 +314,6 @@ fun Thumbnail(
                         textColor = textBackgroundColor
                     )
                 }
-                
-                // Thumbnail content
                 BoxWithConstraints(
                     contentAlignment = Alignment.Center,
                     modifier = if (isLandscape) {
@@ -345,7 +322,6 @@ fun Thumbnail(
                         Modifier.fillMaxSize()
                     }
                 ) {
-                    // Calculate dimensions once per size change, considering landscape mode
                     val dimensions = remember(maxWidth, maxHeight, isLandscape) {
                         calculateThumbnailDimensions(
                             containerWidth = maxWidth,
@@ -354,20 +330,16 @@ fun Thumbnail(
                         )
                     }
 
-                    // Remember the onSeek callback to prevent recomposition
                     val onSeekCallback = remember {
                         { direction: String, showEffect: Boolean ->
                             seekDirection = direction
                             showSeekEffect = showEffect
                         }
                     }
-                    
-                    // Derive scroll enabled state to prevent unnecessary recomposition
                     val playerExpanded = isPlayerExpanded()
                     val isScrollEnabled by remember(swipeThumbnail, playerExpanded) {
                         derivedStateOf { swipeThumbnail && playerExpanded }
                     }
-                    
                     LazyHorizontalGrid(
                         state = thumbnailLazyGridState,
                         rows = GridCells.Fixed(1),
@@ -406,7 +378,6 @@ fun Thumbnail(
             }
         }
 
-        // Seek effect
         LaunchedEffect(showSeekEffect) {
             if (showSeekEffect) {
                 delay(1000)
@@ -423,7 +394,6 @@ fun Thumbnail(
             SeekEffectOverlay(seekDirection = seekDirection)
         }
 
-        // Minimal, transient error banner - never hides the artwork or swaps the screen.
         AnimatedVisibility(
             visible = error != null,
             enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
@@ -500,7 +470,6 @@ private fun ThumbnailItem(
             )
             .padding(horizontal = PlayerHorizontalPadding)
             .graphicsLayer {
-                // Render entire thumbnail item on separate hardware layer for smooth animations
                 compositingStrategy = CompositingStrategy.Offscreen
             }
             .pointerInput(Unit) {
@@ -555,8 +524,6 @@ private fun ThumbnailItem(
                     cropArtwork = cropAlbumArt
                 )
             }
-            
-            // Cast button at top-right corner of thumbnail
             CastButton(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -603,7 +570,6 @@ private fun ThumbnailImage(
         modifier = modifier
             .fillMaxSize()
             .graphicsLayer {
-                // Use offscreen compositing for hardware acceleration during animations
                 compositingStrategy = CompositingStrategy.Offscreen
             }
             .background(MaterialTheme.colorScheme.surfaceVariant)

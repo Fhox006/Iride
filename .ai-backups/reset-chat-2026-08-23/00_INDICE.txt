@@ -1,0 +1,41 @@
+INDICE BACKUP SESSIONE 23/08/2026 — per /reset chat
+Cartella: C:\Users\mrffh\Desktop\Iride\.ai-backups\reset-chat-2026-08-23
+
+FILE MODIFICATI IN QUESTA SESSIONE (ripristino = applica i segmenti ORIGINAL di ogni entry):
+01_SongMenu_kt_L829.txt                 -> app\...\ui\menu\SongMenu.kt (riga 829)
+02_TopScreenGradientBackground_kt.txt   -> app\...\ui\component\TopScreenGradientBackground.kt (111, 183-188)
+03_OriginalLyrics_kt_L874.txt           -> OBSOLETO (vedi 07)
+04_Player_kt.txt                        -> app\...\ui\player\Player.kt (572, 599, 631, 657)
+05_LibraryMixScreen_kt.txt              -> app\...\ui\screens\library\LibraryMixScreen.kt (320, 332, 344, 368)
+06_PlayerAppearanceSettings_kt.txt      -> app\...\ui\screens\settings\PlayerAppearanceSettings.kt (104, 192)
+07_recupero_OriginalLyrics_AlbumScreen  -> VEDI NOTE RECUPERO SOTTO
+08_StatsScreen_ArtistScreen.txt         -> StatsScreen.kt (545), ArtistScreen.kt (565)
+09_ArtistGameScreen_kt.txt              -> app\...\ui\screens\artist\ArtistGameScreen.kt (408)
+10_BetterAnimatedGradient_HomeViewModel.txt -> BetterAnimatedGradientBackground.kt (138), HomeViewModel.kt (369)
+11_ArtistGameViewModel_kt.txt           -> app\...\viewmodels\ArtistGameViewModel.kt (281)
+12_LyricsHelper_kt.txt                  -> app\...\lyrics\LyricsHelper.kt (316)
+13_App_kt.txt                           -> app\...\App.kt (import FlowPreview, @OptIn su observeConnectivity)
+14_SyncUtils_kt.txt                     -> app\...\utils\SyncUtils.kt (import FlowPreview, @OptIn su classe)
+15_MediaLibrarySessionCallback_kt.txt   -> app\...\playback\MediaLibrarySessionCallback.kt (@Deprecated su override)
+16_PlaybackError_kt.txt                 -> app\...\ui\player\PlaybackError.kt (migrazione clipboard moderna)
+17_IrideMotion_kt.txt                   -> app\...\ui\utils\IrideMotion.kt (import LocalLifecycleOwner spostato)
+18_YouTubeBrowseViewModel_kt.txt        -> app\...\viewmodels\YouTubeBrowseViewModel.kt (bug fix righe 82 e 112-124)
+
+NOTE RECUPERO (07):
+OriginalLyrics.kt e AlbumScreen.kt sono stati danneggiati per errore in questa sessione
+(e le versioni precedenti con lavoro parallel non committato sono irrecuperabili).
+Sono stati RIPRISTINATI DA GIT HEAD con `git restore` e poi modificati.
+=> Per /reset chat questi due file vanno riportati alla VERSIONE HEAD DI GIT,
+   NON al contenuto indicato nei vecchi entry 03.
+Modifiche attuali da annullare su di essi:
+- OriginalLyrics.kt: blocco `if (lyrics == null) { ...shimmer... } else {` -> `run {` (ex riga 899)
+- AlbumScreen.kt: `albumWithSongs?.songs?.size ?: 0,` -> `albumWithSongs.songs.size,` (ex 979);
+  `if (!isListenTogetherGuest && album != null) {` -> `if (!isListenTogetherGuest) {` (ex 990)
+
+AVVISI LASCIATI VOLUTAMENTE (scelta utente):
+- Comments.kt: deprecato hiltViewModel (migrazione possibile solo con libreria alpha)
+- Preference.kt + AndroidAutoSettings.kt: deprecato PreferenceEntry (rischio UI/drag&drop)
+
+REGOLE PER /reset chat:
+- Ripristinare SOLO i file/segmenti sopra elencati, usando il testo ORIGINAL esatto.
+- Non toccare file modificati da altre sessioni parallele.

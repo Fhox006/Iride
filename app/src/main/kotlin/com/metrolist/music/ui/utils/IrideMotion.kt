@@ -34,12 +34,12 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.metrolist.music.constants.IrideAnimationsKey
 import com.metrolist.music.utils.rememberPreference
 import kotlin.random.Random
@@ -181,8 +181,6 @@ fun rememberEnterProgress(
 ): Float {
     val reducedMotion = rememberReducedMotion()
     if (reducedMotion) return if (play) 1f else 0f
-    // Kept out of the animation's own recomposition: `play` flipping is the trigger, and the
-    // start-at-0 frame must exist before the tween runs or the first frame lands fully drawn.
     var started by remember { mutableStateOf(false) }
     LaunchedEffect(play) { if (play) started = true }
     val progress by animateFloatAsState(

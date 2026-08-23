@@ -114,9 +114,8 @@ fun StatsScreen(
     navController: NavController,
     viewModel: StatsViewModel = hiltViewModel(),
 ) {
-    val sArtists = viewModel.selectedArtists // SnapshotStateList<Artist>
+    val sArtists = viewModel.selectedArtists
 
-// Helper actions:
     val toggleArtistSelection: (Artist) -> Unit = { artist ->
         if (sArtists.any { it.id == artist.id }) {
             sArtists.removeAll { it.id == artist.id }
@@ -217,8 +216,8 @@ fun StatsScreen(
         if (showTimeTransfer) {
             if (prevOptionOrdinal == null) prevOptionOrdinal = selectedOption
             if (prevIndexChips == null) prevIndexChips = indexChips
-            viewModel.selectedOption.value = OptionStats.CONTINUOUS // "throughout time" in your VM
-            viewModel.indexChips.value = StatPeriod.ALL.ordinal // optional: ensure it’s actually “now -> throughout time”
+            viewModel.selectedOption.value = OptionStats.CONTINUOUS
+            viewModel.indexChips.value = StatPeriod.ALL.ordinal
         }
     }
 
@@ -229,7 +228,6 @@ fun StatsScreen(
                 prevOptionOrdinal?.let { viewModel.selectedOption.value = it }
                 prevIndexChips?.let { viewModel.indexChips.value = it }
 
-                // Clear snapshots for the next open
                 prevOptionOrdinal = null
                 prevIndexChips = null
             },
@@ -466,7 +464,6 @@ fun StatsScreen(
                             )
                         }
 
-                        // ── TOP ARTISTS CAROUSEL ──
                         item {
                             SectionHeader(title = stringResource(R.string.top_artists))
                         }
@@ -485,7 +482,6 @@ fun StatsScreen(
                             )
                         }
 
-                        // ── TOP ALBUMS CAROUSEL ──
                         item {
                             SectionHeader(title = stringResource(R.string.top_albums))
                         }
@@ -505,7 +501,6 @@ fun StatsScreen(
                             )
                         }
 
-                        // ── TOP SONGS CAROUSEL ──
                         item {
                             SectionHeader(title = stringResource(R.string.top_songs))
                         }
@@ -534,7 +529,6 @@ fun StatsScreen(
                             )
                         }
 
-                        // ── TOP GENRES (playlist categories) ──
                         if (mostPlayedCategories.isNotEmpty()) {
                             item {
                                 SectionHeader(title = stringResource(R.string.top_genres))
@@ -544,12 +538,11 @@ fun StatsScreen(
                             }
                         }
 
-                        // ── STATS DATA BOX ──
                         item {
                             val totalMinutes = mostPlayedSongsStats.sumOf { it.timeListened ?: 0L } / 60000
                             val uniqueArtistsCount = mostPlayedArtists.size
                             val uniqueAlbumsCount = mostPlayedAlbums.size
-                            val totalSongsPlayed = mostPlayedSongsStats.sumOf { (it.songCountListened ?: 0).toLong() }.toInt()
+                            val totalSongsPlayed = mostPlayedSongsStats.sumOf { it.songCountListened }
 
                             StatsDataBox(
                                 totalMinutes = totalMinutes,
@@ -559,44 +552,7 @@ fun StatsScreen(
                             )
                         }
 
-                        // HIDDEN — playlists section temporarily disabled
-                        // if (visibleStatsPlaylists.isNotEmpty()) {
-                        //     item(key = "mostPeriodPlaylistsTitle") {
-                        //         NavigationTitle(
-                        //             title =
-                        //                 pluralStringResource(
-                        //                     R.plurals.n_playlist,
-                        //                     visibleStatsPlaylists.size,
-                        //                     visibleStatsPlaylists.size,
-                        //                 ),
-                        //             modifier = Modifier.animateItem(),
-                        //         )
-                        //     }
 
-                        //     item(key = "mostPeriodPlaylists") {
-                        //         LazyRow(
-                        //             contentPadding = PaddingValues(horizontal = 4.dp),
-                        //             modifier = Modifier.animateItem(),
-                        //         ) {
-                        //             itemsIndexed(
-                        //                 items = visibleStatsPlaylists,
-                        //                 key = { _, playlist -> playlist.id },
-                        //             ) { _, playlist ->
-                        //                 PlaylistGridItem(
-                        //                     playlist = playlist,
-                        //                     autoPlaylist = true,
-                        //                     modifier =
-                        //                         Modifier
-                        //                             .combinedClickable(
-                        //                                 onClick = {
-                        //                                     navController.navigate("local_playlist/${playlist.id}")
-                        //                                 },
-                        //                             ).animateItem(),
-                        //                 )
-                        //             }
-                        //         }
-                        //     }
-                        // }
                     }
                 }
 
@@ -611,7 +567,7 @@ fun StatsScreen(
                     ) { artist ->
                         val uiArtist = Artist(name = artist.artist.name, id = artist.id)
                         val isChecked = sArtists.any { it.id == uiArtist.id }
-                        Row( // Use a row to arrange the checkbox and ArtistListItem horizontally
+                        Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier =
                                 Modifier
@@ -622,11 +578,11 @@ fun StatsScreen(
                         ) {
                             ArtistListItem(
                                 artist = artist,
-                                modifier = Modifier.weight(1f), // Allow ArtistListItem to take remaining space
+                                modifier = Modifier.weight(1f),
                             )
 
                             Checkbox(
-                                checked = sArtists.contains(Artist(name = artist.artist.name, id = artist.id)), // Get the current checked state
+                                checked = sArtists.contains(Artist(name = artist.artist.name, id = artist.id)),
                                 onCheckedChange = {
                                     toggleArtistSelection(uiArtist)
                                 },
@@ -661,12 +617,11 @@ fun StatsScreen(
             }
         }
 
-        // Action buttons overlay — aligned with the collapsed toolbar row
         Box(modifier = Modifier.fillMaxWidth()) {
             if (!isSearching) {
                 Row(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)  // ✅ ora in BoxScope
+                        .align(Alignment.TopEnd)
                         .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars)
                         .height(56.dp)
                         .padding(end = 4.dp),

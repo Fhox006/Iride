@@ -28,7 +28,7 @@
     <string name="sync_playlist">Sync playlist</string>
     <string name="sync_disabled">Sync disabled</string>
     <string name="allows_for_sync_witch_youtube">NOTE: This option enables syncing with YouTube Music and CANNOT be changed later</string>
-    <string name="generating_image">Generating imageâ€¦</string>
+    <string name="generating_image">Generating image…</string>
     <string name="please_wait">Please wait</string>
     <string name="cancel">Cancel</string>
     <string name="enable">Enable</string>
@@ -77,7 +77,7 @@
     <string name="dislike_all">Dislike all</string>
     <string name="sort_by_last_updated">Date updated</string>
     <string name="link_copied">Link copied to clipboard</string>
-    <string name="starting_radio">Starting radioâ€¦</string>
+    <string name="starting_radio">Starting radio…</string>
     <string name="now_playing">Now Playing</string>
 
     <string name="lyrics">Lyrics</string>
@@ -261,13 +261,13 @@
     <string name="open_app_settings_error">Couldn\'t open the app settings</string>
     <string name="changelog_empty">No changelogs available</string>
     <string name="github_releases_url">https://github.com/IrideGroup/Iride/releases</string>
-    <string name="list_bullet">â€¢</string>
+    <string name="list_bullet">•</string>
     <string name="view_on_github">View on GitHub</string>
     <string name="current_version">Current version</string>
     <string name="version_format">Version: %s</string>
     <string name="update_settings">Update settings</string>
     <string name="check_for_updates_title">Check for updates</string>
-    <string name="checking_for_updates">Checking for updatesâ€¦</string>
+    <string name="checking_for_updates">Checking for updates…</string>
     <string name="latest_version_format">Latest: %s</string>
     <string name="check_for_updates_button">Check for updates</string>
     <string name="hide_changelog">Hide changelog</string>
@@ -478,7 +478,7 @@
     <string name="lastfm_now_playing">Send Now Playing status</string>
     <string name="last_fm_send_likes">Sync Loved and Unloved</string>
     <string name="last_fm_send_likes_description">Love or unlove songs in Last.fm when you like or unlike them in Iride</string>
-    <string name="logging_in">Logging inâ€¦</string>
+    <string name="logging_in">Logging in…</string>
 
     <string name="scrobbling_configuration">Scrobbling configuration</string>
     <string name="scrobble_min_track_duration">Scrobble songs longer than (seconds)</string>
@@ -549,12 +549,12 @@
     <string name="wrapped_total_songs_title">You\'ve listened to</string>
     <string name="wrapped_total_songs_subtitle">unique songs!</string>
     <string name="wrapped_intro_title">IRIDE</string>
-    <string name="wrapped_intro_subtitle">it\'s time to see what you\'ve been listening to all this yearâ€¦</string>
+    <string name="wrapped_intro_subtitle">it\'s time to see what you\'ve been listening to all this year…</string>
     <string name="wrapped_intro_button">let\'s go!</string>
     <string name="wrapped_logo_content_description">Iride Logo</string>
     <string name="wrapped_year">2025</string>
     <string name="wrapped_ready_title">YOUR WRAPPED IS READY!</string>
-    <string name="wrapped_ready_subtitle">Time to see what you loved all this yearâ€¦</string>
+    <string name="wrapped_ready_subtitle">Time to see what you loved all this year…</string>
     <string name="wrapped_thank_you">Thank you for listening!</string>
     <string name="wrapped_special_thanks">Special thanks to MO Agamy for creating Iride</string>
     <string name="wrapped_close">Close Wrapped</string>
@@ -625,8 +625,8 @@
     <string name="widget_recognizer_name">Music Recognizer</string>
     <string name="widget_recognizer_description">Identify songs playing around you directly from your home screen</string>
     <string name="widget_recognizer_tap_to_search">Tap to identify a song</string>
-    <string name="widget_recognizer_listening">Listeningâ€¦</string>
-    <string name="widget_recognizer_processing">Identifyingâ€¦</string>
+    <string name="widget_recognizer_listening">Listening…</string>
+    <string name="widget_recognizer_processing">Identifying…</string>
     <string name="widget_recognizer_no_match">No match found. Try again</string>
     <string name="widget_recognizer_error">Recognition failed</string>
     <string name="widget_recognizer_error_generic">Something went wrong. Please try again</string>
@@ -635,7 +635,7 @@
     <string name="widget_recognizer_mic_desc">Identify a song</string>
     <string name="widget_recognizer_channel_name">Music Recognition</string>
     <string name="widget_recognizer_channel_desc">Shows a notification while identifying a song from the widget</string>
-    <string name="widget_recognizer_notification_text">Recording audio to identify the songâ€¦</string>
+    <string name="widget_recognizer_notification_text">Recording audio to identify the song…</string>
 
     <!-- Player Client Settings -->
 
@@ -650,9 +650,9 @@
     <string name="listen_together_use_custom_server">Use custom server</string>
     <string name="listen_together_username">Username</string>
     <string name="listen_together_connected">Connected</string>
-    <string name="listen_together_reconnecting">Reconnectingâ€¦</string>
+    <string name="listen_together_reconnecting">Reconnecting…</string>
     <string name="listen_together_disconnected">Disconnected</string>
-    <string name="listen_together_connecting">Connectingâ€¦</string>
+    <string name="listen_together_connecting">Connecting…</string>
     <string name="listen_together_error">Connection error</string>
     <string name="listen_together_create_room">Create room</string>
     <string name="listen_together_create_room_desc">Create a room and share the code with your friends</string>
@@ -685,7 +685,7 @@
     <string name="listen_together_notification_channel_desc">Notifications for Listen Together events</string>
     <string name="listen_together_room_created">Room created: %s</string>
     <string name="listen_together_cannot_edit_username_in_room">The username cannot be changed while in a room</string>
-    <string name="waiting_for_approval">Waiting for host approvalâ€¦</string>
+    <string name="waiting_for_approval">Waiting for host approval…</string>
     <string name="invalid_room_code">Invalid room code</string>
     <string name="join_request_denied">Join request denied</string>
     <string name="join_existing_room">Join existing room</string>
@@ -693,8 +693,8 @@
     <string name="leave_room">Leave room</string>
     <string name="join_room">Join</string>
     <string name="create_room">Create</string>
-    <string name="joining_room">Joining room %sâ€¦</string>
-    <string name="creating_room">Creating roomâ€¦</string>
+    <string name="joining_room">Joining room %s…</string>
+    <string name="creating_room">Creating room…</string>
     <string name="connect">Connect</string>
     <string name="disconnect">Disconnect</string>
     <string name="create">Create</string>
@@ -736,7 +736,7 @@
 
     <!-- AI Lyrics Translation -->
     <string name="ai_lyrics_translation">AI lyrics translation</string>
-    <string name="ai_translating_lyrics">Translating lyricsâ€¦</string>
+    <string name="ai_translating_lyrics">Translating lyrics…</string>
     <string name="ai_lyrics_translated">Lyrics translated</string>
     <string name="ai_provider">Provider</string>
     <string name="ai_base_url">Base URL</string>
@@ -807,6 +807,11 @@
     <string name="palette_grey">Grey</string>
     <string name="palette_blue_grey">Blue Grey</string>
 
+    <!-- Theme Mode Selector -->
+    <string name="theme_mode_light">Light</string>
+    <string name="theme_mode_dark">Dark</string>
+    <string name="theme_mode_system">System</string>
+
     <!-- Theme Content Descriptions -->
     <string name="cd_back">Back</string>
     <string name="cd_pure_black_mode">Pure black mode</string>
@@ -828,8 +833,8 @@
     <!-- Music Recognition -->
     <string name="recognize_music">Recognize music</string>
     <string name="tap_to_recognize">Tap to recognize</string>
-    <string name="listening">Listeningâ€¦</string>
-    <string name="processing">Processingâ€¦</string>
+    <string name="listening">Listening…</string>
+    <string name="processing">Processing…</string>
     <string name="no_match_found">No match found</string>
     <string name="recognition_error">Recognition error</string>
     <string name="try_again">Try again</string>
@@ -843,8 +848,8 @@
     <string name="qs_tile_music_recognizer">Recognize music</string>
     <string name="recognition_notification_channel_name">Music recognition</string>
     <string name="recognition_notification_channel_desc">Shows a notification while identifying a song from quick settings</string>
-    <string name="recognition_notification_listening">Listening for musicâ€¦</string>
-    <string name="recognition_notification_processing">Identifyingâ€¦</string>
+    <string name="recognition_notification_listening">Listening for music…</string>
+    <string name="recognition_notification_processing">Identifying…</string>
     <string name="recognition_notification_no_match">No match found</string>
     <string name="recognition_notification_failed">Recognition failed</string>
     <string name="listen_on_metrolist">Listen on Iride</string>
@@ -856,8 +861,8 @@
     <string name="song_title_column">Song title column</string>
     <string name="youtube_url_column">YouTube URL column (optional)</string>
     <string name="continue_action">Continue</string>
-    <string name="importing_csv">Importing CSVâ€¦</string>
-    <string name="importing_playlist">Importing playlistâ€¦</string>
+    <string name="importing_csv">Importing CSV…</string>
+    <string name="importing_playlist">Importing playlist…</string>
 
     <string name="recently_converted">Recently converted</string>
     <string name="column_label">Column %d</string>
@@ -933,14 +938,14 @@
     <string name="credits_instagram">Instagram</string>
     <string name="credits_github">GitHub</string>
     <string name="credits_view_repo">View repository</string>
-    <string name="app_version_info">%1$s â€¢ %2$s</string>
+    <string name="app_version_info">%1$s • %2$s</string>
     <string name="like_what_i_do">Like what I do?</string>
     <string name="buy_mo_a_coffee">Buy me a coffee!</string>
     <string name="community_and_info">Community &amp; Info</string>
     <string name="metrolist">IRIDE</string>
     <string name="wanna_play_favorite_song">Want to play their favorite song?</string>
     <string name="yeah">Yeah!</string>
-    <string name="stands_with_palestine">This project stands with Palestine ðŸ‡µðŸ‡¸</string>
+    <string name="stands_with_palestine">This project stands with Palestine 🇵🇸</string>
 
     <!-- Podcasts -->
     <string name="filter_podcasts">Podcasts</string>
@@ -976,14 +981,14 @@
     <string name="restore_confirm_message">This will restore your app data from the selected backup</string>
     <string name="restore_account_warning">You will need to log in again after restoring. The following account will be signed out:</string>
     <string name="restore">Restore</string>
-    <string name="checking_previous_account">Checking for previous accountâ€¦</string>
+    <string name="checking_previous_account">Checking for previous account…</string>
     <string name="no_account_found">No account found</string>
 
     <!-- Cache settings -->
 
     <!-- Upload songs -->
     <string name="upload_songs">Upload songs</string>
-    <string name="uploading">Uploadingâ€¦</string>
+    <string name="uploading">Uploading…</string>
     <string name="upload_progress">%1$d of %2$d</string>
     <string name="upload_complete">Upload complete</string>
     <string name="upload_failed">Upload failed</string>
@@ -996,7 +1001,7 @@
     <string name="delete_uploaded_songs">Delete uploaded songs</string>
     <string name="delete_uploaded_songs_confirm">Are you sure you want to delete %1$d uploaded songs? This action cannot be undone</string>
     <string name="deleted_n_songs">Deleted %1$d songs</string>
-    <string name="deleting">Deletingâ€¦</string>
+    <string name="deleting">Deleting…</string>
 
     <!-- Android Auto settings -->
     <string name="android_auto">Android Auto</string>

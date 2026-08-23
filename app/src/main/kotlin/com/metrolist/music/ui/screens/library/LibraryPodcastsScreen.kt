@@ -126,7 +126,6 @@ fun LibraryPodcastsScreen(
     val podcastChannels by viewModel.podcastChannels.collectAsState()
     val rdpnPlaylist by viewModel.rdpnPlaylist.collectAsState()
 
-    // Refresh channels when screen becomes visible (ON_RESUME)
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer =
@@ -177,7 +176,6 @@ fun LibraryPodcastsScreen(
                     },
                 ),
     ) {
-        // Chip row header — same pattern as LibrarySongsScreen
         val chipsHeader = @Composable {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -215,7 +213,6 @@ fun LibraryPodcastsScreen(
         }
 
         when (podcastFilter) {
-            // ── EPISODES FOR LATER tab ────────────────────────────────────
             PodcastFilter.EPISODES -> {
                 LazyColumn(
                     state = lazyListState,
@@ -230,7 +227,6 @@ fun LibraryPodcastsScreen(
                         chipsHeader()
                     }
 
-                    // RDPN "New Episodes" auto-playlist card
                     item(key = "rdpn_playlist", contentType = CONTENT_TYPE_HEADER) {
                         AutoPlaylistCard(
                             title = stringResource(R.string.new_episodes),
@@ -240,7 +236,6 @@ fun LibraryPodcastsScreen(
                         )
                     }
 
-                    // Episodes for Later - card/folder (works both logged in and out)
                     item(key = "episodes_for_later", contentType = CONTENT_TYPE_HEADER) {
                         AutoPlaylistCard(
                             title = stringResource(R.string.episodes_for_later),
@@ -255,7 +250,6 @@ fun LibraryPodcastsScreen(
                         )
                     }
 
-                    // Saved podcast shows (episode playlists) from YT Music library
                     itemsIndexed(
                         items = subscribedChannels,
                         key = { _, item -> item.id },
@@ -282,7 +276,6 @@ fun LibraryPodcastsScreen(
                 }
             }
 
-            // ── CHANNELS tab — podcast host artist pages from YT Music ───
             PodcastFilter.CHANNELS -> {
                 LazyColumn(
                     state = lazyListState,
@@ -355,7 +348,6 @@ fun LibraryPodcastsScreen(
                 }
             }
 
-            // ── DOWNLOADED tab ────────────────────────────────────────────
             PodcastFilter.DOWNLOADED -> {
                 LazyColumn(
                     state = lazyListState,
@@ -408,8 +400,6 @@ fun LibraryPodcastsScreen(
                         key = { _, item -> item.song.id },
                         contentType = { _, _ -> CONTENT_TYPE_SONG },
                     ) { index, episode ->
-                        // Always show channel name: use artists if available,
-                        // else fall back to song.albumName (podcast show title stored during sync)
                         val channelName =
                             episode.artists
                                 .joinToString { it.name }
@@ -682,11 +672,9 @@ private fun PodcastEpisodePlaylistMenu(
                     },
                     onClick = {
                         coroutineScope.launch(Dispatchers.IO) {
-                            // Update local database
                             database.query {
                                 update(podcast.copy(bookmarkedAt = null))
                             }
-                            // Sync with YouTube (unsave podcast only, don't unsubscribe channel)
                             syncUtils.savePodcast(podcast.id, false)
                         }
                         onDismiss()

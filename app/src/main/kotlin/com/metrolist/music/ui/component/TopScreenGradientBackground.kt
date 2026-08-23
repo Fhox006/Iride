@@ -108,7 +108,7 @@ fun TopScreenGradientBackground(
             displayedThumbnail = bitmap
         }
 
-        val id = mediaMetadata?.id
+        val id = mediaMetadata.id
         if (bitmap != null && id != null) {
             val cached = colorCache[id]
             val colors = cached ?: withContext(Dispatchers.IO) {
@@ -166,8 +166,6 @@ fun TopScreenGradientBackground(
                         crossfadeProgress = crossfadeProgress.value,
                         modifier = Modifier.fillMaxWidth().height(TopGradientHeight),
                     )
-                    // Fade the blurred art into the ordinary page background before
-                    // it reaches the middle of the screen, and keep it subtle overall.
                     Box(
                         Modifier
                             .fillMaxWidth()
@@ -184,8 +182,6 @@ fun TopScreenGradientBackground(
                     )
                 }
             }
-
-            else -> {}
         }
     }
 }

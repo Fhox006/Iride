@@ -1,0 +1,6 @@
+FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\playback\MediaLibrarySessionCallback.kt
+LINES: 105-106
+NOTE: added @Deprecated annotation on override of deprecated media3 member (silences OVERRIDE_DEPRECATION).
+<<<ORIGINAL
+106:     override fun onPlayerCommandRequest(
+ORIGINAL>>>

@@ -68,9 +68,6 @@ class ArtistViewModel @Inject constructor(
     val artistId = savedStateHandle.get<String>("artistId")!!
 
     init {
-        // Opening the profile clears the library "+N" badge and it doesn't come back — but the
-        // per-release marker on individual albums/singles/EPs stays until each one is opened, see
-        // unseenAlbumIds/markAlbumSeen below.
         viewModelScope.launch(Dispatchers.IO) { newReleaseNotifier.markSeen(artistId) }
     }
 
@@ -81,7 +78,6 @@ class ArtistViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) { newReleaseNotifier.markAlbumSeen(artistId, albumId) }
     }
 
-    // Global — a song's dot is the same whether it shows up here, in Top Songs, or on an album page.
     val unseenSongIds = newReleaseNotifier.unseenSongIds
         .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
 
@@ -91,10 +87,6 @@ class ArtistViewModel @Inject constructor(
 
     private data class FeaturingEntry(val song: com.metrolist.innertube.models.SongItem, val sortKey: Long)
 
-    // Union of remotely-discovered features (from NewReleaseNotifier.refresh) and songs already
-    // linked locally as non-primary artists (TitleFeaturingParser/linkFeaturedArtist) — the latter
-    // recovers historical feats whose title has since been cleaned up and re-attributed. Remote
-    // entries win on id collisions since they carry the "other album" metadata.
     val featuringSongs = kotlinx.coroutines.flow.combine(
         newReleaseNotifier.featuredSongs(artistId),
         database.artistFeaturedSongs(artistId),
@@ -110,9 +102,6 @@ class ArtistViewModel @Inject constructor(
                     } else null,
                     thumbnail = info.thumbnailUrl,
                 ),
-                // Best-effort chronological key: an exact publish date isn't available from YTM
-                // shelves, so a known release year anchors to that year's start; otherwise fall
-                // back to when we first detected the feature.
                 sortKey = info.year?.let { (it - 1970).toLong() * 365L * 86_400_000L } ?: info.firstSeenMs,
             )
         }
@@ -139,20 +128,14 @@ class ArtistViewModel @Inject constructor(
     private val isPodcastChannel = savedStateHandle.get<Boolean>("isPodcastChannel") ?: false
     var artistPage by mutableStateOf<ArtistPage?>(null)
 
-    // YTM's own "Top Songs" shelf on the artist page only ever carries ~5 tracks — the full list
-    // sits behind the shelf's own "more" browse endpoint, same one ArtistItemsScreen's "see all"
-    // uses. Fetched quietly in the background so the carousel upgrades from 5 to the real count
-    // without the user having to leave the page for it.
     private val _expandedTopSongs = MutableStateFlow<List<com.metrolist.innertube.models.SongItem>?>(null)
     val expandedTopSongs = _expandedTopSongs.asStateFlow()
 
-    // Track API subscription state separately
     private val _apiSubscribed = MutableStateFlow<Boolean?>(null)
 
     val libraryArtist = database.artist(artistId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
-    // Combine API state with local database state - local takes precedence when not logged in
     val isChannelSubscribed = kotlinx.coroutines.flow.combine(
         _apiSubscribed,
         database.artist(artistId),
@@ -175,10 +158,6 @@ class ArtistViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    // Precise release date for the currently computed [recentAlbum], resolved asynchronously via
-    // MusicBrainz when the local DB / YTM shelf only gave us a bare year — mirrors what
-    // AlbumViewModel already does when the user opens an album's own screen, but done proactively
-    // here since a remote-sourced recent release usually isn't in the local DB yet to trigger that.
     private val _recentAlbumPreciseDate = MutableStateFlow<String?>(null)
     val recentAlbumPreciseDate = _recentAlbumPreciseDate.asStateFlow()
 
@@ -186,7 +165,6 @@ class ArtistViewModel @Inject constructor(
         snapshotFlow { artistPage },
         libraryAlbums
     ) { page, localAlbums ->
-        // First, try to find a recent album in the library (most accurate date)
         val threeMonthsAgo = java.time.LocalDate.now().minusMonths(3)
         val localRecent = localAlbums.filter { it.album.releaseDate != null }.mapNotNull { album ->
             val dateStr = album.album.releaseDate!!
@@ -204,9 +182,6 @@ class ArtistViewModel @Inject constructor(
         }.maxByOrNull { it.second }?.first
 
         if (localRecent != null) {
-            // Local library entries only ever carry a songCount, never the shelf they came
-            // from — approximate the release type from track count (industry-standard-ish
-            // thresholds: 1 track = single, 2-6 = EP, 7+ = album).
             val type = when {
                 localRecent.album.songCount <= 1 -> AlbumReleaseType.SINGLE
                 localRecent.album.songCount in 2..6 -> AlbumReleaseType.EP
@@ -215,9 +190,6 @@ class ArtistViewModel @Inject constructor(
             return@combine RecentAlbumInfo(localRecent, type)
         }
 
-        // If not in library, look at the artist page from YTM.
-        // Consider every Albums/Singles/EPs shelf (not just the first match) and pick the
-        // newest item across all of them, since YTM doesn't always order shelves consistently.
         val candidateSections = page?.sections
             ?.filter {
                 it.title.contains("Album", ignoreCase = true) ||
@@ -250,9 +222,6 @@ class ArtistViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     init {
-        // The recent-album panel otherwise only ever shows a bare year (YTM's artist-page shelves
-        // don't carry a full date) — look up the exact date once we know which release is "recent"
-        // instead of leaving it stuck at year-only precision.
         viewModelScope.launch {
             recentAlbum.collect { info ->
                 _recentAlbumPreciseDate.value = null
@@ -271,7 +240,6 @@ class ArtistViewModel @Inject constructor(
     }
 
     init {
-        // Load artist page and reload when hide explicit setting changes
         viewModelScope.launch {
             context.dataStore.data
                 .map {
@@ -302,7 +270,6 @@ class ArtistViewModel @Inject constructor(
                         .filter { section -> section.items.isNotEmpty() }
 
                     artistPage = page.copy(sections = filteredSections)
-                    // Store API subscription state
                     _apiSubscribed.value = page.isSubscribed
 
                     _expandedTopSongs.value = null
@@ -334,13 +301,10 @@ class ArtistViewModel @Inject constructor(
 
         Timber.d("[CHANNEL_TOGGLE] toggleChannelSubscription called: artistId=$artistId, channelId=$channelId, isCurrentlySubscribed=$isCurrentlySubscribed, shouldBeSubscribed=$shouldBeSubscribed")
 
-        // Optimistically update API state for immediate UI feedback
         _apiSubscribed.value = shouldBeSubscribed
 
         viewModelScope.launch(Dispatchers.IO) {
             Timber.d("[CHANNEL_TOGGLE] Inside coroutine, updating database...")
-            // Update local database first (optimistic update)
-            // Call DAO methods directly - they're synchronous on IO dispatcher
             val artist = libraryArtist.value?.artist
             Timber.d("[CHANNEL_TOGGLE] libraryArtist.value?.artist = $artist")
             if (artist != null) {
@@ -349,7 +313,6 @@ class ArtistViewModel @Inject constructor(
                 } else {
                     null
                 }
-                // Also set isPodcastChannel if subscribing from podcast context
                 val updatedArtist = artist.copy(
                     bookmarkedAt = newBookmark,
                     isPodcastChannel = if (shouldBeSubscribed && isPodcastChannel) true else artist.isPodcastChannel
@@ -376,7 +339,6 @@ class ArtistViewModel @Inject constructor(
             }
 
             Timber.d("[CHANNEL_TOGGLE] Calling syncUtils.subscribeChannel($channelId, $shouldBeSubscribed)")
-            // Sync with YouTube (handles login check internally)
             syncUtils.subscribeChannel(channelId, shouldBeSubscribed)
         }
     }

@@ -143,8 +143,6 @@ fun AlbumMenu(
         }
     }
 
-    // Fetched once per menu open (same call the "refetch" action already makes) so an
-    // "Other version" tile can appear when YouTube lists an explicit/clean counterpart.
     var otherVersions by remember { mutableStateOf(emptyList<AlbumItem>()) }
     LaunchedEffect(album.id) {
         YouTube.album(album.id).onSuccess {

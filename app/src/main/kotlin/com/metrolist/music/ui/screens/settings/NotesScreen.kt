@@ -76,7 +76,7 @@ fun NotesScreen(
 
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -88,17 +88,19 @@ fun NotesScreen(
                     .padding(top = 56.dp, start = 16.dp, end = 16.dp, bottom = 8.dp),
             ) {
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    val tabColors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = MaterialTheme.colorScheme.inverseSurface,
+                        activeContentColor = MaterialTheme.colorScheme.inverseOnSurface,
+                        inactiveContainerColor = Color.Transparent,
+                        inactiveContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        activeBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        inactiveBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    )
                     SegmentedButton(
                         selected = tabIndex == 0,
                         onClick = { tabIndex = 0 },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        colors = SegmentedButtonDefaults.colors(
-                            activeContainerColor = Color.White.copy(alpha = 0.14f),
-                            activeContentColor = Color.White,
-                            inactiveContentColor = Color.White.copy(alpha = 0.5f),
-                            activeBorderColor = Color.White.copy(alpha = 0.12f),
-                            inactiveBorderColor = Color.White.copy(alpha = 0.12f),
-                        ),
+                        colors = tabColors,
                         label = {
                             Text(
                                 text = stringResource(R.string.notes_tab_albums),
@@ -111,13 +113,7 @@ fun NotesScreen(
                         selected = tabIndex == 1,
                         onClick = { tabIndex = 1 },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        colors = SegmentedButtonDefaults.colors(
-                            activeContainerColor = Color.White.copy(alpha = 0.14f),
-                            activeContentColor = Color.White,
-                            inactiveContentColor = Color.White.copy(alpha = 0.5f),
-                            activeBorderColor = Color.White.copy(alpha = 0.12f),
-                            inactiveBorderColor = Color.White.copy(alpha = 0.12f),
-                        ),
+                        colors = tabColors,
                         label = {
                             Text(
                                 text = stringResource(R.string.notes_tab_tracks),
@@ -195,7 +191,7 @@ private fun EmptyNotesState(text: String) {
         Text(
             text = text,
             fontFamily = SpaceMonoFontFamily,
-            color = Color.White.copy(alpha = 0.4f),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
         )
     }
 }
@@ -261,8 +257,8 @@ private fun NoteRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(Color.White.copy(alpha = 0.04f))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f))
+            .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), RoundedCornerShape(10.dp))
             .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -278,7 +274,7 @@ private fun NoteRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 6.dp),
@@ -286,7 +282,7 @@ private fun NoteRow(
             Text(
                 text = author,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -297,7 +293,7 @@ private fun NoteRow(
                 Text(
                     text = noteTitle,
                     style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
             if (noteRating != null) {
@@ -307,7 +303,7 @@ private fun NoteRow(
                 Text(
                     text = noteText,
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                     modifier = Modifier.padding(top = if (noteTitle.isNotBlank() || noteRating != null) 6.dp else 0.dp),
                 )
             }

@@ -73,8 +73,8 @@ fun encodeDayTimes(map: Map<Int, Pair<String, String>>): String =
 private const val DEFAULT_START = "22:00"
 private const val DEFAULT_END = "06:00"
 
-private val WEEKDAY_INDICES = 0..4 // Monday to Friday
-private val WEEKEND_INDICES = 5..6 // Saturday and Sunday
+private val WEEKDAY_INDICES = 0..4
+private val WEEKEND_INDICES = 5..6
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -106,7 +106,6 @@ fun SleepTimerDialog(
     }
 
     var weekdaysEnabled by remember {
-        // Restore from the previously saved repeat value
         mutableStateOf(initialRepeat in listOf("weekdays", "weekdays_weekends"))
     }
     var weekendsEnabled by remember {

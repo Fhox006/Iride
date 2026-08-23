@@ -38,7 +38,6 @@ fun CastPickerSheet(
             .fillMaxWidth()
             .padding(bottom = 24.dp)
     ) {
-        // Header
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(bottom = 16.dp)
@@ -56,7 +55,6 @@ fun CastPickerSheet(
                 fontWeight = FontWeight.Bold
             )
         }
-        
         if (isConnecting) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -75,7 +73,6 @@ fun CastPickerSheet(
                 )
             }
         } else if (currentlyConnectedRoute != null) {
-            // Currently connected - show disconnect option
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -109,7 +106,6 @@ fun CastPickerSheet(
                 )
             }
         } else if (routes.isEmpty()) {
-            // No devices found
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -136,7 +132,6 @@ fun CastPickerSheet(
                 )
             }
         } else {
-            // Show available devices
             LazyColumn {
                 items(routes) { route ->
                     Row(

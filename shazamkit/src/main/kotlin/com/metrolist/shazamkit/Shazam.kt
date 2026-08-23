@@ -36,35 +36,21 @@ object Shazam {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    // Configuration
     private const val MAX_CONCURRENT_REQUESTS = 2
-    
     private const val MIN_REQUEST_INTERVAL_MS = 1000L
-    
     private const val MAX_RETRIES = 3
-    
     private const val INITIAL_RETRY_DELAY_MS = 2000L
-    
     private const val CACHE_DURATION_MS = 300000L
-    
     private const val MAX_QUEUE_SIZE = 50
 
-    // Internal State
     private val activeRequests = AtomicInteger(0)
-    
     private var lastRequestTime = 0L
-    
     private val requestMutex = Mutex()
-    
     private val requestQueue = ConcurrentLinkedQueue<PendingRequest>()
-    
     private val resultCache = ConcurrentHashMap<String, CachedResult>()
-    
     private var nextRequestId = 0L
-    
     private var isProcessingQueue = false
 
-    // HTTP Client Configuration
     private val client by lazy {
         HttpClient(CIO) {
             install(ContentNegotiation) {
@@ -77,7 +63,6 @@ object Shazam {
                 )
             }
             expectSuccess = false
-            
             engine {
                 requestTimeout = 30000
             }
@@ -216,12 +201,9 @@ object Shazam {
         for (attempt in 0 until MAX_RETRIES) {
             try {
                 enforceRateLimit()
-                
                 val result = performRecognition(signature, sampleDurationMs)
-                
                 val cacheKey = generateCacheKey(signature)
                 cacheResult(cacheKey, result)
-                
                 return Result.success(result)
             } catch (e: Exception) {
                 lastException = e
@@ -389,7 +371,6 @@ object Shazam {
         val appleAction = track.hub?.options?.firstOrNull {
             it?.providername?.contains("apple", ignoreCase = true) == true
         }?.actions?.firstOrNull()
-        
         val spotifyProvider = track.hub?.providers?.find {
             it?.caption?.contains("spotify", ignoreCase = true) == true
         }
@@ -397,7 +378,6 @@ object Shazam {
         val youtubeAction = track.hub?.options?.find {
             it?.type?.contains("video", ignoreCase = true) == true
         }?.actions?.firstOrNull()
-        
         val youtubeVideoId = youtubeAction?.uri?.let { uri ->
             uri.substringAfterLast("v=", "").takeIf { it.isNotEmpty() }
                 ?: uri.substringAfterLast("/", "").takeIf { it.isNotEmpty() && it.length == 11 }

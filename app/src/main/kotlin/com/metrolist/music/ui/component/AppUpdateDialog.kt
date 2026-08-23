@@ -39,6 +39,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.metrolist.music.R
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.fillSelected
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.utils.ReleaseInfo
 import com.metrolist.music.utils.UpdateDownloadState
 import com.metrolist.music.utils.UpdateDownloader
@@ -81,13 +85,13 @@ fun AppUpdateDialog(
                 .padding(horizontal = 24.dp)
                 .fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            color = Color(0xFF0A0A0A),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 0.dp,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.strokeHairline),
         ) {
-            val titleColor = Color.White
-            val bodyColor = Color.White.copy(alpha = 0.85f)
-            val mutedColor = Color.White.copy(alpha = 0.55f)
+            val titleColor = MaterialTheme.colorScheme.textPrimary
+            val bodyColor = MaterialTheme.colorScheme.textPrimary
+            val mutedColor = MaterialTheme.colorScheme.textSecondary
             val titleStyle =
                 MaterialTheme.typography.headlineSmall.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold)
             val bodyStyle =
@@ -168,7 +172,7 @@ fun AppUpdateDialog(
                 ) {
                     TextButton(
                         onClick = onDismiss,
-                        colors = ButtonDefaults.textButtonColors(contentColor = Color.White.copy(alpha = 0.7f)),
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.textSecondary),
                     ) {
                         Text(
                             stringResource(R.string.update_dialog_back),
@@ -195,9 +199,9 @@ fun AppUpdateDialog(
                         enabled = actionEnabled,
                         shape = RoundedCornerShape(50),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = Color.Black,
-                            disabledContainerColor = Color.White.copy(alpha = 0.2f),
+                            containerColor = MaterialTheme.colorScheme.textPrimary,
+                            contentColor = MaterialTheme.colorScheme.background,
+                            disabledContainerColor = MaterialTheme.colorScheme.fillSelected,
                             disabledContentColor = Color.Black.copy(alpha = 0.4f),
                         ),
                     ) {

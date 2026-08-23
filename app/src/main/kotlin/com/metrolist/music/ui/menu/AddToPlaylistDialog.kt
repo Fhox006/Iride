@@ -81,7 +81,7 @@ fun AddToPlaylistDialog(
     isVisible: Boolean,
     allowSyncing: Boolean = true,
     initialTextFieldValue: String? = null,
-    onGetSong: suspend (Playlist) -> List<String>, // list of song ids. Songs should be inserted to database in this function.
+    onGetSong: suspend (Playlist) -> List<String>,
     onGetSongIds: (suspend () -> List<String>)? = null,
     onDismiss: () -> Unit,
     viewModel: PlaylistsViewModel = hiltViewModel()
@@ -325,7 +325,6 @@ fun AddToPlaylistDialog(
         )
     }
 
-    // duplicate songs warning
         if (showDuplicateDialog) {
             DefaultDialog(
                 title = { Text(stringResource(R.string.duplicates)) },

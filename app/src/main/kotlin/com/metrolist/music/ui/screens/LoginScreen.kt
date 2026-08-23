@@ -85,10 +85,8 @@ fun LoginScreen(
                             hasCompletedLogin = true
 
                             coroutineScope.launch {
-                                // Small delay to ensure preferences are saved
                                 delay(500)
 
-                                // Initialize YouTube object with new authentication data
                                 YouTube.cookie = innerTubeCookie
                                 YouTube.dataSyncId = dataSyncId
                                 YouTube.visitorData = visitorData
@@ -102,7 +100,6 @@ fun LoginScreen(
 
                                     Timber.d("Login: Successfully logged in as ${it.name}, restarting app...")
 
-                                    // Clean up WebView
                                     webView?.apply {
                                         stopLoading()
                                         clearHistory()
@@ -110,14 +107,13 @@ fun LoginScreen(
                                         clearFormData()
                                     }
 
-                                    // Restart app to apply login state throughout
                                     val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
                                     intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                                     context.startActivity(intent)
                                     Runtime.getRuntime().exit(0)
                                 }.onFailure {
                                     Timber.e(it, "Login: Authentication validation failed")
-                                    hasCompletedLogin = false // Allow retry
+                                    hasCompletedLogin = false
                                     reportException(it)
                                 }
                             }

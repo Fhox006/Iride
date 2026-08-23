@@ -125,8 +125,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.withContext
 
-// Shared with BottomSheetPlayer's curtain collapsedContent (Player.kt) — the New Iride UI curtain
-// shows this same "no track yet" placeholder instead of ever falling back to this classic pill.
 internal val PlaceholderMediaMetadata = MediaMetadata(
     id = "",
     title = "Tap a track to start listening",
@@ -135,13 +133,9 @@ internal val PlaceholderMediaMetadata = MediaMetadata(
 )
 
 private val NavRowHeight = 56.dp
-val FloatingPillHeight = MiniPlayerHeight + NavRowHeight  // 64 + 56 = 120dp
+val FloatingPillHeight = MiniPlayerHeight + NavRowHeight
 val FloatingPillBottomSpacing = 12.dp
 
-// Cover/ring geometry shared by PillPlayButton's clip+border and PillProgressDrawCache's traced
-// outline — kept as one constant so the progress ring always matches the cover's actual shape
-// (see IrideMp3Player.kt's bridge overlay, which mirrors this same radius for the expand/collapse
-// morph).
 internal val PillCoverRadius = 10.dp
 
 @Stable
@@ -330,7 +324,7 @@ private fun PillContent(
     val context = LocalContext.current
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
     val isSystemInDarkTheme = isSystemInDarkTheme()
-    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
+    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
     val useDarkTheme = remember(darkTheme, isSystemInDarkTheme) {
         if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
     }
@@ -434,7 +428,6 @@ private fun PillContent(
             .border(1.dp, outlineColor.copy(alpha = 0.3f), SquircleShape(radius = 24.dp, cornerSmoothing = 0.48f)),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Gradient overlay
             when (effectiveBackground) {
                 MiniPlayerBackgroundStyle.GRADIENT -> {
                     val colors = if (gradientColors.isNotEmpty()) gradientColors
@@ -450,7 +443,6 @@ private fun PillContent(
             }
 
             Column(modifier = Modifier.fillMaxWidth()) {
-                // ── TOP ROW: player (height = MiniPlayerHeight, fully clickable → open player) ──
                 PillPlayerRow(
                     progressState = progressState,
                     displayMetadata = effectiveMetadata,
@@ -471,7 +463,6 @@ private fun PillContent(
                     },
                 )
 
-                // ── BOTTOM ROW: nav buttons, visible only on top-level routes ──
                 AnimatedVisibility(
                     visible = showNavRow && isTopLevelRoute,
                     enter = fadeIn(tween(300)) + slideInVertically(tween(320), initialOffsetY = { it }),
@@ -530,22 +521,10 @@ fun PillPlayerRow(
     errorColor: Color,
     onExpandClick: () -> Unit,
     modifier: Modifier = Modifier,
-    // New Iride UI bridge: when set, the cover art below reports its on-screen rect here and hides
-    // itself instead of drawing — IrideMiniPlayerBridgeOverlay morphs a single moving copy between
-    // this collapsed position and the expanded player's cover, rather than cross-fading two
-    // duplicates. Play/pause, skip and favorite are left alone and keep cross-fading.
     onArtPositioned: ((Rect) -> Unit)? = null,
-    // Same idea as [onArtPositioned] but for the title/artist block — lets the bridge overlay morph
-    // the text (and cross-fade its font) between this collapsed position and the expanded player's.
     onInfoPositioned: ((Rect) -> Unit)? = null,
-    // New Iride UI bridge: reports the live playback fraction every frame so the bridge overlay's
-    // own progress ring (drawn on the moving cover, see IrideMiniPlayerBridgeOverlay) starts in
-    // sync with this row's ring instead of snapping to 0 the instant the expand begins.
     onProgressChanged: ((Float) -> Unit)? = null,
 ) {
-    // Non-null only when the caller is the New Iride UI's curtain peek row (see the doc comment
-    // above) — used to switch to the sharp icon set that matches the expanded player's wheel,
-    // without touching the classic FloatingPill's own icons.
     val isIrideStyle = onArtPositioned != null
 
     Box(
@@ -736,11 +715,6 @@ private fun PillPlayButton(
         modifier = Modifier
             .size(outerSize)
             .then(
-                // New Iride UI curtain: the bridge overlay draws its own copy of this ring on the
-                // moving cover (see IrideMiniPlayerBridgeOverlay) — drawing it here too would double
-                // it up while the player is expanding/collapsing, so this static copy only owns the
-                // ring at rest (onArtPositioned == null means the classic FloatingPill, which has no
-                // bridge overlay and always owns its own ring).
                 if (onArtPositioned == null) {
                     Modifier.drawWithContent {
                         drawContent()

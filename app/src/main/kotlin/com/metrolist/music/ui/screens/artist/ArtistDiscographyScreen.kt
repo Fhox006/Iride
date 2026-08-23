@@ -86,8 +86,6 @@ private fun AlbumReleaseType.labelRes() = when (this) {
     AlbumReleaseType.ALBUM -> R.string.albums
 }
 
-// Fixed display order regardless of which type happens to have the most releases — reads as a
-// scale from shortest to longest release, matching how the request itself listed them.
 private val TYPE_ORDER = listOf(AlbumReleaseType.SINGLE, AlbumReleaseType.EP, AlbumReleaseType.ALBUM)
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -116,8 +114,6 @@ fun ArtistDiscographyScreen(
     val lazyGridState = rememberLazyGridState()
 
     var selectedCategory by rememberSaveable { mutableStateOf<DiscographyCategory?>(null) }
-    // Falls back to the first available bucket whenever the saved selection no longer has data
-    // (e.g. restoring state for a different artist) instead of landing on an empty screen.
     val activeCategory = selectedCategory?.takeIf { cat -> buckets.any { it.category == cat } }
         ?: buckets.firstOrNull()?.category
 

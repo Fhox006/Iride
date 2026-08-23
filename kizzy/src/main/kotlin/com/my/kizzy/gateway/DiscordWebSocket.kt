@@ -97,7 +97,6 @@ open class DiscordWebSocket(
                 connected = true
                 logger.info("Successfully connected to Discord Gateway.")
                 currentReconnectDelay = INITIAL_RECONNECT_DELAY
-                // start receiving messages
                 websocket!!.incoming.receiveAsFlow()
                     .collect {
                         when (it) {

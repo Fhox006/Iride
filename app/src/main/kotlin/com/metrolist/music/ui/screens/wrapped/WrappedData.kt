@@ -40,7 +40,6 @@ object WrappedRepository {
         val chosenMessage = if (possibleMessages.isNotEmpty()) {
             possibleMessages.random()
         } else {
-            // Fallback for safety
             MessagePair(0L..Long.MAX_VALUE, "Looks like we lost count!", "But you definitely listened to **%d minutes** of music.")
         }
         return chosenMessage.copy(

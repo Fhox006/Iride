@@ -109,7 +109,6 @@ fun AlphabetSlider(
                         }
                     }
                     isExpanded = false
-                    // selected letter persists — tap same letter in caller to clear
                 }
             },
         contentAlignment = Alignment.Center,
@@ -144,7 +143,6 @@ fun AlphabetSlider(
                 }
             }
         } else if (selectedLetter != null) {
-            // Collapsed with active filter: show the selected letter as a hint
             Text(
                 text = selectedLetter.toString(),
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),

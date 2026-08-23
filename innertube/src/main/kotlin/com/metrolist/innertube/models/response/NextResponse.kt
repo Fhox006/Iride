@@ -13,7 +13,6 @@ data class NextResponse(
     val contents: Contents? = null,
     val continuationContents: ContinuationContents? = null,
     val currentVideoEndpoint: NavigationEndpoint? = null,
-    // Populated only when this response is a comments continuation (no `contents`/`continuationContents`).
     val onResponseReceivedEndpoints: List<OnResponseReceivedEndpoint>? = null,
     val frameworkUpdates: FrameworkUpdates? = null,
 ) {

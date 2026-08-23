@@ -22,22 +22,7 @@ import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 
-// "Frosted glass" background for the tall Iride top bars (album/artist/playlist).
-//
-// The screen's scrolling content is snapshotted into [FrostBackdrop.content] ([recordFrostBackdrop]),
-// which draws it exactly as-is. The bar then re-records that layer into [FrostBackdrop.blurred] — a
-// second layer that carries the gaussian [BlurEffect] — and draws it clipped to its own bounds, with
-// a scrim on top. Two layers, not one: a RenderNode's renderEffect applies to every draw of that
-// node, so a single shared layer would blur the whole screen, not only the strip behind the bar.
-//
-// The blur needs RenderEffect (API 31+). Below that [rememberFrostBackdrop] returns null and the bar
-// falls back to the plain translucent scrim, at a higher alpha so text stays readable.
-//
-// `progress` 0f = fully transparent (bar sitting over the header at the top of the screen),
-// 1f = frosted (scrolled, or always-on for the playlist bars).
 
-// Scrim alpha is the contrast floor for the bar's own icons/title (onBackground) when bright content
-// — album art, a light thumbnail — scrolls under it, so it stays high enough to keep them readable.
 private const val FROST_SCRIM_ALPHA = 0.45f
 private const val FROST_SCRIM_ALPHA_NO_BLUR = 0.58f
 private val FROST_BLUR_RADIUS = 20.dp
@@ -82,12 +67,7 @@ fun Modifier.frostedTopBarBackground(
     val contentSize = backdrop?.content?.size
     if (backdrop != null && contentSize != null && contentSize.width > 0 && contentSize.height > 0) {
         val blurred = backdrop.blurred
-        // Opaque base first: the screen already painted itself sharply under this bar, and the
-        // blurred copy is transparent wherever the content was, so without this the sharp original
-        // reads straight through the "glass" and the blur looks like it never happened.
         drawRect(barColor, alpha = p)
-        // Record at the content's full size so the blur can pull in pixels from just below the bar,
-        // then clip to the bar — otherwise the bottom edge samples nothing and washes out.
         blurred.alpha = p
         blurred.record(size = contentSize) { drawLayer(backdrop.content) }
         clipRect { drawLayer(blurred) }

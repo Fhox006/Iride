@@ -43,6 +43,7 @@ import com.metrolist.music.ui.component.dismissedAnchor
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -73,29 +74,20 @@ class App :
     override fun onCreate() {
         super.onCreate()
 
-        // Install crash handler first
         CrashHandler.install(this)
 
-        // Initialize cipher deobfuscator for WEB_REMIX streaming
         CipherDeobfuscator.initialize(this)
 
-        // Load the on-disk genre-tag cache used by playlist filter pills
         GenreProvider.init(this)
 
-        // Make the application context available to the on-demand Japanese dictionary
         JapaneseDictManager.init(this)
 
-        // Mirror the preferences into memory so composition never blocks on a disk read.
         dataStore.keepPreferencesWarm(applicationScope)
 
-        // Warm the player-sheet anchor so a cold start with no saved value falls back to the
-        // dismissed position, and a cold start with a saved value restores it
-        // before any Composable can flash the wrong layout.
         playerAnchorCache = dataStore.get(PlayerAnchorKey, dismissedAnchor)
 
         Timber.plant(Timber.DebugTree())
 
-        // تهيئة إعدادات التطبيق عند الإقلاع
         applicationScope.launch {
             initializeSettings()
             observeSettingsChanges()
@@ -110,6 +102,7 @@ class App :
      * permanently offline until the process is killed. Dropping the pool on each transition makes
      * the next request open a fresh connection instead.
      */
+    @OptIn(FlowPreview::class)
     private fun observeConnectivity() {
         applicationScope.launch(Dispatchers.IO) {
             connectivityObserver.networkStatus
@@ -124,10 +117,6 @@ class App :
                 }
         }
 
-        // Wi-Fi <-> mobile handovers don't always flip networkStatus's boolean (see comment on
-        // networkChanged), so they need their own eviction trigger. Debounced because a single
-        // handover fires onLost+onAvailable (and often a couple of onCapabilitiesChanged) within
-        // milliseconds of each other; evictAll() only needs to run once per transition.
         applicationScope.launch(Dispatchers.IO) {
             connectivityObserver.networkChanged
                 .debounce(300)
@@ -159,7 +148,6 @@ class App :
             KuGou.useTraditionalChinese = true
         }
 
-        // Initialize LastFM with API keys from BuildConfig (GitHub Secrets)
         LastFM.initialize(
             apiKey = BuildConfig.LASTFM_API_KEY.takeIf { it.isNotEmpty() } ?: "",
             secret = BuildConfig.LASTFM_SECRET.takeIf { it.isNotEmpty() } ?: "",
@@ -303,7 +291,6 @@ class App :
             .apply {
                 crossfade(true)
                 allowHardware(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-                // Memory cache for fast image loading (prevents network requests on recomposition)
                 memoryCache {
                     MemoryCache
                         .Builder()
@@ -320,17 +307,12 @@ class App :
                             .maxSizeBytes(cacheSize * 1024 * 1024L)
                             .build(),
                     )
-                    // Allow reading from disk cache as fallback when network is unavailable
                     networkCachePolicy(CachePolicy.ENABLED)
                 }
             }.build()
     }
 
     companion object {
-        // Mirror of PlayerAnchorKey for synchronous first-frame reads (see
-        // playerBottomSheetState's initialAnchor in MainActivity). Updated in lockstep with the
-        // DataStore write that fires from BottomSheetState.onAnchorChanged so config changes pick
-        // up the latest user choice without an extra disk round-trip.
         @Volatile
         var playerAnchorCache: Int = dismissedAnchor
             private set
@@ -342,7 +324,6 @@ class App :
         suspend fun forgetAccount(context: Context) {
             Timber.d("forgetAccount: Starting logout process")
 
-            // Clear DataStore preferences
             Timber.d("forgetAccount: Clearing DataStore preferences")
             context.dataStore.edit { settings ->
                 settings.remove(InnerTubeCookieKey)
@@ -355,7 +336,6 @@ class App :
             }
             Timber.d("forgetAccount: DataStore preferences cleared")
 
-            // Immediately clear YouTube object's auth state
             Timber.d("forgetAccount: Clearing YouTube object auth state")
             Timber.d(
                 "forgetAccount: Before - cookie=${YouTube.cookie?.take(
@@ -369,7 +349,6 @@ class App :
                 "forgetAccount: After - cookie=${YouTube.cookie}, visitorData=${YouTube.visitorData}, dataSyncId=${YouTube.dataSyncId}",
             )
 
-            // Clear WebView cookies to prevent auto-relogin
             Timber.d("forgetAccount: Clearing WebView CookieManager")
             withContext(Dispatchers.Main) {
                 android.webkit.CookieManager.getInstance().apply {

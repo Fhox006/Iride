@@ -111,8 +111,6 @@ fun RomanizationSettings(
 
     val checkboxesList: MutableList<Material3SettingsItem> = mutableListOf()
 
-    // The Japanese romanization dictionary ships outside the APK and is downloaded on
-    // demand; this dialog is only shown when the user tries to enable that language.
     var showDictDialog by rememberSaveable { mutableStateOf(false) }
     var dictDownloading by rememberSaveable { mutableStateOf(false) }
     var dictDownloadProgress by remember { mutableIntStateOf(0) }
@@ -180,7 +178,6 @@ fun RomanizationSettings(
                         val newState = parentState != ToggleableState.On
                         var needsDictionary = false
                         states.forEachIndexed { index, (language, _) ->
-                            // Japanese stays off until its dictionary is downloaded
                             val value =
                                 if (language == "Japanese" && newState && !JapaneseDictManager.isDownloaded()) {
                                     needsDictionary = true
@@ -206,7 +203,6 @@ fun RomanizationSettings(
                         checked = checked,
                         onCheckedChange = { isChecked ->
                             if (language == "Japanese" && isChecked && !JapaneseDictManager.isDownloaded()) {
-                                // Offer the one-time dictionary download instead of enabling
                                 showDictDialog = true
                             } else {
                                 states[index] = Pair(language, isChecked)

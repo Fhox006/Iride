@@ -63,8 +63,6 @@ class PlayerConnection(
     val service = binder.service
     private val playerReadinessFlow = service.isPlayerReady
 
-    // Fed directly by the ExoPlayer audio pipeline (VisualizerTapAudioProcessor) — no session
-    // attach/lifecycle to manage here, the service owns that.
     val audioBandLevels: kotlinx.coroutines.flow.StateFlow<com.metrolist.music.playback.audio.AudioBandLevels> =
         service.audioBandLevels
 
@@ -100,7 +98,6 @@ class PlayerConnection(
     init {
         Timber.tag(TAG).d("PlayerConnection init: playerReady=${playerReadinessFlow.value}")
 
-        // Initialize with player state or safe defaults if player not ready
         val initialState =
             try {
                 val initialPlayer = getPlayerSafe()
@@ -125,7 +122,6 @@ class PlayerConnection(
                 initialState.third,
             )
 
-        // Track service readiness changes in background.
         scope.launch {
             playerReadinessFlow.collect { ready ->
                 isPlayerInitialized.value = ready
@@ -138,7 +134,6 @@ class PlayerConnection(
         Timber.tag(TAG).d("PlayerConnection state flows initialized successfully")
     }
 
-    // Effective playing state, considers Cast when active
     val isEffectivelyPlaying =
         combine(
             isPlaying,
@@ -182,10 +177,8 @@ class PlayerConnection(
 
     val waitingForNetworkConnection = service.waitingForNetworkConnection
 
-    // Callback to check if playback changes should be blocked (e.g., Listen Together guest)
     var shouldBlockPlaybackChanges: (() -> Boolean)? = null
 
-    // Flag to allow internal sync operations to bypass blocking (set by ListenTogetherManager)
     @Volatile
     var allowInternalSync: Boolean = false
 
@@ -196,7 +189,6 @@ class PlayerConnection(
 
     init {
         try {
-            // Observe player changes (e.g. crossfade swap)
             scope.launch {
                 service.playerFlow.collect { newPlayer ->
                     if (newPlayer != null && newPlayer != attachedPlayer) {
@@ -204,7 +196,6 @@ class PlayerConnection(
                     }
                 }
             }
-            // Initial setup if flow hasn't emitted yet but service is ready
             if (attachedPlayer == null && service.isPlayerReady.value) {
                 updateAttachedPlayer(player)
             }
@@ -212,7 +203,6 @@ class PlayerConnection(
             Timber.tag(TAG).d("PlayerConnection flow observer registered")
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to initialize PlayerConnection listener or state")
-            // Propagate the error so MainActivity can retry
             throw e
         }
     }
@@ -221,7 +211,6 @@ class PlayerConnection(
         attachedPlayer?.removeListener(this)
         attachedPlayer = newPlayer
         newPlayer.addListener(this)
-        // Refresh all state from new player
         playbackState.value = newPlayer.playbackState
         playWhenReady.value = newPlayer.playWhenReady
         mediaMetadata.value = newPlayer.currentMetadata
@@ -235,7 +224,6 @@ class PlayerConnection(
     }
 
     fun playQueue(queue: Queue) {
-        // Block if Listen Together guest (unless internal sync)
         if (!allowInternalSync && shouldBlockPlaybackChanges?.invoke() == true) {
             Timber.tag("PlayerConnection").d("playQueue blocked - Listen Together guest")
             return
@@ -256,7 +244,6 @@ class PlayerConnection(
     }
 
     fun startRadioSeamlessly() {
-        // Block if Listen Together guest
         if (shouldBlockPlaybackChanges?.invoke() == true) {
             Timber.tag("PlayerConnection").d("startRadioSeamlessly blocked - Listen Together guest")
             return
@@ -293,7 +280,6 @@ class PlayerConnection(
     fun playNext(item: MediaItem) = playNext(listOf(item))
 
     fun playNext(items: List<MediaItem>) {
-        // Block if Listen Together guest (unless internal sync)
         if (!allowInternalSync && shouldBlockPlaybackChanges?.invoke() == true) {
             Timber.tag("PlayerConnection").d("playNext blocked - Listen Together guest")
             return
@@ -309,7 +295,6 @@ class PlayerConnection(
     fun addToQueue(item: MediaItem) = addToQueue(listOf(item))
 
     fun addToQueue(items: List<MediaItem>) {
-        // Block if Listen Together guest (unless internal sync)
         if (!allowInternalSync && shouldBlockPlaybackChanges?.invoke() == true) {
             Timber.tag("PlayerConnection").d("addToQueue blocked - Listen Together guest")
             return
@@ -420,7 +405,6 @@ class PlayerConnection(
 
     fun seekToNext() {
         try {
-            // When casting, use Cast skip instead of local player
             val castHandler = service.castConnectionHandler
             if (castHandler?.isCasting?.value == true) {
                 castHandler.skipToNext()
@@ -444,15 +428,12 @@ class PlayerConnection(
 
     fun seekToPrevious() {
         try {
-            // When casting, use Cast skip instead of local player
             val castHandler = service.castConnectionHandler
             if (castHandler?.isCasting?.value == true) {
                 castHandler.skipToPrevious()
                 return
             }
 
-            // Logic to mimic standard seekToPrevious behavior but with explicit callbacks
-            // If we are more than 3 seconds in, just restart the song
             if (player.currentPosition > 3000 || !player.hasPreviousMediaItem()) {
                 val faded = service.skipWithFade(restartCurrent = true, onComplete = { onRestartSong?.invoke() })
                 if (!faded) {
@@ -464,7 +445,6 @@ class PlayerConnection(
                     onRestartSong?.invoke()
                 }
             } else {
-                // Otherwise go to previous media item
                 val faded = service.skipWithFade(forward = false, onComplete = { onSkipPrevious?.invoke() })
                 if (!faded) {
                     player.seekToPreviousMediaItem()
@@ -575,7 +555,6 @@ class PlayerConnection(
                         true
                     }
 
-                    // both groups active; per-day time handles the distinction
                     "custom" -> {
                         val customDays = sleepTimerCustomDaysStr.split(",").mapNotNull { it.trim().toIntOrNull() }
                         Timber.tag(TAG).d("Custom days: $customDays, adjustedDayOfWeek=$adjustedDayOfWeek")
@@ -592,9 +571,6 @@ class PlayerConnection(
                 return false
             }
 
-// "daily" uses the single global time window.
-// All other modes store per-day times in the dayTimes map so that
-// e.g. weekdays and weekends can have different windows.
             val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
             val usesDayTimesMap = sleepTimerRepeat != "daily"
             val (startStr, endStr) =
@@ -608,7 +584,6 @@ class PlayerConnection(
             val startTime = LocalTime.parse(startStr, timeFormatter)
             val endTime = LocalTime.parse(endStr, timeFormatter)
 
-            // Support overnight ranges (e.g. 22:00–06:00) in addition to normal ranges
             val isTimeInRange =
                 if (endTime.isAfter(startTime)) {
                     currentTime.isAfter(startTime) && currentTime.isBefore(endTime)
@@ -644,7 +619,6 @@ class PlayerConnection(
         val wasPlaying = playWhenReady.value
         playWhenReady.value = newPlayWhenReady
 
-        // Central sleep timer trigger: fires on every paused -> playing transition,
         if (newPlayWhenReady && !wasPlaying) {
             checkAndStartAutomaticSleepTimer()
         }

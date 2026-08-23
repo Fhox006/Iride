@@ -53,12 +53,10 @@ object ParametricEQParser {
             if (trimmedLine.isEmpty()) continue
 
             when {
-                // Parse preamp line: "Preamp: -5.2 dB"
                 trimmedLine.startsWith("Preamp:", ignoreCase = true) -> {
                     preamp = parsePreamp(trimmedLine)
                 }
 
-                // Parse filter line: "Filter 1: ON LSC Fc 105 Hz Gain 8.8 dB Q 0.70"
                 trimmedLine.startsWith("Filter", ignoreCase = true) -> {
                     val band = parseFilterLine(trimmedLine)
                     if (band != null) {
@@ -66,7 +64,6 @@ object ParametricEQParser {
                     }
                 }
 
-                // Store other lines as metadata
                 else -> {
                     val parts = trimmedLine.split(":", limit = 2)
                     if (parts.size == 2) {
@@ -99,21 +96,16 @@ object ParametricEQParser {
      */
     private fun parseFilterLine(line: String): ParametricEQBand? {
         try {
-            // Check if filter is ON
             if (!line.contains("ON", ignoreCase = true)) {
                 return null
             }
 
-            // Extract filter type (LSC, HSC, PK, LPQ, HPQ)
             val filterType = parseFilterType(line) ?: return null
 
-            // Extract frequency: "Fc 105 Hz"
             val frequency = parseValue(line, "Fc", "Hz") ?: return null
 
-            // Extract gain: "Gain 8.8 dB"
             val gain = parseValue(line, "Gain", "dB") ?: return null
 
-            // Extract Q factor: "Q 0.70"
             val q = parseValue(line, "Q", null) ?: return null
 
             return ParametricEQBand(
@@ -193,34 +185,27 @@ object ParametricEQParser {
     fun validate(eq: ParametricEQ): List<String> {
         val errors = mutableListOf<String>()
 
-        // Validate preamp
         if (eq.preamp < -50.0 || eq.preamp > 50.0) {
             errors.add("Preamp value ${eq.preamp} dB is out of range (-50 to +50 dB)")
         }
 
-        // Validate bands exist
         if (eq.bands.isEmpty()) {
             errors.add("EQ profile must have at least one band")
         }
 
-        // Validate number of bands
         if (eq.bands.size > ParametricEQ.MAX_BANDS) {
             errors.add("EQ profile has ${eq.bands.size} bands, maximum is ${ParametricEQ.MAX_BANDS}")
         }
 
-        // Validate each band
         eq.bands.forEachIndexed { index, band ->
-            // Validate frequency
             if (band.frequency <= 0.0 || band.frequency > 100000.0) {
                 errors.add("Band ${index + 1}: Frequency ${band.frequency} Hz is out of range (1 to 100000 Hz)")
             }
 
-            // Validate gain
             if (band.gain < -30.0 || band.gain > 30.0) {
                 errors.add("Band ${index + 1}: Gain ${band.gain} dB is out of range (-30 to +30 dB)")
             }
 
-            // Validate Q factor
             if (band.q <= 0.0 || band.q > 20.0) {
                 errors.add("Band ${index + 1}: Q factor ${band.q} is out of range (0.01 to 20)")
             }

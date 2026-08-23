@@ -25,11 +25,6 @@ data class DiscographyBucket(
     val releases: List<AlbumItem>,
 )
 
-// Per-item albumType only survives on the shelf's own first page (ArtistPage's parser reads it
-// off the subtitle) — the "load more" continuation parser (ArtistItemsPage) never sets it, so any
-// artist with more than a handful of releases would have every expanded item silently default to
-// ALBUM. The shelf title itself is the fallback signal for those, same coarse Album vs Single/EP
-// split ArtistScreen already keys its own rendering off of.
 fun AlbumItem.releaseType(shelfTitle: String): AlbumReleaseType = when {
     albumType?.contains("EP", ignoreCase = true) == true -> AlbumReleaseType.EP
     albumType?.contains("Single", ignoreCase = true) == true -> AlbumReleaseType.SINGLE
@@ -59,9 +54,6 @@ class ArtistDiscographyViewModel @Inject constructor(
     private val _buckets = MutableStateFlow<List<DiscographyBucket>>(emptyList())
     val buckets = _buckets.asStateFlow()
 
-    // Type of every release, resolved once up front (needs the source shelf's title, which the
-    // AlbumItem itself doesn't carry) — screen reads this instead of recomputing from a bare
-    // AlbumItem, which is all it's handed once the release lands in a bucket.
     private val _releaseTypes = MutableStateFlow<Map<String, AlbumReleaseType>>(emptyMap())
     val releaseTypes = _releaseTypes.asStateFlow()
 
@@ -71,10 +63,6 @@ class ArtistDiscographyViewModel @Inject constructor(
                 .onSuccess { page ->
                     _artistName.value = page.artist.title
 
-                    // Each Albums/Singles/EPs shelf only ever carries a handful of items on the
-                    // artist page itself (same reason ArtistViewModel expands Top Songs via its own
-                    // "more" endpoint) — done here for every album-shaped shelf so the full picture
-                    // is gathered before splitting it into categories below.
                     val albumSections = page.sections.filter { section -> section.items.any { it is AlbumItem } }
                     val perSection = coroutineScope {
                         albumSections
@@ -94,9 +82,6 @@ class ArtistDiscographyViewModel @Inject constructor(
                             .map { it.await() }
                     }
 
-                    // First shelf that surfaces a given release wins both its category and its
-                    // type — later duplicates of the same id (e.g. a single also echoed in an
-                    // "Essential"-style shelf) are dropped rather than overwriting it.
                     val seenIds = HashSet<String>()
                     val own = mutableListOf<AlbumItem>()
                     val appearsOn = mutableListOf<AlbumItem>()

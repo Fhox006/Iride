@@ -51,13 +51,10 @@ import java.util.Date
 import java.util.Locale
 
 class CrashActivity : ComponentActivity() {
-    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
         val crashLog = intent.getStringExtra(CrashHandler.EXTRA_CRASH_LOG) ?: getString(R.string.crash_no_log)
-        
         setContent {
             val darkTheme = isSystemInDarkTheme()
             IrideTheme(darkTheme = darkTheme) {
@@ -69,33 +66,25 @@ class CrashActivity : ComponentActivity() {
             }
         }
     }
-    
     private fun shareCrashLog(crashLog: String) {
         try {
-            // Create crash log file
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
             val fileName = "metrolist_crash_$timestamp.txt"
             val crashFile = File(cacheDir, fileName)
             crashFile.writeText(crashLog)
-            
-            // Get URI using FileProvider
             val uri = FileProvider.getUriForFile(
                 this,
                 "${packageName}.FileProvider",
                 crashFile
             )
-            
-            // Create share intent
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_STREAM, uri)
                 putExtra(Intent.EXTRA_SUBJECT, getString(R.string.crash_report_subject))
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            
             startActivity(Intent.createChooser(shareIntent, getString(R.string.crash_share_title)))
         } catch (e: Exception) {
-            // Fallback to simple text share if file sharing fails
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_TEXT, crashLog)
@@ -114,7 +103,6 @@ fun CrashScreen(
     onShare: () -> Unit
 ) {
     val context = LocalContext.current
-    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -165,10 +153,7 @@ fun CrashScreen(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // Crash log container
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -187,8 +172,6 @@ fun CrashScreen(
                     modifier = Modifier.horizontalScroll(rememberScrollState())
                 )
             }
-            
-            // Bottom spacing for FAB
             Spacer(modifier = Modifier.height(88.dp))
         }
     }

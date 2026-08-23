@@ -52,9 +52,6 @@ object GenreProvider {
     private val found = ConcurrentHashMap<String, List<String>>()
     private val notFound = ConcurrentHashMap.newKeySet<String>()
 
-    // Last computed genre-pill order per playlist/screen (keyed by playlistId or a fixed
-    // screen key), so a filter row can render its previous session's order immediately
-    // instead of resorting live while genres stream in. See GenreFilterChips.kt.
     private val orderCache = ConcurrentHashMap<String, List<String>>()
 
     private var cacheFile: File? = null
@@ -72,8 +69,6 @@ object GenreProvider {
         }
     }
 
-    // Folksonomy noise: tags people attach that describe their relationship
-    // to the song, not the song itself.
     private val tagBlacklist =
         setOf(
             "seen live", "favorite", "favorites", "favourite", "favourites",
@@ -82,10 +77,6 @@ object GenreProvider {
             "music", "song", "songs", "my music", "sexy", "party",
         )
 
-    // "Hip-Hop", "Rap", "Rap/Hip-Hop", "Hip Hop Rap"... are all the same
-    // broad genre with different punctuation — collapse them into one pill.
-    // A tag with an extra qualifying word ("Italian Rap", "French Hip Hop",
-    // "Phonk") is a genuinely different, more specific genre and stays as is.
     private val hipHopTokens = setOf("rap", "hip", "hop", "hiphop")
 
     private fun canonicalizeGenre(raw: String): String {
@@ -225,8 +216,6 @@ object GenreProvider {
     ): String? =
         try {
             val term = listOfNotNull(artist, title).joinToString(" ")
-            // iTunes replies with Content-Type: text/javascript, not application/json,
-            // so ContentNegotiation would silently drop the body — parse the raw text instead.
             val body =
                 client
                     .get("https://itunes.apple.com/search") {

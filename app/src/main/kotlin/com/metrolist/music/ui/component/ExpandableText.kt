@@ -91,7 +91,6 @@ fun ExpandableText(
                 }
             }
         )
-        
         if (hasOverflow) {
             Text(
                 text = stringResource(if (isExpanded) R.string.show_less else R.string.show_more),

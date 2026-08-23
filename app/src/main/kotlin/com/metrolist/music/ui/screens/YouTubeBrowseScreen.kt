@@ -74,8 +74,6 @@ fun YouTubeBrowseScreen(
     val coroutineScope = rememberCoroutineScope()
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
 
-    // Sort sections: mixtapes first, song/artist sections second, rest last
-    // Deduplicate items across sections
     val sortedSections = remember(browseResult) {
         val raw = browseResult?.items ?: return@remember emptyList()
         val seenIds = mutableSetOf<String>()

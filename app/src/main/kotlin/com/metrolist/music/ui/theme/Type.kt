@@ -12,12 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 // TODO: Define or import actual M3 Expressive font families if needed.
-// For now, using default FontFamily as a placeholder.
 
-// Define M3 Expressive Typography based on Material Design guidelines
-// https://m3.material.io/styles/typography/type-scale-tokens
-// Note: M3 Expressive might introduce subtle changes or new roles.
-// Referencing standard M3 roles for now, adjust if Expressive spec differs significantly.
 val AppTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = InterFontFamily,

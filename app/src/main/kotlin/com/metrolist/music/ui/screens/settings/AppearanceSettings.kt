@@ -64,28 +64,24 @@ fun AppearanceSettings(
 
         Material3SettingsGroup(
             items = listOf(
-                // Theme
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.palette),
                     title = { Text(stringResource(R.string.settings_theme)) },
                     description = { Text(stringResource(R.string.settings_appearance_theme_desc)) },
                     onClick = { navController.navigate("settings/appearance/theme") }
                 ),
-                // Interface
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.grid_view),
                     title = { Text(stringResource(R.string.interface_settings)) },
                     description = { Text(stringResource(R.string.settings_appearance_interface_desc)) },
                     onClick = { navController.navigate("settings/appearance/interface") }
                 ),
-                // Player
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.play),
                     title = { Text(stringResource(R.string.player_appearance)) },
                     description = { Text(stringResource(R.string.settings_appearance_player_desc)) },
                     onClick = { navController.navigate("settings/appearance/player") }
                 ),
-                // Lyrics
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.lyrics),
                     title = { Text(stringResource(R.string.lyrics)) },
@@ -104,7 +100,6 @@ fun AppearanceSettings(
     )
 }
 
-// Keep enum declarations here for backwards compatibility with other screens
 enum class DarkMode {
     ON,
     OFF,

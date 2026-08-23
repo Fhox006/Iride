@@ -56,6 +56,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textTertiary
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -79,7 +81,6 @@ internal fun isRouteSelected(currentRoute: String?, screenRoute: String, navigat
     if (navigationItems.any { it.route == screenRoute } &&
         currentRoute.startsWith("$screenRoute/")) return true
 
-    // Fix: match the route template, not the resolved route
     if (screenRoute == "search_input" &&
         (currentRoute.startsWith("search/") || currentRoute == "search/{query}")) return true
 
@@ -129,7 +130,6 @@ fun AppNavigationRail(
                 label = "iconScale"
             )
 
-            // Long press detection using InteractionSource
             if (isSearchItem) {
                 LaunchedEffect(interactionSource) {
                     var isLongClick = false
@@ -171,7 +171,6 @@ fun AppNavigationRail(
                     if (!isSearchItem) {
                         onItemClick(screen, currentIsSelected)
                     }
-                    // For search item, click is handled via InteractionSource
                 },
                 interactionSource = interactionSource,
                 icon = {
@@ -248,7 +247,6 @@ fun AppNavigationBar(
                 label = "iconScale"
             )
 
-            // Long press detection using InteractionSource
             if (isSearchItem) {
                 LaunchedEffect(interactionSource) {
                     var isLongClick = false
@@ -290,7 +288,6 @@ fun AppNavigationBar(
                     if (!isSearchItem) {
                         onItemClick(screen, currentIsSelected)
                     }
-                    // For search item, click is handled via InteractionSource
                 },
                 interactionSource = interactionSource,
                 icon = {
@@ -337,13 +334,7 @@ fun TopNavigationBar(
     onItemClick: (Screens, Boolean) -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = Color.Black,
-    // Callers whose own scrollable container already reserves horizontal inset (e.g. Library's
-    // LazyColumn contentPadding) must pass 0.dp here — otherwise this bar's own inset stacks on
-    // top of the container's, pushing it further right than every other item in that list.
     horizontalPadding: Dp = 20.dp,
-    // Experimental compact layout: Home/Library (and any other non-Search/Account item) as text
-    // on the left, Search + Account collapsed into icons pinned on the right. Reverting
-    // CompactTopNavigationBarKey off falls back to the original all-text row below.
     compact: Boolean = false,
     accountImageUrl: String? = null,
 ) {
@@ -374,7 +365,7 @@ fun TopNavigationBar(
                 }
                 val currentIsSelected by rememberUpdatedState(isSelected)
                 val titleColor by animateColorAsState(
-                    targetValue = if (isSelected) Color.White else Color.White.copy(alpha = 0.55f),
+                    targetValue = if (isSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
                     animationSpec = if (isSelected) tween(220) else snap(),
                     label = "titleColor"
                 )
@@ -403,9 +394,8 @@ fun TopNavigationBar(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // 48dp min touch target (Material 3) around each icon, kept visually smaller inside.
             val searchTint by animateColorAsState(
-                targetValue = if (searchSelected) Color.White else Color.White.copy(alpha = 0.55f),
+                targetValue = if (searchSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
                 animationSpec = if (searchSelected) tween(220) else snap(),
                 label = "searchTint"
             )
@@ -453,7 +443,7 @@ fun TopNavigationBar(
                     Icon(
                         painter = painterResource(id = Screens.Account.iconIdInactive),
                         contentDescription = stringResource(Screens.Account.titleId),
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.textPrimary,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -479,11 +469,8 @@ fun TopNavigationBar(
             }
             val currentIsSelected by rememberUpdatedState(isSelected)
 
-            // Soft fade in on selection; snap out instantly on deselection. A symmetric
-            // 220ms fade both ways let fast tab switching leave multiple titles still
-            // mid-fade (still bright) at once, reading as "everything selected".
             val titleColor by animateColorAsState(
-                targetValue = if (isSelected) Color.White else Color.White.copy(alpha = 0.55f),
+                targetValue = if (isSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
                 animationSpec = if (isSelected) tween(220) else snap(),
                 label = "titleColor"
             )

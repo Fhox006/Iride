@@ -169,7 +169,6 @@ fun LibraryAlbumsScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForSearch() }
 
-    // Per-section collapse state (session-only, not persisted) — same convention as HomeScreen.
     val collapsedSections = remember { mutableStateMapOf<String, Boolean>() }
     fun isSectionCollapsed(key: String) = collapsedSections[key] == true
     fun toggleSection(key: String) { collapsedSections[key] = !isSectionCollapsed(key) }
@@ -289,7 +288,6 @@ fun LibraryAlbumsScreen(
         )
     }
 
-    // Same 12dp gap as the main Album grid's spacedBy below, for New Iride UI.
     val continueListeningSpacing = 12.dp
 
     val continueListeningTitle: @Composable () -> Unit = {
@@ -298,14 +296,7 @@ fun LibraryAlbumsScreen(
             useIrideStyle = true,
             collapsed = isSectionCollapsed("continue_listening"),
             onCollapseToggle = { toggleSection("continue_listening") },
-            // Tighter than the default 26dp so "Continue Listening" reads as the start of the
-            // album list itself rather than a separate floating shelf above it.
             topPadding = 8.dp,
-            // New Iride UI: NavigationTitle always adds its own 20dp start padding, but this sits
-            // inside a grid item that's already inset 20dp by the grid's contentPadding — nudge it
-            // back left (paint-time offset, not padding: Modifier.padding rejects negative values)
-            // so the label's left edge lands flush with the grid tiles/sort row instead of 20dp
-            // further right.
             modifier = Modifier.offset(x = (-20).dp),
         )
     }
@@ -314,9 +305,6 @@ fun LibraryAlbumsScreen(
             val continueListeningState = rememberLazyListState()
             LazyRow(
                 state = continueListeningState,
-                // New Iride UI: zero extra here — the grid's own 20dp contentPadding already
-                // insets this row (it's a spanned grid item), so adding padding again on the
-                // LazyRow itself was double-indenting it past the grid's left edge.
                 contentPadding = PaddingValues(horizontal = 0.dp),
                 horizontalArrangement = Arrangement.spacedBy(continueListeningSpacing),
                 overscrollEffect = null,
@@ -339,17 +327,11 @@ fun LibraryAlbumsScreen(
         IrideCollapsibleSection(collapsed = isSectionCollapsed("continue_listening")) { content() }
     }
 
-    // New Iride UI: no "Favorite Albums" label — it sat as a redundant divider directly under
-    // Continue Listening, the two sections now just flow into one grid. Classic UI keeps it.
     val favoritesTitle: @Composable () -> Unit = {
         Spacer(modifier = Modifier.height(8.dp))
     }
     val favoritesCollapsed = isSectionCollapsed("favorite_albums")
 
-    // New Iride UI: no Apple-style collapsing/scaling large title. "Album" sits fixed, large,
-    // lower on the page; a compact frosted bar (back arrow + small title) fades in only
-    // once the big title has scrolled behind it — same crossing pattern as AlbumScreen/
-    // ArtistScreen's topBarRevealProgress.
     val frostBackdrop = rememberFrostBackdrop()
     var titleBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
     var topBarBottomPx by remember { mutableStateOf(0f) }
@@ -389,11 +371,6 @@ fun LibraryAlbumsScreen(
         }
     }
 
-    // The frosted bar below must be a sibling of this Box, never a child: the bar's
-    // frostedTopBarBackground draws backdrop.content while recordFrostBackdrop is still
-    // recording it, and nesting them re-enters the same RenderNode mid-record and crashes
-    // (hit and fixed once already on the playlist screens — see AlbumScreen/ArtistScreen for
-    // the same outer-plain-Box / inner-recording-Box / sibling-bar shape).
     Box(modifier = Modifier.fillMaxSize()) {
     Box(
         modifier = Modifier
@@ -595,7 +572,7 @@ fun LibraryAlbumsScreen(
                 }
             }
         }
-    } // close inner recording Box
+    }
 
         val backProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
         LibrarySearchHeader(
@@ -674,5 +651,5 @@ fun LibraryAlbumsScreen(
                 )
             }
         }
-    } // close outer plain Box
+    }
 }

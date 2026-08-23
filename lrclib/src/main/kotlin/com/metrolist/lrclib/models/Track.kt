@@ -24,7 +24,6 @@ internal fun List<Track>.bestMatchingFor(duration: Int): Track? {
         ?.takeIf { abs(it.duration.toInt() - duration) <= 2 }
 }
 
-// Relaxed matching with ±5 seconds tolerance
 internal fun List<Track>.bestMatchingForRelaxed(
     duration: Int,
     artistName: String? = null,
@@ -35,7 +34,6 @@ internal fun List<Track>.bestMatchingForRelaxed(
         return firstOrNull { it.syncedLyrics != null } ?: firstOrNull()
     }
 
-    // Filter by artist similarity first; fall back to full list if no matches
     val candidates = if (!artistName.isNullOrBlank()) {
         val normalized = artistName.trim().lowercase()
         filter { track ->
@@ -47,14 +45,12 @@ internal fun List<Track>.bestMatchingForRelaxed(
 
     if (candidates.isEmpty()) return null
 
-    // First try to find synced lyrics within tolerance
     val syncedMatch = candidates.filter { it.syncedLyrics != null }
         .minByOrNull { abs(it.duration.toInt() - duration) }
         ?.takeIf { abs(it.duration.toInt() - duration) <= 5 }
 
     if (syncedMatch != null) return syncedMatch
 
-    // Fall back to any lyrics within tolerance
     return candidates.minByOrNull { abs(it.duration.toInt() - duration) }
         ?.takeIf { abs(it.duration.toInt() - duration) <= 5 }
 }
@@ -73,14 +69,12 @@ internal fun List<Track>.bestMatchingFor(
         return firstOrNull { it.syncedLyrics != null } ?: firstOrNull()
     }
 
-    // Use relaxed matching for duration-based search
     return bestMatchingForRelaxed(duration)
 }
 
 private fun List<Track>.findBestMatch(trackName: String, artistName: String): Track? {
     val normalizedTrackName = trackName.trim().lowercase()
     val normalizedArtistName = artistName.trim().lowercase()
-    
     return maxByOrNull { track ->
         var score = 0.0
 
@@ -93,11 +87,9 @@ private fun List<Track>.findBestMatch(trackName: String, artistName: String): Tr
             normalizedArtistName, 
             track.artistName.trim().lowercase()
         )
-        
         score = (trackNameSimilarity + artistNameSimilarity) / 2.0
 
         if (track.syncedLyrics != null) score += 0.1
-        
         score
     }?.takeIf { track ->
         val trackNameSimilarity = calculateSimilarity(
@@ -125,7 +117,6 @@ private fun calculateSimilarity(str1: String, str2: String): Double {
     val maxLength = maxOf(str1.length, str2.length)
     val distance = levenshteinDistance(str1, str2)
     val distanceScore = 1.0 - (distance.toDouble() / maxLength)
-    
     return maxOf(containsScore, distanceScore)
 }
 
@@ -133,20 +124,17 @@ private fun levenshteinDistance(str1: String, str2: String): Int {
     val len1 = str1.length
     val len2 = str2.length
     val matrix = Array(len1 + 1) { IntArray(len2 + 1) }
-    
     for (i in 0..len1) matrix[i][0] = i
     for (j in 0..len2) matrix[0][j] = j
-    
     for (i in 1..len1) {
         for (j in 1..len2) {
             val cost = if (str1[i - 1] == str2[j - 1]) 0 else 1
             matrix[i][j] = minOf(
-                matrix[i - 1][j] + 1,      // deletion
-                matrix[i][j - 1] + 1,      // insertion
-                matrix[i - 1][j - 1] + cost // substitution
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + cost
             )
         }
     }
-    
     return matrix[len1][len2]
 }

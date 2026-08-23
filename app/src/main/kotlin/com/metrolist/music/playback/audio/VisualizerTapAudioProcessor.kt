@@ -46,10 +46,6 @@ class VisualizerTapAudioProcessor(
     private var windowSamples = 0
     private var lastEmitNanos = 0L
 
-    // Per-band ceiling the bars normalize against, instead of a fixed constant. Rises fast to
-    // catch a loud passage (so busy mixes spread across the bar instead of pinning at 1 on all
-    // three bands) but decays very slowly, so it stays elevated through a quiet outro — a fade-out
-    // reads as small, subtle movement rather than being re-amplified to fill the bar.
     private var ceilBass = RmsNormalizationFloor
     private var ceilMid = RmsNormalizationFloor
     private var ceilTreble = RmsNormalizationFloor
@@ -90,7 +86,6 @@ class VisualizerTapAudioProcessor(
         val basePosition = inputBuffer.position()
 
         repeat(frameCount) { frameIndex ->
-            // Mono-mix all channels — good enough for a decorative meter.
             var sum = 0
             repeat(channelCount) { channelIndex ->
                 val sampleIndex = basePosition + (frameIndex * channelCount + channelIndex) * 2
@@ -189,15 +184,10 @@ class VisualizerTapAudioProcessor(
     private companion object {
         private const val BassCutoffHz = 250.0
         private const val MidCutoffHz = 4000.0
-        private const val EmitIntervalNanos = 50_000_000L // ~20 fps, plenty for a smoothed meter
+        private const val EmitIntervalNanos = 50_000_000L
 
-        // Floor (and starting point) for the adaptive per-band ceiling — full-scale sine peaks at
-        // 0.707 RMS, real mastered music sits far below that. Retune if bars read too flat or too
-        // pinned before the ceiling has had a chance to adapt.
         private const val RmsNormalizationFloor = 0.09
 
-        // Ceiling rises fast enough to catch a loud passage within a few emits (~150-300ms), but
-        // releases slowly enough (~15-20s half-life) that it stays elevated through a quiet outro.
         private const val CeilingAttack = 0.15
         private const val CeilingRelease = 0.002
 

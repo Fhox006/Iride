@@ -222,8 +222,6 @@ fun OnlinePlaylistScreen(
         keyboardController?.hide()
     }
 
-    // New Iride UI one-shot entrance: mirrors AlbumScreen's arrival choreography — title types out
-    // once, then the rest of the header/sections fade in, never replaying on scroll-back.
     var headerRevealed by rememberSaveable { mutableStateOf(false) }
     val revealedSections = remember { mutableSetOf<String>() }
     val playlistTitle = playlist?.title
@@ -241,9 +239,6 @@ fun OnlinePlaylistScreen(
     val genrePillsProgress = rememberSectionEnter("online_playlist_genre_pills", revealedSections)
     val songsSectionProgress = rememberSectionEnter("online_playlist_songs", revealedSections)
 
-    // Window-space Y of the header title's bottom edge and of the top bar's bottom edge — the
-    // overlay (glass + mirrored title) shows once the big title is behind the bar or scrolled past,
-    // and tweens in/out at a fixed duration instead of following the scroll pixel-by-pixel.
     var nameBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
     var topBarBottomPx by remember { mutableStateOf(0f) }
     val headerTitleCovered by remember {
@@ -315,9 +310,6 @@ fun OnlinePlaylistScreen(
         BackHandler(onBack = onExitSelectionMode)
     }
 
-    // Top-bar mirrors of the header's play/download actions and the control panel pill (New Iride UI
-    // only) — the header versions live in a separate composable closing over a non-null `playlist`
-    // param, these close over the nullable top-level state so they're safe before the playlist loads.
     val downloadUtil = LocalDownloadUtil.current
     var downloadState by remember { mutableIntStateOf(Download.STATE_STOPPED) }
     LaunchedEffect(songs) {
@@ -466,11 +458,6 @@ fun OnlinePlaylistScreen(
         }
     }
 
-    // Two boxes, not one, exactly like AlbumScreen: the frosted top bar *samples* the backdrop
-    // layer, so it must not be drawn inside the Box that records it. Nested, the bar's drawBehind
-    // re-enters frostBackdrop.content (drawLayer of a RenderNode that is still mid-record) and the
-    // platform throws — which is why the playlist screens crashed the moment the bar's glass turned
-    // on (progress > 0) while the album screen never did.
     Box(modifier = Modifier.fillMaxSize()) {
     Box(
         modifier = Modifier
@@ -710,7 +697,6 @@ fun OnlinePlaylistScreen(
         }
 
         }
-        // --- everything below is a sibling of the recorded content, never inside it ---
 
         val topBarNavigationIcon: @Composable () -> Unit = {
             IconButton(
@@ -957,9 +943,6 @@ private fun OnlinePlaylistHeader(
                 .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // New Iride UI: fade the cover in once on a genuine new decode — a memory-cache hit
-        // (revisiting a playlist already seen this session) resolves synchronously, so animating
-        // that would replay the surfaceVariant placeholder every time.
         var coverLoaded by remember(playlist.id) { mutableStateOf(false) }
         var skipCoverEnterAnim by remember(playlist.id) { mutableStateOf(false) }
         val animatedCoverProgress = rememberEnterProgress(play = coverLoaded, durationMillis = 420, easing = IrideMotion.EaseOutQuart)
@@ -1008,7 +991,6 @@ private fun OnlinePlaylistHeader(
                 letterSpacing = (-0.2).sp,
             ),
             color = MaterialTheme.colorScheme.onBackground,
-            // Keyed on the playlist, not the string: recomposing this screen must not retype it.
             resetKey = playlist.id,
             animate = !headerRevealed,
             maxLines = 3,
@@ -1050,6 +1032,5 @@ private fun OnlinePlaylistHeader(
                 .fillMaxWidth()
                 .revealMask(metadataProgress),
         )
-        // Like/shuffle/play/download now live in the top bar + control panel pill.
     }
 }

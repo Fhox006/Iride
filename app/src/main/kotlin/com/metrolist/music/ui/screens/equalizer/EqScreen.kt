@@ -68,12 +68,10 @@ fun EqScreen(
 
     var showError by remember { mutableStateOf<String?>(null) }
 
-    // Activity result launcher for system equalizer
     val activityResultLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { }
 
-    // File picker for custom EQ import
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -81,7 +79,6 @@ fun EqScreen(
             try {
                 val contentResolver = context.contentResolver
 
-                // Extract file name from URI
                 var fileName = "custom_eq.txt"
                 contentResolver.query(uri, null, null, null, null)?.use { cursor ->
                     if (cursor.moveToFirst()) {
@@ -122,7 +119,6 @@ fun EqScreen(
         activeProfileId = state.activeProfileId,
         onProfileSelected = { viewModel.selectProfile(it) },
         onImportCustomEQ = {
-            // Launch file picker for .txt files
             filePickerLauncher.launch("text/plain")
         },
         onOpenSystemEqualizer = {
@@ -149,7 +145,6 @@ fun EqScreen(
         onDeleteProfile = { viewModel.deleteProfile(it) }
     )
 
-    // Error dialog
     if (showError != null) {
         AlertDialog(
             onDismissRequest = { showError = null },
@@ -167,7 +162,6 @@ fun EqScreen(
         )
     }
 
-    // Error dialog for apply failure
     if (state.error != null) {
         AlertDialog(
             onDismissRequest = { viewModel.clearError() },
@@ -203,10 +197,9 @@ private fun EqScreenContent(
         modifier = Modifier
             .fillMaxWidth(0.9f)
             .heightIn(max = 600.dp)
-            .padding(vertical = 24.dp) // Optional extra padding if desired, but dialog handles it.
+            .padding(vertical = 24.dp)
     ) {
         Column {
-            // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -245,12 +238,10 @@ private fun EqScreenContent(
                 }
             }
 
-            // Profile list
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
-                // "No Equalization" option (always first)
                 item {
                     NoEqualizationItem(
                         isSelected = activeProfileId == null,
@@ -258,7 +249,6 @@ private fun EqScreenContent(
                     )
                 }
 
-                // Custom profiles only
                 val customProfiles = profiles.filter { it.isCustom }
 
                 if (customProfiles.isNotEmpty()) {
@@ -272,7 +262,6 @@ private fun EqScreenContent(
                     }
                 }
 
-                // Empty state
                 if (customProfiles.isEmpty()) {
                     item {
                         Box(
@@ -313,7 +302,6 @@ private fun EqScreenContent(
     }
 }
 
-// --- HELPER COMPOSABLES ---
 
 @Composable
 private fun NoEqualizationItem(
@@ -335,7 +323,7 @@ private fun NoEqualizationItem(
         },
         modifier = Modifier
             .clickable(onClick = onSelected)
-            .padding(horizontal = 8.dp) // align with design
+            .padding(horizontal = 8.dp)
     )
 }
 
@@ -384,7 +372,6 @@ private fun EQProfileItem(
             .padding(horizontal = 8.dp)
     )
 
-    // Delete confirmation dialog
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },

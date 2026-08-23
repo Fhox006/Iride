@@ -21,23 +21,12 @@ val NavigationBarHeight = 80.dp
 val SlimNavBarHeight = 64.dp
 val MiniPlayerHeight = 64.dp
 val MinMiniPlayerHeight = 16.dp
-val MiniPlayerBottomSpacing = 8.dp // Space between MiniPlayer and NavigationBar
+val MiniPlayerBottomSpacing = 8.dp
 val QueuePeekHeight = 64.dp
 val AppBarHeight = 64.dp
 
-// New Iride UI: height of app content always kept visible at the top of the screen even when the
-// player "curtain" is dragged to its maximum extent, so the app is never fully covered. Kept just
-// large enough for a comfortable tap-to-collapse target — at full expansion this strip is already
-// painted solid black (MainActivity's dissolve-to-black overlay reaches alpha 1 exactly at
-// progress 1), so growing it past that doesn't reveal more app UI, it only steals room from the
-// player.
 val AppPeekHeight = 56.dp
 
-// New Iride UI (curtain mode): extra height added on top of the mini player bar's own height when
-// reserving the collapsed curtain gap, so the app layer's rounded bottom corners have some curtain
-// background above the mini player content to show against instead of touching it edge-to-edge.
-// Matches the 28dp radius of the app layer's own RoundedCornerShape (see MainActivity's Scaffold
-// modifier) — anything smaller leaves part of the corner curve uncovered by curtain background.
 val CurtainCornerRevealHeight = 28.dp
 
 val ListItemHeight = 58.dp
@@ -51,9 +40,6 @@ const val PLAYER_THUMBNAIL_SIZE = 512
 
 val ThumbnailCornerRadius = 3.dp
 
-// New Iride UI: single reference stroke width for every decorative border/outline (cards, cover
-// art, avatar rings), sourced from the Album screen's pill Play button so the whole app reads as
-// one thickness.
 val IrideBaseBorderWidth = 1.5.dp
 
 val PlayerHorizontalPadding = 32.dp

@@ -13,7 +13,7 @@ class PoTokenGenerator {
     private val TAG = "PoTokenGenerator"
 
     private val webViewSupported by lazy { runCatching { CookieManager.getInstance() }.isSuccess }
-    private var webViewBadImpl = false // whether the system has a bad WebView implementation
+    private var webViewBadImpl = false
 
     private val webPoTokenGenLock = Mutex()
     private var webPoTokenSessionId: String? = null
@@ -39,7 +39,7 @@ class PoTokenGenerator {
                     webViewBadImpl = true
                     null
                 }
-                else -> throw e // includes PoTokenException
+                else -> throw e
             }
         }
     }
@@ -65,11 +65,8 @@ class PoTokenGenerator {
                         webPoTokenGenerator?.close()
                     }
 
-                    // create a new webPoTokenGenerator
                     webPoTokenGenerator = PoTokenWebView.getNewPoTokenGenerator(CipherDeobfuscator.appContext)
 
-                    // The streaming poToken needs to be generated exactly once before generating
-                    // any other (player) tokens.
                     webPoTokenStreamingPot = webPoTokenGenerator!!.generatePoToken(webPoTokenSessionId!!)
                     Timber.tag(TAG).d("Streaming poToken generated for sessionId=${webPoTokenSessionId?.take(20)}...")
                 }
@@ -81,13 +78,8 @@ class PoTokenGenerator {
             poTokenGenerator.generatePoToken(videoId)
         } catch (throwable: Throwable) {
             if (hasBeenRecreated) {
-                // the poTokenGenerator has just been recreated (and possibly this is already the
-                // second time we try), so there is likely nothing we can do
                 throw throwable
             } else {
-                // retry, this time recreating the [webPoTokenGenerator] from scratch;
-                // this might happen for example if the app goes in the background and the WebView
-                // content is lost
                 Timber.tag(TAG).e(throwable, "Failed to obtain poToken, retrying")
                 return getWebClientPoToken(videoId = videoId, sessionId = sessionId, forceRecreate = true)
             }

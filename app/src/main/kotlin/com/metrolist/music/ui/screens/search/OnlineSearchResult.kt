@@ -123,15 +123,11 @@ import kotlinx.coroutines.launch
 import java.net.URLDecoder
 import java.net.URLEncoder
 
-// Chip row identity: Smart Search lives alongside the filter pills but isn't itself a
-// YouTube.SearchFilter, so the row's value type wraps both instead of overloading `null`.
 private sealed interface SearchChipKey {
     data object Smart : SearchChipKey
     data class Filter(val value: YouTube.SearchFilter?) : SearchChipKey
 }
 
-// Section header label for a Smart Search category — mirrors the same string used for that
-// filter's own pill, so the two stay visually consistent.
 private fun filterSectionTitleRes(filter: YouTube.SearchFilter): Int = when (filter) {
     FILTER_SONG -> R.string.filter_songs
     FILTER_VIDEO -> R.string.filter_videos
@@ -217,8 +213,6 @@ fun OnlineSearchResult(
         query = TextFieldValue(decodedQuery, TextRange(decodedQuery.length))
     }
 
-    // The search bar scrolls away together with the chips/results — no pinned
-    // chrome — so the background can go transparent/gradient like Home/Library.
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -291,9 +285,6 @@ fun OnlineSearchResultsBody(
     onSearch: (String) -> Unit,
     onDismissSuggestions: () -> Unit,
     modifier: Modifier = Modifier,
-    // New Iride UI: leading scrollable item (search bar/nav) — when non-null, it and the chips
-    // row share one LazyColumn with the results, so everything scrolls away together instead of
-    // staying pinned, exactly like LocalSearchScreen/OnlineSearchScreen.
     header: (@Composable () -> Unit)? = null,
 ) {
     val menuState = LocalMenuState.current
@@ -335,7 +326,6 @@ fun OnlineSearchResultsBody(
         }
     }
 
-    // Vertical list item renderer (top result section + filtered tabs)
     val ytItemContent: @Composable LazyItemScope.(YTItem) -> Unit = { item ->
         val longClick = {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -398,8 +388,6 @@ fun OnlineSearchResultsBody(
         )
     }
 
-    // Horizontal carousel shared by the "All" tab's category shelves and Smart Search's
-    // per-filter sections — same card sizing/click/long-press behavior either way.
     val searchResultRow: @Composable (List<YTItem>) -> Unit = { rowItems ->
         LazyRow(contentPadding = PaddingValues(start = 16.dp, end = 8.dp)) {
             items(
@@ -464,17 +452,12 @@ fun OnlineSearchResultsBody(
         }
     }
 
-    // Shimmer placeholder for a Smart Search section still awaiting its dedicated search call.
     val searchResultRowPlaceholder: @Composable () -> Unit = {
         Row(modifier = Modifier.padding(start = 4.dp)) {
             repeat(3) { GridItemPlaceHolder() }
         }
     }
 
-    // Two-column vertical grid shared by the Album and Playlist filter tabs — same card sizing
-    // language as Smart Search's carousels, but laid out as fillMaxWidth pairs (via lazy items()
-    // so paginated results keep proper recycling) instead of a fixed-size horizontal scroll, so
-    // each cover fills its half of the row instead of leaving dead space.
     val searchResultGrid2Col: LazyListScope.(List<YTItem>) -> Unit = { rowItems ->
         items(
             items = rowItems.chunked(2),
@@ -547,7 +530,6 @@ fun OnlineSearchResultsBody(
         }
     }
 
-    // Filter pills
     val visibleChips = buildList {
         add(SearchChipKey.Smart to stringResource(R.string.filter_smart_search))
         add(SearchChipKey.Filter(FILTER_SONG) to stringResource(R.string.filter_songs))
@@ -581,15 +563,8 @@ fun OnlineSearchResultsBody(
         )
     }
 
-    // Smart Search + filtered results list content, shared by both the pinned-chrome (classic UI)
-    // and scroll-away-chrome (New Iride UI, see `header`) layouts below.
     val resultsListContent: LazyListScope.() -> Unit = {
             if (smartSelected) {
-                // Smart Search: full per-category carousels in a fixed order, each backed by
-                // that category's own dedicated search (not YT's truncated summary shelves),
-                // so nothing is capped to a handful of items. A section reveals its content
-                // only once every section above it has revealed, so results always fill
-                // strictly top-to-bottom even when fetches complete out of order.
                 val order = viewModel.smartSearchOrder
                 val topResult = searchSummary?.summaries?.firstOrNull()
 
@@ -661,7 +636,6 @@ fun OnlineSearchResultsBody(
                     )
                 }
 
-                // Pagination shimmer
                 if (itemsPage?.continuation != null) {
                     item(key = "loading") {
                         ShimmerHost {
@@ -670,7 +644,6 @@ fun OnlineSearchResultsBody(
                     }
                 }
 
-                // Empty state
                 if (itemsPage?.items?.isEmpty() == true) {
                     item {
                         EmptyPlaceholder(
@@ -681,7 +654,6 @@ fun OnlineSearchResultsBody(
                 }
             }
 
-            // Initial loading shimmer
             if ((smartSelected && viewModel.smartSearchOrder.isEmpty()) ||
                 (!smartSelected && itemsPage == null)
             ) {
@@ -698,28 +670,6 @@ fun OnlineSearchResultsBody(
     }
 
     if (header != null) {
-        // New Iride UI: the header is now a fixed, non-lazy sibling of the results/suggestions
-        // area, instead of a LazyColumn item that got moved between two structurally different
-        // parents (a LazyColumn item vs. a plain Column child) depending on focus.
-        //
-        // That move was the actual root cause of the long-standing "tap the search bar again to
-        // re-edit -> history flashes on screen and instantly collapses, field becomes
-        // uninteractable" bug: moving a *focused* BasicTextField's underlying node to a different
-        // parent in the composition makes the platform briefly detach/reattach its window focus,
-        // which fires a synthetic onFocusChanged(false) callback. That callback fed straight back
-        // into isSearchFocused/isFocused — the very state whose flip *caused* the move in the
-        // first place — closing the just-opened suggestions panel in the same frame it opened,
-        // and leaving focus cleared so the field could no longer be typed into. Two "independent"
-        // booleans weren't racing here; it was one state driving a structural move that echoed
-        // back into itself.
-        //
-        // Pinning the header removes the feedback loop entirely: isSearchFocused now only ever
-        // switches the content *below* the header (results list vs. suggestions list) — the
-        // header's own position in the tree never changes, so its focus/IME state is never
-        // disturbed by that toggle. (This does mean the header no longer scrolls away together
-        // with browsed results the way it does on LocalSearchScreen/OnlineSearchScreen — a small
-        // trade-off for the search box always staying visible and reliably re-editable, which
-        // matches the classic non-Iride layout's behavior below.)
         LaunchedEffect(isSearchFocused) {
             if (!isSearchFocused) lazyListState.scrollToItem(0)
         }
@@ -728,11 +678,6 @@ fun OnlineSearchResultsBody(
             Column(modifier = Modifier.fillMaxSize()) {
                 header()
                 if (isSearchFocused) {
-                    // No background here: OnlineSearchScreen already paints its own
-                    // (transparent/gradient when mainTopGradient is on, matching the very first
-                    // search). Painting a solid MaterialTheme.colorScheme.background behind it
-                    // ignored mainTopGradient and showed through as flat black on every re-search
-                    // after the first, instead of staying transparent like the initial screen.
                     Box(
                         modifier = Modifier
                             .weight(1f)

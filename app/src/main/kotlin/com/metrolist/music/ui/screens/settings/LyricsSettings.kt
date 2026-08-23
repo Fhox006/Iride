@@ -93,7 +93,6 @@ fun LyricsSettings(navController: NavController) {
     var showLyricsLineSpacingDialog by remember { mutableStateOf(false) }
     var showLyricsPositionDialog by remember { mutableStateOf(false) }
 
-    // ── Dialogs ────────────────────────────────────────────────────────────
 
     if (showExperimentalLyricsBetaDialog) {
         DefaultDialog(
@@ -242,7 +241,6 @@ fun LyricsSettings(navController: NavController) {
         )
     }
 
-    // ── Screen ────────────────────────────────────────────────────────────
 
     Column(
         Modifier
@@ -260,108 +258,7 @@ fun LyricsSettings(navController: NavController) {
             )
         )
 
-        /* HIDDEN - experimental_lyrics group (always ON via default, toggle hidden from user)
-        // ── Experimental lyrics ────────────────────────────────────────────
-        Material3SettingsGroup(
-            title = stringResource(R.string.experimental_lyrics),
-            items = buildList {
-                add(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.lyrics),
-                        title = { Text(stringResource(R.string.experimental_lyrics)) },
-                        description = { Text(stringResource(R.string.experimental_lyrics_desc)) },
-                        showBadge = true,
-                        trailingContent = {
-                            IrideSwitch(
-                                checked = experimentalLyrics,
-                                onCheckedChange = {
-                                    if (!experimentalLyrics) showExperimentalLyricsBetaDialog = true
-                                    else onExperimentalLyricsChange(false)
-                                },
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            if (experimentalLyrics) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize)
-                                    )
-                                }
-                            )
-                        },
-                        onClick = {
-                            if (!experimentalLyrics) showExperimentalLyricsBetaDialog = true
-                            else onExperimentalLyricsChange(false)
-                        }
-                    )
-                )
-                if (!experimentalLyrics) {
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.lyrics),
-                            title = { Text(stringResource(R.string.lyrics_glow_effect)) },
-                            description = { Text(stringResource(R.string.lyrics_glow_effect_desc)) },
-                            trailingContent = {
-                                IrideSwitch(
-                                    checked = lyricsGlowEffect,
-                                    onCheckedChange = onLyricsGlowEffectChange,
-                                    thumbContent = {
-                                        Icon(
-                                            painter = painterResource(
-                                                if (lyricsGlowEffect) R.drawable.check else R.drawable.close
-                                            ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize)
-                                        )
-                                    }
-                                )
-                            },
-                            onClick = { onLyricsGlowEffectChange(!lyricsGlowEffect) }
-                        )
-                    )
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.lyrics),
-                            title = { Text(stringResource(R.string.lyrics_animation_style_title)) },
-                            description = {
-                                Text(
-                                    when (lyricsAnimationStyle) {
-                                        LyricsAnimationStyle.NONE -> stringResource(R.string.lyrics_animation_none)
-                                        LyricsAnimationStyle.FADE -> stringResource(R.string.lyrics_animation_fade)
-                                        LyricsAnimationStyle.GLOW -> stringResource(R.string.lyrics_animation_glow)
-                                        LyricsAnimationStyle.SLIDE -> stringResource(R.string.lyrics_animation_slide)
-                                        LyricsAnimationStyle.KARAOKE -> stringResource(R.string.lyrics_animation_karaoke)
-                                        LyricsAnimationStyle.APPLE -> stringResource(R.string.lyrics_animation_apple)
-                                    }
-                                )
-                            },
-                            onClick = { showLyricsAnimationStyleDialog = true }
-                        )
-                    )
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.lyrics),
-                            title = { Text(stringResource(R.string.lyrics_text_size)) },
-                            description = { Text("${lyricsTextSize.roundToInt()} sp") },
-                            onClick = { showLyricsTextSizeDialog = true }
-                        )
-                    )
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.lyrics),
-                            title = { Text(stringResource(R.string.lyrics_line_spacing)) },
-                            description = { Text(String.format(Locale.US, "%.1f", lyricsLineSpacing)) },
-                            onClick = { showLyricsLineSpacingDialog = true }
-                        )
-                    )
-                }
-            }
-        )
 
-        Spacer(modifier = Modifier.height(16.dp))
-        END HIDDEN */
-
-        // ── Display ────────────────────────────────────────────────────────
         Material3SettingsGroup(
             title = stringResource(R.string.settings_section_display),
             items = listOfNotNull(

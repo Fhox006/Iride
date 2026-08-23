@@ -39,7 +39,6 @@ object LrcLib {
         }
     }
 
-    // Patterns to clean from title
     private val titleCleanupPatterns = listOf(
         Regex("""\s*\(.*?(official|video|audio|lyrics|lyric|visualizer|hd|hq|4k|remaster|remix|live|acoustic|version|edit|extended|radio|clean|explicit).*?\)""", RegexOption.IGNORE_CASE),
         Regex("""\s*\[.*?(official|video|audio|lyrics|lyric|visualizer|hd|hq|4k|remaster|remix|live|acoustic|version|edit|extended|radio|clean|explicit).*?\]""", RegexOption.IGNORE_CASE),
@@ -52,7 +51,6 @@ object LrcLib {
         Regex("""\s*ft\..*$""", RegexOption.IGNORE_CASE),
     )
 
-    // Patterns to extract primary artist
     private val artistSeparators = listOf(" & ", " and ", ", ", " x ", " X ", " feat. ", " feat ", " ft. ", " ft ", " featuring ", " with ")
 
     private fun cleanTitle(title: String): String {
@@ -65,7 +63,6 @@ object LrcLib {
 
     private fun cleanArtist(artist: String): String {
         var cleaned = artist.trim()
-        // Get primary artist (first one before any separator)
         for (separator in artistSeparators) {
             if (cleaned.contains(separator, ignoreCase = true)) {
                 cleaned = cleaned.split(separator, ignoreCase = true, limit = 2)[0]
@@ -99,7 +96,6 @@ object LrcLib {
         val originalTitle = title.trim()
         val originalArtist = artist.trim()
 
-        // FAST PATH: fire the 3 most likely queries in parallel
         val fastResults = coroutineScope {
             listOf(
                 async { queryLyricsWithParams(trackName = originalTitle, artistName = originalArtist, albumName = album) },
@@ -112,18 +108,14 @@ object LrcLib {
             .distinctBy { it.id }
         if (fastHit.isNotEmpty()) return fastHit
 
-        // SLOW FALLBACK: remaining strategies sequentially (only reached on cache miss)
-        // Strategy 2: cleaned title only
         var results = queryLyricsWithParams(trackName = cleanedTitle)
             .filter { it.syncedLyrics != null || it.plainLyrics != null }
         if (results.isNotEmpty()) return results
 
-        // Strategy 3: full-text q
         results = queryLyricsWithParams(query = "$cleanedArtist $cleanedTitle")
             .filter { it.syncedLyrics != null || it.plainLyrics != null }
         if (results.isNotEmpty()) return results
 
-        // Strategy 4: q title only
         results = queryLyricsWithParams(query = cleanedTitle)
             .filter { it.syncedLyrics != null || it.plainLyrics != null }
         return results
@@ -146,7 +138,6 @@ object LrcLib {
                 }?.let(LrcLib::Lyrics)
             }
             else -> {
-                // Try with relaxed duration matching (±5 seconds instead of ±2)
                 tracks.bestMatchingForRelaxed(duration, cleanedArtist)?.let { track ->
                     track.syncedLyrics ?: track.plainLyrics
                 }?.let(LrcLib::Lyrics)
@@ -183,7 +174,6 @@ object LrcLib {
                     val titleSimilarity = calculateStringSimilarity(cleanedTitle, track.trackName)
                     val artistSimilarity = calculateStringSimilarity(cleanedArtist, track.artistName)
                     score += (titleSimilarity + artistSimilarity) / 2.0
-                    
                     score
                 }
             }
@@ -206,7 +196,6 @@ object LrcLib {
                     count++
                     track.syncedLyrics.let(callback)
                 } else {
-                    // Relaxed duration matching (±5 seconds)
                     if (track.syncedLyrics != null && abs(track.duration.toInt() - duration) <= 5) {
                         count++
                         track.syncedLyrics.let(callback)
@@ -224,10 +213,8 @@ object LrcLib {
     private fun calculateStringSimilarity(str1: String, str2: String): Double {
         val s1 = str1.trim().lowercase()
         val s2 = str2.trim().lowercase()
-        
         if (s1 == s2) return 1.0
         if (s1.isEmpty() || s2.isEmpty()) return 0.0
-        
         return when {
             s1.contains(s2) || s2.contains(s1) -> 0.8
             else -> {
@@ -242,21 +229,18 @@ object LrcLib {
         val len1 = str1.length
         val len2 = str2.length
         val matrix = Array(len1 + 1) { IntArray(len2 + 1) }
-        
         for (i in 0..len1) matrix[i][0] = i
         for (j in 0..len2) matrix[0][j] = j
-        
         for (i in 1..len1) {
             for (j in 1..len2) {
                 val cost = if (str1[i - 1] == str2[j - 1]) 0 else 1
                 matrix[i][j] = minOf(
-                    matrix[i - 1][j] + 1,      // deletion
-                    matrix[i][j - 1] + 1,      // insertion
-                    matrix[i - 1][j - 1] + cost // substitution
+                    matrix[i - 1][j] + 1,
+                    matrix[i][j - 1] + 1,
+                    matrix[i - 1][j - 1] + cost
                 )
             }
         }
-        
         return matrix[len1][len2]
     }
 

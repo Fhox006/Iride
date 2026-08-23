@@ -148,7 +148,6 @@ fun AboutScreen(
                 )
             )
 
-            // App header — flat in both modes; only colors and the badge treatment differ
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -156,7 +155,7 @@ fun AboutScreen(
                 Image(
                     painter = painterResource(R.drawable.ic_logo),
                     contentDescription = stringResource(R.string.app_name),
-                    colorFilter = ColorFilter.tint(Color.White),
+                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface),
                     modifier = Modifier.size(64.dp)
                 )
 
@@ -172,7 +171,7 @@ fun AboutScreen(
                         style = MaterialTheme.typography.headlineLarge.copy(fontFamily = SpaceMonoFontFamily),
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.5).sp,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     Spacer(Modifier.height(6.dp))
@@ -184,14 +183,13 @@ fun AboutScreen(
                             letterSpacing = 0.5.sp,
                         ),
                         fontWeight = FontWeight.Bold,
-                        color = Color.White.copy(alpha = 0.55f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
                     )
                 }
             }
 
             Spacer(Modifier.height(32.dp))
 
-            // Lead developer
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
@@ -212,13 +210,13 @@ fun AboutScreen(
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.5).sp,
                         lineHeight = 34.sp,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = stringResource(R.string.about_creator_role),
                         style = MaterialTheme.typography.titleSmall.copy(fontFamily = SpaceMonoFontFamily),
                         fontWeight = FontWeight.Bold,
-                        color = Color.White.copy(alpha = 0.6f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
             }

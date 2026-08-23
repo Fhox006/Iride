@@ -104,10 +104,7 @@ fun IrideAdaptiveTopBar(
     title: @Composable () -> Unit,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
-    // For screens that draw their own full-bleed background (gradient art, hero images):
-    // keeps the bar container transparent in both modes so the artwork shows through.
     transparent: Boolean = false,
-    // Only applies to the classic TopAppBar branch — the Iride bar is fixed and flat.
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     val (pureBlack) = rememberPreference(PureBlackKey, defaultValue = false)

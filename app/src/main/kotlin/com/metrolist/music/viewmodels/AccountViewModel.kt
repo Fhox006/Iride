@@ -45,17 +45,12 @@ class AccountViewModel @Inject constructor(
     val playlists = MutableStateFlow<List<PlaylistItem>?>(null)
     val albums = MutableStateFlow<List<AlbumItem>?>(null)
     val artists = MutableStateFlow<List<ArtistItem>?>(null)
-    // SE "Episodes for Later" playlist shown in Podcasts tab
     val sePlaylist = MutableStateFlow<PlaylistItem?>(null)
-    // RDPN "New Episodes" playlist (real thumbnail + count from YouTube)
     val rdpnPlaylist = MutableStateFlow<PlaylistItem?>(null)
-    // Subscribed podcast shows (from local DB, synced from YT Music)
     val podcastPlaylists = database.subscribedPodcasts()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-    // Podcast host channels from YT Music library
     val podcastChannels = MutableStateFlow<List<ArtistItem>>(emptyList())
 
-    // Selected content type for chips
     val selectedContentType = MutableStateFlow(AccountContentType.PLAYLISTS)
 
     private suspend fun <T> withRetry(maxRetries: Int = 3, block: suspend () -> T): T? {
@@ -116,7 +111,6 @@ class AccountViewModel @Inject constructor(
     init {
         refresh()
 
-        // Listen for HideYoutubeShorts preference changes and reload playlists instantly
         viewModelScope.launch(Dispatchers.IO) {
             context.dataStore.data
                 .map { it[HideYoutubeShortsKey] ?: false }

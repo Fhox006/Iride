@@ -26,19 +26,14 @@ class CrashHandler private constructor(
         try {
             val crashLog = buildCrashLog(throwable)
             Timber.e(throwable, "App crashed")
-            
-            // Launch crash activity
             val intent = Intent(applicationContext, CrashActivity::class.java).apply {
                 putExtra(EXTRA_CRASH_LOG, crashLog)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             }
             applicationContext.startActivity(intent)
-            
-            // Kill the current process
             android.os.Process.killProcess(android.os.Process.myPid())
             exitProcess(1)
         } catch (e: Exception) {
-            // If we fail to handle the crash, fall back to default handler
             Timber.e(e, "Error handling crash")
             defaultHandler?.uncaughtException(thread, throwable)
         }

@@ -21,35 +21,29 @@ class MessageCodec(
 ) {
     companion object {
         private const val TAG = "MessageCodec"
-        private const val COMPRESSION_THRESHOLD = 100 // Only compress if > 100 bytes
+        private const val COMPRESSION_THRESHOLD = 100
     }
-    
     /**
      * Encode a message using Protocol Buffers
      */
     fun encode(msgType: String, payload: Any?): ByteArray {
         return encodeProtobuf(msgType, payload)
     }
-    
     /**
      * Decode a protobuf message
      */
     fun decode(data: ByteArray): Pair<String, ByteArray> {
         return decodeProtobuf(data)
     }
-    
     /**
      * Encode message using Protocol Buffers
      */
     private fun encodeProtobuf(msgType: String, payload: Any?): ByteArray {
         var payloadBytes = byteArrayOf()
         var compressed = false
-        
         if (payload != null) {
             val protoMsg = toProtoMessage(payload)
             payloadBytes = protoMsg.toByteArray()
-            
-            // Compress if enabled and payload is large enough
             if (compressionEnabled && payloadBytes.size > COMPRESSION_THRESHOLD) {
                 val compressedBytes = compressData(payloadBytes)
                 if (compressedBytes.size < payloadBytes.size) {
@@ -58,31 +52,24 @@ class MessageCodec(
                 }
             }
         }
-        
         val envelope = Listentogether.Envelope.newBuilder()
             .setType(msgType)
             .setPayload(com.google.protobuf.ByteString.copyFrom(payloadBytes))
             .setCompressed(compressed)
             .build()
-        
         return envelope.toByteArray()
     }
-    
     /**
      * Decode protobuf message
      */
     private fun decodeProtobuf(data: ByteArray): Pair<String, ByteArray> {
         val envelope = Listentogether.Envelope.parseFrom(data)
-        
         var payloadBytes = envelope.payload.toByteArray()
-        
         if (envelope.compressed) {
             payloadBytes = decompressData(payloadBytes) ?: payloadBytes
         }
-        
         return Pair(envelope.type, payloadBytes)
     }
-    
     /**
      * Compress data using GZIP
      */
@@ -93,7 +80,6 @@ class MessageCodec(
         }
         return outputStream.toByteArray()
     }
-    
     /**
      * Decompress GZIP data
      */
@@ -108,7 +94,6 @@ class MessageCodec(
             null
         }
     }
-    
     /**
      * Convert Kotlin objects to protobuf messages
      */
@@ -135,14 +120,12 @@ class MessageCodec(
                     .setInsertNext(payload.insertNext ?: false)
                     .setVolume(payload.volume ?: 1f)
                     .setServerTime(payload.serverTime ?: 0)
-                
                 payload.trackId?.let { builder.setTrackId(it) }
                 payload.trackInfo?.let { builder.setTrackInfo(trackInfoToProto(it)) }
                 payload.queueTitle?.let { builder.setQueueTitle(it) }
                 payload.queue?.forEach { track ->
                     builder.addQueue(trackInfoToProto(track))
                 }
-                
                 builder.build()
             }
             is BufferReadyPayload -> Listentogether.BufferReadyPayload.newBuilder()
@@ -173,16 +156,13 @@ class MessageCodec(
             else -> throw IllegalArgumentException("Unsupported payload type: ${payload::class.simpleName}")
         }
     }
-    
     /**
      * Decode protobuf payload to Kotlin objects
      */
     fun decodePayload(msgType: String, payloadBytes: ByteArray): Any? {
         if (payloadBytes.isEmpty()) return null
-        
         return decodeProtobufPayload(msgType, payloadBytes)
     }
-    
     /**
      * Decode protobuf payload
      */
@@ -302,9 +282,6 @@ class MessageCodec(
             else -> null
         }
     }
-    
-    // Helper conversion functions
-    
     private fun trackInfoToProto(track: TrackInfo): Listentogether.TrackInfo {
         return Listentogether.TrackInfo.newBuilder()
             .setId(track.id)
@@ -316,7 +293,6 @@ class MessageCodec(
             .setSuggestedBy(track.suggestedBy ?: "")
             .build()
     }
-    
     private fun protoToTrackInfo(proto: Listentogether.TrackInfo): TrackInfo {
         return TrackInfo(
             id = proto.id,
@@ -328,7 +304,6 @@ class MessageCodec(
             suggestedBy = proto.suggestedBy.takeIf { it.isNotEmpty() }
         )
     }
-    
     private fun protoToUserInfo(proto: Listentogether.UserInfo): UserInfo {
         return UserInfo(
             userId = proto.userId,
@@ -337,7 +312,6 @@ class MessageCodec(
             isConnected = proto.isConnected
         )
     }
-    
     private fun protoToRoomState(proto: Listentogether.RoomState): RoomState {
         return RoomState(
             roomCode = proto.roomCode,

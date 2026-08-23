@@ -412,7 +412,6 @@ fun CachePlaylistScreen(
         )
     }
 
-        // was copied from, including the crash note below.
         val frostBackdrop = rememberFrostBackdrop()
         var titleBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
         var topBarBottomPx by remember { mutableStateOf(0f) }
@@ -447,9 +446,6 @@ fun CachePlaylistScreen(
             }
         }
 
-        // The frosted bar below must be a sibling of this Box, never a child: nesting the bar's
-        // frostedTopBarBackground draw inside the still-recording recordFrostBackdrop Box re-enters
-        // the same RenderNode mid-record and crashes.
         Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
@@ -498,7 +494,7 @@ fun CachePlaylistScreen(
 
                 cacheFab()
             }
-        } // close inner recording Box
+        }
 
             if (inSelectMode) {
                 selectionTopBar()
@@ -558,5 +554,5 @@ fun CachePlaylistScreen(
                     }
                 }
             }
-        } // close outer plain Box
+        }
 }

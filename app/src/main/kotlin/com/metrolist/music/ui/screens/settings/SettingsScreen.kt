@@ -108,7 +108,6 @@ import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.HomeViewModel
 
-// ── Internal composables ───────────────────────────────────────────────────────
 
 @Composable
 private fun SettingsNavCard(
@@ -176,7 +175,6 @@ private fun SettingsNavCard(
     }
 }
 
-// ── Main Screen ───────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -217,8 +215,8 @@ fun SettingsScreen(
                 expanded = showAdvancedMenu,
                 onDismissRequest = { showAdvancedMenu = false },
                 shape = RoundedCornerShape(16.dp),
-                containerColor = Color(0xFF0A0A0A),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 DropdownMenuItem(
                     text = {
@@ -228,10 +226,10 @@ fun SettingsScreen(
                                 else R.string.enable_advanced_settings
                             ),
                             style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                     },
-                    colors = MenuDefaults.itemColors(textColor = Color.White),
+                    colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onSurface),
                     onClick = {
                         onAdvancedModeChange(!advancedMode)
                         showAdvancedMenu = false
@@ -266,14 +264,9 @@ fun SettingsScreen(
     val accountName = if (accountNameFlow != "Guest") accountNameFlow else accountNamePref
     val accountImageUrl: String? = accountImageUrlFlow ?: accountPhotoUrlPref.takeIf { it.isNotEmpty() }
 
-    // ── Screen ────────────────────────────────────────────────────────────
     Scaffold(
         modifier = Modifier,
         topBar = {
-            // New Iride UI: this is the Account tab's own top-level destination — no pinned bar
-            // at all, exactly like Home/Library. TopNavigationBar is rendered as the first child
-            // of the scrollable Column below instead, so it scrolls away with the rest of the
-            // page rather than staying fixed on top of it.
         },
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
@@ -288,9 +281,6 @@ fun SettingsScreen(
                     WindowInsetsSides.Horizontal
                 )
             )
-            // Same edge-pull as every other top-level scroll (Home/Library/Search) — this tab's
-            // own scroll was the one missing it. Must sit outside (before) verticalScroll in the
-            // chain so its nestedScroll connection is an ancestor of the scrollable, not a child.
             .rubberBandOverscroll(Orientation.Vertical, settingsScrollState)
             .verticalScroll(settingsScrollState)
     ) {
@@ -314,7 +304,6 @@ fun SettingsScreen(
         }
 
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-        // ── Account section ──────────────────────────────────────────────
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -322,11 +311,11 @@ fun SettingsScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             val avatarSize = 84.dp
-            val avatarBorder = Modifier.border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
-            val avatarFallbackBg = Color.White.copy(alpha = 0.05f)
-            val primaryTextColor = Color.White
-            val secondaryTextColor = Color.White.copy(alpha = 0.6f)
-            val fallbackIconTint = Color.White.copy(alpha = 0.5f)
+            val avatarBorder = Modifier.border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f), CircleShape)
+            val avatarFallbackBg = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+            val primaryTextColor = MaterialTheme.colorScheme.onSurface
+            val secondaryTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            val fallbackIconTint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             val nameStyle = MaterialTheme.typography.titleLarge.copy(fontFamily = SpaceMonoFontFamily, letterSpacing = (-0.2).sp)
 
             if (isLoggedIn) {
@@ -405,8 +394,8 @@ fun SettingsScreen(
                 OutlinedButton(
                     onClick = { navController.navigate("login") },
                     shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                 ) {
                     Text(
                         text = stringResource(R.string.login),
@@ -419,33 +408,31 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // ── Advanced mode banner ─────────────────────────────────────────
         if (advancedMode) {
             Row(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White.copy(alpha = 0.06f))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
                     .padding(12.dp)
             ) {
                 Icon(
                     painter = painterResource(R.drawable.info),
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.7f),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = stringResource(R.string.advanced_mode_banner),
                     style = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily),
-                    color = Color.White.copy(alpha = 0.75f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                 )
             }
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        // ── My Account ────────────────────────────────────────────────────
         Material3SettingsGroup(
             items = listOf(
                 Material3SettingsItem(
@@ -469,7 +456,6 @@ fun SettingsScreen(
 
         val arrowIcon = painterResource(R.drawable.arrow_forward)
 
-        // ── Preferences ───────────────────────────────────────────────────
         Material3SettingsGroup(
             items = listOf(
                 Material3SettingsItem(
@@ -527,7 +513,6 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // ── Donations ─────────────────────────────────────────────────────
         Material3SettingsGroup(
             items = listOf(
                 Material3SettingsItem(
@@ -563,7 +548,8 @@ fun SettingsScreen(
 @Composable
 private fun DonationIconBounce() {
     val reducedMotion = rememberReducedMotion()
-    var targetTint by remember { mutableStateOf(Color.White) }
+    val settledTint = MaterialTheme.colorScheme.onSurface
+    var targetTint by remember { mutableStateOf(settledTint) }
     val tint by animateColorAsState(targetTint, tween(IrideMotion.Quick), label = "donationTint")
     val scale = remember { Animatable(1f) }
     LaunchedEffect(Unit) {
@@ -573,7 +559,7 @@ private fun DonationIconBounce() {
         scale.animateTo(1.22f, tween(120, easing = IrideMotion.EaseOutExpo))
         scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
         delay(250)
-        targetTint = Color.White
+        targetTint = settledTint
     }
     Icon(
         painter = painterResource(R.drawable.favorite),

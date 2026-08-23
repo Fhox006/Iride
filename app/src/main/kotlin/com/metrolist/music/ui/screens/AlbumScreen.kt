@@ -976,7 +976,7 @@ fun AlbumScreen(
                                             text = stringResource(
                                                 R.string.resume_album_track_progress,
                                                 resumeTrackIndex + 1,
-                                                albumWithSongs?.songs?.size ?: 0,
+                                                albumWithSongs.songs.size,
                                             ),
                                             style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
                                             color = Color.White.copy(alpha = 0.55f),
@@ -987,7 +987,7 @@ fun AlbumScreen(
                                         onClick = {
                                             val album = albumWithSongs
                                             resumeDismissed = true
-                                            if (!isListenTogetherGuest && album != null) {
+                                            if (!isListenTogetherGuest) {
                                                 playerConnection.service.getAutomix(playlistId)
                                                 playerConnection.playQueue(
                                                     LocalAlbumRadio(album, startIndex = resumeTrackIndex),

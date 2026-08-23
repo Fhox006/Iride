@@ -8,11 +8,11 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class ParametricEQBand(
-    val frequency: Double,                      // Center frequency in Hz
-    val gain: Double,                           // Gain in dB
-    val q: Double = 1.41,                       // Q factor (bandwidth) - default to sqrt(2)
-    val filterType: FilterType = FilterType.PK, // Filter type
-    val enabled: Boolean = true                 // Whether this band is active
+    val frequency: Double,
+    val gain: Double,
+    val q: Double = 1.41,
+    val filterType: FilterType = FilterType.PK,
+    val enabled: Boolean = true
 )
 
 /**
@@ -21,11 +21,11 @@ data class ParametricEQBand(
  */
 @Serializable
 data class ParametricEQ(
-    val preamp: Double,                         // Preamp/gain in dB (to prevent clipping)
-    val bands: List<ParametricEQBand>,          // List of EQ bands
-    val metadata: Map<String, String> = emptyMap()  // Additional metadata from file
+    val preamp: Double,
+    val bands: List<ParametricEQBand>,
+    val metadata: Map<String, String> = emptyMap()
 ) {
     companion object {
-        const val MAX_BANDS = 20  // Maximum bands supported by the implementation
+        const val MAX_BANDS = 20
     }
 }

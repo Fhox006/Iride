@@ -10,15 +10,10 @@ import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.Song
 
-// Minimum plays for an artist to count as a real listening habit rather than
-// a one-off (e.g. a couple of tracks heard once at a party).
 private const val MIN_GENUINE_ARTIST_SONG_COUNT = 3
 
-// ...unless the user genuinely binged them, even on an artist heard only once.
 private const val MIN_GENUINE_ARTIST_TIME_LISTENED_MS = 20 * 60 * 1000L
 
-// Filters out artists that only showed up because of a handful of plays
-// (party playlists, one-off genres) rather than an actual listening habit.
 fun List<Artist>.filterGenuineFavorites() =
     filter { it.songCount >= MIN_GENUINE_ARTIST_SONG_COUNT || (it.timeListened ?: 0) >= MIN_GENUINE_ARTIST_TIME_LISTENED_MS }
 
@@ -55,7 +50,6 @@ fun <T : Any> List<T>.mergeNearbyElements(
     return mergedList
 }
 
-// Extension function to filter explicit content for local Song entities
 fun List<Song>.filterExplicit(enabled: Boolean = true) =
     if (enabled) {
         filter { !it.song.explicit }
@@ -63,7 +57,6 @@ fun List<Song>.filterExplicit(enabled: Boolean = true) =
         this
     }
 
-// Extension function to filter video songs for local Song entities
 fun List<Song>.filterVideoSongs(enabled: Boolean = true) =
     if (enabled) {
         filter { !it.song.isVideo }
@@ -71,7 +64,6 @@ fun List<Song>.filterVideoSongs(enabled: Boolean = true) =
         this
     }
 
-// Extension function to filter explicit content for local Album entities
 fun List<Album>.filterExplicitAlbums(enabled: Boolean = true) =
     if (enabled) {
         filter { !it.album.explicit }
@@ -79,7 +71,6 @@ fun List<Album>.filterExplicitAlbums(enabled: Boolean = true) =
         this
     }
 
-// Extension function to filter YouTube Shorts playlist
 fun List<Playlist>.filterYoutubeShorts(enabled: Boolean = false) =
     if (enabled) {
         filterNot { it.playlist.browseId?.startsWith("SS") == true }

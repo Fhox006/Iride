@@ -130,7 +130,6 @@ fun DiscordSettings(
     val coroutineScope = rememberCoroutineScope()
     val loginSuccessfulStr = stringResource(R.string.login_successful)
 
-    // Preferences
     var discordToken by rememberPreference(DiscordTokenKey, "")
     var discordUsername by rememberPreference(DiscordUsernameKey, "")
     var discordName by rememberPreference(DiscordNameKey, "")
@@ -158,7 +157,6 @@ fun DiscordSettings(
     var showButton2TextDialog by rememberSaveable { mutableStateOf(false) }
     var showActivityNameDialog by rememberSaveable { mutableStateOf(false) }
 
-    // Map string prefs to enums for dialogs
     val currentStatus =
         when (discordStatus) {
             "idle" -> DiscordStatus.IDLE
@@ -173,7 +171,6 @@ fun DiscordSettings(
             else -> DiscordActivityType.LISTENING
         }
 
-    // Fetch user info when token changes
     LaunchedEffect(discordToken) {
         val token = discordToken
         if (token.isEmpty()) {
@@ -200,7 +197,6 @@ fun DiscordSettings(
         }
     }
 
-    // Update playback position
     LaunchedEffect(playbackState) {
         if (playbackState == STATE_READY) {
             while (isActive) {
@@ -210,7 +206,6 @@ fun DiscordSettings(
         }
     }
 
-    // Dialogs
     if (showTokenDialog) {
         var isVerifying by remember { mutableStateOf(false) }
         var error by remember { mutableStateOf<String?>(null) }
@@ -375,7 +370,6 @@ fun DiscordSettings(
             ),
         )
 
-        // Warning Card
         AnimatedVisibility(visible = !infoDismissed) {
             Card(
                 colors =
@@ -416,7 +410,6 @@ fun DiscordSettings(
             }
         }
 
-        // Profile Card (fully rounded)
         Card(
             shape = RoundedCornerShape(28.dp),
             colors =
@@ -439,7 +432,6 @@ fun DiscordSettings(
                         ).fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Avatar with status dot
                 Box(modifier = Modifier.size(56.dp)) {
                     if (isLoggedIn && discordAvatar.isNotEmpty()) {
                         AsyncImage(
@@ -515,7 +507,6 @@ fun DiscordSettings(
                     }
                 }
 
-                // Only show logout inline when logged in
                 if (isLoggedIn) {
                     OutlinedButton(onClick = {
                         discordName = ""
@@ -528,7 +519,6 @@ fun DiscordSettings(
                 }
             }
 
-            // Login buttons below when not logged in
             if (!isLoggedIn) {
                 Row(
                     modifier =
@@ -557,7 +547,6 @@ fun DiscordSettings(
             }
         }
 
-        // Options section (card-based)
         Material3SettingsGroup(
             title = stringResource(R.string.options),
             items =
@@ -640,10 +629,8 @@ fun DiscordSettings(
 
         Spacer(Modifier.height(8.dp))
 
-        // Advanced customization section
         AnimatedVisibility(visible = isLoggedIn && discordRPC && advancedMode) {
             Column(modifier = Modifier.animateContentSize()) {
-                // Presence settings
                 Material3SettingsGroup(
                     title = stringResource(R.string.discord_presence),
                     items =
@@ -710,7 +697,6 @@ fun DiscordSettings(
 
                 Spacer(Modifier.height(8.dp))
 
-                // Button customization
                 Material3SettingsGroup(
                     title = stringResource(R.string.discord_buttons),
                     items =
@@ -762,7 +748,6 @@ fun DiscordSettings(
                         ),
                 )
 
-                // Variable hint
                 Card(
                     colors =
                         CardDefaults.cardColors(
@@ -796,7 +781,6 @@ fun DiscordSettings(
             }
         }
 
-        // Preview section
         Spacer(Modifier.height(8.dp))
 
         Text(
@@ -817,7 +801,6 @@ fun DiscordSettings(
             button2Visible = button2Visible,
         )
 
-        // Bottom padding for mini player
         Spacer(Modifier.height(24.dp))
     }
 

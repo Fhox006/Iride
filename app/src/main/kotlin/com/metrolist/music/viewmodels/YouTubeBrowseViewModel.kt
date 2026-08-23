@@ -47,7 +47,6 @@ constructor(
     private val params = savedStateHandle.get<String>("params")
 
     val result = MutableStateFlow<BrowseResult?>(null)
-    
     private var resolveVideoJob: Job? = null
 
     init {
@@ -79,15 +78,11 @@ constructor(
             val hideVideoOnlyResults = context.dataStore.get(HideVideoOnlyResultsKey, false)
             val maxCacheSize = context.dataStore.get(MaxResolvedTrackCacheSizeKey, 1000)
 
-            // Moods and Genres are typically accessed via BrowseResult
-            // User requested to enable this for "Your Mood" section specifically.
-            // Since Mood/Genres open this ViewModel, it applies.
 
-            browseResult.items.filterIsInstance<SongItem>().forEach { song ->
+            browseResult.items.flatMap { it.items }.filterIsInstance<SongItem>().forEach { song ->
                 if (!isActive) return@launch
                 if (!song.isVideoSong) return@forEach
 
-                // Check cache
                 val cached = database.getSetVideoId(song.id)
                 val resolved = if (cached != null) {
                     cached.setVideoId?.let { id ->
@@ -107,7 +102,6 @@ constructor(
                 } else if (hideVideoOnlyResults) {
                     removeSongFromResult(song.id)
                 }
-                
                 if (cached == null) {
                     delay(400)
                 }
@@ -117,16 +111,23 @@ constructor(
 
     private fun updateSongInResult(oldId: String, newSong: SongItem) {
         val current = result.value ?: return
-        val newItems = current.items.map { item ->
-            if (item is SongItem && item.id == oldId) newSong else item
-        }
-        result.value = current.copy(items = newItems as List<BrowseResult.Item>)
+        result.value = current.copy(
+            items = current.items.map { section ->
+                section.copy(items = section.items.map { yt ->
+                    if (yt is SongItem && yt.id == oldId) newSong else yt
+                })
+            }
+        )
     }
 
     private fun removeSongFromResult(id: String) {
         val current = result.value ?: return
-        val newItems = current.items.filterNot { item -> item is SongItem && item.id == id }
-        result.value = current.copy(items = newItems as List<BrowseResult.Item>)
+        result.value = current.copy(
+            items = current.items.mapNotNull { section ->
+                val remaining = section.items.filterNot { yt -> yt is SongItem && yt.id == id }
+                if (remaining.isEmpty()) null else section.copy(items = remaining)
+            }
+        )
     }
 
     private suspend fun findAudioTrack(song: SongItem): SongItem? {

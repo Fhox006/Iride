@@ -96,7 +96,6 @@ fun VideoPlayerScreen(
         }
     }
 
-    // Two overlapping audio streams (main app queue + video) is jarring — pause the mini player.
     LaunchedEffect(videoId) {
         playerConnection?.player?.pause()
     }

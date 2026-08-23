@@ -67,17 +67,14 @@ data class HomePage(
 
                 val items = mutableListOf<YTItem>()
 
-                // Parse musicTwoRowItemRenderer items (songs, albums, playlists, artists, podcasts)
                 renderer.contents.mapNotNull { it.musicTwoRowItemRenderer }
                     .mapNotNull { fromMusicTwoRowItemRenderer(it) }
                     .let { items.addAll(it) }
 
-                // Parse musicMultiRowListItemRenderer items (podcast episodes)
                 renderer.contents.mapNotNull { it.musicMultiRowListItemRenderer }
                     .mapNotNull { fromMusicMultiRowListItemRenderer(it) }
                     .let { items.addAll(it) }
 
-                // Parse musicResponsiveListItemRenderer items (quick picks songs)
                 renderer.contents.mapNotNull { it.musicResponsiveListItemRenderer }
                     .mapNotNull { fromMusicResponsiveListItemRenderer(it) }
                     .let { items.addAll(it) }
@@ -121,7 +118,6 @@ data class HomePage(
             }
 
             private fun fromMusicResponsiveListItemRenderer(renderer: MusicResponsiveListItemRenderer): SongItem? {
-                // Quick picks uses musicResponsiveListItemRenderer for songs
                 if (!renderer.isSong) return null
 
                 val secondaryLine = renderer.flexColumns
@@ -165,7 +161,6 @@ data class HomePage(
             }
 
             private fun fromMusicTwoRowItemRenderer(renderer: MusicTwoRowItemRenderer): YTItem? {
-                // Debug logging for type detection
                 val title = renderer.title.runs?.firstOrNull()?.text ?: "unknown"
                 val pageType = renderer.navigationEndpoint.browseEndpoint
                     ?.browseEndpointContextSupportedConfigs
@@ -177,7 +172,6 @@ data class HomePage(
                     Timber.d("HomePage twoRow '$title': no type matched - pageType=$pageType, hasWatchEndpoint=$hasWatchEndpoint")
                 }
 
-                // Debug for episodes
                 if (renderer.isEpisode) {
                     val overlayVideoId = renderer.thumbnailOverlay
                         ?.musicItemThumbnailOverlayRenderer?.content
@@ -319,7 +313,6 @@ data class HomePage(
                         val subtitleRuns = renderer.subtitle?.runs?.splitBySeparator()
                         val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
-                        // Find podcast link in subtitle (has isPodcastEndpoint)
                         val podcastRun = renderer.subtitle?.runs?.find {
                             it.navigationEndpoint?.browseEndpoint?.isPodcastEndpoint == true
                         }

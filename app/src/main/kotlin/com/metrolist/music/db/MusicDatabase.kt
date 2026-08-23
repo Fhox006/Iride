@@ -214,7 +214,6 @@ abstract class InternalDatabase : RoomDatabase() {
     }
 }
 
-// ===== Migrations =====
 
 val MIGRATION_1_2 =
     object : Migration(1, 2) {
@@ -431,9 +430,7 @@ val MIGRATION_1_2 =
 val MIGRATION_21_24 =
     object : Migration(21, 24) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // Combine all changes from 21→22→23→24
 
-            // From 21→22: Add columns
             try {
                 db.execSQL("ALTER TABLE song ADD COLUMN libraryAddToken TEXT DEFAULT ''")
             } catch (e: Exception) {
@@ -455,7 +452,6 @@ val MIGRATION_21_24 =
                 Timber.tag("Migration").w("Column isDownloaded may already exist")
             }
 
-            // From 23→24: Add isUploaded
             var hasIsUploaded = false
             db.query("PRAGMA table_info('song')").use { cursor ->
                 val nameIndex = cursor.getColumnIndex("name")
@@ -477,7 +473,6 @@ val MIGRATION_21_24 =
 val MIGRATION_22_24 =
     object : Migration(22, 24) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // From 23→24: Add isUploaded
             var hasIsUploaded = false
             db.query("PRAGMA table_info('song')").use { cursor ->
                 val nameIndex = cursor.getColumnIndex("name")
@@ -496,7 +491,6 @@ val MIGRATION_22_24 =
         }
     }
 
-// ===== AutoMigration Specs =====
 
 @DeleteColumn.Entries(
     DeleteColumn(tableName = "song", columnName = "isTrash"),
@@ -662,7 +656,6 @@ class Migration21To22 : AutoMigrationSpec {
 
 class Migration22To23 : AutoMigrationSpec {
     override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        // No changes needed for 22→23
     }
 }
 
@@ -689,7 +682,6 @@ class Migration23To24 : AutoMigrationSpec {
 val MIGRATION_24_25 =
     object : Migration(24, 25) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // Add perceptualLoudnessDb column to format table for improved audio normalization
             var columnExists = false
             db.query("PRAGMA table_info(format)").use { cursor ->
                 val nameIndex = cursor.getColumnIndex("name")
@@ -702,15 +694,11 @@ val MIGRATION_24_25 =
             }
 
             if (!columnExists) {
-                // Add the column allowing NULL values (since existing rows won't have this data)
                 db.execSQL("ALTER TABLE format ADD COLUMN perceptualLoudnessDb REAL DEFAULT NULL")
             }
         }
     }
 
-// SQLite has no ALTER TABLE ... DROP CONSTRAINT, so dropping playlist_category's FK to
-// PlaylistEntity (see its entity doc) needs a full recreate, which plain AutoMigration doesn't
-// generate reliably — hence a manual Migration instead of AutoMigration(43, 44).
 val MIGRATION_43_44 =
     object : Migration(43, 44) {
         override fun migrate(db: SupportSQLiteDatabase) {
@@ -741,7 +729,6 @@ val MIGRATION_43_44 =
 
 class Migration29To30 : AutoMigrationSpec {
     override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        // Ensure isVideo column exists (safeguard)
         var hasIsVideo = false
         db.query("PRAGMA table_info('song')").use { cursor ->
             val nameIndex = cursor.getColumnIndex("name")
@@ -757,7 +744,6 @@ class Migration29To30 : AutoMigrationSpec {
             db.execSQL("ALTER TABLE song ADD COLUMN isVideo INTEGER NOT NULL DEFAULT 0")
         }
 
-        // Ensure provider column exists in lyrics table
         var hasProvider = false
         db.query("PRAGMA table_info('lyrics')").use { cursor ->
             val nameIndex = cursor.getColumnIndex("name")

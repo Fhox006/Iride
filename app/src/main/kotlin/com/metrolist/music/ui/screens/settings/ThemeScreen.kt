@@ -53,6 +53,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Switch
@@ -116,8 +119,8 @@ data class ThemePalette(
 )
 
 val PaletteColors = listOf(
-    ThemePalette(R.string.palette_dynamic, Color.Transparent), // Sentinel for System/Dynamic colors
-    ThemePalette(R.string.palette_crimson, Color(0xFFEC5464)), // Slightly shifted from DefaultThemeColor (0xFFED5564) to avoid conflict
+    ThemePalette(R.string.palette_dynamic, Color.Transparent),
+    ThemePalette(R.string.palette_crimson, Color(0xFFEC5464)),
     ThemePalette(R.string.palette_rose, Color(0xFFD81B60)),
     ThemePalette(R.string.palette_purple, Color(0xFF8E24AA)),
     ThemePalette(R.string.palette_deep_purple, Color(0xFF5E35B1)),
@@ -145,7 +148,7 @@ fun ThemeScreen(
     activity: Activity,
     snackbarHostState: SnackbarHostState,
 ) {
-    val (darkMode, onDarkModeChange) = rememberEnumPreference(DarkModeKey, DarkMode.ON)
+    val (darkMode, onDarkModeChange) = rememberEnumPreference(DarkModeKey, DarkMode.AUTO)
     val (pureBlack, onPureBlackChangeRaw) = rememberPreference(PureBlackKey, defaultValue = false)
     val (_, onPureBlackMiniPlayerChange) = rememberPreference(
         PureBlackMiniPlayerKey,
@@ -272,16 +275,6 @@ fun PortraitThemeLayout(
     albumTopGradient: Boolean = false,
     onAlbumTopGradientChange: (Boolean) -> Unit = {}
 ) {
-    // Fix: this Column used to size itself with two `weight(1f)` Spacers around a fixed-height
-    // mockup box, relying on the Column always having enough vertical room to lay everything out.
-    // In New Iride UI, enabling the "curtain" player (see MainActivity's curtainMode/curtainActive)
-    // shrinks the Scaffold's actual height by roughly `bottomInset + 76dp` whenever a track is
-    // loaded, which — combined with this screen hardcoding `innerPadding = PaddingValues(0.dp)` and
-    // never seeing that shrink — pushed the controls (mode circles / palette / switches) below the
-    // visible area with nothing to scroll to them, i.e. "the whole theme panel disappears". Landscape
-    // was never affected because its controls column already has `verticalScroll`. Fixed by making
-    // this Column scrollable too and swapping the `weight(1f)` Spacers (which don't work inside a
-    // scrollable Column — unbounded height) for fixed spacing.
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -441,7 +434,6 @@ private fun IrideThemeControls(
     albumTopGradient: Boolean,
     onAlbumTopGradientChange: (Boolean) -> Unit
 ) {
-    // ── New Iride Ui / Main+Album screens top gradient toggles ───────────
     Spacer(modifier = Modifier.height(16.dp))
 
     Column(
@@ -449,8 +441,64 @@ private fun IrideThemeControls(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
     ) {
-        // Read here rather than threaded down for the same reason as irideAnimations below: only
-        // this row and TopNavigationBar itself (AppNavigation.kt) need it.
+        IrideThemeSectionTitle(stringResource(R.string.theme_mode))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Monochrome selection style: selected segment uses inverseSurface so it
+        // stays neutral (white-on-dark / dark-on-light) instead of Material tint.
+        val modeColors = SegmentedButtonDefaults.colors(
+            activeContainerColor = MaterialTheme.colorScheme.inverseSurface,
+            activeContentColor = MaterialTheme.colorScheme.inverseOnSurface,
+            inactiveContainerColor = Color.Transparent,
+            inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            activeBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            inactiveBorderColor = MaterialTheme.colorScheme.outlineVariant
+        )
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            SegmentedButton(
+                selected = darkMode == DarkMode.OFF,
+                onClick = { onDarkModeChange(DarkMode.OFF) },
+                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                colors = modeColors,
+                label = {
+                    Text(
+                        text = stringResource(R.string.theme_mode_light),
+                        fontFamily = SpaceMonoFontFamily,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            )
+            SegmentedButton(
+                selected = darkMode == DarkMode.ON,
+                onClick = { onDarkModeChange(DarkMode.ON) },
+                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                colors = modeColors,
+                label = {
+                    Text(
+                        text = stringResource(R.string.theme_mode_dark),
+                        fontFamily = SpaceMonoFontFamily,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            )
+            SegmentedButton(
+                selected = darkMode == DarkMode.AUTO,
+                onClick = { onDarkModeChange(DarkMode.AUTO) },
+                shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                colors = modeColors,
+                label = {
+                    Text(
+                        text = stringResource(R.string.theme_mode_system),
+                        fontFamily = SpaceMonoFontFamily,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 1.dp)
+
         val (compactTopBar, onCompactTopBarChange) =
             rememberPreference(CompactTopNavigationBarKey, defaultValue = true)
         IrideThemeToggleRow(
@@ -459,10 +507,7 @@ private fun IrideThemeControls(
             checked = compactTopBar,
             onCheckedChange = onCompactTopBarChange
         )
-        HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
-        // Escape hatch for the Iride motion layer (see ui/utils/IrideMotion.kt). Read here rather
-        // than threaded down from ThemeScreen: it's only ever used by this row and by the
-        // composables that animate, both of which read the DataStore directly.
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 1.dp)
         val (irideAnimations, onIrideAnimationsChange) =
             rememberPreference(IrideAnimationsKey, defaultValue = true)
         IrideThemeToggleRow(
@@ -471,16 +516,14 @@ private fun IrideThemeControls(
             checked = irideAnimations,
             onCheckedChange = onIrideAnimationsChange
         )
-        // Auto-hide return panel row removed from UI (still defaults ON via PlayerAutoHideTopPanelKey,
-        // read directly by the curtain player in MainActivity — no settings control anymore).
-        HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 1.dp)
         IrideThemeToggleRow(
             title = stringResource(R.string.main_top_gradient),
             description = stringResource(R.string.main_top_gradient_desc),
             checked = mainTopGradient,
             onCheckedChange = onMainTopGradientChange
         )
-        HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 1.dp)
         IrideThemeToggleRow(
             title = stringResource(R.string.album_top_gradient),
             description = stringResource(R.string.album_top_gradient_desc),
@@ -491,10 +534,6 @@ private fun IrideThemeControls(
 
     Spacer(modifier = Modifier.height(24.dp))
 
-    // ── Palette / system toggles ───────────────────────────────────────────
-    // Theme Mode circle picker, Dynamic Icon and Dynamic Theme rows are hidden per settings
-    // cleanup — dark/pure-black mode still applies via its stored default, only the picker UI
-    // is gone. Only High Refresh Rate stays visible below.
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -550,7 +589,7 @@ private fun IrideThemeSectionTitle(text: String) {
             letterSpacing = (-0.1).sp,
         ),
         fontWeight = FontWeight.Bold,
-        color = Color.White
+        color = MaterialTheme.colorScheme.onSurface
     )
 }
 
@@ -576,7 +615,7 @@ private fun IrideThemeToggleRow(
                     fontSize = 15.sp,
                     letterSpacing = (-0.1).sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             )
             description?.let { desc ->
@@ -584,7 +623,7 @@ private fun IrideThemeToggleRow(
                 Text(
                     text = desc,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.55f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
                 )
             }
         }
@@ -610,13 +649,11 @@ fun PaletteItem(
     onClick: () -> Unit
 ) {
     val isSystemDark = isSystemInDarkTheme()
-    
     val colorScheme = rememberDynamicColorScheme(
         seedColor = palette.seedColor,
         isDark = isSystemDark,
         style = PaletteStyle.TonalSpot
     )
-    
     val cornerRadius by animateDpAsState(
         targetValue = if (isSelected) 48.dp * 0.25f else 24.dp,
         animationSpec = spring(
@@ -625,7 +662,6 @@ fun PaletteItem(
         ),
         label = "cornerRadius"
     )
-    
     val borderWidth by animateDpAsState(
         targetValue = if (isSelected) 3.dp else 0.dp,
         animationSpec = spring(
@@ -634,7 +670,6 @@ fun PaletteItem(
         ),
         label = "borderWidth"
     )
-    
     val scale by animateFloatAsState(
         targetValue = if (isSelected) 1.08f else 1f,
         animationSpec = spring(
@@ -643,13 +678,10 @@ fun PaletteItem(
         ),
         label = "scale"
     )
-    
     val shape = RoundedCornerShape(cornerRadius)
     val interactionSource = remember { MutableInteractionSource() }
-    
     val paletteName = stringResource(palette.nameRes)
     val contentDesc = stringResource(R.string.cd_palette_item, paletteName)
-    
     Box(
         modifier = Modifier
             .size(48.dp)
@@ -679,7 +711,6 @@ fun PaletteItem(
             }
     ) {
         if (palette.seedColor == Color.Transparent) {
-            // Draw Dynamic/System icon using Material Design icon
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -697,19 +728,16 @@ fun PaletteItem(
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val width = size.width
                 val height = size.height
-                
                 drawRect(
                     color = colorScheme.onPrimary,
                     topLeft = Offset(0f, 0f),
                     size = Size(width, height / 2)
                 )
-                
                 drawRect(
                     color = colorScheme.secondary,
                     topLeft = Offset(0f, height / 2),
                     size = Size(width / 2, height / 2)
                 )
-                
                 drawRect(
                     color = colorScheme.tertiary,
                     topLeft = Offset(width / 2, height / 2),

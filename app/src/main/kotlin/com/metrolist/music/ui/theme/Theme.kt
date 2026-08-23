@@ -39,50 +39,70 @@ fun IrideTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    // Determine if system dynamic colors should be used (Android S+ and default theme color)
     val useSystemDynamicColor = (themeColor == DefaultThemeColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
 
-    // Select the appropriate color scheme generation method
     val baseColorScheme = if (useSystemDynamicColor) {
-        // Use standard Material 3 dynamic color functions for system wallpaper colors
         if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     } else {
-        // Use materialKolor only when a specific seed color is provided
         rememberDynamicColorScheme(
-            seedColor = themeColor, // themeColor is guaranteed non-default here
+            seedColor = themeColor,
             isDark = darkTheme,
             specVersion = ColorSpec.SpecVersion.SPEC_2025,
-            style = PaletteStyle.TonalSpot // Keep existing style
+            style = PaletteStyle.TonalSpot
         )
     }
 
-    val colorScheme = remember(baseColorScheme) {
-        baseColorScheme.copy(
-            background = Color.Black,
-            onBackground = Color.White,
-            surface = Color.Black,
-            onSurface = Color.White,
-            surfaceVariant = Color(0xFF1A1A1A),
-            onSurfaceVariant = Color(0xFFCCCCCC),
-            surfaceContainerLowest = Color.Black,
-            surfaceContainerLow = Color(0xFF0D0D0D),
-            surfaceContainer = Color(0xFF121212),
-            surfaceContainerHigh = Color(0xFF1E1E1E),
-            surfaceContainerHighest = Color(0xFF282828),
-            inverseSurface = Color.White,
-            inverseOnSurface = Color.Black,
-            outline = Color(0xFF8A8A8A),
-            outlineVariant = Color(0xFF3A3A3A),
-            scrim = Color.Black,
-            surfaceBright = Color(0xFF2C2C2C),
-            surfaceDim = Color.Black,
-        )
+    // Neutral surfaces mirror the app's monochrome identity; accent roles
+    // (primary/secondary/tertiary) are kept from the generated base scheme.
+    val colorScheme = remember(baseColorScheme, darkTheme) {
+        if (darkTheme) {
+            baseColorScheme.copy(
+                background = Color.Black,
+                onBackground = Color.White,
+                surface = Color.Black,
+                onSurface = Color.White,
+                surfaceVariant = Color(0xFF1A1A1A),
+                onSurfaceVariant = Color(0xFFCCCCCC),
+                surfaceContainerLowest = Color.Black,
+                surfaceContainerLow = Color(0xFF0D0D0D),
+                surfaceContainer = Color(0xFF121212),
+                surfaceContainerHigh = Color(0xFF1E1E1E),
+                surfaceContainerHighest = Color(0xFF282828),
+                inverseSurface = Color.White,
+                inverseOnSurface = Color.Black,
+                outline = Color(0xFF8A8A8A),
+                outlineVariant = Color(0xFF3A3A3A),
+                scrim = Color.Black,
+                surfaceBright = Color(0xFF2C2C2C),
+                surfaceDim = Color.Black,
+            )
+        } else {
+            baseColorScheme.copy(
+                background = Color.White,
+                onBackground = Color(0xFF1A1A1A),
+                surface = Color.White,
+                onSurface = Color(0xFF1A1A1A),
+                surfaceVariant = Color(0xFFF0F0F0),
+                onSurfaceVariant = Color(0xFF444444),
+                surfaceContainerLowest = Color.White,
+                surfaceContainerLow = Color(0xFFFAFAFA),
+                surfaceContainer = Color(0xFFF5F5F5),
+                surfaceContainerHigh = Color(0xFFEFEFEF),
+                surfaceContainerHighest = Color(0xFFE5E5E5),
+                inverseSurface = Color(0xFF1A1A1A),
+                inverseOnSurface = Color.White,
+                outline = Color(0xFF757575),
+                outlineVariant = Color(0xFFDDDDDD),
+                scrim = Color.Black,
+                surfaceBright = Color.White,
+                surfaceDim = Color(0xFFE8E8E8),
+            )
+        }
     }
 
-    // Use standard MaterialTheme instead of MaterialExpressiveTheme
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = AppTypography, // Use the defined AppTypography
+        typography = AppTypography,
         content = content
     )
 }

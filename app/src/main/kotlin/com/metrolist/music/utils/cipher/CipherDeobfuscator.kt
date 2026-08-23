@@ -62,7 +62,6 @@ object CipherDeobfuscator {
     private suspend fun deobfuscateInternal(signatureCipher: String, videoId: String, isRetry: Boolean): String? {
         Timber.tag(TAG).d("deobfuscateInternal: videoId=$videoId, isRetry=$isRetry")
 
-        // Parse the signatureCipher query string
         val params = parseQueryParams(signatureCipher)
         val obfuscatedSig = params["s"]
         val sigParam = params["sp"] ?: "signature"
@@ -88,7 +87,6 @@ object CipherDeobfuscator {
         val deobfuscatedSig = webView.deobfuscateSignature(obfuscatedSig)
         Timber.tag(TAG).d("Deobfuscated signature: ${deobfuscatedSig.take(30)}... (length=${deobfuscatedSig.length})")
 
-        // Build the URL with deobfuscated signature
         val separator = if ("?" in baseUrl) "&" else "?"
         val finalUrl = "$baseUrl${separator}${sigParam}=${Uri.encode(deobfuscatedSig)}"
 
@@ -123,7 +121,6 @@ object CipherDeobfuscator {
     }
 
     private suspend fun transformNInternal(url: String): String {
-        // Extract the 'n' parameter value from the URL
         val nMatch = Regex("[?&]n=([^&]+)").find(url)
         if (nMatch == null) {
             Timber.tag(TAG).d("No 'n' parameter found in URL, skipping transform")
@@ -158,7 +155,6 @@ object CipherDeobfuscator {
         Timber.tag(TAG).d("=== N-TRANSFORM SUCCESS ===")
         Timber.tag(TAG).d("N-param: $nValue -> $transformedN")
 
-        // Replace n= parameter in URL
         val transformedUrl = url.replaceFirst(
             Regex("([?&])n=[^&]+"),
             "$1n=${Uri.encode(transformedN)}"
@@ -176,13 +172,11 @@ object CipherDeobfuscator {
             return cipherWebView
         }
 
-        // Close existing WebView if any
         if (cipherWebView != null) {
             Timber.tag(TAG).d("Closing existing CipherWebView...")
             closeWebView()
         }
 
-        // Fetch player JS
         Timber.tag(TAG).d("Fetching player JS...")
         val result = PlayerJsFetcher.getPlayerJs(forceRefresh = forceRefresh)
         if (result == null) {
@@ -192,7 +186,6 @@ object CipherDeobfuscator {
         val (playerJs, hash) = result
         Timber.tag(TAG).d("Got player JS: hash=$hash, length=${playerJs.length}")
 
-        // Run full analysis for logging - pass the known hash from PlayerJsFetcher
         Timber.tag(TAG).d("Analyzing player JS for cipher functions (knownHash=$hash)...")
         val analysis = FunctionNameExtractor.analyzePlayerJs(playerJs, knownHash = hash)
 
@@ -209,7 +202,6 @@ object CipherDeobfuscator {
         Timber.tag(TAG).d("  sig: ${analysis.sigInfo.name} (constantArg=${analysis.sigInfo.constantArg}, hardcoded=${analysis.sigInfo.isHardcoded})")
         Timber.tag(TAG).d("  nFunc: ${analysis.nFuncInfo?.name}[${analysis.nFuncInfo?.arrayIndex}] (hardcoded=${analysis.nFuncInfo?.isHardcoded})")
 
-        // Create WebView
         val webView = CipherWebView.create(
             context = appContext,
             playerJs = playerJs,

@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ImportPlaylistDialog(
     isVisible: Boolean,
-    onGetSong: suspend () -> List<String>, // list of song ids. Songs should be inserted to database in this function.
+    onGetSong: suspend () -> List<String>,
     playlistTitle: String,
     onDismiss: () -> Unit,
 ) {
@@ -36,7 +36,7 @@ fun ImportPlaylistDialog(
 
     val textFieldValue by remember { mutableStateOf(TextFieldValue(text = playlistTitle)) }
     var songIds by remember {
-        mutableStateOf<List<String>?>(null) // list is not saveable
+        mutableStateOf<List<String>?>(null)
     }
 
     if (isVisible) {

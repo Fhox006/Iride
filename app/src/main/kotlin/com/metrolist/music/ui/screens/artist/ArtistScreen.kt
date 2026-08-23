@@ -287,8 +287,6 @@ fun ArtistScreen(
     val showArtistDescription by rememberPreference(key = ShowArtistDescriptionKey, defaultValue = true)
     val showArtistSubscriberCount by rememberPreference(key = ShowArtistSubscriberCountKey, defaultValue = true)
     val showMonthlyListeners by rememberPreference(key = ShowMonthlyListenersKey, defaultValue = true)
-    // New Iride UI: image given a touch more height than a plain square (ratio < 1 = taller),
-    // so the cover gets slightly more room before the title starts.
     val imageAspectRatio = 0.94f
     val irideHorizontalPadding = 20.dp
 
@@ -301,11 +299,6 @@ fun ArtistScreen(
             ?.toSet() ?: emptySet()
     }
 
-    // "Essential Albums": only for artists with a deep catalog (8+ albums) and a large audience —
-    // a small-catalog artist doesn't need a curated shortcut, the regular Albums row already covers it.
-    // Ranked by where each album's songs land in the artist's Top Songs shelf (YTM's own popularity
-    // ranking) rather than by year — the raw Album-section order is release order, so sorting by that
-    // (or leaving it as-is) always surfaces the newest album, not the most listened-to one.
     val essentialAlbums = remember(artistPage, expandedTopSongs) {
         val albumSection = artistPage?.sections?.firstOrNull { section ->
             section.title.contains("Album", ignoreCase = true) &&
@@ -324,9 +317,6 @@ fun ArtistScreen(
             val shelfTopSongs = topSongsSection?.items?.filterIsInstance<SongItem>() ?: emptyList()
             val topSongs = expandedTopSongs?.takeIf { it.size > shelfTopSongs.size } ?: shelfTopSongs
 
-            // Albums ranked by the earliest (= most popular) top song that belongs to them. Matched
-            // by browseId first (how SongItem.album.id is normally populated); titles as a fallback
-            // for the rare song whose album id didn't resolve to one of this shelf's own albums.
             val albumsById = albums.associateBy { it.id }
             val albumsByTitle = albums.associateBy { it.title.lowercase().trim() }
             val ranked = LinkedHashSet<AlbumItem>()
@@ -336,8 +326,6 @@ fun ArtistScreen(
                 album?.let(ranked::add)
             }
             albums.forEach(ranked::add)
-            // Picked by popularity above, but displayed in release order (newest first) — a "most
-            // essential albums" shelf reads as the artist's discography, not a popularity ranking.
             ranked.take(4).sortedByDescending { it.year ?: Int.MIN_VALUE }
         }
     }
@@ -355,58 +343,34 @@ fun ArtistScreen(
     )
     val density = LocalDensity.current
 
-    // Calculate the offset value outside of the offset lambda
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
     val headerOffset =
         with(density) {
             -(systemBarsTopPadding + AppBarHeight).roundToPx()
         }
 
-    // Classic (non New-Iride) app bar only ever needs the on/off read, not a continuous value.
     val transparentAppBar by remember {
         derivedStateOf {
             lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset < 100
         }
     }
-    // Declared here (ahead of its LaunchedEffect further down) so topBarRevealProgress below can
-    // gate on it — the screen's own "have I finished landing" flag, already used to hold the header
-    // entrance to a single playthrough.
     var headerRevealed by rememberSaveable { mutableStateOf(false) }
     val frostBackdrop = rememberFrostBackdrop()
 
-    // Stretch of the vertical rubber band, hoisted so the header art can answer the pull.
     val headerPull = rememberRubberBandPull()
     val grainBrush = rememberGrainBrush()
 
-    // Sections that have already played their entrance. LazyColumn disposes items scrolled far off
-    // screen, so without this a wipe would replay every time a shelf came back into view.
     val revealedSections = remember(showLocal) { mutableSetOf<String>() }
 
-    // The whole screen arrives rather than being slapped down: covers the gap between navigation
-    // and first layout.
     val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
 
     val artistName = artistPage?.artist?.title ?: libraryArtist?.artist?.name
-    // Everything in the header waits for the name to finish typing, so the block reads as one
-    // sentence being composed rather than four things appearing at once.
     val nameTypingMs = remember(artistName) {
         val length = artistName?.length ?: 0
         if (length == 0) 0 else minOf(26 * length, 700)
     }
-    // The header entrance is a landing, not a scroll effect. LazyColumn disposes item 0 once it is
-    // far enough off screen, so this flag has to live out here (declared further up, alongside
-    // topBarRevealProgress): kept inside the item, it died with it and the name retyped (and every
-    // row re-faded) every time the header scrolled back in.
-    // Window-space Y of the big header name's bottom edge and of the top bar's bottom edge — used to
-    // start the top bar title's reveal exactly when the big name goes behind the bar, instead of on a
-    // fixed scroll-distance heuristic that showed both titles on screen at once.
     var nameBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
     var topBarBottomPx by remember { mutableStateOf(0f) }
-    // Single source for the whole bar's arrival — glass, back button and title all key off the same
-    // crossing instead of the glass reacting to raw scroll offset while the title waited on the name.
-    // That split is what read as the bar arriving "in anticipo": the blur was already up over the
-    // photo before NOME ARTISTA had even started leaving. Show/hide tweens at a fixed duration
-    // instead of following the scroll pixel-by-pixel.
     val headerTitleCovered by remember {
         derivedStateOf {
             headerRevealed && (
@@ -418,25 +382,15 @@ fun ArtistScreen(
     val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
     LaunchedEffect(artistName) {
         if (artistName != null && !headerRevealed) {
-            // Longest chain in the cascade: typing, then the release panel at +140 over Medium.
             delay(nameTypingMs + 140L + IrideMotion.Medium)
             headerRevealed = true
         }
     }
 
     LaunchedEffect(libraryArtist) {
-        // always show local page for local artists. Show local page remote artist when offline
         showLocal = libraryArtist?.artist?.isLocal == true
     }
 
-    // The Online branch's header is taller (Recent Album panel) than the Library branch's — without
-    // resetting scroll, toggling away from Online while scrolled left the shorter Library layout
-    // looking like it started with a big empty top padding, since the same pixel offset now landed
-    // much further down its (shorter) content.
-    // Guarded to skip the first run: LaunchedEffect(showLocal) fires on every fresh composition,
-    // including returning from AlbumScreen (where rememberSaveable had just restored scroll) — without
-    // the guard that restored position was wiped back to top on every trip back, not just on a real
-    // online/local toggle.
     var showLocalInitialized by remember { mutableStateOf(false) }
     LaunchedEffect(showLocal) {
         if (showLocalInitialized) {
@@ -446,7 +400,6 @@ fun ArtistScreen(
         }
     }
 
-    // Waiting on the network.
     val artistLoading = artistPage == null && !showLocal
 
     val featuringTitle = stringResource(R.string.featuring)
@@ -454,15 +407,9 @@ fun ArtistScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // Fade only. A scale-down here would inset edge-to-edge content by ~1% for the
-            // duration, showing a hairline of window background around every edge; the fade
-            // alone already covers the gap between navigation and first layout.
             .graphicsLayer { alpha = screenProgress },
     ) {
         LazyColumn(
-            // recordFrostBackdrop must wrap the rubber band, not the other way round: the frosted
-            // bar samples this layer, so it has to capture the content *after* the band's
-            // translation or the glass would show un-pulled pixels while the finger is down.
             modifier = Modifier
                 .recordFrostBackdrop(frostBackdrop)
                 .rubberBandOverscroll(Orientation.Vertical, lazyListState, headerPull),
@@ -473,36 +420,12 @@ fun ArtistScreen(
             item(key = "header") {
                     val thumbnail = artistPage?.artist?.thumbnail ?: libraryArtist?.artist?.thumbnailUrl
                     val reducedMotion = rememberReducedMotion()
-                    // Panel only exists for the online branch, and only once a recent release is
-                    // known — shared by the render below and the spacer that follows it, so both stay
-                    // in lockstep instead of drifting into two separate conditions.
                     val showRecentAlbumPanel = !showLocal && recentAlbum != null
-                    // Same 160dp as the image's bottom gradient below — the name anchors to where
-                    // that legible zone starts, not to a guess at the tallest possible header.
                     val gradientHeightPx = with(density) { 160.dp.roundToPx() }
 
-                    // No forced aspect ratio here: the photo below keeps its own fixed ratio via its
-                    // own modifier, but this outer box wraps to whichever is taller — the photo, or
-                    // the overlaid text (name, toggle, listeners, recent-release panel). Forcing this
-                    // box to the photo's ratio let tall overlay content (the online branch's panel,
-                    // or a 2-line name at a large font scale) draw past the box's bottom edge into the
-                    // next shelf below — nothing here clips — which is exactly the "layout doesn't
-                    // know its true height until it loads" jump between branches.
-                    // animateContentSize lives on the Column below, not here: this box's photo child
-                    // bleeds upward (negative offset) into the status-bar/top-bar gap, and
-                    // animateContentSize clips its subject to its own measured bounds — put on this
-                    // outer box, it cut that bleed off at the box's un-offset top edge, leaving the
-                    // reserved gap flat black instead of showing the photo through it.
                     BoxWithConstraints(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        // Artist Image with offset
-                        // Photo height is fully known from this box's width constraint and the
-                        // fixed aspect ratio the image below uses — computed directly instead of
-                        // measured via onSizeChanged, which lagged a frame behind the photo
-                        // becoming known. That lag was the bug: on a cold (uncached) load the
-                        // name rendered at the wrong top padding for one frame, then
-                        // animateContentSize visibly slid it down once the real height arrived.
                         val imageHeightPx = if (thumbnail != null) {
                             with(density) { (maxWidth.toPx() * imageAspectRatio).roundToInt() }
                         } else {
@@ -510,12 +433,6 @@ fun ArtistScreen(
                         }
                         if (thumbnail != null) {
                             var imageLoaded by remember(thumbnail) { mutableStateOf(false) }
-                            // A memory-cache hit (any revisit to an artist already seen this
-                            // session) resolves synchronously — animating it in over 520ms just
-                            // replays the black `surfaceVariant` placeholder behind the transparent
-                            // top bar every single time, since the tween always starts at 0
-                            // regardless of how fast `imageLoaded` flips. Only genuinely new
-                            // network/disk decodes need the fade.
                             var skipImageEnterAnim by remember(thumbnail) { mutableStateOf(false) }
                             val animatedImageProgress = rememberEnterProgress(
                                 play = imageLoaded,
@@ -529,10 +446,6 @@ fun ArtistScreen(
                                         .fillMaxWidth()
                                         .aspectRatio(imageAspectRatio)
                                         .offset {
-                                            // Parallax: the photo climbs at roughly a third of the
-                                            // content's speed, which is what reads as depth. Both
-                                            // scroll values are read inside this lambda, so this is
-                                            // a placement change, not a recomposition.
                                             val parallax = if (
                                                 lazyListState.firstVisibleItemIndex == 0
                                             ) {
@@ -544,17 +457,6 @@ fun ArtistScreen(
                                         }
                                         .then(
                                             Modifier.graphicsLayer {
-                                                    // Settles from slightly oversized on load, and
-                                                    // grows from its own bottom edge while the list
-                                                    // is dragged past the top — the thing that makes
-                                                    // the rubber band felt rather than merely present.
-                                                    //
-                                                    // Growing by exactly the band's travel (rather
-                                                    // than by a fraction of a magic constant) pins
-                                                    // the photo's top edge in place while the finger
-                                                    // drags the list down. A smaller stretch let the
-                                                    // pull open a strip of bare window above the
-                                                    // image — the black band at the top.
                                                     val stretch = if (size.height > 0f) {
                                                         (headerPull.offset / size.height)
                                                             .coerceIn(0f, 0.6f)
@@ -583,12 +485,9 @@ fun ArtistScreen(
                                     },
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        // Fading the photo rather than the whole block lets the
-                                        // surfaceVariant backdrop hold the space while it decodes.
                                         .graphicsLayer { alpha = imageProgress }
                                         .grainOverlay(grainBrush),
                                 )
-                                // Full gradient overlay: 0% background at top → 100% at bottom
                                 val bgColor = MaterialTheme.colorScheme.background
                                 Box(
                                     modifier = Modifier
@@ -604,25 +503,12 @@ fun ArtistScreen(
                             }
                         }
 
-                        // Artist Name and Controls Section — anchored to a fixed point near the
-                        // bottom of the image (the start of its gradient) rather than bottom-aligned
-                        // to its own height. Bottom-aligning made the name's position a function of
-                        // whatever optional content (monthly listeners, recent-release panel) happened
-                        // to be loaded below it: the panel arriving async pushed the name up, and it
-                        // sank back down whenever that data was missing. Anchoring the top instead
-                        // means the name never moves — the optional content simply flows in below it,
-                        // with no reserved gap when it's absent.
                         Column(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
                                     .then(
                                         if (thumbnail != null) {
-                                            // padding, not offset: offset only shifts where this
-                                            // Column draws, it doesn't grow the wrap-content outer
-                                            // Box to match — the tail of a tall Column would draw
-                                            // past the Box's bounds and under the next shelf. Padding
-                                            // is real layout space, so the Box sizes to fit it.
                                             Modifier.padding(
                                                 top = with(density) {
                                                     (imageHeightPx - gradientHeightPx).coerceAtLeast(0).toDp()
@@ -648,7 +534,6 @@ fun ArtistScreen(
                                         .fillMaxWidth()
                                         .padding(horizontal = irideHorizontalPadding),
                             ) {
-                                // Artist Name — the one typed element on the screen.
                                 val irideNameStyle = TextStyle(
                                     fontFamily = SpaceMonoFontFamily,
                                     fontWeight = FontWeight.Bold,
@@ -656,10 +541,6 @@ fun ArtistScreen(
                                     letterSpacing = (-0.3).sp,
                                 )
                                 if (artistName != null) {
-                                    // Shuffle-plays the artist's songs: the online shuffle endpoint
-                                    // when browsing YTM, otherwise whatever is saved locally — so the
-                                    // button does something on both branches of the toggle, not just
-                                    // the one that already had a shuffle action in the top bar.
                                     val shuffleEndpointForPlay = artistPage?.artist?.shuffleEndpoint
                                     val canShufflePlay = shuffleEndpointForPlay != null || librarySongs.isNotEmpty()
                                     Row(
@@ -673,11 +554,7 @@ fun ArtistScreen(
                                             text = artistName,
                                             style = irideNameStyle,
                                             color = MaterialTheme.colorScheme.onBackground,
-                                            // Keyed on the artist, not the string: recomposing the same
-                                            // screen must not retype the name.
                                             resetKey = viewModel.artistId,
-                                            // Types on the first landing only — coming back to the top
-                                            // of the page is navigation, not an arrival.
                                             animate = !headerRevealed,
                                             maxLines = 2,
                                             modifier = Modifier.weight(1f),
@@ -685,14 +562,10 @@ fun ArtistScreen(
                                         if (canShufflePlay) {
                                             val playProgress = headerEnter(
                                                 revealed = headerRevealed,
-                                                play = artistName != null,
+                                                play = true,
                                                 delayMillis = nameTypingMs + 20,
                                                 durationMillis = IrideMotion.Short,
                                             )
-                                            // Own chip behind the bare icon button — the header's
-                                            // bottom gradient already protects the name's contrast,
-                                            // but this button sits closer to the raw photo above it,
-                                            // where a bare icon can wash out against a bright patch.
                                             Box(
                                                 modifier = Modifier
                                                     .padding(start = 10.dp)
@@ -728,10 +601,6 @@ fun ArtistScreen(
                                         }
                                     }
                                 } else {
-                                    // Nothing to say yet — better an empty line than "Unknown"
-                                    // flashing before the real name arrives. Sized from the type
-                                    // scale so the gap matches the line it is holding open at any
-                                    // system font size.
                                     Spacer(
                                         modifier = Modifier.height(
                                             with(density) { (28f * 1.2f).sp.toDp() } + 6.dp,
@@ -739,12 +608,6 @@ fun ArtistScreen(
                                     )
                                 }
 
-                                // Library/Online source toggle — Iride segmented pill in the New UI
-                                // (same component used for the library "saved/downloaded" switch),
-                                // classic dual-icon capsule otherwise. Shown whenever the artist has
-                                // any local content (songs or albums) to switch to — gating on albums
-                                // alone hid the toggle (and the library songs behind it) for artists
-                                // saved with songs but no albums.
                                 if (libraryAlbums.isNotEmpty() || librarySongs.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(10.dp))
                                     val toggleProgress = headerEnter(
@@ -792,9 +655,7 @@ fun ArtistScreen(
                                     )
                                 }
 
-                                // Action buttons (subscribe/radio/shuffle/share) live in the top bar now.
 
-                                // Recent Album Panel (YTM view only — library view already lists albums below)
                                 if (showRecentAlbumPanel) {
                                     val panelProgress = headerEnter(
                                         revealed = headerRevealed,
@@ -826,9 +687,6 @@ fun ArtistScreen(
                                 }
                             }
                             if (showRecentAlbumPanel) {
-                                // Was a flat 16dp for both UI modes — in New Iride UI this stacked on
-                                // top of NavigationTitle's own 26dp top padding for the next section
-                                // ("Album"), leaving ~42dp of dead space between the two panels.
                                 Spacer(modifier = Modifier.height(4.dp))
                             }
                         }
@@ -866,10 +724,6 @@ fun ArtistScreen(
                                     song = song,
                                     isActive = song.id == mediaMetadata?.id,
                                     isPlaying = isPlaying,
-                                    // Carousel is itself a horizontal drag surface (LazyHorizontalGrid
-                                    // + snap fling) — the per-row swipe-to-queue gesture fought it for
-                                    // the same horizontal drag, same conflict Home's Quick Picks
-                                    // carousel already had to turn this off for.
                                     isSwipeable = false,
                                     hairlineBorder = true,
                                     trailingContent = {
@@ -993,19 +847,8 @@ fun ArtistScreen(
                         }
                     }
                 } else {
-                    // Guards the Essential Albums insertion below to a single shelf: some artist
-                    // pages carry more than one YTM shelf shaped like "Top Songs" (e.g. both a
-                    // "Songs" and a "Popular" shelf), and rendering the panel from each would reuse
-                    // the same LazyColumn item keys and crash.
                     var essentialAlbumsRendered = false
-                    // Guards the discography button to a single insertion the same way — some
-                    // artists carry separate "Singles" and "EPs" shelves rather than one combined
-                    // shelf; the button lands under whichever of those is encountered first.
                     var discographyButtonRendered = false
-                    // Guards the Featuring section to a single insertion — it's injected right
-                    // before the first Video/Performance-titled shelf (above videos, below
-                    // EPs/Singles per the artist page's own shelf order), or after the loop if the
-                    // artist page never has a video shelf at all.
                     var featuringSectionRendered = false
                     val featuringSection: LazyListScope.() -> Unit = {
                         if (featuringSongs.isNotEmpty()) {
@@ -1096,12 +939,10 @@ fun ArtistScreen(
                         }
                     }
                     artistPage?.sections?.fastForEach { section ->
-                        // "From your library" is redundant with the dedicated library toggle above — skip it
                         val isFromYourLibrarySection = section.title.contains("your library", ignoreCase = true) ||
                                 section.title.contains("tua libreria", ignoreCase = true)
                         if (section.items.isNotEmpty() && !isFromYourLibrarySection) {
                             val isSinglesSection = section.title.contains("Single", ignoreCase = true) || section.title.contains("EP", ignoreCase = true)
-                            // Filter out recent album and duplicate Singles/EPs
                             val filteredItemsUnsorted = section.items.filter { item ->
                                 val isDuplicate = isSinglesSection && item is AlbumItem && albumsTitles.contains(item.title.lowercase().trim())
                                 !isDuplicate
@@ -1110,7 +951,6 @@ fun ArtistScreen(
                             val isAlbumOrSingleEpSection = section.title.contains("Album", ignoreCase = true) ||
                                     section.title.contains("Single", ignoreCase = true) ||
                                     section.title.contains("EP", ignoreCase = true)
-                            // Newest-first by release year — YTM shelves are not always correctly ordered
                             val filteredItems = if (isAlbumOrSingleEpSection) {
                                 filteredItemsUnsorted.sortedByDescending { (it as? AlbumItem)?.year ?: Int.MIN_VALUE }
                             } else {
@@ -1118,13 +958,6 @@ fun ArtistScreen(
                             }
 
                             if (filteredItems.isNotEmpty()) {
-                                // Top Songs sits directly under the header, so it's the one shelf
-                                // whose position is driven purely by the header's own async growth
-                                // (Recent Album panel / monthly listeners arriving late over the
-                                // network) — that resize is already smooth on its own
-                                // (animateContentSize), so a placement animation here doubles up on
-                                // the same movement and reads as the shelf sliding down out of
-                                // nowhere. Left unanimated, it just holds its resting position.
                                 val isTopSongsShelf = (filteredItems.firstOrNull() as? SongItem)?.album != null
 
                                 val isVideoSectionForFeaturingGate = section.title.contains("Video", ignoreCase = true) ||
@@ -1161,10 +994,6 @@ fun ArtistScreen(
 
                                 if (isTopSongsShelf) {
                                     val shelfTopSongs = filteredItems.distinctBy { it.id }.filterIsInstance<SongItem>()
-                                    // YTM's shelf itself only ever carries ~5 songs; viewModel silently
-                                    // browses the shelf's own "more" endpoint to fetch the full list in
-                                    // the background, and this swaps in once (and only if) it comes
-                                    // back longer than what we already have.
                                     val topSongs = expandedTopSongs?.takeIf { it.size > shelfTopSongs.size } ?: shelfTopSongs
                                     item(key = "top_songs_carousel_${section.title}") {
                                         val topSongsGridState = rememberLazyGridState()
@@ -1180,8 +1009,6 @@ fun ArtistScreen(
                                                 item = song,
                                                 isActive = mediaMetadata?.id == song.id,
                                                 isPlaying = isPlaying,
-                                                // Same carousel/swipe gesture conflict as the local
-                                                // songs carousel above.
                                                 isSwipeable = false,
                                                 showNewMarker = song.id in unseenSongIds,
                                                 hairlineBorder = true,
@@ -1508,7 +1335,6 @@ fun ArtistScreen(
                         featuringSection()
                     }
 
-                    // About Artist Section
                     if (!showLocal && (showArtistDescription || showArtistSubscriberCount)) {
                         val description = artistPage?.description
                         val descriptionRuns = artistPage?.descriptionRuns
@@ -1530,8 +1356,6 @@ fun ArtistScreen(
                                         text = stringResource(R.string.information),
                                         style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp, letterSpacing = (-0.1).sp),
                                         fontWeight = FontWeight.Bold,
-                                        // onSurfaceVariant resolves per scheme; the old hardcoded
-                                        // white at 55% was invisible in the light theme.
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier
                                             .padding(bottom = 16.dp)
@@ -1554,8 +1378,6 @@ fun ArtistScreen(
                                             text = "Wikipedia",
                                             style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp, letterSpacing = (-0.1).sp),
                                             fontWeight = FontWeight.Bold,
-                                            // onSurfaceVariant resolves per scheme; the old hardcoded
-                                        // white at 55% was invisible in the light theme.
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.padding(bottom = 8.dp),
                                         )
@@ -1608,7 +1430,6 @@ fun ArtistScreen(
         )
     }
 
-    // New Iride UI: minimal shell — back + title + subscribe/radio/shuffle/share, all in one row.
     Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1636,8 +1457,6 @@ fun ArtistScreen(
                     )
                 }
             }
-            // Always composed and always holding its weight — title fades in via
-            // topBarRevealProgress above, tracking the big header name going behind this bar.
             Text(
                 text = artistPage?.artist?.title ?: libraryArtist?.artist?.name.orEmpty(),
                 style = TextStyle(
@@ -1657,8 +1476,6 @@ fun ArtistScreen(
             val shareLinkAction = artistPage?.artist?.shareLink
             val radioEndpointAction = artistPage?.artist?.radioEndpoint
             val shuffleEndpointAction = artistPage?.artist?.shuffleEndpoint
-            // Radio/shuffle/share only exist once the page lands. animateContentSize lets the
-            // survivors slide across to close the gap instead of teleporting.
             val actionsReady = artistPage != null || libraryArtist != null
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -1670,7 +1487,6 @@ fun ArtistScreen(
                     onClick = { viewModel.toggleChannelSubscription() },
                     icon = if (isChannelSubscribed) R.drawable.favorite else R.drawable.favorite_border,
                     contentDescription = stringResource(R.string.subscribe),
-                    // Always white: a toggle affordance, not a "liked" colour cue.
                     tint = Color.White,
                     size = 40.dp,
                     iconSize = 20.dp,
@@ -1679,9 +1495,6 @@ fun ArtistScreen(
                         rememberEnterProgress(play = actionsReady, durationMillis = IrideMotion.Short),
                     ),
                 )
-                // Game/radio/shuffle/share live behind this overflow now — five buttons shoulder to
-                // shoulder was the actual cause of stray taps the 40dp sizing above was patching
-                // around; two here removes the problem instead of shrinking the target further.
                 IrideOutlineIconButton(
                     onClick = {
                         menuState.show {
@@ -1735,10 +1548,6 @@ fun RecentAlbumPanel(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Eyebrow label — without it the panel used to read as an ambiguous, unlabeled
-        // album card floating in the header with no indication of what it represents.
-        // ALBUM/EP/SINGLE tag appended so it's clear what kind of release this actually is,
-        // since a single or EP looked identical to a full album otherwise.
         val eyebrowText = stringResource(R.string.artist_latest_release).uppercase() +
             (releaseType?.let { " • ${it.name}" } ?: "")
         Text(
@@ -1772,8 +1581,6 @@ fun RecentAlbumPanel(
                 thumbnailUrl = album.thumbnailUrl?.resize(544, 544),
                 isActive = isActive,
                 isPlaying = isPlaying,
-                // New Iride UI: same 9.dp squircle radius as every other cover in the app (album/
-                // playlist list & grid rows); classic UI keeps its own smaller 6.dp rounding.
                 shape = if (useMonospace) {
                     SquircleShape(radius = 9.dp, cornerSmoothing = 0.5f)
                 } else {
@@ -1804,7 +1611,6 @@ fun RecentAlbumPanel(
                 val extendedDate = remember(album.album.releaseDate, preciseDate) {
                     formatExtendedDate(album.album.releaseDate ?: preciseDate)
                 }
-                // Fallback to year when full releaseDate is not available (e.g. from YTM API)
                 val displayDate = extendedDate ?: album.album.year?.toString()
 
                 val metaText = listOfNotNull(
@@ -1897,7 +1703,6 @@ fun formatSubscriberCount(subscriberCount: String?): String? {
     val (numStr, unit) = matchResult.destructured
     val num = numStr.replace(",", ".").toDoubleOrNull() ?: return null
 
-    // Discard implausible values: no suffix and less than 1000
     if (unit.isEmpty() && num < 1000) return null
 
     val rounded = (num * 10.0).roundToInt() / 10.0

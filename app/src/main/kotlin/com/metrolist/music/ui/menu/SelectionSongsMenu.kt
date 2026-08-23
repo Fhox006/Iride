@@ -481,7 +481,6 @@ fun SelectionSongMenu(
                                             }
                                         }
                                         coroutineScope.launch {
-                                            // Use the new reliable method that fetches fresh tokens
                                             songSelection.forEach { song ->
                                                 YouTube.toggleSongLibrary(song.id, false)
                                             }
@@ -494,7 +493,6 @@ fun SelectionSongMenu(
                                             }
                                         }
                                         coroutineScope.launch {
-                                            // Use the new reliable method that fetches fresh tokens
                                             songSelection
                                                 .filter { it.song.inLibrary == null }
                                                 .forEach { song ->

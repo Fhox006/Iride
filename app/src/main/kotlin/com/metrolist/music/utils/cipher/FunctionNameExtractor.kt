@@ -12,21 +12,20 @@ import java.security.MessageDigest
 object FunctionNameExtractor {
     private const val TAG = "Metrolist_CipherFnExtract"
 
-    // ==================== DATA CLASSES ====================
 
     data class SigFunctionInfo(
         val name: String,
-        val constantArg: Int?, // The first numeric argument (e.g., 48 in JI(48, sig)) - legacy
-        val constantArgs: List<Int>? = null, // All constant args e.g., JI(48, 1918, ...) -> [48, 1918]
-        val preprocessFunc: String? = null, // Preprocessing function e.g., f1
-        val preprocessArgs: List<Int>? = null, // Preprocess args e.g., f1(1, 6528, sig) -> [1, 6528]
+        val constantArg: Int?,
+        val constantArgs: List<Int>? = null,
+        val preprocessFunc: String? = null,
+        val preprocessArgs: List<Int>? = null,
         val isHardcoded: Boolean = false
     )
 
     data class NFunctionInfo(
         val name: String,
-        val arrayIndex: Int?, // e.g. FUNC[0] -> index=0
-        val constantArgs: List<Int>? = null, // e.g. GU(6, 6010, n) -> [6, 6010]
+        val arrayIndex: Int?,
+        val constantArgs: List<Int>? = null,
         val isHardcoded: Boolean = false
     )
 
@@ -36,17 +35,16 @@ object FunctionNameExtractor {
      */
     data class HardcodedPlayerConfig(
         val sigFuncName: String,
-        val sigConstantArg: Int?, // Legacy single arg
-        val sigConstantArgs: List<Int>? = null, // e.g. JI(48, 1918, ...) -> [48, 1918]
-        val sigPreprocessFunc: String? = null, // e.g. f1
-        val sigPreprocessArgs: List<Int>? = null, // e.g. f1(1, 6528, sig) -> [1, 6528]
+        val sigConstantArg: Int?,
+        val sigConstantArgs: List<Int>? = null,
+        val sigPreprocessFunc: String? = null,
+        val sigPreprocessArgs: List<Int>? = null,
         val nFuncName: String,
         val nArrayIndex: Int?,
-        val nConstantArgs: List<Int>?, // e.g. GU(6, 6010, n) -> [6, 6010]
+        val nConstantArgs: List<Int>?,
         val signatureTimestamp: Int
     )
 
-    // ==================== KNOWN PLAYER CONFIGS ====================
 
     /**
      * Known player.js configurations indexed by hash
@@ -58,27 +56,26 @@ object FunctionNameExtractor {
     private val KNOWN_PLAYER_CONFIGS = mapOf(
         "74edf1a3" to HardcodedPlayerConfig(
             sigFuncName = "JI",
-            sigConstantArg = 48, // Legacy
-            sigConstantArgs = listOf(48, 1918), // JI(48, 1918, processedSig)
-            sigPreprocessFunc = "f1", // sig must be preprocessed through f1()
-            sigPreprocessArgs = listOf(1, 6528), // f1(1, 6528, sig)
+            sigConstantArg = 48,
+            sigConstantArgs = listOf(48, 1918),
+            sigPreprocessFunc = "f1",
+            sigPreprocessArgs = listOf(1, 6528),
             nFuncName = "GU",
-            nArrayIndex = null, // Direct function, not array access
-            nConstantArgs = listOf(6, 6010), // GU(6, 6010, n) - the function requires 3 args!
+            nArrayIndex = null,
+            nConstantArgs = listOf(6, 6010),
             signatureTimestamp = 20522
         ),
         "f4c47414" to HardcodedPlayerConfig(
             sigFuncName = "hJ",
             sigConstantArg = 6,
-            sigConstantArgs = listOf(6), // hJ(6, decodeURIComponent(h.s))
-            sigPreprocessFunc = null, // No preprocessing needed
+            sigConstantArgs = listOf(6),
+            sigPreprocessFunc = null,
             sigPreprocessArgs = null,
-            nFuncName = "", // Will be extracted via regex
+            nFuncName = "",
             nArrayIndex = null,
             nConstantArgs = null,
             signatureTimestamp = 20543
         ),
-        // May 2026: direct URLs, no client-side cipher or n-transform
         "57f5d44f" to HardcodedPlayerConfig(
             sigFuncName = "",
             sigConstantArg = null,
@@ -92,25 +89,18 @@ object FunctionNameExtractor {
         )
     )
 
-    // ==================== DETECTION PATTERNS ====================
 
-    // Detect Q-array obfuscation: var Q="...".split("}")
     private val Q_ARRAY_PATTERN = Regex("""var\s+Q\s*=\s*"[^"]+"\s*\.\s*split\s*\(\s*"\}"\s*\)""")
 
-    // Extract player hash from common patterns
     private val PLAYER_HASH_PATTERNS = listOf(
         Regex("""jsUrl['":\s]+[^"']*?/player/([a-f0-9]{8})/"""),
         Regex("""player_ias\.vflset/[^/]+/([a-f0-9]{8})/"""),
         Regex("""/s/player/([a-f0-9]{8})/""")
     )
 
-    // Modern 2025+ signature deobfuscation function patterns
     private val SIG_FUNCTION_PATTERNS = listOf(
-        // Pattern 1 (2025+): &&(VAR=FUNC(NUM,decodeURIComponent(VAR))
         Regex("""&&\s*\(\s*[a-zA-Z0-9$]+\s*=\s*([a-zA-Z0-9$]+)\s*\(\s*(\d+)\s*,\s*decodeURIComponent\s*\(\s*[a-zA-Z0-9$]+\s*\)"""),
-        // Pattern 1a (April 2026): &&(z=hJ(6,decodeURIComponent(h.s))
         Regex("""&&\s*\(\s*[a-zA-Z0-9$]+\s*=\s*([a-zA-Z0-9$]+)\s*\(\s*(\d+)\s*,\s*decodeURIComponent\s*\(\s*[a-zA-Z0-9$]+\s*\.\s*[a-z]\s*\)"""),
-        // Classic patterns (pre-2025, kept as fallback)
         Regex("""\b[cs]\s*&&\s*[adf]\.set\([^,]+\s*,\s*encodeURIComponent\(([a-zA-Z0-9$]+)\("""),
         Regex("""\b[a-zA-Z0-9]+\s*&&\s*[a-zA-Z0-9]+\.set\([^,]+\s*,\s*encodeURIComponent\(([a-zA-Z0-9$]+)\("""),
         Regex("""\bm=([a-zA-Z0-9${'$'}]{2,})\(decodeURIComponent\(h\.s\)\)"""),
@@ -118,21 +108,14 @@ object FunctionNameExtractor {
         Regex("""\bc\s*&&\s*[a-z]\.set\([^,]+\s*,\s*encodeURIComponent\(([a-zA-Z0-9$]+)\("""),
     )
 
-    // N-parameter (throttle) transform function patterns
     private val N_FUNCTION_PATTERNS = listOf(
-        // Pattern 1: .get("n"))&&(b=FUNC[IDX](VAR)
         Regex("""\.get\("n"\)\)&&\(b=([a-zA-Z0-9$]+)(?:\[(\d+)\])?\(([a-zA-Z0-9])\)"""),
-        // Pattern 2: .get("n"))&&(FUNC=VAR[IDX](FUNC) (2025+ variant)
         Regex("""\.get\("n"\)\)\s*&&\s*\(([a-zA-Z0-9$]+)\s*=\s*([a-zA-Z0-9$]+)(?:\[(\d+)\])?\(\1\)"""),
-        // Pattern 3: .get("n");if(m){var M=n.match... (April 2026 variant)
         Regex("""\.get\("n"\);if\([a-zA-Z0-9$]+\)\s*\{[^}]*match"""),
-        // Pattern 4: String.fromCharCode(110) variant (110 = 'n')
         Regex("""\(\s*([a-zA-Z0-9$]+)\s*=\s*String\.fromCharCode\(110\)"""),
-        // Pattern 5: enhanced_except_ function pattern
         Regex("""([a-zA-Z0-9$]+)\s*=\s*function\([a-zA-Z0-9]\)\s*\{[^}]*?enhanced_except_"""),
     )
 
-    // ==================== EXTRACTION FUNCTIONS ====================
 
     /**
      * Detect if player.js uses Q-array obfuscation
@@ -142,7 +125,6 @@ object FunctionNameExtractor {
         Timber.tag(TAG).d("Q-array obfuscation check: hasQArray=$hasQArray")
 
         if (hasQArray) {
-            // Try to count Q array elements for additional info
             val match = Q_ARRAY_PATTERN.find(playerJs)
             if (match != null) {
                 val start = match.range.first
@@ -163,7 +145,6 @@ object FunctionNameExtractor {
     fun extractPlayerHash(playerJs: String): String? {
         Timber.tag(TAG).d("Extracting player hash from playerJs (${playerJs.length} chars)")
 
-        // Try to extract from embedded URLs first
         for ((index, pattern) in PLAYER_HASH_PATTERNS.withIndex()) {
             val match = pattern.find(playerJs)
             if (match != null) {
@@ -173,7 +154,6 @@ object FunctionNameExtractor {
             }
         }
 
-        // Fallback: compute hash from first 10KB of content
         val contentToHash = playerJs.take(10000)
         val md = MessageDigest.getInstance("MD5")
         val digest = md.digest(contentToHash.toByteArray())
@@ -210,7 +190,6 @@ object FunctionNameExtractor {
         Timber.tag(TAG).d("========== EXTRACTING SIG FUNCTION ==========")
         Timber.tag(TAG).d("Player.js size: ${playerJs.length} chars")
 
-        // Try regex patterns first
         for ((index, pattern) in SIG_FUNCTION_PATTERNS.withIndex()) {
             Timber.tag(TAG).v("Trying sig pattern $index: ${pattern.pattern.take(60)}...")
             val match = pattern.find(playerJs)
@@ -226,9 +205,7 @@ object FunctionNameExtractor {
 
         Timber.tag(TAG).w("No sig pattern matched, checking for Q-array obfuscation...")
 
-        // Check for Q-array obfuscation and use hardcoded fallback
         if (hasQArrayObfuscation(playerJs)) {
-            // Use knownHash if provided, otherwise try to extract
             val hashToUse = knownHash ?: extractPlayerHash(playerJs)
             Timber.tag(TAG).d("Using hash for hardcoded lookup: $hashToUse (knownHash=$knownHash)")
             if (hashToUse != null) {
@@ -264,7 +241,6 @@ object FunctionNameExtractor {
         Timber.tag(TAG).d("========== EXTRACTING N-FUNCTION ==========")
         Timber.tag(TAG).d("Player.js size: ${playerJs.length} chars")
 
-        // Try regex patterns first
         for ((index, pattern) in N_FUNCTION_PATTERNS.withIndex()) {
             Timber.tag(TAG).v("Trying n-func pattern $index: ${pattern.pattern.take(60)}...")
             val match = pattern.find(playerJs)
@@ -285,9 +261,6 @@ object FunctionNameExtractor {
                         return NFunctionInfo(name, arrayIdx, isHardcoded = false)
                     }
                     else -> {
-                        // Skip patterns that match but don't expose a usable function name.
-                        // E.g. the `.get("n");if(...){var M=n.match...` April 2026 variant has
-                        // no capturing groups and reading groupValues[1] would throw.
                         if (pattern.toPattern().matcher("").groupCount() < 1) {
                             Timber.tag(TAG).d("N-pattern $index matched but has no capture groups; skipping")
                             continue
@@ -303,9 +276,7 @@ object FunctionNameExtractor {
 
         Timber.tag(TAG).w("No n-func pattern matched, checking for Q-array obfuscation...")
 
-        // Check for Q-array obfuscation and use hardcoded fallback
         if (hasQArrayObfuscation(playerJs)) {
-            // Use knownHash if provided, otherwise try to extract
             val hashToUse = knownHash ?: extractPlayerHash(playerJs)
             Timber.tag(TAG).d("Using hash for hardcoded lookup: $hashToUse (knownHash=$knownHash)")
             if (hashToUse != null) {
@@ -346,7 +317,6 @@ object FunctionNameExtractor {
             }
         }
 
-        // Fallback to hardcoded config
         val playerHash = extractPlayerHash(playerJs)
         if (playerHash != null) {
             val config = getHardcodedConfig(playerHash)
@@ -368,7 +338,6 @@ object FunctionNameExtractor {
     fun analyzePlayerJs(playerJs: String, knownHash: String? = null): PlayerAnalysis {
         Timber.tag(TAG).d("=== PLAYER.JS CIPHER ANALYSIS ===")
 
-        // Use knownHash from PlayerJsFetcher if provided, otherwise extract/compute
         val playerHash = if (knownHash != null) {
             Timber.tag(TAG).d("Using known hash from PlayerJsFetcher: $knownHash")
             knownHash

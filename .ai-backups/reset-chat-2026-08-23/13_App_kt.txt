@@ -1,0 +1,8 @@
+FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\App.kt
+LINES: 44-46 (import area) and 104 (function declaration)
+NOTE: added FlowPreview import + @OptIn above observeConnectivity() (uses debounce).
+<<<ORIGINAL
+46: import kotlinx.coroutines.flow.debounce
+---
+104:     private fun observeConnectivity() {
+ORIGINAL>>>

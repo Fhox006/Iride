@@ -74,7 +74,6 @@ class NewsViewModel @Inject constructor(
             }
             val ownArtistIds = ownArtists.map { it.id }.toSet()
 
-            // Each own artist's most recent album/single candidate (unverified year at this point).
             val ownAlbumCandidates = coroutineScope {
                 ownArtists.map { artist ->
                     async {
@@ -93,8 +92,6 @@ class NewsViewModel @Inject constructor(
                 album.artists.orEmpty().any { it.id in ownArtistIds }
             }.take(MAINSTREAM_ALBUM_CANDIDATES)
 
-            // Resolve each candidate's real AlbumPage: confirms the actual release year and
-            // yields the song to use for quick play. Anything not recent enough is dropped.
             val ownResolved = resolveRecentAlbums(ownAlbumCandidates, minYear)
             val mainstreamResolved = resolveRecentAlbums(exploreCandidates, minYear)
 

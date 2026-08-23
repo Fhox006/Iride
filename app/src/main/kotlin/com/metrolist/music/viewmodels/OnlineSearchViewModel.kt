@@ -47,9 +47,6 @@ constructor(
     @ApplicationContext val context: Context,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
-    // Mutable (not just constructor-read) so the inline New Iride UI results view can reuse a
-    // single instance across multiple submitted queries via search() instead of relying on a
-    // fresh nav backstack entry (and fresh ViewModel) per query like the classic route does.
     var query: String by mutableStateOf(
         savedStateHandle.get<String>("query")?.let {
             try {
@@ -64,10 +61,6 @@ constructor(
     var summaryPage by mutableStateOf<SearchSummaryPage?>(null)
     val viewStateMap = mutableStateMapOf<String, ItemsPage?>()
 
-    // Summary fetch feeds only the top-result card and the Episodes shelf. Concurrent
-    // triggers (init collector, search(), loadSmartSearch) share one network call by joining
-    // the in-flight job instead of firing duplicates; results are query-guarded so a slow
-    // response can't land on a newer query.
     private var summaryJob: Job? = null
 
     private suspend fun loadSummaryPage() {
@@ -105,8 +98,6 @@ constructor(
         return job
     }
 
-    // "Top result" tells us what the query is really about (an artist, a song, an album, ...),
-    // used to rank Smart Search's category order (see categoryPriorityOrder).
     private enum class Category { SONG, VIDEO, ALBUM, ARTIST, PLAYLIST, PODCAST, EPISODE, PROFILE, OTHER }
 
     private fun categoryOf(item: YTItem?): Category = when (item) {
@@ -119,23 +110,15 @@ constructor(
         null -> Category.OTHER
     }
 
-    // Fixed YT Music category ordering; Smart Search uses only the default (SONG-first)
-    // branch since its section order no longer depends on the query's top result.
     private fun categoryPriorityOrder(topCategory: Category): List<Category> = when (topCategory) {
-        // Artist query: their songs and albums matter more than the artist card itself.
         Category.ARTIST -> listOf(Category.SONG, Category.ALBUM, Category.PLAYLIST, Category.VIDEO, Category.PODCAST, Category.PROFILE, Category.ARTIST, Category.EPISODE)
-        // Album query: the album, then its tracks/artist.
         Category.ALBUM -> listOf(Category.ALBUM, Category.SONG, Category.ARTIST, Category.PLAYLIST, Category.VIDEO, Category.PODCAST, Category.PROFILE, Category.EPISODE)
-        // Playlist/podcast queries: keep collections and their episodes up front.
         Category.PLAYLIST -> listOf(Category.PLAYLIST, Category.PODCAST, Category.SONG, Category.ARTIST, Category.ALBUM, Category.VIDEO, Category.EPISODE, Category.PROFILE)
         Category.PODCAST -> listOf(Category.PODCAST, Category.EPISODE, Category.PLAYLIST, Category.ARTIST, Category.SONG, Category.ALBUM, Category.VIDEO, Category.PROFILE)
         Category.PROFILE -> listOf(Category.PROFILE, Category.PLAYLIST, Category.SONG, Category.VIDEO, Category.ARTIST, Category.ALBUM, Category.PODCAST, Category.EPISODE)
-        // Song/video/unclassified query: default YT Music ordering.
         else -> listOf(Category.SONG, Category.VIDEO, Category.ARTIST, Category.ALBUM, Category.PLAYLIST, Category.PODCAST, Category.EPISODE, Category.PROFILE)
     }
 
-    // Community vs featured playlists share one Category, but Smart Search needs both as
-    // separate sections/filters, so a category can expand to more than one filter.
     private fun Category.toFilters(): List<YouTube.SearchFilter> = when (this) {
         Category.SONG -> listOf(YouTube.SearchFilter.FILTER_SONG)
         Category.VIDEO -> listOf(YouTube.SearchFilter.FILTER_VIDEO)
@@ -148,9 +131,6 @@ constructor(
         Category.OTHER -> emptyList()
     }
 
-    // Episodes matched by content type, not by title text: the dedicated-filter branch
-    // below already learned the hard way that YT's shelf titles are localized, so matching
-    // a literal "Episodes" string silently breaks on any non-English account language.
     private fun episodesFromSummary(): List<YTItem> =
         summaryPage?.summaries
             ?.firstOrNull { categoryOf(it.items.firstOrNull()) == Category.EPISODE }
@@ -163,11 +143,6 @@ constructor(
                 if (filter == null) {
                     loadSummaryPage()
                 } else if (filter == YouTube.SearchFilter.FILTER_EPISODE) {
-                    // The FILTER_EPISODE API returns episodes in a format that differs from the
-                    // summary search: playlistItemData is absent and the subtitle structure is
-                    // different, making reliable isEpisode detection fail for many items.
-                    // Reuse the "Episodes" section from the summary page instead — it is already
-                    // parsed correctly by fromMusicResponsiveListItemRenderer.
                     if (viewStateMap[filter.value] == null) {
                         loadSummaryPage()
                         viewStateMap[filter.value] = ItemsPage(episodesFromSummary(), null)
@@ -202,24 +177,12 @@ constructor(
             }
     }
 
-    // Smart Search: instead of relying on YT's own truncated summary shelves, fetch every
-    // category's dedicated filter endpoint directly (same one backing each filter pill), so
-    // every section shows a full page of real results, not just the 3-5 items YT's summary
-    // groups items into. The section order is fixed and set synchronously so the panel
-    // renders instantly; the summary call only feeds the top-result card and the Episodes
-    // shelf in parallel, it no longer gates the whole panel.
     var smartSearchOrder by mutableStateOf<List<YouTube.SearchFilter>>(emptyList())
         private set
     private var smartSearchStarted = false
 
-    // In-flight fetches for the *current* query — cancelled wholesale on search(), so an old
-    // query's slow network calls can no longer land after a newer query has already taken over
-    // (they used to keep running and write into viewStateMap after the fact).
     private var searchJob: Job? = null
 
-    // Bounded per-query cache: switching back to a query already loaded this session restores
-    // instantly instead of re-fetching every shelf from network again. FIFO eviction once full —
-    // no need for real LRU/recency tracking at this size.
     private data class QueryCache(
         val summaryPage: SearchSummaryPage?,
         val viewStateMap: Map<String, ItemsPage?>,
@@ -241,8 +204,6 @@ constructor(
 
             order.forEach { sectionFilter ->
                 if (sectionFilter != YouTube.SearchFilter.FILTER_EPISODE) {
-                    // Launched as a child of this coroutine (not viewModelScope directly) so
-                    // cancelling searchJob on the next search() cancels these too.
                     launch { fetchAndStoreFilterResults(sectionFilter) }
                 }
             }
@@ -275,10 +236,6 @@ constructor(
         }
     }
 
-    // Reuses this instance for a brand-new query — used by the inline New Iride UI results view,
-    // which stays on the same "search_input" screen (and thus the same ViewModel) across many
-    // submitted queries instead of getting a fresh nav backstack entry per query like the classic
-    // route does.
     fun search(newQuery: String) {
         if (newQuery == query) return
         if (query.isNotBlank()) {

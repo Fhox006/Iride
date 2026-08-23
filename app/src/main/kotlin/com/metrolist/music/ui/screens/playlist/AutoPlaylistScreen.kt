@@ -185,9 +185,6 @@ fun AutoPlaylistScreen(
     val queueTitle by playerConnection.queueTitle.collectAsState()
     val playlist =
         when (viewModel.playlist) {
-            // "Liked Songs" reads as "Starred" here. R.string.liked is shared with other
-            // screens, so it is left untouched and only the display text used by this
-            // composable is swapped.
             "liked" -> stringResource(R.string.starred)
             "uploaded" -> stringResource(R.string.uploaded_playlist)
             "starred" -> stringResource(R.string.starred)
@@ -281,7 +278,6 @@ fun AutoPlaylistScreen(
 
     val scope = rememberCoroutineScope()
 
-    // Upload state
     var showUploadDialog by remember { mutableStateOf(false) }
     var uploadProgress by remember { mutableFloatStateOf(0f) }
     var currentUploadIndex by remember { mutableIntStateOf(0) }
@@ -368,12 +364,10 @@ fun AutoPlaylistScreen(
                         isUploading = false
 
                         if (successCount > 0) {
-                            // Show completion briefly
                             uploadProgress = 1f
                             currentFileName = uploadCompleteStr
                             kotlinx.coroutines.delay(1000)
 
-                            // Show toast on main thread
                             withContext(Dispatchers.Main) {
                                 Toast
                                     .makeText(
@@ -385,7 +379,6 @@ fun AutoPlaylistScreen(
 
                             showUploadDialog = false
 
-                            // Refresh uploaded songs
                             viewModel.syncUploadedSongs()
                         } else {
                             showUploadDialog = false
@@ -459,7 +452,6 @@ fun AutoPlaylistScreen(
         )
     }
 
-    // Upload progress dialog
     if (showUploadDialog) {
         DefaultDialog(
             onDismiss = {
@@ -547,10 +539,6 @@ fun AutoPlaylistScreen(
     }
 
     val state = rememberLazyListState()
-    // Same crossing math as AlbumScreen/LocalPlaylistScreen: the overlay (glass + mirrored title)
-    // shows once the header name is behind the bar or scrolled past, and tweens in/out at a fixed
-    // duration instead of following the scroll pixel-by-pixel. No typing/reveal gate here — this
-    // header's name has no entrance animation to wait on.
     val headerTitleCovered by remember {
         derivedStateOf {
             state.firstVisibleItemIndex > 1 || nameBottomPx <= topBarBottomPx
@@ -558,9 +546,6 @@ fun AutoPlaylistScreen(
     }
     val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
 
-    // Every leading LazyColumn item ahead of the song rows themselves — search_bar +
-    // playlist_header + control_panel (hidden while searching) + songs_header +
-    // genre_pills. Consumed by DraggableScrollbar below.
     val headerItems = when {
         !isSearching -> 5
         else -> 3
@@ -571,9 +556,6 @@ fun AutoPlaylistScreen(
     val canRefresh = playlistType == PlaylistType.LIKE || playlistType == PlaylistType.UPLOADED
     val frostBackdrop = rememberFrostBackdrop()
 
-    // Top-bar mirrors of the header's shuffle/play/download actions (New Iride UI only) — also
-    // reused by the control panel just above the song list, so declared before the LazyColumn
-    // that renders it.
     val onTopBarShuffleClick: () -> Unit = {
         playerConnection.playQueue(
             ListQueue(
@@ -629,11 +611,6 @@ fun AutoPlaylistScreen(
     }
     val controlPanelProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Medium)
 
-    // Two boxes, not one, exactly like AlbumScreen: the frosted top bar *samples* the backdrop
-    // layer, so it must not be drawn inside the Box that records it. Nested, the bar's drawBehind
-    // re-enters frostBackdrop.content (drawLayer of a RenderNode that is still mid-record) and the
-    // platform throws — which is why the playlist screens crashed the moment the bar's glass turned
-    // on (progress > 0) while the album screen never did.
     Box(modifier = Modifier.fillMaxSize()) {
     Box(
         modifier =
@@ -721,8 +698,6 @@ fun AutoPlaylistScreen(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(
-                                // Matches SongListItem's own 12dp horizontal inset so the sort
-                                // row lines up with the song rows below it.
                                 start = 12.dp,
                                 end = 12.dp,
                             ),
@@ -765,8 +740,6 @@ fun AutoPlaylistScreen(
 
                         SongListItem(
                             song = song,
-                            // Featured-artist subtitle text should match the rest of
-                            // the row instead of the default muted secondary tone.
                             subtitleColor = Color.Unspecified,
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
@@ -870,7 +843,6 @@ fun AutoPlaylistScreen(
             )
         }
 
-        // Upload FAB for uploaded playlist - positioned above mini player
         if (playlistType == PlaylistType.UPLOADED) {
             androidx.compose.animation.AnimatedVisibility(
                 visible = state.isScrollingUp(),
@@ -906,7 +878,6 @@ fun AutoPlaylistScreen(
             }
         }
         }
-        // --- everything below is a sibling of the recorded content, never inside it ---
 
         val topBarNavigationIcon: @Composable () -> Unit = {
             IconButton(
@@ -1049,9 +1020,6 @@ fun AutoPlaylistScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             topBarNavigationIcon()
-            // Always composed and always holding its weight — fades in via topBarRevealProgress,
-            // tracking the header name going behind this bar (same as AlbumScreen). Only the ⋯
-            // overflow lives here otherwise; shuffle/play/download moved into the pill panel.
             Text(
                 text = when {
                     inSelectMode -> pluralStringResource(R.plurals.n_song, selection.size, selection.size)
@@ -1163,9 +1131,6 @@ private fun AutoPlaylistHeader(
             else -> null
         }
         if (badgeIcon != null) {
-            // Frosted-glass cover: blurred mosaic of the playlist's own thumbnails behind a
-            // translucent panel. Shared with the Library list/grid rows via GlassPlaylistCover
-            // so the same playlist looks identical on its own screen and from outside.
             val mosaicThumbnails =
                 remember(songs) {
                     songs.mapNotNull { it.song.thumbnailUrl }.distinct().take(4)
@@ -1207,9 +1172,6 @@ private fun AutoPlaylistHeader(
             .padding(horizontal = 20.dp)
             .padding(top = 12.dp, bottom = 20.dp),
     ) {
-        // Cover entrance matches AlbumScreen/LocalPlaylistScreen — no per-image decode signal
-        // to gate on here (GlassPlaylistCover has no onState hook, and mosaics arrive one
-        // thumbnail at a time), so this plays once on composition instead.
         val coverProgress = rememberEnterProgress(play = true, durationMillis = 420, easing = IrideMotion.EaseOutQuart)
         Box(
             modifier = Modifier
@@ -1253,7 +1215,6 @@ private fun AutoPlaylistHeader(
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
-        // Action buttons (shuffle/play/download) live in the top bar now — see topBarActions.
     }
 }
 

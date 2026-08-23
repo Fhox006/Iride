@@ -88,13 +88,11 @@ class MusicRecognizerWidgetReceiver : AppWidgetProvider() {
         }
     }
 
-    // ─── Recognition start / stop ─────────────────────────────────────────────
 
     private fun handleStartRecognition(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val currentState = prefs.getInt(PREF_STATE, STATE_IDLE)
 
-        // If active → stop
         if (currentState == STATE_LISTENING || currentState == STATE_PROCESSING) {
             context.startService(
                 Intent(context, MusicRecognizerWidgetService::class.java).apply {
@@ -104,12 +102,10 @@ class MusicRecognizerWidgetReceiver : AppWidgetProvider() {
             return
         }
 
-        // Showing a result/error → clear it before starting a new search
         if (currentState == STATE_SUCCESS || currentState == STATE_NO_MATCH || currentState == STATE_ERROR) {
             prefs.edit().putInt(PREF_STATE, STATE_IDLE).apply()
         }
 
-        // No mic permission → open the app so the user can grant it
         if (!MusicRecognitionService.hasRecordPermission(context)) {
             context.startActivity(
                 Intent(context, MainActivity::class.java).apply {
@@ -120,7 +116,6 @@ class MusicRecognizerWidgetReceiver : AppWidgetProvider() {
             return
         }
 
-        // Start recognition foreground service
         val serviceIntent = Intent(context, MusicRecognizerWidgetService::class.java).apply {
             action = MusicRecognizerWidgetService.ACTION_START_RECOGNITION
         }
@@ -131,7 +126,6 @@ class MusicRecognizerWidgetReceiver : AppWidgetProvider() {
         }
     }
 
-    // ─── Widget update ────────────────────────────────────────────────────────
 
     private fun updateAllWidgets(context: Context, appWidgetManager: AppWidgetManager) {
         val componentName = ComponentName(context, MusicRecognizerWidgetReceiver::class.java)
@@ -145,7 +139,6 @@ class MusicRecognizerWidgetReceiver : AppWidgetProvider() {
         val coverArtPath = prefs.getString(PREF_COVER_ART_PATH, "") ?: ""
         val pulseFrame = prefs.getInt(PREF_PULSE_FRAME, 0)
 
-        // Load album art bitmap from the cached file (synchronous, already on disk)
         val albumArtBitmap = if (state == STATE_SUCCESS && coverArtPath.isNotEmpty()) {
             try { BitmapFactory.decodeFile(coverArtPath) } catch (_: Exception) { null }
         } else null
@@ -164,7 +157,6 @@ class MusicRecognizerWidgetReceiver : AppWidgetProvider() {
         }
     }
 
-    // ─── Layout builders ──────────────────────────────────────────────────────
 
     private fun createWideViews(
         context: Context,
@@ -217,7 +209,6 @@ class MusicRecognizerWidgetReceiver : AppWidgetProvider() {
         return views
     }
 
-    // ─── State helpers ────────────────────────────────────────────────────────
 
     private fun applyAlbumArt(
         views: RemoteViews,
@@ -304,7 +295,6 @@ class MusicRecognizerWidgetReceiver : AppWidgetProvider() {
         views.setImageViewResource(pulseViewId, pulseDrawable)
     }
 
-    // ─── PendingIntents ───────────────────────────────────────────────────────
 
     /** Tap on mic button → start or stop recognition */
     private fun getMicIntent(context: Context): PendingIntent =

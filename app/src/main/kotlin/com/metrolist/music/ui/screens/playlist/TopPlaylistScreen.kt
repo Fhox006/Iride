@@ -131,13 +131,11 @@ fun TopPlaylistScreen(
     var isSearching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf(TextFieldValue()) }
     val focusRequester = remember { FocusRequester() }
-    
     LaunchedEffect(isSearching) {
         if (isSearching) {
             focusRequester.requestFocus()
         }
     }
-    
     var inSelectMode by rememberSaveable { mutableStateOf(false) }
     val selection = rememberSaveable(
         saver = listSaver<MutableList<String>, String>(
@@ -293,8 +291,6 @@ fun TopPlaylistScreen(
                     item(key = "songs_header") {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            // Matches SongListItem's own 12dp horizontal inset (LibrarySortRow
-                            // itself adds another 4dp) so this lines up with the songs below.
                             modifier = Modifier.padding(start = 8.dp),
                         ) {
                             LibrarySortRow(
@@ -605,14 +601,12 @@ private fun TopPlaylistHeader(
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
-    
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(top = 8.dp, bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Playlist Thumbnail - Large centered with shadow
         Box(
             modifier = Modifier.padding(top = 8.dp, bottom = 20.dp)
         ) {
@@ -635,7 +629,6 @@ private fun TopPlaylistHeader(
             }
         }
 
-        // Playlist Name
         Text(
             text = name,
             style = MaterialTheme.typography.headlineSmall,
@@ -648,7 +641,6 @@ private fun TopPlaylistHeader(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Metadata - Song Count • Duration
         Text(
             text = buildString {
                 append(pluralStringResource(R.plurals.n_song, songs.size, songs.size))
@@ -663,7 +655,6 @@ private fun TopPlaylistHeader(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Action Buttons Row
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -671,7 +662,6 @@ private fun TopPlaylistHeader(
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Shuffle Button - Smaller secondary button
             androidx.compose.material3.Surface(
                 onClick = {
                     playerConnection.playQueue(
@@ -697,7 +687,6 @@ private fun TopPlaylistHeader(
                 }
             }
 
-            // Play Button - Larger primary circular button
             Surface(
                 onClick = {
                     playerConnection.playQueue(
@@ -724,7 +713,6 @@ private fun TopPlaylistHeader(
                 }
             }
 
-            // Download Button - Smaller secondary button
             androidx.compose.material3.Surface(
                 onClick = {
                     when (downloadState) {

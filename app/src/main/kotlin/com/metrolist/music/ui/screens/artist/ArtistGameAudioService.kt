@@ -82,8 +82,6 @@ class ArtistGameAudioService(
             }
             exoPlayer.addListener(listener)
             exoPlayer.playWhenReady = false
-            // Atomic start position — avoids a pending seekTo() racing with prepare(), which
-            // could let the sink render a frame near 0 before the seek lands (audible skip).
             exoPlayer.setMediaItem(MediaItem.Builder().setUri(uri).setMediaId(songId).build(), positionMs)
             exoPlayer.prepare()
             preparedPlayers[songId] = exoPlayer

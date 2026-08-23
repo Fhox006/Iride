@@ -248,7 +248,7 @@ fun OriginalLyrics(
         defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
     )
 
-    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
+    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
     val isSystemInDarkTheme = isSystemInDarkTheme()
     val useDarkTheme =
         remember(darkTheme, isSystemInDarkTheme) {
@@ -896,28 +896,7 @@ fun OriginalLyrics(
                     }
                 }
 
-                if (lyrics == null) {
-                    item {
-                        ShimmerHost {
-                            repeat(10) {
-                                Box(
-                                    contentAlignment =
-                                        when (lyricsTextPosition) {
-                                            LyricsPosition.LEFT -> Alignment.CenterStart
-                                            LyricsPosition.CENTER -> Alignment.Center
-                                            LyricsPosition.RIGHT -> Alignment.CenterEnd
-                                        },
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 24.dp, vertical = 4.dp),
-                                ) {
-                                    TextPlaceholder()
-                                }
-                            }
-                        }
-                    }
-                } else {
+                run {
                     val lyricsOffset = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS
                     val effectivePlaybackPosition = currentPlaybackPosition + lyricsOffset
 

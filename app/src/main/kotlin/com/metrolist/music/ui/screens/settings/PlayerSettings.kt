@@ -147,12 +147,6 @@ fun PlayerSettings(
         key = VarispeedKey,
         defaultValue = false
     )
-    /* HIDDEN - enable_transfer (Google Cast)
-    val (enableGoogleCast, onEnableGoogleCastChange) = rememberPreference(
-        key = EnableGoogleCastKey,
-        defaultValue = true
-    )
-    END HIDDEN */
     val (seekExtraSeconds, onSeekExtraSeconds) = rememberPreference(
         SeekExtraSeconds,
         defaultValue = false
@@ -331,7 +325,6 @@ fun PlayerSettings(
             )
         )
 
-        // ── Audio ────────────────────────────────────────────────────────────
         Material3SettingsGroup(
             title = stringResource(R.string.settings_section_audio),
             items = buildList {
@@ -353,13 +346,10 @@ fun PlayerSettings(
                 add(Material3SettingsItem(
                     icon = painterResource(R.drawable.album),
                     title = { Text(stringResource(R.string.scratch_buffer)) },
-                    // Supporting text carries the current value, as the Audio quality row above
-                    // does; what each value means belongs in the dialog, not stacked here.
                     description = { Text(scratchBufferLabel(scratchBuffer)) },
                     onClick = { showScratchBufferDialog = true }
                 ))
 
-                // ── Fade ─────────────────────────────────────────────────────
                 add(Material3SettingsItem(
                     icon = painterResource(R.drawable.linear_scale),
                     title = { Text(stringResource(R.string.crossfade)) },
@@ -582,31 +572,6 @@ fun PlayerSettings(
                     },
                     onClick = { onVarispeedChange(!varispeed) }
                 ))
-                /* HIDDEN - enable_transfer (Google Cast)
-                if (BuildConfig.CAST_AVAILABLE) {
-                    add(Material3SettingsItem(
-                        icon = painterResource(R.drawable.cast),
-                        title = { Text(stringResource(R.string.google_cast)) },
-                        description = { Text(stringResource(R.string.google_cast_description)) },
-                        trailingContent = {
-                            IrideSwitch(
-                                checked = enableGoogleCast,
-                                onCheckedChange = onEnableGoogleCastChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            if (enableGoogleCast) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize)
-                                    )
-                                }
-                            )
-                        },
-                        onClick = { onEnableGoogleCastChange(!enableGoogleCast) }
-                    ))
-                }
-                END HIDDEN */
                 if (advancedMode) add(Material3SettingsItem(
                     icon = painterResource(R.drawable.arrow_forward),
                     title = { Text(stringResource(R.string.seek_seconds_addup)) },
@@ -628,14 +593,11 @@ fun PlayerSettings(
                     },
                     onClick = { onSeekExtraSeconds(!seekExtraSeconds) }
                 ))
-                // Fast Playback Engine toggle hidden from UI — MuzzaPlayerLogicKey defaults to
-                // true (read directly by the playback engine), no longer user-configurable.
             }
         )
 
         Spacer(modifier = Modifier.height(27.dp))
 
-        // ── Sleep timer + Alarm (advanced only) ──────────────────────────────
         if (advancedMode) {
             Material3SettingsGroup(
                 title = stringResource(R.string.sleep_timer),
@@ -742,7 +704,6 @@ fun PlayerSettings(
             Spacer(modifier = Modifier.height(27.dp))
         }
 
-        // ── Behavior ─────────────────────────────────────────────────────────
         Material3SettingsGroup(
             title = stringResource(R.string.settings_section_behavior),
             items = buildList {
@@ -961,7 +922,6 @@ fun PlayerSettings(
 
         Spacer(modifier = Modifier.height(27.dp))
 
-        // ── System ────────────────────────────────────────────────────────────
         Material3SettingsGroup(
             title = stringResource(R.string.settings_section_system_short),
             items = listOf(

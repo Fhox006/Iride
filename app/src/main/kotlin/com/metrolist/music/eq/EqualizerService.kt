@@ -36,14 +36,11 @@ class EqualizerService @Inject constructor() {
         audioProcessors.add(processor)
         Timber.tag(TAG).d("Audio processor added. Total: ${audioProcessors.size}")
 
-        // Apply pending profile if one was set before processor was available
         if (shouldDisable) {
             processor.disable()
-            // Don't clear shouldDisable here, as we might add more processors
         } else if (pendingProfile != null) {
             val profile = pendingProfile!!
             applyProfileToProcessor(processor, profile)
-            // Don't clear pendingProfile here
         }
     }
 
@@ -68,9 +65,8 @@ class EqualizerService @Inject constructor() {
             return Result.success(Unit)
         }
 
-        pendingProfile = profile // Keep it for future processors
+        pendingProfile = profile
         shouldDisable = false
-        
         var success = true
         var lastError: Exception? = null
 
@@ -107,7 +103,7 @@ class EqualizerService @Inject constructor() {
             return
         }
 
-        shouldDisable = true // Keep state
+        shouldDisable = true
         pendingProfile = null
 
         audioProcessors.forEach { processor ->
@@ -150,7 +146,6 @@ class EqualizerService @Inject constructor() {
      * Release resources (not needed for AudioProcessor, but kept for API compatibility)
      */
     fun release() {
-        // AudioProcessor is managed by ExoPlayer, we just clear our reference
         audioProcessors.clear()
         Timber.tag(TAG).d("Audio processor references cleared")
     }

@@ -75,7 +75,6 @@ data class LibraryPage(
                     }?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint ?: return null,
                 )
 
-                // Podcast host channels use MUSIC_PAGE_TYPE_USER_CHANNEL (not ARTIST)
                 renderer.isUserChannel -> ArtistItem(
                     id = renderer.navigationEndpoint.browseEndpoint?.browseId ?: return null,
                     title = renderer.title.runs?.firstOrNull()?.text ?: return null,
@@ -155,7 +154,6 @@ data class LibraryPage(
         }
 
         fun fromMusicResponsiveListItemRenderer(renderer: MusicResponsiveListItemRenderer): YTItem? {
-            // Extract library tokens using the new method that properly handles multiple toggle items
             val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
             return when {
@@ -167,16 +165,13 @@ data class LibraryPage(
 
                     val artistRuns = renderer.flexColumns.getOrNull(1)?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.oddElements()
 
-                    // For uploaded songs, artists may not have browseEndpoint - make it optional
                     val artists = artistRuns?.mapNotNull {
                         val browseId = it.navigationEndpoint?.browseEndpoint?.browseId
-                        // For uploaded songs, use empty string for artist ID if not available
                         Artist(name = it.text, id = browseId ?: "")
                     } ?: emptyList()
 
                     val albumRun = renderer.flexColumns.getOrNull(2)?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.firstOrNull()
 
-                    // For uploaded songs, album may not have browseEndpoint - make it optional
                     val album = albumRun?.let {
                         val albumBrowseId = it.navigationEndpoint?.browseEndpoint?.browseId
                         Album(name = it.text, id = albumBrowseId ?: "")
@@ -184,9 +179,6 @@ data class LibraryPage(
 
                     val thumbnailUrl = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl(512) ?: return null
 
-                    // Extract uploadEntityId from delete menu item (for uploaded songs)
-                    // The entityId is nested in confirmDialogEndpoint -> content -> confirmDialogRenderer ->
-                    // confirmButton -> buttonRenderer -> command -> musicDeletePrivatelyOwnedEntityCommand -> entityId
                     val uploadEntityId = renderer.menu?.menuRenderer?.items?.firstNotNullOfOrNull { item ->
                         item.menuNavigationItemRenderer?.navigationEndpoint?.confirmDialogEndpoint
                             ?.content?.confirmDialogRenderer?.confirmButton?.buttonRenderer
@@ -227,7 +219,6 @@ data class LibraryPage(
                         ?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint
                 )
 
-                // Podcast host channels use MUSIC_PAGE_TYPE_USER_CHANNEL (not ARTIST)
                 renderer.isUserChannel -> ArtistItem(
                     id = renderer.navigationEndpoint?.browseEndpoint?.browseId ?: return null,
                     title = renderer.flexColumns.firstOrNull()?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.firstOrNull()?.text

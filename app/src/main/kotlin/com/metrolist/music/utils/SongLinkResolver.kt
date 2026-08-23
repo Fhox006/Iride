@@ -34,9 +34,6 @@ object SongLinkResolver {
     private val client = HttpClient()
     private const val API_URL = "https://api.song.link/v1-alpha.1/links"
 
-    // App-lifetime scope: the caller (a player menu composable) is dismissed right after
-    // triggering a share, which would cancel a coroutine tied to that composable's scope
-    // before the network call returns. This scope survives that dismissal.
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /**
@@ -98,8 +95,6 @@ object SongLinkResolver {
 
             if (exactMatch.isSuccess) return@withContext exactMatch
 
-            // Odesli only matches videos with a known ISRC (mostly official/major-label uploads).
-            // Fall back to a search deep link on the target platform so sharing never dead-ends.
             fallbackQuery?.let { query ->
                 Result.success(searchUrl(platform, query))
             } ?: exactMatch

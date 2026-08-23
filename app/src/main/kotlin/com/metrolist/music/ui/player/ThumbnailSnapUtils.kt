@@ -37,11 +37,9 @@ fun ThumbnailSnapLayoutInfoProvider(
         get() = lazyGridState.layoutInfo
 
     override fun calculateApproachOffset(velocity: Float, decayOffset: Float): Float = 0f
-    
     override fun calculateSnapOffset(velocity: Float): Float {
         val bounds = calculateSnappingOffsetBounds()
 
-        // Only snap when velocity exceeds threshold
         if (abs(velocity) < velocityThreshold) {
             return if (abs(bounds.start) < abs(bounds.endInclusive)) {
                 bounds.start
@@ -64,12 +62,10 @@ fun ThumbnailSnapLayoutInfoProvider(
         layoutInfo.visibleItemsInfo.fastForEach { item ->
             val offset = calculateDistanceToDesiredSnapPosition(layoutInfo, item, positionInLayout)
 
-            // Find item that is closest to the center
             if (offset <= 0 && offset > lowerBoundOffset) {
                 lowerBoundOffset = offset
             }
 
-            // Find item that is closest to center, but after it
             if (offset >= 0 && offset < upperBoundOffset) {
                 upperBoundOffset = offset
             }

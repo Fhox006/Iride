@@ -1,0 +1,16 @@
+FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\ui\component\TopScreenGradientBackground.kt
+LINES: 111
+<<<ORIGINAL
+        val id = mediaMetadata?.id
+ORIGINAL>>>
+
+FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\ui\component\TopScreenGradientBackground.kt
+LINES: 183-188
+<<<ORIGINAL
+                }
+            }
+
+            else -> {}
+        }
+    }
+ORIGINAL>>>

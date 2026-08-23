@@ -63,8 +63,6 @@ fun GlassPlaylistCover(
                 .background(MaterialTheme.colorScheme.surfaceContainer),
     ) {
         if (mosaicThumbnails.isNotEmpty()) {
-            // Dissolve between mosaics instead of a hard cut, since liking/unliking a song
-            // reshuffles which 4 thumbnails land in the 4 tiles.
             Crossfade(
                 targetState = mosaicThumbnails,
                 modifier = Modifier.matchParentSize(),
@@ -75,9 +73,6 @@ fun GlassPlaylistCover(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            // Zoomed well past the crop bounds so each quadrant's photo fills more of
-                            // its quarter and the 4 tiles read as one blended scene instead of 4
-                            // distinctly separated corners.
                             .graphicsLayer(scaleX = 1.6f, scaleY = 1.6f)
                             .blur(size * 0.1f),
                 ) {

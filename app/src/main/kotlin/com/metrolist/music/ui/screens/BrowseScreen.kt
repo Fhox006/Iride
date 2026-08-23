@@ -96,7 +96,6 @@ fun BrowseScreen(
                                         }
 
                                         else -> {
-                                            // Do nothing
                                         }
                                     }
                                 },
@@ -127,7 +126,6 @@ fun BrowseScreen(
                                             }
 
                                             else -> {
-                                                // Do nothing
                                             }
                                         }
                                     }

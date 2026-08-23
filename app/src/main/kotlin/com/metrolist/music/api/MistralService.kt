@@ -68,7 +68,6 @@ object MistralService {
         withContext(Dispatchers.IO) {
             var currentAttempt = 0
 
-            // Validate input
             if (text.isBlank()) {
                 return@withContext Result.failure(Exception("Input text is empty"))
             }
@@ -214,7 +213,6 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                     val responseBody = response.body?.string()
 
                     if (!response.isSuccessful) {
-                        // On 401/403, attempt a one-shot key refresh before failing
                         if ((response.code == 401 || response.code == 403) && !keyRefreshed && readKeyFromPrefs != null) {
                             val freshKey = readKeyFromPrefs()
                             if (freshKey.isNotBlank() && freshKey != activeKey) {
@@ -228,7 +226,6 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                             return@withContext Result.failure(Exception("API key invalid or expired"))
                         }
 
-                        // Retry on server errors (5xx)
                         if (response.code >= 500) {
                             currentAttempt++
                             kotlinx.coroutines.delay(1000L * currentAttempt)

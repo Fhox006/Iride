@@ -140,9 +140,6 @@ fun SearchScreen(
             isHandlingScrollToTop = true
             kotlinx.coroutines.delay(100)
             if (!isPlayerExpanded) {
-                // Re-tapping Search while already on this screen (top bar tab, or the compact
-                // top bar's search icon) acts like tapping the search box itself: focus it and
-                // pop the keyboard, instead of the old clear-focus/scroll-to-top behavior.
                 focusRequester.requestFocus()
                 keyboardController?.show()
             }
@@ -159,18 +156,9 @@ fun SearchScreen(
     var isFocused by remember { mutableStateOf(false) }
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
 
-    // New Iride UI: a submitted plain-text query is shown inline on this same page (chips +
-    // Smart Search + results) instead of navigating to the separate OnlineSearchResult route.
     var submittedQuery by rememberSaveable { mutableStateOf<String?>(null) }
     val onlineSearchResultViewModel: OnlineSearchViewModel = hiltViewModel()
 
-    // Rebuilt from scratch: a suggestion/history tap (or a keyboard search) always lands here,
-    // and this is the one place that both fills the visible search box with the submitted text
-    // AND clears focus, atomically. Previously the box was never updated (stayed empty after
-    // tapping a suggestion) and focus was left on, which made OnlineSearchResultsBody's
-    // focused-suggestions branch render on top of the results it had just submitted — a second,
-    // unsynced (still-empty-query) suggestions panel over the New Iride UI's near-black
-    // background, which read as "opens completely black" / uneditable.
     fun handleSearch(searchQuery: String) {
         if (searchQuery.isEmpty()) return
         focusManager.clearFocus()
@@ -204,10 +192,6 @@ fun SearchScreen(
         submittedQuery?.let(onlineSearchResultViewModel::search)
     }
 
-    // Single handler, ordered precedence, instead of two BackHandlers racing over overlapping
-    // state (submittedQuery/isFocused/focus manager) with no defined winner — that race is what
-    // crashed the app on back press. Submitted results close first; only then does a still-open
-    // suggestions panel close; below that, normal nav-back applies.
     BackHandler(enabled = submittedQuery != null || isFocused) {
         if (submittedQuery != null) {
             submittedQuery = null
@@ -219,24 +203,8 @@ fun SearchScreen(
     }
 
     val topNavBarController = com.metrolist.music.LocalTopNavBarController.current
-    // New Iride UI: kept as a single movableContentOf instance (not a plain lambda) so the search
-    // box's composition — and with it, its keyboard focus/IME connection — survives moving between
-    // the pre-search screen (LocalSearchScreen/OnlineSearchScreen, below) and the post-search
-    // inline-results screen (OnlineSearchResultsBody, below). Those are two different composables
-    // at the same `if (showInlineResults)` call site: without movableContentOf, submitting a search
-    // fully disposes the old header (and its focused text field) and composes a brand new one,
-    // dropping IME focus — the field then reads as "emptied"/unresponsive and a second search
-    // can't be typed. (LocalTopNavBarController.current is re-read *inside* the movable lambda,
-    // not hoisted, so it always reflects the latest composition rather than the value from the
-    // first time this movableContentOf block ran.)
     val irideHeaderContent = remember {
         movableContentOf {
-            // Content shape must stay constant across every recomposition/move of this
-            // movableContentOf block (Compose requirement) — branching on a nullable
-            // CompositionLocal here (controller becomes transiently null mid back-navigation)
-            // made the block sometimes emit zero children, which crashed with "Could not
-            // resolve state for movable content" when a move landed on a mismatched shape.
-            // SearchScrollableHeader is now always composed with safe fallbacks instead.
             val controller = com.metrolist.music.LocalTopNavBarController.current
             SearchScrollableHeader(
                 navigationItems = controller?.navigationItems ?: emptyList(),
@@ -259,12 +227,6 @@ fun SearchScreen(
             )
         }
     }
-    // Gate only on a static pref — NOT on topNavBarController's
-    // nullity. The controller goes transiently null mid back-navigation (see comment above);
-    // gating the movable content's call site on it made that single call site disappear and
-    // reappear exactly during back-swipe, which combined with the system's predictive-back
-    // forced extra measure/draw pass crashed with "Could not resolve state for movable
-    // content". irideHeaderContent already null-safes the controller internally.
     val irideHeader: (@Composable () -> Unit)? = irideHeaderContent
 
     Scaffold(
@@ -287,9 +249,6 @@ fun SearchScreen(
         ) {
             val showInlineResults = searchSource == SearchSource.ONLINE && submittedQuery != null
             if (showInlineResults) {
-                // New Iride UI: a submitted query stays on this same page, with the header (nav
-                // tabs + source toggle + search box) as the results' own leading scrollable item —
-                // the whole page scrolls as one, exactly like LocalSearchScreen/OnlineSearchScreen.
                 OnlineSearchResultsBody(
                     modifier = Modifier.fillMaxSize(),
                     navController = navController,
@@ -323,7 +282,7 @@ fun SearchScreen(
                             onQueryChange = { query = it },
                             navController = navController,
                             onSearch = { handleSearch(it) },
-                            onDismiss = { /* stay on page */ },
+                            onDismiss = {  },
                             pureBlack = pureBlack,
                             isFocused = isFocused,
                             header = irideHeader,
@@ -519,9 +478,6 @@ private fun SearchCollapsingHeader(
     onClear: () -> Unit,
     pureBlack: Boolean,
     transparentBackground: Boolean = false,
-    // New Iride UI: the animated large "Search" title is redundant with the persistent
-    // TopNavigationBar tabs bar above it, so it collapses away — only the source-toggle
-    // pill and the search box stay, both at a fixed (non-scroll-animated) position.
     hideTitle: Boolean = false,
 ) {
     val density = LocalDensity.current
@@ -557,15 +513,12 @@ private fun SearchCollapsingHeader(
             .height(totalHeightDp + with(density) { scrollBehavior.state.heightOffset.toDp() }),
     ) {
         Box {
-            // Single Title Transition
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(SmallTitleBarHeightDp)
                     .padding(horizontal = 12.dp)
                     .graphicsLayer {
-                        // Move from Large position to Small position
-                        // Expanded: below SmallTitleBar. Collapsed: at 0.
                         translationY = if (hideTitle) 0f else lerpFloat(with(density) { (LargeTitleHeightDp - 12.dp).toPx() }, 0f, fraction)
                     },
                 contentAlignment = if (hideTitle) Alignment.CenterEnd else Alignment.CenterStart
@@ -670,7 +623,6 @@ private fun SearchCollapsingHeader(
                 }
             }
 
-            // Search Box Layer
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

@@ -252,7 +252,6 @@ internal fun LyricsColorPickerDialog(
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
 
-    // Freeze all parameters at dialog-open time so a song change doesn't update the UI
     val frozenTxt = remember { txt }
     val frozenTitle = remember { title }
     val frozenArts = remember { arts }
@@ -844,5 +843,4 @@ internal fun GeminiSetupDialog(
     }
 }
 
-// Helper for coroutine scope
 typealias CoroutineScope = kotlinx.coroutines.CoroutineScope

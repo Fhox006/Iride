@@ -94,7 +94,6 @@ object YouTubeUrlParser {
     fun parse(url: String): ParsedUrl? {
         val trimmedUrl = url.trim()
 
-        // Check for video URLs
         for (pattern in VIDEO_URL_PATTERNS) {
             pattern.find(trimmedUrl)?.let { matchResult ->
                 matchResult.groupValues.getOrNull(1)?.let { videoId ->
@@ -103,7 +102,6 @@ object YouTubeUrlParser {
             }
         }
 
-        // Check for playlist URLs (non-music.youtube.com)
         if (!trimmedUrl.contains("music.youtube.com")) {
             PLAYLIST_URL_PATTERN.find(trimmedUrl)?.let { matchResult ->
                 matchResult.groupValues.getOrNull(1)?.let { playlistId ->
@@ -112,17 +110,13 @@ object YouTubeUrlParser {
             }
         }
 
-        // Check for album URLs (music.youtube.com playlists)
         if (trimmedUrl.contains("music.youtube.com")) {
             ALBUM_URL_PATTERN.find(trimmedUrl)?.let { matchResult ->
                 matchResult.groupValues.getOrNull(1)?.let { playlistId ->
-                    // Albums on YouTube Music use playlist URLs
-                    // We'll treat them as albums and let the API determine the actual type
                     return ParsedUrl.Album(playlistId)
                 }
             }
 
-            // Check for artist URLs
             for (pattern in ARTIST_URL_PATTERNS) {
                 pattern.find(trimmedUrl)?.let { matchResult ->
                     matchResult.groupValues.getOrNull(1)?.let { artistId ->

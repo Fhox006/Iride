@@ -132,12 +132,10 @@ fun ListenTogetherSettings(
     var showBlockedUsersDialog by rememberSaveable { mutableStateOf(false) }
     var roomCodeInput by rememberSaveable { mutableStateOf("") }
 
-    // Handle events
     LaunchedEffect(Unit) {
         viewModel.events.collectLatest { event ->
             when (event) {
                 is ListenTogetherEvent.RoomCreated -> {
-                    // Room created toast is shown globally by the client
                 }
 
                 is ListenTogetherEvent.JoinApproved -> {
@@ -169,7 +167,6 @@ fun ListenTogetherSettings(
         }
     }
 
-    // Dialogs
     if (showServerUrlDialog) {
         ServerChooserDialog(
             servers = servers,
@@ -364,7 +361,6 @@ fun ListenTogetherSettings(
             ),
         )
 
-        // Settings section using IntegrationCard
         val selectedServer = remember(serverUrl) { ListenTogetherServers.findByUrl(serverUrl) }
 
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -435,7 +431,6 @@ fun ListenTogetherSettings(
                                 IrideSwitch(
                                     checked = autoApprovalJoins,
                                     onCheckedChange = { autoApprovalJoins = it },
-                                    // Only disable for guests in a room (hosts can always change)
                                     enabled = roomState == null || role != RoomRole.GUEST,
                                     thumbContent = {
                                         Icon(
@@ -449,7 +444,6 @@ fun ListenTogetherSettings(
                                     },
                                 )
                             },
-                            // Allow clicking to see disabled state, but only change if enabled
                             onClick = { if (roomState == null || role != RoomRole.GUEST) autoApprovalJoins = !autoApprovalJoins },
                         ),
                         IntegrationCardItem(
@@ -462,7 +456,6 @@ fun ListenTogetherSettings(
                                 IrideSwitch(
                                     checked = autoApproveSuggestions,
                                     onCheckedChange = { autoApproveSuggestions = it },
-                                    // Only disable for guests in a room (hosts can always change)
                                     enabled = roomState == null || role != RoomRole.GUEST,
                                     thumbContent = {
                                         Icon(
@@ -476,7 +469,6 @@ fun ListenTogetherSettings(
                                     },
                                 )
                             },
-                            // Allow clicking to see disabled state, but only change if enabled
                             onClick = { if (roomState == null || role != RoomRole.GUEST) autoApproveSuggestions = !autoApproveSuggestions },
                         ),
                         IntegrationCardItem(

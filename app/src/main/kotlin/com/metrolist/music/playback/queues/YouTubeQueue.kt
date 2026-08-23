@@ -41,10 +41,8 @@ class YouTubeQueue(
             for (attempt in 0..maxRetries) {
                 try {
                     val nextResult = YouTube.next(endpoint, continuation).getOrThrow()
-                    
                     var items = nextResult.items
                     val relEndpoint = nextResult.relatedEndpoint
-                    
                     if (isRadioRequest && continuation == null && items.size <= 1) {
                         if (endpoint.playlistId?.startsWith("RDAMVM") == true) {
                             throw EmptyRadioQueueException()
@@ -73,7 +71,6 @@ class YouTubeQueue(
                         endpoint.videoId != null
                     ) {
                         endpoint = WatchEndpoint(videoId = endpoint.videoId)
-                        // It will loop again and try with just videoId
                     }
                 }
             }
@@ -98,7 +95,7 @@ class YouTubeQueue(
                     lastException = e
                     retryCount++
                     if (retryCount >= maxRetries) {
-                        continuation = null // Stop trying to load more
+                        continuation = null
                     }
                 }
             }

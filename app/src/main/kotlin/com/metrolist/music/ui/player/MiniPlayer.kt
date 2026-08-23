@@ -145,7 +145,6 @@ fun MiniPlayer(
     playerBottomSheetState: BottomSheetState,
     modifier: Modifier = Modifier,
 ) {
-    // Create stable progress state - doesn't cause recomposition on position changes
     val progressState = remember { ProgressState(positionState, durationState) }
 
     NewMiniPlayer(
@@ -155,9 +154,6 @@ fun MiniPlayer(
     )
 }
 
-// ============================================================================
-// NEW MINI PLAYER DESIGN
-// ============================================================================
 
 @Composable
 private fun NewMiniPlayer(
@@ -167,10 +163,6 @@ private fun NewMiniPlayer(
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
 
-    // Read before the pending-restore gate below so the skeleton is sized the same as the real
-    // content it's standing in for — tablet landscape uses a fixed 500dp centered pill, not
-    // fillMaxWidth, and skipping that here would make the skeleton snap narrower/wider the moment
-    // real content swaps in.
     val windowInfoForSkeleton = LocalWindowInfo.current
     val configurationForSkeleton = LocalConfiguration.current
     val densityForSkeleton = LocalDensity.current
@@ -179,9 +171,6 @@ private fun NewMiniPlayer(
             configurationForSkeleton.orientation == Configuration.ORIENTATION_LANDSCAPE
     }
 
-    // Same "restoring a persisted queue" window as FloatingPill/curtain — hold the skeleton
-    // instead of letting mediaMetadata's transient null pop a placeholder + live controls in
-    // before the real track lands a moment later.
     val hasPendingQueueRestore by playerConnection.service.hasPendingQueueRestoreFlow.collectAsState()
     if (hasPendingQueueRestore) {
         Box(modifier.fillMaxWidth()) {
@@ -198,7 +187,6 @@ private fun NewMiniPlayer(
         return
     }
 
-    // Theme settings - these rarely change
     val miniPlayerBackground by rememberEnumPreference(
         MiniPlayerBackgroundStyleKey,
         defaultValue = MiniPlayerBackgroundStyle.DEFAULT,
@@ -206,19 +194,17 @@ private fun NewMiniPlayer(
     val context = LocalContext.current
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
     val isSystemInDarkTheme = isSystemInDarkTheme()
-    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
+    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
     val useDarkTheme =
         remember(darkTheme, isSystemInDarkTheme) {
             if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
         }
 
-    // Player states - only collect what's needed at this level
     val playbackState by playerConnection.playbackState.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()
 
-    // Cast state - safely access castConnectionHandler to prevent crashes during service lifecycle changes
     val castHandler =
         remember(playerConnection) {
             try {
@@ -229,11 +215,9 @@ private fun NewMiniPlayer(
         }
     val isCasting by castHandler?.isCasting?.collectAsState() ?: remember { mutableStateOf(false) }
 
-    // Swipe settings
     val swipeSensitivity by rememberPreference(SwipeSensitivityKey, 0.73f)
     val swipeThumbnailPref by rememberPreference(SwipeThumbnailKey, true)
 
-    // Disable swipe for Listen Together guests
     val listenTogetherManager = LocalListenTogetherManager.current
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
     val swipeThumbnail = swipeThumbnailPref && !isListenTogetherGuest
@@ -249,7 +233,6 @@ private fun NewMiniPlayer(
             (windowInfo.containerSize.width / density.density) >= 600f && configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         }
 
-    // Swipe animation state
     val offsetXAnimatable = remember { Animatable(0f) }
     var dragStartTime by remember { mutableLongStateOf(0L) }
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
@@ -304,7 +287,6 @@ private fun NewMiniPlayer(
         }
     }
 
-    // Memoize colors
     val backgroundColor = when (miniPlayerBackground) {
         MiniPlayerBackgroundStyle.DEFAULT    -> MaterialTheme.colorScheme.surfaceContainer
         MiniPlayerBackgroundStyle.TRANSPARENT -> Color.Black.copy(alpha = 0.25f)
@@ -421,12 +403,9 @@ private fun NewMiniPlayer(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp),
             ) {
-                // Play button with progress - isolated composable
                 NewMiniPlayerPlayButton(
                     progressState = progressState,
                     mediaMetadata = mediaMetadata,
-                    // Always white regardless of theme/background, so the progress ring stays
-                    // legible instead of blending into whatever accent color is active.
                     primaryColor = Color.White,
                     outlineColor = outlineColor,
                     playerBottomSheetState = playerBottomSheetState,
@@ -434,7 +413,6 @@ private fun NewMiniPlayer(
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                // Song info - isolated composable
                 NewMiniPlayerSongInfo(
                     mediaMetadata = mediaMetadata,
                     onSurfaceColor = onSurfaceColor,
@@ -444,7 +422,6 @@ private fun NewMiniPlayer(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Cast indicator
                 if (isCasting) {
                     Icon(
                         painter = painterResource(R.drawable.cast_connected),
@@ -455,7 +432,6 @@ private fun NewMiniPlayer(
                     Spacer(modifier = Modifier.width(12.dp))
                 }
 
-// Like button
                 mediaMetadata?.let {
                     FavoriteButton(
                         songId = it.id,
@@ -467,7 +443,6 @@ private fun NewMiniPlayer(
 
                 Spacer(modifier = Modifier.width(4.dp))
 
-// Play/pause button (icon only)
                 PlayPauseIconButton(
                     playbackState = playbackState,
                     isCasting = isCasting,
@@ -477,7 +452,6 @@ private fun NewMiniPlayer(
                     onSurfaceColor = onSurfaceColor,
                 )
 
-// Skip next button (icon only)
                 SkipNextIconButton(
                     canSkipNext = canSkipNext,
                     playerConnection = playerConnection,
@@ -675,7 +649,6 @@ private fun FavoriteButton(
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val librarySong by database.song(songId).collectAsState(initial = null)
-    // For episodes, show saved state (inLibrary); for songs, show liked state
     val isEpisode = librarySong?.song?.isEpisode == true
     val isLiked = if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
 

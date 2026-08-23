@@ -237,8 +237,6 @@ private fun <E> IrideMoodChipsRow(
     horizontalPadding: Dp = 20.dp,
 ) {
     val density = LocalDensity.current
-    // index -> (x offset, width) in px, relative to the shared scrollable Column — reported by
-    // each label so the indicator below knows where to glide to.
     val labelBoundsPx = remember { androidx.compose.runtime.mutableStateMapOf<Int, Pair<Float, Float>>() }
     val selectedIndex = chips.indexOfFirst { it.first == currentValue }
     val targetBounds = if (selectedIndex >= 0) labelBoundsPx[selectedIndex] else null
@@ -279,11 +277,6 @@ private fun <E> IrideMoodChipsRow(
             Spacer(Modifier.width(horizontalPadding))
         }
         Spacer(Modifier.height(3.dp))
-        // No fillMaxWidth() track wrapper here (unlike IrideSegmentedToggle): this Column sits
-        // inside horizontalScroll(), which measures children with unbounded width — fillMaxWidth()
-        // under an unbounded constraint has no well-defined size. The indicator only ever needs
-        // its own (bounded) width, so it's emitted directly with a fixed-height Spacer fallback
-        // to reserve the same 2dp row when no chip has reported its bounds yet.
         if (targetBounds != null) {
             Box(
                 modifier = Modifier
@@ -298,9 +291,6 @@ private fun <E> IrideMoodChipsRow(
     }
 }
 
-// Reserves Quick Picks' final footprint (title + carousel) before quickPicks has loaded (null),
-// same technique as HeroCarouselSkeleton — otherwise the shelf pops in above "Mood & Playlists"
-// the moment phase 1 finishes and shoves it down a row.
 @Composable
 private fun QuickPicksSkeleton(contentPadding: Dp, modifier: Modifier = Modifier) {
     ShimmerHost(modifier = modifier.fillMaxWidth()) {
@@ -315,9 +305,6 @@ private fun QuickPicksSkeleton(contentPadding: Dp, modifier: Modifier = Modifier
     }
 }
 
-// Same reserved-slot technique for "On repeat for you" — its real cards are forYouBoxSize square
-// (the 2x2 tile grid) plus a 6dp spacer and a bodyLarge text line (24dp line-height in M3) below,
-// so the skeleton box matches that exact combined height.
 @Composable
 private fun ForYouShelfSkeleton(boxSize: Dp, contentPadding: Dp, modifier: Modifier = Modifier) {
     ShimmerHost(modifier = modifier.fillMaxWidth()) {
@@ -341,10 +328,6 @@ private fun ForYouShelfSkeleton(boxSize: Dp, contentPadding: Dp, modifier: Modif
     }
 }
 
-// Generic reserved slot for the sections that previously had no placeholder at all ("Keep
-// listening", "Daily discover", ...) and used to pop in mid-scroll as each network job
-// finished. Reserves a title bar plus one row of cards approximating the section's real
-// footprint; small residuals are absorbed by animateItem(). Smart Boot only.
 @Composable
 private fun HomeSectionSkeleton(
     rowHeight: Dp,
@@ -436,8 +419,6 @@ fun HomeScreen(
     val phase2CommunityDone by viewModel.phase2CommunityDone.collectAsStateWithLifecycle()
     val phase2SimilarDone by viewModel.phase2SimilarDone.collectAsStateWithLifecycle()
     val phase2DischiPerTeDone by viewModel.phase2DischiPerTeDone.collectAsStateWithLifecycle()
-    // Smart Boot: when on, sections still loading hold a shimmer slot instead of popping in
-    // mid-scroll, and the unified card spacing is applied. Off = original behavior.
     val smartBootEnabled by rememberPreference(SmartBootKey, defaultValue = true)
 
     val accountNameFlow by viewModel.accountName.collectAsStateWithLifecycle()
@@ -454,34 +435,15 @@ fun HomeScreen(
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val topNavBarController = LocalTopNavBarController.current
-    // New Iride UI: sections start flush with the "Home" label in TopNavigationBar (20dp),
-    // instead of the classic UI's 12dp.
     val irideStart = 20.dp
-    // The shared ListItem/GridItem components (SongListItem, YouTubeGridItem, etc.) each carry
-    // their own built-in horizontal inset on top of whatever contentPadding their row/grid gets —
-    // 12dp row padding + 4dp thumbnail box for ListItem-based items, and (in New Iride UI) 4dp
-    // column padding for GridItem-based items — see GridItem's own `hPad` in Items.kt, which is
-    // 4dp when the New Iride UI top nav is enabled, 8dp otherwise. That's on purpose (it's also
-    // what creates the gap between adjacent items in these horizontal carousels) but it means
-    // using irideStart as contentPadding here pushes the item's actual visual thumbnail further
-    // right than the title text above it. Subtracting the item's own inset keeps the first
-    // thumbnail flush with the title without touching those shared components (used everywhere,
-    // not just this screen) or losing the item-to-item spacing. This previously subtracted the
-    // classic UI's 8dp GridItem inset even in New Iride UI mode (where it's actually 4dp),
-    // leaving grid covers sitting 4dp left of the title text above them.
     val irideListItemStart = 4.dp
     val irideGridItemStart = 16.dp
-    // New Iride UI: thumbnails in NavigationTitle (e.g. "Similar to <artist>") shrink to sit
-    // inline with the label/title text stack instead of towering over it.
     val irideTitleThumbSize = 22.dp
     val hideExplicit by rememberPreference(HideExplicitKey, defaultValue = false)
     val hideVideoSongs by rememberPreference(HideVideoSongsKey, defaultValue = false)
     val hideYoutubeShorts by rememberPreference(HideYoutubeShortsKey, defaultValue = false)
-    // Single source of truth for "current grid size" — shared with every other grid card
-    // composable in Items.kt instead of recomputing the same GridItemsSizeKey read locally.
     val currentGridHeight = currentGridThumbnailHeight()
 
-    // Your Mood
     val moodMixItems by viewModel.moodMixItems.collectAsStateWithLifecycle()
     val isMoodLoading by viewModel.isMoodLoading.collectAsStateWithLifecycle()
     var selectedMoodCategory by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage.Chip?>(null) }
@@ -506,19 +468,12 @@ fun HomeScreen(
         }
     }
 
-    // New Iride UI: per-section collapse state, persisted so a section closed today stays
-    // closed on the next app open instead of resetting every session.
     var collapsedSections by rememberPreference(HomeCollapsedSectionsKey, defaultValue = emptySet())
     fun isSectionCollapsed(key: String) = key in collapsedSections
     fun toggleSection(key: String) {
         collapsedSections = if (key in collapsedSections) collapsedSections - key else collapsedSections + key
     }
 
-    // Same IrideMotion vocabulary as ArtistScreen/AlbumScreen: the whole feed fades in once on
-    // landing, and each shelf plays its own entrance exactly once — LazyColumn disposes items
-    // scrolled far off screen, so without this set a shelf scrolled back into view would replay
-    // its wipe-in every time. Sections/progress live in IrideTabEntrance (not `remember`) so
-    // switching to Library and back doesn't replay the whole thing as a "reload".
     val revealedSections = remember { IrideTabEntrance.sectionsFor("home") }
     val screenProgress = if (IrideTabEntrance.wasRevealed("home")) {
         1f
@@ -550,9 +505,6 @@ fun HomeScreen(
     var randomizeJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val lazyListState = rememberLazyListState()
 
-    // Off by default: shelves land in a fixed, predictable order (Featured → Picked for you →
-    // On repeat for you → Mood & Playlists → the rest) since their *content* already refreshes
-    // dynamically/personalized without needing the shelf order itself to shuffle every visit.
     val randomizeHomeOrder by rememberPreference(RandomizeHomeOrderKey, defaultValue = false)
 
     val dischiPerTePosition = remember(randomizeHomeOrder) {
@@ -567,8 +519,6 @@ fun HomeScreen(
         }
     }
 
-    // "On repeat for you" is personalized/high-priority content: fixed default lands it right
-    // after "Picked for you", ahead of Mood & Playlists, per the required shelf order above.
     val forYouShelfPosition = remember(randomizeHomeOrder) {
         if (randomizeHomeOrder) listOf("after_mood", "after_keep_listening").random() else "after_quick_picks"
     }
@@ -689,8 +639,6 @@ fun HomeScreen(
             }
 
             val ytGridItem: @Composable (YTItem, androidx.compose.ui.unit.Dp?, Boolean, String?) -> Unit = { item, sizeOverride, dischiPerTeStyle, fallbackArtistName ->
-                // Standard card size for every content type (New Iride UI A6): no more one-off
-                // 180dp mixtape exception — everything follows the same currentGridHeight scale.
                 val size = sizeOverride ?: currentGridHeight
                 YouTubeGridItem(
                     item = item,
@@ -769,8 +717,6 @@ fun HomeScreen(
                 )
             }
 
-            // Plain cover, no vinyl decoration — same footprint as every other shelf now
-            // (was 0.82x, which made this row look smaller/misaligned against its neighbors).
             val dischiPerTeItemSize = currentGridHeight
             val dischiPerTeGridItem: @Composable (DischiPerTeItem) -> Unit = { discItem ->
                 when (discItem) {
@@ -798,8 +744,6 @@ fun HomeScreen(
             }
 
             val dischiPerTeSection: LazyListScope.() -> Unit = {
-                // Smart Boot: hold the slot with shimmer while the generator job runs instead of
-                // letting the shelf pop in mid-scroll.
                 if (smartBootEnabled && phase1Complete && !phase2DischiPerTeDone && dischiPerTe == null) {
                     item(key = "dischi_per_te_skeleton") {
                         HomeSectionSkeleton(
@@ -840,12 +784,6 @@ fun HomeScreen(
                 }
             }
 
-            // "On repeat for you": a carousel exactly like any other Home shelf (Account
-            // Playlists, Dischi per te) — one card slot per artist (most-listened or followed).
-            // Inside that single-slot footprint sits a miniature 2x2 grid: the artist photo
-            // top-left, then 3 of their albums (never songs). Artists that can't fill all 3
-            // album tiles are dropped rather than shown incomplete.
-            // Box scaled 35% up (uniform, like Figma's K scale) — text below stays default size.
             val forYouBoxScale = 1.35f
             val forYouCellGap = 3.dp * forYouBoxScale
             val forYouBoxSize = currentGridHeight * forYouBoxScale
@@ -902,10 +840,6 @@ fun HomeScreen(
                     )
                 }
             }
-            // Loading == not yet through phase 1 with nothing to show yet. Distinguishing this from
-            // "phase 1 finished, genuinely no shelves" is what lets the skeleton reserve the slot
-            // instead of the row popping in later and shoving Mood & Playlists down (see
-            // ForYouShelfSkeleton above).
             val forYouLoading = !phase1Complete && forYouShelves.isEmpty()
             val forYouSection: LazyListScope.() -> Unit = {
                 if (forYouLoading || forYouShelves.isNotEmpty()) {
@@ -931,8 +865,6 @@ fun HomeScreen(
                             } else {
                                 val shelves = forYouShelves
                                 val forYouState = rememberLazyListState()
-                                // Never-ending carousel: once the user scrolls near the tail,
-                                // pull in the next batch of artist shelves so there's always more.
                                 LaunchedEffect(forYouState, shelves.size) {
                                     snapshotFlow { forYouState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
                                         .collect { lastVisible ->
@@ -944,8 +876,6 @@ fun HomeScreen(
                                 LazyRow(
                                     state = forYouState,
                                     contentPadding = PaddingValues(horizontal = irideGridItemStart),
-                                    // Smart Boot unifies card gaps across all Home rows to 12dp;
-                                    // off restores the original per-row value.
                                     horizontalArrangement =
                                         Arrangement.spacedBy(if (smartBootEnabled) 12.dp else 16.dp),
                                     overscrollEffect = null,
@@ -970,21 +900,10 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .then(
-                        // Fade only, same as ArtistScreen: covers the gap between navigation and
-                        // first layout without insetting edge-to-edge content.
                         Modifier.graphicsLayer { alpha = screenProgress },
                     )
-                    // Same edge-pull effect as every other top-level scroll (Library/Artist/Album);
-                    // Home's outer list was the one missing it.
                     .rubberBandOverscroll(Orientation.Vertical, lazyListState),
             ) {
-                // Gate only on the static pref, never on topNavBarController's nullity — the
-                // controller goes transiently null mid back-navigation (see SearchScreen.kt's
-                // matching comment), and dropping this item out of the list for that one frame
-                // shifted every shelf below it up by one slot; when the controller came back the
-                // header re-inserted at index 0 while those shelves' own animateItem() was still
-                // sliding them back down, so their still-moving content painted over the header
-                // mid-transition. Always emit the item with null-safe fallbacks instead.
                 item(key = "top_nav_bar") {
                     TopNavigationBar(
                         navigationItems = topNavBarController?.navigationItems ?: emptyList(),
@@ -999,12 +918,6 @@ fun HomeScreen(
 
                 if (isLoading) {
                     item(key = "loading_indicator") {
-                        // New Iride UI: thin hairline bar instead of Material's default thick
-                        // (4dp), saturated-color indeterminate bar — matches the flat/monochrome
-                        // language used everywhere else in this UI (see IrideSwitch/IrideSlider
-                        // in IrideSettingsControls.kt and the Iride branch of SyncBanner below).
-                        // Also keeps this item's height negligible, so its brief appearance at
-                        // the very start of a cold load barely shifts anything below it.
                         LinearProgressIndicator(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1020,12 +933,6 @@ fun HomeScreen(
                 item(key = "sync_banner") {
                     AnimatedVisibility(
                         visible = isLoggedIn && syncState.overallStatus == SyncStatus.Syncing && syncBannerLaunchCount < 3,
-                        // New Iride UI: fade-only, same fix as the disclaimer item above and for the
-                        // same reason — expandVertically/shrinkVertically animates this item's height
-                        // frame-by-frame, and every shelf below it carries .animateItem(), so it
-                        // reflows in step and can momentarily paint over the top nav bar during the
-                        // cold-start window. Classic UI (no top nav bar item to protect) keeps the
-                        // original grow/shrink transition.
                         enter = fadeIn(),
                         exit = fadeOut(),
                     ) {
@@ -1033,12 +940,6 @@ fun HomeScreen(
                     }
                 }
 
-                // ── Hero Carousel ───────────────────────────────────────────
-                // Slot is reserved the moment the feature is enabled, not once its (network-
-                // backed) data arrives — Picked for you loads from the DB and is typically ready
-                // first, so without a reserved slot here Hero would pop in above it later and
-                // shove everything down. Skeleton keeps the final height from frame one; the real
-                // section fades into that same slot once heroCarouselItems is non-empty.
                 if (isHeroCarouselEnabled) {
                     item(key = "hero_carousel") {
                         if (heroCarouselItems.isNotEmpty()) {
@@ -1071,12 +972,6 @@ fun HomeScreen(
                     }
                 }
 
-                // ── Speed Dial ──────────────────────────────────────────────
-                // When the Hero Carousel leads the screen, push Speed Dial a few blocks down
-                // instead of stacking two big carousels back to back. Keyed on the feature being
-                // enabled, not on heroCarouselItems being non-empty — Hero's slot is reserved from
-                // frame one now (see above), so Speed Dial's position must be decided once too, or
-                // it would render early and then jump down the moment hero data arrives.
                 val deferSpeedDialToBottom = isHeroCarouselEnabled
                 val speedDialContent: @Composable LazyItemScope.() -> Unit = {
                         val items = speedDialItems
@@ -1288,9 +1183,6 @@ fun HomeScreen(
                         }
                 }
 
-                // null == not yet loaded (reserve the skeleton slot); non-null-but-empty means phase
-                // 1 finished and there's genuinely nothing to show. Without this distinction the row
-                // pops in above Mood & Playlists the instant phase 1 finishes, pushing it down a row.
                 val filteredQp = quickPicks?.distinctBy { it.id }
                 val quickPicksLoading = quickPicks == null
                 if (quickPicksLoading || filteredQp?.isNotEmpty() == true) {
@@ -1373,7 +1265,6 @@ fun HomeScreen(
 
                 if (forYouShelfPosition == "after_quick_picks") forYouSection()
 
-                // ── Your Mood (only shown when logged in) ────────────────────
                 if (isLoggedIn) {
                     item(key = "your_mood_title") {
                         NavigationTitle(
@@ -1393,9 +1284,6 @@ fun HomeScreen(
                                 .then(homeRowMotion("your_mood_row")),
                         ) {
                             if (moodChips.isNotEmpty()) {
-                                // Same glide-indicator technique as the Library/Downloaded
-                                // switch (IrideSegmentedToggle) instead of ChipsRow's plain
-                                // per-chip static underline.
                                 IrideMoodChipsRow(
                                     chips = moodChips,
                                     currentValue = selectedMoodCategory,
@@ -1404,9 +1292,6 @@ fun HomeScreen(
                                 )
                             }
 
-                            // Fixed height so switching chips never resizes the row mid-fade —
-                            // the old mixes stay put (dimmed) with a small corner spinner until
-                            // the new ones are ready, instead of the whole thing flashing blank.
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1492,7 +1377,6 @@ fun HomeScreen(
                 if (dischiPerTePosition == "after_mood") dischiPerTeSection()
                 if (forYouShelfPosition == "after_mood") forYouSection()
 
-                // ── Other sections (appear as data arrives, no stagger) ──────
                 if (smartBootEnabled && keepListening == null) {
                     item(key = "keep_listening_skeleton") {
                         HomeSectionSkeleton(
@@ -1514,7 +1398,6 @@ fun HomeScreen(
                     }
                     item(key = "keep_listening_list") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("keep_listening")) {
-                            // New Iride UI: always a single compact row, never the classic UI's 2-row grid.
                             val rows = 1
                             val keepListeningState = rememberLazyGridState()
                             LazyHorizontalGrid(

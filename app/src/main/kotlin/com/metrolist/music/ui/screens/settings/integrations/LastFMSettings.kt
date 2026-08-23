@@ -172,7 +172,6 @@ fun LastFMSettings(
                         enabled = !isLoggingIn,
                     )
 
-                    // Show error message if login failed
                     loginError?.let { error ->
                         Text(
                             text = error,
@@ -182,7 +181,6 @@ fun LastFMSettings(
                         )
                     }
 
-                    // Show loading indicator
                     if (isLoggingIn) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -220,7 +218,6 @@ fun LastFMSettings(
                                         lastfmSession = auth.session.key
                                         LastFM.sessionKey = auth.session.key
 
-                                        // Switch back to main thread to update UI
                                         coroutineScope.launch(Dispatchers.Main) {
                                             isLoggingIn = false
                                             showLoginDialog = false
@@ -296,7 +293,6 @@ fun LastFMSettings(
             )
         )
 
-        // Options section (card-based)
         Material3SettingsGroup(
             title = stringResource(R.string.account),
             items = listOf(

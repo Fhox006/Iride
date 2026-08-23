@@ -48,6 +48,8 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
 import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 
 @Composable
 fun <T> LibrarySortRow(
@@ -83,11 +85,7 @@ fun <T> LibrarySortRow(
                 expanded = menuExpanded,
                 onDismissRequest = { menuExpanded = false },
                 shape = RoundedCornerShape(16.dp),
-                containerColor = if (useIrideStyle) {
-                    androidx.compose.ui.graphics.Color(0xFF111111)
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerHigh
-                },
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             ) {
                 sortOptions.forEach { (type, label) ->
                     val isSelected = type == currentSort
@@ -101,7 +99,7 @@ fun <T> LibrarySortRow(
                                     ),
                                     fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.SemiBold
                                                  else androidx.compose.ui.text.font.FontWeight.Normal,
-                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = if (isSelected) 0.95f else 0.7f),
+                                    color = if (isSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textSecondary,
                                 )
                             },
                             trailingIcon = if (isSelected) {
@@ -109,7 +107,7 @@ fun <T> LibrarySortRow(
                                     Icon(
                                         painter = painterResource(R.drawable.check),
                                         contentDescription = null,
-                                        tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
+                                        tint = MaterialTheme.colorScheme.textPrimary,
                                         modifier = Modifier.size(18.dp),
                                     )
                                 }
@@ -189,14 +187,14 @@ private fun SortMenuChip(
                     fontFamily = SpaceMonoFontFamily,
                 ),
                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
+                color = MaterialTheme.colorScheme.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Icon(
                 painter = painterResource(R.drawable.expand_more),
                 contentDescription = null,
-                tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.5f),
+                tint = MaterialTheme.colorScheme.textSecondary,
                 modifier = Modifier
                     .size(16.dp)
                     .graphicsLayer { rotationZ = arrowRotation },
@@ -264,7 +262,7 @@ private fun SortDirectionButton(
             Icon(
                 painter = painterResource(R.drawable.arrow_downward),
                 contentDescription = stringResource(if (descending) R.string.sort_descending else R.string.sort_ascending),
-                tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.75f),
+                tint = MaterialTheme.colorScheme.textSecondary,
                 modifier = Modifier
                     .size(18.dp)
                     .graphicsLayer { rotationZ = rotation },
@@ -314,8 +312,6 @@ fun LibraryViewTypeButton(
                 ) { onViewTypeChange(viewType.toggle()) },
             contentAlignment = Alignment.Center,
         ) {
-            // Fade+scale swap instead of an instant icon replacement, so this reads as an
-            // animated control like the rest of the New Iride UI filter row.
             AnimatedContent(
                 targetState = viewType,
                 transitionSpec = {
@@ -339,7 +335,7 @@ fun LibraryViewTypeButton(
                             LibraryViewType.GRID_WIDE -> R.string.switch_to_list_view
                         },
                     ),
-                    tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.75f),
+                    tint = MaterialTheme.colorScheme.textSecondary,
                     modifier = Modifier.size(18.dp),
                 )
             }

@@ -86,7 +86,6 @@ fun PlayerAppearanceSettings(navController: NavController) {
     var showPlayerBackgroundDialog by rememberSaveable { mutableStateOf(false) }
     var showSensitivityDialog by rememberSaveable { mutableStateOf(false) }
 
-    // ── Dialogs ────────────────────────────────────────────────────────────
 
     if (showPlayerBackgroundDialog) {
         EnumDialog(
@@ -102,7 +101,6 @@ fun PlayerAppearanceSettings(navController: NavController) {
                     PlayerBackgroundStyle.ANIMATED_GRADIENT -> stringResource(R.string.animated_gradient)
                     PlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
                     PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> stringResource(R.string.better_animated_gradient)
-                    else -> ""
                 }
             }
         )
@@ -158,7 +156,6 @@ fun PlayerAppearanceSettings(navController: NavController) {
         }
     }
 
-    // ── Screen ────────────────────────────────────────────────────────────
 
     Column(
         Modifier
@@ -176,7 +173,6 @@ fun PlayerAppearanceSettings(navController: NavController) {
             )
         )
 
-        // ── Player ────────────────────────────────────────────────────────
         Material3SettingsGroup(
             title = stringResource(R.string.player_appearance),
             items = buildList {
@@ -192,7 +188,6 @@ fun PlayerAppearanceSettings(navController: NavController) {
                                     PlayerBackgroundStyle.ANIMATED_GRADIENT -> stringResource(R.string.animated_gradient)
                                     PlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
                                     PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT -> stringResource(R.string.better_animated_gradient)
-                                    else -> ""
                                 }
                             )
                         },
@@ -222,31 +217,6 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         onClick = { onBetterGradientSmoothTransitionChange(!betterGradientSmoothTransition) }
                     )
                 )
-                /* HIDDEN - hide_player_thumbnail toggle
-                add(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.hide_image),
-                        title = { Text(stringResource(R.string.hide_player_thumbnail)) },
-                        description = { Text(stringResource(R.string.hide_player_thumbnail_desc)) },
-                        trailingContent = {
-                            IrideSwitch(
-                                checked = hidePlayerThumbnail,
-                                onCheckedChange = onHidePlayerThumbnailChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            if (hidePlayerThumbnail) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize)
-                                    )
-                                }
-                            )
-                        },
-                        onClick = { onHidePlayerThumbnailChange(!hidePlayerThumbnail) }
-                    )
-                )
-                END HIDDEN */
                 if (advancedMode) add(
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.crop),
@@ -270,30 +240,9 @@ fun PlayerAppearanceSettings(navController: NavController) {
                         onClick = { onCropAlbumArtChange(!cropAlbumArt) }
                     )
                 )
-                /* HIDDEN - swipe_sensitivity setting
-                if (swipeThumbnail) {
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.tune),
-                            title = { Text(stringResource(R.string.swipe_sensitivity)) },
-                            description = {
-                                Text(
-                                    stringResource(
-                                        R.string.sensitivity_percentage,
-                                        (swipeSensitivity * 100).roundToInt()
-                                    )
-                                )
-                            },
-                            onClick = { showSensitivityDialog = true }
-                        )
-                    )
-                }
-                END HIDDEN */
             }
         )
 
-        // Mini Player group removed from UI (its only remaining row, Pure Black Mini Player,
-        // stays off via its stored default).
     }
 
     SettingsBackTopBar(

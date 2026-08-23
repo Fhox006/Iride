@@ -7,12 +7,9 @@ import java.util.Locale
 import java.util.UUID
 
 object SuperProperties {
-    // Constants from research for Discord Android 314.13
     private const val CLIENT_VERSION = "314.13 - Stable"
     private const val CLIENT_BUILD_NUMBER = 314013
     private const val RELEASE_CHANNEL = "googleRelease"
-    
-    // Lazy loaded properties to avoid re-generating UUIDs
     val superProperties: JSONObject by lazy {
         JSONObject().apply {
             put("os", "Android")

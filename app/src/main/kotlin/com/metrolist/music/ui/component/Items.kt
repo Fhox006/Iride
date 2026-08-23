@@ -207,8 +207,6 @@ fun rememberSelectionProgress(isActive: Boolean): Float {
     return progress
 }
 
-// Width and gap stay proportional to bar height (≈3:14 and ≈2:14) so the whole mark scales as
-// one unit instead of thin bars stretching tall on a big grid tile.
 private const val VisualizerWidthToHeight = 3f / 14f
 private const val VisualizerGapToHeight = 2f / 14f
 private val VisualizerBarMinHeight = 10.dp
@@ -277,8 +275,6 @@ private fun NowPlayingOverlay(
             .then(if (showScrim) Modifier.background(Color.Black.copy(alpha = 0.45f)) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        // Scales with the thumbnail — a fixed size would shrink to an unreadable speck on a
-        // 128dp grid tile, or crowd a 48dp list row.
         val barHeight = (minOf(maxWidth, maxHeight) * 0.3f).coerceIn(VisualizerBarMinHeight, VisualizerBarMaxHeightCap)
         AudioVisualizerBars(barHeight = barHeight)
     }
@@ -307,7 +303,6 @@ private const val ThumbnailRequestSize = 448
  */
 val VinylPeekDiscBaseBottom = Color(0xFF060607)
 
-// Real-LP proportions: a 12" label sits at ~38-40% of the disc's diameter.
 private const val VinylPeekDiscLabelFraction = 0.40f
 private const val VinylPeekDiscSpindleFraction = 0.035f
 private const val VinylPeekDiscGrooveCount = 6
@@ -326,8 +321,6 @@ fun VinylPeekDisc(
             .build(),
     )
     val painterState by painter.state.collectAsState()
-    // The disc only makes sense once we actually have art to print on its label — don't show
-    // an empty/placeholder record while the thumbnail is still loading or missing.
     val isLoaded = painterState is AsyncImagePainter.State.Success
 
     AnimatedVisibility(
@@ -361,10 +354,8 @@ fun VinylPeekDisc(
                         )
                     }
                 }
-                // Faint rim so the disc's silhouette stays visible even against a black cover.
                 .border(width = 1.dp, color = Color.White.copy(alpha = 0.14f), shape = CircleShape)
         ) {
-            // Center label — the only place album artwork appears on the disc.
             Image(
                 painter = painter,
                 contentDescription = null,
@@ -376,7 +367,6 @@ fun VinylPeekDisc(
                     .clip(CircleShape)
                     .border(width = 0.5.dp, color = Color.White.copy(alpha = 0.22f), shape = CircleShape)
             )
-            // Spindle hole.
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -395,7 +385,6 @@ fun currentGridThumbnailHeight(): Dp {
     return if (gridItemSize == GridItemSize.BIG) GridThumbnailHeight else SmallGridThumbnailHeight
 }
 
-// Basic list item - optimized with inline to reduce recomposition
 @Composable
 inline fun ListItem(
     modifier: Modifier = Modifier,
@@ -420,8 +409,6 @@ inline fun ListItem(
             verticalAlignment = Alignment.CenterVertically,
             modifier = when {
                 isActive -> {
-                    // No row-level frame: the cover thumbnail's own active border already signals
-                    // what's playing, a second border around the whole row was redundant.
                     Modifier
                         .padding(horizontal = hPad, vertical = 2.dp)
                         .height(ListItemHeight)
@@ -540,17 +527,12 @@ fun ListItem(
     showDivider = showDivider,
 )
 
-// merge badges and subtitle text and pass to basic list item
 @Composable
 fun ListItem(
     modifier: Modifier = Modifier,
     title: String,
     subtitle: String?,
     badges: @Composable RowScope.() -> Unit = {},
-    // Lets callers (Album/Playlist screens, New Iride UI only) render the subtitle in the same
-    // color as the title instead of the default muted secondary — used so a "feat. Artist" credit
-    // doesn't read as visually washed-out compared to the rest of the row. Defaults to the
-    // existing secondary color everywhere else so this is a no-op unless explicitly overridden.
     subtitleColor: Color = MaterialTheme.colorScheme.secondary,
     thumbnailContent: @Composable () -> Unit,
     trailingContent: @Composable RowScope.() -> Unit = {},
@@ -596,7 +578,6 @@ fun GridItem(
     size: Dp = currentGridThumbnailHeight(),
 ) {
     val applyHPad = LocalItemHorizontalPadding.current
-    // New Iride UI: tiles sit closer together laterally than the classic UI's 8dp gap.
     val hPad = if (applyHPad) 4.dp else 0.dp
     Column(
         modifier = if (fillMaxWidth) {
@@ -702,9 +683,7 @@ fun SongListItem(
     showLikedIcon: Boolean = true,
     showDownloadIcon: Boolean = true,
     subtitleOverride: String? = null,
-    // See ListItem's subtitleColor doc — null keeps the existing muted secondary color.
     subtitleColor: Color? = null,
-    // Unseen-song marker (Featuring section / Top Songs / album rows), cleared by viewport visibility.
     showNewMarker: Boolean = false,
     badges: @Composable RowScope.() -> Unit = {
         if (showNewMarker) Icon.New()
@@ -938,7 +917,6 @@ fun ArtistListItem(
     thumbnailContent = {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
-                // 900px of avatar for a 48dp circle was ~18x the pixels this ever draws.
                 .data(artist.artist.thumbnailUrl?.resize(192, 192))
                 .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
@@ -1191,13 +1169,8 @@ fun PlaylistListItem(
     },
     badges = badges,
     thumbnailContent = {
-        // Matched by stable playlist id (not the localized display name) so this keeps showing
-        // the glass star cover even when the Liked Songs entry is renamed to "Starred" for New
-        // Iride UI — a name-string match would silently fall through the moment the texts differ.
         val isLikedPlaylist = playlist.playlist.id == PlaylistEntity.LIKED_PLAYLIST_ID
         if (isLikedPlaylist) {
-            // Same frosted-glass mosaic + badge as the playlist's own screen (AutoPlaylistScreen)
-            // so this entry looks identical whether seen from inside or from the Library list.
             GlassPlaylistCover(
                 thumbnails = playlist.thumbnails,
                 icon = R.drawable.star,
@@ -1213,7 +1186,6 @@ fun PlaylistListItem(
                     val painter = when {
                         playlist.playlist.name == stringResource(R.string.offline) -> R.drawable.offline
                         playlist.playlist.name == stringResource(R.string.cached_playlist) -> R.drawable.cached
-                        // R.drawable.backup as placeholder
                         playlist.playlist.name == stringResource(R.string.uploaded_playlist) -> R.drawable.backup
                         else -> if (autoPlaylist) R.drawable.trending_up else R.drawable.queue_music
                     }
@@ -1308,11 +1280,8 @@ fun PlaylistGridItem(
     thumbnailContent = {
         val width = maxWidth
         val shape = RoundedCornerShape(5.dp)
-        // See PlaylistListItem's placeholder for why this matches by id, not name.
         val isLikedPlaylist = playlist.playlist.id == PlaylistEntity.LIKED_PLAYLIST_ID
         if (isLikedPlaylist) {
-            // Same frosted-glass mosaic + badge as the playlist's own screen (AutoPlaylistScreen)
-            // so this entry looks identical whether seen from inside or from the Library grid.
             GlassPlaylistCover(
                 thumbnails = playlist.thumbnails,
                 icon = R.drawable.star,
@@ -1328,7 +1297,6 @@ fun PlaylistGridItem(
                     val painter = when {
                         playlist.playlist.name == stringResource(R.string.offline) -> R.drawable.offline
                         playlist.playlist.name == stringResource(R.string.cached_playlist) -> R.drawable.cached
-                        // R.drawable.backup as placeholder
                         playlist.playlist.name == stringResource(R.string.uploaded_playlist) -> R.drawable.backup
                         else -> if (autoPlaylist) R.drawable.trending_up else R.drawable.queue_music
                     }
@@ -1415,13 +1383,8 @@ fun YouTubeListItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     isSwipeable: Boolean = true,
-    // Unseen-song marker — Featuring section / Top Songs / album rows, cleared by viewport visibility.
     showNewMarker: Boolean = false,
-    // What's new, spelled out next to the dot (e.g. "FEAT" in the Featuring carousel) — a bare dot
-    // didn't say why the row was marked new.
     newMarkerLabel: String? = null,
-    // Featuring section only: appends " — Album Name" to the subtitle for tracks that live on
-    // someone else's album, so "ArtistA, ArtistB feat. You" reads as "... feat. You — Album Name".
     showAlbumInSubtitle: Boolean = false,
     trailingContent: @Composable RowScope.() -> Unit = {},
     badges: @Composable RowScope.() -> Unit = {
@@ -1460,8 +1423,6 @@ fun YouTubeListItem(
                     val localArtists by produceState<List<com.metrolist.music.db.entities.ArtistEntity>?>(initialValue = null, item.id) {
                         value = database.song(item.id).firstOrNull()?.orderedArtists
                     }
-                    // The API's own artists list sometimes truncates collaborators; when a local
-                    // record picked up more (e.g. via TitleFeaturingParser), prefer it.
                     val artistNames = if (showFeaturedArtists && (localArtists?.size ?: 0) > item.artists.size) {
                         localArtists!!.joinToString { it.name }
                     } else {
@@ -1518,10 +1479,7 @@ fun YouTubeGridItem(
     item: YTItem,
     modifier: Modifier = Modifier,
     coroutineScope: CoroutineScope? = null,
-    // Unseen-release marker (artist page Album/Single/EP rows) — plain dot until the item is opened.
     showNewMarker: Boolean = false,
-    // What's new, spelled out next to the dot (ALBUM/EP/SINGLE) — a bare dot didn't say what kind
-    // of release just came out.
     newMarkerLabel: String? = null,
     badges: @Composable RowScope.() -> Unit = {
         val database = LocalDatabase.current
@@ -1546,19 +1504,12 @@ fun YouTubeGridItem(
     },
     thumbnailRatio: Float = if (item is SongItem) 16f / 9 else 1f,
     thumbnailCornerRadius: Dp = ThumbnailCornerRadius,
-    // Overrides the shape computed below entirely. Square (ratio 1f) tiles in the New Iride UI
-    // otherwise always draw a fixed 5.dp RoundedCornerShape regardless of `thumbnailCornerRadius` or
-    // `size` — fine at the ~150-180dp this was tuned for, but at a much larger tile the same 5.dp
-    // reads as almost square. Rather than change that fixed value for every existing square tile in
-    // the app, callers that intentionally render an oversized tile can pass their own shape here.
     thumbnailShape: Shape? = null,
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
     size: Dp = currentGridThumbnailHeight(),
     showTitle: Boolean = true,
-    // Used when item.artists is null/empty (always true for albums parsed off
-    // an artist's own page) so the subtitle isn't left artist-less.
     fallbackArtistName: String? = null,
     hairlineBorder: Boolean = item is AlbumItem,
 ) {
@@ -1622,7 +1573,6 @@ fun YouTubeGridItem(
             isPlaying = isPlaying,
             shape = thumbnailShape ?: when {
                 item is ArtistItem -> CircleShape
-                // Non-square thumbnails (e.g. 16:9 videos) don't suit a squircle
                 effectiveThumbnailRatio != 1f -> RoundedCornerShape(thumbnailCornerRadius)
                 else -> RoundedCornerShape(5.dp)
             },
@@ -1783,8 +1733,6 @@ fun ItemThumbnail(
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
     val selectionBorderColor = Color.White.copy(alpha = 0.5f)
-    // Shrink/border reads as "selected or still loading" — once the track is actually sounding,
-    // NowPlayingOverlay below takes over so the two states can't be mistaken for each other.
     val selectionProgress = rememberSelectionProgress(isActive && !isPlaying)
 
     Box(
@@ -1820,12 +1768,6 @@ fun ItemThumbnail(
         }
 
         if (albumIndex == null) {
-            // Every call site hands this its raw thumbnail URL, and rememberAsyncImagePainter —
-            // unlike AsyncImage — installs no size resolver, so Coil defaults to SizeResolver
-            // .ORIGINAL: each row of every feed was downloading and decoding full-resolution
-            // artwork (lh3 originals run 1000-2400px) to draw a 48-128dp tile. Asking the CDN for
-            // ThumbnailRequestSize cuts the bytes, and the constraints resolver decodes to the
-            // size actually on screen so a 48dp row doesn't hold a 448px bitmap in the cache.
             val sizeResolver = rememberConstraintsSizeResolver()
             val painter = rememberAsyncImagePainter(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -1872,8 +1814,6 @@ fun ItemThumbnail(
             )
         }
 
-        // Index-only rows (album track lists): while this track is sounding the bars replace the
-        // number cleanly — no scrim box behind them on the page background.
         val showIndexNumber = albumIndex != null && !(isActive && isPlaying && !isSelected)
         if (showIndexNumber) {
             Text(
@@ -2030,7 +1970,7 @@ fun PlaylistThumbnail(
         1 -> AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(thumbnails[0])
-                .apply { /* Removed cache key extensions due to unresolved in env */ }
+                .apply {  }
                 .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
@@ -2059,7 +1999,7 @@ fun PlaylistThumbnail(
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(thumbnails.getOrNull(index))
-                        .apply { /* Removed cache key extensions due to unresolved in env */ }
+                        .apply {  }
                         .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                         .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                         .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
@@ -2139,11 +2079,6 @@ fun BoxScope.OverlayEditButton(
 }
 
 
-// Same horizontally-snapping carousel mechanism as Home's "Picked for you" (LazyHorizontalGrid
-// + snap fling, `rows` tall pages), factored out so every song carousel in the app (Picked for
-// you, Artist "Top Songs", Artist library songs) stays visually identical. Row spacing/shape is
-// untouched here — callers render their own row composable (SongListItem/YouTubeListItem) inside
-// [itemContent], so the existing look of those rows carries over as-is.
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun <T> SongCarousel(
@@ -2155,9 +2090,6 @@ fun <T> SongCarousel(
     gridState: LazyGridState = rememberLazyGridState(),
     itemContent: @Composable (item: T, itemWidth: Dp) -> Unit,
 ) {
-    // Reserving the full `rows` height regardless of item count left dead space below short lists
-    // (e.g. an artist with only 1-2 featured tracks still got a 4-row-tall carousel). Shrink to fit
-    // the actual content instead — callers with enough items to fill every row see no change.
     val effectiveRows = minOf(rows, items.size).coerceAtLeast(1)
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val itemWidthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
@@ -2199,23 +2131,12 @@ fun SwipeToSongBox(
     val scope = rememberCoroutineScope()
     val offset = remember { mutableFloatStateOf(0f) }
     val threshold = 300f
-    // One-shot white pulse drawn on confirmed swipe only (threshold reached at release).
-    // Never fires on a cancelled drag (offset springs back below threshold), per design ask.
     val confirmFlash = remember { Animatable(0f) }
 
     val dragState = rememberDraggableState { delta ->
         offset.floatValue = (offset.floatValue + delta).coerceIn(-threshold, threshold)
     }
 
-    // Every offset read below is deferred to layout/draw (Modifier.offset{} lambda,
-    // graphicsLayer{} lambda, drawBehind{}) instead of read directly in this function's body.
-    // Reading offset.floatValue directly here — as this used to do, in an `if` gating the
-    // reveal panel's presence and in a `then(if (...))` on content's own Modifier chain — makes
-    // this whole composable (and, since it isn't a separate skip scope, the heavy `content()`
-    // it hosts: thumbnail, badges, download-state flows) recompose on every single drag pixel.
-    // That recomposition storm is what read as a jittery/stuttering row while dragging; sizes
-    // and colors below never change mid-drag, only visibility (alpha) and position do, so they
-    // can be computed once and animated purely at draw time.
     val nextBg = Color.White
     val nextTint = Color.Black
     val queueBg = Color.White
@@ -2233,8 +2154,6 @@ fun SwipeToSongBox(
                 orientation = Orientation.Horizontal,
                 state = dragState,
                 onDragStarted = {
-                    // Guarantees a fresh gesture never inherits a still-fading flash from a prior
-                    // confirmed swipe on this row — a cancelled drag can never show any flash.
                     confirmFlash.snapTo(0f)
                 },
                 onDragStopped = {
@@ -2258,18 +2177,6 @@ fun SwipeToSongBox(
                 }
             )
     ) {
-        // Both panels stay composed at all times (only alpha animates — no subtree churn while
-        // dragging) and are full-row, but they live inside a container clipped to just the strip
-        // the finger has uncovered. Nothing opaque ever sits behind the sliding song content, so
-        // the row stays transparent at rest AND mid-drag: the page gradient shows through, and
-        // neither panel can bleed through behind the title/artist text. Each panel keeps its own
-        // directional fade, so an opaque QUEUE layer can never cover NEXT.
-        //
-        // Visibility is exposed as derivedStateOf booleans instead of reading offset.floatValue
-        // directly here — each boolean only flips twice per gesture (at its sign change), so the
-        // animateFloatAsState fades below recompose on that rare flip, never per drag pixel. The
-        // strip shape reads offset at draw time, so the clip tracks the finger without
-        // recomposition too.
         val nextVisible by remember { derivedStateOf { offset.floatValue > 0f } }
         val queueVisible by remember { derivedStateOf { offset.floatValue < 0f } }
         val nextAlpha by animateFloatAsState(
@@ -2343,7 +2250,6 @@ fun SwipeToSongBox(
             content = content
         )
 
-        // Confirm-only white pulse — never touched by a cancelled drag, only by confirmSwipe().
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -2353,19 +2259,12 @@ fun SwipeToSongBox(
     }
 }
 
-// Fires the confirm-only white pulse and, when nothing is currently playing, a short
-// monospace beep via ToneGenerator (mirrors the ArtistGameViewModel tone pattern) so a
-// silent app still gives audible confirmation that the swipe committed.
 private fun confirmSwipe(
     scope: CoroutineScope,
     flash: Animatable<Float, AnimationVector1D>,
     isPlaying: Boolean,
 ) {
     scope.launch {
-        // Fully opaque — anything less lets the NEXT/QUEUE label (still mid-scramble from
-        // reset()'s offset animation below) show through and read as a glitch. Held slightly
-        // longer than reset()'s 300ms so the row is fully closed again before the flash clears,
-        // instead of uncovering the panel for its last few frames.
         flash.snapTo(1f)
         flash.animateTo(0f, animationSpec = tween(durationMillis = 320))
     }
@@ -2379,7 +2278,6 @@ private fun confirmSwipe(
     }
 }
 
-// Helper to animate reset of swipe offset
 private fun reset(offset: MutableState<Float>, scope: CoroutineScope) {
     scope.launch {
         animate(
@@ -2390,12 +2288,6 @@ private fun reset(offset: MutableState<Float>, scope: CoroutineScope) {
     }
 }
 
-// NEXT/QUEUE reveal panel behind a swiped song row. `techStyled` (New Iride UI) adds a thin
-// HUD hairline frame and a passcode-style scramble reveal driven by drag distance (not time).
-// NEXT (drag right) locks letters left-to-right; QUEUE (drag left) passes `reverse = true` so
-// the reveal mirrors — letters lock from the trailing edge inward, growing leftward from the
-// panel's right edge in step with the swipe direction. Classic Material UI keeps a plain
-// fade with no framing or reveal.
 @Composable
 private fun SwipeRevealPanel(
     modifier: Modifier,
@@ -2462,14 +2354,6 @@ private const val SCRAMBLE_GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 private const val SCRAMBLE_TICK_MS = 45L
 private const val REVEAL_BOOST = 1.25f
 
-// Passcode-style reveal: how many letters are locked follows drag progress (offset/threshold),
-// not a timer, so it reads as "decoding" the further you swipe. Locked letters show the real
-// label; the rest keep re-rolling random glyphs on a fixed tick until they lock too.
-//
-// [reverse] mirrors the reveal for swipe-left gestures (QUEUE): letters lock from the trailing
-// edge of the string inward and the rendered text is right-aligned, so the locked block grows
-// leftward from the panel's right edge in step with the drag direction instead of growing
-// rightward inside a right-anchored widget (which would shift letters around as they lock).
 @Composable
 private fun PasscodeSwipeLabel(
     label: String,
@@ -2484,8 +2368,6 @@ private fun PasscodeSwipeLabel(
     reverse: Boolean = false,
 ) {
     val reducedMotion = rememberReducedMotion()
-    // Boosted so the full word locks in before the drag reaches the actual commit threshold —
-    // reading "NEXT"/"QUEUE" complete gives the reveal breathing room before release fires.
     val progress by remember {
         derivedStateOf { (abs(offset.value) / threshold * REVEAL_BOOST).coerceIn(0f, 1f) }
     }
@@ -2500,8 +2382,6 @@ private fun PasscodeSwipeLabel(
             tick = 0
         }
     }
-    // Reduced motion: no scramble, label reveals instantly at any drag rather than decoding
-    // letter-by-letter — the "crossfade or instant" alternative platform guidelines call for.
     val lockedCount = if (reducedMotion) {
         if (progress > 0f) label.length else 0
     } else {
@@ -2509,10 +2389,6 @@ private fun PasscodeSwipeLabel(
     }
     val displayed = remember(label, lockedCount, tick, reverse) {
         if (reverse) {
-            // Lock from the trailing edge of the string inward (E → U → U → Q for "QUEUE"),
-            // with scrambled glyphs on the leading side. Combined with TextAlign.End below
-            // and the caller's right-anchored panel, this makes the locked block grow
-            // leftward from the row's right edge as the user drags left.
             buildString {
                 val unlocked = label.length - lockedCount
                 for (i in 0 until unlocked) {
@@ -2541,8 +2417,6 @@ private fun PasscodeSwipeLabel(
     )
 }
 
-// Fixed rather than theme-derived: needs ~4:1+ contrast against both the app's near-black dark
-// surfaces and light-theme white, independent of the seed/dynamic accent color.
 val NotificationDotGreen = Color(0xFF2E7D32)
 
 object Icon {
@@ -2562,7 +2436,6 @@ object Icon {
     fun Download(state: Int?) {
         when (state) {
             STATE_COMPLETED ->
-                // New Iride UI: flat monochrome badge, no colored pill — matches Starred()/Explicit() above.
                 Icon(
                     painter = painterResource(R.drawable.arrow_downward),
                     contentDescription = null,
@@ -2578,7 +2451,7 @@ object Icon {
                     .size(16.dp)
                     .padding(end = 2.dp)
             )
-            else -> { /* no icon */ }
+            else -> {  }
         }
     }
 
@@ -2620,8 +2493,6 @@ object Icon {
     }
 }
 
-// New Iride UI: flat monochrome spinner instead of the Material Expressive blob shape,
-// matching the tinting already used for HomeScreen's mood-mix loaders.
 @Composable
 fun IrideLoadingIndicator(modifier: Modifier = Modifier) {
     CircularProgressIndicator(

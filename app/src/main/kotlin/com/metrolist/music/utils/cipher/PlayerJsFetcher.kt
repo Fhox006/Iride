@@ -18,13 +18,12 @@ object PlayerJsFetcher {
     private const val TAG = "Metrolist_CipherFetcher"
     private const val IFRAME_API_URL = "https://www.youtube.com/iframe_api"
     private const val PLAYER_JS_URL_TEMPLATE = "https://www.youtube.com/s/player/%s/player_ias.vflset/en_GB/base.js"
-    private const val CACHE_TTL_MS = 6 * 60 * 60 * 1000L // 6 hours
+    private const val CACHE_TTL_MS = 6 * 60 * 60 * 1000L
 
     private val httpClient = OkHttpClient.Builder()
         .proxy(YouTube.proxy)
         .build()
 
-    // Regex to extract player hash from iframe_api response
     private val PLAYER_HASH_REGEX = Regex("""\\?/s\\?/player\\?/([a-zA-Z0-9_-]+)\\?/""")
 
     private fun getCacheDir(): File = File(CipherDeobfuscator.appContext.filesDir, "cipher_cache")
@@ -50,7 +49,6 @@ object PlayerJsFetcher {
                 cacheDir.mkdirs()
             }
 
-            // Check cache first (unless forced refresh)
             if (!forceRefresh) {
                 val cached = readFromCache()
                 if (cached != null) {
@@ -61,7 +59,6 @@ object PlayerJsFetcher {
                 Timber.tag(TAG).d("Cache miss, will fetch fresh")
             }
 
-            // Fetch player hash from iframe_api
             Timber.tag(TAG).d("Fetching player hash from iframe_api...")
             val hash = fetchPlayerHash()
             if (hash == null) {
@@ -70,7 +67,6 @@ object PlayerJsFetcher {
             }
             Timber.tag(TAG).d("Extracted player hash: $hash")
 
-            // Download player JS
             Timber.tag(TAG).d("Downloading player JS for hash: $hash...")
             val playerJs = downloadPlayerJs(hash)
             if (playerJs == null) {
@@ -83,7 +79,6 @@ object PlayerJsFetcher {
             Timber.tag(TAG).d("length: ${playerJs.length} chars")
             Timber.tag(TAG).d("preview: ${playerJs.take(100)}...")
 
-            // Cache the result
             writeToCache(hash, playerJs)
 
             Pair(playerJs, hash)
@@ -141,7 +136,6 @@ object PlayerJsFetcher {
             val ageHours = ageMs / (1000 * 60 * 60)
             Timber.tag(TAG).d("Cache age: ${ageHours}h (TTL: ${CACHE_TTL_MS / (1000 * 60 * 60)}h)")
 
-            // Check TTL
             if (ageMs > CACHE_TTL_MS) {
                 Timber.tag(TAG).d("Cache expired (hash=$hash, age=${ageHours}h)")
                 return null
@@ -172,7 +166,6 @@ object PlayerJsFetcher {
         try {
             val cacheDir = getCacheDir()
 
-            // Clean old cache files
             val oldFiles = cacheDir.listFiles()?.filter { it.name.startsWith("player_") }
             Timber.tag(TAG).d("Cleaning ${oldFiles?.size ?: 0} old cache files")
             oldFiles?.forEach { it.delete() }

@@ -231,8 +231,6 @@ fun LocalPlaylistScreen(
 
     val playlist by viewModel.playlist.collectAsState()
     val songs by viewModel.playlistSongs.collectAsState()
-    // Is the currently loaded queue this playlist's own — lets the pill's play button toggle
-    // play/pause on an already-loaded queue instead of always restarting it from track 0.
     val isThisPlaylistQueueLoaded = playlist != null && queueTitle == playlist?.playlist?.name
     val isThisPlaylistPlaying = isPlaying && isThisPlaylistQueueLoaded
     val mutableSongs = remember { mutableStateListOf<PlaylistSong>() }
@@ -250,13 +248,9 @@ fun LocalPlaylistScreen(
             PlaylistSongSortDescendingKey,
             true,
         )
-    // Not persisted across restarts — the only way in is the "Reorder" overflow menu entry, the
-    // only way out is the top bar's close button, both scoped to this visit of the screen.
     var locked by rememberSaveable { mutableStateOf(true) }
     val swipeRemoveEnabled by rememberPreference(SwipeToRemoveSongKey, defaultValue = true)
 
-    // New Iride UI one-shot entrance: mirrors AlbumScreen's arrival choreography — title types out
-    // once, then the rest of the header/sections fade in, never replaying on scroll-back.
     var headerRevealed by rememberSaveable { mutableStateOf(false) }
     val revealedSections = remember { mutableSetOf<String>() }
     val playlistTitle = playlist?.playlist?.name
@@ -292,9 +286,6 @@ fun LocalPlaylistScreen(
         }
     }
 
-    // Window-space Y of the header title's bottom edge and of the top bar's bottom edge — the
-    // overlay (glass + mirrored title) shows once the big title is behind the bar or scrolled past,
-    // and tweens in/out at a fixed duration instead of following the scroll pixel-by-pixel.
     var nameBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
     var topBarBottomPx by remember { mutableStateOf(0f) }
     val headerPull = rememberRubberBandPull()
@@ -323,7 +314,6 @@ fun LocalPlaylistScreen(
             }
         }
 
-    // Legacy-only: New Iride UI uses the persisted category system below instead.
     val genreFilter =
         rememberGenreFilter(
             remember(songs) {
@@ -332,9 +322,6 @@ fun LocalPlaylistScreen(
             cacheKey = viewModel.playlistId,
         )
 
-    // Persisted, user-created playlist categories (New Iride UI). No skeleton/loading state on
-    // purpose — the Room Flow is subscribed eagerly from the ViewModel, so this is already
-    // populated (or genuinely empty) by the time this composes.
     val categories by viewModel.categories.collectAsState()
     val songCategoryIds by viewModel.songCategoryIds.collectAsState()
     var selectedCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -551,17 +538,11 @@ fun LocalPlaylistScreen(
         )
     }
 
-    // Every leading LazyColumn item ahead of the song rows themselves: controls_row + genre_pills,
-    // plus playlist_header and control_panel (both skipped while isSearching), plus search_bar.
     val headerItems = when {
         isSearching -> 3
         else -> 5
     }
     val lazyListState = rememberLazyListState()
-    // Same crossing math as AlbumScreen: 0 until the header has played its one-shot reveal, 1 once
-    // the header item (search_bar + playlist_header) has scrolled past and been disposed —
-    // nameBottomPx would otherwise hold its last (stale) recorded value — and the show/hide tweens
-    // at a fixed duration instead of following the scroll pixel-by-pixel.
     val headerTitleCovered by remember {
         derivedStateOf {
             headerRevealed && (
@@ -599,7 +580,6 @@ fun LocalPlaylistScreen(
                     move(viewModel.playlistId, from, to)
                 }
 
-                // Sync order with YT Music
                 if (viewModel.playlist.value
                         ?.playlist
                         ?.browseId != null
@@ -643,10 +623,6 @@ fun LocalPlaylistScreen(
 
     val frostBackdrop = rememberFrostBackdrop()
 
-    // Top-bar mirrors of the header's shuffle/play/download actions (New Iride UI only) — the
-    // header versions live in a separate composable closing over a non-null `playlist` param.
-    // Also reused by the control panel just above the song list, so declared before the
-    // LazyColumn that renders it.
     val onTopBarShuffleClick: () -> Unit = {
         playlist?.let { current ->
             playerConnection.playQueue(
@@ -710,11 +686,6 @@ fun LocalPlaylistScreen(
         }
     }
 
-    // Two boxes, not one, exactly like AlbumScreen: the frosted top bar *samples* the backdrop
-    // layer, so it must not be drawn inside the Box that records it. Nested, the bar's drawBehind
-    // re-enters frostBackdrop.content (drawLayer of a RenderNode that is still mid-record) and the
-    // platform throws — which is why the playlist screens crashed the moment the bar's glass turned
-    // on (progress > 0) while the album screen never did.
     Box(modifier = Modifier.fillMaxSize()) {
     Box(
         modifier = Modifier
@@ -796,8 +767,6 @@ fun LocalPlaylistScreen(
                             modifier =
                                 Modifier
                                     .padding(
-                                        // Matches SongListItem's own 12dp horizontal inset so the
-                                        // sort row lines up with the song rows below it.
                                         start = 12.dp,
                                         end = 12.dp,
                                     )
@@ -844,7 +813,6 @@ fun LocalPlaylistScreen(
                     val currentItem by rememberUpdatedState(song)
 
                     fun deleteFromPlaylist() {
-                        // Capture values before deletion — DB entry will be gone afterwards
                         val browseId = playlist?.playlist?.browseId
                         val setVideoId = currentItem.map.setVideoId
                         val songId = currentItem.map.songId
@@ -861,7 +829,7 @@ fun LocalPlaylistScreen(
                                 songId,
                                 playlistId
                             ) {
-                                var setVideoId: String? = setVideoId  // already captured before deletion
+                                var setVideoId: String? = setVideoId
                                 if (setVideoId == null) {
                                     for (attempt in 0 until 10) {
                                         setVideoId = database.getSetVideoId(songId)?.setVideoId
@@ -905,8 +873,6 @@ fun LocalPlaylistScreen(
                     val content: @Composable () -> Unit = {
                         SongListItem(
                             song = song.song,
-                            // Featured-artist subtitle text should match the rest of
-                            // the row instead of the default muted secondary tone.
                             subtitleColor = Color.Unspecified,
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
@@ -961,9 +927,6 @@ fun LocalPlaylistScreen(
                                                 onCheckedChange(true)
                                                 selectionAnchorMapId = song.map.id
                                             } else if (selection.contains(song.map.id)) {
-                                                // Long-press on an already-selected song is the
-                                                // select-all/deselect-all gesture that replaced the
-                                                // removed top bar checkbox.
                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                 if (selection.size == displayedSongs.size) {
                                                     selection.clear()
@@ -1028,7 +991,6 @@ fun LocalPlaylistScreen(
             headerItems = headerItems,
         )
         }
-        // --- everything below is a sibling of the recorded content, never inside it ---
 
         val topBarTitle: @Composable () -> Unit = {
             if (inSelectMode) {
@@ -1081,8 +1043,6 @@ fun LocalPlaylistScreen(
         }
         val topBarActions: @Composable RowScope.() -> Unit = {
             if (inSelectMode) {
-                // Single action replaces "select all" (now a long-press gesture, see the song row's
-                // onLongClick) and the ⋯ overflow menu.
                 val addToCategoryEnabled = selection.isNotEmpty()
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -1203,9 +1163,6 @@ fun LocalPlaylistScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
                 topBarNavigationIcon()
-                // Always composed and always holding its weight — fades in via topBarRevealProgress,
-                // tracking the big header title going behind this bar (same as AlbumScreen). Only the
-                // ⋯ overflow lives here otherwise; shuffle/play/download moved into the pill panel.
                 Text(
                     text = when {
                         inSelectMode -> pluralStringResource(R.plurals.n_selected, selection.size, selection.size)
@@ -1384,7 +1341,6 @@ fun LocalPlaylistHeader(
                     overrideThumbnail.value = uri.toString()
                     isCustomThumbnail = true
 
-                    // Update the database with the new thumbnail
                     database.query {
                         update(playlist.playlist.copy(thumbnailUrl = uri.toString()))
                     }
@@ -1400,7 +1356,6 @@ fun LocalPlaylistHeader(
                             overrideThumbnail.value = newThumbnailUrl
                             isCustomThumbnail = true
 
-                            // Update the database with the new thumbnail URL
                             database.query {
                                 update(playlist.playlist.copy(thumbnailUrl = newThumbnailUrl))
                             }
@@ -1467,12 +1422,8 @@ fun LocalPlaylistHeader(
                 )
             }
         }
-        // Playlist Thumbnail(s) - shared between both layouts below, only the size differs.
         val playlistCoverSquircle = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
         val coverBorder = BorderStroke(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f))
-        // Fade the cover in once on a genuine new decode — a memory-cache hit (revisiting a
-        // playlist already seen this session) resolves synchronously, so animating that would
-        // replay the surfaceVariant placeholder every time.
         var coverLoaded by remember(playlist.playlist.id) { mutableStateOf(false) }
         var skipCoverEnterAnim by remember(playlist.playlist.id) { mutableStateOf(false) }
         val animatedCoverProgress = rememberEnterProgress(play = coverLoaded, durationMillis = 420, easing = IrideMotion.EaseOutQuart)
@@ -1758,11 +1709,7 @@ fun LocalPlaylistHeader(
                     letterSpacing = (-0.2).sp,
                 ),
                 color = MaterialTheme.colorScheme.onBackground,
-                // Keyed on the playlist, not the string: recomposing this screen must not
-                // retype the title.
                 resetKey = playlist.playlist.id,
-                // Types on the first landing only — scrolling back to the top is navigation,
-                // not an arrival.
                 animate = !headerRevealed,
                 maxLines = 3,
                 textAlign = TextAlign.Center,
@@ -1788,7 +1735,6 @@ fun LocalPlaylistHeader(
                     .fillMaxWidth()
                     .revealMask(metadataProgress),
             )
-            // Action buttons (shuffle/play/download) live in the top bar now — see topBarActions.
         }
     }
 }

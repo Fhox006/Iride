@@ -81,19 +81,16 @@ fun YouTubeSelectionSongMenu(
         mutableStateOf(false)
     }
 
-    // Check if all songs are liked
     val allLiked by remember(songSelection) {
         mutableStateOf(
             songSelection.isNotEmpty() &&
                 songSelection.all { song ->
-                    // Convert to MediaMetadata to check liked status
                     val metadata = song.toMediaMetadata()
                     metadata.liked
                 },
         )
     }
 
-    // Check if all songs are in library
     val allInLibrary by remember(songSelection) {
         mutableStateOf(
             songSelection.all { song ->
@@ -128,7 +125,6 @@ fun YouTubeSelectionSongMenu(
             remember {
                 songSelection
                     .map { song ->
-                        // Convert SongItem to Song entity
                         val metadata = song.toMediaMetadata()
                         com.metrolist.music.db.entities.Song(
                             song =
@@ -158,7 +154,7 @@ fun YouTubeSelectionSongMenu(
                                     com.metrolist.music.db.entities.AlbumEntity(
                                         id = album.id,
                                         title = album.title,
-                                        thumbnailUrl = metadata.thumbnailUrl, // Use song's thumbnail as album thumbnail
+                                        thumbnailUrl = metadata.thumbnailUrl,
                                         songCount = 0,
                                         duration = 0,
                                     )
@@ -307,7 +303,6 @@ fun YouTubeSelectionSongMenu(
                                     }
                                 }
                                 coroutineScope.launch {
-                                    // Use the new reliable method that fetches fresh tokens
                                     songSelection.forEach { song ->
                                         YouTube.toggleSongLibrary(song.id, false)
                                     }
@@ -320,7 +315,6 @@ fun YouTubeSelectionSongMenu(
                                     }
                                 }
                                 coroutineScope.launch {
-                                    // Use the new reliable method that fetches fresh tokens
                                     songSelection
                                         .filter { song ->
                                             song.toMediaMetadata().inLibrary == null
@@ -421,9 +415,7 @@ fun YouTubeSelectionSongMenu(
                                 songSelection.forEach { song ->
                                     val metadata = song.toMediaMetadata()
                                     if ((!allLiked && !metadata.liked) || allLiked) {
-                                        // Insert the song first if it doesn't exist
                                         insert(metadata)
-                                        // Create SongEntity with toggled like status
                                         val songEntity =
                                             com.metrolist.music.db.entities.SongEntity(
                                                 id = metadata.id,

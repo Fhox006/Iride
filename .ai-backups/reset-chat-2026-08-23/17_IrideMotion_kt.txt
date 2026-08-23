@@ -1,0 +1,6 @@
+FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\ui\utils\IrideMotion.kt
+LINES: 37
+NOTE: LocalLifecycleOwner moved from compose.ui.platform to androidx.lifecycle.compose (lifecycle 2.10.0 present).
+<<<ORIGINAL
+37: import androidx.compose.ui.platform.LocalLifecycleOwner
+ORIGINAL>>>

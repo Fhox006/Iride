@@ -56,7 +56,6 @@ fun WrappedMinutesScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // More dynamic and overlapping decorative elements
         Box(modifier = Modifier.align(Alignment.TopStart)) {
             repeat(5) {
                 AnimatedDecorativeElement(

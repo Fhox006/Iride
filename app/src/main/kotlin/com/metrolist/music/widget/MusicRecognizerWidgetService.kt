@@ -88,7 +88,6 @@ class MusicRecognizerWidgetService : Service() {
         return START_NOT_STICKY
     }
 
-    // ─── Foreground notification ──────────────────────────────────────────────
 
     private fun startForegroundNotification() {
         val openAppIntent = PendingIntent.getActivity(
@@ -128,13 +127,11 @@ class MusicRecognizerWidgetService : Service() {
         }
     }
 
-    // ─── Recognition flow ─────────────────────────────────────────────────────
 
     private fun startRecognition() {
         saveState(STATE_LISTENING)
         updateAllWidgets()
 
-        // Animate pulse rings while active
         pulseJob = serviceScope.launch {
             var frame = 0
             while (isActive) {
@@ -163,8 +160,6 @@ class MusicRecognizerWidgetService : Service() {
                             .putString(PREF_COVER_ART_PATH, artPath)
                             .putInt(PREF_PULSE_FRAME, 0)
                             .apply()
-                        // Save to history so the result is persisted even if the user
-                        // never opens the recognition screen after seeing the widget result.
                         try {
                             val dao = EntryPointAccessors.fromApplication(
                                 applicationContext,
@@ -189,10 +184,8 @@ class MusicRecognizerWidgetService : Service() {
                                     recognizedAt = LocalDateTime.now()
                                 )
                             )
-                            // Tell RecognitionScreen not to save again (avoid duplicate entry)
                             MusicRecognitionService.resultSavedExternally = true
                         } catch (_: Exception) {
-                            // Non-fatal – widget result is still displayed
                         }
                     }
                     is RecognitionStatus.NoMatch -> {
@@ -275,7 +268,6 @@ class MusicRecognizerWidgetService : Service() {
         return output
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private fun stopRecognitionAndService() {
         recognitionJob?.cancel()
@@ -322,7 +314,6 @@ class MusicRecognizerWidgetService : Service() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    // ─── Constants ────────────────────────────────────────────────────────────
 
     companion object {
         const val ACTION_START_RECOGNITION = "com.iride.music.widget.recognizer.START"

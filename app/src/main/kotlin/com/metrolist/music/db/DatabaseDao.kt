@@ -196,8 +196,6 @@ interface DatabaseDao {
     @Query("SELECT likedDate FROM song WHERE liked = 1 ORDER BY likedDate DESC LIMIT 1")
     fun lastLikedSongDate(): Flow<LocalDateTime?>
 
-    // Backs the frosted-glass mosaic cover shown for the Liked/Starred pinned entry outside its
-    // own screen (Library recently-added row/grid) — a handful of recent covers, not the full list.
     @Query("SELECT thumbnailUrl FROM song WHERE liked = 1 AND thumbnailUrl IS NOT NULL ORDER BY likedDate DESC LIMIT :limit")
     fun lastLikedSongThumbnails(limit: Int = 4): Flow<List<String>>
 
@@ -301,8 +299,6 @@ interface DatabaseDao {
     @Query("UPDATE playlist_category SET position = :position WHERE id = :categoryId")
     fun updateCategoryPosition(categoryId: String, position: Int)
 
-    // No FK cascade on playlist_category (see its entity doc) — called explicitly when a real
-    // playlist is deleted. No-op for virtual auto-playlist ids, which are never deleted.
     @Query("DELETE FROM playlist_category WHERE playlistId = :playlistId")
     fun deleteCategoriesForPlaylist(playlistId: String)
 
@@ -407,9 +403,6 @@ interface DatabaseDao {
         previewSize: Int = 3,
     ): Flow<List<Song>>
 
-    // Songs where this artist is linked as a non-primary (position > 0) contributor — i.e. featured,
-    // whether auto-linked from a "feat." title (TitleFeaturingParser/linkFeaturedArtist) or otherwise.
-    // Feeds the artist page's Featuring section, including historical songs that were later retitled.
     @Transaction
     @Query(
         "SELECT song.* FROM song_artist_map JOIN song ON song_artist_map.songId = song.id WHERE artistId = :artistId AND position > 0",
@@ -511,15 +504,12 @@ interface DatabaseDao {
         toTimeStamp: Long? = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli(),
     ): Flow<List<SongWithStats>>
 
-    // Time Transfer
     @Query("UPDATE event SET songId = :toSongId WHERE songId = :fromSongId")
     suspend fun transferEvents(fromSongId: String, toSongId: String): Int
 
-    // 1) Load source rows
     @Query("SELECT * FROM playCount WHERE song = :fromSongId")
     suspend fun getPlayCountsForSong(fromSongId: String): List<PlayCountEntity>
 
-    // 2) Try to add into existing target row
     @Query(
         """
     UPDATE playCount
@@ -529,7 +519,6 @@ interface DatabaseDao {
     )
     suspend fun addToPlayCountRow(toSongId: String, year: Int, month: Int, delta: Int): Int
 
-    // 3) Insert new target row if none existed
     @androidx.room.Insert(onConflict = androidx.room.OnConflictStrategy.IGNORE)
     suspend fun insertPlayCountRow(row: PlayCountEntity): Long
 
@@ -543,15 +532,12 @@ interface DatabaseDao {
 
         val movedPlayTime = getTotalPlayTimeForSong(fromSongId) ?: 0L
 
-        // 1) move events (source loses them)
         transferEvents(fromSongId, toSongId)
 
-        // 2) merge playCount rows into target and remove source rows
         val rows = getPlayCountsForSong(fromSongId)
         for (r in rows) {
             val updated = addToPlayCountRow(toSongId, r.year, r.month, r.count)
             if (updated == 0) {
-                // no target row existed -> create it
                 insertPlayCountRow(
                     PlayCountEntity(
                         song = toSongId,
@@ -569,7 +555,6 @@ interface DatabaseDao {
             incrementTotalPlayTime(fromSongId, -movedPlayTime)
         }
     }
-    // Time Transfer
 
     @Transaction
     @RewriteQueriesToDropUnusedColumns
@@ -683,9 +668,6 @@ interface DatabaseDao {
         toTimeStamp: Long? = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli(),
     ): Flow<List<Album>>
 
-    // Playlist categories double as the app's genre tags: songs are grouped by category
-    // name (case/whitespace-folded) so the same tag reused across different playlists
-    // (e.g. "Chill" in two playlists) counts as one genre in the stats breakdown.
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
     @Query(
         """
@@ -753,8 +735,6 @@ interface DatabaseDao {
     )
     fun artistAlbumsPreview(artistId: String, previewSize: Int = 6): Flow<List<Album>>
 
-    // Albums the artist appears on via any song credit, not just album_artist_map's primary
-    // artist — covers albums they're featured on, superset of artistAlbumsPreview.
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
     @Query(
@@ -851,8 +831,6 @@ interface DatabaseDao {
     @Query("SELECT * FROM song")
     fun allSongs(): Flow<List<Song>>
 
-    // Songs with at least one recorded play — used to keep already-heard songs out of
-    // Discovery Weekly regardless of whether they were ever liked/added to the library.
     @Query("SELECT DISTINCT songId FROM event")
     suspend fun allPlayedSongIds(): List<String>
 
@@ -1236,9 +1214,6 @@ interface DatabaseDao {
     )
     fun recentAlbumPlayEvents(albumId: String, limit: Int = 20): Flow<List<AlbumPlayEvent>>
 
-    // Global play history across every album, newest first — used by the Library Albums screen's
-    // "Continue Listening" section to detect albums with >=3 consecutive plays (see
-    // LibraryAlbumsViewModel.deriveContinueListeningCandidates for the run-length grouping).
     @Query(
         """
         SELECT event.songId AS songId, song_album_map.albumId AS albumId, event.timestamp AS timestamp
@@ -1366,10 +1341,6 @@ interface DatabaseDao {
         SongSortType.PLAY_TIME -> downloadedSongsByPlayTimeAsc()
     }.map { it.reversed(descending) }
 
-    // Only albums where EVERY track is downloaded — a single downloaded song used to be enough
-    // to pull the whole album in here, which then hid that song from the downloaded-songs list
-    // (the screen shows either the album OR its songs, never both) even though most of the album
-    // wasn't actually downloaded yet.
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
     @Query(
@@ -1384,11 +1355,6 @@ interface DatabaseDao {
     )
     fun albumsDownloadedByDateDesc(): Flow<List<Album>>
 
-    // Albums for the library's "Recently Downloaded" grid, which shows album entries only — never
-    // individual songs. An album qualifies once >= 2 of its tracks are downloaded, or when it is
-    // fully downloaded (covers 1-track YouTube singles). A single stray song download therefore
-    // never pulls its album in here, while an interrupted whole-album download still surfaces as
-    // the album the user can listen to offline.
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
     @Query(
@@ -1551,7 +1517,6 @@ interface DatabaseDao {
     @Query("SELECT * FROM song WHERE isEpisode = 1 AND isDownloaded = 1 ORDER BY totalPlayTime")
     fun downloadedPodcastEpisodesByPlayTimeAsc(): Flow<List<Song>>
 
-    // Saved episodes (in library but not necessarily downloaded)
     @Transaction
     @Query("SELECT * FROM song WHERE isEpisode = 1 AND inLibrary IS NOT NULL ORDER BY inLibrary DESC")
     fun savedPodcastEpisodesByCreateDateAsc(): Flow<List<Song>>
@@ -1650,16 +1615,10 @@ interface DatabaseDao {
         previewSize: Int = Int.MAX_VALUE,
     ): Flow<List<Playlist>>
 
-    // Unrestricted by inLibrary/liked (unlike searchSongs above) — a downloaded or cached song
-    // may never have been explicitly added to the library, but should still be findable by the
-    // search screen's "Download" filter. Downloaded/cached status itself is checked in Kotlin
-    // (player cache completeness isn't something SQL can see), so this just narrows by title.
     @Transaction
     @Query("SELECT * FROM song WHERE title LIKE '%' || :query || '%' AND (isEpisode = 0 OR isEpisode IS NULL)")
     fun searchSongsForDownloadFilter(query: String): Flow<List<Song>>
 
-    // Same "fully downloaded" rule as albumsDownloadedByDateDesc, narrowed by title/artist for
-    // the search screen's "Download" filter.
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
     @Query(
@@ -1677,15 +1636,28 @@ interface DatabaseDao {
     @Query("SELECT * FROM event ORDER BY rowId DESC")
     fun events(): Flow<List<EventWithSong>>
 
-    // Which of the given song ids have at least one play event. Used by the new-release notifier to
-    // drop already-listened songs from an artist's "+N" badge live. ponytail: single IN clause, caller
-    // caps the id list well under SQLite's ~999 bind-variable limit.
     @Query("SELECT DISTINCT songId FROM event WHERE songId IN (:songIds)")
     fun playedSongIds(songIds: List<String>): Flow<List<String>>
 
     @Transaction
     @Query("SELECT * FROM event ORDER BY rowId ASC LIMIT 1")
     fun firstEvent(): Flow<EventWithSong?>
+
+    @Transaction
+    @Query("SELECT * FROM event ORDER BY rowId DESC LIMIT 1")
+    fun latestEvent(): Flow<EventWithSong?>
+
+    @Transaction
+    @Query(
+        """
+        SELECT event.* FROM event
+        INNER JOIN (SELECT songId, MAX(rowId) AS maxRowId FROM event GROUP BY songId) latest
+            ON event.rowId = latest.maxRowId
+        ORDER BY event.rowId DESC
+        LIMIT :limit
+        """,
+    )
+    fun recentEventsPerSong(limit: Int): Flow<List<EventWithSong>>
 
     @Query("SELECT COUNT(*) FROM event")
     fun eventCount(): Flow<Int>
@@ -1702,7 +1674,6 @@ interface DatabaseDao {
     @Query("DELETE FROM search_history")
     fun clearSearchHistory()
 
-    // Recognition History
     @Transaction
     @Query("SELECT * FROM recognition_history ORDER BY recognizedAt DESC")
     fun recognitionHistory(): Flow<List<RecognitionHistory>>
@@ -1749,7 +1720,6 @@ interface DatabaseDao {
             oldCount = getPlayCountByMonth(songId, time.year, time.monthValue).first()
         }
 
-        // add new
         if (oldCount <= 0) {
             insert(PlayCountEntity(songId, time.year, time.monthValue, 0))
         }
@@ -2078,7 +2048,6 @@ interface DatabaseDao {
             }.forEach(::upsert)
 
         albumPage.album.artists?.let { artists ->
-            // Recreate album artists
             albumArtistMaps(album.id).forEach(::delete)
             artists
                 .map { artist ->
@@ -2177,7 +2146,6 @@ interface DatabaseDao {
         raw("PRAGMA wal_checkpoint(FULL)".toSQLiteQuery())
     }
 
-    // Podcast methods
 
     @Query("SELECT * FROM podcast WHERE bookmarkedAt IS NOT NULL ORDER BY bookmarkedAt DESC")
     fun subscribedPodcasts(): Flow<List<PodcastEntity>>

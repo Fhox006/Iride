@@ -30,12 +30,12 @@ import timber.log.Timber
 
 sealed class LyricsSearchStatus {
     object Idle : LyricsSearchStatus()
-    object Loading : LyricsSearchStatus()            // shimmer — no results yet
-    object FoundPlain : LyricsSearchStatus()         // plain text found, still searching
-    object FoundLine : LyricsSearchStatus()          // synced line found, still waiting for WORD
-    object FoundWord : LyricsSearchStatus()          // word-level found, done
-    object NotFoundTemporary : LyricsSearchStatus()  // 3s elapsed, no results yet — still searching in bg
-    object NotFoundFinal : LyricsSearchStatus()      // search fully ended with no results
+    object Loading : LyricsSearchStatus()
+    object FoundPlain : LyricsSearchStatus()
+    object FoundLine : LyricsSearchStatus()
+    object FoundWord : LyricsSearchStatus()
+    object NotFoundTemporary : LyricsSearchStatus()
+    object NotFoundFinal : LyricsSearchStatus()
 }
 
 @HiltViewModel
@@ -80,8 +80,7 @@ class LyricsViewModel @Inject constructor(
                     if (parsedLines.isNotEmpty()) {
                         listOf(LyricsEntry.HEAD_LYRICS_ENTRY) + parsedLines
                     } else {
-                        // Fallback for unsynced or invalid LRC
-                        val baseTime = 1000000L // Start at 1000s to avoid overlap with real start
+                        val baseTime = 1000000L
                         lyrics.lines()
                             .filter { it.isNotBlank() && !timestampRegex.containsMatchIn(it) }
                             .mapIndexed { index, line ->
@@ -94,17 +93,25 @@ class LyricsViewModel @Inject constructor(
             _lines.value = processedLines
             updateMergedList(processedLines, showIntervalIndicator)
 
-            // Romanize in the background after the UI has been updated
             if (lyrics != null && lyrics != LYRICS_NOT_FOUND && enabledLanguages.isNotEmpty()) {
                 launch(Dispatchers.Default) {
+                    // Detection over the full lyrics is expensive; with per-line romanization
+                    // disabled the language is detected once instead of once per line.
+                    val detectedLanguage =
+                        if (romanizeCyrillicByLine) null else LyricsUtils.detectLanguage(lyrics, enabledLanguages)
                     processedLines.forEach { entry ->
                         if (entry == LyricsEntry.HEAD_LYRICS_ENTRY) return@forEach
-                        entry.romanizedTextFlow.value = LyricsUtils.romanize(
-                            text = lyrics,
-                            line = entry.text,
-                            enabledLanguages = enabledLanguages,
-                            romanizeCyrillicByLine = romanizeCyrillicByLine
-                        )
+                        entry.romanizedTextFlow.value =
+                            if (romanizeCyrillicByLine) {
+                                LyricsUtils.romanize(
+                                    text = lyrics,
+                                    line = entry.text,
+                                    enabledLanguages = enabledLanguages,
+                                    romanizeCyrillicByLine = true
+                                )
+                            } else {
+                                LyricsUtils.romanizeDetected(detectedLanguage, entry.text)
+                            }
                     }
                 }
             }
@@ -125,11 +132,9 @@ class LyricsViewModel @Inject constructor(
         _mergedLyricsList.value = emptyList()
 
         progressiveJob = viewModelScope.launch {
-            // --- Cache check ---
             val cached = withContext(Dispatchers.IO) {
                 database.lyrics(mediaMetadata.id).first()
             }
-            // If DB has LYRICS_NOT_FOUND from a previous failed search, delete it and search fresh
             if (cached != null && cached.lyrics == LYRICS_NOT_FOUND) {
                 database.query { delete(cached) }
             }
@@ -138,10 +143,6 @@ class LyricsViewModel @Inject constructor(
                 LyricsUtils.detectTier(cached.lyrics)
             } else LyricsTier.PLAIN
 
-            // Carried forward into any re-fetched row below so a translation survives a
-            // full-screen-lyrics remount (loadProgressiveLyrics reruns on every mount and used
-            // to delete+upsert a bare LyricsEntity, wiping these columns even though the lyrics
-            // text itself hadn't changed).
             val preservedTranslatedLyrics = cached?.translatedLyrics.orEmpty()
             val preservedTranslationLanguage = cached?.translationLanguage.orEmpty()
             val preservedTranslationMode = cached?.translationMode.orEmpty()
@@ -154,25 +155,15 @@ class LyricsViewModel @Inject constructor(
                     else -> LyricsSearchStatus.FoundPlain
                 }
                 if (cachedTier == LyricsTier.SYNCED_WORD) return@launch
-                // Non-WORD cache: delete so providers can upsert freely with fresher/better result.
-                // EXCEPT when the cached row already carries a user-saved translation — deleting
-                // it leaves a window (until the provider upserts) where translations live in
-                // memory only. If the provider fails or the user kills the app mid-fetch, the
-                // translation is gone forever. Keep the row; any later upsert already carries
-                // the preserved translation fields.
                 if (cached.translatedLyrics.isNullOrBlank()) {
                     database.query { delete(cached) }
                 } else {
                     Timber.d("Skipping cached lyrics delete: row has saved translations (${cached.translationLanguage}/${cached.translationMode})")
                 }
             }
-            // getLyricsProgressive always runs unless we returned early on SYNCED_WORD above
 
-            // --- "Not found" timer: after 3s with no result, show temporary message ---
-            // Keep searching in background for up to MAX_LYRICS_FETCH_MS
             val notFoundJob = launch {
                 delay(3000L)
-                // Only show if we still have no lyrics displayed at all
                 if (lyricsSearchStatus.value == LyricsSearchStatus.Loading) {
                     lyricsSearchStatus.value = LyricsSearchStatus.NotFoundTemporary
                 }
@@ -190,7 +181,6 @@ class LyricsViewModel @Inject constructor(
 
                 val shouldUpdate = when {
                     tier == LyricsTier.SYNCED_WORD -> true
-                    // If we already have LINE, only accept WORD (block other LINE results)
                     bestTierSaved == LyricsTier.SYNCED_LINE && tier == LyricsTier.SYNCED_LINE -> false
                     isUpgrade -> true
                     isFirstResult -> true
@@ -224,13 +214,11 @@ class LyricsViewModel @Inject constructor(
                 }
             }
 
-            // Search ended — finalize status
             notFoundJob.cancel()
             if (lyricsSearchStatus.value == LyricsSearchStatus.Loading ||
                 lyricsSearchStatus.value == LyricsSearchStatus.NotFoundTemporary) {
                 lyricsSearchStatus.value = LyricsSearchStatus.NotFoundFinal
             }
-            // If we ended on FoundLine with no WORD upgrade, keep FoundLine (don't downgrade)
         }
     }
 

@@ -28,8 +28,6 @@ object TurntableSfx {
     private const val PopCount = 10
     private const val PopMs = 4
 
-    // ponytail: synthesized approximation, not a mastered sample — swap in a real recorded
-    // needle-drop .mp3/.ogg under res/raw if the procedural texture ever isn't convincing enough.
     fun play() {
         thread(isDaemon = true) {
             val frameCount = SampleRate * DurationMs / 1000
@@ -46,14 +44,11 @@ object TurntableSfx {
                     sample += sin(2 * PI * 90.0 * t) * exp(-t * 40.0) * 0.9
                 }
 
-                // Quiet surface hiss bed, well under the pops, decaying with the clip.
                 sample += (random.nextDouble() * 2 - 1) * 0.03 * exp(-t * 6.0)
 
                 buffer[i] = (sample.coerceIn(-1.0, 1.0) * Short.MAX_VALUE).toInt().toShort()
             }
 
-            // Scatter discrete crackle-pops on top — irregular spacing, louder near the start,
-            // fading out with the clip, the way a record actually crackles.
             var cursor = thunkFrames / 2
             repeat(PopCount) {
                 cursor += popFrames + random.nextInt(popFrames * 6)

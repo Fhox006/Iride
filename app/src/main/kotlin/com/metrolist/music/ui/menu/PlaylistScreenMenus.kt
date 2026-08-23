@@ -163,7 +163,6 @@ fun LocalPlaylistMenu(
                 )
             }
 
-            // Show sync button only for YouTube playlists
             if (isYouTubePlaylist) {
                 add(
                     Material3MenuItemData(
@@ -234,7 +233,6 @@ fun LocalPlaylistMenu(
                 ),
             )
 
-            // Export menu group
             add(
                 Material3MenuItemData(
                     title = { Text(stringResource(R.string.export_playlist)) },
@@ -460,7 +458,6 @@ fun AutoPlaylistMenu(
     )
 
     if (showExportDialog) {
-        // Convert Song objects to a format that PlaylistExporter can handle
         val playlistSongs =
             songs.map { song ->
                 PlaylistSong(

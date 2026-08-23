@@ -31,8 +31,6 @@ class DiscoveryWeeklyGenerator(
     private val seedCount = 15
     private val perSeedCandidates = 4
 
-    // Generic viral/edit noise (sped up, nightcore, tiktok edits...) — excluded by default
-    // unless the user's own history shows they genuinely listen to this.
     private val viralPattern = Regex(
         """(sped up|slowed( down)?|nightcore|8d audio|tiktok|\bmashup\b|\bedit\b)""",
         RegexOption.IGNORE_CASE,

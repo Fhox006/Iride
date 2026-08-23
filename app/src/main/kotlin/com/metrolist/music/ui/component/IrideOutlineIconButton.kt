@@ -96,10 +96,6 @@ fun IrideOutlineIconButton(
     Box(
         modifier = modifier
             .size(size)
-            // Iride draws these at 40dp, below Material's 48dp floor — five of them sit shoulder to
-            // shoulder in the artist top bar, where a mis-tap on "subscribe" instead of "shuffle"
-            // starts playback. This expands the touch area to the minimum without touching the
-            // visual size.
             .minimumInteractiveComponentSize()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -125,7 +121,6 @@ fun IrideOutlineIconButton(
                     Modifier.drawBehind {
                         val t = progress.value
                         if (t <= 0f || t >= 1f) return@drawBehind
-                        // Two rings, the second trailing a third of a cycle behind the first.
                         listOf(t, (t - 0.33f).coerceAtLeast(0f)).forEach { ring ->
                             if (ring <= 0f) return@forEach
                             drawCircle(
@@ -159,8 +154,6 @@ fun IrideOutlineIconButton(
                         } else {
                             Modifier.graphicsLayer {
                                 val t = progress.value
-                                // sin(pi*t) rises to 1 at the midpoint and returns to 0, so every
-                                // effect below lands back exactly where it started.
                                 val arc = sin(PI * t).toFloat()
                                 when (pressEffect) {
                                     IridePressEffect.Punch -> {

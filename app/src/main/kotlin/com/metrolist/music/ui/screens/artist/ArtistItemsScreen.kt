@@ -116,7 +116,6 @@ fun ArtistItemsScreen(
     val sortedSongs = remember(itemsPage, sortType, sortDescending) {
         val songs = itemsPage?.items.orEmpty().distinctBy { it.id }
         when (sortType) {
-            // Default = YTM's own popularity ranking, left untouched
             ArtistItemsSortType.DEFAULT -> songs
             ArtistItemsSortType.NAME -> {
                 val sorted = songs.sortedBy { it.title.lowercase() }

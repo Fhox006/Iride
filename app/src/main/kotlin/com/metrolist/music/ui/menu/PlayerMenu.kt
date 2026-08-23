@@ -133,7 +133,6 @@ fun PlayerMenu(
     val playerConnection = LocalPlayerConnection.current ?: return
     val playerVolume = playerConnection.service.playerVolume.collectAsState()
 
-    // Cast state for volume control - safely access castConnectionHandler to prevent crashes
     val castHandler =
         remember(playerConnection) {
             try {
@@ -890,7 +889,6 @@ fun ListenTogetherDialog(
     val listenTogetherManager = com.metrolist.music.LocalListenTogetherManager.current
     val joiningRoomTemplate = stringResource(R.string.joining_room)
 
-    // Handle case where manager is not available
     if (listenTogetherManager == null) {
         ListDialog(onDismiss = onDismiss) {
             item {
@@ -943,26 +941,21 @@ fun ListenTogetherDialog(
     val pendingJoinRequests by listenTogetherManager.pendingJoinRequests.collectAsState()
     val pendingSuggestions by listenTogetherManager.pendingSuggestions.collectAsState()
 
-    // Load saved username
     var savedUsername by rememberPreference(com.metrolist.music.constants.ListenTogetherUsernameKey, "")
     var roomCodeInput by rememberSaveable { mutableStateOf("") }
     var usernameInput by rememberSaveable { mutableStateOf(savedUsername) }
 
-    // Local UI state for join/create actions
     var isCreatingRoom by rememberSaveable { mutableStateOf(false) }
     var isJoiningRoom by rememberSaveable { mutableStateOf(false) }
     var joinErrorMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
-    // User action menu state
     var selectedUserForMenu by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedUsername by rememberSaveable { mutableStateOf<String?>(null) }
 
-    // Localized helper strings
     val waitingForApprovalText = stringResource(R.string.waiting_for_approval)
     val invalidRoomCodeText = stringResource(R.string.invalid_room_code)
     val joinRequestDeniedText = stringResource(R.string.join_request_denied)
 
-    // User action menu dialog
     if (selectedUserForMenu != null && selectedUsername != null) {
         ListDialog(
             onDismiss = {
@@ -1004,7 +997,6 @@ fun ListenTogetherDialog(
 
             item { Spacer(modifier = Modifier.height(12.dp)) }
 
-            // Kick button
             item {
                 Surface(
                     modifier =
@@ -1051,7 +1043,6 @@ fun ListenTogetherDialog(
 
             item { Spacer(modifier = Modifier.height(8.dp)) }
 
-            // Permanently kick button
             item {
                 Surface(
                     modifier =
@@ -1101,7 +1092,6 @@ fun ListenTogetherDialog(
 
             item { Spacer(modifier = Modifier.height(8.dp)) }
 
-            // Transfer ownership button
             item {
                 Surface(
                     modifier =
@@ -1151,14 +1141,12 @@ fun ListenTogetherDialog(
         return
     }
 
-    // Sync usernameInput when savedUsername changes
     LaunchedEffect(savedUsername) {
         if (usernameInput.isBlank() && savedUsername.isNotBlank()) {
             usernameInput = savedUsername
         }
     }
 
-    // Listen to low level events to update UI state (join rejected, approved, room created)
     LaunchedEffect(listenTogetherManager) {
         listenTogetherManager.events.collect { event ->
             when (event) {
@@ -1187,17 +1175,15 @@ fun ListenTogetherDialog(
                     clipboard.setPrimaryClip(clip)
                 }
 
-                else -> { /* ignore other events here */ }
+                else -> {  }
             }
         }
     }
 
-    // Check if already in a room
     val isInRoom = listenTogetherManager.isInRoom
     val isHost = roomState?.hostId == userId
 
     ListDialog(onDismiss = onDismiss) {
-        // Header - Icon on left, text left-aligned
         item {
             Row(
                 modifier =
@@ -1228,7 +1214,6 @@ fun ListenTogetherDialog(
             }
         }
 
-        // Connection status
         item {
             Surface(
                 modifier =
@@ -1353,7 +1338,6 @@ fun ListenTogetherDialog(
         }
 
         if (isInRoom) {
-            // Room status card
             roomState?.let { room ->
                 item {
                     Surface(
@@ -1445,7 +1429,6 @@ fun ListenTogetherDialog(
 
                 item { Spacer(modifier = Modifier.height(16.dp)) }
 
-                // Connected users - horizontal layout
                 val connectedUsers = room.users.filter { it.isConnected }
 
                 item {
@@ -1463,13 +1446,11 @@ fun ListenTogetherDialog(
                             modifier = Modifier.padding(bottom = 12.dp),
                         )
 
-                        // Horizontal scrollable row for users
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             connectedUsers.forEach { user ->
-                                // User avatar card
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier =
@@ -1483,7 +1464,6 @@ fun ListenTogetherDialog(
                                                 },
                                             ),
                                 ) {
-                                    // Circular avatar
                                     Box(
                                         contentAlignment = Alignment.Center,
                                     ) {
@@ -1519,7 +1499,6 @@ fun ListenTogetherDialog(
                                             }
                                         }
 
-                                        // Host/You badge
                                         if (user.isHost || user.userId == userId) {
                                             Surface(
                                                 modifier =
@@ -1550,7 +1529,6 @@ fun ListenTogetherDialog(
 
                                     Spacer(modifier = Modifier.height(6.dp))
 
-                                    // Username
                                     Text(
                                         text = user.username,
                                         style = MaterialTheme.typography.labelMedium,
@@ -1566,7 +1544,6 @@ fun ListenTogetherDialog(
                                         textAlign = TextAlign.Center,
                                     )
 
-                                    // Role label
                                     if (user.isHost) {
                                         Text(
                                             text = stringResource(R.string.host_label),
@@ -1586,7 +1563,6 @@ fun ListenTogetherDialog(
                     }
                 }
 
-                // Pending join requests (host only)
                 if (isHost && pendingJoinRequests.isNotEmpty()) {
                     item {
                         Spacer(modifier = Modifier.height(16.dp))
@@ -1673,7 +1649,6 @@ fun ListenTogetherDialog(
                     }
                 }
 
-                // Pending suggestions (host only)
                 if (isHost && pendingSuggestions.isNotEmpty()) {
                     item {
                         Spacer(modifier = Modifier.height(16.dp))
@@ -1760,7 +1735,6 @@ fun ListenTogetherDialog(
                     }
                 }
 
-                // Leave room button
                 item {
                     Spacer(modifier = Modifier.height(20.dp))
                     Row(
@@ -1803,7 +1777,6 @@ fun ListenTogetherDialog(
                 }
             }
         } else {
-            // Join/Create room section
             item {
                 Surface(
                     modifier =
@@ -1893,7 +1866,6 @@ fun ListenTogetherDialog(
                             modifier = Modifier.fillMaxWidth(),
                         )
 
-                        // Status messages
                         if (isJoiningRoom) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -1946,7 +1918,6 @@ fun ListenTogetherDialog(
                 }
             }
 
-            // Action buttons
             item {
                 Spacer(modifier = Modifier.height(20.dp))
                 Column(
@@ -1960,7 +1931,6 @@ fun ListenTogetherDialog(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        // Create Room button (left side)
                         Button(
                             onClick = {
                                 val username = usernameInput.takeIf { it.isNotBlank() } ?: savedUsername
@@ -1993,7 +1963,6 @@ fun ListenTogetherDialog(
                             Text(stringResource(R.string.create_room), fontWeight = FontWeight.SemiBold)
                         }
 
-                        // Join Room button (right side - only visible when room code is complete)
                         if (roomCodeInput.length == 8) {
                             Button(
                                 onClick = {

@@ -26,10 +26,6 @@ import kotlin.random.Random
 class AlbumRecommendationsGenerator(
     private val database: MusicDatabase,
 ) {
-    // Target list size and the rough mix of each category within it — the
-    // percentages the feature was specced with don't sum to 100 (105), so we
-    // round each share and then trim the overshoot off the largest (similar
-    // artists) bucket rather than chase an exact split that was never exact.
     private val targetSize = 20
     private val categoryPercents = listOf(10, 15, 50, 20, 10)
 
@@ -59,9 +55,6 @@ class AlbumRecommendationsGenerator(
         val allKnownAlbumIds = database.mostPlayedAlbums(fromTimeStamp = 0L, limit = 200).first()
             .map { it.id }.toSet()
 
-        // Albums found on an artist's own page never carry `artists` (YouTube
-        // doesn't repeat the artist name there), so we pair each album with the
-        // artist page it came from and carry that name along as a fallback.
         val similarArtistAlbums = knownArtists.shuffled(random).take(5).flatMap { artist ->
             val relatedArtists = YouTube.artist(artist.id).getOrNull()
                 ?.sections?.flatMap { it.items }
@@ -146,13 +139,9 @@ class AlbumRecommendationsGenerator(
         val playedAlbumIds = playedAlbums.map { it.id }.toSet()
         val fullExclusion = excludedAlbumIds + playedAlbumIds
 
-        // "Never/barely listened" albums the user already owns but hasn't gotten into — EPs
-        // allowed (songCount > 1), singles excluded, favorites excluded.
         val lightlyPlayedPool = playedAlbums.filter {
             it.album.songCount > 1 && (it.songCountListened ?: 0) in 1..2 && it.id !in excludedAlbumIds
         }
-        // Deliberately rare: albums the user already plays a lot. Low weight per the spec — they
-        // can resurface occasionally rather than never, but shouldn't crowd out discovery.
         val heavilyPlayedPool = playedAlbums.filter {
             it.album.songCount > 1 && (it.songCountListened ?: 0) >= 8 && it.id !in excludedAlbumIds
         }
@@ -163,9 +152,6 @@ class AlbumRecommendationsGenerator(
             heavilyPlayedPool, heavilyPlayedCount, recentlySuggestedIds, random,
         ) { it.id }
 
-        // Related artists (not already known) discovered off each known artist's page, paired
-        // with a random non-single, not-yet-played album off *their* page. Track which related
-        // artist ids got used so the "unknown artist" bucket below doesn't double-dip into them.
         val usedRelatedArtistIds = mutableSetOf<String>()
         val similarArtistAlbums = knownArtists.shuffled(random).take(10).flatMap { artist ->
             val relatedArtists = YouTube.artist(artist.id).getOrNull()
@@ -203,8 +189,6 @@ class AlbumRecommendationsGenerator(
             unknownArtistAlbums, unknownCount, currentYear, random, recentlySuggestedIds, { it.id },
         ) { it.year }
 
-        // If one bucket came up short (e.g. a new user with few known artists), top the list up
-        // from whatever the other bucket has left over rather than returning a sparse carousel.
         val result = mutableListOf<DischiPerTeItem>()
         result += lightlyPlayedSelected.map { DischiPerTeItem.Local(it) }
         result += heavilyPlayedSelected.map { DischiPerTeItem.Local(it) }
@@ -224,8 +208,6 @@ class AlbumRecommendationsGenerator(
     }
 }
 
-// Splits `pool` into "recent" (year within 3 of `currentYear`) and "older" partitions and takes a
-// 90/10 sample of `count` items, falling back to whichever partition has more when one is short.
 private fun <T> selectWithAgeSplit(
     pool: List<T>,
     count: Int,
@@ -247,9 +229,6 @@ private fun <T> selectWithAgeSplit(
     return chosen
 }
 
-// Same as [selectWithAgeSplit], but tries the subset of `pool` not in `recentlySuggestedIds`
-// first, only dipping into recently-suggested items to fill a shortfall. Nothing is ever
-// permanently excluded — a cooled-down item just loses priority for one regeneration.
 private fun <T> selectWithAgeSplitPreferringFresh(
     pool: List<T>,
     count: Int,
@@ -268,8 +247,6 @@ private fun <T> selectWithAgeSplitPreferringFresh(
     return chosen
 }
 
-// Same cooldown-preference idea as [selectWithAgeSplitPreferringFresh], without the age split —
-// used for the local "lightly/heavily played" buckets which are too small to bother splitting.
 private fun <T> selectPreferringFresh(
     pool: List<T>,
     count: Int,
@@ -286,10 +263,6 @@ private fun <T> selectPreferringFresh(
     return chosen
 }
 
-// YouTube never flags singles structurally — the release type only shows up
-// as a localized label ("Single", "Singolo", ...) next to the year. This is a
-// best-effort check against the labels we know about; unrecognized labels are
-// treated as albums rather than risk hiding real albums.
 private val singleReleaseLabels = setOf("single", "singolo")
 
 private fun AlbumItem.isSingleRelease(): Boolean =

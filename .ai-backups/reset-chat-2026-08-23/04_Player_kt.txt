@@ -1,0 +1,9 @@
+FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\ui\player\Player.kt
+LINES: 572, 599, 631, 657
+NOTE: removed 4 redundant `else ->` branches in exhaustive `when (playerButtonsStyle)`.
+<<<ORIGINAL
+572:                     else -> Pair(Color.White, Color.Black)
+599:                     else -> if (useDarkTheme) Pair(Color.White, Color.Black) else Pair(Color.Black, Color.White)
+631:                     else -> Pair(Color.White.copy(alpha = 0.2f), Color.White)
+657:                     else -> Pair(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurface)
+ORIGINAL>>>

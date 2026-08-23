@@ -192,8 +192,6 @@ fun LibraryArtistsScreen(
         }
     }
 
-    // New Iride UI hero pattern — see LibraryAlbumsScreen.kt for the canonical version this
-    // was copied from, including the crash note below.
     val frostBackdrop = rememberFrostBackdrop()
     var titleBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
     var topBarBottomPx by remember { mutableStateOf(0f) }
@@ -241,9 +239,6 @@ fun LibraryArtistsScreen(
         }
     }
 
-    // The frosted bar below must be a sibling of this Box, never a child: nesting the bar's
-    // frostedTopBarBackground draw inside the still-recording recordFrostBackdrop Box re-enters
-    // the same RenderNode mid-record and crashes.
     Box(modifier = Modifier.fillMaxSize()) {
     Box(
         modifier = Modifier
@@ -431,7 +426,7 @@ fun LibraryArtistsScreen(
                     }
             }
         }
-    } // close inner recording Box
+    }
 
         val backProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
         LibrarySearchHeader(
@@ -495,5 +490,5 @@ fun LibraryArtistsScreen(
                 )
             }
         }
-    } // close outer plain Box
+    }
 }

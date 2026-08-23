@@ -52,30 +52,22 @@ fun CastButton(
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
     val menuState = LocalMenuState.current
-    
     var castAvailable by remember { mutableStateOf(false) }
     var mediaRouter by remember { mutableStateOf<MediaRouter?>(null) }
     var routeSelector by remember { mutableStateOf<MediaRouteSelector?>(null) }
     var availableRoutes by remember { mutableStateOf<List<MediaRouter.RouteInfo>>(emptyList()) }
-    
     val (enableGoogleCast) = rememberPreference(
         key = EnableGoogleCastKey,
         defaultValue = true
     )
-    
-    // Get cast state from service
     val castHandler = playerConnection?.service?.castConnectionHandler
     val isCasting by castHandler?.isCasting?.collectAsState() ?: remember { mutableStateOf(false) }
     val isConnecting by castHandler?.isConnecting?.collectAsState() ?: remember { mutableStateOf(false) }
     val castDeviceName by castHandler?.castDeviceName?.collectAsState() ?: remember { mutableStateOf(null) }
-    
-    // Get current media metadata
     val currentMetadata by playerConnection?.mediaMetadata?.collectAsState() ?: remember { mutableStateOf(null) }
 
-    // Check if Cast is available and disconnect if disabled while casting
     LaunchedEffect(enableGoogleCast) {
         if (!enableGoogleCast) {
-            // Disconnect from Cast if currently casting
             if (isCasting) {
                 playerConnection?.service?.castConnectionHandler?.disconnect()
             }
@@ -91,7 +83,6 @@ fun CastButton(
             routeSelector = MediaRouteSelector.Builder()
                 .addControlCategory(CastMediaControlIntent.categoryForCast(CastMediaControlIntent.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID))
                 .build()
-            // Reinitialize the Cast handler to ensure it's ready
             playerConnection?.service?.castConnectionHandler?.initialize()
             castAvailable = true
         } catch (e: Exception) {
@@ -99,40 +90,31 @@ fun CastButton(
             castAvailable = false
         }
     }
-    
-    // Listen for route changes to discover devices
     DisposableEffect(mediaRouter, routeSelector) {
         val callback = object : MediaRouter.Callback() {
             override fun onRouteAdded(router: MediaRouter, route: MediaRouter.RouteInfo) {
                 updateRoutes(router, routeSelector) { availableRoutes = it }
             }
-            
             override fun onRouteRemoved(router: MediaRouter, route: MediaRouter.RouteInfo) {
                 updateRoutes(router, routeSelector) { availableRoutes = it }
             }
-            
             override fun onRouteChanged(router: MediaRouter, route: MediaRouter.RouteInfo) {
                 updateRoutes(router, routeSelector) { availableRoutes = it }
             }
         }
-        
         routeSelector?.let { selector ->
             mediaRouter?.addCallback(selector, callback, MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY)
-            // Initial update
             updateRoutes(mediaRouter, selector) { availableRoutes = it }
         }
-        
         onDispose {
             mediaRouter?.removeCallback(callback)
         }
     }
 
-    // Show the button if Cast is enabled and SDK is available
     if (enableGoogleCast && castAvailable) {
         Box(
             modifier = modifier
         ) {
-            // Shadow background for cast button
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -146,8 +128,6 @@ fun CastButton(
                         )
                     )
             )
-            
-            // Cast button
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -159,8 +139,6 @@ fun CastButton(
                         Toast.makeText(context, "Play a song first to cast", Toast.LENGTH_SHORT).show()
                         return@clickable
                     }
-                    
-                    // Get current connected route if casting
                     val currentRoute = if (isCasting) {
                         mediaRouter?.routes?.find { route ->
                             routeSelector?.let { selector -> 
@@ -168,8 +146,6 @@ fun CastButton(
                             } == true
                         }
                     } else null
-                    
-                    // Show bottom sheet with cast picker
                     menuState.show {
                         CastPickerSheet(
                             routes = availableRoutes,

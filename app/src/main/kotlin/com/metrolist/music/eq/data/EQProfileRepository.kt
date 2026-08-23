@@ -19,13 +19,13 @@ import javax.inject.Singleton
  */
 @Serializable
 data class SavedEQProfile(
-    val id: String,                       // Unique identifier
-    val name: String,                     // Display name
-    val deviceModel: String,              // e.g., "Sony WH-1000XM4"
-    val bands: List<ParametricEQBand>,    // EQ bands
-    val preamp: Double = 0.0,             // Preamp gain in dB
-    val isCustom: Boolean = false,        // Whether this is a custom imported profile
-    val isActive: Boolean = false,        // Whether this profile is currently active
+    val id: String,
+    val name: String,
+    val deviceModel: String,
+    val bands: List<ParametricEQBand>,
+    val preamp: Double = 0.0,
+    val isCustom: Boolean = false,
+    val isActive: Boolean = false,
     val addedTimestamp: Long = System.currentTimeMillis()
 )
 
@@ -72,7 +72,6 @@ class EQProfileRepository @Inject constructor(
                 val loadedProfiles = json.decodeFromString<List<SavedEQProfile>>(profilesJson)
                 _profiles.value = loadedProfiles
 
-                // Load active profile
                 val activeId = prefs.getString(KEY_ACTIVE_PROFILE_ID, null)
                 _activeProfile.value = loadedProfiles.find { it.id == activeId }
             }
@@ -89,18 +88,14 @@ class EQProfileRepository @Inject constructor(
     suspend fun saveProfile(profile: SavedEQProfile) = withContext(Dispatchers.IO) {
         val currentProfiles = _profiles.value.toMutableList()
 
-        // Check if profile with same ID already exists
         val existingIndex = currentProfiles.indexOfFirst { it.id == profile.id }
 
         if (existingIndex >= 0) {
-            // Update existing profile
             currentProfiles[existingIndex] = profile
         } else {
-            // Add new profile
             currentProfiles.add(profile)
         }
 
-        // Save to SharedPreferences
         val profilesJson = json.encodeToString<List<SavedEQProfile>>(currentProfiles)
         prefs.edit { putString(KEY_PROFILES, profilesJson) }
 
@@ -117,7 +112,6 @@ class EQProfileRepository @Inject constructor(
         val profilesJson = json.encodeToString<List<SavedEQProfile>>(currentProfiles)
         prefs.edit { putString(KEY_PROFILES, profilesJson) }
 
-        // If deleted profile was active, clear active profile
         if (_activeProfile.value?.id == profileId) {
             _activeProfile.value = null
             prefs.edit { remove(KEY_ACTIVE_PROFILE_ID) }
@@ -134,7 +128,6 @@ class EQProfileRepository @Inject constructor(
         val currentProfiles = _profiles.value
 
         if (profileId == null) {
-            // Deactivate all profiles
             _activeProfile.value = null
             prefs.edit { remove(KEY_ACTIVE_PROFILE_ID) }
         } else {
@@ -165,17 +158,16 @@ class EQProfileRepository @Inject constructor(
         name: String,
         parametricEQ: ParametricEQ
     ) = withContext(Dispatchers.IO) {
-        // Generate unique ID for custom profile
         val id = "custom_${System.currentTimeMillis()}_${name.hashCode()}"
 
         val customProfile = SavedEQProfile(
             id = id,
             name = name,
             deviceModel = name,
-            bands = parametricEQ.bands,  // Already ParametricEQBand
+            bands = parametricEQ.bands,
             preamp = parametricEQ.preamp,
             isActive = false,
-            isCustom = true // Ensure this flag is set!
+            isCustom = true
         )
 
         saveProfile(customProfile)
@@ -186,7 +178,6 @@ class EQProfileRepository @Inject constructor(
      * Within each group, sort by timestamp (newest first)
      */
     fun getSortedProfiles(): List<SavedEQProfile> {
-        // Only custom profiles are supported now
         return _profiles.value
             .filter { it.isCustom }
             .sortedByDescending { it.addedTimestamp }

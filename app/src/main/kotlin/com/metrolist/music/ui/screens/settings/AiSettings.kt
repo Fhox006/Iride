@@ -193,7 +193,6 @@ fun AiSettings(navController: NavController) {
                             val annotatedString =
                                 buildAnnotatedString {
                                     append("$provider: ")
-                                    // Extract URL from text
                                     val urlRegex = "https?://[^\\s]+".toRegex()
                                     val match = urlRegex.find(help)
                                     if (match != null) {
@@ -288,7 +287,6 @@ fun AiSettings(navController: NavController) {
                 } else {
                     openRouterBaseUrl = ""
                 }
-                // Set model to first available model for the selected provider
                 val modelsForProvider = modelsByProvider[it] ?: listOf()
                 openRouterModel =
                     if (modelsForProvider.isNotEmpty()) {
@@ -455,7 +453,6 @@ fun AiSettings(navController: NavController) {
             maxLines = 12,
             isInputValid = { true },
             onDone = {
-                // Treat saving the unmodified default (or blank) as "use default"
                 aiSystemPrompt = if (it.isBlank() || it == DEFAULT_AI_SYSTEM_PROMPT) "" else it
                 showSystemPromptDialog = false
             },

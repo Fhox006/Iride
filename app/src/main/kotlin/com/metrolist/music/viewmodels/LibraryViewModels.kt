@@ -183,15 +183,12 @@ constructor(
         _searchQuery.value = query
     }
 
-    // New songs from followed artists: artistId -> count, and the library-title total.
     val newSongCounts = newReleaseNotifier.counts
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
     val totalNewSongs = newSongCounts
         .map { counts -> counts.values.sum() }
         .stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
-    // "You play them a lot but forgot to follow" — analog of the Albums screen's recently-listened
-    // row. Frequently-played YouTube artists not yet bookmarked and not dismissed from this row.
     private val dismissedSuggestedFollowIds = context.dataStore.data
         .map { prefs ->
             prefs[DismissedSuggestedFollowArtistsKey]?.let { json ->
@@ -201,11 +198,6 @@ constructor(
 
     val suggestedFollowArtists = combine(
         database.mostPlayedArtists(fromTimeStamp = 0L, limit = 50),
-        // Bookmarked-name/channelId lookup guards against a followed artist appearing here under
-        // a second, duplicate db row (a different YTM channel/browse id for the same real-world
-        // artist) — filtering by id alone (bookmarkedAt on THIS row) misses that case. channelId
-        // is the stable YT identifier so it's checked first; name is a trimmed fallback for rows
-        // without one (e.g. privately-owned artists).
         database.artistsBookmarked(ArtistSortType.CREATE_DATE, true)
             .map { bookmarked ->
                 bookmarked.map { it.artist.name.trim().lowercase() }.toSet() to
@@ -236,7 +228,6 @@ constructor(
         }
     }
 
-    // Quick-follow from the suggested row: bookmark right away, no detour through the artist page.
     fun followSuggestedArtist(artistId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             database.artist(artistId).first()?.let { artist ->
@@ -263,8 +254,6 @@ constructor(
                 }
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    // Followed artists with an unseen release, newest activity first. The screen's lead section:
-    // "what happened since you last looked", not another list to browse.
     val newReleaseArtists =
         combine(allArtists, newSongCounts) { artists, counts ->
             artists
@@ -287,7 +276,6 @@ constructor(
     }
 
     init {
-        // Check followed artists for new releases (throttled inside the notifier).
         viewModelScope.launch(Dispatchers.IO) {
             val followedIds = database.artistsBookmarked(ArtistSortType.CREATE_DATE, true)
                 .first()
@@ -321,11 +309,6 @@ private data class TimestampedAlbumId(val id: String, val timestamp: Long)
 
 private const val CONTINUE_LISTENING_MIN_STREAK = 3
 
-// Walks `events` (newest first, one row per song play joined to its album) and returns, for each
-// album with a run of >= CONTINUE_LISTENING_MIN_STREAK consecutive same-album plays, that run's
-// most recent timestamp. Only the latest run per album is kept — older runs are superseded, which
-// is also what lets a dismissed album quietly reappear: a fresh streak produces a newer timestamp
-// than the dismiss time, an unrepeated old streak doesn't.
 private fun deriveContinueListeningCandidates(events: List<GlobalAlbumPlayEvent>): Map<String, LocalDateTime> {
     val result = linkedMapOf<String, LocalDateTime>()
     var i = 0
@@ -473,11 +456,6 @@ constructor(
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedAlbums() }
     }
 
-    // "Recommended Albums" — discovery carousel, generated lazily and cached until the user asks
-    // for a fresh batch (mirrors HomeViewModel's dischi-per-te regenerate flow). Backed by
-    // LibraryAlbumsCache (process-scoped) rather than just this ViewModel's own field, so
-    // navigating away from and back to the Albums screen doesn't lose/regenerate the list — only
-    // a full app restart does.
     private val albumRecommendationsGenerator = AlbumRecommendationsGenerator(database)
     val recommendedAlbums = MutableStateFlow(LibraryAlbumsCache.recommendedAlbums)
     val isRegeneratingRecommendedAlbums = MutableStateFlow(false)
@@ -532,7 +510,6 @@ constructor(
     private suspend fun recordSuggestedAlbums(ids: List<String>) {
         if (ids.isEmpty()) return
         val now = System.currentTimeMillis()
-        // Prune entries well past the cooldown so this pref doesn't grow forever.
         val pruneCutoff = now - recommendationCooldownMs * 3
         context.dataStore.edit { prefs ->
             val existing = prefs[RecentlySuggestedAlbumsKey]?.let { json ->
@@ -545,10 +522,6 @@ constructor(
         }
     }
 
-    // "Continue Listening" — albums with >= 3 consecutive plays (anywhere in the library, not
-    // just on the album's own page) that the user hasn't favorited yet. Removing one from this
-    // list only hides it here until a newer streak forms; favorites and play history are
-    // untouched.
     private val dismissedContinueListeningAlbums = context.dataStore.data
         .map { prefs ->
             prefs[DismissedContinueListeningAlbumsKey]?.let { json ->
@@ -590,9 +563,6 @@ constructor(
         }
     }
 
-    // "Album ascoltati" — albums with >=2 songs played that aren't saved to the library yet,
-    // i.e. candidates the user might want to add. "Clear" only hides ids from this list (stored
-    // below), it never touches the real `event` play-history rows.
     private val dismissedListenedAlbumIds = context.dataStore.data
         .map { prefs ->
             prefs[DismissedListenedAlbumsKey]?.let { json ->
@@ -764,9 +734,6 @@ constructor(
                 syncUtils.resetState()
                 syncUtils.reInjectCredentials()
                 syncUtils.performFullSyncSuspend()
-                // Process-scoped caches that a real force-stop would wipe but a plain resync
-                // doesn't touch — without this the button looked "refreshing" while every
-                // screen kept serving the same stale in-memory data.
                 HomeCache.clear()
                 LibraryAlbumsCache.clear()
             } catch (e: Exception) {
@@ -882,28 +849,21 @@ constructor(
     private val database: MusicDatabase,
     private val syncUtils: SyncUtils,
 ) : ViewModel() {
-    // Subscribed podcast channels synced from YT Music
     val subscribedChannels = database.subscribedPodcasts()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    // SE "Episodes for Later" playlist fetched from YT Music (like AccountScreen)
     private val _sePlaylist = MutableStateFlow<com.metrolist.innertube.models.PlaylistItem?>(null)
     val sePlaylist = _sePlaylist.asStateFlow()
 
-    // RDPN "New Episodes" playlist fetched from YouTube Music (real thumbnail + episode count)
     private val _rdpnPlaylist = MutableStateFlow<com.metrolist.innertube.models.PlaylistItem?>(null)
     val rdpnPlaylist = _rdpnPlaylist.asStateFlow()
 
-    // Podcast host channels fetched from YT Music library/podcast_channels
     private val _apiPodcastChannels = MutableStateFlow<List<ArtistItem>>(emptyList())
 
-    // Podcast channels: API subscriptions + locally bookmarked artists that have podcasts
-    // Only shows channels explicitly subscribed to (not derived from saved podcasts)
     val podcastChannels = kotlinx.coroutines.flow.combine(
         _apiPodcastChannels,
         database.bookmarkedPodcastChannels()
     ) { apiChannels, localPodcastChannels ->
-        // Convert locally bookmarked podcast channels to ArtistItem format
         val localAsArtistItems = localPodcastChannels.map { artist ->
             ArtistItem(
                 id = artist.id,
@@ -914,13 +874,11 @@ constructor(
             )
         }
 
-        // Combine and deduplicate by ID (prefer API version if exists)
         val apiIds = apiChannels.map { it.id }.toSet()
         val uniqueLocalChannels = localAsArtistItems.filter { it.id !in apiIds }
         apiChannels + uniqueLocalChannels
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    // Downloaded podcast episodes
     val downloadedEpisodes =
         context.dataStore.data
             .map {
@@ -934,7 +892,6 @@ constructor(
                 database.downloadedPodcastEpisodes(sortType, descending).map { it.filterExplicit(hideExplicit) }
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    // Saved podcast episodes (in library, not necessarily downloaded)
     val savedEpisodes =
         context.dataStore.data
             .map {
@@ -990,10 +947,8 @@ constructor(
         viewModelScope.launch(Dispatchers.IO) {
             syncUtils.syncPodcastSubscriptionsSuspend()
         }
-        // Observe refresh trigger for auto-refresh after subscribe/unsubscribe
         viewModelScope.launch(Dispatchers.IO) {
             PodcastRefreshTrigger.refreshFlow.collect {
-                // Small delay to allow YouTube's backend to update
                 kotlinx.coroutines.delay(1500)
                 fetchPodcastChannels()
             }

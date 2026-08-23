@@ -21,7 +21,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay // ✅ FIX
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -66,7 +66,6 @@ class OnlinePlaylistViewModel @Inject constructor(
     private var proactiveLoadJob: Job? = null
     private var resolveVideoJob: Job? = null
 
-    // Video songs buffered for background resolution when hide=true
     private val pendingVideoSongs = mutableListOf<SongItem>()
 
     init {
@@ -275,7 +274,6 @@ class OnlinePlaylistViewModel @Inject constructor(
             val shouldHideVideoOnly = if (isUserPlaylistOrLibrary) hideVideosInLibrary else hideVideoOnlyResults
 
             if (hideVideoSongs) {
-                // Resolve buffered video songs and APPEND audio equivalents to the displayed list
                 val toResolve = pendingVideoSongs.toList()
                 toResolve.forEach { song ->
                     if (!isActive) return@launch
@@ -297,12 +295,10 @@ class OnlinePlaylistViewModel @Inject constructor(
                             playlistSongs.value = live.toList()
                         }
                     }
-                    // Unresolvable + hide=true → simply don't add
 
                     if (cached == null) delay(400)
                 }
             } else {
-                // Replace video songs in-place with resolved audio equivalents
                 playlistSongs.value.forEach { song ->
                     if (!isActive) return@launch
                     if (!song.isVideoSong) return@forEach

@@ -30,6 +30,5 @@ dependencies {
     implementation(libs.timber)
 
     coreLibraryDesugaring(libs.desugaring)
-    
     testImplementation(libs.junit)
 }

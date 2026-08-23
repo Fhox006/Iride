@@ -45,7 +45,6 @@ constructor(
                 database.playlists(sortType, descending)
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    // Suspend function that waits for sync to complete
     suspend fun sync() {
         syncUtils.syncSavedPlaylists()
     }

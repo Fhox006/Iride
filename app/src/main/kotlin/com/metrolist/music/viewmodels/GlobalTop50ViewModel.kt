@@ -107,7 +107,6 @@ class GlobalTop50ViewModel @Inject constructor(
                 Timber.d("GlobalTop50: Repository returned ${freshSongs.size} songs")
                 if (freshSongs.isNotEmpty()) {
                     _songs.value = freshSongs
-                    
                     val cachedSongs = freshSongs.map { CachedSong.fromSongItem(it) }
                     context.dataStore.edit { prefs ->
                         prefs[GlobalTop50CacheKey] = Json.encodeToString(cachedSongs)

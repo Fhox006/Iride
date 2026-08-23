@@ -178,7 +178,6 @@ fun SongMenu(
 
     val (advancedMode) = rememberPreference(AdvancedModeKey, defaultValue = false)
 
-    // Podcast subscription state for episodes
     val podcastEntity by produceState<PodcastEntity?>(initialValue = null, song) {
         val podcastId = song.song.albumId
         if (song.song.isEpisode && podcastId != null) {
@@ -745,7 +744,6 @@ fun SongMenu(
 
     val destructiveItems =
         buildList {
-            // Episodes keep "Save for later" (separate Episodes-for-Later playlist, not a library dupe)
             if (song.song.isEpisode) {
                     val isEpisodeSaved = song.song.inLibrary != null
                     add(
@@ -780,7 +778,6 @@ fun SongMenu(
                                 coroutineScope.launch(Dispatchers.IO) {
                                     val shouldBeSaved = !isEpisodeSaved
 
-                                    // Update local database first (optimistic update)
                                     database.query {
                                         update(
                                             song.song.copy(
@@ -790,7 +787,6 @@ fun SongMenu(
                                         )
                                     }
 
-                                    // Sync with YouTube (handles login check internally)
                                     val setVideoId = if (isEpisodeSaved) database.getSetVideoId(song.id)?.setVideoId else null
                                     syncUtils.saveEpisode(song.id, shouldBeSaved, setVideoId)
                                 }
@@ -830,7 +826,7 @@ fun SongMenu(
                                         )
                                     },
                                     onClick = {
-                                        playlistSong?.let { ps ->
+                                        playlistSong.let { ps ->
                                             val capturedSetVideoId = ps.map.setVideoId
                                             database.transaction {
                                                 move(
@@ -872,7 +868,6 @@ fun SongMenu(
                                 ),
                             )
                         }
-                        // Delete uploaded song option
                         if (song.song.isUploaded) {
                             add(
                                 Material3MenuItemData(
@@ -969,9 +964,6 @@ fun SongMenu(
     }
 }
 
-// ============================================================================
-// New Iride UI song menu building blocks
-// ============================================================================
 
 @Composable
 private fun FavoriteIconButton(
@@ -1184,8 +1176,6 @@ internal fun ArtistAlbumSwitchRow(
     modifier: Modifier = Modifier,
 ) {
     val isPodcast = song.song.isEpisode
-    // ponytail: no local YTM release-type field exists yet; songCount stands in for the
-    // real Album/EP/Single classification. Upgrade to a persisted albumType once available.
     val albumLabelRes =
         when {
             isPodcast -> R.string.view_podcast
@@ -1265,8 +1255,6 @@ internal fun NoteRatingStars(
     val iconSize = 16.dp
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
         for (star in 1..5) {
-            // Continuous 0f..1f fill per star from the raw rating, so half-stars (tap) and
-            // arbitrary decimals (typed, e.g. 4.6) render identically without a separate asset.
             val fillFraction = ((rating ?: 0f) - (star - 1)).coerceIn(0f, 1f)
             Box(
                 contentAlignment = Alignment.Center,
@@ -1286,8 +1274,6 @@ internal fun NoteRatingStars(
                             },
                         ),
             ) {
-                // Fixed-size slot matching the icon exactly, so the fill mask below stays
-                // left-anchored regardless of the outer (tap-target) box size.
                 Box(modifier = Modifier.size(iconSize)) {
                     Icon(
                         painter = painterResource(R.drawable.favorite_border),
@@ -1378,10 +1364,6 @@ internal fun CoverNoteRow(
             animationSpec = tween(280),
             label = "noteWeight",
         )
-        // Cover art is a square (aspectRatio 1f), so its height equals its
-        // measured width. Computed explicitly (not via IntrinsicSize.Min) because
-        // AddNoteBox contains a BoxWithConstraints, and intrinsic measurement
-        // passes crash on SubcomposeLayout-based content.
         val spacingPx = with(density) { 14.dp.toPx() }
         val coverHeightDp =
             with(density) { ((totalWidthPx - spacingPx) * coverFraction).toDp() }
@@ -1464,8 +1446,6 @@ internal fun AddNoteBox(
         label = "titleFlashColor",
     )
 
-    // ponytail: writes on every keystroke (cheap local Room update, no debounce). Add a
-    // debounce if this ever shows up as jank on a low-end device.
     fun persist() {
         onPersist(title, rating, description)
     }

@@ -46,13 +46,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textTertiary
 import com.metrolist.music.utils.GenreProvider
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.async
@@ -73,22 +74,11 @@ data class GenreFilterState(
     val selectedGenre: String?,
     val isLoading: Boolean,
     val onSelect: (String) -> Unit,
-    // Frozen for the whole visit (see rememberGenreFilter) so the pill row never
-    // reorders while genres are still streaming in; only "which of these genres
-    // still exist in this song list" is live-filtered against genreBySongId.
     private val displayOrder: List<String> = emptyList(),
 ) {
     private val genreCounts: Map<String, Int>
         get() = genreBySongId.values.flatten().groupingBy { it }.eachCount()
 
-    // Genres with only 1 matching song aren't useful as a filter (they'd
-    // narrow the list to a single item), so they're dropped. While the
-    // background fetch is still running (or hasn't started), genreBySongId is
-    // incomplete/empty — pruning displayOrder against it right away would wipe
-    // out every remembered pill until the fetch fully settles. So the frozen
-    // order is trusted as-is during loading, and only pruned against live
-    // counts once loading finishes (to drop genres that genuinely no longer
-    // apply, e.g. a song was removed from the playlist).
     val sortedGenres: List<String>
         get() {
             if (isLoading) return displayOrder
@@ -100,18 +90,8 @@ data class GenreFilterState(
         selectedGenre == null || genreBySongId[songId]?.contains(selectedGenre) == true
 }
 
-// Pills only re-sort/reflow once per interval. Committing on every single
-// fetch result made the row constantly jump around; ticking at a fixed pace
-// keeps it calm while genres are still being resolved in the background.
-// Kept short so pills actually show up as soon as they're ready instead of
-// sitting resolved-but-hidden for seconds.
 private const val PILL_SNAPSHOT_INTERVAL_MS = 400L
 
-// When genres still need fetching, wait a beat before showing the shimmer
-// placeholder — most navigations settle fast enough that skipping straight to
-// pills (or nothing) looks calmer than a placeholder that flashes for a few
-// frames. Only applies when nothing is cached yet; if all songs already have
-// genres, pills render on the very next frame with no delay at all.
 private const val INITIAL_PILL_RENDER_DELAY_MS = 120L
 
 private fun genreOrder(genreBySongId: Map<String, List<String>>): List<String> =
@@ -142,10 +122,6 @@ fun rememberGenreFilter(songs: List<GenreSongInfo>, cacheKey: String? = null): G
     var isLoading by remember { mutableStateOf(false) }
 
     val ids = remember(songs) { songs.map { it.id } }
-    // An empty saved order (playlist had <2-song genre overlap on last visit) must NOT freeze
-    // displayOrder forever — the `savedOrder == null` gates below would never re-open, so pills
-    // discovered on a later visit (or a slower fetch that just hadn't finished yet) could never
-    // surface. Treat "saved but empty" the same as "nothing saved".
     val savedOrder = remember(ids, cacheKey) { cacheKey?.let(GenreProvider::getSavedOrder)?.takeIf { it.isNotEmpty() } }
     var displayOrder by remember(ids) { mutableStateOf(savedOrder ?: emptyList()) }
 
@@ -210,8 +186,6 @@ fun GenrePillsRow(
 
     AnimatedVisibility(
         visible = genres.size > 1 || showPlaceholder,
-        // Anchor to Start so the row grows/shrinks from the right edge only —
-        // the first pill's position never shifts when the row appears/resizes.
         enter = fadeIn() + expandHorizontally(expandFrom = Alignment.Start),
         exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.Start),
         modifier = modifier,
@@ -258,7 +232,7 @@ fun UnderlinePill(
     val density = LocalDensity.current
     var textWidthPx by remember(text) { mutableStateOf(0) }
     val textColor by animateColorAsState(
-        targetValue = if (selected) Color.White else Color.White.copy(alpha = 0.55f),
+        targetValue = if (selected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
         animationSpec = spring(stiffness = 400f),
         label = "underlinePillTextColor",
     )
@@ -292,7 +266,7 @@ fun UnderlinePill(
             modifier = Modifier
                 .height(2.dp)
                 .width(with(density) { textWidthPx.toDp() })
-                .background(Color.White.copy(alpha = underlineAlpha)),
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = underlineAlpha)),
         )
     }
 }

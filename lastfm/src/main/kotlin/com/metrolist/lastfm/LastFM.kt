@@ -67,7 +67,6 @@ object LastFM {
         }))
     }
 
-    // OAuth methods (kept for backward compatibility)
     suspend fun getToken() = runCatching {
         client.post {
             lastfmParams(
@@ -93,7 +92,6 @@ object LastFM {
         return "https://www.last.fm/api/auth/?api_key=$API_KEY&token=$token"
     }
 
-    // Mobile session authentication
     suspend fun getMobileSession(username: String, password: String) = runCatching {
         val response = client.post {
             lastfmParams(
@@ -182,7 +180,6 @@ object LastFM {
         }
     }
 
-    // track.getTopTags is a public read method: no session/signature needed.
     suspend fun getTopTags(artist: String, track: String) = runCatching {
         val response = client.get {
             parameter("method", "track.gettoptags")
@@ -199,7 +196,6 @@ object LastFM {
         json.decodeFromString<TopTagsResponse>(text)
     }
 
-    // API keys passed from the app module (loaded from BuildConfig/GitHub Secrets)
     private var API_KEY = ""
     private var SECRET = ""
 

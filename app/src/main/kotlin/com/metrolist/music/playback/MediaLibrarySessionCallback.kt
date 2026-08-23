@@ -103,6 +103,7 @@ constructor(
         )
     }
 
+    @Deprecated("Overrides deprecated member in media3")
     override fun onPlayerCommandRequest(
         session: MediaSession,
         controller: MediaSession.ControllerInfo,
@@ -274,7 +275,6 @@ constructor(
                         val downloadedSongCount = downloadUtil.downloads.value.size
                         val showYoutubePlaylists = context.dataStore.get(AndroidAutoYouTubePlaylistsKey, false)
 
-                        // Build local playlists immediately
                         val localItems = listOf(
                             browsableMediaItem(
                                 "${MusicService.PLAYLIST}/${PlaylistEntity.LIKED_PLAYLIST_ID}",
@@ -300,7 +300,6 @@ constructor(
                             )
                         }
 
-                        // Fetch YouTube playlists asynchronously if enabled
                         if (showYoutubePlaylists) {
                             scope.launch(Dispatchers.IO) {
                                try {
@@ -370,7 +369,6 @@ constructor(
                                         }
                                 }.first()
 
-                                // Add shuffle item at the top
                                 listOf(
                                     MediaItem.Builder()
                                         .setMediaId("$parentId/${MusicService.SHUFFLE_ACTION}")
@@ -395,7 +393,6 @@ constructor(
                                         ?.filterVideoSongs(context.dataStore.get(HideVideoSongsKey, false))
                                         ?: emptyList()
 
-                                    // Add shuffle item at the top
                                     listOf(
                                         MediaItem.Builder()
                                             .setMediaId("$parentId/${MusicService.SHUFFLE_ACTION}")
@@ -479,22 +476,18 @@ constructor(
                     song.artists.any { it.name.contains(query, ignoreCase = true) } ||
                     song.album?.title?.contains(query, ignoreCase = true) == true
                 }
-                
                 val artistSongs = database.searchArtists(query).first().flatMap { artist ->
                     database.artistSongsByCreateDateAsc(artist.id).first()
                 }
-                
                 val albumSongs = database.searchAlbums(query).first().flatMap { album ->
                     database.albumSongs(album.id).first()
                 }
-                
                 val playlistSongs = database.searchPlaylists(query).first().flatMap { playlist ->
                     database.playlistSongs(playlist.id).first().map { it.song }
                 }
 
                 val allLocalSongs = (localSongs + artistSongs + albumSongs + playlistSongs)
                     .distinctBy { it.id }
-                
                 allLocalSongs.forEach { song ->
                     searchResults.add(song.toMediaItem(
                         path = "${MusicService.SEARCH}/$query",
@@ -527,7 +520,6 @@ constructor(
                             database.query { insert(songItem.toMediaMetadata()) }
                         } catch (e: Exception) {
                         }
-                        
                         searchResults.add(
                             MediaItem.Builder()
                                 .setMediaId("${MusicService.SEARCH}/$query/${songItem.id}")
@@ -548,9 +540,7 @@ constructor(
                 } catch (e: Exception) {
                     reportException(e)
                 }
-                
                 LibraryResult.ofItemList(searchResults, params)
-                
             } catch (e: Exception) {
                 reportException(e)
                 LibraryResult.ofItemList(emptyList(), params)
@@ -629,7 +619,6 @@ constructor(
                         }
                     }.first()
 
-                    // Check if this is a shuffle action
                     if (songId == MusicService.SHUFFLE_ACTION) {
                         MediaItemsWithStartPosition(
                             songs.shuffled().map { it.toMediaItem() },
@@ -658,7 +647,6 @@ constructor(
                         return@future defaultResult
                     }
 
-                    // Check if this is a shuffle action
                     if (songId == MusicService.SHUFFLE_ACTION) {
                         MediaItemsWithStartPosition(
                             songs.shuffled(),
@@ -677,7 +665,6 @@ constructor(
                 MusicService.SEARCH -> {
                     val songId = path.getOrNull(2) ?: return@future defaultResult
                     val searchQuery = path.getOrNull(1) ?: return@future defaultResult
-                    
                     val searchResults = mutableListOf<Song>()
 
                     val localSongs = database.allSongs().first().filter { song ->
@@ -685,24 +672,19 @@ constructor(
                         song.artists.any { it.name.contains(searchQuery, ignoreCase = true) } ||
                         song.album?.title?.contains(searchQuery, ignoreCase = true) == true
                     }
-                    
                     val artistSongs = database.searchArtists(searchQuery).first().flatMap { artist ->
                         database.artistSongsByCreateDateAsc(artist.id).first()
                     }
-                    
                     val albumSongs = database.searchAlbums(searchQuery).first().flatMap { album ->
                         database.albumSongs(album.id).first()
                     }
-                    
                     val playlistSongs = database.searchPlaylists(searchQuery).first().flatMap { playlist ->
                         database.playlistSongs(playlist.id).first().map { it.song }
                     }
 
                     val allLocalSongs = (localSongs + artistSongs + albumSongs + playlistSongs)
                         .distinctBy { it.id }
-                    
                     searchResults.addAll(allLocalSongs)
-                    
                     try {
                         val onlineResults = YouTube.search(searchQuery, YouTube.SearchFilter.FILTER_SONG)
                             .getOrNull()
@@ -734,13 +716,10 @@ constructor(
                     } catch (e: Exception) {
                         reportException(e)
                     }
-                    
                     if (searchResults.isEmpty()) {
                         return@future defaultResult
                     }
-                    
                     val targetIndex = searchResults.indexOfFirst { it.id == songId }
-                    
                     MediaItemsWithStartPosition(
                         searchResults.map { it.toMediaItem() },
                         if (targetIndex >= 0) targetIndex else 0,

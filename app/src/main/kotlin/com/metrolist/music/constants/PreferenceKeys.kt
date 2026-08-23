@@ -195,10 +195,8 @@ val DiscordActivityTypeKey = stringPreferencesKey("discordActivityType")
 val DiscordActivityNameKey = stringPreferencesKey("discordActivityName")
 val DiscordAdvancedModeKey = booleanPreferencesKey("discordAdvancedMode")
 
-// Google Cast
 val EnableGoogleCastKey = booleanPreferencesKey("enableGoogleCast")
 
-// Listen Together
 val ListenTogetherServerUrlKey = stringPreferencesKey("listenTogetherServerUrl")
 val ListenTogetherUsernameKey = stringPreferencesKey("listenTogetherUsername")
 val EnableListenTogetherKey = booleanPreferencesKey("enableListenTogether")
@@ -208,7 +206,6 @@ val ListenTogetherSyncVolumeKey = booleanPreferencesKey("listenTogetherSyncVolum
 val ListenTogetherBlockedUsersKey = stringPreferencesKey("listenTogetherBlockedUsers")
 val ListenTogetherInTopBarKey = booleanPreferencesKey("listenTogetherInTopBar")
 
-// Session persistence for reconnection
 val ListenTogetherSessionTokenKey = stringPreferencesKey("listenTogetherSessionToken")
 val ListenTogetherRoomCodeKey = stringPreferencesKey("listenTogetherRoomCode")
 val ListenTogetherUserIdKey = stringPreferencesKey("listenTogetherUserId")
@@ -262,7 +259,6 @@ val LastWeeklyMostPlaylistSyncKey = longPreferencesKey("last_weekly_most_playlis
 val LastMonthlyMostPlaylistSyncKey = longPreferencesKey("last_monthly_most_playlist_sync")
 val LastDiscoveryWeeklySyncKey = longPreferencesKey("last_discovery_weekly_sync")
 
-// Sync cooldown in seconds (30 minutes)
 const val SYNC_COOLDOWN = 30 * 60L
 
 val ArtistViewTypeKey = stringPreferencesKey("artistViewType")
@@ -493,9 +489,6 @@ val HideStatusBarOnFullscreenKey = booleanPreferencesKey("hideStatusBarOnFullscr
 val LyricsRomanizeAsMainKey = booleanPreferencesKey("lyricsRomanizeAsMain")
 val LyricsRomanizeCyrillicByLineKey = booleanPreferencesKey("lyricsRomanizeCyrillicByLine")
 val OpenRouterApiKey = stringPreferencesKey("openRouterApiKey")
-// Genius API access token — used to discover "feat." credits the followed artist's own YTM page
-// never surfaces (Genius indexes every song an artist is credited on, including features other
-// artists' albums bury); paste your own token from genius.com/api-clients.
 val GeniusApiTokenKey = stringPreferencesKey("geniusApiToken")
 val AiProviderKey = stringPreferencesKey("aiProvider")
 val OpenRouterBaseUrlKey = stringPreferencesKey("openRouterBaseUrl")
@@ -585,39 +578,18 @@ val UseLoginForBrowse = booleanPreferencesKey("useLoginForBrowse")
 val BetterLibraryBetaKey = booleanPreferencesKey("better_library_beta")
 val EnableCommentsKey = booleanPreferencesKey("enableComments")
 
-// Library Albums screen: ids the user cleared from the "recently listened" (add-candidate)
-// carousel. Non-destructive — hides the album from that list only, real listening history
-// (the `event` table) is untouched. JSON-encoded List<String>, same pattern as
-// ListenTogetherBlockedUsersKey.
 val DismissedListenedAlbumsKey = stringPreferencesKey("dismissedListenedAlbums")
 
-// Library Albums screen: "Recommended Albums" section. JSON-encoded List<SuggestedAlbumEntry>
-// (id + timestamp) of albums surfaced by the last few regenerations, used to temporarily
-// deprioritize repeats without excluding them forever.
 val RecentlySuggestedAlbumsKey = stringPreferencesKey("recentlySuggestedAlbums")
 
-// Library Albums screen: "Continue Listening" section. JSON-encoded List<DismissedAlbumEntry>
-// (id + dismiss timestamp) of albums the user removed from the carousel. Only affects this
-// carousel — never touches favorites or play history. An album reappears once a fresh
-// 3-consecutive-song streak (newer than the dismiss timestamp) forms again.
 val DismissedContinueListeningAlbumsKey = stringPreferencesKey("dismissedContinueListeningAlbums")
 
-// Library Artists screen: new-release notification state. JSON-encoded Map<artistId, ArtistReleaseState>
-// tracking, per followed artist, which album ids we've already accounted for (baseline) and which
-// song ids from genuinely new releases are still "unseen". Cleared for an artist when its profile is
-// opened; individual songs drop out of the count once played (any source). See NewReleaseNotifier.
 val ArtistNewReleasesKey = stringPreferencesKey("artistNewReleases")
 
-// Epoch millis of the last new-release check, used to throttle YouTube fetches to once per window.
 val ArtistNewReleasesCheckedKey = androidx.datastore.preferences.core.longPreferencesKey("artistNewReleasesChecked")
 
-// Global (not per-artist) JSON-encoded Set<String> of song ids whose per-row dot hasn't been cleared
-// yet. Unlike ArtistNewReleasesKey's unseenAlbumIds (cleared by opening the release), these clear
-// when the row actually scrolls into view — see NewReleaseNotifier.markSongSeen.
 val UnseenSongDotsKey = stringPreferencesKey("unseenSongDots")
 
-// Library Artists screen: ids the user cleared from the "artists you play a lot but forgot to follow"
-// suggestion row. Non-destructive, hides them from that row only. JSON-encoded List<String>.
 val DismissedSuggestedFollowArtistsKey = stringPreferencesKey("dismissedSuggestedFollowArtists")
 
 val LanguageCodeToName =

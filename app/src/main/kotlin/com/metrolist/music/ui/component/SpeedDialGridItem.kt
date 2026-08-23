@@ -49,7 +49,6 @@ fun SpeedDialGridItem(
                 .fillMaxSize()
                 .clip(SquircleShape(radius = squircleRadius, cornerSmoothing = 0.48f))
         ) {
-            // Thumbnail
             ItemThumbnail(
                 thumbnailUrl = item.thumbnail,
                 isActive = isActive,
@@ -61,14 +60,13 @@ fun SpeedDialGridItem(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Gradient Overlay for Text Readability and Icon Contrast
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color.Black.copy(alpha = 0.4f), // Top scrim for icon visibility on bright covers
+                                Color.Black.copy(alpha = 0.4f),
                                 Color.Transparent,
                                 Color.Black.copy(alpha = 0.6f),
                                 Color.Black.copy(alpha = 0.9f)
@@ -77,17 +75,16 @@ fun SpeedDialGridItem(
                     )
             )
 
-            // Title and Chevron
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(8.dp) // Reduced padding for tighter layout
+                    .padding(8.dp)
                     .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = item.title,
-                    style = MaterialTheme.typography.titleSmall, // Smaller, punchier font
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     maxLines = 1,
@@ -95,7 +92,6 @@ fun SpeedDialGridItem(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Navigation Chevron for browsable items (Album, Playlist, Artist)
                 if (item !is SongItem) {
                     Icon(
                         painter = painterResource(R.drawable.navigate_next),
@@ -105,7 +101,6 @@ fun SpeedDialGridItem(
                     )
                 }
             }
-            // Pinned Icon
             if (isPinned) {
                 Icon(
                     painter = painterResource(R.drawable.ic_push_pin),

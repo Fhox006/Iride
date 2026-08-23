@@ -86,14 +86,10 @@ import com.metrolist.music.utils.rememberPreference
  *                        Fades out during collapse. Use for filter pills, toggle buttons, etc.
  */
 
-// Height of the large expanded area (below the small toolbar row)
 val CollapsingHeaderLargeTitleHeight = 80.dp
 
-// Height of the small collapsed toolbar row
 val CollapsingHeaderSmallBarHeight = 56.dp
 
-// New Iride UI (hideTitle): compact bar height used when there's no title to make room for, just a
-// small trailing toggle — tight enough to not leave a dead band under TopNavigationBar.
 val CollapsingHeaderCompactBarHeight = 40.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -110,31 +106,19 @@ fun CollapsingScreenHeader(
     navigationIcon: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
     transparentBackground: Boolean = false,
-    // Optional "+N" pill shown right after the title (e.g. new songs from followed artists).
     titleBadge: Int? = null,
-    // New Iride UI: the animated large-title area is redundant with the persistent
-    // TopNavigationBar tabs bar above it, so it collapses away to just the small,
-    // fixed toolbar row (trailingContent stays visible there, never fades).
     hideTitle: Boolean = false,
 ) {
     val density = LocalDensity.current
-    // New Iride UI: pushed screens keep the collapsing large title, but it renders in the same
-    // bold monospace type as TopNavigationBar/SettingsBackTopBar so every header reads as one system.
     val largeTitleHeightPx = if (hideTitle) 0f else with(density) { CollapsingHeaderLargeTitleHeight.toPx() }
 
-    // Tell the scroll behavior how much height it can collapse
     SideEffect {
         if (scrollBehavior.state.heightOffsetLimit != -largeTitleHeightPx) {
             scrollBehavior.state.heightOffsetLimit = -largeTitleHeightPx
         }
     }
 
-    // fraction: 0f = fully expanded, 1f = fully collapsed
     val fraction = if (hideTitle) 0f else scrollBehavior.state.collapsedFraction
-    // New Iride UI (hideTitle): this bar carries nothing but the small trailing toggle — the large
-    // title never shows and TopNavigationBar above already fills the "tab bar" role — so it uses a
-    // tighter height than the classic small toolbar row instead of leaving the toggle floating in a
-    // mostly-empty 56dp band right below TopNavigationBar.
     val barHeight = if (hideTitle) CollapsingHeaderCompactBarHeight else CollapsingHeaderSmallBarHeight
     val totalHeightDp = barHeight + (if (hideTitle) 0.dp else CollapsingHeaderLargeTitleHeight)
 
@@ -150,8 +134,6 @@ fun CollapsingScreenHeader(
             .height(totalHeightDp + with(density) { scrollBehavior.state.heightOffset.toDp() }),
     ) {
         Box {
-            // Navigation icon — same translation as title so it animates together,
-            // but in its own Box so it centers in the 56dp bar independent of text height.
             if (navigationIcon != null) {
                 Box(
                     modifier = Modifier
@@ -171,7 +153,6 @@ fun CollapsingScreenHeader(
                 }
             }
 
-            // Title row — translates upward from the large position to the small bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -190,8 +171,6 @@ fun CollapsingScreenHeader(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
                 ) {
-                    // Large title — scales down as the header collapses. Hidden entirely in the
-                    // New Iride UI, where the TopNavigationBar tabs bar already shows above.
                     if (!hideTitle) {
                         Text(
                             text = title,
@@ -203,9 +182,6 @@ fun CollapsingScreenHeader(
                             ),
                             maxLines = 1,
                             modifier = Modifier
-                                // fill = false so a short title doesn't stretch the badge to the far
-                                // edge — it sits right beside the title. The trailing Spacer below
-                                // still pushes any trailingContent to the row's end.
                                 .weight(1f, fill = false)
                                 .graphicsLayer {
                                     val targetScale = 0.61f
@@ -221,7 +197,6 @@ fun CollapsingScreenHeader(
                             NewReleaseBadge(
                                 count = titleBadge,
                                 modifier = Modifier.graphicsLayer {
-                                    // Fade out with the title as the header collapses.
                                     alpha = lerpFloat(1f, 0f, (fraction * 2f).coerceIn(0f, 1f))
                                 },
                             )
@@ -229,8 +204,6 @@ fun CollapsingScreenHeader(
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
                     }
 
-                    // Optional trailing slot — fades out during collapse, always fully visible
-                    // (fixed position) when the title is hidden.
                     if (trailingContent != null) {
                         Box(
                             modifier = Modifier
@@ -245,7 +218,6 @@ fun CollapsingScreenHeader(
                 }
             }
 
-            // Search overlay — covers the entire header when active
             LibrarySearchHeader(
                 isSearchActive = isSearchActive,
                 searchQuery = searchQuery,
