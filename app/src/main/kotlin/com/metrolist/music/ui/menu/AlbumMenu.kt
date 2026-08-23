@@ -91,7 +91,6 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.Song
@@ -128,7 +127,6 @@ fun AlbumMenu(
     val downloadUtil = LocalDownloadUtil.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val listenTogetherManager = LocalListenTogetherManager.current
-    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
     val scope = rememberCoroutineScope()
     val libraryAlbum by database.album(originalAlbum.id).collectAsState(initial = originalAlbum)
@@ -408,397 +406,6 @@ fun AlbumMenu(
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
-    if (newIrideUi) {
-        LazyColumn(
-            contentPadding =
-                PaddingValues(
-                    start = 0.dp,
-                    top = 0.dp,
-                    end = 0.dp,
-                    bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
-                ),
-        ) {
-            item {
-                Column(modifier = Modifier.padding(horizontal = 4.dp)) {
-                    NewIrideAlbumMenuHeader(
-                        album = album,
-                        trackCount = trackCount,
-                        onDismiss = onDismiss,
-                    )
-                    Spacer(modifier = Modifier.height(20.dp))
-                    var isEditingNote by rememberSaveable(album.id) { mutableStateOf(false) }
-                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                        val density = LocalDensity.current
-                        val textMeasurer = rememberTextMeasurer()
-                        val standardCoverFraction = 0.48f
-                        val minCoverFraction = standardCoverFraction * 0.6f
-                        val noteTitle = album.album.noteTitle.orEmpty()
-                        val totalWidthPx = with(density) { maxWidth.toPx() }
-                        val titleMeasureStyle =
-                            MaterialTheme.typography.bodyLarge.copy(
-                                fontFamily = SpaceMonoFontFamily,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        val coverFraction =
-                            remember(noteTitle, totalWidthPx, titleMeasureStyle) {
-                                if (noteTitle.isBlank() || totalWidthPx <= 0f) {
-                                    standardCoverFraction
-                                } else {
-                                    val titleWidthPx =
-                                        textMeasurer
-                                            .measure(
-                                                text = AnnotatedString(noteTitle),
-                                                style = titleMeasureStyle,
-                                                maxLines = 1,
-                                            ).size.width
-                                            .toFloat()
-                                    val spacingPx = with(density) { 14.dp.toPx() }
-                                    val innerPaddingPx = with(density) { 32.dp.toPx() }
-                                    var fraction = standardCoverFraction
-                                    while (fraction > minCoverFraction) {
-                                        val noteBoxWidthPx = totalWidthPx * (1f - fraction) - spacingPx - innerPaddingPx
-                                        if (titleWidthPx <= noteBoxWidthPx) break
-                                        fraction -= 0.04f
-                                    }
-                                    fraction.coerceAtLeast(minCoverFraction)
-                                }
-                            }
-                        val coverWeight by animateFloatAsState(
-                            targetValue = if (isEditingNote) 0.0001f else coverFraction,
-                            animationSpec = tween(280),
-                            label = "coverWeight",
-                        )
-                        val noteWeight by animateFloatAsState(
-                            targetValue = if (isEditingNote) 1f else (1f - coverFraction),
-                            animationSpec = tween(280),
-                            label = "noteWeight",
-                        )
-                        val spacingPx = with(density) { 14.dp.toPx() }
-                        val coverHeightDp =
-                            with(density) { ((totalWidthPx - spacingPx) * coverFraction).toDp() }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        ) {
-                            AnimatedVisibility(
-                                visible = !isEditingNote,
-                                enter = fadeIn(tween(280, delayMillis = 80)),
-                                exit = fadeOut(tween(160)),
-                                modifier = Modifier.weight(coverWeight),
-                            ) {
-                                AsyncImage(
-                                    model = album.album.thumbnailUrl,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .aspectRatio(1f)
-                                            .clip(SquircleShape(radius = 8.dp, cornerSmoothing = 0.48f)),
-                                )
-                            }
-                            AddNoteBox(
-                                key = album.id,
-                                initialTitle = album.album.noteTitle.orEmpty(),
-                                initialRating = album.album.noteRating,
-                                initialText = album.album.noteText.orEmpty(),
-                                onPersist = { noteTitleValue, noteRatingValue, noteTextValue ->
-                                    database.query {
-                                        update(
-                                            album.album.copy(
-                                                noteTitle = noteTitleValue.trim().ifBlank { null },
-                                                noteRating = noteRatingValue,
-                                                noteText = noteTextValue.trim().ifBlank { null },
-                                            ),
-                                        )
-                                    }
-                                },
-                                isEditing = isEditingNote,
-                                onEditingChange = { isEditingNote = it },
-                                modifier =
-                                    Modifier
-                                        .weight(noteWeight)
-                                        .then(if (isEditingNote) Modifier else Modifier.height(coverHeightDp)),
-                            )
-                        }
-                    }
-                }
-            }
-
-            item { Spacer(modifier = Modifier.height(20.dp)) }
-
-            if (!isGuest) {
-                item {
-                    NewActionGrid(
-                        actions =
-                            listOf(
-                                NewAction(
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.shuffle),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(28.dp),
-                                            tint = Color.White.copy(alpha = 0.85f),
-                                        )
-                                    },
-                                    text = stringResource(R.string.shuffle),
-                                    onClick = {
-                                        onDismiss()
-                                        if (songs.isNotEmpty()) {
-                                            album.album.playlistId?.let { playlistId ->
-                                                playerConnection.service.getAutomix(playlistId)
-                                            }
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = album.album.title,
-                                                    items = songs.shuffled().map(Song::toMediaItem),
-                                                ),
-                                            )
-                                        }
-                                    },
-                                ),
-                                NewAction(
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.playlist_play),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(28.dp),
-                                            tint = Color.White.copy(alpha = 0.85f),
-                                        )
-                                    },
-                                    text = stringResource(R.string.swipe_label_next).lowercase().replaceFirstChar { it.uppercase() },
-                                    onClick = {
-                                        onDismiss()
-                                        playerConnection.playNext(songs.map { it.toMediaItem() })
-                                    },
-                                ),
-                                NewAction(
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.radio),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(28.dp),
-                                            tint = Color.White.copy(alpha = 0.85f),
-                                        )
-                                    },
-                                    text = stringResource(R.string.radio),
-                                    onClick = {
-                                        onDismiss()
-                                        songs.firstOrNull()?.let { seed ->
-                                            playerConnection.startRadioForSong(seed.toMediaMetadata())
-                                        }
-                                    },
-                                ),
-                            ),
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                    )
-                }
-                item { Spacer(modifier = Modifier.height(16.dp)) }
-
-                item {
-                    Material3MenuGroup(
-                        items =
-                            listOf(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.add_to_queue)) },
-                                    description = { Text(text = stringResource(R.string.add_to_queue_desc)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.queue_music),
-                                            contentDescription = null,
-                                        )
-                                    },
-                                    onClick = {
-                                        onDismiss()
-                                        playerConnection.addToQueue(songs.map { it.toMediaItem() })
-                                    },
-                                ),
-                            ),
-                    )
-                }
-                item { Spacer(modifier = Modifier.height(12.dp)) }
-            }
-
-            item {
-                Material3MenuGroup(items = listOf(downloadItem, addToPlaylistItem))
-            }
-
-            item { Spacer(modifier = Modifier.height(12.dp)) }
-
-            item {
-                ArtistOtherVersionSwitchRow(
-                    artists = album.artists,
-                    otherVersion = otherVersions.firstOrNull(),
-                    onArtistClick = onArtistClick,
-                    onOtherVersionClick = onOtherVersionClick,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
-            }
-
-            if (advancedMode) {
-                item { Spacer(modifier = Modifier.height(12.dp)) }
-
-                item {
-                    var showExportDialog by remember { mutableStateOf(false) }
-                    Material3MenuGroup(
-                        items =
-                            listOf(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.export_playlist)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.share),
-                                            contentDescription = null,
-                                        )
-                                    },
-                                    onClick = { showExportDialog = true },
-                                ),
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.refetch)) },
-                                    description = { Text(text = stringResource(R.string.refetch_desc)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.sync),
-                                            contentDescription = null,
-                                            modifier = Modifier.graphicsLayer(rotationZ = rotationAnimation),
-                                        )
-                                    },
-                                    onClick = {
-                                        refetchIconDegree -= 360
-                                        scope.launch(Dispatchers.IO) {
-                                            YouTube.album(album.id).onSuccess {
-                                                database.transaction {
-                                                    update(album.album, it, album.artists)
-                                                }
-                                            }
-                                        }
-                                    },
-                                ),
-                            ),
-                    )
-
-                    val exportPlaylistStr = stringResource(R.string.export_playlist)
-
-                    if (showExportDialog) {
-                        ExportDialog(
-                            onDismiss = { showExportDialog = false },
-                            onShare = { format ->
-                                val playlistSongs =
-                                    songs.map { s ->
-                                        com.metrolist.music.db.entities.PlaylistSong(
-                                            map =
-                                                com.metrolist.music.db.entities.PlaylistSongMap(
-                                                    songId = s.id,
-                                                    playlistId = album.id,
-                                                    position = 0,
-                                                ),
-                                            song = s,
-                                        )
-                                    }
-                                val result =
-                                    when (format) {
-                                        "csv" -> PlaylistExporter.exportPlaylistAsCSV(context, album.album.title, playlistSongs)
-                                        "m3u" -> PlaylistExporter.exportPlaylistAsM3U(context, album.album.title, playlistSongs)
-                                        else -> Result.failure(IllegalArgumentException("Unknown format"))
-                                    }
-                                result
-                                    .onSuccess { file ->
-                                        val uri = getExportFileUri(context, file)
-                                        val mimeType = if (format == "csv") "text/csv" else "audio/x-mpegurl"
-                                        val shareIntent =
-                                            Intent(Intent.ACTION_SEND).apply {
-                                                type = mimeType
-                                                putExtra(Intent.EXTRA_STREAM, uri)
-                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                            }
-                                        context.startActivity(Intent.createChooser(shareIntent, exportPlaylistStr))
-                                    }.onFailure {
-                                        Toast.makeText(context, R.string.export_failed, Toast.LENGTH_SHORT).show()
-                                    }
-                                showExportDialog = false
-                            },
-                            onSave = { format ->
-                                val playlistSongs =
-                                    songs.map { s ->
-                                        com.metrolist.music.db.entities.PlaylistSong(
-                                            map =
-                                                com.metrolist.music.db.entities.PlaylistSongMap(
-                                                    songId = s.id,
-                                                    playlistId = album.id,
-                                                    position = 0,
-                                                ),
-                                            song = s,
-                                        )
-                                    }
-                                val export =
-                                    when (format) {
-                                        "csv" -> PlaylistExporter.exportPlaylistAsCSV(context, album.album.title, playlistSongs)
-                                        "m3u" -> PlaylistExporter.exportPlaylistAsM3U(context, album.album.title, playlistSongs)
-                                        else -> Result.failure(IllegalArgumentException("Unknown format"))
-                                    }
-                                export
-                                    .onSuccess { file ->
-                                        val mimeType = if (format == "csv") "text/csv" else "audio/x-mpegurl"
-                                        val save = saveToPublicDocuments(context, file, mimeType)
-                                        save
-                                            .onSuccess { Toast.makeText(context, R.string.export_success, Toast.LENGTH_SHORT).show() }
-                                            .onFailure { Toast.makeText(context, R.string.export_failed, Toast.LENGTH_SHORT).show() }
-                                    }.onFailure {
-                                        Toast.makeText(context, R.string.export_failed, Toast.LENGTH_SHORT).show()
-                                    }
-                                showExportDialog = false
-                            },
-                        )
-                    }
-                }
-            }
-        }
-        return
-    }
-
-    AlbumListItem(
-        album = album,
-        showLikedIcon = false,
-        badges = {},
-        trailingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = {
-                        database.query {
-                            update(album.album.toggleLike())
-                        }
-                    },
-                ) {
-                    Icon(
-                        painter = painterResource(if (album.album.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border),
-                        tint = if (album.album.bookmarkedAt != null) Color(0xFFE53E45) else LocalContentColor.current,
-                        contentDescription = null,
-                    )
-                }
-                IconButton(
-                    onClick = {
-                        onDismiss()
-                        val intent =
-                            Intent().apply {
-                                action = Intent.ACTION_SEND
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/playlist?list=${album.album.playlistId}")
-                            }
-                        context.startActivity(Intent.createChooser(intent, null))
-                    },
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.share),
-                        contentDescription = null,
-                    )
-                }
-            }
-        },
-    )
-
-    HorizontalDivider()
-    Spacer(modifier = Modifier.height(12.dp))
-
     LazyColumn(
         contentPadding =
             PaddingValues(
@@ -808,6 +415,115 @@ fun AlbumMenu(
                 bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
             ),
     ) {
+        item {
+            Column(modifier = Modifier.padding(horizontal = 4.dp)) {
+                NewIrideAlbumMenuHeader(
+                    album = album,
+                    trackCount = trackCount,
+                    onDismiss = onDismiss,
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                var isEditingNote by rememberSaveable(album.id) { mutableStateOf(false) }
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    val density = LocalDensity.current
+                    val textMeasurer = rememberTextMeasurer()
+                    val standardCoverFraction = 0.48f
+                    val minCoverFraction = standardCoverFraction * 0.6f
+                    val noteTitle = album.album.noteTitle.orEmpty()
+                    val totalWidthPx = with(density) { maxWidth.toPx() }
+                    val titleMeasureStyle =
+                        MaterialTheme.typography.bodyLarge.copy(
+                            fontFamily = SpaceMonoFontFamily,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    val coverFraction =
+                        remember(noteTitle, totalWidthPx, titleMeasureStyle) {
+                            if (noteTitle.isBlank() || totalWidthPx <= 0f) {
+                                standardCoverFraction
+                            } else {
+                                val titleWidthPx =
+                                    textMeasurer
+                                        .measure(
+                                            text = AnnotatedString(noteTitle),
+                                            style = titleMeasureStyle,
+                                            maxLines = 1,
+                                        ).size.width
+                                        .toFloat()
+                                val spacingPx = with(density) { 14.dp.toPx() }
+                                val innerPaddingPx = with(density) { 32.dp.toPx() }
+                                var fraction = standardCoverFraction
+                                while (fraction > minCoverFraction) {
+                                    val noteBoxWidthPx = totalWidthPx * (1f - fraction) - spacingPx - innerPaddingPx
+                                    if (titleWidthPx <= noteBoxWidthPx) break
+                                    fraction -= 0.04f
+                                }
+                                fraction.coerceAtLeast(minCoverFraction)
+                            }
+                        }
+                    val coverWeight by animateFloatAsState(
+                        targetValue = if (isEditingNote) 0.0001f else coverFraction,
+                        animationSpec = tween(280),
+                        label = "coverWeight",
+                    )
+                    val noteWeight by animateFloatAsState(
+                        targetValue = if (isEditingNote) 1f else (1f - coverFraction),
+                        animationSpec = tween(280),
+                        label = "noteWeight",
+                    )
+                    val spacingPx = with(density) { 14.dp.toPx() }
+                    val coverHeightDp =
+                        with(density) { ((totalWidthPx - spacingPx) * coverFraction).toDp() }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        AnimatedVisibility(
+                            visible = !isEditingNote,
+                            enter = fadeIn(tween(280, delayMillis = 80)),
+                            exit = fadeOut(tween(160)),
+                            modifier = Modifier.weight(coverWeight),
+                        ) {
+                            AsyncImage(
+                                model = album.album.thumbnailUrl,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(1f)
+                                        .clip(SquircleShape(radius = 8.dp, cornerSmoothing = 0.48f)),
+                            )
+                        }
+                        AddNoteBox(
+                            key = album.id,
+                            initialTitle = album.album.noteTitle.orEmpty(),
+                            initialRating = album.album.noteRating,
+                            initialText = album.album.noteText.orEmpty(),
+                            onPersist = { noteTitleValue, noteRatingValue, noteTextValue ->
+                                database.query {
+                                    update(
+                                        album.album.copy(
+                                            noteTitle = noteTitleValue.trim().ifBlank { null },
+                                            noteRating = noteRatingValue,
+                                            noteText = noteTextValue.trim().ifBlank { null },
+                                        ),
+                                    )
+                                }
+                            },
+                            isEditing = isEditingNote,
+                            onEditingChange = { isEditingNote = it },
+                            modifier =
+                                Modifier
+                                    .weight(noteWeight)
+                                    .then(if (isEditingNote) Modifier else Modifier.height(coverHeightDp)),
+                        )
+                    }
+                }
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(20.dp)) }
+
         if (!isGuest) {
             item {
                 NewActionGrid(
@@ -819,7 +535,7 @@ fun AlbumMenu(
                                         painter = painterResource(R.drawable.shuffle),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = Color.White.copy(alpha = 0.85f),
                                     )
                                 },
                                 text = stringResource(R.string.shuffle),
@@ -844,7 +560,7 @@ fun AlbumMenu(
                                         painter = painterResource(R.drawable.playlist_play),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = Color.White.copy(alpha = 0.85f),
                                     )
                                 },
                                 text = stringResource(R.string.swipe_label_next).lowercase().replaceFirstChar { it.uppercase() },
@@ -859,7 +575,7 @@ fun AlbumMenu(
                                         painter = painterResource(R.drawable.radio),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = Color.White.copy(alpha = 0.85f),
                                     )
                                 },
                                 text = stringResource(R.string.radio),
@@ -871,34 +587,15 @@ fun AlbumMenu(
                                 },
                             ),
                         ),
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
+                    modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
+            item { Spacer(modifier = Modifier.height(16.dp)) }
 
             item {
                 Material3MenuGroup(
                     items =
                         listOf(
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.play)) },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.play),
-                                        contentDescription = null,
-                                    )
-                                },
-                                onClick = {
-                                    onDismiss()
-                                    if (songs.isNotEmpty()) {
-                                        playerConnection.playQueue(
-                                            ListQueue(
-                                                title = album.album.title,
-                                                items = songs.map(Song::toMediaItem),
-                                            ),
-                                        )
-                                    }
-                                },
-                            ),
                             Material3MenuItemData(
                                 title = { Text(text = stringResource(R.string.add_to_queue)) },
                                 description = { Text(text = stringResource(R.string.add_to_queue_desc)) },
@@ -916,7 +613,6 @@ fun AlbumMenu(
                         ),
                 )
             }
-
             item { Spacer(modifier = Modifier.height(12.dp)) }
         }
 
@@ -927,32 +623,12 @@ fun AlbumMenu(
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
         item {
-            Material3MenuGroup(
-                items =
-                    listOf(
-                        Material3MenuItemData(
-                            title = { Text(text = stringResource(R.string.view_artist)) },
-                            description = { Text(text = album.artists.joinToString { it.name }) },
-                            icon = {
-                                val artistThumbnail = album.artists.firstOrNull()?.thumbnailUrl
-                                if (artistThumbnail != null) {
-                                    AsyncImage(
-                                        model = artistThumbnail,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(28.dp)
-                                            .clip(CircleShape),
-                                    )
-                                } else {
-                                    Icon(
-                                        painter = painterResource(R.drawable.artist),
-                                        contentDescription = null,
-                                    )
-                                }
-                            },
-                            onClick = onArtistClick,
-                        ),
-                    ),
+            ArtistOtherVersionSwitchRow(
+                artists = album.artists,
+                otherVersion = otherVersions.firstOrNull(),
+                onArtistClick = onArtistClick,
+                onOtherVersionClick = onOtherVersionClick,
+                modifier = Modifier.padding(horizontal = 4.dp),
             )
         }
 
@@ -1074,6 +750,7 @@ fun AlbumMenu(
             }
         }
     }
+
 }
 
 @Composable

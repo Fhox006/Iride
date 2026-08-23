@@ -36,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp as lerpFloat
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.utils.rememberPreference
 
@@ -121,7 +120,6 @@ fun CollapsingScreenHeader(
     val density = LocalDensity.current
     // New Iride UI: pushed screens keep the collapsing large title, but it renders in the same
     // bold monospace type as TopNavigationBar/SettingsBackTopBar so every header reads as one system.
-    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val largeTitleHeightPx = if (hideTitle) 0f else with(density) { CollapsingHeaderLargeTitleHeight.toPx() }
 
     // Tell the scroll behavior how much height it can collapse
@@ -197,18 +195,12 @@ fun CollapsingScreenHeader(
                     if (!hideTitle) {
                         Text(
                             text = title,
-                            style = if (newIrideUi) {
-                                TextStyle(
-                                    fontFamily = SpaceMonoFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 28.sp,
-                                    letterSpacing = (-0.5).sp,
-                                )
-                            } else {
-                                MaterialTheme.typography.displaySmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            },
+                            style = TextStyle(
+                                fontFamily = SpaceMonoFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 28.sp,
+                                letterSpacing = (-0.5).sp,
+                            ),
                             maxLines = 1,
                             modifier = Modifier
                                 // fill = false so a short title doesn't stretch the badge to the far

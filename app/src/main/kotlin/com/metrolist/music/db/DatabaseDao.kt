@@ -1384,29 +1384,33 @@ interface DatabaseDao {
     )
     fun albumsDownloadedByDateDesc(): Flow<List<Album>>
 
-    // Downloaded songs not already covered by a fully-downloaded album above — so "Recently
-    // Downloaded" can show singles/loose tracks without duplicating songs that are already
-    // represented by their album.
+    // Albums for the library's "Recently Downloaded" grid, which shows album entries only — never
+    // individual songs. An album qualifies once >= 2 of its tracks are downloaded, or when it is
+    // fully downloaded (covers 1-track YouTube singles). A single stray song download therefore
+    // never pulls its album in here, while an interrupted whole-album download still surfaces as
+    // the album the user can listen to offline.
     @Transaction
+    @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
     @Query(
         """
-        SELECT * FROM song
-        WHERE isDownloaded = 1
-          AND (isEpisode = 0 OR isEpisode IS NULL)
-          AND (
-              albumId IS NULL
-              OR albumId NOT IN (
-                  SELECT album.id FROM album
-                  WHERE album.songCount > 0
-                    AND album.songCount = (
-                        SELECT COUNT(*) FROM song s2 WHERE s2.albumId = album.id AND s2.isDownloaded = 1
-                    )
-              )
-          )
-        ORDER BY dateDownload DESC
+        SELECT album.* FROM album
+        WHERE (
+            SELECT COUNT(*) FROM song
+            WHERE song.albumId = album.id AND song.isDownloaded = 1
+              AND (song.isEpisode = 0 OR song.isEpisode IS NULL)
+        ) >= 2
+        OR (
+            album.songCount > 0
+            AND album.songCount = (
+                SELECT COUNT(*) FROM song
+                WHERE song.albumId = album.id AND song.isDownloaded = 1
+                  AND (song.isEpisode = 0 OR song.isEpisode IS NULL)
+            )
+        )
+        ORDER BY (SELECT MAX(song.dateDownload) FROM song WHERE song.albumId = album.id) DESC
         """
     )
-    fun downloadedSongsNotInFullAlbum(): Flow<List<Song>>
+    fun albumsWithDownloadedSongsByDateDesc(): Flow<List<Album>>
 
     @Query("SELECT DISTINCT playlist_song_map.playlistId FROM playlist_song_map JOIN song ON song.id = playlist_song_map.songId WHERE song.isDownloaded = 1")
     fun playlistIdsWithDownloadedSongs(): Flow<List<String>>

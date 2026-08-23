@@ -119,7 +119,6 @@ import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.IrideBaseBorderWidth
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.db.entities.PlaylistSongMap
@@ -197,7 +196,6 @@ fun OnlinePlaylistScreen(
     val isPodcastPlaylist = viewModel.isPodcastPlaylist
 
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
     val playerBackgroundStyle by rememberEnumPreference(
         PlayerBackgroundStyleKey,
@@ -251,7 +249,7 @@ fun OnlinePlaylistScreen(
     val headerTitleCovered by remember {
         derivedStateOf {
             headerRevealed && (
-                lazyListState.firstVisibleItemIndex > (if (topNavigationBarEnabled) 1 else 0) ||
+                lazyListState.firstVisibleItemIndex > 1 ||
                     nameBottomPx <= topBarBottomPx
                 )
         }
@@ -478,9 +476,7 @@ fun OnlinePlaylistScreen(
         modifier = Modifier
             .fillMaxSize()
             .recordFrostBackdrop(frostBackdrop)
-            .then(
-                if (topNavigationBarEnabled) Modifier.graphicsLayer { alpha = screenProgress } else Modifier,
-            ),
+            .graphicsLayer { alpha = screenProgress },
     ) {
         if (albumTopGradientEnabled) {
             TopScreenGradientBackground(
@@ -492,28 +488,20 @@ fun OnlinePlaylistScreen(
         LazyColumn(
             state = lazyListState,
             modifier = Modifier
-                .then(
-                    if (topNavigationBarEnabled) {
-                        Modifier.rubberBandOverscroll(Orientation.Vertical, lazyListState, headerPull)
-                    } else {
-                        Modifier
-                    },
-                ),
+                .rubberBandOverscroll(Orientation.Vertical, lazyListState, headerPull),
             contentPadding = LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime).asPaddingValues(),
         ) {
-            if (topNavigationBarEnabled) {
-                item(key = "search_bar") {
-                    IrideSearchBox(
-                        query = query,
-                        onQueryChange = { query = it },
-                        placeholderText = stringResource(R.string.search),
-                        focusRequester = focusRequester,
-                        onFocusChanged = { if (it.isFocused) isSearching = true },
-                        onSearch = {},
-                        onClear = { query = TextFieldValue() },
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                    )
-                }
+            item(key = "search_bar") {
+                IrideSearchBox(
+                    query = query,
+                    onQueryChange = { query = it },
+                    placeholderText = stringResource(R.string.search),
+                    focusRequester = focusRequester,
+                    onFocusChanged = { if (it.isFocused) isSearching = true },
+                    onSearch = {},
+                    onClear = { query = TextFieldValue() },
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                )
             }
 
             if (playlist == null || songs.isEmpty()) {
@@ -588,7 +576,7 @@ fun OnlinePlaylistScreen(
                         }
                     }
 
-                    if (topNavigationBarEnabled && !isSearching) {
+                    if (!isSearching) {
                         item(key = "control_panel") {
                             val controlPanelProgress = headerEnter(
                                 revealed = headerRevealed,
@@ -613,9 +601,7 @@ fun OnlinePlaylistScreen(
                         item(key = "genre_pills") {
                             GenrePillsRow(
                                 state = genreFilter,
-                                modifier = Modifier.then(
-                                    if (topNavigationBarEnabled) Modifier.irideEnter(genrePillsProgress, 6.dp) else Modifier,
-                                ),
+                                modifier = Modifier.irideEnter(genrePillsProgress, 6.dp),
                             )
                         }
                     }
@@ -681,15 +667,8 @@ fun OnlinePlaylistScreen(
                                                 }
                                             }
                                         },
-                                    ).then(
-                                        if (topNavigationBarEnabled) {
-                                            Modifier
-                                                .animateItem(placementSpec = IrideMotion.PlacementSpec)
-                                                .irideEnter(songsSectionProgress, 6.dp)
-                                        } else {
-                                            Modifier.animateItem()
-                                        },
-                                    ),
+                                    ).animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                        .irideEnter(songsSectionProgress, 6.dp),
                             trailingContent = {
                                 if (inSelectMode) {
                                     Checkbox(
@@ -793,16 +772,6 @@ fun OnlinePlaylistScreen(
                     )
                 }
             } else if (!isSearching) {
-                if (!topNavigationBarEnabled) {
-                    IconButton(
-                        onClick = { isSearching = true },
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.search),
-                            contentDescription = null,
-                        )
-                    }
-                }
                 playlist?.let { currentPlaylist ->
                     IconButton(
                         onClick = {
@@ -825,117 +794,70 @@ fun OnlinePlaylistScreen(
             }
         }
 
-        if (topNavigationBarEnabled) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
-                    .frostedTopBarBackground(
-                        progress = if (inSelectMode) 1f else topBarRevealProgress,
-                        barColor = MaterialTheme.colorScheme.background,
-                        strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                        backdrop = frostBackdrop,
-                    )
-                    .statusBarsPadding()
-                    .height(56.dp)
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                topBarNavigationIcon()
-                Text(
-                    text = when {
-                        inSelectMode -> if (isPodcastPlaylist) {
-                            pluralStringResource(R.plurals.n_episode, selection.size, selection.size)
-                        } else {
-                            pluralStringResource(R.plurals.n_song, selection.size, selection.size)
-                        }
-                        isSearching -> ""
-                        else -> playlist?.title.orEmpty()
-                    },
-                    style = TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        letterSpacing = (-0.1).sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 4.dp)
-                        .then(
-                            if (inSelectMode || isSearching) {
-                                Modifier
-                            } else {
-                                Modifier.irideEnter(topBarRevealProgress, 6.dp).revealMask(topBarRevealProgress)
-                            },
-                        ),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
+                .frostedTopBarBackground(
+                    progress = if (inSelectMode) 1f else topBarRevealProgress,
+                    barColor = MaterialTheme.colorScheme.background,
+                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                    backdrop = frostBackdrop,
                 )
-                if (!inSelectMode && !isSearching) {
-                    playlist?.let { current ->
-                        IrideOutlineIconButton(
-                            onClick = onTopBarLikeClick,
-                            icon = if (dbPlaylist?.playlist?.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border,
-                            contentDescription = stringResource(
-                                if (dbPlaylist?.playlist?.bookmarkedAt != null) R.string.remove_from_library else R.string.add_to_library,
-                            ),
-                            size = 40.dp,
-                            iconSize = 20.dp,
-                            pressEffect = IridePressEffect.Punch,
-                            modifier = Modifier.irideEnterScale(
-                                rememberEnterProgress(play = true, durationMillis = IrideMotion.Short),
-                            ),
-                        )
+                .statusBarsPadding()
+                .height(56.dp)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            topBarNavigationIcon()
+            Text(
+                text = when {
+                    inSelectMode -> if (isPodcastPlaylist) {
+                        pluralStringResource(R.plurals.n_episode, selection.size, selection.size)
+                    } else {
+                        pluralStringResource(R.plurals.n_song, selection.size, selection.size)
                     }
-                }
-                topBarActions()
-            }
-        } else {
-            TopAppBar(
-                title = {
-                    if (inSelectMode) {
-                        Text(
-                            text =
-                                if (isPodcastPlaylist) {
-                                    pluralStringResource(R.plurals.n_episode, selection.size, selection.size)
-                                } else {
-                                    pluralStringResource(R.plurals.n_song, selection.size, selection.size)
-                                },
-                        )
-                    } else if (isSearching) {
-                        TextField(
-                            value = query,
-                            onValueChange = { query = it },
-                            placeholder = {
-                                Text(
-                                    text = stringResource(R.string.search),
-                                    style = LocalTextStyle.current,
-                                )
-                            },
-                            singleLine = true,
-                            textStyle = LocalTextStyle.current,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            colors =
-                                TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent,
-                                    disabledIndicatorColor = Color.Transparent,
-                                ),
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .focusRequester(focusRequester),
-                        )
-                    } else if (lazyListState.firstVisibleItemIndex > 0) {
-                        Text(playlist?.title ?: "")
-                    }
+                    isSearching -> ""
+                    else -> playlist?.title.orEmpty()
                 },
-                navigationIcon = topBarNavigationIcon,
-                actions = topBarActions,
+                style = TextStyle(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    letterSpacing = (-0.1).sp,
+                ),
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 4.dp)
+                    .then(
+                        if (inSelectMode || isSearching) {
+                            Modifier
+                        } else {
+                            Modifier.irideEnter(topBarRevealProgress, 6.dp).revealMask(topBarRevealProgress)
+                        },
+                    ),
             )
+            if (!inSelectMode && !isSearching) {
+                playlist?.let { current ->
+                    IrideOutlineIconButton(
+                        onClick = onTopBarLikeClick,
+                        icon = if (dbPlaylist?.playlist?.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border,
+                        contentDescription = stringResource(
+                            if (dbPlaylist?.playlist?.bookmarkedAt != null) R.string.remove_from_library else R.string.add_to_library,
+                        ),
+                        size = 40.dp,
+                        iconSize = 20.dp,
+                        pressEffect = IridePressEffect.Punch,
+                        modifier = Modifier.irideEnterScale(
+                            rememberEnterProgress(play = true, durationMillis = IrideMotion.Short),
+                        ),
+                    )
+                }
+            }
+            topBarActions()
         }
 
         SnackbarHost(
@@ -967,7 +889,6 @@ private fun OnlinePlaylistHeader(
     val syncUtils = LocalSyncUtils.current
     val context = LocalContext.current
     val downloadUtil = LocalDownloadUtil.current
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     var downloadState by remember { mutableIntStateOf(Download.STATE_STOPPED) }
     var showRemoveDownloadDialog by remember { mutableStateOf(false) }
 
@@ -1030,326 +951,105 @@ private fun OnlinePlaylistHeader(
             modifier
                 .fillMaxWidth()
                 .padding(
-                    top = if (topNavigationBarEnabled) 12.dp else 8.dp,
+                    top = 12.dp,
                     bottom = 20.dp,
                 )
-                .then(if (topNavigationBarEnabled) Modifier.padding(horizontal = 20.dp) else Modifier),
+                .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (topNavigationBarEnabled) {
-            // New Iride UI: fade the cover in once on a genuine new decode — a memory-cache hit
-            // (revisiting a playlist already seen this session) resolves synchronously, so animating
-            // that would replay the surfaceVariant placeholder every time.
-            var coverLoaded by remember(playlist.id) { mutableStateOf(false) }
-            var skipCoverEnterAnim by remember(playlist.id) { mutableStateOf(false) }
-            val animatedCoverProgress = rememberEnterProgress(play = coverLoaded, durationMillis = 420, easing = IrideMotion.EaseOutQuart)
-            val coverProgress = if (skipCoverEnterAnim) 1f else animatedCoverProgress
+        // New Iride UI: fade the cover in once on a genuine new decode — a memory-cache hit
+        // (revisiting a playlist already seen this session) resolves synchronously, so animating
+        // that would replay the surfaceVariant placeholder every time.
+        var coverLoaded by remember(playlist.id) { mutableStateOf(false) }
+        var skipCoverEnterAnim by remember(playlist.id) { mutableStateOf(false) }
+        val animatedCoverProgress = rememberEnterProgress(play = coverLoaded, durationMillis = 420, easing = IrideMotion.EaseOutQuart)
+        val coverProgress = if (skipCoverEnterAnim) 1f else animatedCoverProgress
 
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context).data(playlist.thumbnail).build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    onState = { state ->
-                        if (state is AsyncImagePainter.State.Success) {
-                            if (state.result.dataSource == DataSource.MEMORY_CACHE) {
-                                skipCoverEnterAnim = true
-                            }
-                            coverLoaded = true
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            AsyncImage(
+                model = ImageRequest.Builder(context).data(playlist.thumbnail).build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                onState = { state ->
+                    if (state is AsyncImagePainter.State.Success) {
+                        if (state.result.dataSource == DataSource.MEMORY_CACHE) {
+                            skipCoverEnterAnim = true
                         }
-                    },
-                    modifier = Modifier
-                        .size(240.dp)
-                        .graphicsLayer {
-                            alpha = coverProgress
-                            val s = lerp(0.94f, 1f, coverProgress)
-                            scaleX = s
-                            scaleY = s
-                        }
-                        .shadow(
-                            elevation = 20.dp,
-                            shape = playlistCoverSquircle,
-                            spotColor = Color.Black.copy(alpha = 0.5f),
-                        )
-                        .clip(playlistCoverSquircle)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .border(BorderStroke(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f)), playlistCoverSquircle),
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            TypewriterText(
-                text = playlist.title,
-                style = TextStyle(
-                    fontFamily = SpaceMonoFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp,
-                    letterSpacing = (-0.2).sp,
-                ),
-                color = MaterialTheme.colorScheme.onBackground,
-                // Keyed on the playlist, not the string: recomposing this screen must not retype it.
-                resetKey = playlist.id,
-                animate = !headerRevealed,
-                maxLines = 3,
-                textAlign = TextAlign.Center,
+                        coverLoaded = true
+                    }
+                },
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .onGloballyPositioned { onTitleBoundsChanged(it.boundsInWindow().bottom) },
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            val totalDuration = songs.sumOf { it.duration ?: 0 }
-            val metadataLine =
-                buildString {
-                    append(
-                        if (isPodcastPlaylist) {
-                            pluralStringResource(R.plurals.n_episode, songs.size, songs.size)
-                        } else {
-                            pluralStringResource(R.plurals.n_song, songs.size, songs.size)
-                        },
+                    .size(240.dp)
+                    .graphicsLayer {
+                        alpha = coverProgress
+                        val s = lerp(0.94f, 1f, coverProgress)
+                        scaleX = s
+                        scaleY = s
+                    }
+                    .shadow(
+                        elevation = 20.dp,
+                        shape = playlistCoverSquircle,
+                        spotColor = Color.Black.copy(alpha = 0.5f),
                     )
-                    if (totalDuration > 0) {
-                        append(" • ")
-                        append(makeTimeString(totalDuration * 1000L))
-                    }
-                }
-            val metadataProgress = headerEnter(
-                revealed = headerRevealed,
-                play = true,
-                delayMillis = titleTypingMs + 20,
-                durationMillis = IrideMotion.Short,
+                    .clip(playlistCoverSquircle)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(BorderStroke(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f)), playlistCoverSquircle),
             )
-            Text(
-                text = metadataLine,
-                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .revealMask(metadataProgress),
-            )
-            // Like/shuffle/play/download now live in the top bar + control panel pill.
-        } else {
-            Surface(
-                modifier =
-                    Modifier
-                        .size(240.dp)
-                        .shadow(
-                            elevation = 24.dp,
-                            shape = playlistCoverSquircle,
-                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                        ),
-                shape = playlistCoverSquircle,
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context).data(playlist.thumbnail).build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                text = playlist.title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 32.dp),
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            val totalDuration = songs.sumOf { it.duration ?: 0 }
-            Text(
-                text =
-                    buildString {
-                        append(
-                            if (isPodcastPlaylist) {
-                                pluralStringResource(R.plurals.n_episode, songs.size, songs.size)
-                            } else {
-                                pluralStringResource(R.plurals.n_song, songs.size, songs.size)
-                            },
-                        )
-                        if (totalDuration > 0) {
-                            append(" • ")
-                            append(makeTimeString(totalDuration * 1000L))
-                        }
-                    },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Surface(
-                    onClick = {
-                        if (dbPlaylist != null) {
-                            database.transaction {
-                                val currentPlaylist = dbPlaylist.playlist
-                                update(currentPlaylist, playlist)
-                                update(currentPlaylist.toggleLike())
-                            }
-                        } else {
-                            database.transaction {
-                                val playlistEntity =
-                                    PlaylistEntity(
-                                        name = playlist.title,
-                                        browseId = playlist.id,
-                                        thumbnailUrl = playlist.thumbnail,
-                                        isEditable = playlist.isEditable,
-                                        remoteSongCount =
-                                            playlist.songCountText?.let {
-                                                Regex("""\d+""").find(it)?.value?.toIntOrNull()
-                                            },
-                                        playEndpointParams = playlist.playEndpoint?.params,
-                                        shuffleEndpointParams = playlist.shuffleEndpoint?.params,
-                                        radioEndpointParams = playlist.radioEndpoint?.params,
-                                    ).toggleLike()
-                                insert(playlistEntity)
-                                coroutineScope.launch(Dispatchers.IO) {
-                                    songs
-                                        .map { it.toMediaMetadata() }
-                                        .onEach(::insert)
-                                        .mapIndexed { index, song ->
-                                            PlaylistSongMap(
-                                                songId = song.id,
-                                                playlistId = playlistEntity.id,
-                                                position = index,
-                                                setVideoId = song.setVideoId,
-                                            )
-                                        }.forEach(::insert)
-                                }
-                            }
-                        }
-                    },
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter =
-                                painterResource(
-                                    if (dbPlaylist?.playlist?.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border,
-                                ),
-                            contentDescription = null,
-                            tint =
-                                if (dbPlaylist?.playlist?.bookmarkedAt != null) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                            modifier = Modifier.size(24.dp),
-                        )
-                    }
-                }
-
-                Surface(
-                    onClick = {
-                        if (!isListenTogetherGuest && songs.isNotEmpty()) {
-                            playerConnection.playQueue(
-                                YouTubePlaylistQueue(
-                                    playlistId = playlist.id,
-                                    playlistTitle = playlist.title,
-                                    initialSongs = songs,
-                                    initialContinuation = continuation,
-                                ),
-                            )
-                        }
-                    },
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = CircleShape,
-                    modifier = Modifier.size(72.dp),
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.play),
-                            contentDescription = stringResource(R.string.play),
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(32.dp),
-                        )
-                    }
-                }
-
-                Surface(
-                    onClick = {
-                        when (downloadState) {
-                            Download.STATE_COMPLETED -> showRemoveDownloadDialog = true
-                            Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
-                                songs.forEach { song ->
-                                    DownloadService.sendRemoveDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        song.id,
-                                        false,
-                                    )
-                                }
-                            }
-                            else -> {
-                                songs.forEach { song ->
-                                    val downloadRequest =
-                                        DownloadRequest
-                                            .Builder(song.id, song.id.toUri())
-                                            .setCustomCacheKey(song.id)
-                                            .setData(song.title.toByteArray())
-                                            .build()
-                                    DownloadService.sendAddDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        downloadRequest,
-                                        false,
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        when (downloadState) {
-                            Download.STATE_COMPLETED -> Icon(
-                                painter = painterResource(R.drawable.check),
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                            )
-                            Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> CircularProgressIndicator(
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(24.dp),
-                            )
-                            else -> Icon(
-                                painter = painterResource(R.drawable.arrow_downward),
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                            )
-                        }
-                    }
-                }
-            }
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        TypewriterText(
+            text = playlist.title,
+            style = TextStyle(
+                fontFamily = SpaceMonoFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                letterSpacing = (-0.2).sp,
+            ),
+            color = MaterialTheme.colorScheme.onBackground,
+            // Keyed on the playlist, not the string: recomposing this screen must not retype it.
+            resetKey = playlist.id,
+            animate = !headerRevealed,
+            maxLines = 3,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { onTitleBoundsChanged(it.boundsInWindow().bottom) },
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        val totalDuration = songs.sumOf { it.duration ?: 0 }
+        val metadataLine =
+            buildString {
+                append(
+                    if (isPodcastPlaylist) {
+                        pluralStringResource(R.plurals.n_episode, songs.size, songs.size)
+                    } else {
+                        pluralStringResource(R.plurals.n_song, songs.size, songs.size)
+                    },
+                )
+                if (totalDuration > 0) {
+                    append(" • ")
+                    append(makeTimeString(totalDuration * 1000L))
+                }
+            }
+        val metadataProgress = headerEnter(
+            revealed = headerRevealed,
+            play = true,
+            delayMillis = titleTypingMs + 20,
+            durationMillis = IrideMotion.Short,
+        )
+        Text(
+            text = metadataLine,
+            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .revealMask(metadataProgress),
+        )
+        // Like/shuffle/play/download now live in the top bar + control panel pill.
     }
 }

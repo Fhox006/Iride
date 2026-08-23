@@ -49,7 +49,6 @@ import coil3.compose.AsyncImage
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
@@ -129,12 +128,11 @@ fun AboutScreen(
     val uriHandler = LocalUriHandler.current
     val windowInsets = LocalPlayerAwareWindowInsets.current
     val scrollState = rememberScrollState()
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (topNavigationBarEnabled) Color.Transparent else MaterialTheme.colorScheme.background)
+            .background(Color.Transparent)
     ) {
         Column(
             modifier = Modifier
@@ -142,7 +140,7 @@ fun AboutScreen(
                 .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Horizontal))
                 .rubberBandOverscroll(Orientation.Vertical, scrollState)
                 .verticalScroll(scrollState)
-                .padding(horizontal = if (topNavigationBarEnabled) 20.dp else 16.dp),
+                .padding(horizontal = 20.dp),
         ) {
             Spacer(
                 Modifier.windowInsetsPadding(
@@ -158,8 +156,8 @@ fun AboutScreen(
                 Image(
                     painter = painterResource(R.drawable.ic_logo),
                     contentDescription = stringResource(R.string.app_name),
-                    colorFilter = if (topNavigationBarEnabled) ColorFilter.tint(Color.White) else null,
-                    modifier = Modifier.size(if (topNavigationBarEnabled) 64.dp else 72.dp)
+                    colorFilter = ColorFilter.tint(Color.White),
+                    modifier = Modifier.size(64.dp)
                 )
 
                 Spacer(Modifier.width(20.dp))
@@ -171,53 +169,27 @@ fun AboutScreen(
 
                     Text(
                         text = appName,
-                        style = if (topNavigationBarEnabled) {
-                            MaterialTheme.typography.headlineLarge.copy(fontFamily = SpaceMonoFontFamily)
-                        } else {
-                            MaterialTheme.typography.headlineLarge
-                        },
+                        style = MaterialTheme.typography.headlineLarge.copy(fontFamily = SpaceMonoFontFamily),
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.5).sp,
-                        color = if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.onSurface
+                        color = Color.White
                     )
 
-                    Spacer(Modifier.height(if (topNavigationBarEnabled) 6.dp else 8.dp))
+                    Spacer(Modifier.height(6.dp))
 
-                    if (topNavigationBarEnabled) {
-                        Text(
-                            text = "${stringResource(R.string.about_release_badge)} • ${BuildConfig.ARCHITECTURE.uppercase()}",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontFamily = SpaceMonoFontFamily,
-                                letterSpacing = 0.5.sp,
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White.copy(alpha = 0.55f)
-                        )
-                    } else {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf(
-                                stringResource(R.string.about_release_badge),
-                                BuildConfig.ARCHITECTURE.uppercase(),
-                            ).forEach { badgeText ->
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                ) {
-                                    Text(
-                                        text = badgeText,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    Text(
+                        text = "${stringResource(R.string.about_release_badge)} • ${BuildConfig.ARCHITECTURE.uppercase()}",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontFamily = SpaceMonoFontFamily,
+                            letterSpacing = 0.5.sp,
+                        ),
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White.copy(alpha = 0.55f)
+                    )
                 }
             }
 
-            Spacer(Modifier.height(if (topNavigationBarEnabled) 32.dp else 24.dp))
+            Spacer(Modifier.height(32.dp))
 
             // Lead developer
             Row(
@@ -228,7 +200,7 @@ fun AboutScreen(
                 ContributorAvatar(
                     avatarUrl = "",
                     sizeDp = 96,
-                    irideMode = topNavigationBarEnabled,
+                    irideMode = true,
                     contentDescription = leadDeveloper.name,
                     fallbackIconRes = R.drawable.fire
                 )
@@ -236,25 +208,17 @@ fun AboutScreen(
                 Column(verticalArrangement = Arrangement.Center) {
                     Text(
                         text = leadDeveloper.name,
-                        style = if (topNavigationBarEnabled) {
-                            MaterialTheme.typography.headlineLarge.copy(fontFamily = SpaceMonoFontFamily)
-                        } else {
-                            MaterialTheme.typography.headlineLarge
-                        },
+                        style = MaterialTheme.typography.headlineLarge.copy(fontFamily = SpaceMonoFontFamily),
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.5).sp,
-                        lineHeight = if (topNavigationBarEnabled) 34.sp else 38.sp,
-                        color = if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.onSurface
+                        lineHeight = 34.sp,
+                        color = Color.White
                     )
                     Text(
                         text = stringResource(R.string.about_creator_role),
-                        style = if (topNavigationBarEnabled) {
-                            MaterialTheme.typography.titleSmall.copy(fontFamily = SpaceMonoFontFamily)
-                        } else {
-                            MaterialTheme.typography.titleMedium
-                        },
-                        fontWeight = if (topNavigationBarEnabled) FontWeight.Bold else FontWeight.SemiBold,
-                        color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.primary
+                        style = MaterialTheme.typography.titleSmall.copy(fontFamily = SpaceMonoFontFamily),
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White.copy(alpha = 0.6f)
                     )
                 }
             }
@@ -290,7 +254,7 @@ fun AboutScreen(
                             ContributorAvatar(
                                 avatarUrl = specialThanks.avatarUrl,
                                 sizeDp = 48,
-                                irideMode = topNavigationBarEnabled,
+                                irideMode = true,
                                 contentDescription = specialThanks.name
                             )
                         },

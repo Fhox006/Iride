@@ -98,7 +98,6 @@ import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.InnerTubeCookieKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
@@ -199,7 +198,6 @@ fun SettingsScreen(
 
     val (advancedMode, onAdvancedModeChange) = rememberPreference(AdvancedModeKey, false)
     var showAdvancedMenu by remember { mutableStateOf(false) }
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val topNavBarController = LocalTopNavBarController.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         snapAnimationSpec = tween(durationMillis = 200),
@@ -219,8 +217,8 @@ fun SettingsScreen(
                 expanded = showAdvancedMenu,
                 onDismissRequest = { showAdvancedMenu = false },
                 shape = RoundedCornerShape(16.dp),
-                containerColor = if (topNavigationBarEnabled) Color(0xFF0A0A0A) else MenuDefaults.containerColor,
-                border = if (topNavigationBarEnabled) BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)) else null,
+                containerColor = Color(0xFF0A0A0A),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
             ) {
                 DropdownMenuItem(
                     text = {
@@ -229,19 +227,11 @@ fun SettingsScreen(
                                 if (advancedMode) R.string.disable_advanced_settings
                                 else R.string.enable_advanced_settings
                             ),
-                            style = if (topNavigationBarEnabled) {
-                                MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold)
-                            } else {
-                                MaterialTheme.typography.bodyLarge
-                            },
-                            color = if (topNavigationBarEnabled) Color.White else Color.Unspecified,
+                            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
+                            color = Color.White,
                         )
                     },
-                    colors = if (topNavigationBarEnabled) {
-                        MenuDefaults.itemColors(textColor = Color.White)
-                    } else {
-                        MenuDefaults.itemColors()
-                    },
+                    colors = MenuDefaults.itemColors(textColor = Color.White),
                     onClick = {
                         onAdvancedModeChange(!advancedMode)
                         showAdvancedMenu = false
@@ -278,21 +268,14 @@ fun SettingsScreen(
 
     // ── Screen ────────────────────────────────────────────────────────────
     Scaffold(
-        modifier = if (!topNavigationBarEnabled) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier,
+        modifier = Modifier,
         topBar = {
             // New Iride UI: this is the Account tab's own top-level destination — no pinned bar
             // at all, exactly like Home/Library. TopNavigationBar is rendered as the first child
             // of the scrollable Column below instead, so it scrolls away with the rest of the
             // page rather than staying fixed on top of it.
-            if (!topNavigationBarEnabled) {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.account)) },
-                    navigationIcon = backNavigationIcon,
-                    actions = { advancedMenuButton() }
-                )
-            }
         },
-        containerColor = if (topNavigationBarEnabled) Color.Transparent else MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
     val settingsScrollState = rememberScrollState()
@@ -311,7 +294,7 @@ fun SettingsScreen(
             .rubberBandOverscroll(Orientation.Vertical, settingsScrollState)
             .verticalScroll(settingsScrollState)
     ) {
-        if (topNavigationBarEnabled && topNavBarController != null) {
+        if (topNavBarController != null) {
             TopNavigationBar(
                 navigationItems = topNavBarController.navigationItems,
                 currentRoute = topNavBarController.currentRoute,
@@ -330,33 +313,21 @@ fun SettingsScreen(
             }
         }
 
-    Column(modifier = Modifier.padding(horizontal = if (topNavigationBarEnabled) 20.dp else 16.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         // ── Account section ──────────────────────────────────────────────
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = if (topNavigationBarEnabled) 28.dp else 24.dp),
+                .padding(vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val avatarSize = if (topNavigationBarEnabled) 84.dp else 80.dp
-            val avatarBorder = if (topNavigationBarEnabled) {
-                Modifier.border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
-            } else {
-                Modifier
-            }
-            val avatarFallbackBg = if (topNavigationBarEnabled) {
-                Color.White.copy(alpha = 0.05f)
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerHigh
-            }
-            val primaryTextColor = if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.onSurface
-            val secondaryTextColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurfaceVariant
-            val fallbackIconTint = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurfaceVariant
-            val nameStyle = if (topNavigationBarEnabled) {
-                MaterialTheme.typography.titleLarge.copy(fontFamily = SpaceMonoFontFamily, letterSpacing = (-0.2).sp)
-            } else {
-                MaterialTheme.typography.titleLarge
-            }
+            val avatarSize = 84.dp
+            val avatarBorder = Modifier.border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
+            val avatarFallbackBg = Color.White.copy(alpha = 0.05f)
+            val primaryTextColor = Color.White
+            val secondaryTextColor = Color.White.copy(alpha = 0.6f)
+            val fallbackIconTint = Color.White.copy(alpha = 0.5f)
+            val nameStyle = MaterialTheme.typography.titleLarge.copy(fontFamily = SpaceMonoFontFamily, letterSpacing = (-0.2).sp)
 
             if (isLoggedIn) {
                 if (accountImageUrl != null) {
@@ -386,7 +357,7 @@ fun SettingsScreen(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 14.dp else 12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 Text(
                     text = accountName.ifEmpty { stringResource(R.string.my_account) },
                     style = nameStyle,
@@ -418,7 +389,7 @@ fun SettingsScreen(
                         tint = fallbackIconTint
                     )
                 }
-                Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 14.dp else 12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 Text(
                     text = stringResource(R.string.login),
                     style = nameStyle,
@@ -431,31 +402,22 @@ fun SettingsScreen(
                     color = secondaryTextColor
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                if (topNavigationBarEnabled) {
-                    OutlinedButton(
-                        onClick = { navController.navigate("login") },
-                        shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.login),
-                            fontFamily = SpaceMonoFontFamily,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                } else {
-                    Button(
-                        onClick = { navController.navigate("login") },
-                        shape = RoundedCornerShape(12.dp),
-                    ) {
-                        Text(stringResource(R.string.login))
-                    }
+                OutlinedButton(
+                    onClick = { navController.navigate("login") },
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                ) {
+                    Text(
+                        text = stringResource(R.string.login),
+                        fontFamily = SpaceMonoFontFamily,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 4.dp else 8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         // ── Advanced mode banner ─────────────────────────────────────────
         if (advancedMode) {
@@ -464,27 +426,20 @@ fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        if (topNavigationBarEnabled) Color.White.copy(alpha = 0.06f)
-                        else MaterialTheme.colorScheme.secondaryContainer
-                    )
+                    .background(Color.White.copy(alpha = 0.06f))
                     .padding(12.dp)
             ) {
                 Icon(
                     painter = painterResource(R.drawable.info),
                     contentDescription = null,
-                    tint = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSecondaryContainer,
+                    tint = Color.White.copy(alpha = 0.7f),
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = stringResource(R.string.advanced_mode_banner),
-                    style = if (topNavigationBarEnabled) {
-                        MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily)
-                    } else {
-                        MaterialTheme.typography.bodySmall
-                    },
-                    color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSecondaryContainer,
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily),
+                    color = Color.White.copy(alpha = 0.75f),
                 )
             }
             Spacer(modifier = Modifier.height(12.dp))

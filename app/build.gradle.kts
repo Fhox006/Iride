@@ -194,6 +194,10 @@ android {
             excludes += "META-INF/LICENSE.md"
             excludes += "META-INF/INDEX.LIST"
             excludes += "META-INF/io.netty.versions.properties"
+            // The IPADIC dictionary binaries account for ~12 MB compressed (55% of the APK)
+            // and are only needed by Japanese lyrics romanization. They are stripped here and
+            // fetched on demand from Maven Central by JapaneseDictManager.
+            excludes += "com/atilika/kuromoji/ipadic/[a-zA-Z]+[.]bin"
         }
     }
 }

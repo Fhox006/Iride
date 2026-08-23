@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.metrolist.music.R
 import com.metrolist.music.constants.PureBlackKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 
@@ -52,61 +51,42 @@ fun SettingsBackTopBar(
     navController: NavController,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val (pureBlack) = rememberPreference(PureBlackKey, defaultValue = false)
 
-    if (topNavigationBarEnabled) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(if (pureBlack) Color.Black else Color.Transparent)
-                .statusBarsPadding()
-                .height(56.dp)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (pureBlack) Color.Black else Color.Transparent)
+            .statusBarsPadding()
+            .height(56.dp)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(
+            onClick = navController::navigateUp,
+            onLongClick = navController::backToMain,
         ) {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-            Text(
-                text = title,
-                style = TextStyle(
-                    fontFamily = SpaceMonoFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp,
-                    letterSpacing = (-0.1).sp,
-                ),
-                color = if (pureBlack) Color.White else MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 4.dp),
+            Icon(
+                painterResource(R.drawable.arrow_back),
+                contentDescription = null,
             )
-            actions()
         }
-    } else {
-        TopAppBar(
-            title = { Text(title) },
-            navigationIcon = {
-                IconButton(
-                    onClick = navController::navigateUp,
-                    onLongClick = navController::backToMain,
-                ) {
-                    Icon(
-                        painterResource(R.drawable.arrow_back),
-                        contentDescription = null,
-                    )
-                }
-            },
-            actions = actions,
+        Text(
+            text = title,
+            style = TextStyle(
+                fontFamily = SpaceMonoFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                letterSpacing = (-0.1).sp,
+            ),
+            color = if (pureBlack) Color.White else MaterialTheme.colorScheme.onBackground,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 4.dp),
         )
+        actions()
     }
 }
 
@@ -130,52 +110,37 @@ fun IrideAdaptiveTopBar(
     // Only applies to the classic TopAppBar branch — the Iride bar is fixed and flat.
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val (pureBlack) = rememberPreference(PureBlackKey, defaultValue = false)
 
-    if (topNavigationBarEnabled) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    when {
-                        transparent -> Color.Transparent
-                        pureBlack -> Color.Black
-                        else -> MaterialTheme.colorScheme.background
-                    },
-                )
-                .statusBarsPadding()
-                .height(56.dp)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            navigationIcon()
-            Box(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
-                ProvideTextStyle(
-                    TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        letterSpacing = (-0.1).sp,
-                        color = if (pureBlack) Color.White else MaterialTheme.colorScheme.onBackground,
-                    ),
-                ) {
-                    title()
-                }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                when {
+                    transparent -> Color.Transparent
+                    pureBlack -> Color.Black
+                    else -> MaterialTheme.colorScheme.background
+                },
+            )
+            .statusBarsPadding()
+            .height(56.dp)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        navigationIcon()
+        Box(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
+            ProvideTextStyle(
+                TextStyle(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    letterSpacing = (-0.1).sp,
+                    color = if (pureBlack) Color.White else MaterialTheme.colorScheme.onBackground,
+                ),
+            ) {
+                title()
             }
-            actions()
         }
-    } else {
-        TopAppBar(
-            title = title,
-            navigationIcon = navigationIcon,
-            actions = actions,
-            colors = if (transparent) {
-                TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-            } else {
-                TopAppBarDefaults.topAppBarColors()
-            },
-            scrollBehavior = scrollBehavior,
-        )
+        actions()
     }
 }

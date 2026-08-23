@@ -31,8 +31,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
-import com.metrolist.music.constants.TopNavigationBarKey
-import com.metrolist.music.utils.rememberPreference
 
 val LocalBottomSheetPageState = compositionLocalOf { BottomSheetPageState() }
 
@@ -61,7 +59,6 @@ fun BottomSheetPage(
     state: BottomSheetPageState,
     background: Color = MaterialTheme.colorScheme.surfaceColorAtElevation(NavigationBarDefaults.Elevation),
 ) {
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val focusManager = LocalFocusManager.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
@@ -72,26 +69,16 @@ fun BottomSheetPage(
             state.isVisible = false
         },
         sheetState = sheetState,
-        containerColor = if (topNavigationBarEnabled) Color(0xFF0A0A0A) else background,
-        contentColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface,
-        shape = if (topNavigationBarEnabled) {
-            RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-        } else {
-            BottomSheetDefaults.ExpandedShape
-        },
+        containerColor = Color(0xFF0A0A0A),
+        contentColor = Color.White.copy(alpha = 0.85f),
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         dragHandle = {
             Box(
                 modifier = Modifier
                     .padding(vertical = 12.dp)
                     .size(width = 32.dp, height = 4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(
-                        if (topNavigationBarEnabled) {
-                            Color.White.copy(alpha = 0.3f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                        }
-                    )
+                    .background(Color.White.copy(alpha = 0.3f))
             )
         },
         modifier = modifier.fillMaxHeight()

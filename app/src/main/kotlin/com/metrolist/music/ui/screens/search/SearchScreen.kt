@@ -94,7 +94,6 @@ import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.SearchSource
 import com.metrolist.music.constants.SearchSourceKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.HideOnScrollFAB
@@ -153,7 +152,6 @@ fun SearchScreen(
     }
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     var searchSource by rememberEnumPreference(SearchSourceKey, SearchSource.ONLINE)
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue())
@@ -191,12 +189,8 @@ fun SearchScreen(
                 navController.navigate("artist/${parsedUrl.id}")
             }
             null -> {
-                if (topNavigationBarEnabled) {
-                    query = TextFieldValue(searchQuery, TextRange(searchQuery.length))
-                    submittedQuery = searchQuery
-                } else {
-                    navController.navigate("search/${URLEncoder.encode(searchQuery, "UTF-8")}")
-                }
+                query = TextFieldValue(searchQuery, TextRange(searchQuery.length))
+                submittedQuery = searchQuery
             }
         }
         if (!pauseSearchHistory) {
@@ -214,7 +208,7 @@ fun SearchScreen(
     // state (submittedQuery/isFocused/focus manager) with no defined winner — that race is what
     // crashed the app on back press. Submitted results close first; only then does a still-open
     // suggestions panel close; below that, normal nav-back applies.
-    BackHandler(enabled = topNavigationBarEnabled && (submittedQuery != null || isFocused)) {
+    BackHandler(enabled = submittedQuery != null || isFocused) {
         if (submittedQuery != null) {
             submittedQuery = null
         }
@@ -224,11 +218,7 @@ fun SearchScreen(
         }
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-        snapAnimationSpec = tween(durationMillis = 200),
-    )
     val topNavBarController = com.metrolist.music.LocalTopNavBarController.current
-
     // New Iride UI: kept as a single movableContentOf instance (not a plain lambda) so the search
     // box's composition — and with it, its keyboard focus/IME connection — survives moving between
     // the pre-search screen (LocalSearchScreen/OnlineSearchScreen, below) and the post-search
@@ -269,41 +259,17 @@ fun SearchScreen(
             )
         }
     }
-    // Gate only on topNavigationBarEnabled (a static pref) — NOT on topNavBarController's
+    // Gate only on a static pref — NOT on topNavBarController's
     // nullity. The controller goes transiently null mid back-navigation (see comment above);
     // gating the movable content's call site on it made that single call site disappear and
     // reappear exactly during back-swipe, which combined with the system's predictive-back
     // forced extra measure/draw pass crashed with "Could not resolve state for movable
     // content". irideHeaderContent already null-safes the controller internally.
-    val irideHeader: (@Composable () -> Unit)? =
-        if (topNavigationBarEnabled) irideHeaderContent else null
+    val irideHeader: (@Composable () -> Unit)? = irideHeaderContent
 
     Scaffold(
-        topBar = {
-            if (!topNavigationBarEnabled) {
-                SearchCollapsingHeader(
-                    scrollBehavior = scrollBehavior,
-                    query = query,
-                    onQueryChange = { query = it },
-                    searchSource = searchSource,
-                    onSearchSourceToggle = {
-                        searchSource = if (searchSource == SearchSource.ONLINE) SearchSource.LOCAL else SearchSource.ONLINE
-                    },
-                    focusRequester = focusRequester,
-                    onFocusChanged = { isFocused = it.isFocused },
-                    onSearch = { handleSearch(query.text) },
-                    onClear = { query = TextFieldValue("") },
-                    pureBlack = pureBlack,
-                    transparentBackground = mainTopGradient,
-                    hideTitle = false,
-                )
-            }
-        },
-        modifier = if (!topNavigationBarEnabled) {
-            Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
-        } else {
-            Modifier
-        },
+        topBar = {},
+        modifier = Modifier,
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
@@ -319,7 +285,7 @@ fun SearchScreen(
                     },
                 ),
         ) {
-            val showInlineResults = topNavigationBarEnabled && searchSource == SearchSource.ONLINE && submittedQuery != null
+            val showInlineResults = searchSource == SearchSource.ONLINE && submittedQuery != null
             if (showInlineResults) {
                 // New Iride UI: a submitted query stays on this same page, with the header (nav
                 // tabs + source toggle + search box) as the results' own leading scrollable item —
@@ -369,7 +335,7 @@ fun SearchScreen(
                     lazyListState = lazyListState,
                     icon = R.drawable.mic,
                     onClick = { navController.navigate("recognition") },
-                    useIrideStyle = topNavigationBarEnabled,
+                    useIrideStyle = true,
                 )
             }
         }

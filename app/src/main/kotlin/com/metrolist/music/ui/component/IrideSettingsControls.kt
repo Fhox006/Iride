@@ -29,7 +29,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.utils.rememberPreference
 
 /**
@@ -45,19 +44,6 @@ fun IrideSwitch(
     enabled: Boolean = true,
     thumbContent: (@Composable () -> Unit)? = null,
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-
-    if (!topNavigationBarEnabled) {
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            modifier = modifier,
-            enabled = enabled,
-            thumbContent = thumbContent,
-        )
-        return
-    }
-
     val trackWidth = 42.dp
     val trackHeight = 24.dp
     val thumbSize = 18.dp
@@ -110,21 +96,6 @@ fun IrideSlider(
     steps: Int = 0,
     onValueChangeFinished: (() -> Unit)? = null,
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-
-    if (!topNavigationBarEnabled) {
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = modifier,
-            enabled = enabled,
-            valueRange = valueRange,
-            steps = steps,
-            onValueChangeFinished = onValueChangeFinished,
-        )
-        return
-    }
-
     Slider(
         value = value,
         onValueChange = onValueChange,

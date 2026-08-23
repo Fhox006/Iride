@@ -112,7 +112,6 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.Event
@@ -158,7 +157,6 @@ fun SongMenu(
     val context = LocalContext.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val songState = database.song(originalSong.id).collectAsState(initial = originalSong)
     val song = songState.value ?: originalSong
     val download by LocalDownloadUtil.current
@@ -409,7 +407,7 @@ fun SongMenu(
                         painter = painterResource(R.drawable.playlist_play),
                         contentDescription = null,
                         modifier = Modifier.size(28.dp),
-                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = Color.White.copy(alpha = 0.85f),
                     )
                 },
                 text = stringResource(R.string.swipe_label_next).lowercase().replaceFirstChar { it.uppercase() },
@@ -424,7 +422,7 @@ fun SongMenu(
                         painter = painterResource(R.drawable.queue_music),
                         contentDescription = null,
                         modifier = Modifier.size(28.dp),
-                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = Color.White.copy(alpha = 0.85f),
                     )
                 },
                 text = stringResource(R.string.swipe_label_queue).lowercase().replaceFirstChar { it.uppercase() },
@@ -439,7 +437,7 @@ fun SongMenu(
                         painter = painterResource(R.drawable.radio),
                         contentDescription = null,
                         modifier = Modifier.size(28.dp),
-                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = Color.White.copy(alpha = 0.85f),
                     )
                 },
                 text = stringResource(R.string.radio),
@@ -893,160 +891,81 @@ fun SongMenu(
                 }
             }
 
-    if (newIrideUi) {
-        LazyColumn(
-            contentPadding =
-                PaddingValues(
-                    start = 0.dp,
-                    top = 0.dp,
-                    end = 0.dp,
-                    bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
-                ),
-        ) {
-            item {
-                Column(modifier = Modifier.padding(horizontal = 4.dp)) {
-                    NewIrideSongMenuHeader(
-                        song = song,
-                        database = database,
-                        syncUtils = syncUtils,
-                        context = context,
-                        onDismiss = onDismiss,
-                    )
-                    Spacer(modifier = Modifier.height(20.dp))
-                    CoverNoteRow(song = song, database = database)
-                }
-            }
-
-            item { Spacer(modifier = Modifier.height(20.dp)) }
-
-            if (!isGuest) {
-                item {
-                    NewActionGrid(
-                        actions = primaryActions,
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                    )
-                }
-                item { Spacer(modifier = Modifier.height(16.dp)) }
-            }
-
-            if (listenTogetherManager != null && listenTogetherManager.isInRoom && !listenTogetherManager.isHost) {
-                item { Material3MenuGroup(items = listOf(suggestToHostItem)) }
-                item { Spacer(modifier = Modifier.height(12.dp)) }
-            }
-
-            if (destructiveItems.isNotEmpty()) {
-                item { Material3MenuGroup(items = destructiveItems) }
-                item { Spacer(modifier = Modifier.height(12.dp)) }
-            }
-
-            item {
-                ProminentActionRow(
-                    icon = R.drawable.playlist_add,
-                    label = stringResource(R.string.add_to_playlist),
-                    onClick = { showChoosePlaylistDialog = true },
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
-            }
-            item { Spacer(modifier = Modifier.height(14.dp)) }
-
-            item {
-                ArtistAlbumSwitchRow(
+    LazyColumn(
+        contentPadding =
+            PaddingValues(
+                start = 0.dp,
+                top = 0.dp,
+                end = 0.dp,
+                bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
+            ),
+    ) {
+        item {
+            Column(modifier = Modifier.padding(horizontal = 4.dp)) {
+                NewIrideSongMenuHeader(
                     song = song,
-                    orderedArtists = orderedArtists,
-                    onArtistClick = viewArtistItem.onClick ?: {},
-                    onAlbumClick = viewAlbumItem.onClick ?: {},
+                    database = database,
+                    syncUtils = syncUtils,
+                    context = context,
+                    onDismiss = onDismiss,
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                CoverNoteRow(song = song, database = database)
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(20.dp)) }
+
+        if (!isGuest) {
+            item {
+                NewActionGrid(
+                    actions = primaryActions,
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
-            item { Spacer(modifier = Modifier.height(10.dp)) }
-
-            item { Material3MenuGroup(items = listOf(downloadItem)) }
-
-            if (subscribeRefetchItems.isNotEmpty()) {
-                item { Spacer(modifier = Modifier.height(12.dp)) }
-                item { Material3MenuGroup(items = subscribeRefetchItems) }
-            }
-
-            item { Spacer(modifier = Modifier.height(12.dp)) }
-            item { Material3MenuGroup(items = listOf(detailsItem)) }
+            item { Spacer(modifier = Modifier.height(16.dp)) }
         }
-    } else {
-        SongListItem(
-            song = song,
-            badges = {},
-            showDivider = false,
-            trailingContent = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    FavoriteIconButton(song = song, database = database, syncUtils = syncUtils, coroutineScope = coroutineScope, context = context)
-                    IconButton(
-                        onClick = {
-                            onDismiss()
-                            val intent =
-                                Intent().apply {
-                                    action = Intent.ACTION_SEND
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=${song.id}")
-                                }
-                            context.startActivity(Intent.createChooser(intent, null))
-                        },
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.share),
-                            contentDescription = null,
-                        )
-                    }
-                }
-            },
-        )
-        HorizontalDivider()
-        Spacer(modifier = Modifier.height(12.dp))
 
-        LazyColumn(
-            contentPadding =
-                PaddingValues(
-                    start = 0.dp,
-                    top = 0.dp,
-                    end = 0.dp,
-                    bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
-                ),
-        ) {
-            if (!isGuest) {
-                item {
-                    NewActionGrid(
-                        actions = primaryActions,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
-                    )
-                }
-            }
-            if (listenTogetherManager != null && listenTogetherManager.isInRoom && !listenTogetherManager.isHost) {
-                item { Material3MenuGroup(items = listOf(suggestToHostItem)) }
-                item { Spacer(modifier = Modifier.height(12.dp)) }
-            }
-
-            if (destructiveItems.isNotEmpty()) {
-                item { Material3MenuGroup(items = destructiveItems) }
-                item { Spacer(modifier = Modifier.height(12.dp)) }
-            }
-
-            item { Material3MenuGroup(items = listOf(downloadItem, addToPlaylistItem)) }
-
+        if (listenTogetherManager != null && listenTogetherManager.isInRoom && !listenTogetherManager.isHost) {
+            item { Material3MenuGroup(items = listOf(suggestToHostItem)) }
             item { Spacer(modifier = Modifier.height(12.dp)) }
-
-            item {
-                Material3MenuGroup(
-                    items =
-                        buildList {
-                            if (!song.song.isEpisode) add(viewArtistItem)
-                            if (song.song.albumId != null) add(viewAlbumItem)
-                            addAll(subscribeRefetchItems)
-                        },
-                )
-            }
-
-            item { Spacer(modifier = Modifier.height(12.dp)) }
-
-            item { Material3MenuGroup(items = listOf(detailsItem)) }
         }
+
+        if (destructiveItems.isNotEmpty()) {
+            item { Material3MenuGroup(items = destructiveItems) }
+            item { Spacer(modifier = Modifier.height(12.dp)) }
+        }
+
+        item {
+            ProminentActionRow(
+                icon = R.drawable.playlist_add,
+                label = stringResource(R.string.add_to_playlist),
+                onClick = { showChoosePlaylistDialog = true },
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+        }
+        item { Spacer(modifier = Modifier.height(14.dp)) }
+
+        item {
+            ArtistAlbumSwitchRow(
+                song = song,
+                orderedArtists = orderedArtists,
+                onArtistClick = viewArtistItem.onClick ?: {},
+                onAlbumClick = viewAlbumItem.onClick ?: {},
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+        }
+        item { Spacer(modifier = Modifier.height(10.dp)) }
+
+        item { Material3MenuGroup(items = listOf(downloadItem)) }
+
+        if (subscribeRefetchItems.isNotEmpty()) {
+            item { Spacer(modifier = Modifier.height(12.dp)) }
+            item { Material3MenuGroup(items = subscribeRefetchItems) }
+        }
+
+        item { Spacer(modifier = Modifier.height(12.dp)) }
+        item { Material3MenuGroup(items = listOf(detailsItem)) }
     }
 }
 

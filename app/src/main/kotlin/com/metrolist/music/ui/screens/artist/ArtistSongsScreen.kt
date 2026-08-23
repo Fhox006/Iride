@@ -57,7 +57,6 @@ import com.metrolist.music.constants.ArtistSongSortTypeKey
 import com.metrolist.music.constants.CONTENT_TYPE_HEADER
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.PureBlackKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.extensions.toMediaItem
@@ -99,7 +98,6 @@ fun ArtistSongsScreen(
         )
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val artist by viewModel.artist.collectAsState()
     val songs by viewModel.songs.collectAsState()
     val lazyListState = rememberLazyListState()
@@ -246,12 +244,8 @@ fun ArtistSongsScreen(
                 ) {
                     Text(
                         text = pluralStringResource(R.plurals.n_song, filteredSongs.size, filteredSongs.size)
-                            .let { if (topNavigationBarEnabled) it.uppercase() else it },
-                        style = if (topNavigationBarEnabled) {
-                            TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 11.sp, letterSpacing = 1.sp)
-                        } else {
-                            MaterialTheme.typography.labelSmall
-                        },
+                            .uppercase(),
+                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 11.sp, letterSpacing = 1.sp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }

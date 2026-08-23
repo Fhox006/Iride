@@ -38,10 +38,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
@@ -118,47 +117,12 @@ fun BottomSheet(
                 // was meant to be a tap. Requiring a much larger, unambiguous vertical move before
                 // this Box claims the pointer lets ordinary taps reach their target reliably, while
                 // real swipes (expand/collapse/dismiss) still clear it well within a normal gesture.
-                val dragSlop = 32.dp.toPx()
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    val velocityTracker = VelocityTracker()
-                    velocityTracker.addPointerInputChange(down)
-                    var accumulatedY = 0f
-                    var accumulatedX = 0f
-                    var dragging = false
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                        if (!dragging) {
-                            if (change.isConsumed) break
-                            val delta = change.positionChange()
-                            accumulatedY += delta.y
-                            accumulatedX += delta.x
-                            if (abs(accumulatedY) > dragSlop && abs(accumulatedY) > abs(accumulatedX)) {
-                                dragging = true
-                                change.consume()
-                                velocityTracker.addPointerInputChange(change)
-                                state.dispatchRawDelta(accumulatedY)
-                            }
-                            if (!change.pressed) break
-                        } else {
-                            velocityTracker.addPointerInputChange(change)
-                            state.dispatchRawDelta(change.positionChange().y)
-                            change.consume()
-                            if (!change.pressed) {
-                                val velocity = -velocityTracker.calculateVelocity().y
-                                state.performFling(velocity, onDismiss)
-                                dragging = false
-                                break
-                            }
-                        }
-                    }
-                    if (dragging) {
-                        // Pointer left the stream without a normal lift (e.g. another gesture
-                        // took over) mid-drag — same as the old onDragCancel path.
-                        state.performFling(0f, onDismiss)
-                    }
-                }
+                handleBottomSheetDrag(
+                    state = state,
+                    dragSlopPx = 32.dp.toPx(),
+                    dominanceRatio = 1f,
+                    onDismiss = onDismiss,
+                )
             }
             .graphicsLayer {
                 if (selfPositions) {
@@ -219,10 +183,62 @@ fun BottomSheet(
                             onClick = { if (isExpandable) state.expandSoft() },
                         )
                         .fillMaxWidth()
-                        .height(clickableHeight),
+                        .height(clickableHeight)
+                        .pointerInput(state, isExpandable) {
+                            if (!isExpandable) return@pointerInput
+                            handleBottomSheetDrag(
+                                state = state,
+                                dragSlopPx = 16.dp.toPx(),
+                                dominanceRatio = 0.8f,
+                                onDismiss = onDismiss,
+                            )
+                        },
                     content = collapsedContent,
                 )
             }
+        }
+    }
+}
+
+private suspend fun PointerInputScope.handleBottomSheetDrag(
+    state: BottomSheetState,
+    dragSlopPx: Float,
+    dominanceRatio: Float,
+    onDismiss: (() -> Unit)?,
+) {
+    val commitPx = 28.dp.toPx()
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        var accumulatedY = 0f
+        var accumulatedX = 0f
+        var dragging = false
+        while (true) {
+            val event = awaitPointerEvent()
+            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+            if (!dragging) {
+                if (change.isConsumed) break
+                val delta = change.positionChange()
+                accumulatedY += delta.y
+                accumulatedX += delta.x
+                if (abs(accumulatedY) > dragSlopPx && abs(accumulatedY) >= abs(accumulatedX) * dominanceRatio) {
+                    dragging = true
+                    change.consume()
+                    state.dispatchRawDelta(accumulatedY)
+                }
+                if (!change.pressed) break
+            } else {
+                state.dispatchRawDelta(change.positionChange().y)
+                change.consume()
+                if (!change.pressed) break
+            }
+        }
+        val direction = when {
+            accumulatedY < 0f -> -1
+            accumulatedY > 0f -> 1
+            else -> 0
+        }
+        if (dragging || abs(accumulatedY) > commitPx) {
+            state.performFling(0f, onDismiss, if (abs(accumulatedY) > commitPx) direction else 0)
         }
     }
 }
@@ -314,36 +330,34 @@ class BottomSheetState(
         }
     }
 
-    fun performFling(velocity: Float, onDismiss: (() -> Unit)?) {
-        if (velocity > 250) {
-            expand()
-        } else if (velocity < -250) {
-            if (value < collapsedBound && onDismiss != null) {
-                dismiss()
-                onDismiss.invoke()
-            } else {
-                collapse()
-            }
-        } else {
-            val l0 = dismissedBound
-            val l1 = (collapsedBound - dismissedBound) / 2
-            val l2 = (expandedBound - collapsedBound) / 2
-            val l3 = expandedBound
+    fun performFling(velocity: Float, onDismiss: (() -> Unit)?, dragDirection: Int = 0) {
+        when {
+            dragDirection < 0 -> expand()
+            dragDirection > 0 -> dismissOrCollapse(onDismiss)
+            velocity > 250 -> expand()
+            velocity < -250 -> dismissOrCollapse(onDismiss)
+            else -> {
+                val l0 = dismissedBound
+                val l1 = (collapsedBound - dismissedBound) / 2
+                val l2 = (expandedBound - collapsedBound) / 2
+                val l3 = expandedBound
 
-            when (value) {
-                in l0..l1 -> {
-                    if (onDismiss != null) {
-                        dismiss()
-                        onDismiss.invoke()
-                    } else {
-                        collapse()
-                    }
+                when (value) {
+                    in l0..l1 -> dismissOrCollapse(onDismiss)
+                    in l1..l2 -> collapse()
+                    in l2..l3 -> expand()
+                    else -> Unit
                 }
-
-                in l1..l2 -> collapse()
-                in l2..l3 -> expand()
-                else -> Unit
             }
+        }
+    }
+
+    private fun dismissOrCollapse(onDismiss: (() -> Unit)?) {
+        if (value < collapsedBound && onDismiss != null) {
+            dismiss()
+            onDismiss.invoke()
+        } else {
+            collapse()
         }
     }
 

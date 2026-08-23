@@ -90,7 +90,6 @@ import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.SuggestionItemHeight
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.rubberBandOverscroll
@@ -142,7 +141,6 @@ fun OnlineSearchScreen(
     val explorePage by homeViewModel.explorePage.collectAsState()
     val discoveryWeeklyPlaylist by homeViewModel.discoveryWeeklyPlaylist.collectAsState()
 
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
 
@@ -214,23 +212,19 @@ fun OnlineSearchScreen(
             item(key = "moods_header") {
                 Text(
                     text = stringResource(R.string.mood_and_genres),
-                    style = if (topNavigationBarEnabled) {
-                        MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = SpaceMonoFontFamily,
-                            fontSize = 13.sp,
-                            letterSpacing = (-0.1).sp,
-                        )
-                    } else {
-                        MaterialTheme.typography.titleMedium
-                    },
-                    fontWeight = if (topNavigationBarEnabled) FontWeight.Bold else FontWeight.Normal,
-                    color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.55f) else MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontFamily = SpaceMonoFontFamily,
+                        fontSize = 13.sp,
+                        letterSpacing = (-0.1).sp,
+                    ),
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.55f),
                     modifier = Modifier
                         .padding(
-                            start = if (topNavigationBarEnabled) 20.dp else 16.dp,
-                            end = if (topNavigationBarEnabled) 20.dp else 16.dp,
-                            top = if (topNavigationBarEnabled) 20.dp else 16.dp,
-                            bottom = if (topNavigationBarEnabled) 6.dp else 8.dp,
+                            start = 20.dp,
+                            end = 20.dp,
+                            top = 20.dp,
+                            bottom = 6.dp,
                         )
                         .animateItem(),
                 )
@@ -246,11 +240,11 @@ fun OnlineSearchScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            horizontal = if (topNavigationBarEnabled) 20.dp else 12.dp,
+                            horizontal = 20.dp,
                             vertical = 4.dp,
                         )
                         .animateItem(),
-                    horizontalArrangement = Arrangement.spacedBy(if (topNavigationBarEnabled) 10.dp else 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     row.forEach { entry ->
                         when (entry) {
@@ -258,7 +252,7 @@ fun OnlineSearchScreen(
                                 DiscoveryWeeklyCard(
                                     thumbnails = entry.thumbnails,
                                     onClick = { navController.navigate("local_playlist/${entry.id}") },
-                                    useIrideStyle = topNavigationBarEnabled,
+                                    useIrideStyle = true,
                                     modifier = Modifier.weight(1f),
                                 )
                             }
@@ -268,7 +262,7 @@ fun OnlineSearchScreen(
                                     onClick = {
                                         navController.navigate("youtube_browse/${entry.endpoint.browseId}?params=${entry.endpoint.params}")
                                     },
-                                    useIrideStyle = topNavigationBarEnabled,
+                                    useIrideStyle = true,
                                     modifier = Modifier.weight(1f),
                                 )
                             }
@@ -276,7 +270,7 @@ fun OnlineSearchScreen(
                                 DiscoveryWeeklyCard(
                                     thumbnails = emptyList(),
                                     onClick = {},
-                                    useIrideStyle = topNavigationBarEnabled,
+                                    useIrideStyle = true,
                                     pendingLabel = stringResource(R.string.discovery_weekly_creating),
                                     modifier = Modifier.weight(1f),
                                 )
@@ -561,7 +555,7 @@ fun OnlineSearchScreen(
 
                 item(key = "parsed_url_divider") {
                     HorizontalDivider(
-                        color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.08f) else MaterialTheme.colorScheme.outlineVariant,
+                        color = Color.White.copy(alpha = 0.08f),
                         modifier =
                             Modifier
                                 .padding(vertical = 8.dp)
@@ -605,7 +599,7 @@ fun OnlineSearchScreen(
                     },
                     modifier = Modifier.animateItem(),
                     pureBlack = pureBlack,
-                    useIrideStyle = topNavigationBarEnabled,
+                    useIrideStyle = true,
                 )
             }
 
@@ -622,14 +616,14 @@ fun OnlineSearchScreen(
                     },
                     modifier = Modifier.animateItem(),
                     pureBlack = pureBlack,
-                    useIrideStyle = topNavigationBarEnabled,
+                    useIrideStyle = true,
                 )
             }
 
             if (viewState.items.isNotEmpty() && viewState.history.size + viewState.suggestions.size > 0) {
                 item(key = "search_divider") {
                     HorizontalDivider(
-                        color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.08f) else MaterialTheme.colorScheme.outlineVariant,
+                        color = Color.White.copy(alpha = 0.08f),
                         modifier = Modifier.animateItem(),
                     )
                 }

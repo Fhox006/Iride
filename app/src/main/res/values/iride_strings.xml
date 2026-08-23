@@ -111,8 +111,6 @@
     <string name="better_animated_gradient">Better Animated Gradient</string>
     <string name="better_gradient_smooth_transition">Smooth background transition</string>
     <string name="better_gradient_smooth_transition_desc">Crossfade between album colors on track skip</string>
-    <string name="new_player_design">New player design</string>
-    <string name="new_mini_player_design">New mini-player design</string>
     <string name="player_background_blur">Blur</string>
     <string name="player_buttons_style">Player button colors</string>
     <string name="default_style">Default</string>
@@ -414,6 +412,13 @@
     <string name="line_by_line_dialog_title">Are you sure?</string>
     <string name="line_by_line_dialog_desc">This is a hit-or-miss experimental feature.\n\nBy default, the language is detected from the entire song. With this option on, it will be detected line-by-line instead. This allows multi-language songs to work, BUT the detected language may not always be correct. For example, a Ukrainian line without any Ukrainian-specific characters might be romanized as Russian.\n\nIf you are not experiencing any issues, it is recommended to keep this option off</string>
     <string name="romanize_current_track">Romanize current track</string>
+
+    <!-- Japanese dictionary on-demand download -->
+    <string name="lyrics_romanize_japanese_dict_title">Download Japanese dictionary?</string>
+    <string name="lyrics_romanize_japanese_dict_message">Romanizing Japanese lyrics requires a Japanese dictionary (~13 MB), downloaded once over your internet connection.</string>
+    <string name="lyrics_romanize_japanese_dict_downloading">Downloading Japanese dictionary… %d%%</string>
+    <string name="lyrics_romanize_japanese_dict_failed">Download failed. Check your connection and try again.</string>
+    <string name="lyrics_romanize_japanese_dict_download">Download</string>
 
     <!-- Lyrics Offset Settings -->
     <string name="lyrics_offset">Lyrics offset</string>
@@ -1062,8 +1067,6 @@
     <!-- News screen -->
     <string name="show_news_tab">Show News tab</string>
     <string name="show_news_tab_desc">Adds a News tab to the bottom navigation, between Home and Library</string>
-    <string name="top_navigation_bar">New Iride Ui</string>
-    <string name="top_navigation_bar_desc">Text-only tabs at the top and a full black screen instead of the bottom pill</string>
     <string name="compact_top_navigation_bar">Compact top bar</string>
     <string name="compact_top_navigation_bar_desc">Home and Library as text on the left, Search and your profile picture as icons on the right. Turn off to go back to the classic bar with every tab spelled out</string>
     <string name="iride_animations">Iride animations</string>

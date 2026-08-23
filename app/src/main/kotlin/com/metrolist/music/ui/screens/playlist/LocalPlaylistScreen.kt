@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
@@ -145,7 +145,6 @@ import com.metrolist.music.constants.PlaylistSongSortDescendingKey
 import com.metrolist.music.constants.PlaylistSongSortType
 import com.metrolist.music.constants.PlaylistSongSortTypeKey
 import com.metrolist.music.constants.SwipeToRemoveSongKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistSong
 import com.metrolist.music.db.entities.PlaylistSongMap
@@ -255,7 +254,6 @@ fun LocalPlaylistScreen(
     // only way out is the top bar's close button, both scoped to this visit of the screen.
     var locked by rememberSaveable { mutableStateOf(true) }
     val swipeRemoveEnabled by rememberPreference(SwipeToRemoveSongKey, defaultValue = true)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     // New Iride UI one-shot entrance: mirrors AlbumScreen's arrival choreography — title types out
     // once, then the rest of the header/sections fade in, never replaying on scroll-back.
@@ -554,13 +552,10 @@ fun LocalPlaylistScreen(
     }
 
     // Every leading LazyColumn item ahead of the song rows themselves: controls_row + genre_pills,
-    // plus playlist_header and control_panel (both skipped while isSearching), plus search_bar
-    // on top for New Iride UI.
+    // plus playlist_header and control_panel (both skipped while isSearching), plus search_bar.
     val headerItems = when {
-        topNavigationBarEnabled && isSearching -> 3
-        topNavigationBarEnabled -> 5
-        isSearching -> 2
-        else -> 3
+        isSearching -> 3
+        else -> 5
     }
     val lazyListState = rememberLazyListState()
     // Same crossing math as AlbumScreen: 0 until the header has played its one-shot reveal, 1 once
@@ -639,7 +634,7 @@ fun LocalPlaylistScreen(
 
     val displayedSongs =
         (if (isSearching) filteredSongs else mutableSongs).filter {
-            if (topNavigationBarEnabled) categoryFilter.matches(it.song.id) else genreFilter.matches(it.song.id)
+            categoryFilter.matches(it.song.id)
         }
 
     LaunchedEffect(displayedSongs) {
@@ -725,9 +720,7 @@ fun LocalPlaylistScreen(
         modifier = Modifier
             .fillMaxSize()
             .recordFrostBackdrop(frostBackdrop)
-            .then(
-                if (topNavigationBarEnabled) Modifier.graphicsLayer { alpha = screenProgress } else Modifier,
-            ),
+            .graphicsLayer { alpha = screenProgress },
     ) {
         if (albumTopGradientEnabled) {
             TopScreenGradientBackground(
@@ -738,29 +731,21 @@ fun LocalPlaylistScreen(
 
         LazyColumn(
             modifier = Modifier
-                .then(
-                    if (topNavigationBarEnabled) {
-                        Modifier.rubberBandOverscroll(Orientation.Vertical, lazyListState, headerPull)
-                    } else {
-                        Modifier
-                    },
-                ),
+                .rubberBandOverscroll(Orientation.Vertical, lazyListState, headerPull),
             state = lazyListState,
             contentPadding = LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime).asPaddingValues(),
         ) {
-            if (topNavigationBarEnabled) {
-                item(key = "search_bar") {
-                    IrideSearchBox(
-                        query = query,
-                        onQueryChange = { query = it },
-                        placeholderText = stringResource(R.string.search),
-                        focusRequester = focusRequester,
-                        onFocusChanged = { if (it.isFocused) isSearching = true },
-                        onSearch = {},
-                        onClear = { query = TextFieldValue() },
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                    )
-                }
+            item(key = "search_bar") {
+                IrideSearchBox(
+                    query = query,
+                    onQueryChange = { query = it },
+                    placeholderText = stringResource(R.string.search),
+                    focusRequester = focusRequester,
+                    onFocusChanged = { if (it.isFocused) isSearching = true },
+                    onSearch = {},
+                    onClear = { query = TextFieldValue() },
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                )
             }
 
             playlist?.let { playlist ->
@@ -790,7 +775,7 @@ fun LocalPlaylistScreen(
                         }
                     }
 
-                    if (topNavigationBarEnabled && !isSearching) {
+                    if (!isSearching) {
                         item(key = "control_panel") {
                             IridePlaylistControlPanel(
                                 onShuffleClick = onTopBarShuffleClick,
@@ -813,12 +798,10 @@ fun LocalPlaylistScreen(
                                     .padding(
                                         // Matches SongListItem's own 12dp horizontal inset so the
                                         // sort row lines up with the song rows below it.
-                                        start = if (topNavigationBarEnabled) 12.dp else 8.dp,
-                                        end = if (topNavigationBarEnabled) 12.dp else 8.dp,
+                                        start = 12.dp,
+                                        end = 12.dp,
                                     )
-                                    .then(
-                                        if (topNavigationBarEnabled) Modifier.irideEnter(controlsRowProgress, 6.dp) else Modifier,
-                                    ),
+                                    .irideEnter(controlsRowProgress, 6.dp),
                         ) {
                             LibrarySortRow(
                                 sortOptions =
@@ -834,27 +817,18 @@ fun LocalPlaylistScreen(
                                 sortDescending = sortDescending,
                                 onSortDescendingChange = onSortDescendingChange,
                                 showDescending = sortType != PlaylistSongSortType.CUSTOM,
-                                useIrideStyle = topNavigationBarEnabled,
+                                useIrideStyle = true,
                                 modifier = Modifier.weight(1f),
                             )
                         }
                     }
 
-                    if (topNavigationBarEnabled) {
-                        item(key = "category_pills") {
-                            CategoryPillsRow(
-                                state = categoryFilter,
-                                onAddClick = { inSelectMode = true },
-                                modifier = Modifier.irideEnter(genrePillsProgress, 6.dp),
-                            )
-                        }
-                    } else {
-                        item(key = "genre_pills") {
-                            GenrePillsRow(
-                                state = genreFilter,
-                                modifier = Modifier,
-                            )
-                        }
+                    item(key = "category_pills") {
+                        CategoryPillsRow(
+                            state = categoryFilter,
+                            onAddClick = { inSelectMode = true },
+                            modifier = Modifier.irideEnter(genrePillsProgress, 6.dp),
+                        )
                     }
                 }
             }
@@ -931,24 +905,17 @@ fun LocalPlaylistScreen(
                     val content: @Composable () -> Unit = {
                         SongListItem(
                             song = song.song,
-                            // New Iride UI: featured-artist subtitle text should match the rest of
+                            // Featured-artist subtitle text should match the rest of
                             // the row instead of the default muted secondary tone.
-                            subtitleColor = if (topNavigationBarEnabled) Color.Unspecified else null,
+                            subtitleColor = Color.Unspecified,
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
                             trailingContent = {
                                 if (inSelectMode) {
-                                    if (topNavigationBarEnabled) {
-                                        SelectionIndicator(
-                                            selected = selection.contains(song.map.id),
-                                            onClick = { onCheckedChange(!selection.contains(song.map.id)) },
-                                        )
-                                    } else {
-                                        Checkbox(
-                                            checked = selection.contains(song.map.id),
-                                            onCheckedChange = onCheckedChange,
-                                        )
-                                    }
+                                    SelectionIndicator(
+                                        selected = selection.contains(song.map.id),
+                                        onClick = { onCheckedChange(!selection.contains(song.map.id)) },
+                                    )
                                 } else {
                                     val reordering = sortType == PlaylistSongSortType.CUSTOM && !locked &&
                                         !inSelectMode && !isSearching && editable
@@ -993,10 +960,10 @@ fun LocalPlaylistScreen(
                                                 inSelectMode = true
                                                 onCheckedChange(true)
                                                 selectionAnchorMapId = song.map.id
-                                            } else if (topNavigationBarEnabled && selection.contains(song.map.id)) {
+                                            } else if (selection.contains(song.map.id)) {
                                                 // Long-press on an already-selected song is the
                                                 // select-all/deselect-all gesture that replaced the
-                                                // removed top bar checkbox (New Iride UI only).
+                                                // removed top bar checkbox.
                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                 if (selection.size == displayedSongs.size) {
                                                     selection.clear()
@@ -1028,13 +995,9 @@ fun LocalPlaylistScreen(
                         )
                     }
 
-                    val rowMotionModifier = if (topNavigationBarEnabled) {
-                        Modifier
-                            .animateItem(placementSpec = IrideMotion.PlacementSpec)
-                            .irideEnter(songsSectionProgress, 6.dp)
-                    } else {
-                        Modifier.animateItem()
-                    }
+                    val rowMotionModifier = Modifier
+                        .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                        .irideEnter(songsSectionProgress, 6.dp)
 
                     if (locked || inSelectMode || !swipeRemoveEnabled) {
                         Box(modifier = rowMotionModifier) {
@@ -1072,32 +1035,6 @@ fun LocalPlaylistScreen(
                 Text(pluralStringResource(R.plurals.n_selected, selection.size, selection.size))
             } else if (!locked) {
                 Text(stringResource(R.string.reorder))
-            } else if (isSearching && !topNavigationBarEnabled) {
-                TextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = {
-                        Text(
-                            text = stringResource(R.string.search),
-                            style = MaterialTheme.typography.titleLarge,
-                        )
-                    },
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.titleLarge,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    colors =
-                        TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent,
-                        ),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester),
-                )
             } else if (showTopBarTitle) {
                 Text(playlist?.playlist?.name.orEmpty())
             }
@@ -1143,7 +1080,7 @@ fun LocalPlaylistScreen(
             }
         }
         val topBarActions: @Composable RowScope.() -> Unit = {
-            if (inSelectMode && topNavigationBarEnabled) {
+            if (inSelectMode) {
                 // Single action replaces "select all" (now a long-press gesture, see the song row's
                 // onLongClick) and the ⋯ overflow menu.
                 val addToCategoryEnabled = selection.isNotEmpty()
@@ -1177,53 +1114,7 @@ fun LocalPlaylistScreen(
                         maxLines = 1,
                     )
                 }
-            } else if (inSelectMode) {
-                Checkbox(
-                    checked = selection.size == songs.size && selection.isNotEmpty(),
-                    onCheckedChange = {
-                        if (selection.size == songs.size) {
-                            selection.clear()
-                        } else {
-                            selection.clear()
-                            selection.addAll(songs.map { it.map.id })
-                        }
-                    },
-                )
-                IconButton(
-                    enabled = selection.isNotEmpty(),
-                    onClick = {
-                        menuState.show {
-                            SelectionSongMenu(
-                                songSelection =
-                                    selection.mapNotNull { mapId ->
-                                        songs.find { it.map.id == mapId }?.song
-                                    },
-                                songPosition =
-                                    selection.mapNotNull { mapId ->
-                                        songs.find { it.map.id == mapId }?.map
-                                    },
-                                onDismiss = menuState::dismiss,
-                                clearAction = onExitSelectionMode,
-                            )
-                        }
-                    },
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null,
-                    )
-                }
             } else if (!isSearching && locked) {
-                if (!topNavigationBarEnabled) {
-                    IconButton(
-                        onClick = { isSearching = true },
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.search),
-                            contentDescription = null,
-                        )
-                    }
-                }
                 playlist?.let { currentPlaylist ->
                     IconButton(
                         onClick = {
@@ -1296,22 +1187,21 @@ fun LocalPlaylistScreen(
             }
         }
 
-        if (topNavigationBarEnabled) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
-                    .frostedTopBarBackground(
-                        progress = if (!locked || inSelectMode) 1f else topBarRevealProgress,
-                        barColor = MaterialTheme.colorScheme.background,
-                        strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                        backdrop = frostBackdrop,
-                    )
-                    .statusBarsPadding()
-                    .height(56.dp)
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
+                .frostedTopBarBackground(
+                    progress = if (!locked || inSelectMode) 1f else topBarRevealProgress,
+                    barColor = MaterialTheme.colorScheme.background,
+                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                    backdrop = frostBackdrop,
+                )
+                .statusBarsPadding()
+                .height(56.dp)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
                 topBarNavigationIcon()
                 // Always composed and always holding its weight — fades in via topBarRevealProgress,
                 // tracking the big header title going behind this bar (same as AlbumScreen). Only the
@@ -1361,13 +1251,6 @@ fun LocalPlaylistScreen(
                     }
                 }
                 topBarActions()
-            }
-        } else {
-            TopAppBar(
-                title = topBarTitle,
-                navigationIcon = topBarNavigationIcon,
-                actions = topBarActions,
-            )
         }
 
         SnackbarHost(
@@ -1378,21 +1261,19 @@ fun LocalPlaylistScreen(
                     .align(Alignment.BottomCenter),
         )
 
-        if (topNavigationBarEnabled) {
-            AddToCategorySheet(
-                isVisible = showAddToCategorySheet,
-                onDismissRequest = { showAddToCategorySheet = false },
-                categories = categories,
-                onCreateCategory = { name, colorHex -> viewModel.createCategory(name, colorHex).id },
-                onConfirm = { categoryIds ->
-                    val songIds = selection.mapNotNull { mapId -> songs.find { it.map.id == mapId }?.song?.id }
-                    viewModel.addSongsToCategories(songIds, categoryIds)
-                    showAddToCategorySheet = false
-                    onExitSelectionMode()
-                    coroutineScope.launch { snackbarHostState.showSnackbar(addedToCategoryStr) }
-                },
-            )
-        }
+        AddToCategorySheet(
+            isVisible = showAddToCategorySheet,
+            onDismissRequest = { showAddToCategorySheet = false },
+            categories = categories,
+            onCreateCategory = { name, colorHex -> viewModel.createCategory(name, colorHex).id },
+            onConfirm = { categoryIds ->
+                val songIds = selection.mapNotNull { mapId -> songs.find { it.map.id == mapId }?.song?.id }
+                viewModel.addSongsToCategories(songIds, categoryIds)
+                showAddToCategorySheet = false
+                onExitSelectionMode()
+                coroutineScope.launch { snackbarHostState.showSnackbar(addedToCategoryStr) }
+            },
+        )
     }
 }
 
@@ -1431,7 +1312,6 @@ fun LocalPlaylistHeader(
 
     val liked = playlist.playlist.bookmarkedAt != null
     val editable: Boolean = playlist.playlist.isEditable
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     val overrideThumbnail = remember { mutableStateOf<String?>(null) }
     var isCustomThumbnail: Boolean =
@@ -1589,20 +1469,14 @@ fun LocalPlaylistHeader(
         }
         // Playlist Thumbnail(s) - shared between both layouts below, only the size differs.
         val playlistCoverSquircle = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
-        // New Iride UI only — classic UI keeps its plain Material elevation, no added border.
-        val coverBorder = if (topNavigationBarEnabled) {
-            BorderStroke(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f))
-        } else {
-            null
-        }
+        val coverBorder = BorderStroke(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f))
         // Fade the cover in once on a genuine new decode — a memory-cache hit (revisiting a
         // playlist already seen this session) resolves synchronously, so animating that would
-        // replay the surfaceVariant placeholder every time. Old (non-Iride) UI skips this.
+        // replay the surfaceVariant placeholder every time.
         var coverLoaded by remember(playlist.playlist.id) { mutableStateOf(false) }
         var skipCoverEnterAnim by remember(playlist.playlist.id) { mutableStateOf(false) }
         val animatedCoverProgress = rememberEnterProgress(play = coverLoaded, durationMillis = 420, easing = IrideMotion.EaseOutQuart)
         val coverProgress = when {
-            !topNavigationBarEnabled -> 1f
             skipCoverEnterAnim -> 1f
             else -> animatedCoverProgress
         }
@@ -1868,162 +1742,53 @@ fun LocalPlaylistHeader(
             }
         }
 
-        if (topNavigationBarEnabled) {
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    playlistCoverArt(240.dp)
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                TypewriterText(
-                    text = playlist.playlist.name,
-                    style = TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        letterSpacing = (-0.2).sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    // Keyed on the playlist, not the string: recomposing this screen must not
-                    // retype the title.
-                    resetKey = playlist.playlist.id,
-                    // Types on the first landing only — scrolling back to the top is navigation,
-                    // not an arrival.
-                    animate = !headerRevealed,
-                    maxLines = 3,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onGloballyPositioned { onTitleBoundsChanged(it.boundsInWindow().bottom) },
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val metadataProgress = headerEnter(
-                    revealed = headerRevealed,
-                    play = true,
-                    delayMillis = titleTypingMs + 40,
-                    durationMillis = IrideMotion.Short,
-                )
-                Text(
-                    text = metadataLine,
-                    style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .revealMask(metadataProgress),
-                )
-                // Action buttons (shuffle/play/download) live in the top bar now — see topBarActions.
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                playlistCoverArt(240.dp)
             }
-        } else {
-        Box(
-            modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
-        ) {
-            playlistCoverArt(240.dp)
-        }
 
-        // Playlist Name
-        Text(
-            text = playlist.playlist.name,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 32.dp),
-        )
+            Spacer(modifier = Modifier.height(20.dp))
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Metadata - Song Count • Duration
-        Text(
-            text = metadataLine,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Action Buttons Row
-        Row(
-            modifier =
-                Modifier
+            TypewriterText(
+                text = playlist.playlist.name,
+                style = TextStyle(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    letterSpacing = (-0.2).sp,
+                ),
+                color = MaterialTheme.colorScheme.onBackground,
+                // Keyed on the playlist, not the string: recomposing this screen must not
+                // retype the title.
+                resetKey = playlist.playlist.id,
+                // Types on the first landing only — scrolling back to the top is navigation,
+                // not an arrival.
+                animate = !headerRevealed,
+                maxLines = 3,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Shuffle Button - Smaller secondary button
-            Surface(
-                onClick = onShuffleClick,
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.shuffle),
-                        contentDescription = stringResource(R.string.shuffle),
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
+                    .onGloballyPositioned { onTitleBoundsChanged(it.boundsInWindow().bottom) },
+            )
 
-            // Play Button - Larger primary circular button
-            Surface(
-                onClick = onPlaylistPlayClick,
-                color = MaterialTheme.colorScheme.primary,
-                shape = CircleShape,
-                modifier = Modifier.size(72.dp),
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.play),
-                        contentDescription = stringResource(R.string.play),
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(32.dp),
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Download Button - Smaller secondary button
-            Surface(
-                onClick = onPlaylistDownloadClick,
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp),
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    when (downloadState) {
-                        Download.STATE_COMPLETED -> Icon(
-                            painter = painterResource(R.drawable.check),
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                        )
-                        Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> CircularProgressIndicator(
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(24.dp),
-                        )
-                        else -> Icon(
-                            painter = painterResource(R.drawable.arrow_downward),
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                        )
-                    }
-                }
-            }
-        }
+            val metadataProgress = headerEnter(
+                revealed = headerRevealed,
+                play = true,
+                delayMillis = titleTypingMs + 40,
+                durationMillis = IrideMotion.Short,
+            )
+            Text(
+                text = metadataLine,
+                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .revealMask(metadataProgress),
+            )
+            // Action buttons (shuffle/play/download) live in the top bar now — see topBarActions.
         }
     }
 }

@@ -80,7 +80,6 @@ import com.metrolist.music.constants.CONTENT_TYPE_ARTIST
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.StatPeriod
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.ListQueue
@@ -203,7 +202,6 @@ fun StatsScreen(
 
     val coroutineScope = rememberCoroutineScope()
     val (pureBlack) = rememberPreference(PureBlackKey, defaultValue = false)
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val keyboardController = LocalSoftwareKeyboardController.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         snapAnimationSpec = tween(durationMillis = 200),
@@ -464,7 +462,7 @@ fun StatsScreen(
                                 },
                                 currentValue = indexChips,
                                 onValueUpdate = { viewModel.indexChips.value = it },
-                                useIrideStyle = topNavigationBarEnabled,
+                                useIrideStyle = true,
                             )
                         }
 

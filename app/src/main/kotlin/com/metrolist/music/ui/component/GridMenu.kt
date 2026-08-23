@@ -41,7 +41,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
 import com.metrolist.music.R
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberPreference
 
@@ -90,10 +89,9 @@ fun LazyGridScope.GridMenuItem(
     onClick: () -> Unit,
 ) {
     item {
-        val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
         Column(
             modifier = modifier
-                .clip(if (topNavigationBarEnabled) RoundedCornerShape(5.dp) else ShapeDefaults.Large)
+                .clip(RoundedCornerShape(5.dp))
                 .height(GridMenuItemHeight)
                 .clickable(
                     enabled = enabled,
@@ -111,11 +109,7 @@ fun LazyGridScope.GridMenuItem(
             )
             Text(
                 text = stringResource(title),
-                style = if (topNavigationBarEnabled) {
-                    MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily)
-                } else {
-                    MaterialTheme.typography.labelLarge
-                },
+                style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily),
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 modifier = Modifier
@@ -173,10 +167,9 @@ fun LazyGridScope.SleepTimerGridMenu(
     onClick: () -> Unit
 ) {
     item {
-        val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
         Column(
             modifier = modifier
-                .clip(if (topNavigationBarEnabled) RoundedCornerShape(5.dp) else ShapeDefaults.Large)
+                .clip(RoundedCornerShape(5.dp))
                 .height(GridMenuItemHeight)
                 .clickable(
                     onClick = onClick
@@ -200,11 +193,7 @@ fun LazyGridScope.SleepTimerGridMenu(
                 text = if (enabled) makeTimeString(sleepTimerTimeLeft) else stringResource(
                     id = R.string.sleep_timer
                 ),
-                style = if (topNavigationBarEnabled) {
-                    MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily)
-                } else {
-                    MaterialTheme.typography.labelLarge
-                },
+                style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily),
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 modifier = Modifier.fillMaxWidth()

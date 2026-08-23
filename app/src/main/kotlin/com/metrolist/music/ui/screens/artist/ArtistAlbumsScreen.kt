@@ -56,7 +56,6 @@ import com.metrolist.music.constants.CONTENT_TYPE_HEADER
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LibraryAlbumGridItem
 import com.metrolist.music.ui.component.LocalMenuState
@@ -83,7 +82,6 @@ fun ArtistAlbumsScreen(
     val coroutineScope = rememberCoroutineScope()
     val lazyGridState = rememberLazyGridState()
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     var inSelectMode by rememberSaveable { mutableStateOf(false) }
     val selection =
@@ -125,12 +123,8 @@ fun ArtistAlbumsScreen(
 
                     Text(
                         text = pluralStringResource(R.plurals.n_album, albums.size, albums.size)
-                            .let { if (topNavigationBarEnabled) it.uppercase() else it },
-                        style = if (topNavigationBarEnabled) {
-                            TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp, letterSpacing = 0.5.sp)
-                        } else {
-                            MaterialTheme.typography.titleSmall
-                        },
+                            .uppercase(),
+                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp, letterSpacing = 0.5.sp),
                         color = MaterialTheme.colorScheme.secondary,
                     )
                 }

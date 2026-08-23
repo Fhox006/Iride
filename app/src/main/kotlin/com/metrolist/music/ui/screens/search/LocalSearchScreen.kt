@@ -53,7 +53,6 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.CONTENT_TYPE_LIST
 import com.metrolist.music.constants.MainTopGradientKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.Playlist
@@ -109,7 +108,6 @@ fun LocalSearchScreen(
     val searchFilter by viewModel.filter.collectAsState()
     val result by viewModel.result.collectAsState()
 
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
 
     val lazyListState = rememberLazyListState()
@@ -142,8 +140,8 @@ fun LocalSearchScreen(
                 ),
             currentValue = searchFilter,
             onValueUpdate = { viewModel.filter.value = it },
-            horizontalPadding = if (topNavigationBarEnabled) 20.dp else 12.dp,
-            useIrideStyle = topNavigationBarEnabled,
+            horizontalPadding = 20.dp,
+            useIrideStyle = true,
         )
     }
 
@@ -200,7 +198,7 @@ fun LocalSearchScreen(
                     playerConnection = playerConnection,
                     coroutineScope = coroutineScope,
                     haptic = haptic,
-                    useIrideStyle = topNavigationBarEnabled,
+                    useIrideStyle = true,
                 )
             }
         }
@@ -253,7 +251,7 @@ fun LocalSearchScreen(
                 playerConnection = playerConnection,
                 coroutineScope = coroutineScope,
                 haptic = haptic,
-                useIrideStyle = topNavigationBarEnabled,
+                useIrideStyle = true,
             )
         }
     }

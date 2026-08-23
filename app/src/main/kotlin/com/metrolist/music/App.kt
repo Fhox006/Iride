@@ -30,6 +30,7 @@ import com.metrolist.music.constants.*
 import com.metrolist.music.di.ApplicationScope
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.extensions.toInetSocketAddress
+import com.metrolist.music.lyrics.JapaneseDictManager
 import com.metrolist.music.utils.CrashHandler
 import com.metrolist.music.utils.GenreProvider
 import com.metrolist.music.utils.NetworkConnectivityObserver
@@ -81,14 +82,14 @@ class App :
         // Load the on-disk genre-tag cache used by playlist filter pills
         GenreProvider.init(this)
 
+        // Make the application context available to the on-demand Japanese dictionary
+        JapaneseDictManager.init(this)
+
         // Mirror the preferences into memory so composition never blocks on a disk read.
         dataStore.keepPreferencesWarm(applicationScope)
 
-        // Warm the New Iride UI preference before setContent() ever runs (see companion doc).
-        topNavigationBarEnabledCache = dataStore.get(TopNavigationBarKey, true)
-
         // Warm the player-sheet anchor so a cold start with no saved value falls back to the
-        // dismissed position (classic UI), and a cold start with a saved value restores it
+        // dismissed position, and a cold start with a saved value restores it
         // before any Composable can flash the wrong layout.
         playerAnchorCache = dataStore.get(PlayerAnchorKey, dismissedAnchor)
 
@@ -326,20 +327,6 @@ class App :
     }
 
     companion object {
-        // New Iride UI: warmed synchronously in onCreate(), before any Activity/Compose code
-        // runs, so the very first composed frame of MainActivity/HomeScreen already has the
-        // real stored value to seed rememberPreference(TopNavigationBarKey, ...) with instead
-        // of a hardcoded literal default. rememberPreference() itself does perform a blocking
-        // DataStore read for its own first-composition value, but that read races with several
-        // other blocking preference reads happening in the same first composition (theme color,
-        // dark mode, dynamic theme, etc.) — on a slow cold start any jank there is exactly the
-        // kind of window where a stale/default UI branch can end up on screen for a frame or
-        // two before settling. Reading it here, at process start, removes that race entirely:
-        // by the time any Composable asks for it, the true value is already sitting in memory.
-        @Volatile
-        var topNavigationBarEnabledCache: Boolean = true
-            private set
-
         // Mirror of PlayerAnchorKey for synchronous first-frame reads (see
         // playerBottomSheetState's initialAnchor in MainActivity). Updated in lockstep with the
         // DataStore write that fires from BottomSheetState.onAnchorChanged so config changes pick

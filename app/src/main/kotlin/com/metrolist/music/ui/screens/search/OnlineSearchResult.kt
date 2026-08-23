@@ -98,7 +98,6 @@ import com.metrolist.music.constants.MiniPlayerBottomSpacing
 import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.NavigationBarHeight
 import com.metrolist.music.constants.PauseSearchHistoryKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.YouTubeQueue
@@ -181,10 +180,6 @@ fun OnlineSearchResult(
     }
 
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
-    // Restyles this route to match New Iride UI when reached from an entry point other than the
-    // Search tab itself (voice search, genre taps, ...) — the tab's own submit flow no longer
-    // navigates here when this is enabled, see SearchScreen's inline results.
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
 
     BackHandler(enabled = isSearchFocused) {
@@ -222,133 +217,60 @@ fun OnlineSearchResult(
         query = TextFieldValue(decodedQuery, TextRange(decodedQuery.length))
     }
 
-    if (topNavigationBarEnabled) {
-        // New Iride UI: the search bar scrolls away together with the chips/results — no pinned
-        // chrome — so the background must be able to go transparent/gradient like Home/Library,
-        // instead of the classic UI's always-opaque background below.
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    when {
-                        pureBlack -> Color.Black
-                        mainTopGradient -> Color.Transparent
-                        else -> MaterialTheme.colorScheme.background
-                    },
-                )
-                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
-        ) {
-            OnlineSearchResultsBody(
-                navController = navController,
-                viewModel = viewModel,
-                pureBlack = pureBlack,
-                useIrideStyle = true,
-                isSearchFocused = isSearchFocused,
-                queryText = query.text,
-                onQueryChange = { query = it },
-                onSearch = onSearch,
-                onDismissSuggestions = {
-                    isSearchFocused = false
-                    focusManager.clearFocus()
-                },
-                header = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 8.dp),
-                    ) {
-                        IconButton(onClick = { navController.navigateUp() }) {
-                            Icon(
-                                painter = painterResource(R.drawable.arrow_back),
-                                contentDescription = stringResource(R.string.dismiss),
-                                tint = Color.White.copy(alpha = 0.6f),
-                            )
-                        }
-                        IrideSearchBox(
-                            query = query,
-                            onQueryChange = { query = it },
-                            placeholderText = stringResource(R.string.search_yt_music),
-                            focusRequester = focusRequester,
-                            onFocusChanged = { if (it.isFocused) isSearchFocused = true },
-                            onSearch = { onSearch(query.text) },
-                            onClear = { query = TextFieldValue("") },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+    // The search bar scrolls away together with the chips/results — no pinned
+    // chrome — so the background can go transparent/gradient like Home/Library.
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                when {
+                    pureBlack -> Color.Black
+                    mainTopGradient -> Color.Transparent
+                    else -> MaterialTheme.colorScheme.background
                 },
             )
-        }
-    } else {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
-                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
-        ) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                placeholder = {
-                    Text(
-                        text = stringResource(R.string.search_yt_music),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                leadingIcon = {
+            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
+    ) {
+        OnlineSearchResultsBody(
+            navController = navController,
+            viewModel = viewModel,
+            pureBlack = pureBlack,
+            useIrideStyle = true,
+            isSearchFocused = isSearchFocused,
+            queryText = query.text,
+            onQueryChange = { query = it },
+            onSearch = onSearch,
+            onDismissSuggestions = {
+                isSearchFocused = false
+                focusManager.clearFocus()
+            },
+            header = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                ) {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
                             painter = painterResource(R.drawable.arrow_back),
                             contentDescription = stringResource(R.string.dismiss),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = Color.White.copy(alpha = 0.6f),
                         )
                     }
-                },
-                trailingIcon = {
-                    if (query.text.isNotEmpty()) {
-                        IconButton(onClick = { query = TextFieldValue("") }) {
-                            Icon(
-                                painter = painterResource(R.drawable.close),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { onSearch(query.text) }),
-                singleLine = true,
-                shape = RoundedCornerShape(28.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = if (pureBlack) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceContainerHigh,
-                    unfocusedContainerColor = if (pureBlack) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceContainerHigh,
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .focusRequester(focusRequester)
-                    .onFocusChanged { if (it.isFocused) isSearchFocused = true },
-            )
-
-            OnlineSearchResultsBody(
-                modifier = Modifier.weight(1f),
-                navController = navController,
-                viewModel = viewModel,
-                pureBlack = pureBlack,
-                useIrideStyle = false,
-                isSearchFocused = isSearchFocused,
-                queryText = query.text,
-                onQueryChange = { query = it },
-                onSearch = onSearch,
-                onDismissSuggestions = {
-                    isSearchFocused = false
-                    focusManager.clearFocus()
-                },
-            )
-        }
+                    IrideSearchBox(
+                        query = query,
+                        onQueryChange = { query = it },
+                        placeholderText = stringResource(R.string.search_yt_music),
+                        focusRequester = focusRequester,
+                        onFocusChanged = { if (it.isFocused) isSearchFocused = true },
+                        onSearch = { onSearch(query.text) },
+                        onClear = { query = TextFieldValue("") },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            },
+        )
     }
 }
 
@@ -663,9 +585,11 @@ fun OnlineSearchResultsBody(
     // and scroll-away-chrome (New Iride UI, see `header`) layouts below.
     val resultsListContent: LazyListScope.() -> Unit = {
             if (smartSelected) {
-                // Smart Search: full per-category carousels ordered by query intent, each
-                // backed by that category's own dedicated search (not YT's truncated
-                // summary shelves), so nothing is capped to a handful of items.
+                // Smart Search: full per-category carousels in a fixed order, each backed by
+                // that category's own dedicated search (not YT's truncated summary shelves),
+                // so nothing is capped to a handful of items. A section reveals its content
+                // only once every section above it has revealed, so results always fill
+                // strictly top-to-bottom even when fetches complete out of order.
                 val order = viewModel.smartSearchOrder
                 val topResult = searchSummary?.summaries?.firstOrNull()
 
@@ -681,9 +605,12 @@ fun OnlineSearchResultsBody(
                         )
                     }
 
+                    var awaitingPreviousSection = false
                     order.forEach { sectionFilter ->
                         val page = viewModel.viewStateMap[sectionFilter.value]
-                        if (page != null && page.items.isEmpty()) return@forEach
+                        if (page != null && page.items.isEmpty() && !awaitingPreviousSection) return@forEach
+                        if (page == null) awaitingPreviousSection = true
+                        val revealed = page != null && !awaitingPreviousSection
 
                         item(key = "smart_title_${sectionFilter.value}") {
                             NavigationTitle(
@@ -698,10 +625,10 @@ fun OnlineSearchResultsBody(
                         }
 
                         item(key = "smart_row_${sectionFilter.value}") {
-                            if (page == null) {
-                                searchResultRowPlaceholder()
-                            } else {
+                            if (page != null && revealed) {
                                 searchResultRow(page.items)
+                            } else {
+                                searchResultRowPlaceholder()
                             }
                         }
                     }

@@ -65,8 +65,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.metrolist.music.R
-import com.metrolist.music.constants.TopNavigationBarKey
-import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.delay
 
 @Composable
@@ -79,23 +77,21 @@ fun DefaultDialog(
     horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
             modifier = Modifier.padding(24.dp),
-            shape = if (topNavigationBarEnabled) RoundedCornerShape(16.dp) else AlertDialogDefaults.shape,
-            color = if (topNavigationBarEnabled) Color(0xFF0A0A0A) else AlertDialogDefaults.containerColor,
-            tonalElevation = if (topNavigationBarEnabled) 0.dp else AlertDialogDefaults.TonalElevation,
-            border = if (topNavigationBarEnabled) androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)) else null,
+            shape = RoundedCornerShape(16.dp),
+            color = Color(0xFF0A0A0A),
+            tonalElevation = 0.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
         ) {
-            val iconColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.85f) else AlertDialogDefaults.iconContentColor
-            val titleColor = if (topNavigationBarEnabled) Color.White else AlertDialogDefaults.titleContentColor
-            val contentColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.85f) else LocalContentColor.current
-            val buttonColor = if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.primary
+            val iconColor = Color.White.copy(alpha = 0.85f)
+            val titleColor = Color.White
+            val contentColor = Color.White.copy(alpha = 0.85f)
+            val buttonColor = Color.White
 
             CompositionLocalProvider(LocalContentColor provides contentColor) {
             Column(
@@ -118,14 +114,10 @@ fun DefaultDialog(
                 if (title != null) {
                     CompositionLocalProvider(LocalContentColor provides titleColor) {
                         ProvideTextStyle(
-                            if (topNavigationBarEnabled) {
-                                MaterialTheme.typography.headlineSmall.copy(
-                                    fontFamily = SpaceMonoFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            } else {
-                                MaterialTheme.typography.headlineSmall
-                            }
+                            MaterialTheme.typography.headlineSmall.copy(
+                                fontFamily = SpaceMonoFontFamily,
+                                fontWeight = FontWeight.Bold,
+                            )
                         ) {
                             Box(
                                 // Align the title to the center when an icon is present.
@@ -226,20 +218,18 @@ fun ListDialog(
     modifier: Modifier = Modifier,
     content: LazyListScope.() -> Unit,
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
             modifier = Modifier.padding(24.dp),
-            shape = if (topNavigationBarEnabled) RoundedCornerShape(16.dp) else AlertDialogDefaults.shape,
-            color = if (topNavigationBarEnabled) Color(0xFF0A0A0A) else AlertDialogDefaults.containerColor,
-            tonalElevation = if (topNavigationBarEnabled) 0.dp else AlertDialogDefaults.TonalElevation,
-            border = if (topNavigationBarEnabled) androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)) else null,
+            shape = RoundedCornerShape(16.dp),
+            color = Color(0xFF0A0A0A),
+            tonalElevation = 0.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
         ) {
-            val contentColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.85f) else LocalContentColor.current
+            val contentColor = Color.White.copy(alpha = 0.85f)
             CompositionLocalProvider(LocalContentColor provides contentColor) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -298,27 +288,18 @@ fun TextFieldDialog(
     val legacyFieldState = remember { mutableStateOf(initialTextFieldValue) }
 
     val focusRequester = remember { FocusRequester() }
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-    val fieldColors = if (topNavigationBarEnabled) {
-        OutlinedTextFieldDefaults.colors(
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White.copy(alpha = 0.85f),
-            cursorColor = Color.White,
-            focusedBorderColor = Color.White.copy(alpha = 0.6f),
-            unfocusedBorderColor = Color.White.copy(alpha = 0.25f),
-            focusedPlaceholderColor = Color.White.copy(alpha = 0.55f),
-            unfocusedPlaceholderColor = Color.White.copy(alpha = 0.55f),
-            focusedLabelColor = Color.White.copy(alpha = 0.6f),
-            unfocusedLabelColor = Color.White.copy(alpha = 0.55f),
-        )
-    } else {
-        OutlinedTextFieldDefaults.colors()
-    }
-    val fieldTextStyle = if (topNavigationBarEnabled) {
-        LocalTextStyle.current.copy(fontFamily = SpaceMonoFontFamily)
-    } else {
-        LocalTextStyle.current
-    }
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = Color.White,
+        unfocusedTextColor = Color.White.copy(alpha = 0.85f),
+        cursorColor = Color.White,
+        focusedBorderColor = Color.White.copy(alpha = 0.6f),
+        unfocusedBorderColor = Color.White.copy(alpha = 0.25f),
+        focusedPlaceholderColor = Color.White.copy(alpha = 0.55f),
+        unfocusedPlaceholderColor = Color.White.copy(alpha = 0.55f),
+        focusedLabelColor = Color.White.copy(alpha = 0.6f),
+        unfocusedLabelColor = Color.White.copy(alpha = 0.55f),
+    )
+    val fieldTextStyle = LocalTextStyle.current.copy(fontFamily = SpaceMonoFontFamily)
 
     LaunchedEffect(Unit) {
         if (autoFocus) {

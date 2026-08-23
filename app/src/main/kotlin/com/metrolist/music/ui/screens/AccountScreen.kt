@@ -64,7 +64,6 @@ import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PureBlackKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.db.entities.PodcastEntity
 import com.metrolist.music.ui.component.ChipsRow
@@ -106,7 +105,6 @@ fun AccountScreen(
     val podcastChannels by viewModel.podcastChannels.collectAsState()
     val selectedContentType by viewModel.selectedContentType.collectAsState()
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val topNavBarController = LocalTopNavBarController.current
@@ -128,152 +126,92 @@ fun AccountScreen(
     // TopNavigationBar so the tabs stay visible, part of the scrollable page instead of a pinned
     // bar. Real app settings are still one tap away via the gear icon in the header. (The Account
     // tab itself opens SettingsScreen, styled separately in SettingsScreen.kt.)
-    if (topNavigationBarEnabled) {
-        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-            snapAnimationSpec = tween(durationMillis = 200),
-        )
-        Scaffold(
-            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-            topBar = {
-                Column {
-                    if (topNavBarController != null) {
-                        TopNavigationBar(
-                            navigationItems = topNavBarController.navigationItems,
-                            currentRoute = topNavBarController.currentRoute,
-                            onItemClick = topNavBarController.onItemClick,
-                            containerColor = Color.Transparent,
-                            compact = topNavBarController.compact,
-                            accountImageUrl = topNavBarController.accountImageUrl,
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        snapAnimationSpec = tween(durationMillis = 200),
+    )
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            Column {
+                if (topNavBarController != null) {
+                    TopNavigationBar(
+                        navigationItems = topNavBarController.navigationItems,
+                        currentRoute = topNavBarController.currentRoute,
+                        onItemClick = topNavBarController.onItemClick,
+                        containerColor = Color.Transparent,
+                        compact = topNavBarController.compact,
+                        accountImageUrl = topNavBarController.accountImageUrl,
+                    )
+                }
+                CollapsingScreenHeader(
+                    title = stringResource(R.string.account_content),
+                    scrollBehavior = scrollBehavior,
+                    pureBlack = pureBlack,
+                    isSearchActive = false,
+                    onSearchActiveChange = {},
+                    searchQuery = "",
+                    onSearchQueryChange = {},
+                    keyboardController = keyboardController,
+                    trailingContent = {
+                        Icon(
+                            painter = painterResource(R.drawable.settings),
+                            contentDescription = stringResource(R.string.settings),
+                            tint = Color.White.copy(alpha = 0.6f),
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clickable { navController.navigate("settings") },
                         )
-                    }
-                    CollapsingScreenHeader(
-                        title = stringResource(R.string.account_content),
-                        scrollBehavior = scrollBehavior,
-                        pureBlack = pureBlack,
-                        isSearchActive = false,
-                        onSearchActiveChange = {},
-                        searchQuery = "",
-                        onSearchQueryChange = {},
-                        keyboardController = keyboardController,
-                        trailingContent = {
-                            Icon(
-                                painter = painterResource(R.drawable.settings),
-                                contentDescription = stringResource(R.string.settings),
-                                tint = Color.White.copy(alpha = 0.6f),
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .clickable { navController.navigate("settings") },
-                            )
-                        },
-                        transparentBackground = mainTopGradient,
-                        hideTitle = true,
-                    )
-                }
-            },
-            containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets(0),
-        ) { paddingValues ->
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
-                contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .background(
-                        when {
-                            pureBlack -> Color.Black
-                            mainTopGradient -> Color.Transparent
-                            else -> MaterialTheme.colorScheme.background
-                        },
-                    ),
-            ) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    ChipsRow(
-                        chips =
-                            listOf(
-                                AccountContentType.PLAYLISTS to stringResource(R.string.filter_playlists),
-                                AccountContentType.ALBUMS to stringResource(R.string.filter_albums),
-                                AccountContentType.ARTISTS to stringResource(R.string.filter_artists),
-                                AccountContentType.PODCASTS to stringResource(R.string.filter_podcasts),
-                            ),
-                        currentValue = selectedContentType,
-                        onValueUpdate = { viewModel.setSelectedContentType(it) },
-                        useIrideStyle = true,
-                    )
-                }
-
-                AccountContentGridItems(
-                    navController = navController,
-                    menuState = menuState,
-                    haptic = haptic,
-                    coroutineScope = coroutineScope,
-                    selectedContentType = selectedContentType,
-                    playlists = playlists,
-                    albums = albums,
-                    artists = artists,
-                    rdpnPlaylist = rdpnPlaylist,
-                    sePlaylist = sePlaylist,
-                    podcastPlaylists = podcastPlaylists,
-                    podcastChannels = podcastChannels,
+                    },
+                    transparentBackground = mainTopGradient,
+                    hideTitle = true,
                 )
             }
-        }
-        return
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.account_content)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-            )
         },
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
-            contentPadding =
-                LocalPlayerAwareWindowInsets.current
-                    .add(WindowInsets(bottom = FloatingPillHeight + FloatingPillBottomSpacing))
-                    .asPaddingValues(),
-            modifier = Modifier.padding(paddingValues),
+            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            modifier = Modifier
+                .padding(paddingValues)
+                .background(
+                    when {
+                        pureBlack -> Color.Black
+                        mainTopGradient -> Color.Transparent
+                        else -> MaterialTheme.colorScheme.background
+                    },
+                ),
         ) {
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            ChipsRow(
-                chips =
-                    listOf(
-                        AccountContentType.PLAYLISTS to stringResource(R.string.filter_playlists),
-                        AccountContentType.ALBUMS to stringResource(R.string.filter_albums),
-                        AccountContentType.ARTISTS to stringResource(R.string.filter_artists),
-                        AccountContentType.PODCASTS to stringResource(R.string.filter_podcasts),
-                    ),
-                currentValue = selectedContentType,
-                onValueUpdate = { viewModel.setSelectedContentType(it) },
-            )
-        }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                ChipsRow(
+                    chips =
+                        listOf(
+                            AccountContentType.PLAYLISTS to stringResource(R.string.filter_playlists),
+                            AccountContentType.ALBUMS to stringResource(R.string.filter_albums),
+                            AccountContentType.ARTISTS to stringResource(R.string.filter_artists),
+                            AccountContentType.PODCASTS to stringResource(R.string.filter_podcasts),
+                        ),
+                    currentValue = selectedContentType,
+                    onValueUpdate = { viewModel.setSelectedContentType(it) },
+                    useIrideStyle = true,
+                )
+            }
 
-        AccountContentGridItems(
-            navController = navController,
-            menuState = menuState,
-            haptic = haptic,
-            coroutineScope = coroutineScope,
-            selectedContentType = selectedContentType,
-            playlists = playlists,
-            albums = albums,
-            artists = artists,
-            rdpnPlaylist = rdpnPlaylist,
-            sePlaylist = sePlaylist,
-            podcastPlaylists = podcastPlaylists,
-            podcastChannels = podcastChannels,
-        )
+            AccountContentGridItems(
+                navController = navController,
+                menuState = menuState,
+                haptic = haptic,
+                coroutineScope = coroutineScope,
+                selectedContentType = selectedContentType,
+                playlists = playlists,
+                albums = albums,
+                artists = artists,
+                rdpnPlaylist = rdpnPlaylist,
+                sePlaylist = sePlaylist,
+                podcastPlaylists = podcastPlaylists,
+                podcastChannels = podcastChannels,
+            )
         }
     }
 }

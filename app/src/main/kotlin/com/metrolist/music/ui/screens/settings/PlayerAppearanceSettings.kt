@@ -53,7 +53,6 @@ import com.metrolist.music.constants.BetterGradientSmoothTransitionKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.SwipeSensitivityKey
-import com.metrolist.music.constants.UseNewPlayerDesignKey
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.IconButton
@@ -69,8 +68,6 @@ import kotlin.math.roundToInt
 @Composable
 fun PlayerAppearanceSettings(navController: NavController) {
     val (advancedMode, _) = rememberPreference(AdvancedModeKey, defaultValue = false)
-    val (useNewPlayerDesign, onUseNewPlayerDesignChange) =
-        rememberPreference(UseNewPlayerDesignKey, defaultValue = true)
     val (playerBackground, onPlayerBackgroundChange) =
         rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
     val (hidePlayerThumbnail, onHidePlayerThumbnailChange) =
@@ -183,30 +180,6 @@ fun PlayerAppearanceSettings(navController: NavController) {
         Material3SettingsGroup(
             title = stringResource(R.string.player_appearance),
             items = buildList {
-                /* HIDDEN - new_player_design toggle
-                add(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.palette),
-                        title = { Text(stringResource(R.string.new_player_design)) },
-                        trailingContent = {
-                            IrideSwitch(
-                                checked = useNewPlayerDesign,
-                                onCheckedChange = onUseNewPlayerDesignChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            if (useNewPlayerDesign) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize)
-                                    )
-                                }
-                            )
-                        },
-                        onClick = { onUseNewPlayerDesignChange(!useNewPlayerDesign) }
-                    )
-                )
-                END HIDDEN */
                 add(
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.gradient),

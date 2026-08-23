@@ -71,7 +71,6 @@ fun HeroCarouselSection(
     onArtistClick: (String) -> Unit,
     onArtistRadioClick: (String, String) -> Unit,
     modifier: Modifier = Modifier,
-    newIrideUi: Boolean = false,
     collapsed: Boolean = false,
     onCollapseToggle: (() -> Unit)? = null,
 ) {
@@ -81,7 +80,7 @@ fun HeroCarouselSection(
     Column(modifier = modifier.fillMaxWidth()) {
         NavigationTitle(
             title = "Featured for you",
-            useIrideStyle = newIrideUi,
+            useIrideStyle = true,
             collapsed = collapsed,
             onCollapseToggle = onCollapseToggle,
         )
@@ -97,7 +96,6 @@ fun HeroCarouselSection(
             ) { page ->
                 HeroCard(
                     item = items[page],
-                    newIrideUi = newIrideUi,
                     onAlbumClick = onAlbumClick,
                     onArtistClick = onArtistClick,
                     onArtistRadioClick = onArtistRadioClick,
@@ -119,10 +117,8 @@ fun HeroCarouselSection(
                             .clip(CircleShape)
                             .background(
                                 when {
-                                    newIrideUi && selected -> Color.White.copy(alpha = 0.8f)
-                                    newIrideUi -> Color.White.copy(alpha = 0.22f)
-                                    selected -> MaterialTheme.colorScheme.primary
-                                    else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.24f)
+                                    selected -> Color.White.copy(alpha = 0.8f)
+                                    else -> Color.White.copy(alpha = 0.22f)
                                 }
                             ),
                     )
@@ -139,12 +135,12 @@ fun HeroCarouselSection(
 // them down. Height must stay pixel-identical to the real content below, or swapping skeleton for
 // content still reflows everything under it.
 @Composable
-fun HeroCarouselSkeleton(newIrideUi: Boolean, modifier: Modifier = Modifier) {
-    val cardHeight = if (newIrideUi) 148.dp else 190.dp
-    val cardShape = if (newIrideUi) SquircleShape(radius = 12.dp, cornerSmoothing = 0.48f) else RoundedCornerShape(20.dp)
+fun HeroCarouselSkeleton(modifier: Modifier = Modifier) {
+    val cardHeight = 148.dp
+    val cardShape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.48f)
 
     Column(modifier = modifier.fillMaxWidth()) {
-        NavigationTitle(title = "Featured for you", useIrideStyle = newIrideUi)
+        NavigationTitle(title = "Featured for you", useIrideStyle = true)
         ShimmerHost(modifier = Modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
@@ -163,7 +159,6 @@ fun HeroCarouselSkeleton(newIrideUi: Boolean, modifier: Modifier = Modifier) {
 @Composable
 private fun HeroCard(
     item: HeroCarouselItem,
-    newIrideUi: Boolean,
     onAlbumClick: (String) -> Unit,
     onArtistClick: (String) -> Unit,
     onArtistRadioClick: (String, String) -> Unit,
@@ -226,35 +221,22 @@ private fun HeroCard(
         }
     }
 
-    val cardHeight = if (newIrideUi) 148.dp else 190.dp
+    val cardHeight = 148.dp
     // Radius/smoothing matched to the rest of New Iride UI's big content cards (AlbumScreen,
-    // Player, OnlinePlaylistScreen all use 12dp/0.45-0.48) — the old 20dp/0.55 read noticeably
-    // rounder than every other box on the screen.
-    val cardShape = if (newIrideUi) SquircleShape(radius = 12.dp, cornerSmoothing = 0.48f) else RoundedCornerShape(20.dp)
+    // Player, OnlinePlaylistScreen all use 12dp/0.45-0.48).
+    val cardShape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.48f)
 
     val cardModifier = Modifier
         .fillMaxWidth()
         .height(cardHeight)
         .clip(cardShape)
-        .let {
-            if (newIrideUi) it.border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), cardShape) else it
-        }
+        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), cardShape)
         .clickable(onClick = onClick)
 
-    // New Iride UI has no Card/elevation anywhere else — a flat, bordered Box replaces the
+    // No Card/elevation anywhere else — a flat, bordered Box replaces the
     // shadowed Material Card so this shelf stops standing out from its neighbors.
-    if (newIrideUi) {
-        Box(modifier = cardModifier) {
-            HeroCardContent(coverUrl, badgeIcon, badgeLabel, title, subtitle, newIrideUi = true)
-        }
-    } else {
-        Card(
-            modifier = cardModifier,
-            shape = cardShape,
-            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        ) {
-            HeroCardContent(coverUrl, badgeIcon, badgeLabel, title, subtitle, newIrideUi = false)
-        }
+    Box(modifier = cardModifier) {
+        HeroCardContent(coverUrl, badgeIcon, badgeLabel, title, subtitle)
     }
 }
 
@@ -265,7 +247,6 @@ private fun HeroCardContent(
     badgeLabel: String,
     title: String,
     subtitle: String,
-    newIrideUi: Boolean,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         if (coverUrl != null) {
@@ -294,85 +275,48 @@ private fun HeroCardContent(
         }
 
         // Iride: darken only the lower half where the title sits, capped at a lighter alpha,
-        // so the cover art stays visible instead of the old full-height 0.78 black wash.
+        // so the cover art stays visible instead of a full-height black wash.
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    if (newIrideUi) {
-                        // Same peak darkness as classic (0.78) so white title/subtitle text keeps
-                        // its contrast ratio on bright covers — only the darkened *area* shrinks,
-                        // confined to the lower half instead of washing the whole card.
-                        Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            0.55f to Color.Transparent,
-                            1f to HeroScrimColor.copy(alpha = 0.78f),
-                        )
-                    } else {
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, HeroScrimColor.copy(alpha = 0.78f)),
-                        )
-                    }
+                    // Same peak darkness as classic (0.78) so white title/subtitle text keeps
+                    // its contrast ratio on bright covers — only the darkened *area* shrinks,
+                    // confined to the lower half instead of washing the whole card.
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        0.55f to Color.Transparent,
+                        1f to HeroScrimColor.copy(alpha = 0.78f),
+                    )
                 ),
         )
 
-        if (newIrideUi) {
-            Box(
-                modifier = Modifier
-                    .padding(12.dp)
-                    .align(Alignment.TopStart)
-                    // Flat charcoal backing so the label stays legible over light/white covers —
-                    // the border-only pill let bright art wash out the white text underneath.
-                    // 0.85 alpha: the minimum that keeps the white label at >=4.5:1 contrast
-                    // even against a pure-white cover (worst case).
-                    .background(HeroScrimColor.copy(alpha = 0.85f), RoundedCornerShape(3.dp))
-                    .border(
-                        BorderStroke(0.8.dp, Color.White.copy(alpha = 0.55f)),
-                        RoundedCornerShape(3.dp),
-                    )
-                    .padding(horizontal = 6.dp, vertical = 3.dp),
-            ) {
-                Text(
-                    text = badgeLabel.uppercase(),
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontSize = 9.sp,
-                        letterSpacing = 0.10.em,
-                    ),
-                    color = Color.White.copy(alpha = 0.90f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+        Box(
+            modifier = Modifier
+                .padding(12.dp)
+                .align(Alignment.TopStart)
+                // Flat charcoal backing so the label stays legible over light/white covers —
+                // the border-only pill let bright art wash out the white text underneath.
+                // 0.85 alpha: the minimum that keeps the white label at >=4.5:1 contrast
+                // even against a pure-white cover (worst case).
+                .background(HeroScrimColor.copy(alpha = 0.85f), RoundedCornerShape(3.dp))
+                .border(
+                    BorderStroke(0.8.dp, Color.White.copy(alpha = 0.55f)),
+                    RoundedCornerShape(3.dp),
                 )
-            }
-        } else {
-            Surface(
-                modifier = Modifier
-                    .padding(14.dp)
-                    .align(Alignment.TopStart),
-                shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.92f),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(badgeIcon),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = badgeLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
+                .padding(horizontal = 6.dp, vertical = 3.dp),
+        ) {
+            Text(
+                text = badgeLabel.uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontSize = 9.sp,
+                    letterSpacing = 0.10.em,
+                ),
+                color = Color.White.copy(alpha = 0.90f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
 
         Column(
@@ -383,15 +327,11 @@ private fun HeroCardContent(
         ) {
             Text(
                 text = title,
-                style = if (newIrideUi) {
-                    MaterialTheme.typography.titleLarge.copy(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontSize = 15.sp,
-                        letterSpacing = (-0.1).sp,
-                    )
-                } else {
-                    MaterialTheme.typography.titleLarge
-                },
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontSize = 15.sp,
+                    letterSpacing = (-0.1).sp,
+                ),
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 maxLines = 2,
@@ -400,15 +340,11 @@ private fun HeroCardContent(
             if (subtitle.isNotEmpty()) {
                 Text(
                     text = subtitle,
-                    style = if (newIrideUi) {
-                        MaterialTheme.typography.bodyMedium.copy(
-                            fontFamily = SpaceMonoFontFamily,
-                            fontSize = 11.sp,
-                            letterSpacing = 0.02.em,
-                        )
-                    } else {
-                        MaterialTheme.typography.bodyMedium
-                    },
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = SpaceMonoFontFamily,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.02.em,
+                    ),
                     color = Color.White.copy(alpha = 0.85f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

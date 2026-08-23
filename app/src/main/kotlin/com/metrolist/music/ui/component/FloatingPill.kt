@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -106,7 +107,7 @@ import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.MiniPlayerBackgroundStyle
 import com.metrolist.music.constants.MiniPlayerBackgroundStyleKey
 import com.metrolist.music.constants.MiniPlayerHeight
-import com.metrolist.music.constants.TopNavigationBarKey
+import com.metrolist.music.constants.CompactTopNavigationBarKey
 import com.metrolist.music.listentogether.ListenTogetherManager
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.CastConnectionHandler
@@ -325,7 +326,7 @@ private fun PillContent(
         MiniPlayerBackgroundStyleKey,
         defaultValue = MiniPlayerBackgroundStyle.DEFAULT,
     )
-    val (newIrideUi, _) = rememberPreference(TopNavigationBarKey, defaultValue = true)
+    val (newIrideUi, _) = rememberPreference(CompactTopNavigationBarKey, defaultValue = true)
     val context = LocalContext.current
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
     val isSystemInDarkTheme = isSystemInDarkTheme()
@@ -814,7 +815,9 @@ private fun PillSongInfo(
                 fontSize = if (isIrideStyle) 16.sp else 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
-                modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
+                modifier = Modifier
+                    .offset(y = (-2).dp)
+                    .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
             )
         }
         AnimatedVisibility(visible = error != null, enter = fadeIn(), exit = fadeOut()) {

@@ -132,7 +132,6 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
-import com.metrolist.music.constants.NewIrideUiDisclaimerDismissedKey
 import com.metrolist.music.constants.RandomizeHomeOrderKey
 import com.metrolist.music.constants.HomeCollapsedSectionsKey
 import com.metrolist.music.constants.HideExplicitKey
@@ -145,7 +144,6 @@ import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.SmartBootKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.LocalItem
@@ -412,7 +410,6 @@ fun HomeScreen(
     }.collectAsStateWithLifecycle()
 
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
-    var newIrideUiDisclaimerDismissed by rememberPreference(NewIrideUiDisclaimerDismissedKey, false)
 
     val speedDialItems by viewModel.speedDialItems.collectAsStateWithLifecycle()
     val pinnedSpeedDialItems by viewModel.pinnedSpeedDialItems.collectAsStateWithLifecycle()
@@ -456,13 +453,10 @@ fun HomeScreen(
     val accountAvatarUrl = if (isLoggedIn) accountImageUrl else null
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
-    // Seeded from App's process-start cache instead of a hardcoded literal — see
-    // App.topNavigationBarEnabledCache and the matching seed in MainActivity's IrideApp.
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = com.metrolist.music.App.topNavigationBarEnabledCache)
     val topNavBarController = LocalTopNavBarController.current
     // New Iride UI: sections start flush with the "Home" label in TopNavigationBar (20dp),
     // instead of the classic UI's 12dp.
-    val irideStart = if (topNavigationBarEnabled) 20.dp else 12.dp
+    val irideStart = 20.dp
     // The shared ListItem/GridItem components (SongListItem, YouTubeGridItem, etc.) each carry
     // their own built-in horizontal inset on top of whatever contentPadding their row/grid gets —
     // 12dp row padding + 4dp thumbnail box for ListItem-based items, and (in New Iride UI) 4dp
@@ -475,11 +469,11 @@ fun HomeScreen(
     // not just this screen) or losing the item-to-item spacing. This previously subtracted the
     // classic UI's 8dp GridItem inset even in New Iride UI mode (where it's actually 4dp),
     // leaving grid covers sitting 4dp left of the title text above them.
-    val irideListItemStart = if (topNavigationBarEnabled) 4.dp else irideStart
-    val irideGridItemStart = if (topNavigationBarEnabled) 16.dp else irideStart
+    val irideListItemStart = 4.dp
+    val irideGridItemStart = 16.dp
     // New Iride UI: thumbnails in NavigationTitle (e.g. "Similar to <artist>") shrink to sit
     // inline with the label/title text stack instead of towering over it.
-    val irideTitleThumbSize = if (topNavigationBarEnabled) 22.dp else ListThumbnailSize
+    val irideTitleThumbSize = 22.dp
     val hideExplicit by rememberPreference(HideExplicitKey, defaultValue = false)
     val hideVideoSongs by rememberPreference(HideVideoSongsKey, defaultValue = false)
     val hideYoutubeShorts by rememberPreference(HideYoutubeShortsKey, defaultValue = false)
@@ -602,28 +596,7 @@ fun HomeScreen(
     )
 
     Scaffold(
-        topBar = {
-            if (!topNavigationBarEnabled) {
-                HomeCollapsingHeader(
-                    scrollBehavior = scrollBehavior,
-                    accountImageUrl = accountAvatarUrl,
-                    onAccountClick = { navController.navigate("settings") },
-                    transparentBackground = mainTopGradient,
-                )
-            }
-        },
-        // Only wire up the collapsing-header nested scroll when the header is actually rendered.
-        // When the New Iride UI top nav bar is enabled, HomeCollapsingHeader never composes, so its
-        // SideEffect never bounds scrollBehavior.state.heightOffsetLimit — it stays at Compose's
-        // default (-Float.MAX_VALUE), and exitUntilCollapsedScrollBehavior's onPreScroll then
-        // consumes every upward scroll gesture trying to collapse a header that isn't there,
-        // leaving nothing for the LazyColumn below. This is why the list appeared stuck/unscrollable
-        // only in New UI mode, while LibraryMixScreen (whose header always renders) never had it.
-        modifier = if (!topNavigationBarEnabled) {
-            Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
-        } else {
-            Modifier
-        },
+        modifier = Modifier,
         containerColor = if (mainTopGradient) Color.Transparent else MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
@@ -843,7 +816,7 @@ fun HomeScreen(
                             modifier = homeTitleMotion("dischi_per_te"),
                             onRefreshClick = { viewModel.regenerateDischiPerTe() },
                             isRefreshing = "dischi_per_te" in regeneratingSections,
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                             collapsed = isSectionCollapsed("dischi_per_te"),
                             onCollapseToggle = { toggleSection("dischi_per_te") },
                         )
@@ -922,11 +895,7 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = shelf.artist.artist.name,
-                        style = if (topNavigationBarEnabled) {
-                            MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily)
-                        } else {
-                            MaterialTheme.typography.bodyLarge
-                        },
+                        style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -946,7 +915,7 @@ fun HomeScreen(
                             modifier = homeTitleMotion("for_you"),
                             onRefreshClick = { viewModel.regenerateForYouShelves() },
                             isRefreshing = "for_you_shelf" in regeneratingSections,
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                             collapsed = isSectionCollapsed("for_you"),
                             onCollapseToggle = { toggleSection("for_you") },
                         )
@@ -1003,105 +972,48 @@ fun HomeScreen(
                     .then(
                         // Fade only, same as ArtistScreen: covers the gap between navigation and
                         // first layout without insetting edge-to-edge content.
-                        if (topNavigationBarEnabled) {
-                            Modifier.graphicsLayer { alpha = screenProgress }
-                        } else {
-                            Modifier
-                        },
+                        Modifier.graphicsLayer { alpha = screenProgress },
                     )
                     // Same edge-pull effect as every other top-level scroll (Library/Artist/Album);
                     // Home's outer list was the one missing it.
                     .rubberBandOverscroll(Orientation.Vertical, lazyListState),
             ) {
-                if (topNavigationBarEnabled) {
-                    // Gate only on the static pref, never on topNavBarController's nullity — the
-                    // controller goes transiently null mid back-navigation (see SearchScreen.kt's
-                    // matching comment), and dropping this item out of the list for that one frame
-                    // shifted every shelf below it up by one slot; when the controller came back the
-                    // header re-inserted at index 0 while those shelves' own animateItem() was still
-                    // sliding them back down, so their still-moving content painted over the header
-                    // mid-transition. Always emit the item with null-safe fallbacks instead.
-                    item(key = "top_nav_bar") {
-                        TopNavigationBar(
-                            navigationItems = topNavBarController?.navigationItems ?: emptyList(),
-                            currentRoute = topNavBarController?.currentRoute,
-                            onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
-                            modifier = Modifier.animateItem(),
-                            containerColor = Color.Transparent,
-                            compact = topNavBarController?.compact ?: false,
-                            accountImageUrl = topNavBarController?.accountImageUrl,
-                        )
-                    }
-                }
-                if (topNavigationBarEnabled) {
-                    item(key = "new_iride_ui_disclaimer") {
-                        // Fade-only, no expandVertically()/shrinkVertically(): those grow/shrink
-                        // this item's height frame-by-frame right below the top nav bar, and
-                        // while they're mid-animation every section below (they all carry
-                        // .animateItem()) reflows to chase the changing height — on a slow first
-                        // frame that read as the Mood/section headers momentarily rendering at
-                        // the wrong offset, overlapping the nav bar above, before settling. A
-                        // plain fade never changes layout height, so nothing below ever moves.
-                        AnimatedVisibility(
-                            visible = !newIrideUiDisclaimerDismissed,
-                            enter = fadeIn(animationSpec = tween(220)),
-                            exit = fadeOut(animationSpec = tween(180)),
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(
-                                        Brush.horizontalGradient(
-                                            listOf(
-                                                Color(0xFFE8452C),
-                                                Color(0xFFFF8A3D),
-                                            ),
-                                        ),
-                                    )
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = "This new UI is experimental — not everything is fully working yet. You can disable it in Appearance settings.",
-                                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily),
-                                    color = Color.White,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                IconButton(onClick = { newIrideUiDisclaimerDismissed = true }) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.close),
-                                        contentDescription = "Dismiss",
-                                        tint = Color.White,
-                                    )
-                                }
-                            }
-                        }
-                    }
+                // Gate only on the static pref, never on topNavBarController's nullity — the
+                // controller goes transiently null mid back-navigation (see SearchScreen.kt's
+                // matching comment), and dropping this item out of the list for that one frame
+                // shifted every shelf below it up by one slot; when the controller came back the
+                // header re-inserted at index 0 while those shelves' own animateItem() was still
+                // sliding them back down, so their still-moving content painted over the header
+                // mid-transition. Always emit the item with null-safe fallbacks instead.
+                item(key = "top_nav_bar") {
+                    TopNavigationBar(
+                        navigationItems = topNavBarController?.navigationItems ?: emptyList(),
+                        currentRoute = topNavBarController?.currentRoute,
+                        onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
+                        modifier = Modifier.animateItem(),
+                        containerColor = Color.Transparent,
+                        compact = topNavBarController?.compact ?: false,
+                        accountImageUrl = topNavBarController?.accountImageUrl,
+                    )
                 }
 
                 if (isLoading) {
                     item(key = "loading_indicator") {
-                        if (topNavigationBarEnabled) {
-                            // New Iride UI: thin hairline bar instead of Material's default thick
-                            // (4dp), saturated-color indeterminate bar — matches the flat/monochrome
-                            // language used everywhere else in this UI (see IrideSwitch/IrideSlider
-                            // in IrideSettingsControls.kt and the Iride branch of SyncBanner below).
-                            // Also keeps this item's height negligible, so its brief appearance at
-                            // the very start of a cold load barely shifts anything below it.
-                            LinearProgressIndicator(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 20.dp)
-                                    .height(2.dp)
-                                    .clip(RoundedCornerShape(1.dp)),
-                                color = Color.White.copy(alpha = 0.6f),
-                                trackColor = Color.White.copy(alpha = 0.12f),
-                            )
-                        } else {
-                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        }
+                        // New Iride UI: thin hairline bar instead of Material's default thick
+                        // (4dp), saturated-color indeterminate bar — matches the flat/monochrome
+                        // language used everywhere else in this UI (see IrideSwitch/IrideSlider
+                        // in IrideSettingsControls.kt and the Iride branch of SyncBanner below).
+                        // Also keeps this item's height negligible, so its brief appearance at
+                        // the very start of a cold load barely shifts anything below it.
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp)
+                                .height(2.dp)
+                                .clip(RoundedCornerShape(1.dp)),
+                            color = Color.White.copy(alpha = 0.6f),
+                            trackColor = Color.White.copy(alpha = 0.12f),
+                        )
                     }
                 }
 
@@ -1114,10 +1026,10 @@ fun HomeScreen(
                         // reflows in step and can momentarily paint over the top nav bar during the
                         // cold-start window. Classic UI (no top nav bar item to protect) keeps the
                         // original grow/shrink transition.
-                        enter = if (topNavigationBarEnabled) fadeIn() else fadeIn() + expandVertically(),
-                        exit = if (topNavigationBarEnabled) fadeOut() else fadeOut() + shrinkVertically(),
+                        enter = fadeIn(),
+                        exit = fadeOut(),
                     ) {
-                        SyncBanner(syncState = syncState, useIrideStyle = topNavigationBarEnabled)
+                        SyncBanner(syncState = syncState, useIrideStyle = true)
                     }
                 }
 
@@ -1132,7 +1044,6 @@ fun HomeScreen(
                         if (heroCarouselItems.isNotEmpty()) {
                             HeroCarouselSection(
                                 items = heroCarouselItems,
-                                newIrideUi = topNavigationBarEnabled,
                                 collapsed = isSectionCollapsed("hero_carousel"),
                                 onCollapseToggle = { toggleSection("hero_carousel") },
                                 onAlbumClick = { albumId -> navController.navigate("album/$albumId") },
@@ -1154,7 +1065,6 @@ fun HomeScreen(
                             )
                         } else {
                             HeroCarouselSkeleton(
-                                newIrideUi = topNavigationBarEnabled,
                                 modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
                             )
                         }
@@ -1378,12 +1288,6 @@ fun HomeScreen(
                         }
                 }
 
-                if (speedDialItems.isNotEmpty() && !deferSpeedDialToBottom && !topNavigationBarEnabled) {
-                    item(key = "speed_dial_list") {
-                        speedDialContent()
-                    }
-                }
-
                 // null == not yet loaded (reserve the skeleton slot); non-null-but-empty means phase
                 // 1 finished and there's genuinely nothing to show. Without this distinction the row
                 // pops in above Mood & Playlists the instant phase 1 finishes, pushing it down a row.
@@ -1405,7 +1309,7 @@ fun HomeScreen(
                                 } else null,
                                 onRefreshClick = { viewModel.regenerateQuickPicks() },
                                 isRefreshing = "quick_picks" in regeneratingSections,
-                                useIrideStyle = topNavigationBarEnabled,
+                                useIrideStyle = true,
                                 collapsed = isSectionCollapsed("quick_picks"),
                                 onCollapseToggle = { toggleSection("quick_picks") },
                             )
@@ -1475,7 +1379,7 @@ fun HomeScreen(
                         NavigationTitle(
                             title = "Mood & Playlists for You",
                             modifier = homeTitleMotion("your_mood"),
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                             collapsed = isSectionCollapsed("your_mood"),
                             onCollapseToggle = { toggleSection("your_mood") },
                         )
@@ -1489,27 +1393,15 @@ fun HomeScreen(
                                 .then(homeRowMotion("your_mood_row")),
                         ) {
                             if (moodChips.isNotEmpty()) {
-                                if (topNavigationBarEnabled) {
-                                    // Same glide-indicator technique as the Library/Downloaded
-                                    // switch (IrideSegmentedToggle) instead of ChipsRow's plain
-                                    // per-chip static underline.
-                                    IrideMoodChipsRow(
-                                        chips = moodChips,
-                                        currentValue = selectedMoodCategory,
-                                        onValueUpdate = { selectedMoodCategory = it },
-                                        horizontalPadding = irideStart,
-                                    )
-                                } else {
-                                    ChipsRow(
-                                        chips = moodChips,
-                                        currentValue = selectedMoodCategory,
-                                        onValueUpdate = { if (it != null) selectedMoodCategory = it },
-                                        chipHeight = 40.dp,
-                                        horizontalPadding = irideStart,
-                                        labelStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp),
-                                        useIrideStyle = false,
-                                    )
-                                }
+                                // Same glide-indicator technique as the Library/Downloaded
+                                // switch (IrideSegmentedToggle) instead of ChipsRow's plain
+                                // per-chip static underline.
+                                IrideMoodChipsRow(
+                                    chips = moodChips,
+                                    currentValue = selectedMoodCategory,
+                                    onValueUpdate = { selectedMoodCategory = it },
+                                    horizontalPadding = irideStart,
+                                )
                             }
 
                             // Fixed height so switching chips never resizes the row mid-fade —
@@ -1529,7 +1421,7 @@ fun HomeScreen(
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(24.dp),
                                             strokeWidth = 2.dp,
-                                            color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.6f) else ProgressIndicatorDefaults.circularColor,
+                                            color = Color.White.copy(alpha = 0.6f),
                                         )
                                     }
                                 } else {
@@ -1539,8 +1431,7 @@ fun HomeScreen(
                                         horizontalArrangement =
                                             Arrangement.spacedBy(
                                                 if (smartBootEnabled) 12.dp
-                                                else if (topNavigationBarEnabled) 4.dp
-                                                else 12.dp
+                                                else 4.dp
                                             ),
                                         overscrollEffect = null,
                                         modifier = Modifier
@@ -1588,7 +1479,7 @@ fun HomeScreen(
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(24.dp),
                                             strokeWidth = 2.dp,
-                                            color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.6f) else ProgressIndicatorDefaults.circularColor,
+                                            color = Color.White.copy(alpha = 0.6f),
                                         )
                                     }
                                 }
@@ -1616,7 +1507,7 @@ fun HomeScreen(
                         NavigationTitle(
                             title = stringResource(R.string.keep_listening),
                             modifier = homeTitleMotion("keep_listening"),
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                             collapsed = isSectionCollapsed("keep_listening"),
                             onCollapseToggle = { toggleSection("keep_listening") },
                         )
@@ -1624,7 +1515,7 @@ fun HomeScreen(
                     item(key = "keep_listening_list") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("keep_listening")) {
                             // New Iride UI: always a single compact row, never the classic UI's 2-row grid.
-                            val rows = if (topNavigationBarEnabled) 1 else if (kl.size > 6) 2 else 1
+                            val rows = 1
                             val keepListeningState = rememberLazyGridState()
                             LazyHorizontalGrid(
                                 state = keepListeningState,
@@ -1646,12 +1537,6 @@ fun HomeScreen(
                 if (dischiPerTePosition == "after_keep_listening") dischiPerTeSection()
                 if (forYouShelfPosition == "after_keep_listening") forYouSection()
 
-                if (speedDialItems.isNotEmpty() && deferSpeedDialToBottom && !topNavigationBarEnabled) {
-                    item(key = "speed_dial_list") {
-                        speedDialContent()
-                    }
-                }
-
                 if (smartBootEnabled && forgottenFavorites == null) {
                     item(key = "forgotten_favorites_skeleton") {
                         QuickPicksSkeleton(
@@ -1671,7 +1556,7 @@ fun HomeScreen(
                             } else null,
                             onRefreshClick = { viewModel.regenerateForgottenFavorites() },
                             isRefreshing = "forgotten_favorites" in regeneratingSections,
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                             collapsed = isSectionCollapsed("forgotten_favorites"),
                             onCollapseToggle = { toggleSection("forgotten_favorites") },
                         )
@@ -1761,7 +1646,7 @@ fun HomeScreen(
                             },
                             onClick = { navController.navigate("account") },
                             modifier = homeTitleMotion("account_playlists"),
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                             collapsed = isSectionCollapsed("account_playlists"),
                             onCollapseToggle = { toggleSection("account_playlists") },
                         )
@@ -1805,7 +1690,7 @@ fun HomeScreen(
                             },
                             onRefreshClick = { viewModel.regenerateDailyDiscover() },
                             isRefreshing = "daily_discover" in regeneratingSections,
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                             collapsed = isSectionCollapsed("daily_discover"),
                             onCollapseToggle = { toggleSection("daily_discover") },
                             modifier = homeTitleMotion("daily_discover"),
@@ -1813,50 +1698,21 @@ fun HomeScreen(
                     }
                     item(key = "daily_discover_content") {
                         IrideCollapsibleSection(collapsed = isSectionCollapsed("daily_discover")) {
-                            if (topNavigationBarEnabled) {
-                                val dailyDiscoverState = rememberLazyListState()
-                                LazyRow(
-                                    state = dailyDiscoverState,
-                                    contentPadding = PaddingValues(horizontal = irideGridItemStart),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    overscrollEffect = null,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .then(homeRowMotion("daily_discover_row"))
-                                        .rubberBandOverscroll(Orientation.Horizontal, dailyDiscoverState),
-                                ) {
-                                    items(discoverList, key = { "daily_discover_${it.recommendation.id}" }) { ddItem ->
-                                        IrideDailyDiscoverCard(
-                                            dailyDiscover = ddItem,
-                                            size = currentGridHeight,
-                                            onClick = {
-                                                if (!isListenTogetherGuest) {
-                                                    val song = ddItem.recommendation as? SongItem
-                                                    val meta = song?.toMediaMetadata()
-                                                    if (meta != null) playerConnection?.playQueue(
-                                                        YouTubeQueue(song.endpoint ?: WatchEndpoint(videoId = song.id), meta)
-                                                    )
-                                                }
-                                            },
-                                            navController = navController,
-                                        )
-                                    }
-                                }
-                            } else {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().height(340.dp).padding(horizontal = irideStart),
-                                contentAlignment = Alignment.Center,
+                            val dailyDiscoverState = rememberLazyListState()
+                            LazyRow(
+                                state = dailyDiscoverState,
+                                contentPadding = PaddingValues(horizontal = irideGridItemStart),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                overscrollEffect = null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(homeRowMotion("daily_discover_row"))
+                                    .rubberBandOverscroll(Orientation.Horizontal, dailyDiscoverState),
                             ) {
-                                val carouselState = androidx.compose.material3.carousel.rememberCarouselState { discoverList.size }
-                                androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel(
-                                    state = carouselState,
-                                    preferredItemWidth = 320.dp,
-                                    itemSpacing = 16.dp,
-                                    modifier = Modifier.fillMaxWidth().height(320.dp),
-                                ) { i ->
-                                    val ddItem = discoverList[i]
-                                    DailyDiscoverCard(
+                                items(discoverList, key = { "daily_discover_${it.recommendation.id}" }) { ddItem ->
+                                    IrideDailyDiscoverCard(
                                         dailyDiscover = ddItem,
+                                        size = currentGridHeight,
                                         onClick = {
                                             if (!isListenTogetherGuest) {
                                                 val song = ddItem.recommendation as? SongItem
@@ -1867,10 +1723,8 @@ fun HomeScreen(
                                             }
                                         },
                                         navController = navController,
-                                        modifier = Modifier.maskClip(MaterialTheme.shapes.extraLarge),
                                     )
                                 }
-                            }
                             }
                         }
                     }
@@ -1895,7 +1749,7 @@ fun HomeScreen(
                             modifier = homeTitleMotion("community_playlists"),
                             onRefreshClick = { viewModel.regenerateCommunityPlaylists() },
                             isRefreshing = "community_playlists" in regeneratingSections,
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                             collapsed = isSectionCollapsed("community_playlists"),
                             onCollapseToggle = { toggleSection("community_playlists") },
                         )
@@ -1972,7 +1826,7 @@ fun HomeScreen(
                             onRefreshClick = { viewModel.regenerateSimilarRecommendations() },
                             isRefreshing = "similar_recommendations" in regeneratingSections,
                             modifier = homeTitleMotion("similar_to_$index"),
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                             collapsed = isSectionCollapsed("similar_to_$index"),
                             onCollapseToggle = { toggleSection("similar_to_$index") },
                         )
@@ -2027,7 +1881,7 @@ fun HomeScreen(
                                     }
                                 } else null,
                                 modifier = homeTitleMotion("home_section_$index"),
-                                useIrideStyle = topNavigationBarEnabled,
+                                useIrideStyle = true,
                                 collapsed = isSectionCollapsed("home_section_$index"),
                                 onCollapseToggle = { toggleSection("home_section_$index") },
                             )

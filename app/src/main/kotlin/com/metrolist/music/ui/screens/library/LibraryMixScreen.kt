@@ -96,7 +96,6 @@ import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
 import com.metrolist.music.constants.ShowUploadedPlaylistKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Artist
@@ -161,11 +160,10 @@ fun LibraryMixScreen(
 
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val topNavBarController = com.metrolist.music.LocalTopNavBarController.current
     // New Iride UI: sections start flush with the "Library" label in TopNavigationBar (20dp),
     // instead of the classic UI's 12dp — mirrors HomeScreen's irideStart.
-    val irideStart = if (topNavigationBarEnabled) 20.dp else 12.dp
+    val irideStart = 20.dp
     var viewType by rememberEnumPreference(MixViewTypeKey, LibraryViewType.GRID)
     val isListView = viewType == LibraryViewType.LIST
     // Grid cards need a visible gutter between rows; list rows already get their own breathing
@@ -242,7 +240,7 @@ fun LibraryMixScreen(
     // New Iride UI only: "Liked Songs" reads as "Starred" here. R.string.liked is shared with the
     // legacy UI (and other screens), so it is left untouched and only this pinned entry's display
     // text is swapped.
-    val likedPlaylistName = if (topNavigationBarEnabled) stringResource(R.string.starred) else stringResource(R.string.liked)
+    val likedPlaylistName = stringResource(R.string.starred)
     val likedPlaylist = remember(lastLikedDate, likedPlaylistName, lastLikedThumbnails) {
         Playlist(
             playlist = PlaylistEntity(
@@ -318,17 +316,16 @@ fun LibraryMixScreen(
     val playlist = viewModel.playlists.collectAsState()
     val uploadedSongs by viewModel.uploadedSongs.collectAsState()
     val downloadedAlbums by viewModel.downloadedAlbums.collectAsState()
-    val downloadedLooseSongs by viewModel.downloadedLooseSongs.collectAsState()
     val locale = LocalLocale.current.platformLocale
     val collator = remember(locale) {
         Collator.getInstance(locale).apply {
             strength = Collator.PRIMARY
         }
     }
-    // "Scaricati": fully-downloaded albums show as a single album entry (not their individual
-    // tracks); downloaded singles/loose tracks not part of a complete album still show as songs.
+    // "Scaricati": album entries only (full or partial downloads, i.e. >= 2 tracks) — stray
+    // single-song downloads never appear in the recents grid.
     val base = if (!isLibraryFilter) {
-        downloadedAlbums + downloadedLooseSongs
+        downloadedAlbums
     } else {
         val likedEntry = if (lastLikedDate != null) listOf(likedPlaylist) else emptyList()
         albums.value + artist.value + playlist.value + likedEntry
@@ -472,103 +469,12 @@ fun LibraryMixScreen(
     val onFilterToggle = { isLibraryFilter = !isLibraryFilter }
 
     Scaffold(
-        modifier = if (!topNavigationBarEnabled) {
-            Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
-        } else {
-            Modifier
-        },
+        modifier = Modifier,
         topBar = {
           // New Iride UI: no pinned header here at all — TopNavigationBar and the library/downloaded
           // toggle are rendered as regular scrollable items in the content below instead (see the
           // "library" exclusion in MainActivity's outer topBar condition), so they scroll away
           // together with the rest of the page exactly like HomeScreen's own copy.
-          if (!topNavigationBarEnabled) {
-            CollapsingScreenHeader(
-                title = if (isLibraryFilter)
-                    stringResource(R.string.filter_library)
-                else
-                    "Offline Library",
-                scrollBehavior = scrollBehavior,
-                pureBlack = pureBlack,
-                isSearchActive = isSearchActive,
-                onSearchActiveChange = { isSearchActive = it },
-                searchQuery = searchQuery,
-                onSearchQueryChange = viewModel::updateSearchQuery,
-                keyboardController = keyboardController,
-                trailingContent = {
-                        val btnSize = 40.dp
-                        val iconSize = 20.dp
-                        val indicatorSize = 36.dp
-                        val indicatorOffset by animateDpAsState(
-                            targetValue = if (isLibraryFilter) 2.dp else 42.dp,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMedium,
-                            ),
-                            label = "libraryFilterIndicator",
-                        )
-                        Box(
-                            modifier = Modifier
-                                .width(btnSize * 2)
-                                .height(btnSize)
-                                .clip(RoundedCornerShape(btnSize / 2))
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .offset(x = indicatorOffset, y = 2.dp)
-                                    .size(indicatorSize)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                            )
-                            Row(modifier = Modifier.fillMaxSize()) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(btnSize)
-                                        .clickable(
-                                            enabled = fraction < 0.05f,
-                                            indication = null,
-                                            interactionSource = remember { MutableInteractionSource() },
-                                        ) { if (!isLibraryFilter) onFilterToggle() },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.bookmark_outlined),
-                                        contentDescription = null,
-                                        tint = if (isLibraryFilter)
-                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                        else
-                                            MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(iconSize),
-                                    )
-                                }
-                                Box(
-                                    modifier = Modifier
-                                        .size(btnSize)
-                                        .clickable(
-                                            enabled = fraction < 0.05f,
-                                            indication = null,
-                                            interactionSource = remember { MutableInteractionSource() },
-                                        ) { if (isLibraryFilter) onFilterToggle() },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.download),
-                                        contentDescription = null,
-                                        tint = if (!isLibraryFilter)
-                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                        else
-                                            MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(iconSize),
-                                    )
-                                }
-                            }
-                        }
-                },
-                transparentBackground = mainTopGradient,
-                hideTitle = false,
-            )
-          }
         },
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
@@ -585,13 +491,7 @@ fun LibraryMixScreen(
                         },
                     )
                     .padding(paddingValues)
-                    .then(
-                        if (topNavigationBarEnabled) {
-                            Modifier.graphicsLayer { alpha = screenProgress }
-                        } else {
-                            Modifier
-                        },
-                    ),
+                    .then(Modifier.graphicsLayer { alpha = screenProgress }),
         ) {
             CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
                 // A single LazyVerticalGrid backs both the "list" and "grid" looks (list = a
@@ -620,47 +520,45 @@ fun LibraryMixScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
-                    if (topNavigationBarEnabled) {
-                        // Gate only on the static pref, never on topNavBarController's nullity — see
-                        // the matching comment in HomeScreen.kt/SearchScreen.kt. The controller goes
-                        // transiently null mid back-navigation; dropping this item out of the grid for
-                        // that one frame shifted the filter toggle and every shelf below it up by one
-                        // slot, then back down once the controller returned — painting over the header
-                        // mid-transition. Null-safe fallbacks instead.
-                        item(key = "top_nav_bar", span = { GridItemSpan(maxLineSpan) }) {
-                            TopNavigationBar(
-                                navigationItems = topNavBarController?.navigationItems ?: emptyList(),
-                                currentRoute = topNavBarController?.currentRoute,
-                                onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
-                                compact = topNavBarController?.compact ?: false,
-                                accountImageUrl = topNavBarController?.accountImageUrl,
-                                modifier = Modifier
-                                    .animateItem(placementSpec = IrideMotion.PlacementSpec)
-                                    .irideEnter(rememberSectionEnter("top_nav_bar", revealedSections), 8.dp),
-                                containerColor = Color.Transparent,
-                                // The grid below already reserves irideStart as its own start/end
-                                // contentPadding — this bar's default 20dp would otherwise stack on
-                                // top of it, unlike HomeScreen's copy (whose grid has no horizontal
-                                // contentPadding at all).
-                                horizontalPadding = 0.dp,
+                    // Gate only on the static pref, never on topNavBarController's nullity — see
+                    // the matching comment in HomeScreen.kt/SearchScreen.kt. The controller goes
+                    // transiently null mid back-navigation; dropping this item out of the grid for
+                    // that one frame shifted the filter toggle and every shelf below it up by one
+                    // slot, then back down once the controller returned — painting over the header
+                    // mid-transition. Null-safe fallbacks instead.
+                    item(key = "top_nav_bar", span = { GridItemSpan(maxLineSpan) }) {
+                        TopNavigationBar(
+                            navigationItems = topNavBarController?.navigationItems ?: emptyList(),
+                            currentRoute = topNavBarController?.currentRoute,
+                            onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
+                            compact = topNavBarController?.compact ?: false,
+                            accountImageUrl = topNavBarController?.accountImageUrl,
+                            modifier = Modifier
+                                .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                .irideEnter(rememberSectionEnter("top_nav_bar", revealedSections), 8.dp),
+                            containerColor = Color.Transparent,
+                            // The grid below already reserves irideStart as its own start/end
+                            // contentPadding — this bar's default 20dp would otherwise stack on
+                            // top of it, unlike HomeScreen's copy (whose grid has no horizontal
+                            // contentPadding at all).
+                            horizontalPadding = 0.dp,
+                        )
+                    }
+                    item(key = "library_filter_toggle", span = { GridItemSpan(maxLineSpan) }) {
+                        Row(
+                            modifier = Modifier
+                                .padding(top = 8.dp, bottom = 4.dp)
+                                .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                .irideEnter(rememberSectionEnter("library_filter_toggle", revealedSections), 8.dp),
+                        ) {
+                            IrideSegmentedToggle(
+                                options = listOf(
+                                    true to stringResource(R.string.filter_library),
+                                    false to stringResource(R.string.filter_downloaded),
+                                ),
+                                selected = isLibraryFilter,
+                                onSelect = { value -> if (value != isLibraryFilter) onFilterToggle() },
                             )
-                        }
-                        item(key = "library_filter_toggle", span = { GridItemSpan(maxLineSpan) }) {
-                            Row(
-                                modifier = Modifier
-                                    .padding(top = 8.dp, bottom = 4.dp)
-                                    .animateItem(placementSpec = IrideMotion.PlacementSpec)
-                                    .irideEnter(rememberSectionEnter("library_filter_toggle", revealedSections), 8.dp),
-                            ) {
-                                IrideSegmentedToggle(
-                                    options = listOf(
-                                        true to stringResource(R.string.filter_library),
-                                        false to stringResource(R.string.filter_downloaded),
-                                    ),
-                                    selected = isLibraryFilter,
-                                    onSelect = { value -> if (value != isLibraryFilter) onFilterToggle() },
-                                )
-                            }
                         }
                     }
 
@@ -669,7 +567,7 @@ fun LibraryMixScreen(
                             navController = navController,
                             showUploads = uploadedSongs.isNotEmpty(),
                             isOffline = !isLibraryFilter,
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                             modifier = Modifier
                                 .animateItem(placementSpec = IrideMotion.PlacementSpec)
                                 .revealMask(rememberSectionEnter("categories", revealedSections)),
@@ -684,17 +582,13 @@ fun LibraryMixScreen(
                         ) {
                             Text(
                                 text = if (isLibraryFilter) "Recently Added" else "Recently Downloaded",
-                                style = if (topNavigationBarEnabled) {
-                                    MaterialTheme.typography.labelLarge.copy(
-                                        fontFamily = SpaceMonoFontFamily,
-                                        fontSize = 13.sp,
-                                        letterSpacing = 0.2.sp,
-                                    )
-                                } else {
-                                    MaterialTheme.typography.headlineMedium
-                                },
-                                fontWeight = if (topNavigationBarEnabled) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.55f) else MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontFamily = SpaceMonoFontFamily,
+                                    fontSize = 13.sp,
+                                    letterSpacing = 0.2.sp,
+                                ),
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White.copy(alpha = 0.55f),
                                 modifier = Modifier
                                     .padding(vertical = 12.dp)
                                     .animateItem(placementSpec = IrideMotion.PlacementSpec)
@@ -714,7 +608,7 @@ fun LibraryMixScreen(
                                 onSortDescendingChange = onSortDescendingChange,
                                 viewType = viewType,
                                 onViewTypeChange = { viewType = it },
-                                useIrideStyle = topNavigationBarEnabled,
+                                useIrideStyle = true,
                                 modifier = Modifier
                                     .animateItem(placementSpec = IrideMotion.PlacementSpec)
                                     .irideEnter(rememberSectionEnter("sort_header", revealedSections), 6.dp),
@@ -1044,7 +938,7 @@ fun LibraryMixScreen(
                         item(key = "manual_refresh", span = { GridItemSpan(maxLineSpan) }) {
                             LibraryRefreshButton(
                                 isRefreshing = isRefreshing,
-                                useIrideStyle = topNavigationBarEnabled,
+                                useIrideStyle = true,
                                 onClick = { viewModel.refresh() },
                                 modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
                             )

@@ -70,7 +70,6 @@ import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.DataSyncIdKey
 import com.metrolist.music.constants.InnerTubeCookieKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.constants.UseLoginForBrowse
 import com.metrolist.music.constants.VisitorDataKey
 import com.metrolist.music.constants.YtmSyncKey
@@ -95,7 +94,6 @@ fun MyAccountScreen(
     val scope = rememberCoroutineScope()
     val accountSettingsViewModel: AccountSettingsViewModel = hiltViewModel()
 
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val (advancedMode, _) = rememberPreference(AdvancedModeKey, false)
     val (innerTubeCookie, onInnerTubeCookieChange) = rememberPreference(InnerTubeCookieKey, "")
     val isLoggedIn = remember(innerTubeCookie) { "SAPISID" in parseCookieString(innerTubeCookie) }
@@ -188,7 +186,7 @@ fun MyAccountScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (topNavigationBarEnabled) Color.Transparent else MaterialTheme.colorScheme.background)
+            .background(Color.Transparent)
     ) {
     Column(
         Modifier
@@ -198,7 +196,7 @@ fun MyAccountScreen(
                 )
             )
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = if (topNavigationBarEnabled) 20.dp else 16.dp)
+            .padding(horizontal = 20.dp)
     ) {
         Spacer(
             Modifier.windowInsetsPadding(
@@ -207,33 +205,19 @@ fun MyAccountScreen(
         )
 
         val rowIconTint: @Composable (Boolean) -> Color = { enabled ->
-            if (topNavigationBarEnabled) {
-                if (enabled) Color.White.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.5f)
-            } else if (enabled) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            if (enabled) Color.White.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.5f)
         }
         val rowTextColor: @Composable (Boolean) -> Color = { enabled ->
-            if (topNavigationBarEnabled) {
-                if (enabled) Color.White else Color.White.copy(alpha = 0.5f)
-            } else if (enabled) MaterialTheme.colorScheme.onSurface
-            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            if (enabled) Color.White else Color.White.copy(alpha = 0.5f)
         }
-        val rowTextStyle = if (topNavigationBarEnabled) {
-            MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontSize = 15.sp, letterSpacing = (-0.1).sp, fontWeight = FontWeight.Bold)
-        } else {
-            MaterialTheme.typography.bodyLarge
-        }
-        val rowDividerColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.07f) else MaterialTheme.colorScheme.outlineVariant
+        val rowTextStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontSize = 15.sp, letterSpacing = (-0.1).sp, fontWeight = FontWeight.Bold)
+        val rowDividerColor = Color.White.copy(alpha = 0.07f)
 
         // Category header — clarifies what the token/sync/other-content rows below actually are
         Text(
             text = stringResource(R.string.settings_section_sync_data),
-            style = if (topNavigationBarEnabled) {
-                MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily, letterSpacing = (-0.1).sp, fontWeight = FontWeight.Bold)
-            } else {
-                MaterialTheme.typography.labelLarge
-            },
-            color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.55f) else MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily, letterSpacing = (-0.1).sp, fontWeight = FontWeight.Bold),
+            color = Color.White.copy(alpha = 0.55f),
             modifier = Modifier.padding(bottom = 6.dp, top = 4.dp)
         )
 
@@ -242,7 +226,7 @@ fun MyAccountScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
-                containerColor = if (topNavigationBarEnabled) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerLow
+                containerColor = Color.Transparent
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
@@ -360,7 +344,7 @@ fun MyAccountScreen(
                                     text = if (showToken) stringResource(R.string.token_shown)
                                            else stringResource(R.string.token_hidden),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.4f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = Color.White.copy(alpha = 0.4f)
                                 )
                             }
                         }
@@ -369,9 +353,8 @@ fun MyAccountScreen(
                                 if (showToken) R.drawable.expand_less else R.drawable.expand_more
                             ),
                             contentDescription = null,
-                            tint = if (!isLoggedIn) rowIconTint(false)
-                                   else if (topNavigationBarEnabled) Color.White.copy(alpha = 0.35f)
-                                   else MaterialTheme.colorScheme.onSurfaceVariant,
+                             tint = if (!isLoggedIn) rowIconTint(false)
+                                    else Color.White.copy(alpha = 0.35f),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -406,7 +389,7 @@ fun MyAccountScreen(
                                 Icon(
                                     painter = painterResource(R.drawable.arrow_forward),
                                     contentDescription = null,
-                                    tint = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = Color.White.copy(alpha = 0.35f),
                                     modifier = Modifier.size(18.dp)
                                 )
                             }

@@ -42,7 +42,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.utils.rememberPreference
 
@@ -78,87 +77,41 @@ fun NewActionButton(
         }
     }
 
-    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-
-    if (newIrideUi) {
-        Column(
-            modifier =
-                modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(
-                        BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                        RoundedCornerShape(12.dp),
-                    )
-                    .clickable(enabled = enabled) { performAction = true }
-                    .padding(vertical = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Box(
-                modifier = Modifier.size(24.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                icon()
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontFamily = SpaceMonoFontFamily,
-                    letterSpacing = (-0.1).sp,
-                ),
-                fontWeight = FontWeight.Bold,
-                color = Color.White.copy(alpha = if (enabled) 0.85f else 0.4f),
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.basicMarquee(),
-            )
-        }
-        return
-    }
-
-    Card(
+    Column(
         modifier =
             modifier
-                .clickable(enabled = enabled) { performAction = true },
-        colors =
-            CardDefaults.cardColors(
-                containerColor = animatedBackground,
-            ),
-        shape = RoundedCornerShape(16.dp),
-        elevation =
-            CardDefaults.cardElevation(),
+                .clip(RoundedCornerShape(12.dp))
+                .border(
+                    BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                    RoundedCornerShape(12.dp),
+                )
+                .clickable(enabled = enabled) { performAction = true }
+                .padding(vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+        Box(
+            modifier = Modifier.size(24.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(
-                modifier = Modifier.size(28.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                icon()
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelMedium,
-                color = animatedContent,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.basicMarquee(),
-            )
+            icon()
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontFamily = SpaceMonoFontFamily,
+                letterSpacing = (-0.1).sp,
+            ),
+            fontWeight = FontWeight.Bold,
+            color = Color.White.copy(alpha = if (enabled) 0.85f else 0.4f),
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.basicMarquee(),
+        )
     }
 }
 

@@ -8,23 +8,33 @@ import com.metrolist.music.ui.component.IrideSwitch
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -36,12 +46,14 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.LyricsRomanizeAsMainKey
 import com.metrolist.music.constants.LyricsRomanizeCyrillicByLineKey
 import com.metrolist.music.constants.LyricsRomanizeList
+import com.metrolist.music.lyrics.JapaneseDictManager
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
+import kotlinx.coroutines.launch
 
 val defaultList = mutableListOf(
     "Japanese" to true,
@@ -98,6 +110,14 @@ fun RomanizationSettings(
     )
 
     val checkboxesList: MutableList<Material3SettingsItem> = mutableListOf()
+
+    // The Japanese romanization dictionary ships outside the APK and is downloaded on
+    // demand; this dialog is only shown when the user tries to enable that language.
+    var showDictDialog by rememberSaveable { mutableStateOf(false) }
+    var dictDownloading by rememberSaveable { mutableStateOf(false) }
+    var dictDownloadProgress by remember { mutableIntStateOf(0) }
+    var dictDownloadFailed by rememberSaveable { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Column(
         Modifier
@@ -158,10 +178,20 @@ fun RomanizationSettings(
                     state = parentState,
                     onClick = {
                         val newState = parentState != ToggleableState.On
+                        var needsDictionary = false
                         states.forEachIndexed { index, (language, _) ->
-                            states[index] = Pair(language, newState)
+                            // Japanese stays off until its dictionary is downloaded
+                            val value =
+                                if (language == "Japanese" && newState && !JapaneseDictManager.isDownloaded()) {
+                                    needsDictionary = true
+                                    false
+                                } else {
+                                    newState
+                                }
+                            states[index] = Pair(language, value)
                         }
                         prefValue(states.joinToString(",") { (lang, c) -> "$lang:$c" })
+                        if (needsDictionary) showDictDialog = true
                     }
                 )
             },
@@ -175,8 +205,13 @@ fun RomanizationSettings(
                     Checkbox(
                         checked = checked,
                         onCheckedChange = { isChecked ->
-                            states[index] = Pair(language, isChecked)
-                            prefValue(states.joinToString(",") { (lang, c) -> "$lang:$c" })
+                            if (language == "Japanese" && isChecked && !JapaneseDictManager.isDownloaded()) {
+                                // Offer the one-time dictionary download instead of enabling
+                                showDictDialog = true
+                            } else {
+                                states[index] = Pair(language, isChecked)
+                                prefValue(states.joinToString(",") { (lang, c) -> "$lang:$c" })
+                            }
                         }
                     )
                 },
@@ -187,6 +222,80 @@ fun RomanizationSettings(
         Material3SettingsGroup(
             title = stringResource(R.string.content_language),
             items = checkboxesList
+        )
+    }
+
+    if (showDictDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!dictDownloading) {
+                    showDictDialog = false
+                    dictDownloadFailed = false
+                }
+            },
+            title = { Text(stringResource(R.string.lyrics_romanize_japanese_dict_title)) },
+            text = {
+                Column {
+                    when {
+                        dictDownloadFailed ->
+                            Text(stringResource(R.string.lyrics_romanize_japanese_dict_failed))
+                        dictDownloading -> {
+                            Text(
+                                stringResource(
+                                    R.string.lyrics_romanize_japanese_dict_downloading,
+                                    dictDownloadProgress
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            LinearProgressIndicator(
+                                progress = { dictDownloadProgress / 100f },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        else ->
+                            Text(stringResource(R.string.lyrics_romanize_japanese_dict_message))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !dictDownloading,
+                    onClick = {
+                        dictDownloading = true
+                        dictDownloadFailed = false
+                        dictDownloadProgress = 0
+                        scope.launch {
+                            val result = JapaneseDictManager.download { progress ->
+                                dictDownloadProgress = progress.coerceIn(0, 100)
+                            }
+                            dictDownloading = false
+                            result
+                                .onSuccess {
+                                    showDictDialog = false
+                                    val japaneseIndex =
+                                        states.indexOfFirst { it.first == "Japanese" }
+                                    if (japaneseIndex >= 0) {
+                                        states[japaneseIndex] = Pair("Japanese", true)
+                                        prefValue(states.joinToString(",") { (lang, c) -> "$lang:$c" })
+                                    }
+                                }
+                                .onFailure {
+                                    dictDownloadFailed = true
+                                }
+                        }
+                    }
+                ) {
+                    Text(stringResource(R.string.lyrics_romanize_japanese_dict_download))
+                }
+            },
+            dismissButton = {
+                TextButton(enabled = !dictDownloading, onClick = {
+                    showDictDialog = false
+                    dictDownloadFailed = false
+                }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
         )
     }
 

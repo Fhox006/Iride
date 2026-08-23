@@ -52,7 +52,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.utils.GenreProvider
 import com.metrolist.music.utils.rememberPreference
@@ -206,7 +205,6 @@ fun GenrePillsRow(
     state: GenreFilterState,
     modifier: Modifier = Modifier,
 ) {
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val genres = state.sortedGenres
     val showPlaceholder = genres.size <= 1 && state.isLoading
 
@@ -220,61 +218,18 @@ fun GenrePillsRow(
     ) {
         if (genres.size > 1) {
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(if (topNavigationBarEnabled) 20.dp else 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp),
             ) {
                 items(genres, key = { it }) { genre ->
                     val selected = state.selectedGenre == genre
 
-                    if (topNavigationBarEnabled) {
-                        UnderlinePill(
-                            text = genre,
-                            selected = selected,
-                            onClick = { state.onSelect(genre) },
-                            modifier = Modifier.animateItem(),
-                        )
-                    } else {
-                        val containerColor by animateColorAsState(
-                            targetValue =
-                                if (selected) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                                },
-                            animationSpec = spring(stiffness = 400f),
-                            label = "genrePillColor",
-                        )
-                        val contentColor by animateColorAsState(
-                            targetValue =
-                                if (selected) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                            animationSpec = spring(stiffness = 400f),
-                            label = "genrePillContentColor",
-                        )
-                        val horizontalPadding by animateDpAsState(
-                            targetValue = if (selected) 16.dp else 14.dp,
-                            animationSpec = spring(stiffness = 400f),
-                            label = "genrePillPadding",
-                        )
-
-                        Surface(
-                            onClick = { state.onSelect(genre) },
-                            shape = RoundedCornerShape(percent = 50),
-                            color = containerColor,
-                            contentColor = contentColor,
-                            modifier = Modifier.animateItem(),
-                        ) {
-                            Text(
-                                text = genre,
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 1,
-                                modifier = Modifier.padding(horizontal = horizontalPadding, vertical = 8.dp),
-                            )
-                        }
-                    }
+                    UnderlinePill(
+                        text = genre,
+                        selected = selected,
+                        onClick = { state.onSelect(genre) },
+                        modifier = Modifier.animateItem(),
+                    )
                 }
             }
         } else {

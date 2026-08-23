@@ -54,7 +54,6 @@ import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistSong
 import com.metrolist.music.db.entities.Song
@@ -96,7 +95,6 @@ fun PlaylistMenu(
     val playerConnection = LocalPlayerConnection.current ?: return
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
-    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val dbPlaylist by database.playlist(playlist.id).collectAsState(initial = playlist)
     var songs by remember {
         mutableStateOf(emptyList<Song>())
@@ -324,14 +322,9 @@ fun PlaylistMenu(
         },
     )
 
-    if (newIrideUi) {
-        Spacer(modifier = Modifier.height(6.dp))
-        HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 1.dp)
-        Spacer(modifier = Modifier.height(20.dp))
-    } else {
-        HorizontalDivider()
-        Spacer(modifier = Modifier.height(12.dp))
-    }
+    Spacer(modifier = Modifier.height(6.dp))
+    HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 1.dp)
+    Spacer(modifier = Modifier.height(20.dp))
 
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -356,7 +349,7 @@ fun PlaylistMenu(
                                         painter = painterResource(R.drawable.shuffle),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = Color.White.copy(alpha = 0.85f),
                                     )
                                 },
                                 text = stringResource(R.string.shuffle),
@@ -378,7 +371,7 @@ fun PlaylistMenu(
                                         painter = painterResource(R.drawable.playlist_play),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = Color.White.copy(alpha = 0.85f),
                                     )
                                 },
                                 text = stringResource(R.string.swipe_label_next).lowercase().replaceFirstChar { it.uppercase() },
@@ -395,7 +388,7 @@ fun PlaylistMenu(
                                         painter = painterResource(R.drawable.radio),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = if (newIrideUi) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = Color.White.copy(alpha = 0.85f),
                                     )
                                 },
                                 text = stringResource(R.string.radio),

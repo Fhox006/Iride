@@ -145,7 +145,6 @@ fun LibrarySongsScreen(
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
-    val (topNavigationBarEnabled) = rememberPreference(com.metrolist.music.constants.TopNavigationBarKey, defaultValue = true)
     val betterLibraryBeta by rememberPreference(com.metrolist.music.constants.BetterLibraryBetaKey, defaultValue = false)
     val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
     val playerBackgroundStyle by rememberEnumPreference(
@@ -382,7 +381,7 @@ fun LibrarySongsScreen(
                 onSortChange = onSortTypeChange,
                 sortDescending = sortDescending,
                 onSortDescendingChange = onSortDescendingChange,
-                useIrideStyle = topNavigationBarEnabled,
+                useIrideStyle = true,
             )
         }
 
@@ -493,194 +492,129 @@ fun LibrarySongsScreen(
         )
     }
 
-    if (topNavigationBarEnabled) {
-        // New Iride UI hero pattern — see LibraryAlbumsScreen.kt for the canonical version this
-        // was copied from, including the crash note below.
-        val frostBackdrop = rememberFrostBackdrop()
-        var titleBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
-        var topBarBottomPx by remember { mutableStateOf(0f) }
-        val headerTitleCovered by remember {
-            derivedStateOf {
-                lazyListState.firstVisibleItemIndex > 0 || titleBottomPx <= topBarBottomPx
-            }
+    // New Iride UI hero pattern — see LibraryAlbumsScreen.kt for the canonical version this
+    // was copied from, including the crash note below.
+    val frostBackdrop = rememberFrostBackdrop()
+    var titleBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
+    var topBarBottomPx by remember { mutableStateOf(0f) }
+    val headerTitleCovered by remember {
+        derivedStateOf {
+            lazyListState.firstVisibleItemIndex > 0 || titleBottomPx <= topBarBottomPx
         }
-        val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
-        val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
+    }
+    val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
+    val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
 
-        val heroHeader: @Composable () -> Unit = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .irideEnter(screenProgress, 10.dp),
-            ) {
-                Spacer(modifier = Modifier.height(28.dp))
-                Text(
-                    text = stringResource(R.string.all_tracks),
-                    style = TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 40.sp,
-                        letterSpacing = (-0.6).sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onGloballyPositioned { titleBottomPx = it.boundsInWindow().bottom },
-                )
-            }
-        }
-
-        // The frosted bar below must be a sibling of this Box, never a child: nesting the bar's
-        // frostedTopBarBackground draw inside the still-recording recordFrostBackdrop Box re-enters
-        // the same RenderNode mid-record and crashes.
-        Box(modifier = Modifier.fillMaxSize()) {
-        Box(
+    val heroHeader: @Composable () -> Unit = {
+        Column(
             modifier = Modifier
-                .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
-                .recordFrostBackdrop(frostBackdrop)
-                .graphicsLayer { alpha = screenProgress },
+                .fillMaxWidth()
+                .irideEnter(screenProgress, 10.dp),
         ) {
-            if (albumTopGradientEnabled) {
-                TopScreenGradientBackground(
-                    mediaMetadata = mediaMetadata,
-                    playerBackground = playerBackgroundStyle,
-                )
-            }
-            LazyColumn(
-                state = lazyListState,
-                contentPadding = PaddingValues(
-                    start = 20.dp,
-                    end = 20.dp,
-                    top = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateTopPadding(),
-                    bottom = LocalPlayerAwareWindowInsets.current
-                        .asPaddingValues().calculateBottomPadding(),
+            Spacer(modifier = Modifier.height(28.dp))
+            Text(
+                text = stringResource(R.string.all_tracks),
+                style = TextStyle(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 40.sp,
+                    letterSpacing = (-0.6).sp,
                 ),
-            ) {
-                item(key = "hero_header") { heroHeader() }
-                songListContent()
-            }
-
-            songsFab()
-        } // close inner recording Box
-
-            val backProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
-            LibrarySearchHeader(
-                isSearchActive = isSearchActive,
-                searchQuery = searchQuery,
-                onSearchQueryChange = viewModel::updateSearchQuery,
-                onBack = {
-                    isSearchActive = false
-                    viewModel.updateSearchQuery("")
-                },
-                keyboardController = keyboardController,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
-                    .frostedTopBarBackground(
-                        progress = topBarRevealProgress,
-                        barColor = MaterialTheme.colorScheme.background,
-                        strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                        backdrop = frostBackdrop,
-                    )
-                    .statusBarsPadding()
-                    .height(56.dp)
-                    .padding(horizontal = 4.dp),
-            ) {
-                Box(modifier = Modifier.irideEnter(backProgress, 6.dp)) {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                }
-                Text(
-                    text = stringResource(R.string.all_tracks),
-                    style = TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        letterSpacing = (-0.1).sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 4.dp)
-                        .irideEnter(topBarRevealProgress, 6.dp)
-                        .revealMask(topBarRevealProgress),
-                )
-                IconButton(onClick = { isSearchActive = true }) {
-                    Icon(
-                        painter = painterResource(R.drawable.search),
-                        contentDescription = stringResource(R.string.search),
-                    )
-                }
-            }
-        } // close outer plain Box
-    } else {
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            CollapsingScreenHeader(
-                title = stringResource(R.string.all_tracks),
-                scrollBehavior = scrollBehavior,
-                pureBlack = pureBlack,
-                isSearchActive = isSearchActive,
-                onSearchActiveChange = { active ->
-                    isSearchActive = active
-                    if (!active) viewModel.updateSearchQuery("")
-                },
-                searchQuery = searchQuery,
-                onSearchQueryChange = viewModel::updateSearchQuery,
-                keyboardController = keyboardController,
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = if (betterLibraryBeta)
-                                stringResource(R.string.navigate_back)
-                            else null,
-                        )
-                    }
-                },
+                    .onGloballyPositioned { titleBottomPx = it.boundsInWindow().bottom },
             )
-        },
-        containerColor = if (betterLibraryBeta) {
-            if (pureBlack) Color.Black else MaterialTheme.colorScheme.background
-        } else {
-            Color.Transparent
-        },
-        contentWindowInsets = WindowInsets(0),
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (!betterLibraryBeta) {
-                        Modifier.background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
-                    } else {
-                        Modifier
-                    }
-                )
-                .padding(paddingValues),
-        ) {
-            LazyColumn(
-                state = lazyListState,
-                contentPadding = PaddingValues(
-                    start = 12.dp,
-                    end = 12.dp,
-                    top = 0.dp,
-                    bottom = LocalPlayerAwareWindowInsets.current
-                        .asPaddingValues().calculateBottomPadding(),
-                ),
-            ) {
-                songListContent()
-            }
-
-            songsFab()
         }
     }
-    }
+
+    // The frosted bar below must be a sibling of this Box, never a child: nesting the bar's
+    // frostedTopBarBackground draw inside the still-recording recordFrostBackdrop Box re-enters
+    // the same RenderNode mid-record and crashes.
+    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+            .recordFrostBackdrop(frostBackdrop)
+            .graphicsLayer { alpha = screenProgress },
+    ) {
+        if (albumTopGradientEnabled) {
+            TopScreenGradientBackground(
+                mediaMetadata = mediaMetadata,
+                playerBackground = playerBackgroundStyle,
+            )
+        }
+        LazyColumn(
+            state = lazyListState,
+            contentPadding = PaddingValues(
+                start = 20.dp,
+                end = 20.dp,
+                top = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateTopPadding(),
+                bottom = LocalPlayerAwareWindowInsets.current
+                    .asPaddingValues().calculateBottomPadding(),
+            ),
+        ) {
+            item(key = "hero_header") { heroHeader() }
+            songListContent()
+        }
+
+        songsFab()
+    } // close inner recording Box
+
+        val backProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
+        LibrarySearchHeader(
+            isSearchActive = isSearchActive,
+            searchQuery = searchQuery,
+            onSearchQueryChange = viewModel::updateSearchQuery,
+            onBack = {
+                isSearchActive = false
+                viewModel.updateSearchQuery("")
+            },
+            keyboardController = keyboardController,
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
+                .frostedTopBarBackground(
+                    progress = topBarRevealProgress,
+                    barColor = MaterialTheme.colorScheme.background,
+                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                    backdrop = frostBackdrop,
+                )
+                .statusBarsPadding()
+                .height(56.dp)
+                .padding(horizontal = 4.dp),
+        ) {
+            Box(modifier = Modifier.irideEnter(backProgress, 6.dp)) {
+                IconButton(onClick = { navController.navigateUp() }) {
+                    Icon(
+                        painter = painterResource(R.drawable.arrow_back),
+                        contentDescription = null,
+                    )
+                }
+            }
+            Text(
+                text = stringResource(R.string.all_tracks),
+                style = TextStyle(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    letterSpacing = (-0.1).sp,
+                ),
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 4.dp)
+                    .irideEnter(topBarRevealProgress, 6.dp)
+                    .revealMask(topBarRevealProgress),
+            )
+            IconButton(onClick = { isSearchActive = true }) {
+                Icon(
+                    painter = painterResource(R.drawable.search),
+                    contentDescription = stringResource(R.string.search),
+                )
+            }
+        }
+    } // close outer plain Box
 }

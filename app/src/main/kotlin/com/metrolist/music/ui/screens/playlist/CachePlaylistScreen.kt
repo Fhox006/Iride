@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
@@ -131,7 +131,6 @@ fun CachePlaylistScreen(
     val (sortDescending, onSortDescendingChange) = rememberPreference(SongSortDescendingKey, true)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val betterLibraryBeta by rememberPreference(BetterLibraryBetaKey, defaultValue = false)
-    val (topNavigationBarEnabled) = rememberPreference(com.metrolist.music.constants.TopNavigationBarKey, defaultValue = true)
     val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
     val playerBackgroundStyle by rememberEnumPreference(
         PlayerBackgroundStyleKey,
@@ -276,8 +275,8 @@ fun CachePlaylistScreen(
                 onSortChange = onSortTypeChange,
                 sortDescending = sortDescending,
                 onSortDescendingChange = onSortDescendingChange,
-                useIrideStyle = topNavigationBarEnabled,
-                modifier = if (topNavigationBarEnabled) Modifier else Modifier.padding(horizontal = 12.dp),
+                useIrideStyle = true,
+                modifier = Modifier,
             )
         }
 
@@ -413,8 +412,6 @@ fun CachePlaylistScreen(
         )
     }
 
-    if (topNavigationBarEnabled) {
-        // New Iride UI hero pattern — see LibraryAlbumsScreen.kt for the canonical version this
         // was copied from, including the crash note below.
         val frostBackdrop = rememberFrostBackdrop()
         var titleBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
@@ -562,79 +559,4 @@ fun CachePlaylistScreen(
                 }
             }
         } // close outer plain Box
-    } else {
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            if (inSelectMode) {
-                selectionTopBar()
-            } else {
-                CollapsingScreenHeader(
-                    title = cachedPlaylistStr,
-                    scrollBehavior = scrollBehavior,
-                    pureBlack = pureBlack,
-                    isSearchActive = isSearchActive,
-                    onSearchActiveChange = { active ->
-                        isSearchActive = active
-                        if (!active) searchQuery = ""
-                    },
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { searchQuery = it },
-                    keyboardController = keyboardController,
-                    navigationIcon = {
-                        IconButton(onClick = { navController.navigateUp() }) {
-                            Icon(
-                                painter = painterResource(R.drawable.arrow_back),
-                                contentDescription = if (betterLibraryBeta)
-                                    stringResource(R.string.navigate_back)
-                                else null,
-                            )
-                        }
-                    },
-                )
-            }
-        },
-        containerColor = if (betterLibraryBeta) {
-            if (pureBlack) Color.Black else MaterialTheme.colorScheme.background
-        } else {
-            Color.Transparent
-        },
-        contentWindowInsets = WindowInsets(0),
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (!betterLibraryBeta) {
-                        Modifier.background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
-                    } else {
-                        Modifier
-                    },
-                )
-                .padding(paddingValues),
-        ) {
-            if (sortedSongs.isEmpty()) {
-                EmptyPlaceholder(
-                    icon = R.drawable.music_note,
-                    text = stringResource(R.string.playlist_is_empty),
-                )
-            } else {
-                LazyColumn(
-                    state = lazyListState,
-                    contentPadding = PaddingValues(
-                        start = 12.dp,
-                        end = 12.dp,
-                        top = 0.dp,
-                        bottom = LocalPlayerAwareWindowInsets.current
-                            .asPaddingValues().calculateBottomPadding(),
-                    ),
-                ) {
-                    songListContent()
-                }
-
-                cacheFab()
-            }
-        }
-    }
-    }
 }

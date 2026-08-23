@@ -158,7 +158,6 @@ import com.metrolist.music.constants.SmallGridThumbnailHeight
 import com.metrolist.music.constants.SquareVideoThumbnailKey
 import com.metrolist.music.constants.SwipeToSongKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.Playlist
@@ -598,8 +597,7 @@ fun GridItem(
 ) {
     val applyHPad = LocalItemHorizontalPadding.current
     // New Iride UI: tiles sit closer together laterally than the classic UI's 8dp gap.
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-    val hPad = if (applyHPad) (if (topNavigationBarEnabled) 4.dp else 8.dp) else 0.dp
+    val hPad = if (applyHPad) 4.dp else 0.dp
     Column(
         modifier = if (fillMaxWidth) {
             modifier
@@ -648,14 +646,9 @@ fun GridItem(
 ) = GridItem(
     modifier = modifier,
     title = {
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         Text(
             text = title,
-            style = if (topNavigationBarEnabled) {
-                MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily)
-            } else {
-                MaterialTheme.typography.bodyLarge
-            },
+            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -664,14 +657,9 @@ fun GridItem(
         )
     },
     subtitle = {
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         Text(
             text = subtitle,
-            style = if (topNavigationBarEnabled) {
-                MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily)
-            } else {
-                MaterialTheme.typography.bodyMedium
-            },
+            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -877,14 +865,9 @@ fun SongGridItem(
 ) = GridItem(
     title = {
         AutoLinkFeaturedArtistEffect(song)
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         Text(
             text = song.song.title,
-            style = if (topNavigationBarEnabled) {
-                MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily)
-            } else {
-                MaterialTheme.typography.bodyLarge
-            },
+            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -892,7 +875,6 @@ fun SongGridItem(
         )
     },
     subtitle = {
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
         val subtitleText = if (shouldHideDuration(song.song.duration, hideDurationForStandard)) {
             song.orderedArtists.joinToString { it.name }
@@ -904,11 +886,7 @@ fun SongGridItem(
         }
         Text(
             text = subtitleText,
-            style = if (topNavigationBarEnabled) {
-                MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily)
-            } else {
-                MaterialTheme.typography.bodyMedium
-            },
+            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -918,12 +896,11 @@ fun SongGridItem(
     thumbnailContent = {
         val gridHeight = currentGridThumbnailHeight()
         val squircleRadius = maxWidth * 0.06f
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         ItemThumbnail(
             thumbnailUrl = song.song.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = if (topNavigationBarEnabled) RoundedCornerShape(5.dp) else SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f),
+            shape = RoundedCornerShape(5.dp),
             modifier = Modifier.size(gridHeight)
         )
         if (!isActive) {
@@ -1015,80 +992,6 @@ fun ArtistGridItem(
     size = size,
     modifier = modifier
 )
-
-/**
- * "New from artists you follow" row item. A thin ring around the avatar carries the unread-release
- * signal instead of a floating numeral badge, so the indicator and the circular photo share one
- * shape language (concentric circles) rather than a shape clashing against a shape.
- */
-@Composable
-fun ArtistNewReleaseRingItem(
-    artist: Artist,
-    newSongCount: Int,
-    modifier: Modifier = Modifier,
-) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-    val avatarSize = currentGridThumbnailHeight()
-    Column(
-        modifier = modifier.width(avatarSize),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.size(avatarSize),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(avatarSize)
-                    .border(avatarSize * 0.012f, MaterialTheme.colorScheme.onBackground, CircleShape)
-                    .padding(4.dp)
-                    .clip(CircleShape),
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(artist.artist.thumbnailUrl?.resize(300, 300))
-                        .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
-                        .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
-                        .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(20.dp)
-                    .background(MaterialTheme.colorScheme.background, CircleShape)
-                    .padding(2.dp)
-                    .background(NotificationDotGreen, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = if (newSongCount > 9) "9+" else newSongCount.toString(),
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                        color = Color.White,
-                    ),
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = artist.artist.name,
-            style = if (topNavigationBarEnabled) {
-                MaterialTheme.typography.labelMedium.copy(fontFamily = SpaceMonoFontFamily)
-            } else {
-                MaterialTheme.typography.labelMedium
-            },
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
 
 @Composable
 fun AlbumListItem(
@@ -1200,14 +1103,9 @@ fun AlbumGridItem(
     size: Dp = currentGridThumbnailHeight(),
 ) = GridItem(
     title = {
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         Text(
             text = album.album.title,
-            style = if (topNavigationBarEnabled) {
-                MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily)
-            } else {
-                MaterialTheme.typography.bodyLarge
-            },
+            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1215,14 +1113,9 @@ fun AlbumGridItem(
         )
     },
     subtitle = {
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         Text(
             text = joinByBullet(album.artists.joinToString { it.name }, album.album.year?.toString()),
-            style = if (topNavigationBarEnabled) {
-                MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily)
-            } else {
-                MaterialTheme.typography.bodyMedium
-            },
+            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -1230,14 +1123,11 @@ fun AlbumGridItem(
     },
     badges = badges,
     thumbnailContent = {
-        val squircleRadius = maxWidth * 0.06f
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-
         ItemThumbnail(
             thumbnailUrl = album.album.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = if (topNavigationBarEnabled) RoundedCornerShape(5.dp) else SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f),
+            shape = RoundedCornerShape(5.dp),
             hairlineBorder = true
         )
     },
@@ -1417,9 +1307,7 @@ fun PlaylistGridItem(
     badges = badges,
     thumbnailContent = {
         val width = maxWidth
-        val squircleRadius = maxWidth * 0.06f
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-        val shape = if (topNavigationBarEnabled) RoundedCornerShape(5.dp) else SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f)
+        val shape = RoundedCornerShape(5.dp)
         // See PlaylistListItem's placeholder for why this matches by id, not name.
         val isLikedPlaylist = playlist.playlist.id == PlaylistEntity.LIKED_PLAYLIST_ID
         if (isLikedPlaylist) {
@@ -1684,14 +1572,9 @@ fun YouTubeGridItem(
     GridItem(
     title = {
         if (showTitle) {
-            val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
             Text(
                 text = item.title,
-                style = if (topNavigationBarEnabled) {
-                    MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily)
-                } else {
-                    MaterialTheme.typography.bodyLarge
-                },
+                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1701,7 +1584,6 @@ fun YouTubeGridItem(
         }
     },
     subtitle = {
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         val hideDurationForStandard by rememberPreference(HideDurationForStandardSongsKey, defaultValue = true)
         val subtitle = when (item) {
             is SongItem -> {
@@ -1725,11 +1607,7 @@ fun YouTubeGridItem(
         if (subtitle != null) {
             Text(
                 text = subtitle,
-                style = if (topNavigationBarEnabled) {
-                    MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily)
-                } else {
-                    MaterialTheme.typography.bodyMedium
-                },
+                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
                 color = MaterialTheme.colorScheme.secondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1738,9 +1616,6 @@ fun YouTubeGridItem(
     },
     badges = badges,
     thumbnailContent = {
-        val squircleRadius = maxWidth * 0.06f
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-
         ItemThumbnail(
             thumbnailUrl = item.thumbnail,
             isActive = isActive,
@@ -1749,8 +1624,7 @@ fun YouTubeGridItem(
                 item is ArtistItem -> CircleShape
                 // Non-square thumbnails (e.g. 16:9 videos) don't suit a squircle
                 effectiveThumbnailRatio != 1f -> RoundedCornerShape(thumbnailCornerRadius)
-                topNavigationBarEnabled -> RoundedCornerShape(5.dp)
-                else -> SquircleShape(radius = squircleRadius, cornerSmoothing = 0.5f)
+                else -> RoundedCornerShape(5.dp)
             },
             hairlineBorder = hairlineBorder,
         )
@@ -1908,12 +1782,7 @@ fun ItemThumbnail(
     hairlineBorder: Boolean = false,
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-    val selectionBorderColor = if (topNavigationBarEnabled) {
-        Color.White.copy(alpha = 0.5f)
-    } else {
-        MaterialTheme.colorScheme.primary
-    }
+    val selectionBorderColor = Color.White.copy(alpha = 0.5f)
     // Shrink/border reads as "selected or still loading" — once the track is actually sounding,
     // NowPlayingOverlay below takes over so the two states can't be mistaken for each other.
     val selectionProgress = rememberSelectionProgress(isActive && !isPlaying)
@@ -2047,12 +1916,7 @@ fun LocalThumbnail(
     thumbnailRatio: Float = 1f
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-    val selectionBorderColor = if (topNavigationBarEnabled) {
-        Color.White.copy(alpha = 0.5f)
-    } else {
-        MaterialTheme.colorScheme.primary
-    }
+    val selectionBorderColor = Color.White.copy(alpha = 0.5f)
     val selectionProgress = rememberSelectionProgress(isActive && !isPlaying)
 
     Box(
@@ -2335,7 +2199,6 @@ fun SwipeToSongBox(
     val scope = rememberCoroutineScope()
     val offset = remember { mutableFloatStateOf(0f) }
     val threshold = 300f
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     // One-shot white pulse drawn on confirmed swipe only (threshold reached at release).
     // Never fires on a cancelled drag (offset springs back below threshold), per design ask.
     val confirmFlash = remember { Animatable(0f) }
@@ -2353,13 +2216,13 @@ fun SwipeToSongBox(
     // That recomposition storm is what read as a jittery/stuttering row while dragging; sizes
     // and colors below never change mid-drag, only visibility (alpha) and position do, so they
     // can be computed once and animated purely at draw time.
-    val nextBg = if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.secondary
-    val nextTint = if (topNavigationBarEnabled) Color.Black else MaterialTheme.colorScheme.onSecondary
-    val queueBg = if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.primary
-    val queueTint = if (topNavigationBarEnabled) Color.Black else MaterialTheme.colorScheme.onPrimary
+    val nextBg = Color.White
+    val nextTint = Color.Black
+    val queueBg = Color.White
+    val queueTint = Color.Black
     val labelStyle = MaterialTheme.typography.labelLarge
-    val labelFontFamily = if (topNavigationBarEnabled) SpaceMonoFontFamily else FontFamily.Default
-    val labelLetterSpacing = if (topNavigationBarEnabled) 0.5.sp else 0.sp
+    val labelFontFamily = SpaceMonoFontFamily
+    val labelLetterSpacing = 0.5.sp
     val nextLabel = stringResource(R.string.swipe_label_next)
     val queueLabel = stringResource(R.string.swipe_label_queue)
 
@@ -2451,7 +2314,7 @@ fun SwipeToSongBox(
                 style = labelStyle,
                 fontFamily = labelFontFamily,
                 letterSpacing = labelLetterSpacing,
-                techStyled = topNavigationBarEnabled,
+                techStyled = true,
                 offset = offset,
                 threshold = threshold,
             )
@@ -2466,7 +2329,7 @@ fun SwipeToSongBox(
                 style = labelStyle,
                 fontFamily = labelFontFamily,
                 letterSpacing = labelLetterSpacing,
-                techStyled = topNavigationBarEnabled,
+                techStyled = true,
                 offset = offset,
                 threshold = threshold,
                 reverse = true,
@@ -2697,9 +2560,8 @@ object Icon {
 
     @Composable
     fun Download(state: Int?) {
-        val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
         when (state) {
-            STATE_COMPLETED -> if (topNavigationBarEnabled) {
+            STATE_COMPLETED ->
                 // New Iride UI: flat monochrome badge, no colored pill — matches Starred()/Explicit() above.
                 Icon(
                     painter = painterResource(R.drawable.arrow_downward),
@@ -2709,26 +2571,9 @@ object Icon {
                         .size(16.dp)
                         .padding(end = 2.dp),
                 )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .padding(end = 2.dp)
-                        .size(14.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_downward),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(11.dp),
-                    )
-                }
-            }
             STATE_QUEUED, STATE_DOWNLOADING -> CircularProgressIndicator(
                 strokeWidth = 2.dp,
-                color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.6f) else ProgressIndicatorDefaults.circularColor,
+                color = Color.White.copy(alpha = 0.6f),
                 modifier = Modifier
                     .size(16.dp)
                     .padding(end = 2.dp)
@@ -2779,14 +2624,9 @@ object Icon {
 // matching the tinting already used for HomeScreen's mood-mix loaders.
 @Composable
 fun IrideLoadingIndicator(modifier: Modifier = Modifier) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-    if (topNavigationBarEnabled) {
-        CircularProgressIndicator(
-            modifier = modifier.size(28.dp),
-            strokeWidth = 2.dp,
-            color = Color.White.copy(alpha = 0.6f),
-        )
-    } else {
-        ContainedLoadingIndicator(modifier = modifier)
-    }
+    CircularProgressIndicator(
+        modifier = modifier.size(28.dp),
+        strokeWidth = 2.dp,
+        color = Color.White.copy(alpha = 0.6f),
+    )
 }

@@ -112,7 +112,6 @@ import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.ShowArtistDescriptionKey
 import com.metrolist.music.constants.ShowArtistSubscriberCountKey
 import com.metrolist.music.constants.ShowMonthlyListenersKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.toAlbumEntity
 import com.metrolist.music.extensions.toMediaItem
@@ -288,11 +287,10 @@ fun ArtistScreen(
     val showArtistDescription by rememberPreference(key = ShowArtistDescriptionKey, defaultValue = true)
     val showArtistSubscriberCount by rememberPreference(key = ShowArtistSubscriberCountKey, defaultValue = true)
     val showMonthlyListeners by rememberPreference(key = ShowMonthlyListenersKey, defaultValue = true)
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     // New Iride UI: image given a touch more height than a plain square (ratio < 1 = taller),
     // so the cover gets slightly more room before the title starts.
-    val imageAspectRatio = if (topNavigationBarEnabled) 0.94f else 1f
-    val irideHorizontalPadding = if (topNavigationBarEnabled) 20.dp else 16.dp
+    val imageAspectRatio = 0.94f
+    val irideHorizontalPadding = 20.dp
 
     val albumsTitles = remember(artistPage) {
         artistPage?.sections
@@ -450,27 +448,16 @@ fun ArtistScreen(
 
     // Waiting on the network.
     val artistLoading = artistPage == null && !showLocal
-    // New Iride UI draws no loading mockup at all: the header appears as soon as anything is known
-    // and each shelf wipes itself in as it lands. A placeholder can only ever model a subset of this
-    // screen — the old one had no listeners line and no latest-release panel — so it guaranteed the
-    // jump it existed to prevent.
-    val fullSkeleton = artistLoading && !topNavigationBarEnabled
 
     val featuringTitle = stringResource(R.string.featuring)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .then(
-                // Fade only. A scale-down here would inset edge-to-edge content by ~1% for the
-                // duration, showing a hairline of window background around every edge; the fade
-                // alone already covers the gap between navigation and first layout.
-                if (topNavigationBarEnabled) {
-                    Modifier.graphicsLayer { alpha = screenProgress }
-                } else {
-                    Modifier
-                },
-            ),
+            // Fade only. A scale-down here would inset edge-to-edge content by ~1% for the
+            // duration, showing a hairline of window background around every edge; the fade
+            // alone already covers the gap between navigation and first layout.
+            .graphicsLayer { alpha = screenProgress },
     ) {
         LazyColumn(
             // recordFrostBackdrop must wrap the rubber band, not the other way round: the frosted
@@ -483,15 +470,7 @@ fun ArtistScreen(
             overscrollEffect = null,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
         ) {
-            if (fullSkeleton) {
-                item(key = "shimmer") {
-                    LegacyArtistShimmer(
-                        headerOffset = headerOffset,
-                        topFadePadding = systemBarsTopPadding + AppBarHeight,
-                    )
-                }
-            } else {
-                item(key = "header") {
+            item(key = "header") {
                     val thumbnail = artistPage?.artist?.thumbnail ?: libraryArtist?.artist?.thumbnailUrl
                     val reducedMotion = rememberReducedMotion()
                     // Panel only exists for the online branch, and only once a recent release is
@@ -555,7 +534,6 @@ fun ArtistScreen(
                                             // scroll values are read inside this lambda, so this is
                                             // a placement change, not a recomposition.
                                             val parallax = if (
-                                                topNavigationBarEnabled &&
                                                 lazyListState.firstVisibleItemIndex == 0
                                             ) {
                                                 (lazyListState.firstVisibleItemScrollOffset * 0.35f).roundToInt()
@@ -565,8 +543,7 @@ fun ArtistScreen(
                                             IntOffset(x = 0, y = headerOffset + parallax)
                                         }
                                         .then(
-                                            if (topNavigationBarEnabled) {
-                                                Modifier.graphicsLayer {
+                                            Modifier.graphicsLayer {
                                                     // Settles from slightly oversized on load, and
                                                     // grows from its own bottom edge while the list
                                                     // is dragged past the top — the thing that makes
@@ -589,25 +566,8 @@ fun ArtistScreen(
                                                     scaleY = s
                                                     transformOrigin = TransformOrigin(0.5f, 1f)
                                                 }
-                                            } else {
-                                                Modifier
-                                            },
                                         )
-                                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                                        // The classic UI fades the photo out under its solid app
-                                        // bar. The Iride bar is frosted glass and wants real pixels
-                                        // behind it — and the fade was drawing the top of the image
-                                        // straight to transparent, so dragging the list down slid
-                                        // that transparency into view as a black band.
-                                        .then(
-                                            if (topNavigationBarEnabled) {
-                                                Modifier
-                                            } else {
-                                                Modifier.fadingEdge(
-                                                    top = systemBarsTopPadding + AppBarHeight,
-                                                )
-                                            },
-                                        ),
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
                             ) {
                                 AsyncImage(
                                     model = thumbnail.resize(1200, 1200),
@@ -625,14 +585,8 @@ fun ArtistScreen(
                                         .fillMaxSize()
                                         // Fading the photo rather than the whole block lets the
                                         // surfaceVariant backdrop hold the space while it decodes.
-                                        .then(
-                                            if (topNavigationBarEnabled) {
-                                                Modifier.graphicsLayer { alpha = imageProgress }
-                                            } else {
-                                                Modifier
-                                            },
-                                        )
-                                        .grainOverlay(if (topNavigationBarEnabled) grainBrush else null),
+                                        .graphicsLayer { alpha = imageProgress }
+                                        .grainOverlay(grainBrush),
                                 )
                                 // Full gradient overlay: 0% background at top → 100% at bottom
                                 val bgColor = MaterialTheme.colorScheme.background
@@ -701,7 +655,7 @@ fun ArtistScreen(
                                     fontSize = 28.sp,
                                     letterSpacing = (-0.3).sp,
                                 )
-                                if (topNavigationBarEnabled && artistName != null) {
+                                if (artistName != null) {
                                     // Shuffle-plays the artist's songs: the online shuffle endpoint
                                     // when browsing YTM, otherwise whatever is saved locally — so the
                                     // button does something on both branches of the toggle, not just
@@ -773,7 +727,7 @@ fun ArtistScreen(
                                             }
                                         }
                                     }
-                                } else if (topNavigationBarEnabled) {
+                                } else {
                                     // Nothing to say yet — better an empty line than "Unknown"
                                     // flashing before the real name arrives. Sized from the type
                                     // scale so the gap matches the line it is holding open at any
@@ -782,18 +736,6 @@ fun ArtistScreen(
                                         modifier = Modifier.height(
                                             with(density) { (28f * 1.2f).sp.toDp() } + 6.dp,
                                         ),
-                                    )
-                                } else {
-                                    Text(
-                                        text = artistName ?: "Unknown",
-                                        style = TextStyle(
-                                            fontSize = 32.sp,
-                                            fontWeight = FontWeight.Bold,
-                                        ),
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                        overflow = TextOverflow.Ellipsis,
-                                        maxLines = 2,
-                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
 
@@ -804,97 +746,27 @@ fun ArtistScreen(
                                 // alone hid the toggle (and the library songs behind it) for artists
                                 // saved with songs but no albums.
                                 if (libraryAlbums.isNotEmpty() || librarySongs.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 10.dp else 12.dp))
-                                    if (topNavigationBarEnabled) {
-                                        val toggleProgress = headerEnter(
-                                            revealed = headerRevealed,
-                                            play = artistName != null,
-                                            delayMillis = nameTypingMs + 40,
-                                            durationMillis = IrideMotion.Short,
-                                        )
-                                        IrideSegmentedToggle(
-                                            modifier = Modifier.irideEnter(toggleProgress, 6.dp),
-                                            options = listOf(
-                                                false to stringResource(R.string.online),
-                                                true to stringResource(R.string.filter_library),
-                                            ),
-                                            selected = showLocal,
-                                            onSelect = { value ->
-                                                if (value != showLocal) {
-                                                    showLocal = value
-                                                    if (!value && artistPage == null) viewModel.fetchArtistsFromYTM()
-                                                }
-                                            },
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .width(80.dp)
-                                                .height(40.dp)
-                                                .clip(RoundedCornerShape(20.dp))
-                                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .offset {
-                                                        IntOffset(
-                                                            x = librarySourceIndicatorOffset.roundToPx(),
-                                                            y = 2.dp.roundToPx(),
-                                                        )
-                                                    }
-                                                    .size(36.dp)
-                                                    .clip(CircleShape)
-                                                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                                            )
-                                            Row(modifier = Modifier.fillMaxSize()) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(40.dp)
-                                                        .clickable(
-                                                            indication = null,
-                                                            interactionSource = remember { MutableInteractionSource() },
-                                                        ) {
-                                                            if (showLocal) {
-                                                                showLocal = false
-                                                                if (artistPage == null) viewModel.fetchArtistsFromYTM()
-                                                            }
-                                                        },
-                                                    contentAlignment = Alignment.Center,
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.language),
-                                                        contentDescription = null,
-                                                        tint = if (!showLocal)
-                                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                                        else
-                                                            MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        modifier = Modifier.size(20.dp),
-                                                    )
-                                                }
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(40.dp)
-                                                        .clickable(
-                                                            indication = null,
-                                                            interactionSource = remember { MutableInteractionSource() },
-                                                        ) {
-                                                            if (!showLocal) showLocal = true
-                                                        },
-                                                    contentAlignment = Alignment.Center,
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.bookmark_outlined),
-                                                        contentDescription = null,
-                                                        tint = if (showLocal)
-                                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                                        else
-                                                            MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        modifier = Modifier.size(20.dp),
-                                                    )
-                                                }
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    val toggleProgress = headerEnter(
+                                        revealed = headerRevealed,
+                                        play = artistName != null,
+                                        delayMillis = nameTypingMs + 40,
+                                        durationMillis = IrideMotion.Short,
+                                    )
+                                    IrideSegmentedToggle(
+                                        modifier = Modifier.irideEnter(toggleProgress, 6.dp),
+                                        options = listOf(
+                                            false to stringResource(R.string.online),
+                                            true to stringResource(R.string.filter_library),
+                                        ),
+                                        selected = showLocal,
+                                        onSelect = { value ->
+                                            if (value != showLocal) {
+                                                showLocal = value
+                                                if (!value && artistPage == null) viewModel.fetchArtistsFromYTM()
                                             }
-                                        }
-                                    }
+                                        },
+                                    )
                                 }
 
                                 val monthlyListeners = artistPage?.monthlyListenerCount
@@ -911,20 +783,12 @@ fun ArtistScreen(
                                         delayMillis = nameTypingMs + 80,
                                         durationMillis = IrideMotion.Short,
                                     )
-                                    Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 10.dp else 8.dp))
+                                    Spacer(modifier = Modifier.height(10.dp))
                                     Text(
                                         text = "$cleanListeners listeners this month",
-                                        style = if (topNavigationBarEnabled) {
-                                            TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp)
-                                        } else {
-                                            MaterialTheme.typography.bodySmall
-                                        },
+                                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp),
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = if (topNavigationBarEnabled) {
-                                            Modifier.revealMask(listenersProgress)
-                                        } else {
-                                            Modifier
-                                        },
+                                        modifier = Modifier.revealMask(listenersProgress),
                                     )
                                 }
 
@@ -938,13 +802,13 @@ fun ArtistScreen(
                                         delayMillis = nameTypingMs + 140,
                                         durationMillis = IrideMotion.Medium,
                                     )
-                                    Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 14.dp else 8.dp))
+                                    Spacer(modifier = Modifier.height(14.dp))
                                     RecentAlbumPanel(
                                         album = recentAlbum!!.album,
                                         releaseType = recentAlbum!!.type,
                                         preciseDate = recentAlbumPreciseDate,
-                                        useMonospace = topNavigationBarEnabled,
-                                        enterProgress = if (topNavigationBarEnabled) panelProgress else 1f,
+                                        useMonospace = true,
+                                        enterProgress = panelProgress,
                                         isActive = mediaMetadata?.album?.id == recentAlbum!!.album.id,
                                         isPlaying = isPlaying,
                                         onClick = { navController.navigate("album/${recentAlbum!!.album.id}") },
@@ -965,7 +829,7 @@ fun ArtistScreen(
                                 // Was a flat 16dp for both UI modes — in New Iride UI this stacked on
                                 // top of NavigationTitle's own 26dp top padding for the next section
                                 // ("Album"), leaving ~42dp of dead space between the two panels.
-                                Spacer(modifier = Modifier.height(if (topNavigationBarEnabled) 4.dp else 16.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
                             }
                         }
                     }
@@ -979,7 +843,7 @@ fun ArtistScreen(
                                 modifier = Modifier
                                     .animateItem(placementSpec = IrideMotion.PlacementSpec)
                                     .revealMask(rememberSectionEnter("local_songs", revealedSections)),
-                                useIrideStyle = topNavigationBarEnabled,
+                                useIrideStyle = true,
                                 onClick = {
                                     navController.navigate("artist/${viewModel.artistId}/songs")
                                 },
@@ -1029,7 +893,7 @@ fun ArtistScreen(
                                     modifier =
                                         Modifier
                                             .width(itemWidth)
-                                            .padding(horizontal = if (topNavigationBarEnabled) 8.dp else 0.dp)
+                                            .padding(horizontal = 8.dp)
                                             .combinedClickable(
                                                 onClick = {
                                                     if (!isGuest) {
@@ -1074,7 +938,7 @@ fun ArtistScreen(
                                     modifier = Modifier
                                         .animateItem(placementSpec = IrideMotion.PlacementSpec)
                                         .revealMask(rememberSectionEnter("local_albums", revealedSections)),
-                                    useIrideStyle = topNavigationBarEnabled,
+                                    useIrideStyle = true,
                                     onClick = {
                                         navController.navigate("artist/${viewModel.artistId}/albums")
                                     },
@@ -1093,11 +957,7 @@ fun ArtistScreen(
                                         )
                                         .rubberBandOverscroll(Orientation.Horizontal, rowState),
                                     horizontalArrangement = Arrangement.spacedBy(0.dp),
-                                    contentPadding = if (topNavigationBarEnabled) {
-                                        PaddingValues(horizontal = irideHorizontalPadding)
-                                    } else {
-                                        WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues()
-                                    },
+                                    contentPadding = PaddingValues(horizontal = irideHorizontalPadding),
                                 ) {
                                     items(
                                         items = filteredLibraryAlbums,
@@ -1155,7 +1015,7 @@ fun ArtistScreen(
                                     modifier = Modifier
                                         .animateItem(placementSpec = IrideMotion.PlacementSpec)
                                         .revealMask(rememberSectionEnter("featuring_section", revealedSections)),
-                                    useIrideStyle = topNavigationBarEnabled,
+                                    useIrideStyle = true,
                                 )
                             }
                             item(key = "featuring_carousel") {
@@ -1201,7 +1061,7 @@ fun ArtistScreen(
                                         },
                                         modifier = Modifier
                                             .width(itemWidth)
-                                            .padding(horizontal = if (topNavigationBarEnabled) 8.dp else 0.dp)
+                                            .padding(horizontal = 8.dp)
                                             .combinedClickable(
                                                 onClick = {
                                                     if (song.id in unseenSongIds) viewModel.markSongSeen(song.id)
@@ -1287,7 +1147,7 @@ fun ArtistScreen(
                                                 },
                                             )
                                             .revealMask(rememberSectionEnter(section.title, revealedSections)),
-                                        useIrideStyle = topNavigationBarEnabled,
+                                        useIrideStyle = true,
                                         onClick =
                                             section.moreEndpoint?.let {
                                                 {
@@ -1346,7 +1206,7 @@ fun ArtistScreen(
                                                 modifier =
                                                     Modifier
                                                         .width(itemWidth)
-                                                        .padding(horizontal = if (topNavigationBarEnabled) 8.dp else 0.dp)
+                                                        .padding(horizontal = 8.dp)
                                                         .combinedClickable(
                                                             onClick = {
                                                                 if (!isGuest) {
@@ -1386,7 +1246,7 @@ fun ArtistScreen(
                                                 modifier = Modifier
                                                     .animateItem(placementSpec = IrideMotion.PlacementSpec)
                                                     .revealMask(rememberSectionEnter("essential_albums", revealedSections)),
-                                                useIrideStyle = topNavigationBarEnabled,
+                                                useIrideStyle = true,
                                             )
                                         }
                                         item(key = "essential_albums_row") {
@@ -1401,11 +1261,7 @@ fun ArtistScreen(
                                                     )
                                                     .rubberBandOverscroll(Orientation.Horizontal, rowState),
                                                 horizontalArrangement = Arrangement.spacedBy(0.dp),
-                                                contentPadding = if (topNavigationBarEnabled) {
-                                                    PaddingValues(horizontal = irideHorizontalPadding)
-                                                } else {
-                                                    WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues()
-                                                },
+                                                contentPadding = PaddingValues(horizontal = irideHorizontalPadding),
                                             ) {
                                                 items(
                                                     items = essentialAlbums,
@@ -1462,11 +1318,7 @@ fun ArtistScreen(
                                                 )
                                                 .rubberBandOverscroll(Orientation.Horizontal, rowState),
                                             horizontalArrangement = Arrangement.spacedBy(0.dp),
-                                            contentPadding = if (topNavigationBarEnabled) {
-                                                PaddingValues(horizontal = irideHorizontalPadding)
-                                            } else {
-                                                WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues()
-                                            },
+                                            contentPadding = PaddingValues(horizontal = irideHorizontalPadding),
                                         ) {
                                             items(
                                                 items = filteredItems.distinctBy { it.id },
@@ -1610,7 +1462,7 @@ fun ArtistScreen(
                                 }
                                 }
 
-                                if (isSinglesSection && topNavigationBarEnabled && !discographyButtonRendered) {
+                                if (isSinglesSection && !discographyButtonRendered) {
                                     discographyButtonRendered = true
                                     item(key = "discography_button") {
                                         Row(
@@ -1676,19 +1528,11 @@ fun ArtistScreen(
                                 ) {
                                     Text(
                                         text = stringResource(R.string.information),
-                                        style = if (topNavigationBarEnabled) {
-                                            TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp, letterSpacing = (-0.1).sp)
-                                        } else {
-                                            MaterialTheme.typography.titleLarge
-                                        },
+                                        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp, letterSpacing = (-0.1).sp),
                                         fontWeight = FontWeight.Bold,
                                         // onSurfaceVariant resolves per scheme; the old hardcoded
                                         // white at 55% was invisible in the light theme.
-                                        color = if (topNavigationBarEnabled) {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        } else {
-                                            MaterialTheme.colorScheme.onBackground
-                                        },
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier
                                             .padding(bottom = 16.dp)
                                             .revealMask(rememberSectionEnter("about", revealedSections)),
@@ -1708,19 +1552,11 @@ fun ArtistScreen(
                                     if (showArtistDescription && (!description.isNullOrEmpty() || !descriptionRuns.isNullOrEmpty())) {
                                         Text(
                                             text = "Wikipedia",
-                                            style = if (topNavigationBarEnabled) {
-                                                TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp, letterSpacing = (-0.1).sp)
-                                            } else {
-                                                MaterialTheme.typography.titleMedium
-                                            },
+                                            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 12.sp, letterSpacing = (-0.1).sp),
                                             fontWeight = FontWeight.Bold,
                                             // onSurfaceVariant resolves per scheme; the old hardcoded
                                         // white at 55% was invisible in the light theme.
-                                        color = if (topNavigationBarEnabled) {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        } else {
-                                            MaterialTheme.colorScheme.onBackground
-                                        },
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.padding(bottom = 8.dp),
                                         )
 
@@ -1761,10 +1597,9 @@ fun ArtistScreen(
                         }
                     }
                 }
-            }
         }
 
-        SnackbarHost(
+    SnackbarHost(
             hostState = snackbarHostState,
             modifier =
                 Modifier
@@ -1773,9 +1608,8 @@ fun ArtistScreen(
         )
     }
 
-    if (topNavigationBarEnabled) {
-        // New Iride UI: minimal shell — back + title + subscribe/radio/shuffle/share, all in one row.
-        Row(
+    // New Iride UI: minimal shell — back + title + subscribe/radio/shuffle/share, all in one row.
+    Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
@@ -1883,88 +1717,6 @@ fun ArtistScreen(
                 )
             }
         }
-    } else {
-        TopAppBar(
-            title = { if (!transparentAppBar) Text(artistPage?.artist?.title.orEmpty()) },
-            navigationIcon = {
-                IconButton(
-                    onClick = navController::navigateUp,
-                    onLongClick = navController::backToMain,
-                ) {
-                    Icon(
-                        painterResource(R.drawable.arrow_back),
-                        contentDescription = stringResource(R.string.back),
-                    )
-                }
-            },
-            actions = {
-                val shareLink = artistPage?.artist?.shareLink
-                Row(
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                            shape = RoundedCornerShape(20.dp)
-                        )
-                        .padding(horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { viewModel.toggleChannelSubscription() }
-                    ) {
-                        Icon(
-                            painter = painterResource(if (isChannelSubscribed) R.drawable.favorite else R.drawable.favorite_border),
-                            contentDescription = null,
-                            tint = if (isChannelSubscribed) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-
-                    if (!showLocal && !isGuest) {
-                        artistPage?.artist?.radioEndpoint?.let { radioEndpoint ->
-                            IconButton(
-                                onClick = { playerConnection.playQueue(YouTubeQueue(radioEndpoint)) }
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.radio),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        }
-
-                        artistPage?.artist?.shuffleEndpoint?.let { shuffleEndpoint ->
-                            IconButton(
-                                onClick = { playerConnection.playQueue(YouTubeQueue(shuffleEndpoint)) }
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.shuffle),
-                                    contentDescription = "Shuffle",
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        }
-                    }
-
-                    IconButton(
-                        onClick = { shareLink?.let { shareArtist(context, it) } }
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.share),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
-            },
-            colors =
-                if (transparentAppBar) {
-                    TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-                } else {
-                    TopAppBarDefaults.topAppBarColors()
-                },
-        )
-    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -2156,132 +1908,5 @@ fun formatSubscriberCount(subscriberCount: String?): String? {
         "M" -> "$formattedNum million subscribers on YouTube"
         "B" -> "$formattedNum billion subscribers on YouTube"
         else -> "$formattedNum subscribers on YouTube"
-    }
-}
-
-/**
- * Loading state for the classic (pre-New-Iride) artist screen.
- *
- * Lifted out of ArtistScreen unchanged: it was a hundred lines of placeholder nested five levels
- * deep inside the LazyColumn. The New Iride UI has no counterpart — it draws the real header as soon
- * as anything is known and wipes each shelf in as it lands.
- */
-@Composable
-private fun LegacyArtistShimmer(
-    headerOffset: Int,
-    topFadePadding: Dp,
-) {
-    ShimmerHost(
-        modifier =
-            Modifier
-                .offset {
-                    IntOffset(x = 0, y = headerOffset)
-                },
-    ) {
-        // Artist Image Placeholder
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1.1f),
-        ) {
-            Spacer(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .shimmer()
-                        .background(MaterialTheme.colorScheme.onSurface)
-                        .fadingEdge(
-                            top = topFadePadding,
-                        ),
-            )
-            val bgColor = MaterialTheme.colorScheme.background
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, bgColor),
-                        )
-                    ),
-            )
-        }
-        // Artist Name and Controls Section
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-        ) {
-            // Artist Name Placeholder
-            TextPlaceholder(
-                height = 36.dp,
-                modifier =
-                    Modifier
-                        .fillMaxWidth(0.7f)
-                        .padding(bottom = 16.dp),
-            )
-
-            // Buttons Row Placeholder
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                // Subscribe (Like) Button Placeholder
-                Box(
-                    modifier =
-                        Modifier
-                            .size(40.dp)
-                            .shimmer()
-                            .background(
-                                MaterialTheme.colorScheme.onSurface,
-                                RoundedCornerShape(20.dp),
-                            ),
-                )
-
-                // Radio Button Placeholder
-                Box(
-                    modifier =
-                        Modifier
-                            .size(40.dp)
-                            .shimmer()
-                            .background(
-                                MaterialTheme.colorScheme.onSurface,
-                                RoundedCornerShape(20.dp),
-                            ),
-                )
-
-                // Shuffle Button Placeholder
-                Box(
-                    modifier =
-                        Modifier
-                            .size(40.dp)
-                            .shimmer()
-                            .background(
-                                MaterialTheme.colorScheme.onSurface,
-                                RoundedCornerShape(20.dp),
-                            ),
-                )
-
-                // Link Button Placeholder
-                Box(
-                    modifier =
-                        Modifier
-                            .size(40.dp)
-                            .shimmer()
-                            .background(
-                                MaterialTheme.colorScheme.onSurface,
-                                RoundedCornerShape(20.dp),
-                            ),
-                )
-            }
-        }
-        // Songs List Placeholder
-        repeat(6) {
-            ListItemPlaceHolder()
-        }
     }
 }

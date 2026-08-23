@@ -9,7 +9,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,7 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -258,81 +260,105 @@ fun LibraryContinueListeningAlbumItem(
         )
         IconButton(
             onClick = onDismiss,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(4.dp)
-                .size(26.dp)
-                .background(Color.Black.copy(alpha = 0.55f), CircleShape),
+            modifier = Modifier.align(Alignment.TopEnd),
         ) {
             Icon(
                 painter = painterResource(R.drawable.close),
                 contentDescription = stringResource(R.string.remove_from_continue_listening),
-                tint = Color.White,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier
+                    .size(16.dp)
+                    .shadow(2.dp, CircleShape),
+            )
+        }
+    }
+}
+
+// "Suggested follow artists" (Library Artists screen): artists you play a lot but haven't
+// followed, rendered as ordinary library tiles appended to the roster. The tiny "+" follows on
+// tap; the tiny "x" dismisses the suggestion; both live in the same badge slot as the "+N"
+// new-release badge so a suggestion is visually indistinguishable from a followed artist.
+@Composable
+private fun SuggestedFollowActions(
+    onFollow: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier,
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .clickable(onClick = onFollow)
+                .size(18.dp)
+                .background(MaterialTheme.colorScheme.onSurface, CircleShape),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.add),
+                contentDescription = stringResource(R.string.subscribe),
+                tint = MaterialTheme.colorScheme.background,
+                modifier = Modifier.size(12.dp),
+            )
+        }
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .clickable(onClick = onDismiss)
+                .size(18.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.close),
+                contentDescription = stringResource(R.string.remove_suggested_follow_artist),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(14.dp),
             )
         }
     }
 }
 
-// "Suggested follow artists" row (Library Artists screen): artists you play a lot but haven't
-// followed. Sized and chromed to match LibraryContinueListeningAlbumItem above — same family, same
-// footprint — rather than the full-size default ArtistGridItem, since this is a lightweight
-// suggestion strip, not another shelf of full tiles. The follow "+" is a flat monochrome fill (no
-// accent color, matching NewReleaseBadge/Icon.Starred() elsewhere); a visible trash icon replaces
-// the old long-press-only dismiss so removing a suggestion doesn't need a hidden gesture.
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LibrarySuggestedFollowArtistItem(
     navController: NavController,
     artist: Artist,
-    size: Dp,
     onFollow: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
-) {
-    Box(modifier = modifier.width(size)) {
-        ArtistGridItem(
-            artist = artist,
-            showLikedIcon = false,
-            size = size,
-            modifier = Modifier.clickable { navController.navigate("artist/${artist.id}") },
+) = ArtistGridItem(
+    artist = artist,
+    showLikedIcon = false,
+    fillMaxWidth = true,
+    badges = {
+        SuggestedFollowActions(onFollow = onFollow, onDismiss = onDismiss)
+    },
+    modifier = modifier
+        .fillMaxWidth()
+        .combinedClickable(
+            onClick = { navController.navigate("artist/${artist.id}") },
+            onLongClick = onDismiss,
         )
-        IconButton(
-            onClick = onFollow,
-            modifier = Modifier.align(Alignment.BottomEnd),
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(24.dp)
-                    .background(MaterialTheme.colorScheme.background, CircleShape)
-                    .padding(3.dp)
-                    .background(MaterialTheme.colorScheme.onSurface, CircleShape),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.add),
-                    contentDescription = stringResource(R.string.subscribe),
-                    tint = MaterialTheme.colorScheme.background,
-                    modifier = Modifier.size(14.dp),
-                )
-            }
-        }
-        IconButton(
-            onClick = onDismiss,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(4.dp)
-                .size(26.dp)
-                .background(Color.Black.copy(alpha = 0.55f), CircleShape),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.delete),
-                contentDescription = stringResource(R.string.remove_suggested_follow_artist),
-                tint = Color.White,
-                modifier = Modifier.size(14.dp),
-            )
-        }
-    }
-}
+)
+
+@Composable
+fun LibrarySuggestedFollowArtistListItem(
+    navController: NavController,
+    artist: Artist,
+    onFollow: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) = ArtistListItem(
+    artist = artist,
+    showLikedIcon = false,
+    badges = {
+        SuggestedFollowActions(onFollow = onFollow, onDismiss = onDismiss)
+    },
+    modifier = modifier
+        .fillMaxWidth()
+        .clickable { navController.navigate("artist/${artist.id}") },
+)
 
 @Composable
 fun LibraryPlaylistListItem(

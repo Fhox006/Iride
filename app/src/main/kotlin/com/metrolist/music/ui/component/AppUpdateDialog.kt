@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.metrolist.music.R
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.utils.ReleaseInfo
 import com.metrolist.music.utils.UpdateDownloadState
@@ -62,7 +61,6 @@ fun AppUpdateDialog(
     onStartDownload: () -> Unit,
 ) {
     val context = LocalContext.current
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     var downloadState by remember { mutableStateOf<UpdateDownloadState>(UpdateDownloadState.Idle) }
     var canInstallPackages by remember { mutableStateOf(UpdateDownloader.canInstallPackages(context)) }
@@ -82,29 +80,20 @@ fun AppUpdateDialog(
             modifier = Modifier
                 .padding(horizontal = 24.dp)
                 .fillMaxWidth(),
-            shape = if (topNavigationBarEnabled) RoundedCornerShape(16.dp) else SquircleShape(radius = 28.dp, cornerSmoothing = 0.5f),
-            color = if (topNavigationBarEnabled) Color(0xFF0A0A0A) else MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = if (topNavigationBarEnabled) 0.dp else AlertDialogDefaults.TonalElevation,
-            border = if (topNavigationBarEnabled) BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)) else null,
+            shape = RoundedCornerShape(16.dp),
+            color = Color(0xFF0A0A0A),
+            tonalElevation = 0.dp,
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
         ) {
-            val titleColor = if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.onSurface
-            val bodyColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant
-            val mutedColor = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.55f) else MaterialTheme.colorScheme.outline
-            val titleStyle = if (topNavigationBarEnabled) {
+            val titleColor = Color.White
+            val bodyColor = Color.White.copy(alpha = 0.85f)
+            val mutedColor = Color.White.copy(alpha = 0.55f)
+            val titleStyle =
                 MaterialTheme.typography.headlineSmall.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold)
-            } else {
-                MaterialTheme.typography.headlineSmall
-            }
-            val bodyStyle = if (topNavigationBarEnabled) {
+            val bodyStyle =
                 MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily)
-            } else {
-                MaterialTheme.typography.bodyMedium
-            }
-            val smallStyle = if (topNavigationBarEnabled) {
+            val smallStyle =
                 MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily)
-            } else {
-                MaterialTheme.typography.bodySmall
-            }
 
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -179,15 +168,11 @@ fun AppUpdateDialog(
                 ) {
                     TextButton(
                         onClick = onDismiss,
-                        colors = if (topNavigationBarEnabled) {
-                            ButtonDefaults.textButtonColors(contentColor = Color.White.copy(alpha = 0.7f))
-                        } else {
-                            ButtonDefaults.textButtonColors()
-                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.White.copy(alpha = 0.7f)),
                     ) {
                         Text(
                             stringResource(R.string.update_dialog_back),
-                            style = if (topNavigationBarEnabled) MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily) else MaterialTheme.typography.labelLarge,
+                            style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily),
                         )
                     }
                     Spacer(Modifier.width(8.dp))
@@ -208,17 +193,13 @@ fun AppUpdateDialog(
                             }
                         },
                         enabled = actionEnabled,
-                        shape = if (topNavigationBarEnabled) RoundedCornerShape(50) else ButtonDefaults.shape,
-                        colors = if (topNavigationBarEnabled) {
-                            ButtonDefaults.buttonColors(
-                                containerColor = Color.White,
-                                contentColor = Color.Black,
-                                disabledContainerColor = Color.White.copy(alpha = 0.2f),
-                                disabledContentColor = Color.Black.copy(alpha = 0.4f),
-                            )
-                        } else {
-                            ButtonDefaults.buttonColors()
-                        },
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = Color.Black,
+                            disabledContainerColor = Color.White.copy(alpha = 0.2f),
+                            disabledContentColor = Color.Black.copy(alpha = 0.4f),
+                        ),
                     ) {
                         Text(
                             text = when (val state = downloadState) {
@@ -233,7 +214,7 @@ fun AppUpdateDialog(
                                 is UpdateDownloadState.Failed -> stringResource(R.string.update_action_retry)
                                 is UpdateDownloadState.Idle -> stringResource(R.string.update_action_download)
                             },
-                            style = if (topNavigationBarEnabled) MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold) else MaterialTheme.typography.labelLarge,
+                            style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
                         )
                     }
                 }

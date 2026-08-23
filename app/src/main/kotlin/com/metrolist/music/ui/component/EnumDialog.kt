@@ -20,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.utils.rememberPreference
 
@@ -34,8 +33,6 @@ fun <T> EnumDialog(
     valueText: @Composable (T) -> String,
     valueDescription: (@Composable (T) -> String)? = null,
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-
     ListDialog(
         onDismiss = onDismiss,
     ) {
@@ -53,14 +50,10 @@ fun <T> EnumDialog(
                 RadioButton(
                     selected = value == current,
                     onClick = null,
-                    colors = if (topNavigationBarEnabled) {
-                        RadioButtonDefaults.colors(
-                            selectedColor = Color.White,
-                            unselectedColor = Color.White.copy(alpha = 0.6f),
-                        )
-                    } else {
-                        RadioButtonDefaults.colors()
-                    },
+                    colors = RadioButtonDefaults.colors(
+                        selectedColor = Color.White,
+                        unselectedColor = Color.White.copy(alpha = 0.6f),
+                    ),
                 )
 
                 Column(
@@ -68,18 +61,14 @@ fun <T> EnumDialog(
                 ) {
                     Text(
                         text = valueText(value),
-                        style = if (topNavigationBarEnabled) {
-                            MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily)
-                        } else {
-                            MaterialTheme.typography.bodyLarge
-                        },
-                        color = if (topNavigationBarEnabled) Color.White else MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily),
+                        color = Color.White,
                     )
                     if (valueDescription != null) {
                         Text(
                             text = valueDescription(value),
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (topNavigationBarEnabled) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = Color.White.copy(alpha = 0.6f),
                         )
                     }
                 }

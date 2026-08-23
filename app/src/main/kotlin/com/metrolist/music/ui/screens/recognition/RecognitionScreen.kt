@@ -84,7 +84,6 @@ import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.R
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.RecognitionHistory
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.SettingsBackTopBar
@@ -106,7 +105,6 @@ fun RecognitionScreen(
     val context = LocalContext.current
     val database = LocalDatabase.current
     val coroutineScope = rememberCoroutineScope()
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     // Only reset in Ready state: Listening/Processing belong to a running widget-service
     // recognition that must not be cancelled; Success/NoMatch/Error are results pending
@@ -214,17 +212,13 @@ fun RecognitionScreen(
                         Icon(
                             painter = painterResource(R.drawable.history),
                             contentDescription = stringResource(R.string.recognition_history),
-                            tint = if (topNavigationBarEnabled) {
-                                Color.White.copy(alpha = 0.85f)
-                            } else {
-                                LocalContentColor.current
-                            },
+                            tint = Color.White.copy(alpha = 0.85f),
                         )
                     }
                 },
             )
         },
-        containerColor = if (topNavigationBarEnabled) Color.Black else MaterialTheme.colorScheme.background,
+        containerColor = Color.Black,
     ) { paddingValues ->
         Column(
             modifier =
@@ -246,7 +240,7 @@ fun RecognitionScreen(
                     is RecognitionStatus.Ready -> {
                         ReadyState(
                             onStartRecognition = ::startRecognition,
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                         )
                     }
 
@@ -256,12 +250,12 @@ fun RecognitionScreen(
                                 com.metrolist.music.recognition.MusicRecognitionService
                                     .reset()
                             },
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                         )
                     }
 
                     is RecognitionStatus.Processing -> {
-                        ProcessingState(useIrideStyle = topNavigationBarEnabled)
+                        ProcessingState(useIrideStyle = true)
                     }
 
                     is RecognitionStatus.Success -> {
@@ -277,7 +271,7 @@ fun RecognitionScreen(
                             },
                             onClose = ::resetToReady,
                             onSaveToHistory = ::saveToHistory,
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                         )
                     }
 
@@ -287,7 +281,7 @@ fun RecognitionScreen(
                             onTryAgain = {
                                 startRecognition()
                             },
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                         )
                     }
 
@@ -297,7 +291,7 @@ fun RecognitionScreen(
                             onTryAgain = {
                                 startRecognition()
                             },
-                            useIrideStyle = topNavigationBarEnabled,
+                            useIrideStyle = true,
                         )
                     }
                 }

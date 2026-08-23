@@ -44,6 +44,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
@@ -62,6 +63,8 @@ fun NavigationTitle(
     useIrideStyle: Boolean = false,
     collapsed: Boolean = false,
     onCollapseToggle: (() -> Unit)? = null,
+    topPadding: Dp? = null,
+    bottomPadding: Dp? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -76,8 +79,8 @@ fun NavigationTitle(
                 end = if (useIrideStyle) 20.dp else 12.dp,
                 // Iride style: keep spacing from the section above (top) but pull the content
                 // right below this title much closer (bottom) instead of matching top/bottom.
-                top = if (useIrideStyle) 26.dp else 12.dp,
-                bottom = if (useIrideStyle) 2.dp else 12.dp,
+                top = topPadding ?: if (useIrideStyle) 26.dp else 12.dp,
+                bottom = bottomPadding ?: if (useIrideStyle) 2.dp else 12.dp,
             )
     ) {
         thumbnail?.invoke()

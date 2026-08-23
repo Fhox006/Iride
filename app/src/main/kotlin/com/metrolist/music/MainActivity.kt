@@ -175,12 +175,9 @@ import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.SYSTEM_DEFAULT
 import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.constants.SimpMusicMigrationDoneKey
-import com.metrolist.music.constants.SlimNavBarKey
 import com.metrolist.music.constants.PlayerAutoHideTopPanelKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.constants.CompactTopNavigationBarKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
-import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
 import com.metrolist.music.constants.VisitorDataKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.SearchHistory
@@ -198,9 +195,7 @@ import com.metrolist.music.ui.component.RubberBandNavGate
 import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.DebugBubble
-import com.metrolist.music.ui.component.FloatingPill
 import com.metrolist.music.ui.component.FloatingPillBottomSpacing
-import com.metrolist.music.ui.component.FloatingPillHeight
 import com.metrolist.music.ui.component.BottomSheetMenu
 import com.metrolist.music.ui.component.BottomSheetPage
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -848,34 +843,24 @@ class MainActivity : ComponentActivity() {
 
                 val (listenTogetherInTopBar) = rememberPreference(ListenTogetherInTopBarKey, defaultValue = true)
                 val (showNewsTab) = rememberPreference(ShowNewsTabKey, defaultValue = false)
-                val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
-                // Seeded from App's process-start cache (read before setContent()) instead of a
-                // hardcoded literal, so the very first frame can't briefly disagree with the
-                // real stored value and flash the wrong UI variant — see App.topNavigationBarEnabledCache.
-                val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = App.topNavigationBarEnabledCache)
                 val (compactTopNavigationBar) = rememberPreference(CompactTopNavigationBarKey, defaultValue = true)
                 val navigationItems =
-                    remember(listenTogetherInTopBar, showNewsTab, topNavigationBarEnabled) {
+                    remember(listenTogetherInTopBar, showNewsTab) {
                         val filtered = Screens.MainScreens.filter {
                             (it != Screens.ListenTogether || !listenTogetherInTopBar) &&
                                 (it != Screens.News || showNewsTab)
                         }
                         // New Iride UI: Home, Library, Search, then Account last.
-                        if (topNavigationBarEnabled) {
-                            filtered.sortedBy { screen ->
-                                when (screen) {
-                                    Screens.Home -> 0
-                                    Screens.Library -> 1
-                                    Screens.Search -> 2
-                                    Screens.Account -> 4
-                                    else -> 3
-                                }
+                        filtered.sortedBy { screen ->
+                            when (screen) {
+                                Screens.Home -> 0
+                                Screens.Library -> 1
+                                Screens.Search -> 2
+                                Screens.Account -> 4
+                                else -> 3
                             }
-                        } else {
-                            filtered
                         }
                     }
-                val (useNewMiniPlayerDesign) = rememberPreference(UseNewMiniPlayerDesignKey, defaultValue = true)
                 val defaultOpenTab =
                     remember {
                         dataStore[DefaultOpenTabKey].toEnum(defaultValue = NavigationTab.HOME)
@@ -931,11 +916,10 @@ class MainActivity : ComponentActivity() {
                 val isTopLevelRoute by remember {
                     derivedStateOf {
                         currentRoute == null ||
-                            // New Iride UI: "settings" (the Account tab's real destination) is
-                            // treated as top-level too, so it gets the same fade transition and
-                            // its own scrollable TopNavigationBar copy as Home/Library/Search —
-                            // classic mode keeps it as a pushed sub-screen (back arrow, slide-in).
-                            (navigationItems.any { it.route == currentRoute } && (currentRoute != "settings" || topNavigationBarEnabled)) ||
+                            // "settings" (the Account tab's real destination) is treated as
+                            // top-level too, so it gets the same fade transition and its own
+                            // scrollable TopNavigationBar copy as Home/Library/Search.
+                            navigationItems.any { it.route == currentRoute } ||
                             currentRoute?.startsWith("search/") == true
                     }
                 }
@@ -945,7 +929,7 @@ class MainActivity : ComponentActivity() {
 
                 // New Iride UI: the player becomes a fixed curtain layer behind the whole app
                 // (portrait/top-level only — the landscape rail's MiniPlayer peek is untouched).
-                val curtainMode = topNavigationBarEnabled && !showRail
+                val curtainMode = !showRail
 
                 // New Iride UI: the app layer's corner cut is styled after this device's own
                 // screen bezel radius (android.view.RoundedCorner, API 31+) instead of a fixed
@@ -992,7 +976,7 @@ class MainActivity : ComponentActivity() {
                             App.playerAnchorCache
                         },
                         collapsedBound = if (!showRail) {
-                            bottomInset + (if (isTopLevelRoute && !topNavigationBarEnabled) FloatingPillHeight else MiniPlayerHeight) + FloatingPillBottomSpacing +
+                            bottomInset + MiniPlayerHeight + FloatingPillBottomSpacing +
                                 (if (curtainMode) CurtainCornerRevealHeight else 0.dp)
                         } else {
                             bottomInset + MiniPlayerHeight
@@ -1082,7 +1066,7 @@ class MainActivity : ComponentActivity() {
                 val irideBridgeState = remember { IrideBridgeState() }
 
                 val playerAwareWindowInsets =
-                    remember(bottomInset, showRail, isTopLevelRoute, topNavigationBarEnabled, curtainActive, playerBottomSheetState.isDismissed) {
+                    remember(bottomInset, showRail, isTopLevelRoute, curtainActive, playerBottomSheetState.isDismissed) {
                         var bottom = bottomInset
                         if (curtainActive) {
                             // The app layer's own box is already shortened by collapsedBound (see
@@ -1091,7 +1075,7 @@ class MainActivity : ComponentActivity() {
                             bottom = 0.dp
                         } else if (!showRail) {
                             // FloatingPill always occupies space at the bottom
-                            bottom += (if (isTopLevelRoute && !topNavigationBarEnabled) FloatingPillHeight else MiniPlayerHeight) + FloatingPillBottomSpacing
+                            bottom += MiniPlayerHeight + FloatingPillBottomSpacing
                         } else {
                             if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight
                         }
@@ -1240,7 +1224,7 @@ class MainActivity : ComponentActivity() {
                 val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
 
                 val onNavItemClick: (Screens, Boolean) -> Unit =
-                    remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState, navBackStackEntry, topNavigationBarEnabled) {
+                    remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState, navBackStackEntry) {
                         nav@{ screen: Screens, isSelected: Boolean ->
                             // Refuse to switch tabs while a Home/Library/Search/Account rubber-band
                             // pull is still dragging or springing back — see RubberBandNavGate.
@@ -1288,26 +1272,15 @@ class MainActivity : ComponentActivity() {
                                 // row appear at a different height depending on which tab you came
                                 // from. Force every tab to land scrolled-to-top so the title is
                                 // always in the same spot right after switching.
-                                if (topNavigationBarEnabled) {
-                                    val newEntry = try {
-                                        navController.currentBackStackEntry
-                                    } catch (e: Exception) {
-                                        null
-                                    }
-                                    newEntry?.savedStateHandle?.set("scrollToTop", true)
-                                    coroutineScope.launch {
-                                        topAppBarScrollBehavior.state.resetHeightOffset()
-                                    }
+                                val newEntry = try {
+                                    navController.currentBackStackEntry
+                                } catch (e: Exception) {
+                                    null
                                 }
-                            }
-                        }
-                    }
-
-                val onSearchLongClick: () -> Unit =
-                    remember(navController) {
-                        {
-                            navController.navigate("recognition") {
-                                launchSingleTop = true
+                                newEntry?.savedStateHandle?.set("scrollToTop", true)
+                                coroutineScope.launch {
+                                    topAppBarScrollBehavior.state.resetHeightOffset()
+                                }
                             }
                         }
                     }
@@ -1373,7 +1346,7 @@ class MainActivity : ComponentActivity() {
                                 // Rendering it a second time here — pinned in this outer Scaffold, whose
                                 // content Row never applies this topBar's paddingValues — would draw a
                                 // duplicate copy on top of that screen's own content.
-                                if (topNavigationBarEnabled && !showRail && isTopLevelRoute && currentRoute != "wrapped" && currentRoute != "onboarding" && currentRoute != "home" && currentRoute != "library" && currentRoute != Screens.Search.route && currentRoute != "settings") {
+                                if (!showRail && isTopLevelRoute && currentRoute != "wrapped" && currentRoute != "onboarding" && currentRoute != "home" && currentRoute != "library" && currentRoute != Screens.Search.route && currentRoute != "settings") {
                                     TopNavigationBar(
                                         navigationItems = navigationItems,
                                         currentRoute = currentRoute,
@@ -1479,7 +1452,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Row(Modifier.fillMaxSize()) {
                             val onRailItemClick: (Screens, Boolean) -> Unit =
-                                remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState, topNavigationBarEnabled) {
+                                remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState) {
                                     { screen: Screens, isSelected: Boolean ->
                                         if (playerBottomSheetState.isExpanded) {
                                             playerBottomSheetState.collapseSoft()
@@ -1500,16 +1473,14 @@ class MainActivity : ComponentActivity() {
                                             }
 
                                             // Same title-sync fix as onNavItemClick above.
-                                            if (topNavigationBarEnabled) {
-                                                val newEntry = try {
-                                                    navController.currentBackStackEntry
-                                                } catch (e: Exception) {
-                                                    null
-                                                }
-                                                newEntry?.savedStateHandle?.set("scrollToTop", true)
-                                                coroutineScope.launch {
-                                                    topAppBarScrollBehavior.state.resetHeightOffset()
-                                                }
+                                            val newEntry = try {
+                                                navController.currentBackStackEntry
+                                            } catch (e: Exception) {
+                                                null
+                                            }
+                                            newEntry?.savedStateHandle?.set("scrollToTop", true)
+                                            coroutineScope.launch {
+                                                topAppBarScrollBehavior.state.resetHeightOffset()
                                             }
                                         }
                                     }
@@ -1750,28 +1721,6 @@ class MainActivity : ComponentActivity() {
                         state = LocalBottomSheetPageState.current,
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
-
-                    if (!curtainActive && !showRail && currentRoute != "wrapped" && currentRoute != "onboarding") {
-                        FloatingPill(
-                            navigationItems = navigationItems,
-                            currentRoute = currentRoute,
-                            onNavItemClick = onNavItemClick,
-                            playerBottomSheetState = playerBottomSheetState,
-                            onSearchLongClick = onSearchLongClick,
-                            accountImageUrl = accountImageUrl,
-                            pureBlack = pureBlack,
-                            slimNav = slimNav,
-                            showNavRow = !topNavigationBarEnabled,
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .zIndex(1f)
-                                .graphicsLayer {
-                                    val progress = playerBottomSheetState.progress.coerceIn(0f, 1f)
-                                    val pillHeightPx = (FloatingPillHeight + FloatingPillBottomSpacing + bottomInset).toPx()
-                                    translationY = pillHeightPx * progress
-                                },
-                        )
-                    }
 
                     sharedSong?.let { song ->
                         playerConnection?.let {

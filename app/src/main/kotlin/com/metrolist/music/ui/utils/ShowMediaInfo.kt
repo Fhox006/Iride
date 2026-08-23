@@ -44,7 +44,6 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.FormatEntity
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.ui.component.Material3SettingsGroup
@@ -72,7 +71,6 @@ fun ShowMediaInfo(videoId: String) {
     val playerConnection = LocalPlayerConnection.current
     val context = LocalContext.current
     val (advancedMode) = rememberPreference(AdvancedModeKey, defaultValue = false)
-    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     LaunchedEffect(Unit, videoId) {
         info = YouTube.getMediaInfo(videoId).getOrNull()
@@ -137,8 +135,8 @@ fun ShowMediaInfo(videoId: String) {
                         Text(
                             text = listOfNotNull(bitrate, fileSize).joinToString("  •  "),
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (newIrideUi) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = if (newIrideUi) 0.dp else 20.dp)
+                            color = Color.White.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(horizontal = 0.dp)
                         )
                     }
 

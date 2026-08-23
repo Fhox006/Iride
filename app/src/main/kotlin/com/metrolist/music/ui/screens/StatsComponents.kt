@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.db.entities.AlbumEntity
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.CategoryStats
@@ -226,242 +225,54 @@ private fun IrideTopItemCard(
 
 @Composable
 fun TopArtistCard(rank: Int, artist: ArtistEntity, onClick: () -> Unit = {}) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-    if (topNavigationBarEnabled) {
-        IrideTopItemCard(
-            rank = rank,
-            title = artist.name,
-            subtitle = null,
-            thumbnailUrl = artist.thumbnailUrl,
-            width = 160.dp,
-            imageHeight = 160.dp,
-            onClick = onClick,
-        )
-        return
-    }
-    Card(
+    IrideTopItemCard(
+        rank = rank,
+        title = artist.name,
+        subtitle = null,
+        thumbnailUrl = artist.thumbnailUrl,
+        width = 160.dp,
+        imageHeight = 160.dp,
         onClick = onClick,
-        shape = CardSquircle,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        ),
-        modifier = Modifier
-            .width(160.dp)
-            .wrapContentHeight()
-    ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            AsyncImage(
-                model = artist.thumbnailUrl,
-                contentDescription = artist.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp)
-                    .clip(CardSquircle)
-            )
-            Box(
-                modifier = Modifier
-                    .padding(10.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
-                        shape = BadgeSquircle
-                    )
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                    .align(Alignment.TopStart)
-            ) {
-                Text(
-                    text = "#$rank",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 22.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
-        ) {
-            Text(
-                text = artist.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
+    )
 }
 
 @Composable
 fun TopAlbumCard(rank: Int, album: AlbumEntity, artists: List<ArtistEntity>, onClick: () -> Unit = {}) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-    if (topNavigationBarEnabled) {
-        IrideTopItemCard(
-            rank = rank,
-            title = album.title,
-            subtitle = artists.joinToString(", ") { it.name },
-            thumbnailUrl = album.thumbnailUrl,
-            width = 200.dp,
-            imageHeight = 200.dp,
-            onClick = onClick,
-        )
-        return
-    }
-    Card(
+    IrideTopItemCard(
+        rank = rank,
+        title = album.title,
+        subtitle = artists.joinToString(", ") { it.name },
+        thumbnailUrl = album.thumbnailUrl,
+        width = 200.dp,
+        imageHeight = 200.dp,
         onClick = onClick,
-        shape = CardSquircle,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        ),
-        modifier = Modifier
-            .width(200.dp)
-            .wrapContentHeight()
-    ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            AsyncImage(
-                model = album.thumbnailUrl,
-                contentDescription = album.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .clip(CardSquircle)
-            )
-            Box(
-                modifier = Modifier
-                    .padding(10.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.88f),
-                        shape = BadgeSquircle
-                    )
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                    .align(Alignment.TopStart)
-            ) {
-                Text(
-                    text = "#$rank",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 22.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
-        }
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-            Text(
-                text = album.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = artists.joinToString(", ") { it.name },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
+    )
 }
 
 @Composable
 fun TopSongCard(rank: Int, song: SongEntity, artists: List<ArtistEntity>, onClick: () -> Unit = {}) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-    if (topNavigationBarEnabled) {
-        IrideTopItemCard(
-            rank = rank,
-            title = song.title,
-            subtitle = artists.joinToString(", ") { it.name },
-            thumbnailUrl = song.thumbnailUrl,
-            width = 160.dp,
-            imageHeight = 160.dp,
-            onClick = onClick,
-        )
-        return
-    }
-    Card(
+    IrideTopItemCard(
+        rank = rank,
+        title = song.title,
+        subtitle = artists.joinToString(", ") { it.name },
+        thumbnailUrl = song.thumbnailUrl,
+        width = 160.dp,
+        imageHeight = 160.dp,
         onClick = onClick,
-        shape = CardSquircle,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        ),
-        modifier = Modifier
-            .width(160.dp)
-            .wrapContentHeight()
-    ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            AsyncImage(
-                model = song.thumbnailUrl,
-                contentDescription = song.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp)
-                    .clip(CardSquircle)
-            )
-            Box(
-                modifier = Modifier
-                    .padding(10.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.88f),
-                        shape = BadgeSquircle
-                    )
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                    .align(Alignment.TopStart)
-            ) {
-                Text(
-                    text = "#$rank",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 22.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-            Text(
-                text = song.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = artists.joinToString(", ") { it.name },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
+    )
 }
 
 @Composable
 fun SectionHeader(title: String) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-    if (topNavigationBarEnabled) {
-        // Matches the "eyebrow" section-title idiom used across the app in New Iride UI
-        // (Material3SettingsGroup's IrideSettingsGroup title, ArtistScreen's "Information"
-        // header): small bold monospace, low-alpha white.
-        Text(
-            text = title,
-            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp, letterSpacing = (-0.1).sp),
-            fontWeight = FontWeight.Bold,
-            color = Color.White.copy(alpha = 0.55f),
-            modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp, end = 16.dp)
-        )
-        return
-    }
+    // Matches the "eyebrow" section-title idiom used across the app in New Iride UI
+    // (Material3SettingsGroup's IrideSettingsGroup title, ArtistScreen's "Information"
+    // header): small bold monospace, low-alpha white.
     Text(
         text = title,
-        style = MaterialTheme.typography.titleLarge,
+        style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp, letterSpacing = (-0.1).sp),
         fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp, end = 16.dp)
+        color = Color.White.copy(alpha = 0.55f),
+        modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp, end = 16.dp)
     )
 }
 
@@ -474,96 +285,47 @@ fun StatsDataBox(
 ) {
     val hours = totalMinutes / 60
     val minutes = totalMinutes % 60
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
 
-    if (topNavigationBarEnabled) {
-        // Flattened: no primaryContainer Card, bare row of 4 tiles with hairline vertical
-        // dividers between them instead of a card boundary — mirrors IrideSettingsGroup's
-        // divider-instead-of-card-gap approach, just rotated for a horizontal row.
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.listening_stats),
-                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = (-0.1).sp),
-                color = Color.White.copy(alpha = 0.55f),
-                modifier = Modifier.padding(bottom = 14.dp)
-            )
-            val items = listOf(
-                Triple(if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m", stringResource(R.string.listened), R.drawable.history),
-                Triple(totalSongs.toString(), stringResource(R.string.songs_played), R.drawable.music_note),
-                Triple(totalArtists.toString(), stringResource(R.string.artists), R.drawable.artist),
-                Triple(totalAlbums.toString(), stringResource(R.string.albums), R.drawable.album),
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                items.forEachIndexed { index, (value, label, iconRes) ->
-                    StatItem(
-                        value = value,
-                        label = label,
-                        iconRes = iconRes,
-                        useIrideStyle = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (index != items.lastIndex) {
-                        Box(
-                            modifier = Modifier
-                                .width(1.dp)
-                                .height(40.dp)
-                                .background(Color.White.copy(alpha = 0.08f))
-                        )
-                    }
-                }
-            }
-        }
-        return
-    }
-
-    Card(
-        shape = CardSquircle,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        ),
+    // Flattened: no primaryContainer Card, bare row of 4 tiles with hairline vertical
+    // dividers between them instead of a card boundary — mirrors IrideSettingsGroup's
+    // divider-instead-of-card-gap approach, just rotated for a horizontal row.
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 16.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = stringResource(R.string.listening_stats),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
+        Text(
+            text = stringResource(R.string.listening_stats),
+            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = (-0.1).sp),
+            color = Color.White.copy(alpha = 0.55f),
+            modifier = Modifier.padding(bottom = 14.dp)
+        )
+        val items = listOf(
+            Triple(if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m", stringResource(R.string.listened), R.drawable.history),
+            Triple(totalSongs.toString(), stringResource(R.string.songs_played), R.drawable.music_note),
+            Triple(totalArtists.toString(), stringResource(R.string.artists), R.drawable.artist),
+            Triple(totalAlbums.toString(), stringResource(R.string.albums), R.drawable.album),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items.forEachIndexed { index, (value, label, iconRes) ->
                 StatItem(
-                    value = if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m",
-                    label = stringResource(R.string.listened),
-                    iconRes = R.drawable.history
+                    value = value,
+                    label = label,
+                    iconRes = iconRes,
+                    useIrideStyle = true,
+                    modifier = Modifier.weight(1f)
                 )
-                StatItem(
-                    value = totalSongs.toString(),
-                    label = stringResource(R.string.songs_played),
-                    iconRes = R.drawable.music_note
-                )
-                StatItem(
-                    value = totalArtists.toString(),
-                    label = stringResource(R.string.artists),
-                    iconRes = R.drawable.artist
-                )
-                StatItem(
-                    value = totalAlbums.toString(),
-                    label = stringResource(R.string.albums),
-                    iconRes = R.drawable.album
-                )
+                if (index != items.lastIndex) {
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(40.dp)
+                            .background(Color.White.copy(alpha = 0.08f))
+                    )
+                }
             }
         }
     }

@@ -64,25 +64,45 @@ constructor(
     var summaryPage by mutableStateOf<SearchSummaryPage?>(null)
     val viewStateMap = mutableStateMapOf<String, ItemsPage?>()
 
-    // Only the top-result card (summaries.first(), YT always returns it first) is used —
-    // as a pure query-intent signal for loadSmartSearch's ordering — so unlike the old "All"
-    // tab this doesn't need every shelf enriched with extra network calls.
+    // Summary fetch feeds only the top-result card and the Episodes shelf. Concurrent
+    // triggers (init collector, search(), loadSmartSearch) share one network call by joining
+    // the in-flight job instead of firing duplicates; results are query-guarded so a slow
+    // response can't land on a newer query.
+    private var summaryJob: Job? = null
+
     private suspend fun loadSummaryPage() {
         if (query.isBlank()) return
         if (summaryPage == null) {
+            val existing = summaryJob
+            if (existing?.isActive == true) {
+                existing.join()
+            } else {
+                launchSummaryFetch().join()
+            }
+        }
+    }
+
+    private fun launchSummaryFetch(): Job {
+        val job = viewModelScope.launch {
+            val requestedQuery = query
             YouTube
-                .searchSummary(query)
+                .searchSummary(requestedQuery)
                 .onSuccess {
-                    val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                    val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-                    val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-                    summaryPage = it.filterExplicit(hideExplicit)
-                        .filterVideoSongs(hideVideoSongs)
-                        .filterYoutubeShorts(hideYoutubeShorts)
+                    if (requestedQuery == query) {
+                        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                        val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+                        val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+                        summaryPage = it.filterExplicit(hideExplicit)
+                            .filterVideoSongs(hideVideoSongs)
+                            .filterYoutubeShorts(hideYoutubeShorts)
+                    }
                 }.onFailure {
                     reportException(it)
                 }
         }
+        summaryJob = job
+        job.invokeOnCompletion { if (summaryJob === job) summaryJob = null }
+        return job
     }
 
     // "Top result" tells us what the query is really about (an artist, a song, an album, ...),
@@ -99,8 +119,8 @@ constructor(
         null -> Category.OTHER
     }
 
-    // Ranks categories relative to what the query is actually about, used by loadSmartSearch
-    // to order its sections (most relevant category first).
+    // Fixed YT Music category ordering; Smart Search uses only the default (SONG-first)
+    // branch since its section order no longer depends on the query's top result.
     private fun categoryPriorityOrder(topCategory: Category): List<Category> = when (topCategory) {
         // Artist query: their songs and albums matter more than the artist card itself.
         Category.ARTIST -> listOf(Category.SONG, Category.ALBUM, Category.PLAYLIST, Category.VIDEO, Category.PODCAST, Category.PROFILE, Category.ARTIST, Category.EPISODE)
@@ -185,8 +205,9 @@ constructor(
     // Smart Search: instead of relying on YT's own truncated summary shelves, fetch every
     // category's dedicated filter endpoint directly (same one backing each filter pill), so
     // every section shows a full page of real results, not just the 3-5 items YT's summary
-    // groups items into. Ordered by query-intent priority, computed once the summary's
-    // top-result card (used purely as an intent signal) is available.
+    // groups items into. The section order is fixed and set synchronously so the panel
+    // renders instantly; the summary call only feeds the top-result card and the Episodes
+    // shelf in parallel, it no longer gates the whole panel.
     var smartSearchOrder by mutableStateOf<List<YouTube.SearchFilter>>(emptyList())
         private set
     private var smartSearchStarted = false
@@ -211,25 +232,23 @@ constructor(
         if (smartSearchStarted || query.isBlank()) return
         smartSearchStarted = true
         searchJob = viewModelScope.launch {
-            loadSummaryPage()
             val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-            val topCategory = categoryOf(summaryPage?.summaries?.firstOrNull()?.items?.firstOrNull())
-            val order = categoryPriorityOrder(topCategory)
+            val order = categoryPriorityOrder(Category.SONG)
                 .flatMap { it.toFilters() }
                 .let { filters -> if (hideVideoSongs) filters.filter { it != YouTube.SearchFilter.FILTER_VIDEO } else filters }
                 .filter { it != YouTube.SearchFilter.FILTER_PROFILE }
             smartSearchOrder = order
 
             order.forEach { sectionFilter ->
-                if (sectionFilter == YouTube.SearchFilter.FILTER_EPISODE) {
-                    if (viewStateMap[sectionFilter.value] == null) {
-                        viewStateMap[sectionFilter.value] = ItemsPage(episodesFromSummary(), null)
-                    }
-                } else {
+                if (sectionFilter != YouTube.SearchFilter.FILTER_EPISODE) {
                     // Launched as a child of this coroutine (not viewModelScope directly) so
                     // cancelling searchJob on the next search() cancels these too.
                     launch { fetchAndStoreFilterResults(sectionFilter) }
                 }
+            }
+            loadSummaryPage()
+            if (viewStateMap[YouTube.SearchFilter.FILTER_EPISODE.value] == null) {
+                viewStateMap[YouTube.SearchFilter.FILTER_EPISODE.value] = ItemsPage(episodesFromSummary(), null)
             }
         }
     }
@@ -269,6 +288,7 @@ constructor(
             }
         }
         searchJob?.cancel()
+        summaryJob?.cancel()
         query = newQuery
         filter.value = null
         viewStateMap.clear()

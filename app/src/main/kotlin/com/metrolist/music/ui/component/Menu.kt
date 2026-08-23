@@ -29,7 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.utils.rememberPreference
 
@@ -37,39 +36,7 @@ import com.metrolist.music.utils.rememberPreference
 fun Material3MenuGroup(
     items: List<Material3MenuItemData>
 ) {
-    val (newIrideUi) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-
-    if (newIrideUi) {
-        IrideMenuGroup(items = items)
-        return
-    }
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        items.forEachIndexed { index, item ->
-            val shape = when {
-                items.size == 1 -> RoundedCornerShape(24.dp)
-                index == 0 -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 6.dp, bottomEnd = 6.dp)
-                index == items.size - 1 -> RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 24.dp, bottomEnd = 24.dp)
-                else -> RoundedCornerShape(6.dp)
-            }
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .animateContentSize(),
-                shape = shape,
-                colors = item.cardColors ?: CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                Material3MenuItemRow(item = item)
-            }
-        }
-    }
+    IrideMenuGroup(items = items)
 }
 
 /**
@@ -128,50 +95,6 @@ private fun IrideMenuItemRow(item: Material3MenuItemData) {
             }
         }
 
-        item.trailingContent?.let { trailing ->
-            Spacer(modifier = Modifier.width(8.dp))
-            trailing()
-        }
-    }
-}
-
-@Composable
-private fun Material3MenuItemRow(
-    item: Material3MenuItemData
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(
-                enabled = item.onClick != null,
-                onClick = { item.onClick?.invoke() }
-            )
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        item.icon?.let { icon ->
-            icon()
-            Spacer(modifier = Modifier.width(16.dp))
-        }
-
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            ProvideTextStyle(MaterialTheme.typography.titleMedium) {
-                item.title()
-            }
-
-            item.description?.let { desc ->
-                Spacer(modifier = Modifier.height(2.dp))
-                ProvideTextStyle(
-                    MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                ) {
-                    desc()
-                }
-            }
-        }
         item.trailingContent?.let { trailing ->
             Spacer(modifier = Modifier.width(8.dp))
             trailing()

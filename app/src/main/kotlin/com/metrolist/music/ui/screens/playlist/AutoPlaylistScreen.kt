@@ -119,7 +119,6 @@ import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.IrideBaseBorderWidth
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.extensions.toMediaItem
@@ -184,13 +183,12 @@ fun AutoPlaylistScreen(
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val queueTitle by playerConnection.queueTitle.collectAsState()
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
     val playlist =
         when (viewModel.playlist) {
-            // New Iride UI only: "Liked Songs" reads as "Starred" here. R.string.liked is shared
-            // with the legacy UI (and other screens), so it is left untouched and only the display
-            // text used by this New-Iride-UI-gated composable is swapped.
-            "liked" -> if (topNavigationBarEnabled) stringResource(R.string.starred) else stringResource(R.string.liked)
+            // "Liked Songs" reads as "Starred" here. R.string.liked is shared with other
+            // screens, so it is left untouched and only the display text used by this
+            // composable is swapped.
+            "liked" -> stringResource(R.string.starred)
             "uploaded" -> stringResource(R.string.uploaded_playlist)
             "starred" -> stringResource(R.string.starred)
             else -> stringResource(R.string.offline)
@@ -560,14 +558,12 @@ fun AutoPlaylistScreen(
     }
     val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
 
-    // Every leading LazyColumn item ahead of the song rows themselves — search_bar (New Iride UI
-    // only) + playlist_header + control_panel (both hidden while searching) + songs_header +
+    // Every leading LazyColumn item ahead of the song rows themselves — search_bar +
+    // playlist_header + control_panel (hidden while searching) + songs_header +
     // genre_pills. Consumed by DraggableScrollbar below.
     val headerItems = when {
-        topNavigationBarEnabled && !isSearching -> 5
-        topNavigationBarEnabled -> 3
-        !isSearching -> 3
-        else -> 2
+        !isSearching -> 5
+        else -> 3
     }
 
     val isRefreshing by viewModel.isRefreshing.collectAsState()
@@ -665,29 +661,21 @@ fun AutoPlaylistScreen(
 
         LazyColumn(
             modifier = Modifier
-                .then(
-                    if (topNavigationBarEnabled) {
-                        Modifier.rubberBandOverscroll(Orientation.Vertical, state, headerPull)
-                    } else {
-                        Modifier
-                    },
-                ),
+                .rubberBandOverscroll(Orientation.Vertical, state, headerPull),
             state = state,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
         ) {
-            if (topNavigationBarEnabled) {
-                item(key = "search_bar") {
-                    IrideSearchBox(
-                        query = query,
-                        onQueryChange = { query = it },
-                        placeholderText = stringResource(R.string.search),
-                        focusRequester = focusRequester,
-                        onFocusChanged = { if (it.isFocused) isSearching = true },
-                        onSearch = {},
-                        onClear = { query = TextFieldValue("") },
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                    )
-                }
+            item(key = "search_bar") {
+                IrideSearchBox(
+                    query = query,
+                    onQueryChange = { query = it },
+                    placeholderText = stringResource(R.string.search),
+                    focusRequester = focusRequester,
+                    onFocusChanged = { if (it.isFocused) isSearching = true },
+                    onSearch = {},
+                    onClear = { query = TextFieldValue("") },
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                )
             }
 
             if (songs != null) {
@@ -714,7 +702,7 @@ fun AutoPlaylistScreen(
                         }
                     }
 
-                    if (topNavigationBarEnabled && !isSearching) {
+                    if (!isSearching) {
                         item(key = "control_panel") {
                             IridePlaylistControlPanel(
                                 onShuffleClick = onTopBarShuffleClick,
@@ -735,8 +723,8 @@ fun AutoPlaylistScreen(
                             modifier = Modifier.padding(
                                 // Matches SongListItem's own 12dp horizontal inset so the sort
                                 // row lines up with the song rows below it.
-                                start = if (topNavigationBarEnabled) 12.dp else 8.dp,
-                                end = if (topNavigationBarEnabled) 12.dp else 8.dp,
+                                start = 12.dp,
+                                end = 12.dp,
                             ),
                         ) {
                             LibrarySortRow(
@@ -751,7 +739,7 @@ fun AutoPlaylistScreen(
                                 onSortChange = onSortTypeChange,
                                 sortDescending = sortDescending,
                                 onSortDescendingChange = onSortDescendingChange,
-                                useIrideStyle = topNavigationBarEnabled,
+                                useIrideStyle = true,
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -777,9 +765,9 @@ fun AutoPlaylistScreen(
 
                         SongListItem(
                             song = song,
-                            // New Iride UI: featured-artist subtitle text should match the rest of
+                            // Featured-artist subtitle text should match the rest of
                             // the row instead of the default muted secondary tone.
-                            subtitleColor = if (topNavigationBarEnabled) Color.Unspecified else null,
+                            subtitleColor = Color.Unspecified,
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
                             trailingContent = {
@@ -920,72 +908,6 @@ fun AutoPlaylistScreen(
         }
         // --- everything below is a sibling of the recorded content, never inside it ---
 
-        val topBarTitle: @Composable () -> Unit = {
-            when {
-                inSelectMode -> {
-                    Text(
-                        text = pluralStringResource(R.plurals.n_song, selection.size, selection.size),
-                        style = if (topNavigationBarEnabled) {
-                            TextStyle(
-                                fontFamily = SpaceMonoFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                letterSpacing = (-0.1).sp,
-                            )
-                        } else {
-                            MaterialTheme.typography.titleLarge
-                        },
-                    )
-                }
-
-                isSearching && !topNavigationBarEnabled -> {
-                    TextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        placeholder = {
-                            Text(
-                                text = stringResource(R.string.search),
-                                style = MaterialTheme.typography.titleLarge,
-                            )
-                        },
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.titleLarge,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        colors =
-                            TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                disabledIndicatorColor = Color.Transparent,
-                            ),
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequester),
-                    )
-                }
-
-                else -> {
-                    Text(
-                        text = playlist,
-                        style = if (topNavigationBarEnabled) {
-                            TextStyle(
-                                fontFamily = SpaceMonoFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                letterSpacing = (-0.1).sp,
-                            )
-                        } else {
-                            MaterialTheme.typography.titleLarge
-                        },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
-
         val topBarNavigationIcon: @Composable () -> Unit = {
             IconButton(
                 onClick = {
@@ -1053,16 +975,6 @@ fun AutoPlaylistScreen(
                         )
                     }
                 } else if (!isSearching) {
-                    if (!topNavigationBarEnabled) {
-                        IconButton(
-                            onClick = { isSearching = true },
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.search),
-                                contentDescription = null,
-                            )
-                        }
-                    }
                     IconButton(
                         onClick = {
                             menuState.show {
@@ -1121,60 +1033,52 @@ fun AutoPlaylistScreen(
                 }
         }
 
-        if (topNavigationBarEnabled) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
-                    .frostedTopBarBackground(
-                        progress = topBarRevealProgress,
-                        barColor = MaterialTheme.colorScheme.background,
-                        strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                        backdrop = frostBackdrop,
-                    )
-                    .statusBarsPadding()
-                    .height(56.dp)
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                topBarNavigationIcon()
-                // Always composed and always holding its weight — fades in via topBarRevealProgress,
-                // tracking the header name going behind this bar (same as AlbumScreen). Only the ⋯
-                // overflow lives here otherwise; shuffle/play/download moved into the pill panel.
-                Text(
-                    text = when {
-                        inSelectMode -> pluralStringResource(R.plurals.n_song, selection.size, selection.size)
-                        isSearching -> ""
-                        else -> playlist
-                    },
-                    style = TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        letterSpacing = (-0.1).sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 4.dp)
-                        .then(
-                            if (inSelectMode || isSearching) {
-                                Modifier
-                            } else {
-                                Modifier.irideEnter(topBarRevealProgress, 6.dp).revealMask(topBarRevealProgress)
-                            },
-                        ),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
+                .frostedTopBarBackground(
+                    progress = topBarRevealProgress,
+                    barColor = MaterialTheme.colorScheme.background,
+                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                    backdrop = frostBackdrop,
                 )
-                topBarActions()
-            }
-        } else {
-            TopAppBar(
-                title = topBarTitle,
-                navigationIcon = topBarNavigationIcon,
-                actions = topBarActions,
+                .statusBarsPadding()
+                .height(56.dp)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            topBarNavigationIcon()
+            // Always composed and always holding its weight — fades in via topBarRevealProgress,
+            // tracking the header name going behind this bar (same as AlbumScreen). Only the ⋯
+            // overflow lives here otherwise; shuffle/play/download moved into the pill panel.
+            Text(
+                text = when {
+                    inSelectMode -> pluralStringResource(R.plurals.n_song, selection.size, selection.size)
+                    isSearching -> ""
+                    else -> playlist
+                },
+                style = TextStyle(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    letterSpacing = (-0.1).sp,
+                ),
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 4.dp)
+                    .then(
+                        if (inSelectMode || isSearching) {
+                            Modifier
+                        } else {
+                            Modifier.irideEnter(topBarRevealProgress, 6.dp).revealMask(topBarRevealProgress)
+                        },
+                    ),
             )
+            topBarActions()
         }
     }
 }
@@ -1193,7 +1097,6 @@ private fun AutoPlaylistHeader(
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
-    val topNavigationBarEnabled by rememberPreference(TopNavigationBarKey, defaultValue = true)
 
     val metadataLine =
         buildString {
@@ -1260,48 +1163,20 @@ private fun AutoPlaylistHeader(
             else -> null
         }
         if (badgeIcon != null) {
-            if (topNavigationBarEnabled) {
-                // Frosted-glass cover: blurred mosaic of the playlist's own thumbnails behind a
-                // translucent panel, replacing the old flat gray square + centered gray star
-                // (felt anonymous). Shared with the Library list/grid rows via GlassPlaylistCover
-                // so the same playlist looks identical on its own screen and from outside.
-                val mosaicThumbnails =
-                    remember(songs) {
-                        songs.mapNotNull { it.song.thumbnailUrl }.distinct().take(4)
-                    }
-                GlassPlaylistCover(
-                    thumbnails = mosaicThumbnails,
-                    icon = badgeIcon,
-                    size = 240.dp,
-                    shape = coverSquircle,
-                    iconSizeFraction = 0.65f,
-                )
-            } else {
-                androidx.compose.material3.Surface(
-                    modifier =
-                        Modifier
-                            .size(240.dp)
-                            .shadow(
-                                elevation = 24.dp,
-                                shape = coverSquircle,
-                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                            ),
-                    shape = coverSquircle,
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        Icon(
-                            painter = painterResource(badgeIcon),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                            modifier = Modifier.size(240.dp * 0.65f),
-                        )
-                    }
+            // Frosted-glass cover: blurred mosaic of the playlist's own thumbnails behind a
+            // translucent panel. Shared with the Library list/grid rows via GlassPlaylistCover
+            // so the same playlist looks identical on its own screen and from outside.
+            val mosaicThumbnails =
+                remember(songs) {
+                    songs.mapNotNull { it.song.thumbnailUrl }.distinct().take(4)
                 }
-            }
+            GlassPlaylistCover(
+                thumbnails = mosaicThumbnails,
+                icon = badgeIcon,
+                size = 240.dp,
+                shape = coverSquircle,
+                iconSizeFraction = 0.65f,
+            )
         } else {
             androidx.compose.material3.Surface(
                 modifier =
@@ -1314,11 +1189,7 @@ private fun AutoPlaylistHeader(
                         ),
                 shape = coverSquircle,
                 color = MaterialTheme.colorScheme.surface,
-                border = if (topNavigationBarEnabled) {
-                    BorderStroke(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f))
-                } else {
-                    null
-                },
+                border = BorderStroke(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f)),
             ) {
                 AsyncImage(
                     model = songs[0].song.thumbnailUrl,
@@ -1330,177 +1201,59 @@ private fun AutoPlaylistHeader(
         }
     }
 
-    if (topNavigationBarEnabled) {
-        Column(
-            modifier = modifier
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(top = 12.dp, bottom = 20.dp),
+    ) {
+        // Cover entrance matches AlbumScreen/LocalPlaylistScreen — no per-image decode signal
+        // to gate on here (GlassPlaylistCover has no onState hook, and mosaics arrive one
+        // thumbnail at a time), so this plays once on composition instead.
+        val coverProgress = rememberEnterProgress(play = true, durationMillis = 420, easing = IrideMotion.EaseOutQuart)
+        Box(
+            modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(top = 12.dp, bottom = 20.dp),
+                .graphicsLayer {
+                    alpha = coverProgress
+                    val s = lerp(0.94f, 1f, coverProgress)
+                    scaleX = s
+                    scaleY = s
+                },
+            contentAlignment = Alignment.Center,
         ) {
-            // Cover entrance matches AlbumScreen/LocalPlaylistScreen — no per-image decode signal
-            // to gate on here (GlassPlaylistCover has no onState hook, and mosaics arrive one
-            // thumbnail at a time), so this plays once on composition instead.
-            val coverProgress = rememberEnterProgress(play = true, durationMillis = 420, easing = IrideMotion.EaseOutQuart)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .graphicsLayer {
-                        alpha = coverProgress
-                        val s = lerp(0.94f, 1f, coverProgress)
-                        scaleX = s
-                        scaleY = s
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                coverContent()
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                text = name,
-                style = TextStyle(
-                    fontFamily = SpaceMonoFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp,
-                    letterSpacing = (-0.2).sp,
-                ),
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onGloballyPositioned { onTitleBoundsChanged(it.boundsInWindow().bottom) },
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = metadataLine,
-                style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            // Action buttons (shuffle/play/download) live in the top bar now — see topBarActions.
+            coverContent()
         }
-    } else {
-        Column(
-            modifier =
-                modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp, bottom = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            // Playlist Thumbnail - Large centered with shadow
-            Box(
-                modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
-            ) {
-                coverContent()
-            }
 
-            // Playlist Name
-            Text(
-                text = name,
-                style = MaterialTheme.typography.headlineSmall,
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = name,
+            style = TextStyle(
+                fontFamily = SpaceMonoFontFamily,
                 fontWeight = FontWeight.Bold,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 32.dp),
-            )
+                fontSize = 20.sp,
+                letterSpacing = (-0.2).sp,
+            ),
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { onTitleBoundsChanged(it.boundsInWindow().bottom) },
+        )
 
-            Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-            // Metadata - Song Count • Duration
-            Text(
-                text = metadataLine,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Action Buttons Row
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // Shuffle Button - Smaller secondary button
-                androidx.compose.material3.Surface(
-                    onClick = onShuffleClick,
-                    shape = androidx.compose.foundation.shape.CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.shuffle),
-                            contentDescription = stringResource(R.string.shuffle),
-                            modifier = Modifier.size(24.dp),
-                        )
-                    }
-                }
-
-                // Play Button - Larger primary circular button
-                Surface(
-                    onClick = onPlaylistPlayClick,
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = androidx.compose.foundation.shape.CircleShape,
-                    modifier = Modifier.size(72.dp),
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.play),
-                            contentDescription = stringResource(R.string.play),
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(32.dp),
-                        )
-                    }
-                }
-
-                // Download Button - Smaller secondary button
-                Surface(
-                    onClick = onPlaylistDownloadClick,
-                    shape = androidx.compose.foundation.shape.CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        when (downloadState) {
-                            Download.STATE_COMPLETED -> Icon(
-                                painter = painterResource(R.drawable.check),
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                            )
-                            Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> CircularProgressIndicator(
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(24.dp),
-                            )
-                            else -> Icon(
-                                painter = painterResource(R.drawable.arrow_downward),
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        Text(
+            text = metadataLine,
+            style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        // Action buttons (shuffle/play/download) live in the top bar now — see topBarActions.
     }
 }
 

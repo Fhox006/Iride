@@ -925,6 +925,7 @@ internal fun IrideArtistText(
     onArtistClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     fontFamily: FontFamily = InterFontFamily,
+    onTextLayout: ((TextLayoutResult) -> Unit)? = null,
 ) {
     val annotated = remember(mediaMetadata.artists) {
         buildAnnotatedString {
@@ -950,7 +951,10 @@ internal fun IrideArtistText(
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         textDecoration = if (isPressed) TextDecoration.Underline else null,
-        onTextLayout = { layoutResult = it },
+        onTextLayout = {
+            layoutResult = it
+            onTextLayout?.invoke(it)
+        },
         modifier = modifier
             .pointerInput(annotated) {
                 awaitPointerEventScope {
@@ -1693,11 +1697,16 @@ private const val IrideCoverTextSplit = 0.28f
 // title never loses its width in a single frame mid-morph.
 private val IrideBridgeInfoActionsWidth = 78.dp
 
-// Vertical convergence of the title/artist lines at the collapsed end of the morph. The fixed
-// 16.sp title layout is taller than its scaled-down visual, which pushed the two lines apart
-// in the mini state; each line translates toward their shared center by half of this amount
-// at progress 0 and relaxes back to the laid-out positions by progress 1.
-private val IrideBridgeInfoLineConvergence = 5.dp
+// Fallback vertical convergence (px are measured from the real text layouts at runtime): used
+// only for the first frame, before the title/artist TextLayoutResults are available. Each line
+// translates toward their shared center by half of this amount at progress 0 and relaxes back
+// to the laid-out positions by progress 1.
+private val IrideBridgeInfoLineConvergence = 6.dp
+
+// Baseline-to-baseline distance between the title and the artist line in the collapsed mini
+// state — tight on purpose ("a few pixels" of ink gap). The morph interpolates the measured
+// natural distance down to this value, split evenly between the two lines.
+private val IrideBridgeInfoMiniBaselineGap = 10.sp
 
 @Composable
 private fun BridgedInfoBlock(
@@ -1715,6 +1724,25 @@ private fun BridgedInfoBlock(
     val left = lerp(startLocal.left, endLocal.left, progress)
     val top = lerp(startLocal.top, endLocal.top, progress)
     val width = lerp(startLocal.width, endLocal.width, progress)
+
+    var titleLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var artistLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
+    // Measured convergence: how far apart the title/artist baselines naturally sit, minus the
+    // tight mini-state target. Split evenly between the two lines and relaxed back to zero as
+    // progress reaches 1, so the expanded state keeps its original spacing untouched.
+    val lineConvergencePx = run {
+        val title = titleLayoutResult
+        val artist = artistLayoutResult
+        if (title == null || artist == null) {
+            with(density) { IrideBridgeInfoLineConvergence.toPx() }
+        } else {
+            val naturalGap = title.size.height + artist.getLineBaseline(0)
+            val targetGap =
+                title.getLineBaseline(0) + with(density) { IrideBridgeInfoMiniBaselineGap.toPx() }
+            (naturalGap - targetGap).coerceAtLeast(0f)
+        }
+    }
 
     val miniTitleColor = MaterialTheme.colorScheme.onSurface
     val miniArtistColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
@@ -1767,6 +1795,7 @@ private fun BridgedInfoBlock(
                     fontSize = 16.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { titleLayoutResult = it },
                     modifier = Modifier
                         .weight(1f)
                         .graphicsLayer {
@@ -1774,14 +1803,13 @@ private fun BridgedInfoBlock(
                             scaleX = scale
                             scaleY = scale
                             transformOrigin = TransformOrigin(0f, 0f)
-                            translationY =
-                                IrideBridgeInfoLineConvergence.toPx() / 2f * (1f - progress)
+                            translationY = lineConvergencePx / 2f * (1f - progress)
                         },
                 )
                 // Width-only reservation for the end actions. A Spacer is measured but never
-                // inflates the row's height — actually composing the 36.dp icon boxes in this
-                // row made it taller than the title line, which then got vertically centered in
-                // the extra empty space and visually pushed away from the artist line below.
+                // influences the row's height — composing fixed-size boxes here would make the
+                // row taller than the title line and shift it vertically whenever the icons
+                // enter/leave composition, breaking both the spacing and the smoothness.
                 Spacer(Modifier.width(IrideBridgeInfoActionsWidth * iconReveal))
             }
             if (playerConnection != null) {
@@ -1836,9 +1864,9 @@ private fun BridgedInfoBlock(
                 mediaMetadata = metadata,
                 color = lerpColor(miniArtistColor, IrideArtistTextColor, progress),
                 fontSize = 12.sp,
+                onTextLayout = { artistLayoutResult = it },
                 modifier = Modifier.graphicsLayer {
-                    translationY =
-                        -IrideBridgeInfoLineConvergence.toPx() / 2f * (1f - progress)
+                    translationY = -lineConvergencePx / 2f * (1f - progress)
                 },
                 onArtistClick = { artistId ->
                     if (progress < 1f) {

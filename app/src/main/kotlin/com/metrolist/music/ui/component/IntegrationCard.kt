@@ -38,8 +38,6 @@ import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.metrolist.music.constants.TopNavigationBarKey
-import com.metrolist.music.utils.rememberPreference
 
 /**
  * A Material 3 Expressive style settings group component
@@ -51,55 +49,7 @@ fun IntegrationCard(
     title: String? = null,
     items: List<IntegrationCardItem>
 ) {
-    val (topNavigationBarEnabled) = rememberPreference(TopNavigationBarKey, defaultValue = true)
-
-    if (topNavigationBarEnabled) {
-        IrideIntegrationGroup(title = title, items = items)
-        return
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-    ) {
-        // Section title
-        title?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp, top = 8.dp)
-            )
-        }
-
-        // Settings items
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            items.forEachIndexed { index, item ->
-                val shape = when {
-                    items.size == 1 -> RoundedCornerShape(24.dp)
-                    index == 0 -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 6.dp, bottomEnd = 6.dp)
-                    index == items.size - 1 -> RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 24.dp, bottomEnd = 24.dp)
-                    else -> RoundedCornerShape(6.dp)
-                }
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateContentSize(),
-                    shape = shape,
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    IntegrationCardItemRow(item = item)
-                }
-            }
-        }
-    }
+    IrideIntegrationGroup(title = title, items = items)
 }
 
 /**
