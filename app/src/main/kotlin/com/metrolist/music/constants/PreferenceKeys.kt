@@ -20,7 +20,6 @@ val DynamicThemeKey = booleanPreferencesKey("dynamicTheme")
 val SelectedThemeColorKey = intPreferencesKey("selectedThemeColor")
 val DarkModeKey = stringPreferencesKey("darkMode")
 val PureBlackKey = booleanPreferencesKey("pureBlack")
-val PureBlackMiniPlayerKey = booleanPreferencesKey("pureBlackMiniPlayer")
 val MiniPlayerOutlineKey = booleanPreferencesKey("miniPlayerOutline")
 val MiniPlayerBackgroundStyleKey = stringPreferencesKey("miniPlayerBackgroundStyle")
 
@@ -51,8 +50,11 @@ enum class DensityScale(
 }
 
 val DefaultOpenTabKey = stringPreferencesKey("defaultOpenTab")
-val ShowNewsTabKey = booleanPreferencesKey("showNewsTab")
-val SlimNavBarKey = booleanPreferencesKey("slimNavBar")
+val NewsRefreshTimestampKey = longPreferencesKey("newsRefreshTimestamp")
+val NewsCollapsedZonesKey = stringSetPreferencesKey("newsCollapsedZones")
+val NewsSelectedGenreIdKey = stringPreferencesKey("newsSelectedGenreId")
+val NewsSelectedGenreParamsKey = stringPreferencesKey("newsSelectedGenreParams")
+val NewsSelectedGenreTitleKey = stringPreferencesKey("newsSelectedGenreTitle")
 val CompactTopNavigationBarKey = booleanPreferencesKey("compactTopNavigationBar")
 val IrideAnimationsKey = booleanPreferencesKey("irideAnimations")
 val PlayerAutoHideTopPanelKey = booleanPreferencesKey("playerAutoHideTopPanel")
@@ -300,8 +302,6 @@ val LastMoodChipParamsKey = stringPreferencesKey("lastMoodChipParams")
 val HeroCarouselEnabledKey = booleanPreferencesKey("discoveryCarouselEnabled")
 val SeenNewReleaseFirstIdsKey = stringSetPreferencesKey("seenNewReleaseFirstIds")
 val HomeCollapsedSectionsKey = stringSetPreferencesKey("homeCollapsedSections")
-
-val AdvancedHomePageKey = booleanPreferencesKey("advancedHomePage")
 
 val LibraryOfflineModeKey = booleanPreferencesKey("library_offline_mode")
 
