@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
@@ -21,8 +21,8 @@
 
     <!-- Top bar -->
         <plurals name="n_selected">
-        </item>%d ausgewählt</item>
-        </item>%d ausgewählt</item>
+        <item quantity="one">%d ausgewählt</item>
+        <item quantity="other">%d ausgewählt</item>
     </plurals>
 
     <!-- Home -->
@@ -130,8 +130,8 @@
     <string name="guess_game_no_score">Noch keine Punkte</string>
     <string name="guess_game_play_now">Jetzt spielen</string>
         <plurals name="guess_game_songs_left">
-        </item>Noch %1$d Song übrig</item>
-        </item>Noch %1$d Songs übrig</item>
+        <item quantity="one">Noch %1$d Song übrig</item>
+        <item quantity="other">Noch %1$d Songs übrig</item>
     </plurals>
     <string name="guess_game_hint_default">Rate, um fortzusetzen</string>
     <string name="guess_game_hint_wrong">Das war falsch! Warte 3 Sekunden</string>
@@ -239,32 +239,32 @@
 
     <!-- Noun -->
         <plurals name="n_song">
-        </item>%d Song</item>
-        </item>%d Songs</item>
+        <item quantity="one">%d Song</item>
+        <item quantity="other">%d Songs</item>
     </plurals>
         <plurals name="n_artist">
-        </item>%d Künstler</item>
-        </item>%d Künstler</item>
+        <item quantity="one">%d Künstler</item>
+        <item quantity="other">%d Künstler</item>
     </plurals>
         <plurals name="n_album">
-        </item>%d Album</item>
-        </item>%d Alben</item>
+        <item quantity="one">%d Album</item>
+        <item quantity="other">%d Alben</item>
     </plurals>
         <plurals name="n_playlist">
-        </item>%d Playlist</item>
-        </item>%d Playlists</item>
+        <item quantity="one">%d Playlist</item>
+        <item quantity="other">%d Playlists</item>
     </plurals>
         <plurals name="n_week">
-        </item>%d Woche</item>
-        </item>%d Wochen</item>
+        <item quantity="one">%d Woche</item>
+        <item quantity="other">%d Wochen</item>
     </plurals>
         <plurals name="n_month">
-        </item>%d Monat</item>
-        </item>%d Monate</item>
+        <item quantity="one">%d Monat</item>
+        <item quantity="other">%d Monate</item>
     </plurals>
         <plurals name="n_year">
-        </item>%d Jahr</item>
-        </item>%d Jahre</item>
+        <item quantity="one">%d Jahr</item>
+        <item quantity="other">%d Jahre</item>
     </plurals>
 
     <!-- Snackbar -->
@@ -279,8 +279,8 @@
     <string name="sleep_timer">Schlaf-Timer</string>
     <string name="end_of_song">Ende des Songs</string>
         <plurals name="minute">
-        </item>1 Minute</item>
-        </item>%d Minuten</item>
+        <item quantity="one">1 Minute</item>
+        <item quantity="other">%d Minuten</item>
     </plurals>
     <string name="error_no_stream">Kein Stream verfügbar</string>
     <string name="error_no_internet">Keine Netzwerkverbindung</string>

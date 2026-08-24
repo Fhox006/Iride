@@ -154,6 +154,7 @@ import com.metrolist.music.db.entities.Song
 import com.metrolist.music.di.DownloadCache
 import com.metrolist.music.di.PlayerCache
 import com.metrolist.music.eq.EqualizerService
+import com.metrolist.music.eq.EqDeviceManager
 import com.metrolist.music.eq.audio.CustomEqualizerAudioProcessor
 import com.metrolist.music.eq.data.EQProfileRepository
 import com.metrolist.music.extensions.SilentHandler
@@ -225,6 +226,7 @@ import timber.log.Timber
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.time.LocalDateTime
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import kotlin.coroutines.coroutineContext
 import kotlin.random.Random
@@ -257,6 +259,9 @@ class MusicService :
 
     @Inject
     lateinit var eqProfileRepository: EQProfileRepository
+
+    @Inject
+    lateinit var eqDeviceManager: EqDeviceManager
 
     @Inject
     lateinit var widgetManager: MetrolistWidgetManager
@@ -425,6 +430,35 @@ class MusicService :
     val automixItems = MutableStateFlow<List<MediaItem>>(emptyList())
 
     val isAutoMixQueueActive = MutableStateFlow(false)
+
+    // Bumped whenever the radio state is reset so that in-flight automix fetches
+    // (async network calls) are discarded instead of resurrecting a cleared radio.
+    private val automixRequestId = AtomicInteger(0)
+
+    // Timeline position the radio "up next" was last ensured for; prevents repeated
+    // promotions from a single playback position.
+    private var automixEnsuredAtIndex: Int = C.INDEX_UNSET
+
+    // Periodic keeper that promotes the next radio track while the radio is armed.
+    private var automixWatchJob: kotlinx.coroutines.Job? = null
+
+    // Consecutive extension attempts that yielded nothing new; after a few of them with an
+    // empty reserve the radio disarms itself so the toggle never lies about being on.
+    private var automixEmptyExtends: Int = 0
+
+    // True while an extension batch is being fetched for the radio reserve list.
+    private var automixExtending: Boolean = false
+
+    // Fixed size of the upcoming radio as seen by the user: 1 promoted track in the
+    // timeline + (limit - 1) visible virtual rows.
+    val automixUpcomingLimit = 10
+
+    // When the reserve list drops below this, an extra batch is fetched in the background.
+    private val AUTOMIX_REFILL_THRESHOLD = 14
+
+    // Media IDs of radio songs auto-appended to the real timeline while the radio was
+    // active; they must leave the queue again when the radio is turned off.
+    private val appendedRadioMediaIds = LinkedHashSet<String>()
 
     private var originalQueueSize: Int = 0
 
@@ -621,17 +655,13 @@ class MusicService :
         lyricsHelper.preferred.collectLatest(scope) {}
 
         scope.launch {
-            eqProfileRepository.activeProfile.collect { profile ->
+            eqProfileRepository.effectiveProfile.collect { profile ->
+                // Coefficients are applied in place by the audio processor; seeking here
+                // would stutter playback on every live EQ tweak.
                 if (profile != null) {
-                    val result = equalizerService.applyProfile(profile)
-                    if (result.isSuccess && player.playbackState == Player.STATE_READY && player.isPlaying) {
-                        player.seekTo(player.currentPosition)
-                    }
+                    equalizerService.applyProfile(profile)
                 } else {
                     equalizerService.disable()
-                    if (player.playbackState == Player.STATE_READY && player.isPlaying) {
-                        player.seekTo(player.currentPosition)
-                    }
                 }
             }
         }
@@ -1378,8 +1408,8 @@ class MusicService :
             player.shuffleModeEnabled = false
         }
         originalQueueSize = 0
-        if (queue.preloadItem != null) {
-            player.setMediaItem(queue.preloadItem!!.toMediaItem())
+        queue.preloadItem?.let { preloadItem ->
+            player.setMediaItem(preloadItem.toMediaItem())
             player.prepare()
             player.playWhenReady = playWhenReady
         }
@@ -1436,6 +1466,10 @@ class MusicService :
             Timber.tag(TAG).w("startRadioSeamlessly called before player initialization")
             return
         }
+
+        // The seamless radio replaces the whole upcoming timeline, so any previously armed
+        // automix radio must be torn down first or its stale state would keep leaking in.
+        clearRadioState()
 
         val currentMediaMetadata = player.currentMetadata ?: return
 
@@ -1520,7 +1554,8 @@ class MusicService :
                             }
                         }
                     }
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Timber.tag(TAG).w(e, "Failed to extend queue with radio songs")
                 }
             }
         }
@@ -1536,15 +1571,20 @@ class MusicService :
     }
 
     suspend fun regenerateAutomix(mediaMetadata: MediaMetadata) {
+        val requestId = automixRequestId.get()
         try {
             YouTube.next(WatchEndpoint(videoId = mediaMetadata.id))
                 .onSuccess { result ->
+                    if (requestId != automixRequestId.get()) return@onSuccess
                     val items = result.items
                         .filter { it.id != mediaMetadata.id }
                         .map { it.toMediaItem() }
-                    if (items.isNotEmpty()) automixItems.value = items
+                    if (items.isNotEmpty() && requestId == automixRequestId.get()) {
+                        automixItems.value = items
+                    }
                 }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Failed to regenerate automix")
         }
     }
 
@@ -1565,8 +1605,70 @@ class MusicService :
     }
 
     fun clearRadioState() {
+        automixRequestId.incrementAndGet()
         isAutoMixQueueActive.value = false
         automixItems.value = emptyList()
+        automixEnsuredAtIndex = C.INDEX_UNSET
+        automixWatchJob?.cancel()
+        automixWatchJob = null
+        removeAppendedRadioItems()
+    }
+
+    /**
+     * Removes the radio tracks that were auto-appended to the timeline while the radio was
+     * active. The currently playing item is always kept so playback is never interrupted.
+     */
+    private fun removeAppendedRadioItems() {
+        if (!playerInitialized.value || appendedRadioMediaIds.isEmpty()) return
+        val currentIndex = player.currentMediaItemIndex
+        var removedAny = false
+        for (i in player.mediaItemCount - 1 downTo currentIndex + 1) {
+            if (player.getMediaItemAt(i).mediaId in appendedRadioMediaIds) {
+                player.removeMediaItem(i)
+                removedAny = true
+            }
+        }
+        appendedRadioMediaIds.clear()
+        if (removedAny && player.shuffleModeEnabled) {
+            applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+        }
+    }
+
+    /**
+     * Explicitly starts the (non-persistent) radio for the given song: the generated
+     * songs stay in [automixItems] as a virtual branch — displayed right under the current
+     * track — and are never committed into the player timeline. Calling [clearRadioState]
+     * (toggle off, new content, …) stops it.
+     */
+    fun startAutoMixRadio(mediaMetadata: MediaMetadata) {
+        if (!playerInitialized.value) return
+        // Fresh start: invalidate any stale in-flight fetch and clear leftovers so the flag
+        // can never get stuck in a state where the next tap looks like a toggle-off.
+        automixRequestId.incrementAndGet()
+        automixItems.value = emptyList()
+        automixEnsuredAtIndex = C.INDEX_UNSET
+        automixEmptyExtends = 0
+        isAutoMixQueueActive.value = true
+        automixWatchJob?.cancel()
+        automixWatchJob = scope.launch(SilentHandler) {
+            // Heartbeat: keeps the "up next" promotion running even if no UI surface or
+            // transition hook fires, so skipping / letting a song end always continues the
+            // radio while it is armed.
+            while (isActive && isAutoMixQueueActive.value) {
+                delay(1500)
+                if (automixItems.value.isEmpty() && automixEmptyExtends >= 3) {
+                    // Reserve exhausted and refills keep coming back empty: end the radio
+                    // honestly instead of leaving the button lit with nothing to play.
+                    clearRadioState()
+                    break
+                }
+                ensureAutomixUpNext()
+            }
+        }
+        scope.launch(SilentHandler) {
+            regenerateAutomix(mediaMetadata)
+            ensureAutomixUpNext()
+        }
     }
 
     fun getAutomixAlbum(albumId: String) {
@@ -1583,20 +1685,24 @@ class MusicService :
         if (dataStore.get(SimilarContent, true) &&
             !(dataStore.get(DisableLoadMoreWhenRepeatAllKey, false) && player.repeatMode == REPEAT_MODE_ALL)
         ) {
+            val requestId = automixRequestId.get()
+            fun isStale() = requestId != automixRequestId.get()
             scope.launch(SilentHandler) {
                 try {
                     YouTube
                         .next(WatchEndpoint(playlistId = playlistId))
                         .onSuccess { firstResult ->
+                            if (isStale()) return@onSuccess
                             YouTube
                                 .next(WatchEndpoint(playlistId = firstResult.endpoint.playlistId))
                                 .onSuccess { secondResult ->
+                                    if (isStale()) return@onSuccess
                                     automixItems.value =
                                         secondResult.items.map { song ->
                                             song.toMediaItem()
                                         }
                                 }.onFailure {
-                                    if (firstResult.items.isNotEmpty()) {
+                                    if (firstResult.items.isNotEmpty() && !isStale()) {
                                         automixItems.value =
                                             firstResult.items.map { song ->
                                                 song.toMediaItem()
@@ -1604,6 +1710,7 @@ class MusicService :
                                     }
                                 }
                         }.onFailure {
+                            if (isStale()) return@onFailure
                             val currentSong = player.currentMetadata
                             if (currentSong != null) {
                                 YouTube
@@ -1612,6 +1719,7 @@ class MusicService :
                                             videoId = currentSong.id,
                                         ),
                                     ).onSuccess { radioResult ->
+                                        if (isStale()) return@onSuccess
                                         val filteredItems =
                                             radioResult.items
                                                 .filter { it.id != currentSong.id }
@@ -1626,6 +1734,7 @@ class MusicService :
                                             ?.relatedEndpoint
                                             ?.let { relatedEndpoint ->
                                                 YouTube.related(relatedEndpoint).onSuccess { relatedPage ->
+                                                    if (isStale()) return@onSuccess
                                                     val relatedItems =
                                                         relatedPage.songs
                                                             .filter { it.id != currentSong.id }
@@ -1635,10 +1744,11 @@ class MusicService :
                                                     }
                                                 }
                                             }
-                                    }
+                                     }
                             }
                         }
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Timber.tag(TAG).w(e, "Failed to fetch automix items")
                 }
             }
         }
@@ -1652,6 +1762,7 @@ class MusicService :
             automixItems.value.toMutableList().apply {
                 removeAt(position)
             }
+        appendedRadioMediaIds.add(item.mediaId)
         addToQueue(listOf(item))
     }
 
@@ -1664,6 +1775,112 @@ class MusicService :
                 removeAt(position)
             }
         playNext(listOf(item))
+    }
+
+    /**
+     * Keeps the virtual radio branch and the real playback timeline in lockstep. Exactly ONE
+     * radio track is promoted into the timeline (right after the current item), and the rest
+     * stay virtual — so the upcoming radio always looks like a fixed batch of
+     * [automixUpcomingLimit] tracks that refills one song at a time as they play.
+     */
+    fun ensureAutomixUpNext() {
+        if (!playerInitialized.value || !isAutoMixQueueActive.value) return
+        val currentIndex = player.currentMediaItemIndex
+        // One insertion per played position: without this guard every automixItems emission
+        // would immediately trigger another promotion, flooding the queue with the whole
+        // fetched list at once.
+        if (currentIndex == automixEnsuredAtIndex) return
+        val head = automixItems.value.firstOrNull()
+        if (head != null) {
+            val nextIndex = currentIndex + 1
+            if (!(nextIndex < player.mediaItemCount &&
+                    player.getMediaItemAt(nextIndex).mediaId == head.mediaId)
+            ) {
+                try {
+                    automixItems.value = automixItems.value.drop(1)
+                    appendedRadioMediaIds.add(head.mediaId)
+                    player.addMediaItem(nextIndex.coerceAtMost(player.mediaItemCount), head)
+                } catch (_: Exception) {
+                    return
+                }
+            }
+            automixEnsuredAtIndex = currentIndex
+        }
+        if (automixItems.value.size < AUTOMIX_REFILL_THRESHOLD) {
+            extendAutomix()
+        }
+    }
+
+    /**
+     * Fetches one extra batch of radio songs and merges them into the reserve list, skipping
+     * anything already known to the radio or the timeline. Falls back to the related-videos
+     * endpoint when the plain next() call yields nothing usable.
+     */
+    private fun extendAutomix() {
+        if (automixExtending || !isAutoMixQueueActive.value) return
+        val seedId = player.currentMetadata?.id ?: return
+        automixExtending = true
+        val requestId = automixRequestId.get()
+        scope.launch(SilentHandler) {
+            fun merge(items: List<com.metrolist.innertube.models.SongItem>) {
+                if (!isAutoMixQueueActive.value || requestId != automixRequestId.get()) return
+                val known =
+                    automixItems.value.map { it.mediaId }.toSet() + appendedRadioMediaIds
+                val fresh = items
+                    .filter { it.id !in known }
+                    .map { it.toMediaItem() }
+                if (fresh.isNotEmpty()) {
+                    automixEmptyExtends = 0
+                    automixItems.value = automixItems.value + fresh
+                } else {
+                    automixEmptyExtends++
+                }
+            }
+            try {
+                val nextResult = YouTube.next(WatchEndpoint(videoId = seedId)).getOrNull()
+                val directItems = nextResult?.items.orEmpty()
+                merge(directItems)
+                if (directItems.isEmpty()) {
+                    val relatedEndpoint = nextResult?.relatedEndpoint
+                        ?: YouTube.next(WatchEndpoint(videoId = seedId)).getOrNull()?.relatedEndpoint
+                    if (relatedEndpoint != null) {
+                        YouTube.related(relatedEndpoint).onSuccess { page ->
+                            merge(page.songs)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Failed to extend automix")
+            } finally {
+                automixExtending = false
+            }
+        }
+    }
+
+    fun reorderAutomix(fromIndex: Int, toIndex: Int) {
+        val list = automixItems.value.toMutableList()
+        if (fromIndex !in list.indices || toIndex !in list.indices || fromIndex == toIndex) return
+        list.add(toIndex, list.removeAt(fromIndex))
+        automixItems.value = list
+    }
+
+    fun insertIntoAutomix(item: MediaItem, index: Int) {
+        val list = automixItems.value.toMutableList()
+        list.add(index.coerceIn(0, list.size), item)
+        automixItems.value = list
+    }
+
+    fun removeFromAutomix(mediaId: String) {
+        automixItems.value = automixItems.value.filterNot { it.mediaId == mediaId }
+    }
+
+    /** True when this track is a radio song already spliced into the real timeline. */
+    fun isRadioPromoted(mediaId: String): Boolean = mediaId in appendedRadioMediaIds
+
+    fun promoteAutomixToQueue(item: MediaItem, insertionIndex: Int) {
+        automixItems.value = automixItems.value.filterNot { it.mediaId == item.mediaId }
+        appendedRadioMediaIds.add(item.mediaId)
+        player.addMediaItem(insertionIndex.coerceAtMost(player.mediaItemCount), item)
     }
 
     fun clearAutomix() {
@@ -2123,6 +2340,10 @@ class MusicService :
                     }
                 }
             }
+        }
+
+        if (isAutoMixQueueActive.value) {
+            ensureAutomixUpNext()
         }
 
         if (persistentQueueEnabled) {
@@ -3025,10 +3246,10 @@ class MusicService :
                             id = mediaId,
                             itag = format.itag,
                             mimeType = format.mimeType.split(";")[0],
-                            codecs = format.mimeType.split("codecs=")[1].removeSurrounding("\""),
+                            codecs = format.mimeType.split("codecs=").getOrNull(1)?.removeSurrounding("\"").orEmpty(),
                             bitrate = format.bitrate,
                             sampleRate = format.audioSampleRate,
-                            contentLength = format.contentLength!!,
+                            contentLength = format.contentLength ?: 0L,
                             loudnessDb = loudnessDb,
                             perceptualLoudnessDb = perceptualLoudnessDb,
                             playbackUrl = nonNullPlayback.playbackTracking?.videostatsPlaybackUrl?.baseUrl,
@@ -3112,7 +3333,8 @@ class MusicService :
                             playTime = playbackStats.totalPlayTimeMs,
                         ),
                     )
-                } catch (_: SQLException) {
+                } catch (e: SQLException) {
+                    Timber.tag(TAG).w(e, "Failed to insert listen history event")
                 }
             }
         }
@@ -3427,6 +3649,7 @@ class MusicService :
                     currentPosition = player.currentPosition,
                 )
             } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Failed to update widgets")
             }
         }
     }
@@ -3534,7 +3757,7 @@ class MusicService :
         }
 
         secondaryPlayer = createExoPlayer()
-        val secPlayer = secondaryPlayer!!
+        val secPlayer = secondaryPlayer ?: return false
         secPlayer.addListener(secondaryPlayerListener)
 
         val items = (0 until player.mediaItemCount).map { player.getMediaItemAt(it) }
@@ -3605,7 +3828,7 @@ class MusicService :
         if (targetIndex == C.INDEX_UNSET) return
 
         secondaryPlayer = createExoPlayer()
-        val secPlayer = secondaryPlayer!!
+        val secPlayer = secondaryPlayer ?: return
         secPlayer.addListener(secondaryPlayerListener)
 
         val itemCount = player.mediaItemCount
@@ -3714,6 +3937,7 @@ class MusicService :
                     cleanupCrossfade()
                     onComplete?.invoke()
                 } catch (e: Exception) {
+                    Timber.tag(TAG).w(e, "Crossfade completion failed")
                 }
             }
     }
@@ -3749,7 +3973,9 @@ class MusicService :
                             System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
                     }
                 }
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Preload failed for $mediaId")
+            }
         }
     }
 
@@ -3767,7 +3993,9 @@ class MusicService :
                         songUrlCache[mediaId] = playbackData.streamUrl to
                             System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
                     }
-                } catch (_: Exception) { }
+                } catch (e: Exception) {
+                    Timber.tag(TAG).w(e, "Stream prefetch failed for $mediaId")
+                }
             }
         }
     }

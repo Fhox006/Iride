@@ -37,8 +37,18 @@ object Updater {
         private set
     private var cachedReleaseInfo: ReleaseInfo? = null
     private var cachedAllReleases: List<ReleaseInfo> = emptyList()
-    private const val CHECK_INTERVAL_MILLIS = 2 * 60 * 60 * 1000L
+    const val CHECK_INTERVAL_MILLIS = 2 * 60 * 60 * 1000L
     private const val GITHUB_API_BASE = "https://api.github.com/repos/Fhox006/Iride"
+
+    /**
+     * TEST-ONLY override for the silent update announcement. While true, checks report an
+     * update as available even when the installed build is current (the real latest release
+     * is used, so background download and install work end to end), and the announcement
+     * screen ignores the per-version dismissal memory so it can be exercised repeatedly.
+     * Set to false once the flow has been verified.
+     */
+    @Volatile
+    var FORCE_UPDATE_ANNOUNCEMENT_FOR_TESTING: Boolean = false
 
     /**
      * Compares two version strings.

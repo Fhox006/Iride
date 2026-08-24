@@ -106,6 +106,9 @@ import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -821,7 +824,7 @@ fun AlbumScreen(
                                         )
                                         .clip(albumCoverSquircle)
                                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                                        .border(BorderStroke(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f)), albumCoverSquircle),
+                                        .border(BorderStroke(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard), albumCoverSquircle),
                                 )
                             }
 
@@ -958,7 +961,7 @@ fun AlbumScreen(
                                         .fillMaxWidth()
                                         .padding(horizontal = 12.dp, vertical = 8.dp)
                                         .clip(resumeShape)
-                                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), resumeShape)
+                                        .border(BorderStroke(1.dp, MaterialTheme.colorScheme.strokeCard), resumeShape)
                                         .padding(horizontal = 16.dp, vertical = 14.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
@@ -970,7 +973,7 @@ fun AlbumScreen(
                                                 letterSpacing = (-0.1).sp,
                                             ),
                                             fontWeight = FontWeight.Bold,
-                                            color = Color.White,
+                                            color = MaterialTheme.colorScheme.textPrimary,
                                         )
                                         Text(
                                             text = stringResource(
@@ -979,7 +982,7 @@ fun AlbumScreen(
                                                 albumWithSongs.songs.size,
                                             ),
                                             style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp),
-                                            color = Color.White.copy(alpha = 0.55f),
+                                            color = MaterialTheme.colorScheme.textSecondary,
                                         )
                                     }
                                     Spacer(modifier = Modifier.width(12.dp))
@@ -995,8 +998,8 @@ fun AlbumScreen(
                                             }
                                         },
                                         shape = RoundedCornerShape(8.dp),
-                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
-                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.strokeCard),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.textPrimary),
                                     ) {
                                         Text(
                                             text = stringResource(R.string.resume),

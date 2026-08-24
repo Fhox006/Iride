@@ -80,6 +80,7 @@ import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
 import com.metrolist.music.ui.menu.YouTubeArtistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
+import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.viewmodels.AccountContentType
@@ -146,7 +147,7 @@ fun AccountScreen(
                         Icon(
                             painter = painterResource(R.drawable.settings),
                             contentDescription = stringResource(R.string.settings),
-                            tint = Color.White.copy(alpha = 0.6f),
+                            tint = MaterialTheme.colorScheme.textSecondary,
                             modifier = Modifier
                                 .size(20.dp)
                                 .clickable { navController.navigate("settings") },

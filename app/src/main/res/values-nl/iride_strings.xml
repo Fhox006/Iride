@@ -1,71 +1,169 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="local_history">Lokaal</string>
+    <string name="remote_history">Afstandsbediening</string>
+
     <string name="charts">Hitlijsten</string>
     <string name="back_button_desc">Terug</string>
     <string name="album_cover_desc">Albumhoes</string>
+    <string name="top_music_videos">Beste muziek videos</string>
     <string name="trending">Trending</string>
+    <string name="parsed_from_link">Verwerkt vanuit link</string>
+
     <string name="weeks">Weken</string>
     <string name="months">Maanden</string>
     <string name="years">Jaren</string>
     <string name="continuous">Voortdurend</string>
+
     <string name="liked">Nummers die je leuk vindt</string>
+    <string name="starred">Favoriete nummers</string>
     <string name="offline">Gedownload</string>
+    <string name="downloads">Downloads</string>
     <string name="my_top">Meest geluisterd</string>
+    <string name="weekly_most_playlist_name">Top van de week</string>
+    <string name="monthly_most_playlist_name">Top van de maand</string>
     <string name="cached_playlist">Gecached</string>
+    <string name="uploaded_playlist">Geüpload</string>
+    <string name="filter_uploaded">Geüpload</string>
     <string name="sync_playlist">Playlist synchroniseren</string>
     <string name="sync_disabled">Synchroniseren uitgeschakeld</string>
     <string name="allows_for_sync_witch_youtube">Opmerking: Dit activeert synchronisatie met YouTube Music. Dit kan later NIET worden gewijzigd.</string>
     <string name="generating_image">Afbeelding genereren</string>
     <string name="please_wait">Een ogenblik geduld</string>
     <string name="cancel">Annuleren</string>
+    <string name="enable">Inschakelen</string>
     <string name="share_lyrics">Songtekst delen</string>
     <string name="share_as_text">Delen als tekst</string>
-    <string name="share_as_image">Delen als afbeelding</string>
     <string name="max_selection_limit">Max. selectie limiet</string>
     <string name="share_selected">Deel geselecteerden</string>
     <string name="customize_colors">Kleuren personaliseren</string>
     <string name="text_color">Tekstkleur</string>
     <string name="secondary_text_color">Secundaire tekstkleur</string>
     <string name="background_color">Achtergrondkleur</string>
-    <string name="top_music_videos">Beste muziek videos</string>
+
+    <string name="remove_from_cache">Verwijder van cache</string>
+
+    <!-- Artist discography -->
+    <string name="view_discography">Discografie bekijken</string>
+    <string name="discography">Discografie</string>
+    <string name="discography_from_artist">Van artiest</string>
+    <string name="discography_appears_on">Komt voor op</string>
+    <string name="discography_singles">Singles</string>
+    <string name="discography_eps">EP\'s</string>
+    <string name="discography_empty">Niets meer om te tonen</string>
+
+    <!-- Artist about section -->
+    <string name="about_artist">Over</string>
+    <string name="show_more">Meer tonen</string>
+    <string name="show_less">Minder tonen</string>
+    <string name="artist_page_settings">Artiesten pagina</string>
+    <string name="show_artist_description">Artiesten beschrijving tonen</string>
+    <string name="show_artist_subscriber_count">Aantal abonnees tonen</string>
+    <string name="show_artist_monthly_listeners">Maandelijkse luisteraars tonen</string>
+
+    <!-- Menu descriptions -->
+    <string name="download_playlist_desc">Alle nummers downloaden voor offline afspelen</string>
+    <string name="remove_download_playlist_desc">Verwijder alle gedownloaden nummers van deze afspeellijst</string>
+    <string name="download_in_progress_desc">Downloaden wordt uitgevoerd</string>
+    <string name="share_playlist_desc">Deel afspeellijst</string>
+    <string name="delete_playlist_desc">Afspeellijst verwijderen</string>
+    <string name="sync_playlist_desc">Synchroniseer afspeellijst met YouTube Music</string>
+    <string name="reorder">Herschikken</string>
+    <string name="reorder_desc">Sleep nummers om een eigen volgorde in te stellen</string>
+    <string name="menu">Menu</string>
+    <string name="copy_link">Kopieer link</string>
     <string name="select">Alles selecteren</string>
     <string name="like_all">Alles leuk vinden</string>
     <string name="dislike_all">Alles niet leuk vinden</string>
     <string name="sort_by_last_updated">Datum gewijzigd</string>
     <string name="link_copied">Link gekopieerd naar het klembord</string>
+    <string name="starting_radio">Radio starten</string>
+    <string name="now_playing">Nu afspelen</string>
+
     <string name="lyrics">Songtekst</string>
+    <string name="close">Afsluiten</string>
+    <string name="hide_player_thumbnail">Verberg album afbeelding in speler</string>
+    <string name="hide_player_thumbnail_desc">Vervang album afbeelding met de app logo in de speler</string>
+    <string name="crop_album_art">Albumhoes bijsnijden</string>
+    <string name="crop_album_art_desc">Dwing een vierkante beeldverhouding door videominiaturen bij te snijden</string>
+
     <string name="already_in_playlist">Al in afspeellijst:</string>
-    <plurals name="n_time">
+
+        <plurals name="n_time">
         <item quantity="one">%d keer</item>
-        <item quantity="other">%d keren</item>
+        <item quantity="other">%d keer</item>
     </plurals>
+
+    <string name="seek_forward_dynamic">+%1$d seconden vooruit</string>
+    <string name="seek_backward_dynamic">-%1$d seconden achteruit</string>
+    <string name="seek_seconds_addup">Muziek progressief doorzoeken</string>
+    <string name="seek_seconds_addup_description">voegt 5 seconden toe bij elke skip</string>
+
+    <string name="similar_content">Gelijkaardige inhoud</string>
+
+    <string name="share_as_image">Delen als afbeelding</string>
+    <string name="copy_as_image">Kopiëren als afbeelding</string>
     <string name="player_background_style">Speler achtergrond stijl</string>
+    <string name="player_background_solid">Kleur</string>
     <string name="follow_theme">Volg thema</string>
     <string name="gradient">Gradient</string>
-    <string name="default_style">Standaard</string>
-    <string name="advanced_login">Login met token</string>
-    <string name="token_hidden">Klik om token te tonen</string>
-    <string name="token_shown">Klik opnieuw om te kopiëren of te wijzigen</string>
-    <string name="general">Algemeen</string>
-    <string name="proxy">Proxy</string>
-    <plurals name="seconds">
-        <item quantity="one">1 seconde</item>
-        <item quantity="other">%d seconden</item>
-    </plurals>
-    <string name="local_history">Lokaal</string>
-    <string name="remote_history">Afstandsbediening</string>
-    <string name="uploaded_playlist">Geüpload</string>
-    <string name="filter_uploaded">Geüpload</string>
-    <string name="remove_from_cache">Verwijder van cache</string>
-    <string name="copy_link">Kopieer link</string>
-    <string name="starting_radio">Radio starten</string>
-    <string name="close">Afsluiten</string>
-    <string name="similar_content">Gelijkaardige inhoud</string>
+    <string name="animated_gradient">Geanimeerde kleurovergang</string>
+    <string name="better_animated_gradient">Betere geanimeerde kleurovergang</string>
+    <string name="better_gradient_smooth_transition">Vloeiende achtergrondovergang</string>
+    <string name="better_gradient_smooth_transition_desc">Vloeiende overgang tussen albumkleuren bij het overslaan van een nummer</string>
     <string name="player_background_blur">Vervagen</string>
     <string name="player_buttons_style">Kleuren spelerknoppen</string>
+    <string name="default_style">Standaard</string>
+    <string name="primary_color_style">Primaire kleur</string>
+    <string name="tertiary_color_style">Tertiaire kleur</string>
+    <string name="display_density">Weergavedichtheid</string>
+    <string name="restart">Herstarten</string>
+    <string name="restart_required">Herstart vereist!</string>
+    <string name="density_restart_message">De wijziging van de weergavedichtheid wordt pas toegepast na het herstarten van de app. Nu herstarten?</string>
+    <string name="wavy">Golvend</string>
     <string name="enable_swipe_thumbnail">Vegen om lied te veranderen</string>
+    <string name="thumbnail_carousel_mode">Carrouselmodus voor miniaturen</string>
+    <string name="thumbnail_carousel_mode_desc">Toon vorige/volgende hoezen die aan de zijkanten zichtbaar zijn, met een veeganimatie</string>
+    <string name="swipe_song_to_add_title">Veeg om aan wachtrij toe te voegen</string>
     <string name="swipe_song_to_add">Naar links vegen om lied in de afspeellijst te zetten of naar rechts om als volgende te spelen</string>
+    <string name="swipe_song_to_remove_title">Veeg om te verwijderen</string>
+    <string name="swipe_song_to_remove">Swipe nummer om het van de afspeellijst te verwijderen</string>
     <string name="lyrics_click_change">Naar tekst springen bij klikken</string>
+    <string name="lyrics_from_provider">Songteksten van %s</string>
+    <string name="lyrics_auto_scroll">Automatisch songtekst scrollen</string>
+    <string name="hide_status_bar_fullscreen">Statusbalk verbergen in volledig scherm</string>
+    <string name="hide_status_bar_fullscreen_desc">Verberg de statusbalk wanneer de volledig-schermodus voor songteksten actief is</string>
+    <string name="show_interval_indicator">Intervalindicator tonen</string>
+    <string name="show_interval_indicator_desc">Toont een voortgangsbalk tijdens lange instrumentale passages</string>
+    <string name="respect_agent_positioning">Positie van zangers respecteren</string>
+    <string name="respect_agent_positioning_desc">Lijn songteksten uit op basis van de rol van de zanger (bijv. achtergrondzang)</string>
+    <string name="lyrics_glow_effect">Gloeiende songtekst</string>
+    <string name="lyrics_glow_effect_desc">Voegt gloeiende animatie en stuiter effecten toe aan actieve songtekst</string>
+    <string name="lyrics_animation_style">Woord-voor-woord animatie stijl</string>
+    <string name="lyrics_animation_none">Geen</string>
+    <string name="lyrics_animation_fade">Vervagen</string>
+    <string name="lyrics_animation_glow">Gloed</string>
+    <string name="lyrics_animation_slide">Schuiven</string>
+    <string name="lyrics_animation_karaoke">Karaoke</string>
+    <string name="lyrics_animation_apple">Apple Music-stijl</string>
+    <string name="lyrics_text_size">Songtekst lettergrootte</string>
+    <string name="lyrics_line_spacing">Songtekst regel afstand</string>
+    <string name="enable_lrclib_desc">Door de community beheerde database met gesynchroniseerde songteksten</string>
+    <string name="enable_kugou_desc">Haalt songteksten op van KuGou, een populair Chinees muziekplatform</string>
+    <string name="youtube_music_lyrics_note">LET OP: Songteksten van YouTube Music worden automatisch weergegeven als geen andere bron beschikbaar is. Deze zijn meestal niet gesynchroniseerd</string>
+    <string name="enable_better_lyrics">Better Lyrics</string>
+    <string name="enable_better_lyrics_desc">Gebruik de Better Lyrics provider voor woord-voor-woord gesynchroniseerde songtekst</string>
+    <string name="enable_better_lyrics_unison">Better Lyrics Unison inschakelen</string>
+    <string name="enable_better_lyrics_unison_desc">Per woord gesynchroniseerde songteksten, Unison-engine</string>
+    <string name="enable_better_lyrics_sillaba">Better Lyrics Sillaba inschakelen</string>
+    <string name="enable_better_lyrics_sillaba_desc">Per woord gesynchroniseerde songteksten, Sillaba-engine</string>
+    <string name="enable_paxsenix">Paxsenix inschakelen</string>
+    <string name="enable_paxsenix_desc">Hoogwaardige gesynchroniseerde songteksten van de Paxsenix API</string>
+    <string name="enable_lyricsplus">LyricsPlus inschakelen</string>
+    <string name="enable_lyricsplus_desc">Gesynchroniseerde songteksten uit meerdere bronnen</string>
+    <string name="lyrics_provider_selection">Providerselectie</string>
+    <string name="lyrics_provider_selection_desc">Kies welke songtekst-providers zijn ingeschakeld</string>
+    <string name="auto_scroll">Synchroniseren</string>
     <string name="slim">Dun</string>
     <string name="slim_navbar">Compacte hoofdnavigatiebalk</string>
     <string name="auto_playlists">Automatische playlists</string>
@@ -73,16 +171,127 @@
     <string name="show_downloaded_playlist">\"Gedownload\" tonen</string>
     <string name="show_top_playlist">\"Meest geluisterd\" tonen</string>
     <string name="show_cached_playlist">\"Gecached\" tonen</string>
+    <string name="enable_song_cache">Nummercache inschakelen</string>
+    <string name="enable_song_cache_desc">Slaat nummers automatisch op in de cache voor sneller afspelen later</string>
+    <string name="show_uploaded_playlist">\"Geupload\" tonen</string>
+    <string name="shuffle_playlist_first">Eerst afspeellijst of album in willekeurige volgorde</string>
+    <string name="shuffle_playlist_first_desc">Speel bij willekeurig afspelen eerst alle nummers uit de huidige afspeellijst of het album af voordat er wordt doorgegaan met vergelijkbare content</string>
+    <string name="prevent_duplicate_tracks_in_queue">Dubbele nummers in wachtrij voorkomen</string>
+    <string name="prevent_duplicate_tracks_in_queue_desc">Wanneer je een nummer toevoegt dat al in de wachtrij staat, wordt het vanaf zijn vorige positie verplaatst in plaats van opnieuw toegevoegd</string>
+    <string name="show_wrapped_card">Toon Wrapped</string>
+    <string name="skip_silence_desc">Spoelt snel door stille gedeelten van nummers heen</string>
+    <string name="skip_silence_instant">Stilte direct overslaan</string>
+    <string name="skip_silence_instant_desc">Spoel tijdens stille momenten vooruit in plaats van het afspelen te versnellen</string>
+
+    <string name="advanced_login">Login met token</string>
+    <string name="token_hidden">Klik om token te tonen</string>
+    <string name="token_shown">Klik opnieuw om te kopiëren of te wijzigen</string>
+    <string name="token_adv_login_description">Dit is een GEAVANCEERDE inlogmethode. In plaats van het webportaal te gebruiken, kun je je inlogtoken rechtstreeks invoeren of bijwerken. Dit kan handig zijn om je snel op meerdere apparaten aan te melden. Tokens in een onbekend formaat worden geweigerd</string>
+    <string name="yt_sync">Account automatisch synchroniseren</string>
+    <string name="settings_section_sync_data">Synchronisatie &amp; gegevens</string>
+    <string name="auto_sync">Auto-sync</string>
+    <string name="more_content">Meer inhoud</string>
+    <string name="other_content">Overige content</string>
+    <string name="show_token">Token tonen</string>
+
+    <string name="sort_ascending">Oplopend sorteren</string>
+    <string name="sort_descending">Aflopend sorteren</string>
+
+    <!-- Playlist cover edit -->
+    <string name="edit_playlist_cover">Afspeellijst omslag aanpassen</string>
+    <string name="edit_playlist_cover_note">Opmerking: Je account moet aan een telefoonnummer gekoppeld zijn en geverifieerd zijn op YouTube Music om de afspeellijstcover te kunnen wijzigen.</string>
+    <string name="edit_playlist_cover_note_wait">Aanpassen van omslag kan enkele momenten duren.</string>
+    <string name="choose_from_library">Uit bibliotheek kiezen</string>
+    <string name="remove_custom_image">Verwijder aangepaste afbeelding</string>
+
+    <!-- General -->
+    <string name="general">Algemeen</string>
+    <string name="proxy">Proxy</string>
+    <string name="default_lib_chips">Verander standaard bibliotheek chip</string>
+    <string name="set_quick_picks">Snelle keuzes instellen</string>
     <string name="last_song_listened">Gebaseerd op laatst geluisterd nummer</string>
     <string name="app_language">App taal</string>
+    <string name="lyrics_provider_priority">Prioriteit van songtekst-providers</string>
+    <string name="lyrics_provider_priority_desc">Sleep om providers te herordenen op voorkeur. Een hogere positie betekent een hogere prioriteit</string>
+    <string name="experimental_lyrics">Experimentele songteksten</string>
+    <string name="experimental_lyrics_desc">Schakel de nieuwe experimentele songtekstcomponent in met verbeterde animaties en prestaties</string>
+    <string name="experimental_lyrics_beta_title">Experimentele functie</string>
+    <string name="experimental_lyrics_beta_message">De nieuwe songtekstcomponent is momenteel in ontwikkeling en kan fouten bevatten. Weet je zeker dat je deze wilt inschakelen?</string>
+    <string name="config_proxy">Proxy configureren</string>
+    <string name="proxy_username">Proxy gebruikersnaam</string>
+    <string name="proxy_password">Proxy wachtwoord</string>
+    <string name="enable_authentication">Authenticatie aanzetten</string>
+    <string name="discord_use_details">Details gebruiken in plaats van status</string>
+    <string name="discord_use_details_description">Toon de titel van het nummer duidelijk in plaats van de naam van de artiest</string>
+
     <string name="enable_similar_content">Vergelijkbare muziek aanzetten</string>
     <string name="similar_content_desc">Automatisch vergelijkbare nummers toevoegen wanneer het einde van de afspeellijst is bereikt</string>
+    <string name="persistent_shuffle_title">Blijvende willekeurige modus</string>
+    <string name="persistent_shuffle_desc">Houd de willekeurige modus ingeschakeld bij het starten van nieuwe nummers of afspeellijsten</string>
+    <string name="remember_shuffle_and_repeat">Behoud de shuffle- en herhaalmodus</string>
+    <string name="remember_shuffle_and_repeat_desc">Behoud de shuffle- en herhaalmodus bij het opnieuw opstarten van de app</string>
+    <string name="percentage_format">%d%%</string>
+
+    <string name="import_online">Importeer een \"m3u\" afspeellijst</string>
+    <string name="import_csv">Importeer een \"csv\" afspeellijst</string>
+    <string name="playlist_add_local_to_synced_note">Opmerking: het toevoegen van lokale nummers aan gesynchroniseerde/externe afspeellijsten wordt niet ondersteund. Alle andere combinaties zijn geldig</string>
+    <string name="export_playlist">Afspeellijst exporteren</string>
+    <string name="export_as_csv">Exporteren als CSV</string>
+    <string name="export_as_m3u">Exporteren als M3U</string>
+    <string name="export_success">Afspeellijst succesvol geëxporteerd</string>
+    <string name="export_failed">Exporteren van afspeellijst mislukt</string>
+    <string name="export_option_share">Delen</string>
+    <string name="export_option_save">Opslaan in Documenten</string>
+
     <string name="auto_download_on_like">Automatisch downloaden bij het liken</string>
+    <string name="auto_download_on_like_desc">Download automatisch nummers die je leuk vindt</string>
+
+    <string name="swipe_sensitivity">Mini speler swipe gevoeligheid</string>
+    <string name="sensitivity_percentage">%1$d%%</string>
+
     <string name="clear_song_cache_dialog">Weet je zeker dat je alle gecached nummers wilt wissen?</string>
+    <string name="clear_image_cache_dialog">Weet je zeker dat je gecached afbeeldingen wilt wissen?</string>
     <string name="clear_downloads_dialog">Weet je zeker dat je alle downloads wilt wissen?</string>
+
+    <string name="disable">Uitschakelen</string>
+
     <string name="not_logged_in_youtube">Niet op YouTube ingelogd</string>
+
     <string name="default_links">Open ondersteunde links</string>
     <string name="open_app_settings_error">Kon app instellingen niet openen</string>
+    <string name="changelog_empty">Geen wijzigingslogboeken beschikbaar</string>
+    <string name="github_releases_url">https://github.com/IrideGroup/Iride/releases</string>
+    <string name="list_bullet">•</string>
+    <string name="view_on_github">Bekijken op GitHub</string>
+    <string name="current_version">Huidige versie</string>
+    <string name="version_format">Versie: %s</string>
+    <string name="update_settings">Update-instellingen</string>
+    <string name="check_for_updates_title">Controleren op updates</string>
+    <string name="checking_for_updates">Controleren op updates…</string>
+    <string name="latest_version_format">Nieuwste: %s</string>
+    <string name="check_for_updates_button">Controleren op updates</string>
+    <string name="hide_changelog">Wijzigingslogboek verbergen</string>
+    <string name="view_changelog">Wijzigingslogboek bekijken</string>
+    <string name="failed_to_check_updates">Controleren op updates mislukt: %s</string>
+    <string name="update_dialog_title_new_version">Nieuwe versie beschikbaar</string>
+    <string name="update_dialog_version_available">Iride %s is beschikbaar.</string>
+    <string name="update_dialog_experimental_build">Deze build kan experimenteel zijn.</string>
+    <string name="update_dialog_no_compatible_package">Er is geen compatibel pakket gevonden voor deze build.</string>
+    <string name="update_dialog_back">Terug</string>
+    <string name="update_action_download">Downloaden</string>
+    <string name="update_action_install">Installeren</string>
+    <string name="update_action_retry">Opnieuw proberen</string>
+    <string name="update_state_downloading_percent">Downloaden… %d%%</string>
+    <string name="update_state_ready_to_install">Update gedownload — tik om te installeren</string>
+    <string name="update_permission_explanation">Om de update te installeren, geef je Iride op het volgende scherm toestemming om apps te installeren.</string>
+    <string name="update_action_allow">Toestaan</string>
+    <string name="update_download_started">Download van update gestart</string>
+    <string name="update_download_failed">Kon de update niet downloaden</string>
+    <string name="update_download_error_no_space">Niet genoeg vrije ruimte</string>
+    <string name="update_download_error_connection">Verbindingsfout</string>
+    <string name="update_download_notification_description">De nieuwe versie wordt gedownload…</string>
+
+    <string name="all_time">Altijd</string>
     <string name="past_24_hours">Afgelopen 24 uur</string>
     <string name="past_week">Afgelopen week</string>
     <string name="past_month">Afgelopen maand</string>
@@ -91,33 +300,107 @@
     <string name="history_duration">Geschiedenis duur</string>
     <string name="information">Informatie</string>
     <string name="description">Omschrijving</string>
+    <string name="album">Album</string>
+    <string name="duration">Duur</string>
     <string name="views">Weergaven</string>
-    <string name="lyrics_auto_scroll">Automatisch songtekst scrollen</string>
-    <string name="lyrics_romanize_japanese">Japans romaniseren</string>
-    <string name="lyrics_romanize_korean">Koreaans romaniseren</string>
-    <string name="yt_sync">Account automatisch synchroniseren</string>
-    <string name="more_content">Meer inhoud</string>
-    <string name="new_player_design">Nieuw speler ontwerp</string>
-    <string name="swipe_sensitivity">Mini speler swipe gevoeligheid</string>
-    <string name="clear_image_cache_dialog">Weet je zeker dat je gecached afbeeldingen wilt wissen?</string>
-    <string name="disable">Uitschakelen</string>
+    <string name="likes">Vind-ik-leuks</string>
+    <string name="dislikes">Niet leuk</string>
     <string name="subscribe">Abonneer</string>
     <string name="subscribed">Geabonneerd</string>
-    <string name="new_mini_player_design">Nieuw mini-speler ontwerp</string>
-    <string name="now_playing">Nu afspelen</string>
-    <string name="seek_forward_dynamic">+%1$d seconden vooruit</string>
-    <string name="seek_backward_dynamic">-%1$d seconden achteruit</string>
-    <string name="hide_player_thumbnail_desc">Vervang album afbeelding met de app logo in de speler</string>
-    <string name="settings_section_privacy">Privacy &amp; Beveiliging</string>
-    <string name="settings_section_player_content">Speler &amp; Inhoud</string>
-    <string name="settings_section_storage">Opslag &amp; Gegevens</string>
-    <string name="settings_section_system">Systeem &amp; Over</string>
-    <string name="config_proxy">Proxy configureren</string>
-    <string name="proxy_username">Proxy gebruikersnaam</string>
-    <string name="proxy_password">Proxy wachtwoord</string>
-    <string name="enable_authentication">Authenticatie aanzetten</string>
+        <plurals name="seconds">
+        <item quantity="one">1 seconde</item>
+        <item quantity="other">%d seconden</item>
+    </plurals>
+
+    <!-- Sleep timer -->
+    <string name="set_as_default">Als standaard instellen</string>
+    <string name="sleep_timer_default_set">Standaard slaaptimer ingesteld op %d minuten</string>
+    <string name="enable_automatic_sleeptimer">Automatische slaaptimer inschakelen</string>
+    <string name="sleeptimer_description">Start de slaaptimer automatisch op een ingesteld tijdstip met de standaardduur</string>
+    <string name="sleep_timer_repeat_description">Stel een terugkerende dag en tijd in waarop de slaaptimer automatisch wordt geactiveerd</string>
+    <string name="sleep_timer_repeat">Herhalen</string>
+    <string name="sleep_timer_daily">Dagelijks</string>
+    <string name="sleep_timer_weekdays">Maandag tot vrijdag</string>
+    <string name="sleep_timer_weekdays_weekends">Werkdagen / Weekend</string>
+    <string name="sleep_timer_weekends">Zaterdag tot zondag</string>
+    <string name="sleep_timer_custom">Aangepast</string>
+    <string name="sleep_timer_start_time">Starttijd</string>
+    <string name="sleep_timer_end_time">Eindtijd</string>
+    <string name="sleep_timer_monday">Maandag</string>
+    <string name="sleep_timer_tuesday">Dinsdag</string>
+    <string name="sleep_timer_wednesday">Woensdag</string>
+    <string name="sleep_timer_thursday">Donderdag</string>
+    <string name="sleep_timer_friday">Vrijdag</string>
+    <string name="sleep_timer_saturday">Zaterdag</string>
+    <string name="sleep_timer_sunday">Zondag</string>
+    <string name="sleep_timer_stop_after_current_song_title">Stoppen aan het einde van het huidige nummer</string>
+    <string name="sleep_timer_stop_after_current_song_description">Wacht tot het momenteel afspelende nummer is afgelopen voordat het stopt</string>
+    <string name="sleep_timer_fade_out_title">Uitfaden</string>
+    <string name="sleep_timer_fade_out_description">Laat het volume in de laatste minuut geleidelijk uitfaden</string>
+
+    <!-- Alarm -->
+    <string name="alarm">Wekker</string>
+    <string name="alarm_enabled">Wekker inschakelen</string>
+    <string name="alarm_time">Wekkertijd</string>
+    <string name="alarm_playlist">Afspeellijst</string>
+    <string name="alarm_select_playlist">Afspeellijst selecteren</string>
+    <string name="alarm_no_playlists">Geen afspeellijsten gevonden</string>
+        <plurals name="alarm_playlist_song_count">
+        <item quantity="one">%d nummer</item>
+        <item quantity="other">%d nummers</item>
+    </plurals>
+    <string name="alarm_selected">Geselecteerd</string>
+    <string name="alarm_playlist_helper">Kies welke afspeellijst de wekker zal afspelen</string>
+    <string name="alarm_add">Wekker toevoegen</string>
+    <string name="alarm_empty">Nog geen wekkers. Voeg er een toe om gepland afspelen te starten</string>
+    <string name="alarm_disabled">Uitgeschakeld</string>
+    <string name="alarm_random_enabled">Willekeurig</string>
+    <string name="alarm_random_disabled">In volgorde</string>
+    <string name="alarm_next_prefix">Volgende: %s</string>
+    <string name="alarm_new">Nieuwe wekker</string>
+    <string name="alarm_edit">Wekker bewerken</string>
+    <string name="alarm_save">Opslaan</string>
+    <string name="alarm_time_picker_value">Tijd: %s</string>
+    <string name="alarm_delete">Wekker verwijderen</string>
+    <string name="alarm_duplicate_time_warning">Er bestaat al een andere wekker op dit tijdstip. Als beide tegelijk afgaan, wordt er mogelijk maar één afgespeeld</string>
+    <string name="alarm_random_song">Speel een willekeurig nummer uit de afspeellijst af</string>
+    <string name="alarm_next_trigger">Volgende activering</string>
+    <string name="alarm_not_scheduled">Niet gepland</string>
+    <string name="alarm_exact_permission_title">Exacte wekkers toestaan</string>
+    <string name="alarm_exact_permission_desc">Geeft toestemming voor nauwkeurige wekkertiming, wat de betrouwbaarheid verbetert wanneer de app op de achtergrond draait</string>
+    <string name="alarm_exact_permission_missing">Toestemming voor exacte wekkers ontbreekt: de wekker kan te laat afgaan</string>
+    <string name="alarm_battery_optimization_title">Batterijoptimalisatie</string>
+    <string name="alarm_battery_optimization_desc">Schakel batterijoptimalisatie uit voor betrouwbaarder wekkergedrag op de achtergrond</string>
+    <string name="open_settings">Instellingen</string>
+    <string name="lastfm_api_not_configured">LastFM is niet geconfigureerd in deze build</string>
+
+    <!-- Player Settings -->
+    <string name="disable_load_more_when_repeat_all">Automatisch laden uitschakelen in herhaal-allesmodus</string>
+    <string name="disable_load_more_when_repeat_all_desc">Laad niet automatisch meer nummers of vergelijkbare content wanneer herhaal alles is ingeschakeld</string>
+    <string name="pause_music_when_media_is_muted">Muziek pauzeren wanneer media gedempt is</string>
+    <string name="resume_on_bluetooth_connect">Hervatten bij Bluetooth-verbinding</string>
+    <string name="keep_screen_on_when_player_is_expanded">Houd scherm aan als mediaspeler is uitgeklapt</string>
+
+    <string name="crossfade">Crossfade</string>
+    <string name="crossfade_desc">Laat het huidige nummer uitfaden terwijl het volgende nummer infadt</string>
+    <string name="crossfade_duration">Crossfade-duur</string>
+    <string name="crossfade_gapless">Uitschakelen voor gapless-albums</string>
+    <string name="crossfade_gapless_desc">Sla crossfade over voor albums die zijn ontworpen om zonder gaten af te spelen</string>
+    <string name="crossfade_beta_title">Beta-functie!</string>
+    <string name="crossfade_beta_message">Crossfade is een nieuwe functie en kan fouten bevatten. Als je problemen ondervindt, meld ze dan.\n\nLET OP: Deze functie schakelt audio-offload uit vanwege technische beperkingen</string>
+    <string name="skip_fade">Uitfaden bij overslaan</string>
+    <string name="skip_fade_desc">Het volgende nummer start direct; het vorige nummer fadet kort uit op de achtergrond</string>
+    <string name="skip_fade_duration">Duur van het uitfaden bij overslaan</string>
+
+    <!-- Romanization Settings -->
+    <string name="lyrics_romanization_cyrillic">Cyrillisch</string>
     <string name="lyrics_romanize_title">Romanisatie</string>
     <string name="lyrics_romanization">Songtekst romanizatie</string>
+    <string name="lyrics_romanize_japanese">Japans romaniseren</string>
+    <string name="lyrics_romanize_korean">Koreaans romaniseren</string>
+    <string name="lyrics_romanize_chinese">Chinees romaniseren</string>
+    <string name="lyrics_romanize_hindi">Hindi-songteksten romaniseren</string>
+    <string name="lyrics_romanize_punjabi">Punjabi-songteksten romaniseren</string>
     <string name="lyrics_romanize_russian">Russisch romaniseren</string>
     <string name="lyrics_romanize_ukrainian">Oekraïens romaniseren</string>
     <string name="lyrics_romanize_belarusian">Wit-Russisch romaniseren</string>
@@ -125,102 +408,791 @@
     <string name="lyrics_romanize_serbian">Servisch romaniseren</string>
     <string name="lyrics_romanize_bulgarian">Bulgaars romaniseren</string>
     <string name="line_by_line_option_title">EXPERIMENTEEL: Taal per regel detecteren</string>
+    <string name="line_by_line_option_desc">De Cyrillische taal zal lijn voor lijn gedetecteerd worden in plaats van het hele lied.</string>
     <string name="line_by_line_dialog_title">Weet je dit zeker?</string>
+    <string name="line_by_line_dialog_desc">Dit is een experimentele functie die wisselend werkt.\n\nStandaard wordt de taal gedetecteerd op basis van het hele nummer. Met deze optie aan wordt de taal per regel gedetecteerd. Hierdoor werken nummers in meerdere talen, MAAR de gedetecteerde taal is niet altijd juist. Zo kan bijvoorbeeld een Oekraïense regel zonder Oekraïenspecifieke tekens als Russisch worden geromaniseerd.\n\nAls je geen problemen ervaart, is het aan te raden deze optie uitgeschakeld te laten</string>
     <string name="romanize_current_track">Huidig nummer romaniseren</string>
-    <string name="edit_playlist_cover">Afspeellijst omslag aanpassen</string>
-    <string name="edit_playlist_cover_note">Opmerking: Je account moet aan een telefoonnummer gekoppeld zijn en geverifieerd zijn op YouTube Music om de afspeellijstcover te kunnen wijzigen.</string>
-    <string name="edit_playlist_cover_note_wait">Aanpassen van omslag kan enkele momenten duren.</string>
-    <string name="choose_from_library">Uit bibliotheek kiezen</string>
-    <string name="remove_custom_image">Verwijder aangepaste afbeelding</string>
-    <string name="show_uploaded_playlist">\"Geupload\" tonen</string>
-    <string name="lyrics_romanize_macedonian">Macedonisch romaniseren</string>
+
+    <!-- Japanese dictionary on-demand download -->
+    <string name="lyrics_romanize_japanese_dict_title">Japans woordenboek downloaden?</string>
+    <string name="lyrics_romanize_japanese_dict_message">Voor het romaniseren van Japanse songteksten is een Japans woordenboek nodig (~13 MB), dat één keer via je internetverbinding wordt gedownload.</string>
+    <string name="lyrics_romanize_japanese_dict_downloading">Japans woordenboek downloaden… %d%%</string>
+    <string name="lyrics_romanize_japanese_dict_failed">Download mislukt. Controleer je verbinding en probeer het opnieuw.</string>
+    <string name="lyrics_romanize_japanese_dict_download">Downloaden</string>
+
+    <!-- Lyrics Offset Settings -->
+    <string name="lyrics_offset">Songtekst-offset</string>
+
+    <!-- Material 3 Settings Sections -->
+    <string name="settings_section_ui">Interface</string>
+    <string name="settings_section_privacy">Privacy &amp; Beveiliging</string>
+    <string name="settings_section_player_content">Speler &amp; Inhoud</string>
+    <string name="settings_section_storage">Opslag &amp; Gegevens</string>
+    <string name="app_data_storage">Appgegevens &amp; opslag</string>
+    <string name="app_management_backup">Gegevens &amp; opslag</string>
+    <string name="settings_section_system">Systeem &amp; Over</string>
+    <string name="settings_section_player">Afspelen</string>
+    <string name="settings_section_content">Inhoud</string>
+    <string name="settings_section_ai">Kunstmatige intelligentie</string>
+    <string name="settings_section_integrations">Integraties</string>
+    <string name="settings_section_audio">Audio</string>
+    <string name="settings_section_behavior">Gedrag</string>
+    <string name="settings_section_interface">Interface</string>
+    <string name="settings_section_navigation">Navigatie</string>
+    <string name="settings_section_display">Weergave</string>
+    <string name="settings_section_lab">Lab</string>
+    <string name="settings_section_system_short">Systeem</string>
+
+    <!-- Updater -->
     <string name="updater">Updateprogramma</string>
     <string name="check_for_updates">Automatisch voor updates controleren</string>
     <string name="update_notifications">Update meldingen aanzetten</string>
     <string name="update_available_title">Update beschikbaar</string>
+    <string name="update_channel_name">App-updates</string>
+    <string name="update_channel_desc">Meldingen over nieuwe versies</string>
+
+    <!-- Offload -->
+    <string name="audio_offload">Audio-offload inschakelen</string>
+    <string name="audio_offload_description">Gebruikt het hardware-pad voor audio-offload om af te spelen. Het uitschakelen hiervan kan het batterijverbruik verhogen, maar kan helpen als je problemen ondervindt met afspelen of audionabewerking</string>
+    <string name="audio_offload_disabled_by_crossfade">Uitgeschakeld omdat crossfade actief is</string>
+
+    <!-- Varispeed -->
+    <string name="speed">Afspeelsnelheid</string>
+    <string name="varispeed">Varispeed inschakelen</string>
+    <string name="varispeed_description">Koppelt de toonhoogte aan de afspeelsnelheid, wat resulteert in versnellings- en vertragingseffecten zoals op een bandopname</string>
+
+    <!-- Google Cast -->
+    <string name="google_cast">Google Casten</string>
+    <string name="google_cast_description">Cast audio naar Chromecast en andere apparaten met Cast-ondersteuning</string>
+
+    <string name="lyrics_romanize_macedonian">Macedonisch romaniseren</string>
+    <string name="lyrics_romanize_as_main">Geromaniseerde songteksten als hoofdtekst tonen</string>
+
     <string name="integrations">Integraties</string>
     <string name="username">Gebruikersnaam</string>
     <string name="password">Wachtwoord</string>
+
+    <!-- Last.fm -->
     <string name="lastfm_integration">Last.fm Integratie</string>
     <string name="enable_scrobbling">Scrobbling aanzetten</string>
+    <string name="lastfm_now_playing">Now Playing-status verzenden</string>
+    <string name="last_fm_send_likes">Gelikete en niet-gelikete nummers synchroniseren</string>
+    <string name="last_fm_send_likes_description">Markeer nummers op Last.fm als geliked of niet-geliked wanneer je ze in Iride leuk of niet leuk vindt</string>
+    <string name="logging_in">Inloggen…</string>
+
     <string name="scrobbling_configuration">Scrobbling Configuratie</string>
-    <string name="lyrics_romanize_chinese">Chinees romaniseren</string>
+    <string name="scrobble_min_track_duration">Scrobble nummers langer dan (seconden)</string>
+    <string name="scrobble_delay_percent">Scrobble-vertraging (percentage)</string>
+    <string name="scrobble_delay_minutes">Scrobble-vertraging (minuten)</string>
     <string name="hide_video_songs">Video nummers verbergen</string>
-    <string name="primary_color_style">Primaire kleur</string>
-    <string name="auto_scroll">Synchroniseren</string>
+    <string name="square_video_thumbnail">Vierkante videominiaturen</string>
+    <string name="square_video_thumbnail_desc">Snij videominiaturen bij tot een vierkante beeldverhouding</string>
+    <string name="hide_youtube_shorts">YouTube Shorts verbergen</string>
+
     <string name="details_desc">Nummer informatie</string>
     <string name="edit_desc">Titel of artiest veranderen</string>
+    <string name="start_radio_desc">Start een radio op basis van dit item</string>
+    <string name="play_next_desc">Voeg toe aan het begin van je wachtrij</string>
+    <string name="add_to_queue_desc">Voeg toe aan het einde van je wachtrij</string>
     <string name="add_to_library_desc">Opslaan in bibliotheek</string>
     <string name="download_desc">Beschikbaar maken voor offline afspelen</string>
     <string name="add_to_playlist_desc">Toevoegen aan afspeellijst</string>
     <string name="refetch_desc">Opnieuw YouTube Music metadata ophalen</string>
+    <string name="share_desc">Deel een link naar dit item</string>
+    <string name="delete_desc">Dit item permanent verwijderen</string>
+    <string name="lyrics_edit_desc">Bewerk de songtekst handmatig</string>
+    <string name="lyrics_refetch_desc">Haal nieuwe songteksten op bij providers</string>
+    <string name="lyrics_search_desc">Zoek songteksten op titel en artiest</string>
+    <string name="lyrics_copy_desc">Kopieer alle songteksten naar het klembord</string>
     <string name="advanced_desc">Nummer tempo en toonhoogte aanpassen</string>
+    <string name="repeat_one">Eén herhalen</string>
+    <string name="repeat_one_desc">Herstart dit nummer oneindig, speel nooit een ander</string>
+    <string name="night_mode">Nachtmodus</string>
     <string name="equalizer_desc">Audio equalizer aanpassen</string>
     <string name="enable_dynamic_icon">Dynamisch app pictogram</string>
     <string name="mini_player">Mini-speler</string>
     <string name="pure_black_mini_player">OLED mini-speler</string>
-    <string name="tertiary_color_style">Tertiaire kleur</string>
-    <string name="logging_in">Inloggen…</string>
-    <string name="remove_download_playlist_desc">Verwijder alle gedownloaden nummers van deze afspeellijst</string>
-    <string name="download_in_progress_desc">Downloaden wordt uitgevoerd</string>
-    <string name="share_playlist_desc">Deel afspeellijst</string>
-    <string name="delete_playlist_desc">Afspeellijst verwijderen</string>
-    <string name="sync_playlist_desc">Synchroniseer afspeellijst met YouTube Music</string>
-    <string name="lyrics_text_size">Songtekst lettergrootte</string>
-    <string name="lyrics_line_spacing">Songtekst regel afstand</string>
-    <string name="show_wrapped_card">Toon Wrapped</string>
-    <string name="progress_percent">Vooruitgang %s%%</string>
-    <string name="copied_title">Titel gekopieerd</string>
-    <string name="copied_artist">Artiest gekopieerd</string>
-    <string name="lyrics_glow_effect">Gloeiende songtekst</string>
-    <string name="download_playlist_desc">Alle nummers downloaden voor offline afspelen</string>
-    <string name="swipe_song_to_remove">Swipe nummer om het van de afspeellijst te verwijderen</string>
-    <string name="about_artist">Over</string>
-    <string name="show_more">Meer tonen</string>
-    <string name="show_less">Minder tonen</string>
-    <string name="artist_page_settings">Artiesten pagina</string>
-    <string name="show_artist_description">Artiesten beschrijving tonen</string>
-    <string name="show_artist_subscriber_count">Aantal abonnees tonen</string>
-    <string name="show_artist_monthly_listeners">Maandelijkse luisteraars tonen</string>
-    <string name="hide_player_thumbnail">Verberg album afbeelding in speler</string>
-    <string name="seek_seconds_addup">Muziek progressief doorzoeken</string>
-    <string name="wavy">Golvend</string>
-    <string name="seek_seconds_addup_description">voegt 5 seconden toe bij elke skip</string>
-    <string name="default_lib_chips">Verander standaard bibliotheek chip</string>
-    <string name="import_online">Importeer een \"m3u\" afspeellijst</string>
-    <string name="import_csv">Importeer een \"csv\" afspeellijst</string>
-    <string name="enable_better_lyrics">Better Lyrics</string>
-    <string name="enable_better_lyrics_desc">Gebruik de Better Lyrics provider voor woord-voor-woord gesynchroniseerde songtekst</string>
-    <string name="lyrics_romanization_cyrillic">Cyrillisch</string>
-    <string name="line_by_line_option_desc">De Cyrillische taal zal lijn voor lijn gedetecteerd worden in plaats van het hele lied.</string>
-    <string name="set_quick_picks">Snelle keuzes instellen</string>
-    <string name="play_pause">Afspelen/Pauzeer</string>
-    <string name="lyrics_animation_style">Woord-voor-woord animatie stijl</string>
-    <string name="lyrics_glow_effect_desc">Voegt gloeiende animatie en stuiter effecten toe aan actieve songtekst</string>
+    <string name="mini_player_background_style">Achtergrondstijl van mini-speler</string>
+    <string name="transparent">Transparant</string>
+    <string name="mini_player_background_not_available">Niet beschikbaar wanneer het nieuwe ontwerp van de mini-speler is uitgeschakeld</string>
+    <string name="cache_size_warning_title">Even wachten!</string>
+    <string name="cache_size_warning_message">De limiet die je hebt gekozen (%1$s) is kleiner dan wat de app momenteel gebruikt. Als je doorgaat, kunnen sommige gecachte %2$s verwijderd worden. Toch doorgaan?</string>
+    <string name="cache_size_warning_confirm">Doorgaan</string>
+
+    <string name="lyrics_animation_style_title">Animatiestijl per woord</string>
     <string name="none">Geen</string>
     <string name="fade">Vervagen</string>
     <string name="glow">Gloei</string>
     <string name="slide">Schuiven</string>
-    <string name="crop_album_art">Albumhoes bijsnijden</string>
-    <string name="remember_shuffle_and_repeat">Behoud de shuffle- en herhaalmodus</string>
-    <string name="remember_shuffle_and_repeat_desc">Behoud de shuffle- en herhaalmodus bij het opnieuw opstarten van de app</string>
-    <string name="crop_album_art_desc">Dwing een vierkante beeldverhouding door videominiaturen bij te snijden</string>
-    <string name="skip_silence_instant">Stilte direct overslaan</string>
-    <string name="skip_silence_instant_desc">Spoel tijdens stille momenten vooruit in plaats van het afspelen te versnellen</string>
-    <string name="discord_use_details_description">Toon de titel van het nummer duidelijk in plaats van de naam van de artiest</string>
-    <string name="percentage_format">%d%%</string>
-    <string name="playlist_add_local_to_synced_note">Opmerking: het toevoegen van lokale nummers aan gesynchroniseerde/externe afspeellijsten wordt niet ondersteund. Alle andere combinaties zijn geldig</string>
-    <string name="auto_download_on_like_desc">Download automatisch nummers die je leuk vindt</string>
-    <string name="all_time">Altijd</string>
-    <string name="likes">Vind-ik-leuks</string>
-    <string name="dislikes">Niet leuk</string>
-    <string name="pause_music_when_media_is_muted">Muziek pauzeren wanneer media gedempt is</string>
-    <string name="keep_screen_on_when_player_is_expanded">Houd scherm aan als mediaspeler is uitgeklapt</string>
-    <string name="update_channel_desc">Meldingen over nieuwe versies</string>
-    <string name="google_cast">Google Casten</string>
-    <string name="play_next_desc">Voeg toe aan het begin van je wachtrij</string>
-    <string name="add_to_queue_desc">Voeg toe aan het einde van je wachtrij</string>
-    <string name="share_desc">Deel een link naar dit item</string>
-    <string name="delete_desc">Dit item permanent verwijderen</string>
+    <string name="karaoke">Karaoke</string>
+    <string name="apple_music_style">Apple Music</string>
+    <string name="album_art_for">Albumhoes voor %s</string>
+    <string name="wrapped_total_albums_title">Je hebt geluisterd naar</string>
+    <string name="wrapped_total_albums_subtitle">unieke albums!</string>
+    <string name="wrapped_top_album_title">Je topalbum is</string>
+    <string name="wrapped_playlist_ready">Je persoonlijke afspeellijst is klaar!</string>
+    <string name="wrapped_top_5_albums_title">Je top 5-albums</string>
+    <string name="wrapped_album_listening_time">Je hebt %d minuten naar dit album geluisterd!</string>
+    <string name="wrapped_album_listening_time_minutes">%d minuten</string>
+    <string name="wrapped_no_data">Geen gegevens beschikbaar</string>
+    <string name="wrapped_top_5_artists_title">Je topartiesten van het jaar</string>
+    <string name="wrapped_artist_listening_time">%d minuten</string>
+    <string name="wrapped_top_5_songs_title">Je topnummers van het jaar</string>
+    <string name="wrapped_top_song_album_art_content_description">Albumhoes</string>
+    <string name="wrapped_top_artist_title">Je topartiest van het jaar is</string>
+    <string name="wrapped_top_artist_image_content_description">Afbeelding van topartiest</string>
+    <string name="wrapped_top_artist_listening_time">Je hebt %d minuten naar deze artiest geluisterd!</string>
+    <string name="wrapped_top_song_title">Je meest afgespeelde nummer is</string>
+    <string name="wrapped_top_song_listening_time">Je hebt %d minuten geluisterd!</string>
+    <string name="wrapped_total_artists_title">Je hebt geluisterd naar</string>
+    <string name="wrapped_total_artists_subtitle">unieke artiesten!</string>
+    <string name="wrapped_total_songs_title">Je hebt geluisterd naar</string>
+    <string name="wrapped_total_songs_subtitle">unieke nummers!</string>
+    <string name="wrapped_intro_title">IRIDE</string>
+    <string name="wrapped_intro_subtitle">het is tijd om te zien waarnaar je dit hele jaar hebt geluisterd…</string>
+    <string name="wrapped_intro_button">laten we gaan!</string>
+    <string name="wrapped_logo_content_description">Iride-logo</string>
+    <string name="wrapped_year">2025</string>
+    <string name="wrapped_ready_title">JE WRAPPED IS KLAAR!</string>
+    <string name="wrapped_ready_subtitle">Tijd om te zien wat je dit hele jaar geweldig vond…</string>
+    <string name="wrapped_thank_you">Bedankt voor het luisteren!</string>
+    <string name="wrapped_special_thanks">Speciale dank aan MO Agamy voor het maken van Iride</string>
+    <string name="wrapped_close">Wrapped sluiten</string>
+    <string name="wrapped_playlist_title">Jouw Wrapped van %s</string>
+    <string name="wrapped_create_playlist">Afspeellijst maken</string>
+    <string name="wrapped_playlist_saved">Afspeellijst opgeslagen</string>
+
+    <!-- Equalizer UI -->
+        <plurals name="profiles_count">
+        <item quantity="one">%d profiel</item>
+        <item quantity="other">%d profielen</item>
+    </plurals>
+    <string name="equalizer_header">Equalizer</string>
+    <string name="no_profiles">Geen equalizerprofielen</string>
+    <string name="import_profile">Profiel importeren</string>
+    <string name="system_equalizer">Systeemequalizer</string>
+    <string name="eq_disabled">Uitgeschakeld</string>
+        <plurals name="band_count">
+        <item quantity="one">%d band</item>
+        <item quantity="other">%d banden</item>
+    </plurals>
+    <string name="delete_profile_desc">Profiel verwijderen</string>
+    <string name="delete_profile_confirmation">Weet je zeker dat je %1$s wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt</string>
+    <string name="error_file_read">Kon het bestand niet lezen</string>
+    <string name="error_file_open">Openen van bestand mislukt: %1$s</string>
+    <string name="import_error_title">Importfout</string>
+    <string name="error_title">Fout</string>
+    <string name="error_eq_apply_failed">Toepassen van equalizerprofiel mislukt: %1$s</string>
+
+    <!-- Parametric equalizer editor -->
+    <string name="eq_editor_subtitle">Shape the sound for every output device</string>
+    <string name="eq_master_enable">Enable equalizer</string>
+    <string name="eq_output_source">Output</string>
+    <string name="eq_device_speaker">Phone speaker</string>
+    <string name="eq_device_wired">Wired headphones</string>
+    <string name="eq_device_unknown">Audio output</string>
+    <string name="eq_save_for_device">Save for this device</string>
+    <string name="eq_saved_for_device">Linked to %1$s</string>
+    <string name="eq_manage_devices">Saved devices</string>
+    <string name="eq_no_saved_devices">No linked devices yet</string>
+    <string name="eq_unbind_device">Remove link</string>
+    <string name="eq_unbind_done">Device link removed</string>
+    <string name="eq_preset_balanced">Balanced</string>
+    <string name="eq_preset_more_bass">More bass</string>
+    <string name="eq_preset_more_treble">More treble</string>
+    <string name="eq_preset_voice">Vocal</string>
+    <string name="eq_selected_band_label">Band %1$d · %2$s · Q %3$s</string>
+    <string name="eq_frequency">Frequency</string>
+    <string name="eq_q_factor">Q</string>
+    <string name="eq_bass_enhance">Bass enhance</string>
+    <string name="eq_bass_enhance_desc">Low-shelf boost around 90 Hz</string>
+    <string name="eq_transient_title">Duration</string>
+    <string name="eq_transient_desc">Full bass only on short transients: sustained low frequencies are softened. Great for low-quality devices that need punchy bass without constant rumble.</string>
+    <string name="eq_advanced_options">Advanced options</string>
+    <string name="eq_exact_gain_title">Exact gain</string>
+    <string name="eq_reset_band">Reset band</string>
+    <string name="eq_profile_saved">Equalizer saved</string>
+    <string name="queue_empty">Queue is empty</string>
+    <string name="queue_history_title">History</string>
+    <string name="queue_radio_section_title">Radio</string>
+    <string name="queue_radio_section_subtitle">These songs come from the radio</string>
+
+    <!-- Hardcoded strings -->
+    <string name="found_in_settings_content">Te vinden in Instellingen &gt; Inhoud</string>
+    <string name="your_daily_discover">Je dagelijkse ontdekking</string>
+    <string name="plays">keer afgespeeld</string>
+    <string name="casting_to">Casten naar %s</string>
+    <string name="progress_percent">Vooruitgang %s%%</string>
+    <string name="listening_to_metrolist">Luistert naar Iride</string>
+    <string name="open">Openen</string>
+    <string name="failed_to_create_image">Aanmaken van afbeelding mislukt: %s</string>
+    <string name="copied_title">Titel gekopieerd</string>
+    <string name="copied_artist">Artiest gekopieerd</string>
+    <string name="error_playing">Afspeelfout</string>
+    <string name="failed_to_parse_proxy">Parseren van proxy-URL mislukt</string>
+
+    <!-- Playback errors -->
+    <string name="error_playback_failed">Afspelen mislukt</string>
+    <string name="error_episode_save">Opslaan van aflevering mislukt</string>
+    <string name="error_episode_remove">Verwijderen van aflevering mislukt</string>
+    <string name="error_podcast_subscribe">Abonneren op podcast mislukt</string>
+    <string name="error_podcast_unsubscribe">Afmelden voor podcast mislukt</string>
+    <string name="view_channel">Kanaal bekijken</string>
+
+    <!-- Widget strings -->
+    <string name="album_art">Albumhoes</string>
+    <string name="no_song_playing">Er speelt geen nummer</string>
+    <string name="tap_to_open">Tik om Iride te openen</string>
+    <string name="previous">Vorige</string>
+    <string name="play_pause">Afspelen/Pauzeer</string>
+    <string name="next">Volgende</string>
+    <string name="like">Leuk</string>
+    <string name="not_playing">Er speelt geen nummer</string>
+    <string name="tap_to_play">Tik om Iride te openen</string>
+    <string name="widget_description">Muziekspeler-widget met afspeelbediening</string>
+    <string name="turntable_widget_description">Ronde muziekwidget met bediening voor afspelen en leuk vinden</string>
+    <string name="widget_music_player">Muziekspeler</string>
+    <string name="widget_turntable">Draaitafel</string>
+
+    <!-- Music Recognizer Widget strings -->
+    <string name="widget_recognizer_name">Muziekherkenner</string>
+    <string name="widget_recognizer_description">Herken nummers die om je heen worden afgespeeld, rechtstreeks vanaf je startscherm</string>
+    <string name="widget_recognizer_tap_to_search">Tik om een nummer te herkennen</string>
+    <string name="widget_recognizer_listening">Luisteren…</string>
+    <string name="widget_recognizer_processing">Herkennen…</string>
+    <string name="widget_recognizer_no_match">Geen overeenkomst gevonden. Probeer het opnieuw</string>
+    <string name="widget_recognizer_error">Herkennen mislukt</string>
+    <string name="widget_recognizer_error_generic">Er is iets misgegaan. Probeer het opnieuw</string>
+    <string name="widget_recognizer_unknown_song">Onbekend nummer</string>
+    <string name="widget_recognizer_unknown_artist">Onbekende artiest</string>
+    <string name="widget_recognizer_mic_desc">Herken een nummer</string>
+    <string name="widget_recognizer_channel_name">Muziekherkenning</string>
+    <string name="widget_recognizer_channel_desc">Toont een melding terwijl een nummer vanuit de widget wordt herkend</string>
+    <string name="widget_recognizer_notification_text">Neemt audio op om het nummer te herkennen…</string>
+
+    <!-- Player Client Settings -->
+
+    <!-- Decryption Library Settings -->
+
+    <!-- Listen Together -->
+    <string name="together">Samen</string>
+    <string name="listen_together">Luister Samen</string>
+    <string name="listen_together_server_url">Server-URL</string>
+    <string name="listen_together_choose_server">Server kiezen</string>
+    <string name="listen_together_custom_server">Aangepaste server</string>
+    <string name="listen_together_use_custom_server">Aangepaste server gebruiken</string>
+    <string name="listen_together_username">Gebruikersnaam</string>
+    <string name="listen_together_connected">Verbonden</string>
+    <string name="listen_together_reconnecting">Opnieuw verbinden…</string>
+    <string name="listen_together_disconnected">Verbinding verbroken</string>
+    <string name="listen_together_connecting">Verbinden…</string>
+    <string name="listen_together_error">Verbindingsfout</string>
+    <string name="listen_together_create_room">Ruimte maken</string>
+    <string name="listen_together_create_room_desc">Maak een ruimte en deel de code met je vrienden</string>
+    <string name="listen_together_join_room">Deelnemen aan ruimte</string>
+    <string name="listen_together_room_code">Ruimtecode</string>
+    <string name="listen_together_you_are_host">Jij bent de host</string>
+    <string name="listen_together_you_are_guest">Je bent een gast</string>
+    <string name="mute">Dempen</string>
+    <string name="unmute">Dempen opheffen</string>
+    <string name="listen_together_join_requests">Deelnameverzoeken</string>
+    <string name="listen_together_view_logs">Logboeken bekijken</string>
+    <string name="listen_together_view_logs_desc">Fouten opsporen in verbindingsgebeurtenissen en berichten</string>
+    <string name="listen_together_logs">Verbindingslogboeken</string>
+    <string name="listen_together_no_logs">Nog geen logboeken</string>
+    <string name="listen_together_auto_approval_joins">Deelnameverzoeken automatisch goedkeuren</string>
+    <string name="listen_together_auto_approval_joins_desc">Keur deelnameverzoeken automatisch goed zonder ze handmatig te controleren</string>
+    <string name="listen_together_auto_approval_suggestions">Nummervoorstellen automatisch goedkeuren</string>
+    <string name="listen_together_auto_approval_suggestions_desc">Keur nummervoorstellen van gasten automatisch goed en zet ze in de wachtrij</string>
+    <string name="listen_together_sync_volume">Hostvolume synchroniseren</string>
+    <string name="listen_together_sync_volume_desc">Gasten nemen het volumeniveau van de host over</string>
+    <string name="listen_together_in_top_bar">Luister Samen in de bovenbalk</string>
+    <string name="listen_together_in_top_bar_desc">Toon Luister Samen in de bovenste appbalk in plaats van in de navigatiebalk</string>
+    <string name="listen_together_description">Luister in realtime samen met je vrienden naar muziek. Maak een ruimte aan als host of sluit je aan bij een bestaande ruimte met een code</string>
+    <string name="listen_together_background_disconnect_note">LET OP: De verbinding kan worden verbroken als je een ruimte maakt terwijl er geen muziek speelt en vervolgens naar een andere app overschakelt</string>
+    <string name="listen_together_not_configured">Luister Samen is niet ingesteld. Configureer de server-URL in: Luister Samen &gt; Instellingen &gt; Server-URL</string>
+    <string name="listen_together_suggestion_received">%1$s stelde %2$s voor</string>
+    <string name="listen_together_suggestion_sent">Voorstel naar host verzonden!</string>
+    <string name="listen_together_join_request_notification">%1$s wil deelnemen aan de ruimte</string>
+    <string name="listen_together_notification_channel_name">Luister Samen</string>
+    <string name="listen_together_notification_channel_desc">Meldingen voor Luister Samen-gebeurtenissen</string>
+    <string name="listen_together_room_created">Ruimte gemaakt: %s</string>
+    <string name="listen_together_cannot_edit_username_in_room">De gebruikersnaam kan niet worden gewijzigd terwijl je in een ruimte bent</string>
+    <string name="waiting_for_approval">Wachten op goedkeuring van de host…</string>
+    <string name="invalid_room_code">Ongeldige ruimtecode</string>
+    <string name="join_request_denied">Deelnameverzoek geweigerd</string>
+    <string name="join_existing_room">Deelnemen aan bestaande ruimte</string>
+    <string name="room_code">Ruimtecode</string>
+    <string name="leave_room">Ruimte verlaten</string>
+    <string name="join_room">Deelnemen</string>
+    <string name="create_room">Maken</string>
+    <string name="joining_room">Deelnemen aan ruimte %s…</string>
+    <string name="creating_room">Ruimte maken…</string>
+    <string name="connect">Verbinden</string>
+    <string name="disconnect">Verbreken</string>
+    <string name="create">Maken</string>
+    <string name="join">Deelnemen</string>
+    <string name="approve">Goedkeuren</string>
+    <string name="reject">Afwijzen</string>
+    <string name="clear">Wissen</string>
+    <string name="copy">Kopiëren</string>
+    <string name="copy_all_lyrics">Alle songteksten kopiëren</string>
+    <string name="change">Wijzigen</string>
+    <string name="copied_to_clipboard">Gekopieerd naar klembord</string>
+    <string name="not_set">Niet ingesteld</string>
+    <string name="hosting_room">Ruimte hosten</string>
+    <string name="in_room">In ruimte</string>
+    <string name="pending_requests">Openstaande verzoeken</string>
+    <string name="pending_suggestions">Openstaande voorstellen</string>
+    <string name="suggest_to_host">Voorstellen aan host</string>
+    <string name="kick_user">Kicken</string>
+    <string name="host_label">Host</string>
+    <string name="you_label">Jij</string>
+    <string name="connected_users">Verbonden gebruikers</string>
+    <string name="enter_username">Voer een gebruikersnaam in</string>
+    <string name="enter_room_code">Voer een ruimtecode in</string>
+    <string name="listen_together_settings_desc">Configureer server, gebruikersnaam en meer</string>
+    <string name="error_username_empty">Een gebruikersnaam is verplicht</string>
+    <string name="resync">Opnieuw synchroniseren</string>
+    <string name="copy_code">Code kopiëren</string>
+    <string name="kick_user_desc">Verwijder deze persoon uit de sessie</string>
     <string name="permanently_kick_user">Permanent Blokkeren</string>
+    <string name="permanently_kick_user_desc">Blokkeer deelnameverzoeken van deze persoon en verberg diens voorstellen</string>
+    <string name="transfer_ownership">Eigendom overdragen</string>
+    <string name="transfer_ownership_desc">Maak deze persoon de host van de ruimte</string>
+    <string name="manage_user">Gebruiker beheren</string>
+    <string name="listen_together_blocked_users">Geblokkeerde gebruikers</string>
+    <string name="listen_together_blocked_users_count">%d gebruiker(s) geblokkeerd</string>
+    <string name="listen_together_no_blocked_users">Geen geblokkeerde gebruikers</string>
+    <string name="unblock">Deblokkeren</string>
+    <string name="user_blocked_by_host">Geblokkeerd door host</string>
+
+    <!-- AI Lyrics Translation -->
+    <string name="ai_lyrics_translation">AI-vertaling van songteksten</string>
+    <string name="ai_translating_lyrics">Songteksten worden vertaald…</string>
+    <string name="ai_lyrics_translated">Songteksten vertaald</string>
+    <string name="ai_provider">Provider</string>
+    <string name="ai_base_url">Basis-URL</string>
+    <string name="ai_api_key">API-sleutel</string>
+    <string name="ai_model">Model</string>
+    <string name="ai_translation_mode">Vertaalmodus</string>
+    <string name="ai_target_language">Doeltaal</string>
+    <string name="ai_setup_guide">API-inloggegevens</string>
+    <string name="ai_translation_literal">Vertaling</string>
+    <string name="ai_translation_literal_desc">Vertaalt de betekenis naar de doeltaal</string>
+    <string name="ai_translation_transcribed">Transcriptie</string>
+    <string name="ai_translation_transcribed_desc">Zet de uitspraak om naar het doelschrift</string>
+    <string name="ai_api_key_required">API-sleutel vereist</string>
+    <string name="ai_error_api_key_required">Er is een API-sleutel vereist</string>
+    <string name="ai_error_no_lyrics">Geen songteksten om te vertalen</string>
+    <string name="ai_error_lyrics_empty">Songteksten zijn leeg</string>
+    <string name="ai_error_language_required">Er is een doeltaal vereist</string>
+    <string name="ai_error_unexpected">Onverwacht vertaalresultaat</string>
+    <string name="ai_error_unknown">Er is een onbekende fout opgetreden</string>
+    <string name="ai_error_translation_failed">Vertaling mislukt</string>
+    <string name="ai_provider_help">API-sleutels verkrijgen</string>
+    <string name="ai_provider_openrouter_help">Bezoek https://openrouter.ai voor gratis en betaalde modellen</string>
+    <string name="ai_provider_openai_help">Bezoek https://platform.openai.com/api-keys</string>
+    <string name="ai_provider_claude_help">Bezoek https://console.anthropic.com/settings/keys</string>
+    <string name="ai_provider_gemini_help">Bezoek https://aistudio.google.com/apikey</string>
+    <string name="ai_provider_perplexity_help">Bezoek https://perplexity.ai/settings/api</string>
+    <string name="ai_provider_xai_help">Bezoek https://console.x.ai</string>
+    <string name="ai_provider_deepl_help">Bezoek https://deepl.com/pro-api voor gratis en betaalde sleutels</string>
+    <string name="ai_provider_mistral_help">Bezoek https://console.mistral.ai/api-keys</string>
+    <string name="ai_deepl_formality">Formaliteit</string>
+    <string name="ai_deepl_formality_default">Standaard</string>
+    <string name="ai_deepl_formality_more">Formeler</string>
+    <string name="ai_deepl_formality_less">Minder formeel</string>
+    <string name="ai_system_prompt">Systeemprompt</string>
+    <string name="ai_system_prompt_desc">Aangepaste instructies die naar het AI-model worden gestuurd. Laat leeg om de standaardprompt te gebruiken</string>
+    <string name="ai_system_prompt_placeholder">Gebruik {lineCount} als plaatshouder voor het aantal te vertalen regels</string>
+    <string name="ai_system_prompt_default">Standaard</string>
+    <string name="ai_system_prompt_reset">Standaardwaarde herstellen</string>
+
+    <!-- Crash Handler -->
+    <string name="crash_title">App gecrasht</string>
+    <string name="crash_description">Er is een onverwachte fout opgetreden. Deel het crashrapport om ons te helpen het probleem op te lossen</string>
+    <string name="crash_share_logs">Logboeken delen</string>
+    <string name="crash_share_title">Crashrapport delen</string>
+    <string name="crash_report_subject">Iride-crashrapport</string>
+    <string name="crash_close">Sluiten</string>
+    <string name="crash_no_log">Geen crashlogboek beschikbaar</string>
+
+    <!-- Theme Palette Names -->
+    <string name="palette_dynamic">Dynamisch</string>
+    <string name="palette_crimson">Karmozijnrood</string>
+    <string name="palette_rose">Roze</string>
+    <string name="palette_purple">Paars</string>
+    <string name="palette_deep_purple">Donkerpaars</string>
+    <string name="palette_indigo">Indigo</string>
+    <string name="palette_blue">Blauw</string>
+    <string name="palette_sky_blue">Hemelsblauw</string>
+    <string name="palette_cyan">Cyaan</string>
+    <string name="palette_teal">Blauwgroen</string>
+    <string name="palette_green">Groen</string>
+    <string name="palette_light_green">Lichtgroen</string>
+    <string name="palette_lime">Limoen</string>
+    <string name="palette_yellow">Geel</string>
+    <string name="palette_amber">Amber</string>
+    <string name="palette_orange">Oranje</string>
+    <string name="palette_deep_orange">Donkeroranje</string>
+    <string name="palette_brown">Bruin</string>
+    <string name="palette_grey">Grijs</string>
+    <string name="palette_blue_grey">Blauwgrijs</string>
+
+    <!-- Theme Mode Selector -->
+    <string name="theme_mode_light">Licht</string>
+    <string name="theme_mode_dark">Donker</string>
+    <string name="theme_mode_system">Systeem</string>
+
+    <!-- Theme Content Descriptions -->
+    <string name="cd_back">Terug</string>
+    <string name="cd_pure_black_mode">Zuiver zwarte modus</string>
+    <string name="cd_light_mode">Lichte modus</string>
+    <string name="cd_dark_mode">Donkere modus</string>
+    <string name="cd_system_mode">Systeemmodus</string>
+    <string name="cd_palette_item">%1$s-palet</string>
+    <string name="play_all">Alles afspelen</string>
+    <string name="mp3_panel_lyrics">TEKST</string>
+    <string name="mp3_panel_up_next">VOLEND</string>
+
+    <!-- Library Albums screen sections -->
+    <string name="continue_listening">Verder luisteren</string>
+    <string name="remove_from_continue_listening">Verwijderen uit Verder luisteren</string>
+    <string name="favorite_albums">Favorieten</string>
+    <string name="remove_suggested_follow_artist">Suggestie verwijderen</string>
+
+    <string name="enable_high_refresh_rate">Hoge verversingssnelheid inschakelen</string>
+    <string name="enable_high_refresh_rate_desc">Dwingt het scherm om met de hoogst ondersteunde verversingssnelheid te draaien (bijv. 120Hz)</string>
+
+    <!-- Music Recognition -->
+    <string name="recognize_music">Muziek herkennen</string>
+    <string name="tap_to_recognize">Tik om te herkennen</string>
+    <string name="listening">Luisteren…</string>
+    <string name="processing">Verwerken…</string>
+    <string name="no_match_found">Geen overeenkomst gevonden</string>
+    <string name="recognition_error">Herkenningfout</string>
+    <string name="try_again">Opnieuw proberen</string>
+    <string name="refresh">Vernieuwen</string>
+    <string name="recognition_history">Herkenningsgeschiedenis</string>
+    <string name="clear_recognition_history">Herkenningsgeschiedenis wissen</string>
+    <string name="clear_recognition_history_confirm">Weet je zeker dat je alle herkenningsgeschiedenis wilt wissen?</string>
+    <string name="delete_from_history">Verwijderen uit geschiedenis</string>
+    <string name="re_listen">Opnieuw beluisteren</string>
+    <string name="play_on_app">Afspelen in Iride</string>
+    <string name="qs_tile_music_recognizer">Muziek herkennen</string>
+    <string name="recognition_notification_channel_name">Muziekherkenning</string>
+    <string name="recognition_notification_channel_desc">Toont een melding tijdens het identificeren van een nummer via snelle instellingen</string>
+    <string name="recognition_notification_listening">Aan het luisteren naar muziek…</string>
+    <string name="recognition_notification_processing">Identificeren…</string>
+    <string name="recognition_notification_no_match">Geen overeenkomst gevonden</string>
+    <string name="recognition_notification_failed">Herkenning mislukt</string>
+    <string name="listen_on_metrolist">Beluisteren in Iride</string>
+
+    <!-- CSV Import Strings -->
+    <string name="map_csv_columns">CSV-kolommen koppelen</string>
+    <string name="first_row_is_header">Eerste rij is kop</string>
+    <string name="artist_name_column">Kolom artiestnaam</string>
+    <string name="song_title_column">Kolom nummertitel</string>
+    <string name="youtube_url_column">Kolom YouTube-URL (optioneel)</string>
+    <string name="continue_action">Doorgaan</string>
+    <string name="importing_csv">CSV importeren…</string>
+    <string name="importing_playlist">Afspeellijst importeren…</string>
+
+    <string name="recently_converted">Onlangs geconverteerd</string>
+    <string name="column_label">Kolom %d</string>
+
+    <!-- Discord Integration -->
+    <string name="discord_status">Status</string>
+    <string name="discord_status_online">Online</string>
+    <string name="discord_status_idle">Inactief</string>
+    <string name="discord_status_dnd">Niet storen</string>
+    <string name="discord_buttons">Knoppen</string>
+    <string name="discord_button_1">Knop 1</string>
+    <string name="discord_button_2">Knop 2</string>
+    <string name="login_successful">Inloggen geslaagd!</string>
+    <string name="discord_information_warning">Deze functie gebruikt de KizzyRPC-bibliotheek om verbinding te maken met de Gateway van Discord en je Rich Presence-status bij te werken. Hoewel er geen accountschorsingen van vergelijkbaar gebruik zijn gemeld, wordt deze methode niet officieel ondersteund door Discord en kan deze worden beschouwd als een schending van de servicevoorwaarden. Je token wordt lokaal verwerkt en nooit naar servers van derden verzonden. Ga verder op eigen discretie!</string>
+    <string name="discord_activity_type">Activiteitstype</string>
+    <string name="discord_activity_playing">Speelt</string>
+    <string name="discord_activity_listening">Luistert</string>
+    <string name="discord_activity_watching">Kijkt</string>
+    <string name="discord_activity_competing">Doet mee</string>
+    <string name="discord_button_text_variables">Variabelen: {song_name}, {artist_name}, {album_name}</string>
+    <string name="discord_rpc_preview">Rich Presence-voorbeeld</string>
+    <string name="discord_presence">Aanwezigheid</string>
+    <string name="discord_connect_description">Meld je aan met Discord om te delen wat je aan het luisteren bent</string>
+    <string name="discord_playing_metrolist">Speelt Iride</string>
+    <string name="discord_watching_metrolist">Kijkt naar Iride</string>
+    <string name="discord_competing_metrolist">Doet mee aan Iride</string>
+    <string name="discord_activity_name">Activiteitsnaam</string>
+    <string name="discord_activity_name_description">Aangepaste naam voor de activiteit. Laat leeg om de standaardnaam te gebruiken</string>
+    <string name="discord_advanced_mode">Geavanceerde modus</string>
+    <string name="discord_advanced_mode_description">Toon extra aanpassingsopties voor Rich Presence</string>
+    <string name="enable_advanced_settings">Geavanceerde instellingen inschakelen</string>
+    <string name="disable_advanced_settings">Geavanceerde instellingen uitschakelen</string>
+    <string name="speed_dial">Snelkeuze</string>
+    <string name="pin_to_speed_dial">Vastmaken aan snelkeuze</string>
+    <string name="unpin_from_speed_dial">Losmaken van snelkeuze</string>
+    <string name="randomize_home_order">Volgorde startscherm willekeurig maken</string>
+    <string name="randomize_home_order_desc">Herschikt startschermsecties willekeurig op basis van gewogen prioriteiten</string>
+    <string name="hero_carousel_title">Hero-carrousel</string>
+    <string name="hero_carousel_desc">Een roterende banner met nieuwe releases en aanbevelingen voor jou</string>
+
+    <!-- Smart boot -->
+    <string name="smart_boot">Slim opstarten</string>
+    <string name="smart_boot_desc">Sneller opstarten: Uitgelicht laadt direct, secties behouden hun plek tijdens het laden, minder dubbele downloads. Schakel uit om het oorspronkelijke gedrag te herstellen (herstart om volledig toe te passen)</string>
+
+    <!-- Daily Discover -->
+    <string name="daily_discover_sounds_like">Klinkt als %1$s</string>
+    <string name="daily_discover_because_you_listen_to">Omdat je naar %1$s luistert</string>
+    <string name="daily_discover_similar_to">Vergelijkbaar met %1$s</string>
+    <string name="daily_discover_based_on">Gebaseerd op %1$s</string>
+    <string name="daily_discover_for_fans_of">Voor fans van %1$s</string>
+    <string name="from_the_community">Van de community</string>
+
+    <!-- Logout dialog -->
+    <string name="logout_dialog_title">Bibliotheekgegevens bewaren?</string>
+    <string name="logout_dialog_message">Wil je je afspeellijsten en bibliotheekgegevens bewaren? Gedownloade nummers worden altijd bewaard</string>
+    <string name="logout_keep">Bewaren</string>
+    <string name="logout_clear">Wissen</string>
+
+    <!-- Credits / About Screen -->
+    <string name="credits_lead_developer">Hoofdontwikkelaar</string>
+    <string name="about_creator_role">Maker van Iride</string>
+    <string name="about_release_badge">Eerste release binnenkort</string>
+    <string name="credits_special_thanks">Speciale dank</string>
+    <string name="credits_collaborator">Medewerker</string>
+    <string name="credits_collaborators_section">Medewerkers</string>
+    <string name="credits_license_name">GNU General Public License v3.0</string>
+    <string name="credits_license_desc">Vrije opensourcesoftware. Je mag het gebruiken, bestuderen, delen en verbeteren</string>
+    <string name="credits_donations">Donaties</string>
+    <string name="credits_donations_desc">Steun het project op Ko-fi</string>
+    <string name="credits_discord">Discord-server</string>
+    <string name="credits_telegram">Telegram-kanaal</string>
+    <string name="credits_website">Website</string>
+    <string name="credits_instagram">Instagram</string>
+    <string name="credits_github">GitHub</string>
+    <string name="credits_view_repo">Repository bekijken</string>
+    <string name="app_version_info">%1$s • %2$s</string>
+    <string name="like_what_i_do">Waardeer je wat ik doe?</string>
+    <string name="buy_mo_a_coffee">Trakteer me op een koffie!</string>
+    <string name="community_and_info">Community &amp; Info</string>
+    <string name="metrolist">IRIDE</string>
+    <string name="wanna_play_favorite_song">Wil je zijn of haar favoriete nummer afspelen?</string>
+    <string name="yeah">Ja!</string>
+    <string name="stands_with_palestine">Dit project staat achter Palestina 🇵🇸</string>
+
+    <!-- Podcasts -->
+    <string name="filter_podcasts">Podcasts</string>
+    <string name="view_podcast">Podcast bekijken</string>
+    <string name="podcast_channels">Podcastkanalen</string>
+    <string name="latest_episodes">Nieuwste afleveringen</string>
+    <string name="your_shows">Jouw shows</string>
+    <string name="new_episodes">Nieuwe afleveringen</string>
+    <string name="episodes_for_later">Afleveringen voor later</string>
+    <string name="save_episode_for_later">Bewaren voor later</string>
+    <string name="save_episode_for_later_desc">Toevoegen aan je afspeellijst Afleveringen voor later</string>
+    <string name="remove_episode_from_saved">Verwijderen uit bewaarde items</string>
+    <string name="subscribe_to_podcast">Podcast bewaren in bibliotheek</string>
+        <plurals name="n_episode">
+        <item quantity="one">%d aflevering</item>
+        <item quantity="other">%d afleveringen</item>
+    </plurals>
+    <string name="filter_episodes">Afleveringen</string>
+    <string name="filter_profiles">Profielen</string>
+    <string name="filter_smart_search">Slim zoeken</string>
+    <string name="filter_channels">Kanalen</string>
+    <string name="auto_playlist">Automatische afspeellijst</string>
+    <string name="downloaded_episodes">Gedownloade afleveringen</string>
+    <string name="no_subscribed_channels">Geen geabonneerde kanalen</string>
+    <string name="no_downloaded_episodes">Geen gedownloade afleveringen</string>
+        <plurals name="n_channel">
+        <item quantity="one">%d kanaal</item>
+        <item quantity="other">%d kanalen</item>
+    </plurals>
+
+    <!-- Restore confirmation dialog -->
+    <string name="restore_confirm_title">Back-up herstellen?</string>
+    <string name="restore_confirm_message">Dit herstelt je appgegevens vanuit de geselecteerde back-up</string>
+    <string name="restore_account_warning">Na het herstellen moet je opnieuw inloggen. Het volgende account wordt afgemeld:</string>
+    <string name="restore">Herstellen</string>
+    <string name="checking_previous_account">Vorig account controleren…</string>
+    <string name="no_account_found">Geen account gevonden</string>
+
+    <!-- Cache settings -->
+
+    <!-- Upload songs -->
+    <string name="upload_songs">Nummers uploaden</string>
+    <string name="uploading">Uploaden…</string>
+    <string name="upload_progress">%1$d van %2$d</string>
+    <string name="upload_complete">Upload voltooid</string>
+    <string name="upload_failed">Upload mislukt</string>
+    <string name="upload_file_too_large">Bestand te groot (maximaal 300MB)</string>
+    <string name="upload_unsupported_format">Niet-ondersteund formaat. Ondersteunde formaten: MP3, M4A, WMA, FLAC, OGG</string>
+    <string name="delete_uploaded_song">Geüpload nummer verwijderen</string>
+    <string name="delete_uploaded_song_confirm">Weet je zeker dat je dit geüploade nummer wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt</string>
+    <string name="delete_uploaded_song_success">Geüpload nummer verwijderd</string>
+    <string name="delete_uploaded_song_failed">Kan geüpload nummer niet verwijderen</string>
+    <string name="delete_uploaded_songs">Geüploade nummers verwijderen</string>
+    <string name="delete_uploaded_songs_confirm">Weet je zeker dat je %1$d geüploade nummers wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt</string>
+    <string name="deleted_n_songs">%1$d nummers verwijderd</string>
+    <string name="deleting">Verwijderen…</string>
+
+    <!-- Android Auto settings -->
+    <string name="android_auto">Android Auto</string>
+    <string name="android_auto_visible_sections">Zichtbare secties</string>
+    <string name="android_auto_reorder_hint">Tik op een sectie om deze in of uit te schakelen.\nHoud de sleepgreep lang ingedrukt om te herschikken. De eerste sectie wordt standaard getoond</string>
+    <string name="android_auto_youtube_playlists">YouTube-aanbevolen afspeellijsten tonen</string>
+    <string name="android_auto_youtube_playlists_desc">Toont door YouTube Music aanbevolen afspeellijsten in de sectie afspeellijsten tijdens het browsen met Android Auto</string>
+    <string name="android_auto_target_playlist">Bestemming voor snel toevoegen</string>
+    <string name="android_auto_target_playlist_desc">Kies de afspeellijst waar nummers in worden bewaard wanneer je de knop snel toevoegen in Android Auto gebruikt</string>
+    <string name="android_auto_target_playlist_auto">Niet ingesteld</string>
+    <string name="added_to_playlist">Toegevoegd aan afspeellijst</string>
+    <string name="android_auto_target_playlist_not_set">Geen afspeellijst geselecteerd. Kies er een in de Android Auto-instellingen</string>
+
+    <!-- Stats time transfer -->
+    <string name="time_transfer_title">Tijdsoverdracht</string>
+    <string name="time_transfer_warning">WAARSCHUWING: Deze actie kan na voltooiing niet ongedaan worden gemaakt. Maak een back-up voordat je doorgaat. Alleen nummers met ten minste één geregistreerde weergave komen in aanmerking</string>
+    <string name="time_transfer_source_song">Bronnummer</string>
+    <string name="time_transfer_target_song">Doelnummer</string>
+    <string name="time_transfer_listen_time_label">Beluistertijd:</string>
+    <string name="time_transfer_convert">Converteren</string>
+    <string name="song_dropdown_more_results">Blijf typen om de resultaten te beperken (nog %d)</string>
+
+    <!-- Accessibility -->
+    <string name="back">Terug</string>
+    <string name="clear_search">Zoekopdracht wissen</string>
+    <string name="close_chip">Sluiten</string>
+    <string name="switch_to_list_view">Overschakelen naar lijstweergave</string>
+    <string name="switch_to_grid_view">Overschakelen naar rasterweergave</string>
+    <string name="switch_to_wide_grid_view">Overschakelen naar brede rasterweergave</string>
+    <string name="more_options">Meer opties</string>
+
+    <!-- Settings hub descriptions -->
+    <string name="music_settings">Muziekinstellingen</string>
+    <string name="music_settings_desc">Uiterlijk, afspelen en inhoud</string>
+    <string name="settings_appearance_desc">Thema, startscherm, speler en songteksten</string>
+    <string name="settings_appearance_theme_desc">Kleuren, donkere modus en accenten</string>
+    <string name="settings_appearance_interface_desc">Tabbladen, startscherm en bibliotheekstandaarden</string>
+    <string name="settings_appearance_player_desc">Speler, minispeler en schuifregelaar</string>
+    <string name="settings_appearance_lyrics_desc">Weergave, animaties en scrollen</string>
+    <string name="settings_playback_desc">Audiokwaliteit, crossfade en gedrag</string>
+    <string name="settings_content_desc">Taal, filters en ontdekking</string>
+    <string name="settings_ai_desc">Songtekstvertaling en AI-providers</string>
+    <string name="settings_integrations_desc">Discord, Last.fm en Listen Together</string>
+    <string name="settings_privacy_desc">Luistergeschiedenis en beveiliging</string>
+    <string name="settings_storage_desc">Downloads, cache en back-up</string>
+    <string name="settings_system_desc">Credits, licentie en versie</string>
+    <string name="settings_account_desc">Aanmelden, synchronisatie, statistieken en privacy</string>
+    <string name="android_auto_settings_desc">Zichtbare secties en afspeellijsten</string>
+    <string name="manage_account">Account beheren</string>
+    <string name="spotify_import_title">Muziekbibliotheek importeren</string>
+    <string name="spotify_import_desc">Afspeellijsten en nummers van Spotify</string>
+    <string name="sign_in_desc">Verbind je account om toegang te krijgen tot afspeellijsten en aanbevelingen</string>
+    <string name="settings_theme">Thema</string>
+    <string name="player_appearance">Speler</string>
+    <string name="interface_settings">Start &amp; Navigatie</string>
+    <string name="hide_duration_standard_songs">Duur verbergen voor gewone nummers</string>
+    <string name="hide_duration_standard_songs_desc">Verbergt de tijdindicator voor nummers tussen 1 en 5 minuten. Alleen de artiestennaam wordt getoond.</string>
+    <string name="auto_link_featured_artists">Gastartiesten automatisch detecteren</string>
+    <string name="auto_link_featured_artists_desc">Haalt \"feat./ft.\"-credits uit nummertitels en koppelt de medewerker als echte artiest.</string>
+    <string name="show_featured_artists_in_top_songs">Gastartiesten tonen in Topnummers</string>
+    <string name="show_featured_artists_in_top_songs_desc">Toont op een nummer vermelde medewerkers naast de hoofdartiest in Topnummers.</string>
+    <string name="resume_album">Album hervatten</string>
+    <string name="resume">Hervatten</string>
+    <string name="resume_album_track_progress">Nummer %1$d van %2$d</string>
+    <string name="muzza_player_logic">Snelle afspeelmotor</string>
+    <string name="muzza_player_logic_desc">Laadt nummers sneller via een alternatieve streamingsmethode.</string>
+
+    <!-- News screen -->
+    <string name="show_news_tab">Tabblad Nieuws tonen</string>
+    <string name="show_news_tab_desc">Voegt een tabblad Nieuws toe aan de navigatie onderaan, tussen Start en Bibliotheek</string>
+    <string name="compact_top_navigation_bar">Compacte bovenbalk</string>
+    <string name="compact_top_navigation_bar_desc">Start en Bibliotheek als tekst links, Zoeken en je profielfoto als pictogrammen rechts. Schakel uit om terug te keren naar de klassieke balk waarin elk tabblad volledig wordt weergegeven</string>
+    <string name="iride_animations">Iride-animaties</string>
+    <string name="iride_animations_desc">Typmachine-titels, parallax en overgangen bij het openen. Schakel uit als de app hapert</string>
+    <string name="player_auto_hide_top_panel">Terugpaneel automatisch verbergen</string>
+    <string name="player_auto_hide_top_panel_desc">Laat het bovenste terug-naar-app-paneel vervagen na 5 s inactiviteit in de uitgeklapte speler. Scroll omlaag om het weer te tonen</string>
+    <string name="news">Nieuws</string>
+    <string name="news_new_albums">Nieuwe albums</string>
+    <string name="news_new_songs">Nieuwe nummers</string>
+    <string name="news_charts">Hitlijsten</string>
+    <string name="news_new_albums_title">Nieuwe Albums</string>
+    <string name="news_quick_play_title">Nieuwe Nummers</string>
+    <string name="news_empty_albums">Nog geen nieuwe albums gevonden</string>
+    <string name="news_empty_songs">Nog geen nieuwe nummers gevonden</string>
+
+    <string name="better_library_beta">Betere Bibliotheek BETA</string>
+    <string name="better_library_beta_desc">Schakel de herontworpen Material 3-bibliotheek in (Top App Bar, FAB en UI-fixes)</string>
+    <string name="upload">Uploaden</string>
+    <string name="new_playlist">Nieuwe afspeellijst</string>
+    <string name="toggle_view_type">Weergavetype wisselen</string>
+    <string name="navigate_back">Teruggaan</string>
+
+    <!-- Comments -->
+    <string name="comments">Reacties</string>
+    <string name="comments_count">%s reacties</string>
+    <string name="comments_empty">Nog geen reacties</string>
+    <string name="comments_error">Kan reacties niet laden</string>
+    <string name="comments_sign_in_to_comment">Meld je aan om te reageren</string>
+    <string name="comments_write_hint">Voeg een reactie toe…</string>
+    <string name="comments_post">Plaatsen</string>
+    <string name="comments_post_failed">Kan je reactie niet plaatsen</string>
+    <string name="comments_sort_top">Topreacties</string>
+    <string name="comments_sort_newest">Nieuwste eerst</string>
+    <string name="comments_reply_count">%d antwoorden</string>
+    <string name="enable_comments">Reacties inschakelen</string>
+    <string name="enable_comments_desc">Toont YouTube-reacties bij nummers in de speler (experimenteel, wordt mogelijk niet altijd geladen)</string>
+
+    <!-- Song menu redesign -->
+    <string name="add_note">Voeg notities, beoordelingen of gedachten toe…</string>
+    <string name="note_title_placeholder">Titel</string>
+    <string name="note_description_placeholder">Voeg een omschrijving toe…</string>
+    <string name="view_ep">EP bekijken</string>
+    <string name="view_single">Single bekijken</string>
+
+    <!-- Notes screen -->
+    <string name="notes_screen_title">Notities</string>
+    <string name="notes_screen_desc">Jouw album- en nummerrecensies</string>
+    <string name="notes_tab_albums">Album</string>
+    <string name="notes_tab_tracks">Nummer</string>
+    <string name="notes_empty_albums">Nog geen albumnotities</string>
+    <string name="notes_empty_tracks">Nog geen nummernotities</string>
+    <string name="notes_delete_title">Notitie verwijderen?</string>
+    <string name="notes_delete_message">Dit verwijdert de titel, beoordeling en tekst die je hiervoor hebt geschreven.</string>
+
+    <!-- Download all favorite albums -->
+    <string name="download_all_favorite_albums">Alle favoriete albums downloaden</string>
+    <string name="download_all_favorite_albums_started">Alle favoriete albums worden gedownload…</string>
+    <string name="all_favorite_albums_downloaded">Alle favoriete albums gedownload</string>
+    <string name="remove_all_favorite_albums_confirm">Wil je echt alle favoriete albums uit de downloads verwijderen?</string>
+    <string name="no_favorite_albums_to_download">Geen favoriete albums om te downloaden</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_tagline">Music you can feel and see.\nA complete sensory experience — not just sound, but visual emotion.</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_notifications_title">Stay Updated</string>
+    <string name="onboarding_notifications_desc">Notifications let you know when music is playing and control the player directly from the lock screen.</string>
+    <string name="onboarding_notifications_enable">Enable Notifications</string>
+    <string name="onboarding_notifications_skip">No Thanks</string>
+    <string name="onboarding_login_title">Connect Your Account</string>
+    <string name="onboarding_login_desc">Sign in with your YouTube account to sync playlists, liked songs and listening history.</string>
+    <string name="onboarding_login_cta">Sign in with YouTube</string>
+    <string name="onboarding_login_skip">Continue Without Account</string>
+
+    <!-- Update announcement interstitial -->
+    <string name="update_interstitial_title">New update ready</string>
+    <string name="update_interstitial_version">Version %1$s</string>
+    <string name="update_interstitial_update_now">Update now</string>
+    <string name="update_interstitial_not_now">Not now</string>
+    <string name="update_interstitial_enable_install_desc">Android requires a one-time permission to install this update. Enable \"Allow from this source\" on the next screen, then come back.</string>
+    <string name="update_interstitial_enable_install">Allow installation</string>
+    <string name="update_interstitial_preparing">Finishing preparation…</string>
+
+    <!-- About -->
+    <string name="about_check_updates">Check for updates</string>
+
+    <!-- Extra keys -->
+<string name="new_player_design">Nieuw speler ontwerp</string>
+<string name="new_mini_player_design">Nieuw mini-speler ontwerp</string>
 </resources>

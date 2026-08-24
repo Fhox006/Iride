@@ -2,137 +2,402 @@
 <resources>
     <string name="local_history">本地</string>
     <string name="remote_history">远程</string>
+
     <string name="charts">排行榜</string>
     <string name="back_button_desc">返回</string>
     <string name="album_cover_desc">专辑封面</string>
     <string name="top_music_videos">热门音乐视频</string>
     <string name="trending">热门</string>
+    <string name="parsed_from_link">Parsed from link</string>
+
     <string name="weeks">周</string>
     <string name="months">月</string>
     <string name="years">年</string>
+    <string name="continuous">连续</string>
+
     <string name="liked">已点赞</string>
+    <string name="starred">Starred Songs</string>
     <string name="offline">已下载</string>
+    <string name="downloads">Downloads</string>
     <string name="my_top">我的最爱</string>
+    <string name="weekly_most_playlist_name">本周最常播放</string>
+    <string name="monthly_most_playlist_name">本月最常播放</string>
     <string name="cached_playlist">已缓存</string>
+    <string name="uploaded_playlist">已上传</string>
+    <string name="filter_uploaded">已上传</string>
     <string name="sync_playlist">同步播放列表</string>
+    <string name="sync_disabled">同步已禁用</string>
+    <string name="allows_for_sync_witch_youtube">注意：此选项会启用与 YouTube Music 的同步功能，且之后无法更改</string>
     <string name="generating_image">正在生成图片…</string>
     <string name="please_wait">请稍候</string>
     <string name="cancel">取消</string>
+    <string name="enable">启用</string>
+    <string name="share_lyrics">分享歌词</string>
     <string name="share_as_text">以文本形式分享</string>
-    <string name="share_as_image">以图片形式分享</string>
     <string name="max_selection_limit">已达到最大选择限制</string>
     <string name="share_selected">分享已选内容</string>
     <string name="customize_colors">自定义颜色</string>
     <string name="text_color">文本颜色</string>
     <string name="secondary_text_color">次要文本颜色</string>
     <string name="background_color">背景颜色</string>
+
     <string name="remove_from_cache">从缓存中删除</string>
+
+    <!-- Artist discography -->
+    <string name="view_discography">View Discography</string>
+    <string name="discography">Discography</string>
+    <string name="discography_from_artist">From Artist</string>
+    <string name="discography_appears_on">Appears On</string>
+    <string name="discography_singles">Singles</string>
+    <string name="discography_eps">EPs</string>
+    <string name="discography_empty">Nothing more to show</string>
+
+    <!-- Artist about section -->
+    <string name="about_artist">关于</string>
+    <string name="show_more">展开</string>
+    <string name="show_less">收起</string>
+    <string name="artist_page_settings">音乐人页面</string>
+    <string name="show_artist_description">显示音乐人简介</string>
+    <string name="show_artist_subscriber_count">显示订阅者数量</string>
+    <string name="show_artist_monthly_listeners">每月听众人数</string>
+
+    <!-- Menu descriptions -->
+    <string name="download_playlist_desc">下载所有歌曲以离线播放</string>
+    <string name="remove_download_playlist_desc">从此播放列表中删除所有已下载的歌曲</string>
+    <string name="download_in_progress_desc">下载正在进行中</string>
+    <string name="share_playlist_desc">分享此播放列表</string>
+    <string name="delete_playlist_desc">永久删除此播放列表</string>
+    <string name="sync_playlist_desc">将此播放列表与 YouTube Music 同步</string>
+    <string name="reorder">Reorder</string>
+    <string name="reorder_desc">Drag songs to set a custom order</string>
+    <string name="menu">Menu</string>
     <string name="copy_link">复制链接</string>
     <string name="select">全选</string>
     <string name="like_all">全部点赞</string>
+    <string name="dislike_all">倒赞所有</string>
+    <string name="sort_by_last_updated">更新日期</string>
     <string name="link_copied">链接已复制到剪贴板</string>
+    <string name="starting_radio">正在启动电台…</string>
+    <string name="now_playing">正在播放</string>
+
     <string name="lyrics">歌词</string>
+    <string name="close">关闭</string>
+    <string name="hide_player_thumbnail">隐藏播放器缩略图</string>
+    <string name="hide_player_thumbnail_desc">在播放器中将专辑封面替换为应用图标</string>
+    <string name="crop_album_art">裁剪专辑封面</string>
+    <string name="crop_album_art_desc">通过裁剪视频缩略图强制使用正方形宽高比</string>
+
     <string name="already_in_playlist">已在播放列表中：</string>
-    <plurals name="n_time">
+
+        <plurals name="n_time">
         <item quantity="other">%d 次</item>
     </plurals>
+
+    <string name="seek_forward_dynamic">快进 %1$d 秒</string>
+    <string name="seek_backward_dynamic">快退 %1$d 秒</string>
+    <string name="seek_seconds_addup">渐进式快进/快退</string>
+    <string name="seek_seconds_addup_description">启用后，每次快进/快退都会额外增加 5 秒</string>
+
     <string name="similar_content">相似内容</string>
+
+    <string name="share_as_image">以图片形式分享</string>
+    <string name="copy_as_image">Copy as image</string>
     <string name="player_background_style">播放器背景样式</string>
+    <string name="player_background_solid">纯色</string>
     <string name="follow_theme">遵循主题</string>
     <string name="gradient">渐变</string>
+    <string name="animated_gradient">Animated Gradient</string>
+    <string name="better_animated_gradient">Better Animated Gradient</string>
+    <string name="better_gradient_smooth_transition">Smooth background transition</string>
+    <string name="better_gradient_smooth_transition_desc">Crossfade between album colors on track skip</string>
     <string name="player_background_blur">模糊</string>
     <string name="player_buttons_style">播放器按钮颜色</string>
     <string name="default_style">默认</string>
+    <string name="primary_color_style">主色</string>
+    <string name="tertiary_color_style">第三色</string>
+    <string name="display_density">显示密度</string>
+    <string name="restart">重启</string>
+    <string name="restart_required">需要重启！</string>
+    <string name="density_restart_message">显示密度更改将在重启应用后生效。现在重启？</string>
+    <string name="wavy">波浪</string>
     <string name="enable_swipe_thumbnail">启用滑动手势切换歌曲</string>
+    <string name="thumbnail_carousel_mode">Carousel thumbnail mode</string>
+    <string name="thumbnail_carousel_mode_desc">Show prev/next covers peeking from sides with swipe animation</string>
+    <string name="swipe_song_to_add_title">Swipe to queue</string>
     <string name="swipe_song_to_add">向左滑动即可将歌曲添加到待播列表中，向右滑动即可下一首播放</string>
+    <string name="swipe_song_to_remove_title">Swipe to remove</string>
+    <string name="swipe_song_to_remove">滑动即可从播放列表中移除歌曲</string>
+    <string name="lyrics_click_change">点击即可更改歌词</string>
+    <string name="lyrics_from_provider">Lyrics from %s</string>
+    <string name="lyrics_auto_scroll">自动滚动歌词</string>
+    <string name="hide_status_bar_fullscreen">Hide status bar on fullscreen</string>
+    <string name="hide_status_bar_fullscreen_desc">Hide the status bar when lyrics fullscreen mode is active</string>
+    <string name="show_interval_indicator">Show interval indicator</string>
+    <string name="show_interval_indicator_desc">Shows a progress bar during long instrumental gaps</string>
+    <string name="respect_agent_positioning">Respect agent positioning</string>
+    <string name="respect_agent_positioning_desc">Align lyrics based on the agent role (e.g. background vocals)</string>
+    <string name="lyrics_glow_effect">启用歌词发光效果</string>
+    <string name="lyrics_glow_effect_desc">为当前歌词行添加发光动画和弹跳效果</string>
+    <string name="lyrics_animation_style">逐字动画风格</string>
+    <string name="lyrics_animation_none">None</string>
+    <string name="lyrics_animation_fade">Fade</string>
+    <string name="lyrics_animation_glow">Glow</string>
+    <string name="lyrics_animation_slide">Slide</string>
+    <string name="lyrics_animation_karaoke">Karaoke</string>
+    <string name="lyrics_animation_apple">Apple Music Style</string>
+    <string name="lyrics_text_size">歌词文字大小</string>
+    <string name="lyrics_line_spacing">歌词行间距</string>
+    <string name="enable_lrclib_desc">社区驱动的同步歌词数据库</string>
+    <string name="enable_kugou_desc">从中国热门音乐平台酷狗获取歌词</string>
+    <string name="youtube_music_lyrics_note">注意：当没有其他可用来源时，YouTube Music 的歌词将自动显示，这些歌词通常不同步</string>
+    <string name="enable_better_lyrics">启用 Better Lyrics 提供歌词</string>
+    <string name="enable_better_lyrics_desc">支持任意歌曲的逐音节同步歌词，非常适合卡拉OK</string>
+    <string name="enable_better_lyrics_unison">Enable Better Lyrics Unison</string>
+    <string name="enable_better_lyrics_unison_desc">Word-by-word synced lyrics, Unison engine</string>
+    <string name="enable_better_lyrics_sillaba">Enable Better Lyrics Sillaba</string>
+    <string name="enable_better_lyrics_sillaba_desc">Word-by-word synced lyrics, Sillaba engine</string>
+    <string name="enable_paxsenix">Enable Paxsenix</string>
+    <string name="enable_paxsenix_desc">High-quality synchronized lyrics from Paxsenix API</string>
+    <string name="enable_lyricsplus">启用 LyricsPlus 提供歌词</string>
+    <string name="enable_lyricsplus_desc">多源同步歌词支持</string>
+    <string name="lyrics_provider_selection">提供商选择</string>
+    <string name="lyrics_provider_selection_desc">选择要启用的歌词提供商</string>
+    <string name="auto_scroll">对齐歌词</string>
     <string name="slim">纤细</string>
     <string name="slim_navbar">更细的底部导航栏</string>
+    <string name="auto_playlists">自动播放列表</string>
+    <string name="show_liked_playlist">显示已点赞播放列表</string>
+    <string name="show_downloaded_playlist">显示已下载播放列表</string>
+    <string name="show_top_playlist">显示我的最爱播放列表</string>
     <string name="show_cached_playlist">显示已缓存播放列表</string>
+    <string name="enable_song_cache">启用歌曲缓存</string>
+    <string name="enable_song_cache_desc">自动缓存歌曲，以便将来更快播放</string>
+    <string name="show_uploaded_playlist">显示已上传播放列表</string>
+    <string name="shuffle_playlist_first">先对播放列表或专辑进行随机播放</string>
+    <string name="shuffle_playlist_first_desc">随机播放时，先播放当前播放列表或专辑中的所有歌曲，然后再播放相似内容的歌曲</string>
+    <string name="prevent_duplicate_tracks_in_queue">防止待播列表中出现重复曲目</string>
+    <string name="prevent_duplicate_tracks_in_queue_desc">如果添加的曲目已在待播列表中，则会将其从先前位置移动，而不是再次添加</string>
+    <string name="show_wrapped_card">显示年度总结卡片</string>
+    <string name="skip_silence_desc">快进歌曲的静音部分</string>
+    <string name="skip_silence_instant">立即跳过静音</string>
+    <string name="skip_silence_instant_desc">在静音片段快进而非加速播放</string>
+
     <string name="advanced_login">使用令牌登录</string>
     <string name="token_hidden">点击显示令牌</string>
     <string name="token_shown">再次点击以复制或编辑</string>
     <string name="token_adv_login_description">这是高级登录方法。您可以直接输入或更新您的登录令牌，无需使用网页门户。这对于跨多个设备快速登录非常有用。格式无法识别的令牌将被拒绝</string>
+    <string name="yt_sync">与账号自动同步</string>
+    <string name="settings_section_sync_data">Sync &amp; data</string>
+    <string name="auto_sync">Auto sync</string>
+    <string name="more_content">更多内容</string>
+    <string name="other_content">Other content</string>
+    <string name="show_token">Show token</string>
+
+    <string name="sort_ascending">升序</string>
+    <string name="sort_descending">降序</string>
+
+    <!-- Playlist cover edit -->
+    <string name="edit_playlist_cover">编辑播放列表封面</string>
+    <string name="edit_playlist_cover_note">注意：您的 YouTube Music 账号必须绑定电话号码并通过验证才能更改播放列表封面</string>
+    <string name="edit_playlist_cover_note_wait">选择图片后，请稍等片刻，新封面将出现在您的播放列表中</string>
+    <string name="choose_from_library">从库中选择</string>
+    <string name="remove_custom_image">删除自定义图片</string>
+
+    <!-- General -->
     <string name="general">常规</string>
     <string name="proxy">代理</string>
+    <string name="default_lib_chips">更改默认库标签</string>
     <string name="set_quick_picks">设置猜你喜欢</string>
     <string name="last_song_listened">根据最后听的那首歌</string>
-    <string name="enable_similar_content">启用相似内容</string>
-    <string name="similar_content_desc">在待播列表快结束时，自动添加更多相似歌曲</string>
-    <string name="percentage_format">%d%%</string>
     <string name="app_language">应用语言</string>
-    <string name="auto_download_on_like">点赞后自动下载</string>
-    <string name="auto_download_on_like_desc">当您点赞某首歌曲时，将自动下载这首歌</string>
-    <string name="clear_song_cache_dialog">确定要清除所有已缓存的歌曲吗？</string>
-    <string name="clear_downloads_dialog">确定要清除所有下载内容吗？</string>
-    <string name="not_logged_in_youtube">未登录 YouTube</string>
-    <string name="default_links">打开支持的链接</string>
-    <string name="all_time">所有时间</string>
-    <string name="past_week">过去一周</string>
-    <string name="past_month">过去一个月</string>
-    <string name="past_year">过去一年</string>
-    <string name="top_length">我的热门列表长度</string>
-    <string name="description">描述</string>
-    <plurals name="seconds">
-        <item quantity="other">%d 秒</item>
-    </plurals>
-    <string name="continuous">连续</string>
-    <string name="allows_for_sync_witch_youtube">注意：此选项会启用与 YouTube Music 的同步功能，且之后无法更改</string>
-    <string name="sync_disabled">同步已禁用</string>
-    <string name="share_lyrics">分享歌词</string>
-    <string name="views">浏览量</string>
-    <string name="show_downloaded_playlist">显示已下载播放列表</string>
-    <string name="past_24_hours">过去 24 小时</string>
-    <string name="show_top_playlist">显示我的最爱播放列表</string>
-    <string name="open_app_settings_error">无法打开应用设置</string>
-    <string name="information">信息</string>
-    <string name="dislike_all">倒赞所有</string>
-    <string name="sort_by_last_updated">更新日期</string>
-    <string name="lyrics_click_change">点击即可更改歌词</string>
-    <string name="auto_playlists">自动播放列表</string>
-    <string name="show_liked_playlist">显示已点赞播放列表</string>
-    <string name="default_lib_chips">更改默认库标签</string>
-    <string name="history_duration">历史持续长度</string>
-    <string name="likes">点赞</string>
-    <string name="dislikes">倒赞</string>
-    <string name="now_playing">正在播放</string>
-    <string name="new_player_design">新播放器设计</string>
-    <string name="new_mini_player_design">新迷你播放器设计</string>
-    <string name="lyrics_auto_scroll">自动滚动歌词</string>
-    <string name="lyrics_romanize_japanese">使用日文（罗马音）</string>
-    <string name="lyrics_romanize_korean">使用韩文（罗马音）</string>
-    <string name="yt_sync">与账号自动同步</string>
-    <string name="more_content">更多内容</string>
-    <string name="import_online">导入 M3U 格式的播放列表</string>
-    <string name="import_csv">导入 CSV 格式的播放列表</string>
-    <string name="playlist_add_local_to_synced_note">注意：不支持将本地歌曲添加到同步或远程播放列表，其他任何组合均有效</string>
-    <string name="swipe_sensitivity">迷你播放器滑动灵敏度</string>
-    <string name="clear_image_cache_dialog">确定要清除所有已缓存的图片吗？</string>
-    <string name="disable">禁用</string>
-    <string name="subscribe">订阅</string>
-    <string name="subscribed">已订阅</string>
-    <string name="sensitivity_percentage">%1$d%%</string>
-    <string name="close">关闭</string>
-    <string name="hide_player_thumbnail">隐藏播放器缩略图</string>
-    <string name="hide_player_thumbnail_desc">在播放器中将专辑封面替换为应用图标</string>
-    <string name="seek_forward_dynamic">快进 %1$d 秒</string>
-    <string name="seek_backward_dynamic">快退 %1$d 秒</string>
-    <string name="seek_seconds_addup">渐进式快进/快退</string>
-    <string name="disable_load_more_when_repeat_all">禁用循环播放模式下的自动加载</string>
-    <string name="disable_load_more_when_repeat_all_desc">启用循环播放模式时，不要自动加载更多歌曲或相似内容</string>
-    <string name="settings_section_ui">用户界面</string>
-    <string name="settings_section_privacy">安全与隐私</string>
-    <string name="settings_section_player_content">播放器与内容</string>
-    <string name="settings_section_storage">储存与数据</string>
-    <string name="settings_section_system">系统与关于</string>
-    <string name="seek_seconds_addup_description">启用后，每次快进/快退都会额外增加 5 秒</string>
-    <string name="starting_radio">正在启动电台…</string>
+    <string name="lyrics_provider_priority">歌词提供商优先级</string>
+    <string name="lyrics_provider_priority_desc">拖动即可按偏好重新排序提供商。位置越高，优先级越高</string>
+    <string name="experimental_lyrics">Experimental lyrics</string>
+    <string name="experimental_lyrics_desc">Enable the new experimental lyrics component with enhanced animations and performance</string>
+    <string name="experimental_lyrics_beta_title">Experimental feature</string>
+    <string name="experimental_lyrics_beta_message">The new lyrics component is currently in development and may contain bugs. Are you sure you want to enable it?</string>
     <string name="config_proxy">配置代理</string>
     <string name="proxy_username">代理用户名</string>
     <string name="proxy_password">代理密码</string>
     <string name="enable_authentication">启用身份验证</string>
+    <string name="discord_use_details">使用详细信息代替状态</string>
+    <string name="discord_use_details_description">突出显示歌曲标题，而非音乐人名称</string>
+
+    <string name="enable_similar_content">启用相似内容</string>
+    <string name="similar_content_desc">在待播列表快结束时，自动添加更多相似歌曲</string>
+    <string name="persistent_shuffle_title">持续随机播放</string>
+    <string name="persistent_shuffle_desc">开始播放新歌曲或播放列表时，保持随机播放功能开启</string>
+    <string name="remember_shuffle_and_repeat">记住随机播放和循环设置</string>
+    <string name="remember_shuffle_and_repeat_desc">重启应用时，记住随机播放和循环设置</string>
+    <string name="percentage_format">%d%%</string>
+
+    <string name="import_online">导入 M3U 格式的播放列表</string>
+    <string name="import_csv">导入 CSV 格式的播放列表</string>
+    <string name="playlist_add_local_to_synced_note">注意：不支持将本地歌曲添加到同步或远程播放列表，其他任何组合均有效</string>
+    <string name="export_playlist">导出播放列表</string>
+    <string name="export_as_csv">导出为 CSV</string>
+    <string name="export_as_m3u">导出为 M3U</string>
+    <string name="export_success">播放列表导出成功</string>
+    <string name="export_failed">无法导出播放列表</string>
+    <string name="export_option_share">分享</string>
+    <string name="export_option_save">保存到文档</string>
+
+    <string name="auto_download_on_like">点赞后自动下载</string>
+    <string name="auto_download_on_like_desc">当您点赞某首歌曲时，将自动下载这首歌</string>
+
+    <string name="swipe_sensitivity">迷你播放器滑动灵敏度</string>
+    <string name="sensitivity_percentage">%1$d%%</string>
+
+    <string name="clear_song_cache_dialog">确定要清除所有已缓存的歌曲吗？</string>
+    <string name="clear_image_cache_dialog">确定要清除所有已缓存的图片吗？</string>
+    <string name="clear_downloads_dialog">确定要清除所有下载内容吗？</string>
+
+    <string name="disable">禁用</string>
+
+    <string name="not_logged_in_youtube">未登录 YouTube</string>
+
+    <string name="default_links">打开支持的链接</string>
+    <string name="open_app_settings_error">无法打开应用设置</string>
+    <string name="changelog_empty">暂无更新日志</string>
+    <string name="github_releases_url">https://github.com/IrideGroup/Iride/releases</string>
+    <string name="list_bullet">•</string>
+    <string name="view_on_github">在 GitHub 上查看</string>
+    <string name="current_version">当前版本</string>
+    <string name="version_format">版本：%s</string>
+    <string name="update_settings">更新设置</string>
+    <string name="check_for_updates_title">检查更新</string>
+    <string name="checking_for_updates">正在检查更新…</string>
+    <string name="latest_version_format">最新版本：%s</string>
+    <string name="check_for_updates_button">检查更新</string>
+    <string name="hide_changelog">隐藏更新日志</string>
+    <string name="view_changelog">查看更新日志</string>
+    <string name="failed_to_check_updates">无法检查更新：%s</string>
+    <string name="update_dialog_title_new_version">New version available</string>
+    <string name="update_dialog_version_available">Iride %s is available.</string>
+    <string name="update_dialog_experimental_build">This build may be experimental.</string>
+    <string name="update_dialog_no_compatible_package">No compatible package found for this build.</string>
+    <string name="update_dialog_back">Back</string>
+    <string name="update_action_download">Download</string>
+    <string name="update_action_install">Install</string>
+    <string name="update_action_retry">Retry</string>
+    <string name="update_state_downloading_percent">Downloading… %d%%</string>
+    <string name="update_state_ready_to_install">Update downloaded — tap to install</string>
+    <string name="update_permission_explanation">To install the update, allow Iride to install apps on the next screen.</string>
+    <string name="update_action_allow">Allow</string>
+    <string name="update_download_started">Update download started</string>
+    <string name="update_download_failed">Could not download the update</string>
+    <string name="update_download_error_no_space">Not enough free space</string>
+    <string name="update_download_error_connection">Connection error</string>
+    <string name="update_download_notification_description">Downloading the new version…</string>
+
+    <string name="all_time">所有时间</string>
+    <string name="past_24_hours">过去 24 小时</string>
+    <string name="past_week">过去一周</string>
+    <string name="past_month">过去一个月</string>
+    <string name="past_year">过去一年</string>
+    <string name="top_length">我的热门列表长度</string>
+    <string name="history_duration">历史持续长度</string>
+    <string name="information">信息</string>
+    <string name="description">描述</string>
+    <string name="album">Album</string>
+    <string name="duration">Duration</string>
+    <string name="views">浏览量</string>
+    <string name="likes">点赞</string>
+    <string name="dislikes">倒赞</string>
+    <string name="subscribe">订阅</string>
+    <string name="subscribed">已订阅</string>
+        <plurals name="seconds">
+        <item quantity="other">%d 秒</item>
+    </plurals>
+
+    <!-- Sleep timer -->
+    <string name="set_as_default">设为默认</string>
+    <string name="sleep_timer_default_set">睡眠定时器默认设置为 %d 分钟</string>
+    <string name="enable_automatic_sleeptimer">启用自动睡眠定时器</string>
+    <string name="sleeptimer_description">使用默认时长，在设定时间内自动启动睡眠定时器</string>
+    <string name="sleep_timer_repeat_description">设置睡眠定时器自动激活的循环日期和时间</string>
+    <string name="sleep_timer_repeat">重复</string>
+    <string name="sleep_timer_daily">每日</string>
+    <string name="sleep_timer_weekdays">周一至周五</string>
+    <string name="sleep_timer_weekdays_weekends">工作日/周末</string>
+    <string name="sleep_timer_weekends">周六至周日</string>
+    <string name="sleep_timer_custom">自定义</string>
+    <string name="sleep_timer_start_time">开始时间</string>
+    <string name="sleep_timer_end_time">结束时间</string>
+    <string name="sleep_timer_monday">周一</string>
+    <string name="sleep_timer_tuesday">周二</string>
+    <string name="sleep_timer_wednesday">周三</string>
+    <string name="sleep_timer_thursday">周四</string>
+    <string name="sleep_timer_friday">周五</string>
+    <string name="sleep_timer_saturday">周六</string>
+    <string name="sleep_timer_sunday">周日</string>
+    <string name="sleep_timer_stop_after_current_song_title">播放完当前歌曲就停止</string>
+    <string name="sleep_timer_stop_after_current_song_description">等待当前播放的歌曲播放结束后再停止</string>
+    <string name="sleep_timer_fade_out_title">渐隐效果</string>
+    <string name="sleep_timer_fade_out_description">在播放结束前逐渐降低音量</string>
+
+    <!-- Alarm -->
+    <string name="alarm">闹钟</string>
+    <string name="alarm_enabled">启用闹钟</string>
+    <string name="alarm_time">闹钟时间</string>
+    <string name="alarm_playlist">播放列表</string>
+    <string name="alarm_select_playlist">选择播放列表</string>
+    <string name="alarm_no_playlists">未找到播放列表</string>
+        <plurals name="alarm_playlist_song_count">
+        <item quantity="other">%d 首歌曲</item>
+    </plurals>
+    <string name="alarm_selected">已选择</string>
+    <string name="alarm_playlist_helper">选择闹钟将播放的播放列表</string>
+    <string name="alarm_add">添加闹钟</string>
+    <string name="alarm_empty">暂无闹钟。添加一个闹钟以开始定时播放</string>
+    <string name="alarm_disabled">已禁用</string>
+    <string name="alarm_random_enabled">随机</string>
+    <string name="alarm_random_disabled">按顺序</string>
+    <string name="alarm_next_prefix">下次：%s</string>
+    <string name="alarm_new">新闹钟</string>
+    <string name="alarm_edit">编辑闹钟</string>
+    <string name="alarm_save">保存</string>
+    <string name="alarm_time_picker_value">时间：%s</string>
+    <string name="alarm_delete">删除闹钟</string>
+    <string name="alarm_duplicate_time_warning">此时已存在另一个闹钟。如果两个闹钟同时触发，则只会播放其中一个</string>
+    <string name="alarm_random_song">从播放列表中播放一首随机歌曲</string>
+    <string name="alarm_next_trigger">下次触发</string>
+    <string name="alarm_not_scheduled">未设置</string>
+    <string name="alarm_exact_permission_title">允许精确闹钟</string>
+    <string name="alarm_exact_permission_desc">授予精确设置闹钟时间的权限，提高应用在后台运行时的可靠性</string>
+    <string name="alarm_exact_permission_missing">Exact alarm permission missing: alarm may fire late</string>
+    <string name="alarm_battery_optimization_title">电池优化</string>
+    <string name="alarm_battery_optimization_desc">禁用电池优化，以便在后台获得更可靠的闹钟行为</string>
+    <string name="open_settings">Settings</string>
+    <string name="lastfm_api_not_configured">LastFM is not configured in this build</string>
+
+    <!-- Player Settings -->
+    <string name="disable_load_more_when_repeat_all">禁用循环播放模式下的自动加载</string>
+    <string name="disable_load_more_when_repeat_all_desc">启用循环播放模式时，不要自动加载更多歌曲或相似内容</string>
+    <string name="pause_music_when_media_is_muted">在静音时暂停播放</string>
+    <string name="resume_on_bluetooth_connect">蓝牙连接后恢复播放</string>
+    <string name="keep_screen_on_when_player_is_expanded">当播放页面最大化时保持屏幕打开</string>
+
+    <string name="crossfade">淡入淡出</string>
+    <string name="crossfade_desc">当前歌曲逐渐淡出，同时下一首歌曲逐渐淡入</string>
+    <string name="crossfade_duration">淡入淡出时长</string>
+    <string name="crossfade_gapless">对无间隙专辑禁用</string>
+    <string name="crossfade_gapless_desc">对于无间隙专辑时，跳过淡入淡出功能</string>
+    <string name="crossfade_beta_title">测试功能！</string>
+    <string name="crossfade_beta_message">淡入淡出是一项新功能，可能存在错误。如果您遇到任何问题，请及时反馈。\n\n注意：由于技术限制，此功能会禁用省电播放功能</string>
+    <string name="skip_fade">Fade on skip</string>
+    <string name="skip_fade_desc">Next song starts immediately; previous song fades out briefly in background</string>
+    <string name="skip_fade_duration">Skip fade duration</string>
+
+    <!-- Romanization Settings -->
     <string name="lyrics_romanization_cyrillic">罗马音设置</string>
     <string name="lyrics_romanize_title">罗马化</string>
     <string name="lyrics_romanization">歌词罗马化</string>
+    <string name="lyrics_romanize_japanese">使用日文（罗马音）</string>
+    <string name="lyrics_romanize_korean">使用韩文（罗马音）</string>
+    <string name="lyrics_romanize_chinese">使用中文（罗马音）</string>
+    <string name="lyrics_romanize_hindi">使用印地语（罗马音）</string>
+    <string name="lyrics_romanize_punjabi">使用旁遮普语（罗马音）</string>
     <string name="lyrics_romanize_russian">使用俄语（罗马音）</string>
     <string name="lyrics_romanize_ukrainian">使用乌克兰语（罗马音）</string>
     <string name="lyrics_romanize_belarusian">使用白俄罗斯语（罗马音）</string>
@@ -144,59 +409,83 @@
     <string name="line_by_line_dialog_title">您确定吗？</string>
     <string name="line_by_line_dialog_desc">这是一项效果不稳定的实验性功能。\n\n默认情况下，从整首歌曲中检测语言。启用此选项后，将改为逐行检测。这样可以支持多语言混唱歌曲，但检测到的语言可能并不总是正确的。例如，一段不含任何乌克兰语特有字符的乌克兰语歌词，可能会以俄语进行罗马化。\n\n如果您没有遇到任何问题，建议保持此选项关闭</string>
     <string name="romanize_current_track">罗马化当前曲目</string>
-    <string name="edit_playlist_cover">编辑播放列表封面</string>
-    <string name="edit_playlist_cover_note">注意：您的 YouTube Music 账号必须绑定电话号码并通过验证才能更改播放列表封面</string>
-    <string name="edit_playlist_cover_note_wait">选择图片后，请稍等片刻，新封面将出现在您的播放列表中</string>
-    <string name="choose_from_library">从库中选择</string>
-    <string name="remove_custom_image">删除自定义图片</string>
-    <string name="uploaded_playlist">已上传</string>
-    <string name="filter_uploaded">已上传</string>
-    <string name="show_uploaded_playlist">显示已上传播放列表</string>
-    <string name="discord_use_details">使用详细信息代替状态</string>
-    <string name="discord_use_details_description">突出显示歌曲标题，而非音乐人名称</string>
+
+    <!-- Japanese dictionary on-demand download -->
+    <string name="lyrics_romanize_japanese_dict_title">Download Japanese dictionary?</string>
+    <string name="lyrics_romanize_japanese_dict_message">Romanizing Japanese lyrics requires a Japanese dictionary (~13 MB), downloaded once over your internet connection.</string>
+    <string name="lyrics_romanize_japanese_dict_downloading">Downloading Japanese dictionary… %d%%</string>
+    <string name="lyrics_romanize_japanese_dict_failed">Download failed. Check your connection and try again.</string>
+    <string name="lyrics_romanize_japanese_dict_download">Download</string>
+
+    <!-- Lyrics Offset Settings -->
+    <string name="lyrics_offset">歌词偏移</string>
+
+    <!-- Material 3 Settings Sections -->
+    <string name="settings_section_ui">用户界面</string>
+    <string name="settings_section_privacy">安全与隐私</string>
+    <string name="settings_section_player_content">播放器与内容</string>
+    <string name="settings_section_storage">储存与数据</string>
+    <string name="app_data_storage">App Data &amp; Storage</string>
+    <string name="app_management_backup">Data &amp; Storage</string>
+    <string name="settings_section_system">系统与关于</string>
+    <string name="settings_section_player">Playback</string>
+    <string name="settings_section_content">Content</string>
+    <string name="settings_section_ai">Artificial Intelligence</string>
+    <string name="settings_section_integrations">Integrations</string>
+    <string name="settings_section_audio">Audio</string>
+    <string name="settings_section_behavior">Behavior</string>
+    <string name="settings_section_interface">Interface</string>
+    <string name="settings_section_navigation">Navigation</string>
+    <string name="settings_section_display">Display</string>
+    <string name="settings_section_lab">Lab</string>
+    <string name="settings_section_system_short">System</string>
+
+    <!-- Updater -->
     <string name="updater">更新器</string>
     <string name="check_for_updates">自动检查更新</string>
     <string name="update_notifications">启用更新通知</string>
     <string name="update_available_title">有可用更新</string>
-    <string name="update_channel_desc">关于新应用版本的通知</string>
-    <string name="audio_offload_description">开启省电播放模式。关闭后可能会增加耗电量，如果您遇到音频播放或后处理相关的问题，关闭它可能会有所帮助</string>
     <string name="update_channel_name">应用更新</string>
+    <string name="update_channel_desc">关于新应用版本的通知</string>
+
+    <!-- Offload -->
     <string name="audio_offload">开启省电播放</string>
+    <string name="audio_offload_description">开启省电播放模式。关闭后可能会增加耗电量，如果您遇到音频播放或后处理相关的问题，关闭它可能会有所帮助</string>
+    <string name="audio_offload_disabled_by_crossfade">因淡入淡出功能已启用而被禁用</string>
+
+    <!-- Varispeed -->
+    <string name="speed">Playback Speed</string>
+    <string name="varispeed">Enable varispeed</string>
+    <string name="varispeed_description">Link pitch to playback speed, resulting in tape-style speedup and slowdown effects</string>
+
+    <!-- Google Cast -->
+    <string name="google_cast">Google Cast</string>
+    <string name="google_cast_description">向 Chromecast 和其他支持投屏功能的设备投屏音频</string>
+
+    <string name="lyrics_romanize_macedonian">使用马其顿语（罗马音）</string>
+    <string name="lyrics_romanize_as_main">将罗马化歌词设为主要显示</string>
+
     <string name="integrations">集成</string>
     <string name="username">用户名</string>
     <string name="password">密码</string>
+
+    <!-- Last.fm -->
     <string name="lastfm_integration">Last.fm 集成</string>
-    <string name="lyrics_romanize_macedonian">使用马其顿语（罗马音）</string>
     <string name="enable_scrobbling">启用记录</string>
     <string name="lastfm_now_playing">发送“正在播放”状态</string>
-    <string name="scrobbling_configuration">音乐记录配置</string>
-    <string name="scrobble_min_track_duration">记录超过以下时长的歌曲（秒）</string>
-    <string name="scrobble_delay_minutes">记录听歌时长延迟（分钟）</string>
-    <string name="scrobble_delay_percent">记录听歌时长延迟（百分比）</string>
-    <string name="swipe_song_to_remove">滑动即可从播放列表中移除歌曲</string>
-    <string name="download_playlist_desc">下载所有歌曲以离线播放</string>
-    <string name="remove_download_playlist_desc">从此播放列表中删除所有已下载的歌曲</string>
-    <string name="download_in_progress_desc">下载正在进行中</string>
-    <string name="share_playlist_desc">分享此播放列表</string>
-    <string name="delete_playlist_desc">永久删除此播放列表</string>
-    <string name="sync_playlist_desc">将此播放列表与 YouTube Music 同步</string>
-    <string name="primary_color_style">主色</string>
-    <string name="tertiary_color_style">第三色</string>
-    <string name="lyrics_glow_effect">启用歌词发光效果</string>
-    <string name="lyrics_glow_effect_desc">为当前歌词行添加发光动画和弹跳效果</string>
-    <string name="enable_better_lyrics">启用 Better Lyrics 提供歌词</string>
-    <string name="enable_better_lyrics_desc">支持任意歌曲的逐音节同步歌词，非常适合卡拉OK</string>
-    <string name="auto_scroll">对齐歌词</string>
-    <string name="shuffle_playlist_first">先对播放列表或专辑进行随机播放</string>
-    <string name="shuffle_playlist_first_desc">随机播放时，先播放当前播放列表或专辑中的所有歌曲，然后再播放相似内容的歌曲</string>
-    <string name="show_wrapped_card">显示年度总结卡片</string>
-    <string name="lyrics_romanize_chinese">使用中文（罗马音）</string>
-    <string name="google_cast">Google Cast</string>
-    <string name="google_cast_description">向 Chromecast 和其他支持投屏功能的设备投屏音频</string>
     <string name="last_fm_send_likes">同步喜欢和取消喜欢</string>
     <string name="last_fm_send_likes_description">在 Iride 中对歌曲点赞或取消点赞时，Last.fm 中的喜欢或取消喜欢歌曲会同步更新</string>
     <string name="logging_in">正在登录…</string>
+
+    <string name="scrobbling_configuration">音乐记录配置</string>
+    <string name="scrobble_min_track_duration">记录超过以下时长的歌曲（秒）</string>
+    <string name="scrobble_delay_percent">记录听歌时长延迟（百分比）</string>
+    <string name="scrobble_delay_minutes">记录听歌时长延迟（分钟）</string>
     <string name="hide_video_songs">隐藏带视频歌曲</string>
+    <string name="square_video_thumbnail">Square video thumbnails</string>
+    <string name="square_video_thumbnail_desc">Crop video thumbnails to square aspect ratio</string>
+    <string name="hide_youtube_shorts">隐藏 YouTube Shorts 短视频</string>
+
     <string name="details_desc">查看歌曲详情</string>
     <string name="edit_desc">编辑标题或音乐人</string>
     <string name="start_radio_desc">基于此歌曲启动一个电台</string>
@@ -208,23 +497,32 @@
     <string name="refetch_desc">从 YouTube Music 刷新最新元数据</string>
     <string name="share_desc">展示此歌曲的链接</string>
     <string name="delete_desc">完全移除此歌曲</string>
+    <string name="lyrics_edit_desc">Manually edit the lyrics text</string>
+    <string name="lyrics_refetch_desc">Fetch fresh lyrics from providers</string>
+    <string name="lyrics_search_desc">Search for lyrics by title and artist</string>
+    <string name="lyrics_copy_desc">Copy all lyrics to clipboard</string>
     <string name="advanced_desc">调整歌曲的节奏和音调</string>
+    <string name="repeat_one">Repeat one</string>
+    <string name="repeat_one_desc">Restart this song forever, never play another</string>
+    <string name="night_mode">Night mode</string>
     <string name="equalizer_desc">打开音频均衡器</string>
     <string name="enable_dynamic_icon">开启动态图标</string>
     <string name="mini_player">迷你播放器</string>
     <string name="pure_black_mini_player">纯黑迷你播放器</string>
+    <string name="mini_player_background_style">迷你播放器背景样式</string>
+    <string name="transparent">透明</string>
+    <string name="mini_player_background_not_available">当新迷你播放器设计被禁用时不可用</string>
     <string name="cache_size_warning_title">且慢！</string>
     <string name="cache_size_warning_message">您选择的限制（%1$s）小于应用当前使用的限制。继续可能会导致部分已缓存的 %2$s 被移除。仍要继续？</string>
     <string name="cache_size_warning_confirm">继续</string>
-    <string name="lyrics_animation_style">逐字动画风格</string>
+
+    <string name="lyrics_animation_style_title">Word-by-word animation style</string>
     <string name="none">无</string>
     <string name="fade">褪色</string>
     <string name="glow">生长</string>
     <string name="slide">滑动</string>
     <string name="karaoke">卡拉OK</string>
     <string name="apple_music_style">Apple Music</string>
-    <string name="lyrics_text_size">歌词文字大小</string>
-    <string name="lyrics_line_spacing">歌词行间距</string>
     <string name="album_art_for">%s 的专辑封面</string>
     <string name="wrapped_total_albums_title">您已听了</string>
     <string name="wrapped_total_albums_subtitle">独特的专辑！</string>
@@ -260,6 +558,64 @@
     <string name="wrapped_playlist_title">您的 %s 年度总结</string>
     <string name="wrapped_create_playlist">创建播放列表</string>
     <string name="wrapped_playlist_saved">播放列表已保存</string>
+
+    <!-- Equalizer UI -->
+        <plurals name="profiles_count">
+        <item quantity="other">%d 个配置文件</item>
+    </plurals>
+    <string name="equalizer_header">均衡器</string>
+    <string name="no_profiles">无均衡器配置文件</string>
+    <string name="import_profile">导入配置文件</string>
+    <string name="system_equalizer">系统均衡器</string>
+    <string name="eq_disabled">已禁用</string>
+        <plurals name="band_count">
+        <item quantity="other">%d 乐队</item>
+    </plurals>
+    <string name="delete_profile_desc">删除配置文件</string>
+    <string name="delete_profile_confirmation">确定要删除 %1$s 吗？此操作无法撤销</string>
+    <string name="error_file_read">无法读取文件</string>
+    <string name="error_file_open">无法打开文件：%1$s</string>
+    <string name="import_error_title">导入错误</string>
+    <string name="error_title">错误</string>
+    <string name="error_eq_apply_failed">无法应用均衡器配置文件：%1$s</string>
+
+    <!-- Parametric equalizer editor -->
+    <string name="eq_editor_subtitle">Shape the sound for every output device</string>
+    <string name="eq_master_enable">Enable equalizer</string>
+    <string name="eq_output_source">Output</string>
+    <string name="eq_device_speaker">Phone speaker</string>
+    <string name="eq_device_wired">Wired headphones</string>
+    <string name="eq_device_unknown">Audio output</string>
+    <string name="eq_save_for_device">Save for this device</string>
+    <string name="eq_saved_for_device">Linked to %1$s</string>
+    <string name="eq_manage_devices">Saved devices</string>
+    <string name="eq_no_saved_devices">No linked devices yet</string>
+    <string name="eq_unbind_device">Remove link</string>
+    <string name="eq_unbind_done">Device link removed</string>
+    <string name="eq_preset_balanced">Balanced</string>
+    <string name="eq_preset_more_bass">More bass</string>
+    <string name="eq_preset_more_treble">More treble</string>
+    <string name="eq_preset_voice">Vocal</string>
+    <string name="eq_selected_band_label">Band %1$d · %2$s · Q %3$s</string>
+    <string name="eq_frequency">Frequency</string>
+    <string name="eq_q_factor">Q</string>
+    <string name="eq_bass_enhance">Bass enhance</string>
+    <string name="eq_bass_enhance_desc">Low-shelf boost around 90 Hz</string>
+    <string name="eq_transient_title">Duration</string>
+    <string name="eq_transient_desc">Full bass only on short transients: sustained low frequencies are softened. Great for low-quality devices that need punchy bass without constant rumble.</string>
+    <string name="eq_advanced_options">Advanced options</string>
+    <string name="eq_exact_gain_title">Exact gain</string>
+    <string name="eq_reset_band">Reset band</string>
+    <string name="eq_profile_saved">Equalizer saved</string>
+    <string name="queue_empty">Queue is empty</string>
+    <string name="queue_history_title">History</string>
+    <string name="queue_radio_section_title">Radio</string>
+    <string name="queue_radio_section_subtitle">These songs come from the radio</string>
+
+    <!-- Hardcoded strings -->
+    <string name="found_in_settings_content">可在“设置”&gt;“内容”中找到</string>
+    <string name="your_daily_discover">您的每日发现</string>
+    <string name="plays">播放量</string>
     <string name="casting_to">转换为 %s</string>
     <string name="progress_percent">进度 %s%%</string>
     <string name="listening_to_metrolist">收听 Iride</string>
@@ -269,24 +625,16 @@
     <string name="copied_artist">音乐人已复制</string>
     <string name="error_playing">播放错误</string>
     <string name="failed_to_parse_proxy">无法解析代理网址</string>
-    <plurals name="profiles_count">
-        <item quantity="other">%d 个配置文件</item>
-    </plurals>
-    <string name="equalizer_header">均衡器</string>
-    <string name="no_profiles">无均衡器配置文件</string>
-    <string name="import_profile">导入配置文件</string>
-    <string name="eq_disabled">已禁用</string>
-    <string name="delete_profile_desc">删除配置文件</string>
-    <string name="delete_profile_confirmation">确定要删除 %1$s 吗？此操作无法撤销</string>
-    <string name="error_file_read">无法读取文件</string>
-    <string name="error_file_open">无法打开文件：%1$s</string>
-    <string name="import_error_title">导入错误</string>
-    <plurals name="band_count">
-        <item quantity="other">%d 乐队</item>
-    </plurals>
-    <string name="wavy">波浪</string>
-    <string name="pause_music_when_media_is_muted">在静音时暂停播放</string>
-    <string name="system_equalizer">系统均衡器</string>
+
+    <!-- Playback errors -->
+    <string name="error_playback_failed">播放失败</string>
+    <string name="error_episode_save">无法保存分集</string>
+    <string name="error_episode_remove">无法移除分集</string>
+    <string name="error_podcast_subscribe">无法订阅播客</string>
+    <string name="error_podcast_unsubscribe">无法取消订阅播客</string>
+    <string name="view_channel">查看频道</string>
+
+    <!-- Widget strings -->
     <string name="album_art">专辑封面</string>
     <string name="no_song_playing">没有音乐正在播放</string>
     <string name="tap_to_open">点击打开 Iride</string>
@@ -294,31 +642,40 @@
     <string name="play_pause">播放/暂停</string>
     <string name="next">下一曲</string>
     <string name="like">喜欢</string>
+    <string name="not_playing">未在播放歌曲</string>
+    <string name="tap_to_play">点击打开 Iride</string>
     <string name="widget_description">有播放控制的音乐播放器微件</string>
     <string name="turntable_widget_description">带有播放和点赞控制按钮的播放控件</string>
-    <string name="about_artist">关于</string>
-    <string name="show_more">展开</string>
-    <string name="show_less">收起</string>
-    <string name="artist_page_settings">音乐人页面</string>
-    <string name="show_artist_description">显示音乐人简介</string>
-    <string name="show_artist_subscriber_count">显示订阅者数量</string>
-    <string name="show_artist_monthly_listeners">每月听众人数</string>
-    <string name="skip_silence_desc">快进歌曲的静音部分</string>
-    <string name="skip_silence_instant">立即跳过静音</string>
-    <string name="skip_silence_instant_desc">在静音片段快进而非加速播放</string>
-    <string name="remember_shuffle_and_repeat">记住随机播放和循环设置</string>
-    <string name="remember_shuffle_and_repeat_desc">重启应用时，记住随机播放和循环设置</string>
-    <string name="lyrics_offset">歌词偏移</string>
-    <string name="persistent_shuffle_title">持续随机播放</string>
-    <string name="persistent_shuffle_desc">开始播放新歌曲或播放列表时，保持随机播放功能开启</string>
-    <string name="error_playback_failed">播放失败</string>
-    <string name="error_eq_apply_failed">无法应用均衡器配置文件：%1$s</string>
-    <string name="error_title">错误</string>
-    <string name="crop_album_art">裁剪专辑封面</string>
-    <string name="crop_album_art_desc">通过裁剪视频缩略图强制使用正方形宽高比</string>
-    <string name="keep_screen_on_when_player_is_expanded">当播放页面最大化时保持屏幕打开</string>
+    <string name="widget_music_player">播放器</string>
+    <string name="widget_turntable">虚拟打碟台</string>
+
+    <!-- Music Recognizer Widget strings -->
+    <string name="widget_recognizer_name">音乐识别器</string>
+    <string name="widget_recognizer_description">直接从主屏幕识别周围播放的歌曲</string>
+    <string name="widget_recognizer_tap_to_search">点击识别歌曲</string>
+    <string name="widget_recognizer_listening">正在听…</string>
+    <string name="widget_recognizer_processing">正在识别…</string>
+    <string name="widget_recognizer_no_match">未找到匹配，请重试</string>
+    <string name="widget_recognizer_error">识别失败</string>
+    <string name="widget_recognizer_error_generic">出了点问题，请重试</string>
+    <string name="widget_recognizer_unknown_song">未知歌曲</string>
+    <string name="widget_recognizer_unknown_artist">未知音乐人</string>
+    <string name="widget_recognizer_mic_desc">识别歌曲</string>
+    <string name="widget_recognizer_channel_name">音乐识别</string>
+    <string name="widget_recognizer_channel_desc">在微件中识别歌曲时显示通知</string>
+    <string name="widget_recognizer_notification_text">正在录音以识别歌曲…</string>
+
+    <!-- Player Client Settings -->
+
+    <!-- Decryption Library Settings -->
+
+    <!-- Listen Together -->
+    <string name="together">一起听</string>
     <string name="listen_together">一起听</string>
     <string name="listen_together_server_url">服务器网址</string>
+    <string name="listen_together_choose_server">选择服务器</string>
+    <string name="listen_together_custom_server">自定义服务器</string>
+    <string name="listen_together_use_custom_server">使用自定义服务器</string>
     <string name="listen_together_username">用户名</string>
     <string name="listen_together_connected">已连接</string>
     <string name="listen_together_reconnecting">正在重新连接…</string>
@@ -331,11 +688,21 @@
     <string name="listen_together_room_code">房间邀请码</string>
     <string name="listen_together_you_are_host">您是房主</string>
     <string name="listen_together_you_are_guest">您是访客</string>
+    <string name="mute">静音</string>
+    <string name="unmute">取消静音</string>
     <string name="listen_together_join_requests">加入请求</string>
     <string name="listen_together_view_logs">查看日志</string>
     <string name="listen_together_view_logs_desc">调试连接事件和消息</string>
     <string name="listen_together_logs">连接日志</string>
     <string name="listen_together_no_logs">还没有日志</string>
+    <string name="listen_together_auto_approval_joins">自动批准加入请求</string>
+    <string name="listen_together_auto_approval_joins_desc">自动批准加入请求，无需手动审核</string>
+    <string name="listen_together_auto_approval_suggestions">自动批准歌曲推荐</string>
+    <string name="listen_together_auto_approval_suggestions_desc">自动批准访客的歌曲推荐并加入待播列表</string>
+    <string name="listen_together_sync_volume">与房主音量保持一致</string>
+    <string name="listen_together_sync_volume_desc">访客音量与房主音量保持一致</string>
+    <string name="listen_together_in_top_bar">在顶部栏显示一起听</string>
+    <string name="listen_together_in_top_bar_desc">在顶部应用栏显示一起听，而非在导航栏中显示</string>
     <string name="listen_together_description">与好友实时一起听音乐。创建房间成为房主，或使用邀请码加入现有房间</string>
     <string name="listen_together_background_disconnect_note">注意：如果您在创建房间时未播放音乐，然后切换到其他应用，可能会断开连接</string>
     <string name="listen_together_not_configured">一起听未设置。请在“一起听”&gt;“设置”&gt;“服务器网址”中配置服务器网址</string>
@@ -364,6 +731,8 @@
     <string name="reject">拒绝</string>
     <string name="clear">清除</string>
     <string name="copy">复制</string>
+    <string name="copy_all_lyrics">复制所有歌词</string>
+    <string name="change">更改</string>
     <string name="copied_to_clipboard">已复制到剪贴板</string>
     <string name="not_set">未设置</string>
     <string name="hosting_room">正主持房间</string>
@@ -376,68 +745,24 @@
     <string name="you_label">你</string>
     <string name="connected_users">连接的用户</string>
     <string name="enter_username">输入用户名</string>
+    <string name="enter_room_code">输入房间邀请码</string>
+    <string name="listen_together_settings_desc">配置服务器、用户名等</string>
     <string name="error_username_empty">需要用户名</string>
     <string name="resync">重新同步</string>
-    <string name="mute">静音</string>
-    <string name="unmute">取消静音</string>
-    <string name="crash_title">应用崩溃了</string>
-    <string name="crash_share_logs">分享日志</string>
-    <string name="crash_description">发生意外错误，请分享崩溃报告以帮助我们解决问题</string>
-    <string name="crash_share_title">分享崩溃报告</string>
-    <string name="crash_report_subject">Iride 崩溃报告</string>
-    <string name="crash_close">关闭</string>
-    <string name="crash_no_log">没有可用的崩溃日志</string>
-    <string name="palette_dynamic">灵动</string>
-    <string name="palette_crimson">赤红</string>
-    <string name="palette_rose">玫瑰</string>
-    <string name="palette_purple">紫色</string>
-    <string name="palette_deep_purple">深紫</string>
-    <string name="palette_indigo">靛青</string>
-    <string name="palette_blue">蓝色</string>
-    <string name="palette_sky_blue">天蓝</string>
-    <string name="palette_cyan">青色</string>
-    <string name="palette_green">绿色</string>
-    <string name="palette_teal">蓝绿</string>
-    <string name="palette_light_green">亮绿</string>
-    <string name="palette_lime">柠檬</string>
-    <string name="palette_yellow">黄色</string>
-    <string name="palette_amber">琥珀</string>
-    <string name="palette_orange">橙色</string>
-    <string name="palette_deep_orange">深橙</string>
-    <string name="palette_brown">棕色</string>
-    <string name="palette_grey">灰色</string>
-    <string name="cd_back">返回</string>
-    <string name="palette_blue_grey">蓝灰</string>
-    <string name="cd_dark_mode">深色模式</string>
-    <string name="cd_system_mode">系统模式</string>
-    <string name="cd_pure_black_mode">纯黑模式</string>
-    <string name="cd_light_mode">浅色模式</string>
-    <string name="cd_palette_item">样式 %1$s</string>
-    <string name="listen_together_choose_server">选择服务器</string>
-    <string name="listen_together_custom_server">自定义服务器</string>
-    <string name="listen_together_use_custom_server">使用自定义服务器</string>
-    <string name="listen_together_auto_approval_joins">自动批准加入请求</string>
-    <string name="listen_together_auto_approval_joins_desc">自动批准加入请求，无需手动审核</string>
     <string name="copy_code">复制邀请码</string>
-    <string name="manage_user">管理用户</string>
+    <string name="kick_user_desc">从此会话中移除该人</string>
     <string name="permanently_kick_user">永久屏蔽</string>
     <string name="permanently_kick_user_desc">屏蔽此人的加入请求并隐藏其推荐</string>
+    <string name="transfer_ownership">转移所有权</string>
+    <string name="transfer_ownership_desc">将此人设为房主</string>
+    <string name="manage_user">管理用户</string>
     <string name="listen_together_blocked_users">已屏蔽用户</string>
     <string name="listen_together_blocked_users_count">已屏蔽 %d 位用户</string>
     <string name="listen_together_no_blocked_users">无已屏蔽的用户</string>
     <string name="unblock">取消屏蔽</string>
-    <string name="not_playing">未在播放歌曲</string>
-    <string name="tap_to_play">点击打开 Iride</string>
-    <string name="widget_music_player">播放器</string>
-    <string name="listen_together_sync_volume">与房主音量保持一致</string>
-    <string name="listen_together_sync_volume_desc">访客音量与房主音量保持一致</string>
-    <string name="kick_user_desc">从此会话中移除该人</string>
-    <string name="transfer_ownership_desc">将此人设为房主</string>
     <string name="user_blocked_by_host">已被房主屏蔽</string>
-    <string name="transfer_ownership">转移所有权</string>
-    <string name="widget_turntable">虚拟打碟台</string>
-    <string name="enter_room_code">输入房间邀请码</string>
-    <string name="listen_together_settings_desc">配置服务器、用户名等</string>
+
+    <!-- AI Lyrics Translation -->
     <string name="ai_lyrics_translation">AI 歌词翻译</string>
     <string name="ai_translating_lyrics">正在翻译歌词…</string>
     <string name="ai_lyrics_translated">歌词已翻译</string>
@@ -449,6 +774,9 @@
     <string name="ai_target_language">目标语言</string>
     <string name="ai_setup_guide">API 凭据</string>
     <string name="ai_translation_literal">翻译</string>
+    <string name="ai_translation_literal_desc">将含义翻译成目标语言</string>
+    <string name="ai_translation_transcribed">转录</string>
+    <string name="ai_translation_transcribed_desc">将发音转换为目标文字</string>
     <string name="ai_api_key_required">需要 API 密钥</string>
     <string name="ai_error_api_key_required">需要 API 密钥</string>
     <string name="ai_error_no_lyrics">没有可翻译的歌词</string>
@@ -457,49 +785,6 @@
     <string name="ai_error_unexpected">翻译出现意外错误</string>
     <string name="ai_error_unknown">发生未知错误</string>
     <string name="ai_error_translation_failed">翻译失败</string>
-    <string name="play_all">播放全部</string>
-    <string name="together">一起听</string>
-    <string name="ai_translation_transcribed">转录</string>
-    <string name="recognize_music">识别音乐</string>
-    <string name="youtube_url_column">YouTube 网址列（可选）</string>
-    <string name="re_listen">重听</string>
-    <string name="clear_recognition_history_confirm">确定要清除所有识别历史吗？</string>
-    <string name="no_match_found">未找到匹配</string>
-    <string name="delete_from_history">从历史中删除</string>
-    <string name="artist_name_column">音乐人名称列</string>
-    <string name="processing">正在识别…</string>
-    <string name="clear_recognition_history">清除识别历史</string>
-    <string name="map_csv_columns">映射 CSV 列</string>
-    <string name="column_label">列 %d</string>
-    <string name="recognition_error">识别错误</string>
-    <string name="enable_high_refresh_rate_desc">强制屏幕以其支持的最高刷新率运行（例如 120Hz）</string>
-    <string name="first_row_is_header">首行是标题</string>
-    <string name="try_again">重试</string>
-    <string name="tap_to_recognize">点击识别</string>
-    <string name="recognition_history">识别历史</string>
-    <string name="enable_high_refresh_rate">启用高刷新率</string>
-    <string name="song_title_column">歌曲标题列</string>
-    <string name="recently_converted">最近转换</string>
-    <string name="importing_csv">正在导入 CSV…</string>
-    <string name="play_on_app">在 Iride 上播放</string>
-    <string name="listening">正在听…</string>
-    <string name="continue_action">继续</string>
-    <string name="enable">启用</string>
-    <string name="crossfade">淡入淡出</string>
-    <string name="crossfade_desc">当前歌曲逐渐淡出，同时下一首歌曲逐渐淡入</string>
-    <string name="crossfade_duration">淡入淡出时长</string>
-    <string name="crossfade_gapless">对无间隙专辑禁用</string>
-    <string name="crossfade_gapless_desc">对于无间隙专辑时，跳过淡入淡出功能</string>
-    <string name="crossfade_beta_title">测试功能！</string>
-    <string name="crossfade_beta_message">淡入淡出是一项新功能，可能存在错误。如果您遇到任何问题，请及时反馈。\n\n注意：由于技术限制，此功能会禁用省电播放功能</string>
-    <string name="audio_offload_disabled_by_crossfade">因淡入淡出功能已启用而被禁用</string>
-    <string name="hide_youtube_shorts">隐藏 YouTube Shorts 短视频</string>
-    <string name="listen_together_in_top_bar">在顶部栏显示一起听</string>
-    <string name="listen_together_in_top_bar_desc">在顶部应用栏显示一起听，而非在导航栏中显示</string>
-    <string name="prevent_duplicate_tracks_in_queue">防止待播列表中出现重复曲目</string>
-    <string name="prevent_duplicate_tracks_in_queue_desc">如果添加的曲目已在待播列表中，则会将其从先前位置移动，而不是再次添加</string>
-    <string name="ai_translation_literal_desc">将含义翻译成目标语言</string>
-    <string name="ai_translation_transcribed_desc">将发音转换为目标文字</string>
     <string name="ai_provider_help">获取 API 密钥</string>
     <string name="ai_provider_openrouter_help">访问 https://openrouter.ai 获取免费和付费模型</string>
     <string name="ai_provider_openai_help">访问 https://platform.openai.com/api-keys</string>
@@ -508,10 +793,111 @@
     <string name="ai_provider_perplexity_help">访问 https://perplexity.ai/settings/api</string>
     <string name="ai_provider_xai_help">访问 https://console.x.ai</string>
     <string name="ai_provider_deepl_help">访问 https://deepl.com/pro-api 获取免费和付费密钥</string>
+    <string name="ai_provider_mistral_help">访问 https://console.mistral.ai/api-keys</string>
     <string name="ai_deepl_formality">语气功能</string>
     <string name="ai_deepl_formality_default">默认</string>
     <string name="ai_deepl_formality_more">更正式</string>
     <string name="ai_deepl_formality_less">不太正式</string>
+    <string name="ai_system_prompt">系统提示</string>
+    <string name="ai_system_prompt_desc">发送给 AI 模型的自定义指令，留空则使用默认提示</string>
+    <string name="ai_system_prompt_placeholder">使用 {lineCount} 作为待翻译行数的占位符</string>
+    <string name="ai_system_prompt_default">默认</string>
+    <string name="ai_system_prompt_reset">重置为默认</string>
+
+    <!-- Crash Handler -->
+    <string name="crash_title">应用崩溃了</string>
+    <string name="crash_description">发生意外错误，请分享崩溃报告以帮助我们解决问题</string>
+    <string name="crash_share_logs">分享日志</string>
+    <string name="crash_share_title">分享崩溃报告</string>
+    <string name="crash_report_subject">Iride 崩溃报告</string>
+    <string name="crash_close">关闭</string>
+    <string name="crash_no_log">没有可用的崩溃日志</string>
+
+    <!-- Theme Palette Names -->
+    <string name="palette_dynamic">灵动</string>
+    <string name="palette_crimson">赤红</string>
+    <string name="palette_rose">玫瑰</string>
+    <string name="palette_purple">紫色</string>
+    <string name="palette_deep_purple">深紫</string>
+    <string name="palette_indigo">靛青</string>
+    <string name="palette_blue">蓝色</string>
+    <string name="palette_sky_blue">天蓝</string>
+    <string name="palette_cyan">青色</string>
+    <string name="palette_teal">蓝绿</string>
+    <string name="palette_green">绿色</string>
+    <string name="palette_light_green">亮绿</string>
+    <string name="palette_lime">柠檬</string>
+    <string name="palette_yellow">黄色</string>
+    <string name="palette_amber">琥珀</string>
+    <string name="palette_orange">橙色</string>
+    <string name="palette_deep_orange">深橙</string>
+    <string name="palette_brown">棕色</string>
+    <string name="palette_grey">灰色</string>
+    <string name="palette_blue_grey">蓝灰</string>
+
+    <!-- Theme Mode Selector -->
+    <string name="theme_mode_light">Light</string>
+    <string name="theme_mode_dark">Dark</string>
+    <string name="theme_mode_system">System</string>
+
+    <!-- Theme Content Descriptions -->
+    <string name="cd_back">返回</string>
+    <string name="cd_pure_black_mode">纯黑模式</string>
+    <string name="cd_light_mode">浅色模式</string>
+    <string name="cd_dark_mode">深色模式</string>
+    <string name="cd_system_mode">系统模式</string>
+    <string name="cd_palette_item">样式 %1$s</string>
+    <string name="play_all">播放全部</string>
+    <string name="mp3_panel_lyrics">歌词</string>
+    <string name="mp3_panel_up_next">接下来</string>
+
+    <!-- Library Albums screen sections -->
+    <string name="continue_listening">Continue Listening</string>
+    <string name="remove_from_continue_listening">Remove from Continue Listening</string>
+    <string name="favorite_albums">Favorites</string>
+    <string name="remove_suggested_follow_artist">Remove suggestion</string>
+
+    <string name="enable_high_refresh_rate">启用高刷新率</string>
+    <string name="enable_high_refresh_rate_desc">强制屏幕以其支持的最高刷新率运行（例如 120Hz）</string>
+
+    <!-- Music Recognition -->
+    <string name="recognize_music">识别音乐</string>
+    <string name="tap_to_recognize">点击识别</string>
+    <string name="listening">正在听…</string>
+    <string name="processing">正在识别…</string>
+    <string name="no_match_found">未找到匹配</string>
+    <string name="recognition_error">识别错误</string>
+    <string name="try_again">重试</string>
+    <string name="refresh">Refresh</string>
+    <string name="recognition_history">识别历史</string>
+    <string name="clear_recognition_history">清除识别历史</string>
+    <string name="clear_recognition_history_confirm">确定要清除所有识别历史吗？</string>
+    <string name="delete_from_history">从历史中删除</string>
+    <string name="re_listen">重听</string>
+    <string name="play_on_app">在 Iride 上播放</string>
+    <string name="qs_tile_music_recognizer">识别音乐</string>
+    <string name="recognition_notification_channel_name">音乐识别</string>
+    <string name="recognition_notification_channel_desc">从快捷设置中识别歌曲时显示通知</string>
+    <string name="recognition_notification_listening">正在听音乐…</string>
+    <string name="recognition_notification_processing">正在识别…</string>
+    <string name="recognition_notification_no_match">未找到匹配</string>
+    <string name="recognition_notification_failed">识别失败</string>
+    <string name="listen_on_metrolist">在 Iride 上听</string>
+
+    <!-- CSV Import Strings -->
+    <string name="map_csv_columns">映射 CSV 列</string>
+    <string name="first_row_is_header">首行是标题</string>
+    <string name="artist_name_column">音乐人名称列</string>
+    <string name="song_title_column">歌曲标题列</string>
+    <string name="youtube_url_column">YouTube 网址列（可选）</string>
+    <string name="continue_action">继续</string>
+    <string name="importing_csv">正在导入 CSV…</string>
+    <string name="importing_playlist">正在导入播放列表…</string>
+
+    <string name="recently_converted">最近转换</string>
+    <string name="column_label">列 %d</string>
+
+    <!-- Discord Integration -->
     <string name="discord_status">状态</string>
     <string name="discord_status_online">在线</string>
     <string name="discord_status_idle">空闲</string>
@@ -537,76 +923,52 @@
     <string name="discord_activity_name_description">活动的自定义名称，留空则使用默认值</string>
     <string name="discord_advanced_mode">高级模式</string>
     <string name="discord_advanced_mode_description">显示更多 Rich Presence 自定义选项</string>
-    <string name="resume_on_bluetooth_connect">蓝牙连接后恢复播放</string>
-    <string name="lyrics_romanize_hindi">使用印地语（罗马音）</string>
-    <string name="lyrics_romanize_punjabi">使用旁遮普语（罗马音）</string>
-    <string name="lyrics_romanize_as_main">将罗马化歌词设为主要显示</string>
-    <string name="player_background_solid">纯色</string>
-    <string name="display_density">显示密度</string>
-    <string name="restart">重启</string>
-    <string name="restart_required">需要重启！</string>
-    <string name="density_restart_message">显示密度更改将在重启应用后生效。现在重启？</string>
-    <string name="enable_lrclib_desc">社区驱动的同步歌词数据库</string>
-    <string name="enable_kugou_desc">从中国热门音乐平台酷狗获取歌词</string>
-    <string name="youtube_music_lyrics_note">注意：当没有其他可用来源时，YouTube Music 的歌词将自动显示，这些歌词通常不同步</string>
-    <string name="enable_lyricsplus">启用 LyricsPlus 提供歌词</string>
-    <string name="enable_lyricsplus_desc">多源同步歌词支持</string>
-    <string name="lyrics_provider_selection">提供商选择</string>
-    <string name="lyrics_provider_selection_desc">选择要启用的歌词提供商</string>
-    <string name="lyrics_provider_priority">歌词提供商优先级</string>
-    <string name="lyrics_provider_priority_desc">拖动即可按偏好重新排序提供商。位置越高，优先级越高</string>
-    <string name="changelog_empty">暂无更新日志</string>
-    <string name="github_releases_url">https://github.com/IrideGroup/Iride/releases</string>
-    <string name="list_bullet">•</string>
-    <string name="view_on_github">在 GitHub 上查看</string>
-    <string name="current_version">当前版本</string>
-    <string name="version_format">版本：%s</string>
-    <string name="update_settings">更新设置</string>
-    <string name="check_for_updates_title">检查更新</string>
-    <string name="check_for_updates_button">检查更新</string>
-    <string name="checking_for_updates">正在检查更新…</string>
-    <string name="latest_version_format">最新版本：%s</string>
-    <string name="hide_changelog">隐藏更新日志</string>
-    <string name="view_changelog">查看更新日志</string>
-    <string name="failed_to_check_updates">无法检查更新：%s</string>
-    <string name="set_as_default">设为默认</string>
-    <string name="sleep_timer_default_set">睡眠定时器默认设置为 %d 分钟</string>
-    <string name="found_in_settings_content">可在“设置”&gt;“内容”中找到</string>
-    <string name="error_episode_save">无法保存分集</string>
-    <string name="error_episode_remove">无法移除分集</string>
-    <string name="error_podcast_subscribe">无法订阅播客</string>
-    <string name="error_podcast_unsubscribe">无法取消订阅播客</string>
-    <string name="widget_recognizer_name">音乐识别器</string>
-    <string name="widget_recognizer_description">直接从主屏幕识别周围播放的歌曲</string>
-    <string name="widget_recognizer_tap_to_search">点击识别歌曲</string>
-    <string name="widget_recognizer_listening">正在听…</string>
-    <string name="widget_recognizer_processing">正在识别…</string>
-    <string name="widget_recognizer_no_match">未找到匹配，请重试</string>
-    <string name="widget_recognizer_error">识别失败</string>
-    <string name="widget_recognizer_error_generic">出了点问题，请重试</string>
-    <string name="widget_recognizer_unknown_song">未知歌曲</string>
-    <string name="widget_recognizer_unknown_artist">未知音乐人</string>
-    <string name="widget_recognizer_mic_desc">识别歌曲</string>
-    <string name="widget_recognizer_channel_name">音乐识别</string>
-    <string name="widget_recognizer_channel_desc">在微件中识别歌曲时显示通知</string>
-    <string name="widget_recognizer_notification_text">正在录音以识别歌曲…</string>
-    <string name="importing_playlist">正在导入播放列表…</string>
-    <string name="credits_instagram">Instagram</string>
-    <string name="credits_github">GitHub</string>
-    <string name="app_version_info">%1$s • %2$s</string>
-    <string name="credits_view_repo">查看仓库</string>
+    <string name="enable_advanced_settings">Enable advanced settings</string>
+    <string name="disable_advanced_settings">Disable advanced settings</string>
+    <string name="speed_dial">快速访问</string>
+    <string name="pin_to_speed_dial">固定到快速访问</string>
+    <string name="unpin_from_speed_dial">从快速访问取消固定</string>
+    <string name="randomize_home_order">随机排列首页顺序</string>
+    <string name="randomize_home_order_desc">使用加权优先级随机重新排序首页板块</string>
+    <string name="hero_carousel_title">Hero carousel</string>
+    <string name="hero_carousel_desc">A rotating banner with new releases and picks for you</string>
+
+    <!-- Smart boot -->
+    <string name="smart_boot">Smart boot</string>
+    <string name="smart_boot_desc">Faster startup: Featured loads instantly, sections keep their place while loading, fewer duplicate downloads. Turn off to restore the original behavior (restart to apply fully)</string>
+
+    <!-- Daily Discover -->
+    <string name="daily_discover_sounds_like">%1$s 相似风格</string>
+    <string name="daily_discover_because_you_listen_to">因您收听 %1$s</string>
+    <string name="daily_discover_similar_to">%1$s 相似内容</string>
+    <string name="daily_discover_based_on">基于 %1$s</string>
+    <string name="daily_discover_for_fans_of">%1$s 粉丝专享</string>
+    <string name="from_the_community">来自社区</string>
+
+    <!-- Logout dialog -->
     <string name="logout_dialog_title">保留媒体库数据？</string>
     <string name="logout_dialog_message">要保留您的播放列表和媒体库数据吗？已下载的歌曲将始终保留</string>
     <string name="logout_keep">保留</string>
     <string name="logout_clear">清除</string>
+
+    <!-- Credits / About Screen -->
     <string name="credits_lead_developer">首席开发者</string>
+    <string name="about_creator_role">Creator of Iride</string>
+    <string name="about_release_badge">First release soon</string>
+    <string name="credits_special_thanks">Special thanks</string>
     <string name="credits_collaborator">协作者</string>
     <string name="credits_collaborators_section">协作者</string>
     <string name="credits_license_name">GNU General Public License v3.0</string>
     <string name="credits_license_desc">自由开源软件。您可以使用、研究、分享和改进它</string>
+    <string name="credits_donations">Donations</string>
+    <string name="credits_donations_desc">Support the project on Ko-fi</string>
     <string name="credits_discord">Discord 服务器</string>
     <string name="credits_telegram">Telegram 频道</string>
     <string name="credits_website">网站</string>
+    <string name="credits_instagram">Instagram</string>
+    <string name="credits_github">GitHub</string>
+    <string name="credits_view_repo">查看仓库</string>
+    <string name="app_version_info">%1$s • %2$s</string>
     <string name="like_what_i_do">喜欢我的作品？</string>
     <string name="buy_mo_a_coffee">请我喝杯咖啡！</string>
     <string name="community_and_info">社区与信息</string>
@@ -614,6 +976,8 @@
     <string name="wanna_play_favorite_song">想播放他们最喜欢的歌曲吗？</string>
     <string name="yeah">是的！</string>
     <string name="stands_with_palestine">本项目声援巴勒斯坦 🇵🇸</string>
+
+    <!-- Podcasts -->
     <string name="filter_podcasts">播客</string>
     <string name="view_podcast">查看播客</string>
     <string name="podcast_channels">播客频道</string>
@@ -625,58 +989,32 @@
     <string name="save_episode_for_later_desc">添加到“待播分集”播放列表</string>
     <string name="remove_episode_from_saved">从已保存中移除</string>
     <string name="subscribe_to_podcast">将播客保存到媒体库</string>
-    <plurals name="n_episode">
+        <plurals name="n_episode">
         <item quantity="other">%d 个分集</item>
     </plurals>
+    <string name="filter_episodes">分集</string>
+    <string name="filter_profiles">个人资料</string>
+    <string name="filter_smart_search">Smart Search</string>
+    <string name="filter_channels">频道</string>
+    <string name="auto_playlist">自动播放列表</string>
+    <string name="downloaded_episodes">已下载的分集</string>
+    <string name="no_subscribed_channels">无已订阅的频道</string>
+    <string name="no_downloaded_episodes">无已下载的分集</string>
+        <plurals name="n_channel">
+        <item quantity="other">%d 个频道</item>
+    </plurals>
+
+    <!-- Restore confirmation dialog -->
     <string name="restore_confirm_title">恢复备份？</string>
     <string name="restore_confirm_message">这将从所选备份中恢复您的应用数据</string>
     <string name="restore_account_warning">恢复后，您需要重新登录。以下账号将退出登录：</string>
     <string name="restore">恢复</string>
     <string name="checking_previous_account">正在检查先前账号…</string>
     <string name="no_account_found">未找到账号</string>
-    <string name="listen_together_auto_approval_suggestions">自动批准歌曲推荐</string>
-    <string name="listen_together_auto_approval_suggestions_desc">自动批准访客的歌曲推荐并加入待播列表</string>
-    <string name="plays">播放量</string>
-    <string name="speed_dial">快速访问</string>
-    <string name="pin_to_speed_dial">固定到快速访问</string>
-    <string name="unpin_from_speed_dial">从快速访问取消固定</string>
-    <string name="randomize_home_order">随机排列首页顺序</string>
-    <string name="randomize_home_order_desc">使用加权优先级随机重新排序首页板块</string>
-    <string name="daily_discover_sounds_like">%1$s 相似风格</string>
-    <string name="daily_discover_because_you_listen_to">因您收听 %1$s</string>
-    <string name="daily_discover_similar_to">%1$s 相似内容</string>
-    <string name="daily_discover_based_on">基于 %1$s</string>
-    <string name="daily_discover_for_fans_of">%1$s 粉丝专享</string>
-    <string name="from_the_community">来自社区</string>
-    <string name="filter_episodes">分集</string>
-    <string name="filter_channels">频道</string>
-    <string name="auto_playlist">自动播放列表</string>
-    <string name="downloaded_episodes">已下载的分集</string>
-    <string name="no_subscribed_channels">无已订阅的频道</string>
-    <string name="no_downloaded_episodes">无已下载的分集</string>
-    <plurals name="n_channel">
-        <item quantity="other">%d 个频道</item>
-    </plurals>
-    <string name="view_channel">查看频道</string>
-    <string name="filter_profiles">个人资料</string>
-    <string name="enable_automatic_sleeptimer">启用自动睡眠定时器</string>
-    <string name="sleeptimer_description">使用默认时长，在设定时间内自动启动睡眠定时器</string>
-    <string name="sleep_timer_repeat_description">设置睡眠定时器自动激活的循环日期和时间</string>
-    <string name="sleep_timer_repeat">重复</string>
-    <string name="sleep_timer_daily">每日</string>
-    <string name="sleep_timer_weekdays">周一至周五</string>
-    <string name="sleep_timer_weekdays_weekends">工作日/周末</string>
-    <string name="sleep_timer_weekends">周六至周日</string>
-    <string name="sleep_timer_custom">自定义</string>
-    <string name="sleep_timer_start_time">开始时间</string>
-    <string name="sleep_timer_end_time">结束时间</string>
-    <string name="sleep_timer_monday">周一</string>
-    <string name="sleep_timer_tuesday">周二</string>
-    <string name="sleep_timer_wednesday">周三</string>
-    <string name="sleep_timer_thursday">周四</string>
-    <string name="sleep_timer_friday">周五</string>
-    <string name="sleep_timer_saturday">周六</string>
-    <string name="sleep_timer_sunday">周日</string>
+
+    <!-- Cache settings -->
+
+    <!-- Upload songs -->
     <string name="upload_songs">上传歌曲</string>
     <string name="uploading">正在上传…</string>
     <string name="upload_progress">%1$d / %2$d</string>
@@ -686,77 +1024,14 @@
     <string name="upload_unsupported_format">不支持的格式。支持的格式：MP3、M4A、WMA、FLAC、OGG</string>
     <string name="delete_uploaded_song">删除已上传的歌曲</string>
     <string name="delete_uploaded_song_confirm">确定要删除这首已上传的歌曲吗？此操作无法撤销</string>
-    <string name="delete_uploaded_songs_confirm">确定要删除 %1$d 首已上传的歌曲吗？此操作无法撤销</string>
     <string name="delete_uploaded_song_success">上传的歌曲已删除</string>
     <string name="delete_uploaded_song_failed">无法删除上传的歌曲</string>
     <string name="delete_uploaded_songs">删除上传的歌曲</string>
+    <string name="delete_uploaded_songs_confirm">确定要删除 %1$d 首已上传的歌曲吗？此操作无法撤销</string>
     <string name="deleted_n_songs">已删除 %1$d 首歌曲</string>
     <string name="deleting">正在删除…</string>
-    <string name="export_playlist">导出播放列表</string>
-    <string name="export_as_csv">导出为 CSV</string>
-    <string name="export_as_m3u">导出为 M3U</string>
-    <string name="export_success">播放列表导出成功</string>
-    <string name="export_failed">无法导出播放列表</string>
-    <string name="export_option_share">分享</string>
-    <string name="export_option_save">保存到文档</string>
-    <string name="qs_tile_music_recognizer">识别音乐</string>
-    <string name="ai_provider_mistral_help">访问 https://console.mistral.ai/api-keys</string>
-    <string name="weekly_most_playlist_name">本周最常播放</string>
-    <string name="monthly_most_playlist_name">本月最常播放</string>
-    <string name="enable_song_cache">启用歌曲缓存</string>
-    <string name="enable_song_cache_desc">自动缓存歌曲，以便将来更快播放</string>
-    <string name="sleep_timer_stop_after_current_song_title">播放完当前歌曲就停止</string>
-    <string name="sleep_timer_stop_after_current_song_description">等待当前播放的歌曲播放结束后再停止</string>
-    <string name="sleep_timer_fade_out_title">渐隐效果</string>
-    <string name="sleep_timer_fade_out_description">在播放结束前逐渐降低音量</string>
-    <string name="sort_ascending">升序</string>
-    <string name="sort_descending">降序</string>
-    <string name="time_transfer_title">时长转移</string>
-    <string name="time_transfer_warning">警告：此操作一旦完成就无法撤销。请在继续前创建备份。只有至少有一次播放记录的歌曲才符合条件</string>
-    <string name="time_transfer_source_song">源歌曲</string>
-    <string name="time_transfer_target_song">目标歌曲</string>
-    <string name="time_transfer_listen_time_label">听歌时长：</string>
-    <string name="time_transfer_convert">转换</string>
-    <string name="song_dropdown_more_results">继续输入以缩小结果（还有 %d 个）</string>
-    <plurals name="alarm_playlist_song_count">
-        <item quantity="other">%d 首歌曲</item>
-    </plurals>
-    <string name="alarm">闹钟</string>
-    <string name="alarm_enabled">启用闹钟</string>
-    <string name="alarm_time">闹钟时间</string>
-    <string name="alarm_playlist">播放列表</string>
-    <string name="alarm_select_playlist">选择播放列表</string>
-    <string name="alarm_no_playlists">未找到播放列表</string>
-    <string name="alarm_selected">已选择</string>
-    <string name="alarm_playlist_helper">选择闹钟将播放的播放列表</string>
-    <string name="alarm_add">添加闹钟</string>
-    <string name="alarm_empty">暂无闹钟。添加一个闹钟以开始定时播放</string>
-    <string name="alarm_disabled">已禁用</string>
-    <string name="alarm_random_enabled">随机</string>
-    <string name="alarm_random_disabled">按顺序</string>
-    <string name="alarm_next_prefix">下次：%s</string>
-    <string name="alarm_new">新闹钟</string>
-    <string name="alarm_edit">编辑闹钟</string>
-    <string name="alarm_save">保存</string>
-    <string name="alarm_time_picker_value">时间：%s</string>
-    <string name="alarm_delete">删除闹钟</string>
-    <string name="alarm_duplicate_time_warning">此时已存在另一个闹钟。如果两个闹钟同时触发，则只会播放其中一个</string>
-    <string name="alarm_random_song">从播放列表中播放一首随机歌曲</string>
-    <string name="alarm_next_trigger">下次触发</string>
-    <string name="alarm_not_scheduled">未设置</string>
-    <string name="alarm_exact_permission_title">允许精确闹钟</string>
-    <string name="alarm_exact_permission_desc">授予精确设置闹钟时间的权限，提高应用在后台运行时的可靠性</string>
-    <string name="alarm_battery_optimization_title">电池优化</string>
-    <string name="alarm_battery_optimization_desc">禁用电池优化，以便在后台获得更可靠的闹钟行为</string>
-    <string name="copy_all_lyrics">复制所有歌词</string>
-    <string name="change">更改</string>
-    <string name="recognition_notification_channel_name">音乐识别</string>
-    <string name="recognition_notification_channel_desc">从快捷设置中识别歌曲时显示通知</string>
-    <string name="recognition_notification_listening">正在听音乐…</string>
-    <string name="recognition_notification_processing">正在识别…</string>
-    <string name="recognition_notification_no_match">未找到匹配</string>
-    <string name="recognition_notification_failed">识别失败</string>
-    <string name="listen_on_metrolist">在 Iride 上听</string>
+
+    <!-- Android Auto settings -->
     <string name="android_auto">Android Auto</string>
     <string name="android_auto_visible_sections">可见板块</string>
     <string name="android_auto_reorder_hint">点击某个板块即可启用或禁用。\n长按拖动手柄可重新排序。默认情况下将显示第一个板块</string>
@@ -765,15 +1040,152 @@
     <string name="android_auto_target_playlist">快速添加目标</string>
     <string name="android_auto_target_playlist_desc">使用 Android Auto 中的快速添加按钮时，选择保存歌曲的播放列表</string>
     <string name="android_auto_target_playlist_auto">未设置</string>
-    <string name="android_auto_target_playlist_not_set">未选择播放列表，请在 Android Auto 设置中选择一个</string>
-    <string name="ai_system_prompt">系统提示</string>
-    <string name="ai_system_prompt_desc">发送给 AI 模型的自定义指令，留空则使用默认提示</string>
-    <string name="ai_system_prompt_placeholder">使用 {lineCount} 作为待翻译行数的占位符</string>
-    <string name="ai_system_prompt_default">默认</string>
-    <string name="ai_system_prompt_reset">重置为默认</string>
     <string name="added_to_playlist">已添加到播放列表</string>
-    <string name="mini_player_background_style">迷你播放器背景样式</string>
-    <string name="transparent">透明</string>
-    <string name="mini_player_background_not_available">当新迷你播放器设计被禁用时不可用</string>
-    <string name="your_daily_discover">您的每日发现</string>
+    <string name="android_auto_target_playlist_not_set">未选择播放列表，请在 Android Auto 设置中选择一个</string>
+
+    <!-- Stats time transfer -->
+    <string name="time_transfer_title">时长转移</string>
+    <string name="time_transfer_warning">警告：此操作一旦完成就无法撤销。请在继续前创建备份。只有至少有一次播放记录的歌曲才符合条件</string>
+    <string name="time_transfer_source_song">源歌曲</string>
+    <string name="time_transfer_target_song">目标歌曲</string>
+    <string name="time_transfer_listen_time_label">听歌时长：</string>
+    <string name="time_transfer_convert">转换</string>
+    <string name="song_dropdown_more_results">继续输入以缩小结果（还有 %d 个）</string>
+
+    <!-- Accessibility -->
+    <string name="back">Back</string>
+    <string name="clear_search">Clear search</string>
+    <string name="close_chip">Close</string>
+    <string name="switch_to_list_view">Switch to list view</string>
+    <string name="switch_to_grid_view">Switch to grid view</string>
+    <string name="switch_to_wide_grid_view">Switch to wide grid view</string>
+    <string name="more_options">More options</string>
+
+    <!-- Settings hub descriptions -->
+    <string name="music_settings">Music Settings</string>
+    <string name="music_settings_desc">Appearance, playback and content</string>
+    <string name="settings_appearance_desc">Theme, home screen, player and lyrics</string>
+    <string name="settings_appearance_theme_desc">Colors, dark mode and accents</string>
+    <string name="settings_appearance_interface_desc">Tabs, home screen and library defaults</string>
+    <string name="settings_appearance_player_desc">Player, mini-player and slider</string>
+    <string name="settings_appearance_lyrics_desc">Display, animations and scrolling</string>
+    <string name="settings_playback_desc">Audio quality, crossfade and behavior</string>
+    <string name="settings_content_desc">Language, filters and discovery</string>
+    <string name="settings_ai_desc">Lyrics translation and AI providers</string>
+    <string name="settings_integrations_desc">Discord, Last.fm and Listen Together</string>
+    <string name="settings_privacy_desc">Listening history and security</string>
+    <string name="settings_storage_desc">Downloads, cache and backup</string>
+    <string name="settings_system_desc">Credits, license and version</string>
+    <string name="settings_account_desc">Sign-in, sync, stats and privacy</string>
+    <string name="android_auto_settings_desc">Visible sections and playlists</string>
+    <string name="manage_account">Manage account</string>
+    <string name="spotify_import_title">Import Music Library</string>
+    <string name="spotify_import_desc">Playlists and songs from Spotify</string>
+    <string name="sign_in_desc">Connect your account to access playlists and recommendations</string>
+    <string name="settings_theme">Theme</string>
+    <string name="player_appearance">Player</string>
+    <string name="interface_settings">Home &amp; Navigation</string>
+    <string name="hide_duration_standard_songs">Hide duration for standard songs</string>
+    <string name="hide_duration_standard_songs_desc">Hides the time indicator for songs between 1 and 5 minutes. Only the artist name is shown.</string>
+    <string name="auto_link_featured_artists">Auto-detect featured artists</string>
+    <string name="auto_link_featured_artists_desc">Strips "feat./ft." credits out of song titles and links the collaborator as a real artist.</string>
+    <string name="show_featured_artists_in_top_songs">Show featured artists in Top Songs</string>
+    <string name="show_featured_artists_in_top_songs_desc">Shows collaborators credited on a track alongside the main artist in Top Songs.</string>
+    <string name="resume_album">Resume Album</string>
+    <string name="resume">Resume</string>
+    <string name="resume_album_track_progress">Track %1$d of %2$d</string>
+    <string name="muzza_player_logic">Fast Playback Engine</string>
+    <string name="muzza_player_logic_desc">Loads songs faster using an alternate streaming method.</string>
+
+    <!-- News screen -->
+    <string name="show_news_tab">Show News tab</string>
+    <string name="show_news_tab_desc">Adds a News tab to the bottom navigation, between Home and Library</string>
+    <string name="compact_top_navigation_bar">Compact top bar</string>
+    <string name="compact_top_navigation_bar_desc">Home and Library as text on the left, Search and your profile picture as icons on the right. Turn off to go back to the classic bar with every tab spelled out</string>
+    <string name="iride_animations">Iride animations</string>
+    <string name="iride_animations_desc">Typewriter titles, parallax and entrance transitions. Turn off if the app stutters</string>
+    <string name="player_auto_hide_top_panel">Auto-hide return panel</string>
+    <string name="player_auto_hide_top_panel_desc">Fades out the top return-to-app panel after 5s idle in the expanded player. Scrolling down brings it back</string>
+    <string name="news">News</string>
+    <string name="news_new_albums">New albums</string>
+    <string name="news_new_songs">New songs</string>
+    <string name="news_charts">Charts</string>
+    <string name="news_new_albums_title">New Albums</string>
+    <string name="news_quick_play_title">New Songs</string>
+    <string name="news_empty_albums">No new albums found yet</string>
+    <string name="news_empty_songs">No new songs found yet</string>
+
+    <string name="better_library_beta">Better Library BETA</string>
+    <string name="better_library_beta_desc">Enable Material 3 refactored Library (Top App Bar, FAB, and UI fixes)</string>
+    <string name="upload">Upload</string>
+    <string name="new_playlist">New playlist</string>
+    <string name="toggle_view_type">Toggle view type</string>
+    <string name="navigate_back">Go back</string>
+
+    <!-- Comments -->
+    <string name="comments">Comments</string>
+    <string name="comments_count">%s comments</string>
+    <string name="comments_empty">No comments yet</string>
+    <string name="comments_error">Couldn\'t load comments</string>
+    <string name="comments_sign_in_to_comment">Sign in to comment</string>
+    <string name="comments_write_hint">Add a comment…</string>
+    <string name="comments_post">Post</string>
+    <string name="comments_post_failed">Couldn\'t post your comment</string>
+    <string name="comments_sort_top">Top comments</string>
+    <string name="comments_sort_newest">Newest first</string>
+    <string name="comments_reply_count">%d replies</string>
+    <string name="enable_comments">Enable comments</string>
+    <string name="enable_comments_desc">Show YouTube comments for songs in the player (experimental, may not always load)</string>
+
+    <!-- Song menu redesign -->
+    <string name="add_note">Add notes, ratings or thoughts…</string>
+    <string name="note_title_placeholder">Title</string>
+    <string name="note_description_placeholder">Add a description…</string>
+    <string name="view_ep">View EP</string>
+    <string name="view_single">View single</string>
+
+    <!-- Notes screen -->
+    <string name="notes_screen_title">Notes</string>
+    <string name="notes_screen_desc">Your album and track reviews</string>
+    <string name="notes_tab_albums">Album</string>
+    <string name="notes_tab_tracks">Track</string>
+    <string name="notes_empty_albums">No album notes yet</string>
+    <string name="notes_empty_tracks">No track notes yet</string>
+    <string name="notes_delete_title">Delete note?</string>
+    <string name="notes_delete_message">This removes the title, rating and text you wrote for this.</string>
+
+    <!-- Download all favorite albums -->
+    <string name="download_all_favorite_albums">Download all favorite albums</string>
+    <string name="download_all_favorite_albums_started">Downloading all favorite albums…</string>
+    <string name="all_favorite_albums_downloaded">All favorite albums downloaded</string>
+    <string name="remove_all_favorite_albums_confirm">Do you really want to remove all favorite albums from downloads?</string>
+    <string name="no_favorite_albums_to_download">No favorite albums to download</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_tagline">Music you can feel and see.\nA complete sensory experience — not just sound, but visual emotion.</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_notifications_title">Stay Updated</string>
+    <string name="onboarding_notifications_desc">Notifications let you know when music is playing and control the player directly from the lock screen.</string>
+    <string name="onboarding_notifications_enable">Enable Notifications</string>
+    <string name="onboarding_notifications_skip">No Thanks</string>
+    <string name="onboarding_login_title">Connect Your Account</string>
+    <string name="onboarding_login_desc">Sign in with your YouTube account to sync playlists, liked songs and listening history.</string>
+    <string name="onboarding_login_cta">Sign in with YouTube</string>
+    <string name="onboarding_login_skip">Continue Without Account</string>
+
+    <!-- Update announcement interstitial -->
+    <string name="update_interstitial_title">New update ready</string>
+    <string name="update_interstitial_version">Version %1$s</string>
+    <string name="update_interstitial_update_now">Update now</string>
+    <string name="update_interstitial_not_now">Not now</string>
+    <string name="update_interstitial_enable_install_desc">Android requires a one-time permission to install this update. Enable \"Allow from this source\" on the next screen, then come back.</string>
+    <string name="update_interstitial_enable_install">Allow installation</string>
+    <string name="update_interstitial_preparing">Finishing preparation…</string>
+
+    <!-- About -->
+    <string name="about_check_updates">Check for updates</string>
+
+    <!-- Extra keys -->
+<string name="new_player_design">新播放器设计</string>
+<string name="new_mini_player_design">新迷你播放器设计</string>
 </resources>

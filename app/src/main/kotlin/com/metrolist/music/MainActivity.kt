@@ -5,7 +5,6 @@
 
 package com.metrolist.music
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.DownloadManager
 import android.content.BroadcastReceiver
@@ -14,7 +13,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -49,6 +47,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,8 +62,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -84,17 +83,24 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
+import kotlinx.coroutines.isActive
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.metrolist.music.ui.component.PillPlayerRow
+import com.metrolist.music.ui.component.PillProgressState
+import com.metrolist.music.ui.component.PillShimmerSkeleton
+import com.metrolist.music.ui.component.PlaceholderMediaMetadata
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -117,9 +123,9 @@ import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.util.Consumer
 import androidx.core.view.WindowCompat
 import androidx.datastore.preferences.core.edit
@@ -157,6 +163,10 @@ import com.metrolist.music.constants.ExperimentalLyricsKey
 import com.metrolist.music.constants.DataSyncIdKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.OnboardingCompletedKey
+import com.metrolist.music.constants.LastUpdateCheckKey
+import com.metrolist.music.constants.   PendingUpdateNotesKey
+import com.metrolist.music.constants.PendingUpdateTagKey
+import com.metrolist.music.constants.PendingUpdateVersionNameKey
 import com.metrolist.music.constants.PlayerAnchorKey
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.ShowNewsTabKey
@@ -178,6 +188,8 @@ import com.metrolist.music.constants.SimpMusicMigrationDoneKey
 import com.metrolist.music.constants.PlayerAutoHideTopPanelKey
 import com.metrolist.music.constants.CompactTopNavigationBarKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
+import com.metrolist.music.constants.UpdateAnnouncementDismissedTagKey
+import com.metrolist.music.constants.LastSessionEndedAtKey
 import com.metrolist.music.constants.VisitorDataKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.SearchHistory
@@ -196,6 +208,7 @@ import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.DebugBubble
 import com.metrolist.music.ui.component.FloatingPillBottomSpacing
+import com.metrolist.music.ui.component.UpdateInterstitialScreen
 import com.metrolist.music.ui.component.BottomSheetMenu
 import com.metrolist.music.ui.component.BottomSheetPage
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -210,17 +223,20 @@ import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.player.BottomSheetPlayer
 import com.metrolist.music.ui.player.IrideBridgeState
 import com.metrolist.music.ui.player.IrideMiniPlayerBridgeOverlay
+import androidx.media3.common.Player
 import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.screens.NavigationBuilder
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.screens.settings.NavigationTab
 import com.metrolist.music.ui.theme.ColorSaver
 import com.metrolist.music.ui.theme.DefaultThemeColor
+import com.metrolist.music.ui.theme.ForceDarkTheme
 import com.metrolist.music.ui.theme.IrideTheme
 import com.metrolist.music.ui.theme.extractThemeColor
 import com.metrolist.music.ui.utils.appBarScrollBehavior
 import com.metrolist.music.ui.utils.resetHeightOffset
 import com.metrolist.music.utils.SyncUtils
+import com.metrolist.music.utils.UpdateDownloadState
 import com.metrolist.music.utils.UpdateDownloader
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.dataStore
@@ -242,7 +258,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.net.URLDecoder
@@ -259,6 +274,12 @@ class MainActivity : ComponentActivity() {
         const val ACTION_RECOGNITION = "com.metrolist.music.action.RECOGNITION"
         const val EXTRA_AUTO_START_RECOGNITION = "auto_start_recognition"
         private const val FIRST_FRAME_HOLD_TIMEOUT_MS = 200L
+
+        /** Reopening after at least this long counts as a fresh session, not a quick app switch. */
+        private const val COLD_SESSION_GAP_MS = 8L * 60 * 60 * 1000
+
+        /** Cap on the changelog excerpt persisted for the update announcement screen. */
+        private const val MAX_PENDING_UPDATE_NOTES_LENGTH = 2500
     }
 
     @Inject
@@ -356,13 +377,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        if (dataStore.get(OnboardingCompletedKey, false)) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1000)
-                }
-            }
-        }
+        // The POST_NOTIFICATIONS permission is requested once, from the onboarding flow.
+        // Re-asking here on every launch would only nag users who deliberately declined:
+        // Android silences the prompt after two denials anyway, so the call is dead weight.
 
         if (!MusicService.isRunning) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -454,21 +471,27 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        runBlocking {
-            val prefs = dataStore.data.first()
-            val darkModeRaw = prefs[DarkModeKey]
-            val systemDark =
-                (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-                    android.content.res.Configuration.UI_MODE_NIGHT_YES
-            val useDark = when (darkModeRaw) {
-                "ON" -> true
-                "OFF" -> false
-                else -> systemDark
-            }
-            if (!useDark && !(prefs[PureBlackKey] ?: false)) {
-                setTheme(R.style.Theme_Metrolist_Light)
-            }
+        // Theme choice before the first frame. These reads go through the snapshot-backed
+        // DataStore operator: after App.onCreate has warmed the store they never touch disk,
+        // so unlike the previous runBlocking round trip they cannot stall the main thread
+        // even on a cold process.
+        val darkModeRaw = dataStore[DarkModeKey]
+        val pureBlackPreferred = dataStore[PureBlackKey] ?: false
+        val systemDark =
+            (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val useDark = when (darkModeRaw) {
+            "ON" -> true
+            "OFF" -> false
+            else -> systemDark
         }
+        // Light theme is hidden while ForceDarkTheme is on: always boot with the dark splash.
+        if (!ForceDarkTheme && !useDark && !pureBlackPreferred) {
+            setTheme(R.style.Theme_Metrolist_Splash_Light)
+        } else {
+            setTheme(R.style.Theme_Metrolist_Splash)
+        }
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -554,6 +577,11 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private fun isColdSessionLaunch(): Boolean {
+        val endedAt = dataStore[LastSessionEndedAtKey] ?: return true
+        return System.currentTimeMillis() - endedAt >= COLD_SESSION_GAP_MS
+    }
+
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -567,55 +595,121 @@ class MainActivity : ComponentActivity() {
     ) {
         val checkForUpdates by rememberPreference(CheckForUpdatesKey, defaultValue = true)
 
-        if (BuildConfig.UPDATER_AVAILABLE) {
-            LaunchedEffect(checkForUpdates) {
-                if (checkForUpdates) {
-                    withContext(Dispatchers.IO) {
-                        val updatesEnabled = dataStore.get(CheckForUpdatesKey, true)
-                        if (!updatesEnabled) return@withContext
-
-                        Updater.checkForUpdate().onSuccess { (releaseInfo, _) ->
-                            if (releaseInfo != null) {
-                                onLatestVersionNameChange(releaseInfo.versionName)
-                            }
-                        }
-                    }
-                } else {
-                    onLatestVersionNameChange(BuildConfig.VERSION_NAME)
-                }
-            }
-        }
-
-        var pendingUpdateRelease by remember { mutableStateOf<com.metrolist.music.utils.ReleaseInfo?>(null) }
-        var pendingUpdateDownloadUrl by remember { mutableStateOf<String?>(null) }
-        var updateDialogDismissedThisSession by rememberSaveable { mutableStateOf(false) }
-
+        // Single silent update check per launch (cache-aware). When a compatible update is
+        // found the APK is downloaded in the background and its metadata persisted; nothing
+        // is shown during this session — the announcement interstitial surfaces on the NEXT
+        // launch, driven purely by the persisted state so it renders instantly, offline too.
+        // The Settings badge keeps working off latestVersionName.
         if (BuildConfig.UPDATER_AVAILABLE) {
             LaunchedEffect(checkForUpdates) {
                 if (!checkForUpdates) {
-                    pendingUpdateRelease = null
-                    pendingUpdateDownloadUrl = null
+                    onLatestVersionNameChange(BuildConfig.VERSION_NAME)
+                    return@LaunchedEffect
+                }
+
+                val lastCheckAt = withContext(Dispatchers.IO) { dataStore.get(LastUpdateCheckKey, 0L) }
+                if (System.currentTimeMillis() - lastCheckAt <= Updater.CHECK_INTERVAL_MILLIS) {
+                    onLatestVersionNameChange(BuildConfig.VERSION_NAME)
                     return@LaunchedEffect
                 }
 
                 withContext(Dispatchers.IO) {
-                    Updater.checkForAnyUpdate(forceRefresh = true)
-                        .onSuccess { (releaseInfo, hasUpdate) ->
-                            if (hasUpdate && releaseInfo != null) {
-                                pendingUpdateRelease = releaseInfo
-                                pendingUpdateDownloadUrl = Updater.getDownloadUrlForCurrentVariant(releaseInfo)
-                            } else {
-                                pendingUpdateRelease = null
-                                pendingUpdateDownloadUrl = null
+                    Updater.checkForAnyUpdate(forceRefresh = false)
+                        .onSuccess { result ->
+                            val (releaseInfo, hasUpdate) = result
+                            dataStore.edit { prefs ->
+                                prefs[LastUpdateCheckKey] = System.currentTimeMillis()
+                            }
+                            val info = releaseInfo
+                            if (info == null) {
+                                onLatestVersionNameChange(BuildConfig.VERSION_NAME)
+                                return@onSuccess
+                            }
+                            onLatestVersionNameChange(info.versionName)
+
+                            val tag = info.tagName
+                            val forceTest = Updater.FORCE_UPDATE_ANNOUNCEMENT_FOR_TESTING
+                            // The test flag runs BEFORE the version comparison: while it is on
+                            // the announcement fires against the real latest release even when
+                            // this build is already current (that comparison would otherwise
+                            // bail first and nothing could ever be exercised).
+                            if (!forceTest && Updater.compareVersions(BuildConfig.VERSION_NAME, tag) >= 0) {
+                                // Genuinely up to date: clear any leftover announcement state
+                                // from an install that already happened.
+                                dataStore.edit { prefs ->
+                                    prefs.remove(PendingUpdateTagKey)
+                                    prefs.remove(PendingUpdateVersionNameKey)
+                                    prefs.remove(PendingUpdateNotesKey)
+                                }
+                                return@onSuccess
+                            }
+
+                            val effectiveHasUpdate = hasUpdate || forceTest
+                            if (!effectiveHasUpdate) return@onSuccess
+
+                            val downloadUrl =
+                                Updater.getDownloadUrlForCurrentVariant(info)
+                            if (downloadUrl == null) {
+                                Timber.tag("UpdateAnnouncement")
+                                    .w("Release %s has no APK asset for arch/variant", tag)
+                                return@onSuccess
+                            }
+                            if (!(dataStore[OnboardingCompletedKey] ?: false)) return@onSuccess
+
+                            val pendingTag = dataStore[PendingUpdateTagKey]
+                            if (pendingTag != tag) {
+                                Timber.tag("UpdateAnnouncement")
+                                    .i("Pending update %s (%s), starting silent download", info.versionName, tag)
+                                dataStore.edit { prefs ->
+                                    prefs[PendingUpdateTagKey] = tag
+                                    prefs[PendingUpdateVersionNameKey] = info.versionName
+                                    prefs[PendingUpdateNotesKey] = info.description.take(MAX_PENDING_UPDATE_NOTES_LENGTH)
+                                }
+                                UpdateDownloader.enqueueUpdate(
+                                    applicationContext,
+                                    downloadUrl,
+                                    info.versionName,
+                                )
+                            } else when (UpdateDownloader.queryDownloadState(applicationContext)) {
+                                // Same version already announced: only re-kick a download that
+                                // failed on a previous launch; a completed or running one is left alone.
+                                is UpdateDownloadState.Failed -> {
+                                    Timber.tag("UpdateAnnouncement")
+                                        .w("Previous download of %s failed, retrying", tag)
+                                    UpdateDownloader.enqueueUpdate(
+                                        applicationContext,
+                                        downloadUrl,
+                                        info.versionName,
+                                    )
+                                }
+                                else -> Unit
                             }
                         }
                         .onFailure {
-                            pendingUpdateRelease = null
-                            pendingUpdateDownloadUrl = null
+                            Timber.tag("UpdateAnnouncement").w(it, "Silent update check failed")
                         }
                 }
             }
         }
+
+        // Full-screen "update ready" gate for this launch. Computed once, synchronously, from
+        // persisted state: no network involved, so the wall replaces the app immediately even
+        // before the check above completes. It only fires when a previous launch already
+        // detected and downloaded the update. The test flag bypasses BOTH the version
+        // comparison and the dismissed-version memory, so the announcement can be exercised
+        // repeatedly against the real latest release.
+        val showUpdateGateInitially = remember {
+            BuildConfig.UPDATER_AVAILABLE &&
+                isColdSessionLaunch() &&
+                (dataStore[OnboardingCompletedKey] ?: false) && run {
+                    val tag = dataStore[PendingUpdateTagKey]
+                    tag != null &&
+                        (Updater.FORCE_UPDATE_ANNOUNCEMENT_FOR_TESTING ||
+                            (Updater.compareVersions(BuildConfig.VERSION_NAME, tag) < 0 &&
+                                tag != dataStore[UpdateAnnouncementDismissedTagKey]))
+                }
+        }
+        var showUpdateInterstitial by rememberSaveable { mutableStateOf(showUpdateGateInitially) }
 
         val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = true)
         val enableHighRefreshRate by rememberPreference(EnableHighRefreshRateKey, defaultValue = true)
@@ -652,7 +746,8 @@ class MainActivity : ComponentActivity() {
         val isSystemInDarkTheme = isSystemInDarkTheme()
         val useDarkTheme =
             remember(darkTheme, isSystemInDarkTheme) {
-                if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
+                ForceDarkTheme ||
+                    if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
             }
 
         LaunchedEffect(useDarkTheme) {
@@ -940,6 +1035,7 @@ class MainActivity : ComponentActivity() {
                             lifecycleScope.launch(Dispatchers.IO) {
                                 dataStore.edit {
                                     it[PlayerAnchorKey] = persistableAnchor(App.playerAnchorCache)
+                                    it[LastSessionEndedAtKey] = System.currentTimeMillis()
                                 }
                             }
                         }
@@ -1004,7 +1100,7 @@ class MainActivity : ComponentActivity() {
                     if (inSearchScreen) {
                         val searchQuery =
                             withContext(Dispatchers.IO) {
-                                val rawQuery = navBackStackEntry?.arguments?.getString("query")!!
+                                val rawQuery = navBackStackEntry?.arguments?.getString("query") ?: ""
                                 try {
                                     URLDecoder.decode(rawQuery, "UTF-8")
                                 } catch (e: IllegalArgumentException) {
@@ -1070,9 +1166,10 @@ class MainActivity : ComponentActivity() {
                 val snackbarHostState = remember { SnackbarHostState() }
 
                 LaunchedEffect(Unit) {
-                    if (pendingIntent != null) {
-                        handleRecognitionIntent(pendingIntent!!, navController)
-                        handleDeepLinkIntent(pendingIntent!!, navController)
+                    val initialPendingIntent = pendingIntent
+                    if (initialPendingIntent != null) {
+                        handleRecognitionIntent(initialPendingIntent, navController)
+                        handleDeepLinkIntent(initialPendingIntent, navController)
                         pendingIntent = null
                     } else {
                         handleRecognitionIntent(intent, navController)
@@ -1193,7 +1290,6 @@ class MainActivity : ComponentActivity() {
 
                         IrideMiniPlayerBridgeOverlay(
                             bridgeState = irideBridgeState,
-                            sheetProgress = playerBottomSheetState.progress,
                             navController = navController,
                             playerBottomSheetState = playerBottomSheetState,
                         )
@@ -1346,13 +1442,18 @@ class MainActivity : ComponentActivity() {
                                 Modifier
                                     .weight(1f),
                             ) {
-                                TopScreenGradientBackground(
-                                    mediaMetadata = topGradientMediaMetadata,
-                                    playerBackground = playerBackgroundStyle,
-                                    modifier = Modifier
-                                        .align(Alignment.TopStart)
-                                        .graphicsLayer { alpha = topGradientAlpha },
-                                )
+                                val playerCoversScreen by remember(playerBottomSheetState) {
+                                    derivedStateOf { playerBottomSheetState.progress >= 0.99f }
+                                }
+                                if (!playerCoversScreen) {
+                                    TopScreenGradientBackground(
+                                        mediaMetadata = topGradientMediaMetadata,
+                                        playerBackground = playerBackgroundStyle,
+                                        modifier = Modifier
+                                            .align(Alignment.TopStart)
+                                            .graphicsLayer { alpha = topGradientAlpha },
+                                    )
+                                }
 
                                 val onboardingCompleted = remember { dataStore[OnboardingCompletedKey] ?: false }
 
@@ -1375,7 +1476,7 @@ class MainActivity : ComponentActivity() {
                                         val previousRouteIndex = topLevelIndex(initialState.destination.route)
 
                                         if (currentRouteIndex != -1 && previousRouteIndex != -1) {
-                                            EnterTransition.None
+                                            fadeIn(tween(200))
                                         } else if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex) {
                                             slideInHorizontally { it / 8 } + fadeIn(tween(200))
                                         } else {
@@ -1387,7 +1488,7 @@ class MainActivity : ComponentActivity() {
                                         val targetRouteIndex = topLevelIndex(targetState.destination.route)
 
                                         if (currentRouteIndex != -1 && targetRouteIndex != -1) {
-                                            ExitTransition.None
+                                            fadeOut(tween(200))
                                         } else if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex) {
                                             slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
                                         } else {
@@ -1399,7 +1500,7 @@ class MainActivity : ComponentActivity() {
                                         val previousRouteIndex = topLevelIndex(initialState.destination.route)
 
                                         if (currentRouteIndex != -1 && previousRouteIndex != -1) {
-                                            EnterTransition.None
+                                            fadeIn(tween(200))
                                         } else if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex) {
                                             slideInHorizontally { it / 8 } + fadeIn(tween(200))
                                         } else {
@@ -1411,7 +1512,7 @@ class MainActivity : ComponentActivity() {
                                         val targetRouteIndex = topLevelIndex(targetState.destination.route)
 
                                         if (currentRouteIndex != -1 && targetRouteIndex != -1) {
-                                            ExitTransition.None
+                                            fadeOut(tween(200))
                                         } else if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex) {
                                             slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
                                         } else {
@@ -1505,6 +1606,115 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // The interactive mini pill of the curtain UI. It lives ABOVE everything
+                    // else so no screen content can ever steal its taps or drags: swiping up
+                    // anywhere on it expands the player, tapping it does the same, and its
+                    // own action buttons stay reachable.
+                    if (curtainActive && !irideBridgeState.lyricsFullScreenActive && !playerBottomSheetState.isDismissed) {
+                        val stripPlayerConnection = playerConnection
+                        val stripPendingRestore = stripPlayerConnection?.service?.hasPendingQueueRestoreFlow
+                            ?.collectAsState()?.value ?: false
+                        val stripInteractive by remember(playerBottomSheetState) {
+                            derivedStateOf { playerBottomSheetState.progress < 0.05f }
+                        }
+
+                        val stripPositionState = remember { mutableLongStateOf(0L) }
+                        val stripDurationState = remember { mutableLongStateOf(0L) }
+                        val stripMetadata = stripPlayerConnection?.mediaMetadata?.collectAsState()?.value
+                        val stripPlaybackState = stripPlayerConnection?.playbackState?.collectAsState()?.value ?: Player.STATE_IDLE
+                        val stripCanSkipNext = stripPlayerConnection?.canSkipNext?.collectAsState()?.value ?: false
+                        val stripCastHandler = remember(stripPlayerConnection) {
+                            try { stripPlayerConnection?.service?.castConnectionHandler } catch (_: Exception) { null }
+                        }
+                        val stripIsCasting = stripCastHandler?.isCasting?.collectAsState()?.value ?: false
+                        val stripIsPlaying = stripPlayerConnection?.isPlaying?.collectAsState()?.value ?: false
+
+                        LaunchedEffect(stripPlayerConnection, stripIsPlaying, stripIsCasting) {
+                            val pc = stripPlayerConnection ?: return@LaunchedEffect
+                            if (stripIsCasting || !stripIsPlaying) return@LaunchedEffect
+                            while (isActive) {
+                                delay(200)
+                                stripPositionState.longValue = pc.player.currentPosition
+                                stripDurationState.longValue = pc.player.duration
+                            }
+                        }
+                        LaunchedEffect(stripPlaybackState, stripMetadata?.id) {
+                            val pc = stripPlayerConnection ?: return@LaunchedEffect
+                            if (!stripIsCasting) {
+                                stripPositionState.longValue = pc.player.currentPosition
+                                stripDurationState.longValue = pc.player.duration
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .fillMaxWidth()
+                                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))
+                                .graphicsLayer {
+                                    alpha = ((0.35f - playerBottomSheetState.progress) * 3f).coerceIn(0f, 1f)
+                                },
+                        ) {
+                            // Fully expanded: neither the pill nor its touch blocker may
+                            // exist here, or they would eat the player wheel's play/pause
+                            // taps along the bottom edge.
+                            if (!playerBottomSheetState.isExpanded) {
+                                Box(
+                                    modifier = Modifier.graphicsLayer {
+                                        alpha = ((0.35f - playerBottomSheetState.progress) * 3f).coerceIn(0f, 1f)
+                                    },
+                                ) {
+                                    if (stripPendingRestore) {
+                                        PillShimmerSkeleton(isTopLevelRoute = false)
+                                    } else if (stripPlayerConnection != null) {
+                                        val stripConnection = stripPlayerConnection
+                                        PillPlayerRow(
+                                            progressState = remember(stripPositionState, stripDurationState) {
+                                                PillProgressState(stripPositionState, stripDurationState)
+                                            },
+                                            displayMetadata = stripMetadata ?: PlaceholderMediaMetadata,
+                                            favoriteSongId = stripMetadata?.id,
+                                            playbackState = stripPlaybackState,
+                                            canSkipNext = stripCanSkipNext,
+                                            isCasting = stripIsCasting,
+                                            castHandler = stripCastHandler,
+                                            playerConnection = stripConnection,
+                                            listenTogetherManager = listenTogetherManager,
+                                            primaryColor = Color.White,
+                                            outlineColor = Color.White,
+                                            onSurfaceColor = Color.White,
+                                            errorColor = Color(0xFFFF6B6B),
+                                            onExpandClick = { if (stripInteractive) playerBottomSheetState.expandSoft() },
+                                            bottomSheetState = if (stripInteractive) playerBottomSheetState else null,
+                                            onArtPositioned = {},
+                                            artistAlpha = 0.85f,
+                                            modifier = Modifier.scale(0.94f),
+                                        )
+                                    }
+                                }
+                                // While faded out the pill must stop being touchable entirely,
+                                // otherwise its invisible buttons would steal taps meant for the
+                                // expanded player above.
+                                if (!stripInteractive) {
+                                    Box(
+                                        modifier = Modifier
+                                            .matchParentSize()
+                                            .pointerInput(Unit) {
+                                                awaitEachGesture {
+                                                    awaitFirstDown(requireUnconsumed = false)
+                                                    while (true) {
+                                                        val event = awaitPointerEvent()
+                                                        event.changes.forEach { it.consume() }
+                                                        if (event.changes.all { !it.pressed }) break
+                                                    }
+                                                }
+                                            },
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     BottomSheetMenu(
                         state = LocalMenuState.current,
                         modifier = Modifier.align(Alignment.BottomCenter),
@@ -1541,34 +1751,13 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    if (
-                        pendingUpdateRelease != null &&
-                        !updateDialogDismissedThisSession &&
-                        currentRoute != "onboarding"
-                    ) {
-                        com.metrolist.music.ui.component.AppUpdateDialog(
-                            releaseInfo = pendingUpdateRelease!!,
-                            downloadUrl = pendingUpdateDownloadUrl,
-                            onDismiss = { updateDialogDismissedThisSession = true },
-                            onStartDownload = {
-                                val url = pendingUpdateDownloadUrl ?: return@AppUpdateDialog
-                                coroutineScope.launch {
-                                    runCatching {
-                                        UpdateDownloader.enqueueUpdate(
-                                            applicationContext,
-                                            url,
-                                            pendingUpdateRelease!!.versionName,
-                                        )
-                                    }.onSuccess {
-                                        updateDialogDismissedThisSession = true
-                                        snackbarHostState.showSnackbar(
-                                            applicationContext.getString(R.string.update_download_started),
-                                        )
-                                    }.onFailure {
-                                        snackbarHostState.showSnackbar(
-                                            applicationContext.getString(R.string.update_download_failed),
-                                        )
-                                    }
+                    if (showUpdateInterstitial) {
+                        UpdateInterstitialScreen(
+                            onDismiss = {
+                                showUpdateInterstitial = false
+                                lifecycleScope.launch(Dispatchers.IO) {
+                                    val tag = dataStore[PendingUpdateTagKey] ?: return@launch
+                                    dataStore.edit { it[UpdateAnnouncementDismissedTagKey] = tag }
                                 }
                             },
                         )

@@ -130,6 +130,11 @@ import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.fillSubtle
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
+import com.metrolist.music.ui.theme.textTertiary
 import com.metrolist.music.ui.utils.ShowMediaInfo
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.rememberPreference
@@ -406,7 +411,7 @@ fun SongMenu(
                         painter = painterResource(R.drawable.playlist_play),
                         contentDescription = null,
                         modifier = Modifier.size(28.dp),
-                        tint = Color.White.copy(alpha = 0.85f),
+                        tint = MaterialTheme.colorScheme.textPrimary,
                     )
                 },
                 text = stringResource(R.string.swipe_label_next).lowercase().replaceFirstChar { it.uppercase() },
@@ -421,7 +426,7 @@ fun SongMenu(
                         painter = painterResource(R.drawable.queue_music),
                         contentDescription = null,
                         modifier = Modifier.size(28.dp),
-                        tint = Color.White.copy(alpha = 0.85f),
+                        tint = MaterialTheme.colorScheme.textPrimary,
                     )
                 },
                 text = stringResource(R.string.swipe_label_queue).lowercase().replaceFirstChar { it.uppercase() },
@@ -436,7 +441,7 @@ fun SongMenu(
                         painter = painterResource(R.drawable.radio),
                         contentDescription = null,
                         modifier = Modifier.size(28.dp),
-                        tint = Color.White.copy(alpha = 0.85f),
+                        tint = MaterialTheme.colorScheme.textPrimary,
                     )
                 },
                 text = stringResource(R.string.radio),
@@ -1056,7 +1061,7 @@ private fun NewIrideSongMenuHeader(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.2).sp,
                     ),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.basicMarquee(),
@@ -1066,7 +1071,7 @@ private fun NewIrideSongMenuHeader(
                 Text(
                     text = song.artists.joinToString(", ") { it.name },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = MaterialTheme.colorScheme.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1078,8 +1083,8 @@ private fun NewIrideSongMenuHeader(
             syncUtils = syncUtils,
             coroutineScope = coroutineScope,
             context = context,
-            tint = Color.White.copy(alpha = 0.85f),
-            selectedTint = Color.White,
+            tint = MaterialTheme.colorScheme.textPrimary,
+            selectedTint = MaterialTheme.colorScheme.textPrimary,
         )
         IconButton(
             onClick = {
@@ -1095,7 +1100,7 @@ private fun NewIrideSongMenuHeader(
         ) {
             Icon(
                 painter = painterResource(R.drawable.share),
-                tint = Color.White.copy(alpha = 0.85f),
+                tint = MaterialTheme.colorScheme.textPrimary,
                 contentDescription = null,
             )
         }
@@ -1113,7 +1118,7 @@ internal fun StackedArtistAvatars(
         Icon(
             painter = painterResource(R.drawable.artist),
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.7f),
+            tint = MaterialTheme.colorScheme.textSecondary,
             modifier = modifier.size(size),
         )
         return
@@ -1151,7 +1156,7 @@ internal fun SwitchTile(
         modifier =
             modifier
                 .clip(tileShape)
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), tileShape)
+                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.strokeHairline), tileShape)
                 .clickable(onClick = onClick)
                 .padding(horizontal = 10.dp, vertical = 10.dp),
     ) {
@@ -1160,7 +1165,7 @@ internal fun SwitchTile(
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -1226,21 +1231,21 @@ internal fun ProminentActionRow(
             modifier
                 .fillMaxWidth()
                 .clip(SquircleShape(radius = 16.dp, cornerSmoothing = 0.48f))
-                .background(Color.White.copy(alpha = 0.1f))
+                .background(MaterialTheme.colorScheme.fillSubtle)
                 .clickable(onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 16.dp),
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
-            tint = Color.White,
+            tint = MaterialTheme.colorScheme.textPrimary,
             modifier = Modifier.size(24.dp),
         )
         Spacer(modifier = Modifier.width(14.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.titleMedium.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.textPrimary,
         )
     }
 }
@@ -1278,7 +1283,7 @@ internal fun NoteRatingStars(
                     Icon(
                         painter = painterResource(R.drawable.favorite_border),
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.25f),
+                        tint = MaterialTheme.colorScheme.textTertiary,
                         modifier = Modifier.size(iconSize),
                     )
                     if (fillFraction > 0f) {
@@ -1288,7 +1293,7 @@ internal fun NoteRatingStars(
                             Icon(
                                 painter = painterResource(R.drawable.favorite),
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.textPrimary,
                                 modifier = Modifier.size(iconSize),
                             )
                         }
@@ -1305,9 +1310,9 @@ internal val noteFieldColors: @Composable () -> androidx.compose.material3.TextF
         unfocusedContainerColor = Color.Transparent,
         focusedIndicatorColor = Color.Transparent,
         unfocusedIndicatorColor = Color.Transparent,
-        cursorColor = Color.White,
-        focusedTextColor = Color.White,
-        unfocusedTextColor = Color.White,
+        cursorColor = MaterialTheme.colorScheme.textPrimary,
+        focusedTextColor = MaterialTheme.colorScheme.textPrimary,
+        unfocusedTextColor = MaterialTheme.colorScheme.textPrimary,
     )
 }
 
@@ -1441,7 +1446,7 @@ internal fun AddNoteBox(
         titleFlashActive = false
     }
     val titleColor by animateColorAsState(
-        targetValue = if (titleFlashActive) Color.Red else Color.White,
+        targetValue = if (titleFlashActive) Color.Red else MaterialTheme.colorScheme.textPrimary,
         animationSpec = tween(if (titleFlashActive) 60 else 300),
         label = "titleFlashColor",
     )
@@ -1458,7 +1463,7 @@ internal fun AddNoteBox(
         modifier =
             modifier
                 .clip(boxShape)
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), boxShape)
+                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.strokeHairline), boxShape)
                 .then(if (!isEditing) Modifier.clickable { onEditingChange(true) } else Modifier)
                 .animateContentSize()
                 .padding(16.dp),
@@ -1480,7 +1485,7 @@ internal fun AddNoteBox(
                         }
                     },
                     placeholder = {
-                        Text(stringResource(R.string.note_title_placeholder), color = Color.White.copy(alpha = 0.35f))
+                        Text(stringResource(R.string.note_title_placeholder), color = MaterialTheme.colorScheme.textTertiary)
                     },
                     singleLine = true,
                     colors =
@@ -1489,7 +1494,7 @@ internal fun AddNoteBox(
                             unfocusedContainerColor = Color.Transparent,
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent,
-                            cursorColor = Color.White,
+                            cursorColor = MaterialTheme.colorScheme.textPrimary,
                             focusedTextColor = titleColor,
                             unfocusedTextColor = titleColor,
                         ),
@@ -1536,14 +1541,14 @@ internal fun AddNoteBox(
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White, fontFamily = SpaceMonoFontFamily),
-                        cursorBrush = SolidColor(Color.White),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.textPrimary, fontFamily = SpaceMonoFontFamily),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.textPrimary),
                         modifier = Modifier.width(34.dp),
                     )
                     Text(
                         text = "/5",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = MaterialTheme.colorScheme.textSecondary,
                     )
                 }
                 Spacer(modifier = Modifier.height(6.dp))
@@ -1551,10 +1556,10 @@ internal fun AddNoteBox(
                     value = description,
                     onValueChange = { description = it; persist() },
                     placeholder = {
-                        Text(stringResource(R.string.note_description_placeholder), color = Color.White.copy(alpha = 0.35f))
+                        Text(stringResource(R.string.note_description_placeholder), color = MaterialTheme.colorScheme.textTertiary)
                     },
                     colors = noteFieldColors(),
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.textPrimary),
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -1565,7 +1570,7 @@ internal fun AddNoteBox(
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.expand_less),
-                        tint = Color.White.copy(alpha = 0.7f),
+                        tint = MaterialTheme.colorScheme.textSecondary,
                         contentDescription = null,
                     )
                 }
@@ -1575,14 +1580,14 @@ internal fun AddNoteBox(
                 Icon(
                     painter = painterResource(R.drawable.edit),
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.5f),
+                    tint = MaterialTheme.colorScheme.textSecondary,
                     modifier = Modifier.size(20.dp),
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = stringResource(R.string.add_note),
                     style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold),
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = MaterialTheme.colorScheme.textSecondary,
                     textAlign = TextAlign.Center,
                 )
             }
@@ -1613,7 +1618,7 @@ internal fun AddNoteBox(
                             Text(
                                 text = title,
                                 style = titleStyle,
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.textPrimary,
                                 maxLines = titleMaxLines,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -1633,7 +1638,7 @@ internal fun AddNoteBox(
                                 Text(
                                     text = ratingLabel,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.6f),
+                                    color = MaterialTheme.colorScheme.textSecondary,
                                 )
                             }
                             Spacer(modifier = Modifier.height(6.dp))
@@ -1642,7 +1647,7 @@ internal fun AddNoteBox(
                             Text(
                                 text = description,
                                 style = descriptionStyle,
-                                color = Color.White.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.textSecondary,
                                 maxLines = descriptionMaxLines,
                                 overflow = TextOverflow.Ellipsis,
                             )

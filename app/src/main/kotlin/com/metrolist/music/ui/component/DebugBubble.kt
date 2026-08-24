@@ -35,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -44,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.R
+import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.lyrics.LyricsDebugLog
 import com.metrolist.music.lyrics.LyricsUtils
 import com.metrolist.music.db.entities.LyricsEntity
@@ -105,7 +105,7 @@ fun DebugBubble(
                         Icon(
                             painter = painterResource(R.drawable.bug_report),
                             contentDescription = "Debug",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.textPrimary,
                             modifier = Modifier.size(24.dp)
                         )
                     }

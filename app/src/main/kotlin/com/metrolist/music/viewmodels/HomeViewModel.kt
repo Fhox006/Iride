@@ -84,6 +84,7 @@ import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.models.SimilarRecommendation
 import com.metrolist.music.ui.screens.wrapped.WrappedAudioService
 import com.metrolist.music.ui.screens.wrapped.WrappedManager
+import com.metrolist.music.utils.HomeFeedSnapshotStore
 import com.metrolist.music.utils.NewReleaseNotifier
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.dataStore
@@ -94,7 +95,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.SharingStarted
@@ -105,7 +105,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlin.random.Random
@@ -145,9 +144,12 @@ class HomeViewModel @Inject constructor(
     val phase2Complete = MutableStateFlow(false)
     val visibleSections: MutableStateFlow<Set<String>> = MutableStateFlow(setOf("speed_dial", "mood_and_genres", "discovery"))
 
-    private val smartBootEnabled: Boolean = runBlocking {
-        context.dataStore.data.first()[SmartBootKey] ?: true
-    }
+    // Snapshot-backed read: after App.onCreate warms the store this never blocks the main
+    // thread, unlike the runBlocking data.first() it replaces (this runs during the first
+    // composition of the app).
+    private val smartBootEnabled: Boolean = context.dataStore[SmartBootKey] ?: true
+
+    private var restoredHomeFeed = false
 
     private val quickPicksEnum = context.dataStore.data.map {
         it[QuickPicksKey].toEnum(QuickPicks.QUICK_PICKS)
@@ -222,7 +224,7 @@ class HomeViewModel @Inject constructor(
     private val albumRecommendationsGenerator = AlbumRecommendationsGenerator(database)
 
     private val discoveryWeeklyGenerator = DiscoveryWeeklyGenerator(database)
-    private val discoveryWeeklySyncMutex = kotlinx.coroutines.sync.Mutex()
+    private val discoveryWeeklySyncInFlight = java.util.concurrent.atomic.AtomicBoolean(false)
 
     val discoveryWeeklyPlaylist = database
         .playlist(PlaylistEntity.DISCOVER_WEEKLY_PLAYLIST_ID)
@@ -230,53 +232,54 @@ class HomeViewModel @Inject constructor(
 
     fun syncDiscoveryWeeklyIfNeeded(force: Boolean = false) {
         viewModelScope.launch(Dispatchers.IO) {
+            if (!discoveryWeeklySyncInFlight.compareAndSet(false, true)) return@launch
             try {
-                discoveryWeeklySyncMutex.withLock {
-                    val prefs = context.dataStore.data.first()
-                    val lastSyncMillis = prefs[LastDiscoveryWeeklySyncKey]
-                    val existingRow = database.playlist(PlaylistEntity.DISCOVER_WEEKLY_PLAYLIST_ID).first()
-                    val playlistReady = existingRow != null && existingRow.songCount > 0
-                    val due = lastSyncMillis == null ||
-                        java.time.Instant.ofEpochMilli(lastSyncMillis).plus(java.time.Duration.ofDays(7))
-                            .isBefore(java.time.Instant.now())
-                    if (!force && !due && playlistReady) return@withLock
+                val prefs = context.dataStore.data.first()
+                val lastSyncMillis = prefs[LastDiscoveryWeeklySyncKey]
+                val existingRow = database.playlist(PlaylistEntity.DISCOVER_WEEKLY_PLAYLIST_ID).first()
+                val playlistReady = existingRow != null && existingRow.songCount > 0
+                val due = lastSyncMillis == null ||
+                    java.time.Instant.ofEpochMilli(lastSyncMillis).plus(java.time.Duration.ofDays(7))
+                        .isBefore(java.time.Instant.now())
+                if (!force && !due && playlistReady) return@launch
 
-                    val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                    val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-                    val songs = discoveryWeeklyGenerator.generate(
-                        hideExplicit = hideExplicit,
-                        hideVideoSongs = hideVideoSongs,
-                        seed = java.time.LocalDate.now().toEpochDay() / 7,
-                    )
-                    if (songs.isEmpty()) {
-                        Timber.tag("DiscoveryWeekly").w("generate() returned 0 songs, historyPool/network issue")
-                        context.dataStore.edit { it[LastDiscoveryWeeklySyncKey] = System.currentTimeMillis() }
-                        return@withLock
-                    }
-
-                    val playlistId = PlaylistEntity.DISCOVER_WEEKLY_PLAYLIST_ID
-                    val existingPlaylist = existingRow?.playlist
-                    val now = java.time.LocalDateTime.now()
-                    val playlistEntity = existingPlaylist?.copy(lastUpdateTime = now)
-                        ?: PlaylistEntity(
-                            id = playlistId,
-                            name = context.getString(R.string.discovery_weekly),
-                            isEditable = true,
-                            bookmarkedAt = now,
-                            lastUpdateTime = now,
-                        )
-                    if (existingPlaylist == null) database.insert(playlistEntity) else database.update(playlistEntity)
-
-                    database.clearPlaylist(playlistId)
-                    songs.forEachIndexed { position, song ->
-                        database.insert(song.toMediaMetadata())
-                        database.insert(PlaylistSongMap(songId = song.id, playlistId = playlistId, position = position))
-                    }
-
+                val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+                val songs = discoveryWeeklyGenerator.generate(
+                    hideExplicit = hideExplicit,
+                    hideVideoSongs = hideVideoSongs,
+                    seed = java.time.LocalDate.now().toEpochDay() / 7,
+                )
+                if (songs.isEmpty()) {
+                    Timber.tag("DiscoveryWeekly").w("generate() returned 0 songs, historyPool/network issue")
                     context.dataStore.edit { it[LastDiscoveryWeeklySyncKey] = System.currentTimeMillis() }
+                    return@launch
                 }
+
+                val playlistId = PlaylistEntity.DISCOVER_WEEKLY_PLAYLIST_ID
+                val existingPlaylist = existingRow?.playlist
+                val now = java.time.LocalDateTime.now()
+                val playlistEntity = existingPlaylist?.copy(lastUpdateTime = now)
+                    ?: PlaylistEntity(
+                        id = playlistId,
+                        name = context.getString(R.string.discovery_weekly),
+                        isEditable = true,
+                        bookmarkedAt = now,
+                        lastUpdateTime = now,
+                    )
+                if (existingPlaylist == null) database.insert(playlistEntity) else database.update(playlistEntity)
+
+                database.clearPlaylist(playlistId)
+                songs.forEachIndexed { position, song ->
+                    database.insert(song.toMediaMetadata())
+                    database.insert(PlaylistSongMap(songId = song.id, playlistId = playlistId, position = position))
+                }
+
+                context.dataStore.edit { it[LastDiscoveryWeeklySyncKey] = System.currentTimeMillis() }
             } catch (e: Exception) {
                 reportException(e)
+            } finally {
+                discoveryWeeklySyncInFlight.set(false)
             }
         }
     }
@@ -1275,7 +1278,6 @@ class HomeViewModel @Inject constructor(
                 dailyDiscoverLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
                         phase1Complete.filter { it }.first()
-                        if (!smartBootEnabled) kotlinx.coroutines.delay(1500L)
                         getDailyDiscover()
                         HomeCache.dailyDiscover = dailyDiscover.value
                     } finally {
@@ -1288,7 +1290,7 @@ class HomeViewModel @Inject constructor(
                 communityPlaylistsLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
                         phase1Complete.filter { it }.first()
-                        if (!smartBootEnabled) kotlinx.coroutines.delay(1500L)
+                        kotlinx.coroutines.delay(2500L)
                         getCommunityPlaylists()
                         HomeCache.communityPlaylists = communityPlaylists.value
                     } finally {
@@ -1301,7 +1303,7 @@ class HomeViewModel @Inject constructor(
                 similarRecommendationsLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
                         phase1Complete.filter { it }.first()
-                        if (!smartBootEnabled) kotlinx.coroutines.delay(1500L)
+                        kotlinx.coroutines.delay(5000L)
                         getSimilarRecommendations()
                     } finally {
                         phase2SimilarDone.value = true
@@ -1313,7 +1315,7 @@ class HomeViewModel @Inject constructor(
                 dischiPerTeLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
                         phase1Complete.filter { it }.first()
-                        if (!smartBootEnabled) kotlinx.coroutines.delay(1500L)
+                        kotlinx.coroutines.delay(7500L)
                         getDischiPerTe()
                     } finally {
                         phase2DischiPerTeDone.value = true
@@ -1389,8 +1391,18 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch(Dispatchers.IO) {
-            var homeResult = YouTube.home()
-            if (homeResult.isFailure) {
+            val restoredFeed = restoredHomeFeed
+            if (restoredFeed) restoredHomeFeed = false
+
+            var homeResult: Result<HomePage> =
+                if (restoredFeed) {
+                    homePage.value?.let { Result.success(it) }
+                        ?: Result.failure(IllegalStateException("Restored feed unavailable"))
+                } else {
+                    YouTube.home()
+                }
+
+            if (!restoredFeed && homeResult.isFailure) {
                 if (YouTube.cookie != null) {
                     val recovered = syncUtils.reInjectCredentials()
                     if (recovered) homeResult = YouTube.home()
@@ -1402,7 +1414,7 @@ class HomeViewModel @Inject constructor(
                     homeResult = YouTube.home()
                 }
             }
-            if (homeResult.isSuccess && YouTube.cookie == null &&
+            if (!restoredFeed && homeResult.isSuccess && YouTube.cookie == null &&
                 homeResult.getOrNull()?.sections?.isEmpty() == true) {
                 YouTube.visitorData().getOrNull()?.let { fresh ->
                     YouTube.visitorData = fresh
@@ -1457,9 +1469,11 @@ class HomeViewModel @Inject constructor(
                 else null
 
                 if (smartBootEnabled) {
-                    (preferredChip ?: transformedChips?.firstOrNull())?.let { chip ->
-                        applyChipWithSingleFetch(chip, hideExplicit, hideVideoSongs, hideYoutubeShorts)
-                    }
+                    (preferredChip ?: transformedChips?.firstOrNull())
+                        ?.takeIf { !it.endpoint?.params.isNullOrEmpty() }
+                        ?.let { chip ->
+                            applyChipWithSingleFetch(chip, hideExplicit, hideVideoSongs, hideYoutubeShorts)
+                        }
                 } else {
                     if (selectedChip.value == null) {
                         (preferredChip ?: transformedChips?.firstOrNull())?.let { chip -> toggleChip(chip) }
@@ -1475,6 +1489,7 @@ class HomeViewModel @Inject constructor(
                 HomeCache.homePage = homePage.value
                 HomeCache.lastLoadedAt = System.currentTimeMillis()
                 context.dataStore.edit { it[HomeCacheLastLoadedKey] = HomeCache.lastLoadedAt }
+                HomeFeedSnapshotStore.save(context, transformedPage)
                 refreshHeroCarousel()
             }.onFailure { reportException(it) }
         }
@@ -1690,6 +1705,7 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
+            kotlinx.coroutines.delay(15_000L)
             val followedIds = database.artistsBookmarked(ArtistSortType.CREATE_DATE, true)
                 .first()
                 .filter { it.artist.isYouTubeArtist && !it.artist.isPodcastChannel }
@@ -1734,6 +1750,12 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             if (HomeCache.lastLoadedAt == 0L) {
                 HomeCache.lastLoadedAt = context.dataStore.get(HomeCacheLastLoadedKey, 0L)
+            }
+            if (HomeCache.homePage == null) {
+                HomeFeedSnapshotStore.load(context)?.let { snap ->
+                    homePage.value = snap.page
+                    restoredHomeFeed = true
+                }
             }
             if (smartBootEnabled && isHeroCarouselEnabled.value) {
                 context.dataStore.get(HeroCarouselSnapshotKey, "")?.takeIf { it.isNotEmpty() }?.let { json ->

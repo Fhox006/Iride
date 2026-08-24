@@ -420,6 +420,11 @@ fun TopNavigationBar(
 
             Spacer(modifier = Modifier.size(8.dp))
 
+            val accountTint by animateColorAsState(
+                targetValue = if (accountSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
+                animationSpec = if (accountSelected) tween(220) else snap(),
+                label = "accountTint"
+            )
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -443,7 +448,7 @@ fun TopNavigationBar(
                     Icon(
                         painter = painterResource(id = Screens.Account.iconIdInactive),
                         contentDescription = stringResource(Screens.Account.titleId),
-                        tint = MaterialTheme.colorScheme.textPrimary,
+                        tint = accountTint,
                         modifier = Modifier.size(28.dp)
                     )
                 }

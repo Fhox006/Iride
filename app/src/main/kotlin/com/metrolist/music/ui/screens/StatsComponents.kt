@@ -28,6 +28,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textSecondary
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -267,7 +269,7 @@ fun SectionHeader(title: String) {
         text = title,
         style = TextStyle(fontFamily = SpaceMonoFontFamily, fontSize = 13.sp, letterSpacing = (-0.1).sp),
         fontWeight = FontWeight.Bold,
-        color = Color.White.copy(alpha = 0.55f),
+        color = MaterialTheme.colorScheme.textSecondary,
         modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp, end = 16.dp)
     )
 }
@@ -290,7 +292,7 @@ fun StatsDataBox(
         Text(
             text = stringResource(R.string.listening_stats),
             style = TextStyle(fontFamily = SpaceMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = (-0.1).sp),
-            color = Color.White.copy(alpha = 0.55f),
+            color = MaterialTheme.colorScheme.textSecondary,
             modifier = Modifier.padding(bottom = 14.dp)
         )
         val items = listOf(
@@ -316,7 +318,7 @@ fun StatsDataBox(
                         modifier = Modifier
                             .width(1.dp)
                             .height(40.dp)
-                            .background(Color.White.copy(alpha = 0.08f))
+                            .background(MaterialTheme.colorScheme.strokeHairline)
                     )
                 }
             }
@@ -340,7 +342,7 @@ fun StatItem(
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.7f),
+                tint = MaterialTheme.colorScheme.textSecondary,
                 modifier = Modifier
                     .size(20.dp)
                     .padding(bottom = 6.dp)

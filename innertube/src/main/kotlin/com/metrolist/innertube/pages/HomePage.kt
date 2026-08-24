@@ -20,13 +20,16 @@ import com.metrolist.innertube.models.splitBySeparator
 import com.metrolist.innertube.models.filterExplicit
 import com.metrolist.innertube.models.filterVideoSongs
 import com.metrolist.innertube.utils.parseTime
+import kotlinx.serialization.Serializable
 import timber.log.Timber
 
+@Serializable
 data class HomePage(
     val chips: List<Chip>?,
     val sections: List<Section>,
     val continuation: String? = null,
 ) {
+    @Serializable
     data class Chip(
         val title: String,
         val endpoint: BrowseEndpoint?,
@@ -43,6 +46,7 @@ data class HomePage(
         }
     }
 
+    @Serializable
     data class Section(
         val title: String,
         val label: String?,

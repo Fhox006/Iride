@@ -1,37 +1,86 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Upstream InnerTune strings -->
+<!-- Do not add new features here -->
+<!-- Try to re-use strings here, but be careful on its usage e.g. verb vs noun -->
+<!-- "InnerTune" is replaced with "Iride" -->
+<!-- Translators: Do not modify this file for translations, use InnerTune's Weblate instead. -->
+
 <resources>
+    <!-- Bottom navigation -->
     <string name="home">หน้าแรก</string>
     <string name="new_home">Home</string>
     <string name="old_home">Old Home</string>
+    <string name="what_new">มีอะไรใหม่</string>
     <string name="songs">เพลง</string>
+    <string name="all_tracks">ทุกเพลง</string>
     <string name="artists">ศิลปิน</string>
     <string name="albums">อัลบั้ม</string>
     <string name="playlists">เพลย์ลิสต์</string>
     <string name="mixes">Mixes</string>
-    <plurals name="n_selected">
+
+    <!-- Top bar -->
+        <plurals name="n_selected">
         <item quantity="other">เลือกแล้ว %d รายการ</item>
     </plurals>
+
+    <!-- Home -->
     <string name="history">ประวัติ</string>
     <string name="stats">สถิติ</string>
     <string name="mood_and_genres">อารมณ์และแนวเพลง</string>
+    <string name="discovery_weekly">ค้นพบประจำสัปดาห์</string>
+    <string name="discovery_weekly_creating">กำลังสร้างเพลย์ลิสต์ของคุณ…</string>
     <string name="account">บัญชี</string>
+    <string name="account_content">คลัง YouTube ของฉัน</string>
     <string name="quick_picks">แนะนำด่วนสำหรับคุณ</string>
     <string name="quick_picks_empty">ฟังเพลงเพื่อสร้างรายการแนะนำสำหรับคุณ</string>
     <string name="forgotten_favorites">เพลงโปรดที่คุณอาจลืมไปแล้ว</string>
     <string name="keep_listening">ฟังต่อ</string>
+    <string name="discs_for_you">อัลบั้มที่คัดสำหรับคุณ</string>
+    <string name="for_you_shelf_title">เพลงที่คุณเล่นซ้ำ</string>
+    <string name="recommended_albums">อัลบั้มแนะนำ</string>
+    <string name="recently_listened_albums">เพิ่งฟังเมื่อเร็วๆ นี้</string>
+    <string name="clear_recently_listened_albums">ล้างข้อมูล</string>
     <string name="your_youtube_playlists">เพลย์ลิสต์ YouTube ของคุณ</string>
     <string name="similar_to">คล้ายกับ</string>
     <string name="new_release_albums">อัลบั้มออกใหม่</string>
+    <string name="artist_latest_release">ผลงานล่าสุด</string>
+    <string name="artist_release_type_album">อัลบั้ม</string>
+    <string name="artist_release_type_ep">EP</string>
+    <string name="artist_release_type_single">ซิงเกิล</string>
+    <string name="artist_release_type_feat">FEAT</string>
+    <string name="genius_section_title">การตรวจจับศิลปินร่วมร้อง (Genius)</string>
+    <string name="genius_api_key">Genius API Token</string>
+    <string name="genius_api_key_description">ค้นหาเครดิต \"feat.\" ที่หน้า YTM ของศิลปินเองพลาดไป รับโทเคนฟรีได้ที่ genius.com/api-clients</string>
+    <string name="essential_albums">อัลบั้มที่ต้องฟัง</string>
+    <string name="featuring">ร่วมร้องโดย</string>
+    <string name="suggested_follow_artists">คุณฟังศิลปินเหล่านี้บ่อยมาก — ติดตามพวกเขาไหม?</string>
+    <string name="new_from_followed_artists">ผลงานใหม่จากศิลปินที่คุณติดตาม</string>
+
+    <!-- History -->
     <string name="today">วันนี้</string>
     <string name="yesterday">เมื่อวาน</string>
     <string name="this_week">สัปดาห์นี้</string>
     <string name="last_week">สัปดาห์ที่แล้ว</string>
+
+    <!-- Stats -->
     <string name="most_played_songs">เพลงที่ฟังมากที่สุด</string>
     <string name="most_played_artists">ศิลปินที่ฟังมากที่สุด</string>
     <string name="most_played_albums">อัลบั้มที่ฟังมากที่สุด</string>
+    <string name="top_artists">ศิลปินยอดนิยม</string>
+    <string name="top_albums">อัลบั้มยอดนิยม</string>
+    <string name="top_songs">เพลงยอดนิยม</string>
+    <string name="top_genres">แนวเพลงยอดนิยม</string>
+    <string name="listening_stats">สถิติของคุณ</string>
+    <string name="stats_not_enough_data">ฟังต่อไปเพื่อค้นพบเรื่องราวทางดนตรีของคุณ</string>
+    <string name="listened">ฟังแล้ว</string>
+    <string name="songs_played">เล่นแล้ว</string>
+
+    <!-- Search -->
     <string name="search">ค้นหา</string>
     <string name="search_yt_music">ค้นหาใน YouTube Music…</string>
     <string name="search_library">ค้นหาในคลังเพลง…</string>
+    <string name="online">ออนไลน์</string>
     <string name="filter_library">คลังเพลง</string>
     <string name="filter_liked">Starred</string>
     <string name="filter_downloaded">ดาวน์โหลดแล้ว</string>
@@ -45,27 +94,62 @@
     <string name="filter_featured_playlists">เพลย์ลิสต์แนะนำ</string>
     <string name="filter_bookmarked">บันทึกไว้</string>
     <string name="no_results_found">ไม่พบผลลัพธ์</string>
+
+    <!-- Library -->
     <string name="library_song_empty">เพลงในคลังของคุณจะแสดงที่นี่</string>
     <string name="library_artist_empty">ศิลปินในคลังของคุณจะแสดงที่นี่</string>
     <string name="library_album_empty">อัลบั้มในคลังของคุณจะแสดงที่นี่</string>
     <string name="library_playlist_empty">เพลย์ลิสต์ของคุณจะแสดงที่นี่</string>
+
+    <!-- Artist screen -->
     <string name="from_your_library">จากคลังของคุณ</string>
+
+    <!-- Album screen -->
     <string name="other_versions">เวอร์ชันอื่น</string>
+    <string name="similar_albums">คุณอาจชอบสิ่งเหล่านี้ด้วย</string>
+
+    <!-- Playlist -->
     <string name="liked_songs">Starred</string>
     <string name="downloaded_songs">เพลงที่ดาวน์โหลดแล้ว</string>
     <string name="playlist_is_empty">เพลย์ลิสต์ว่างเปล่า</string>
     <string name="remove_download_playlist_confirm">คุณแน่ใจหรือไม่ว่าต้องการลบเพลงทั้งหมดในเพลย์ลิสต์ \"%s\" ออกจากพื้นที่จัดเก็บเพลงที่ดาวน์โหลด?</string>
     <string name="delete_playlist_confirm">คุณแน่ใจหรือไม่ว่าต้องการลบเพลย์ลิสต์ \"%s\"?</string>
+
+    <!-- Button -->
     <string name="retry">ลองอีกครั้ง</string>
     <string name="radio">วิทยุ</string>
     <string name="shuffle">สุ่มเพลง</string>
     <string name="reset">รีเซ็ต</string>
+
+    <!-- Guess the song game -->
+    <string name="guess_game">ทายชื่อเพลง</string>
+    <string name="guess_game_subtitle">ทายชื่อเพลงแล้วค้นหาว่าคุณรู้จักศิลปินคนนี้ดีแค่ไหนจริงๆ</string>
+    <string name="guess_game_best_score">คะแนนที่ดีที่สุดของคุณ: %1$s</string>
+    <string name="guess_game_best_label">ดีที่สุดของคุณ</string>
+    <string name="guess_game_no_score">ยังไม่มีคะแนน</string>
+    <string name="guess_game_play_now">เล่นเลย</string>
+        <plurals name="guess_game_songs_left">
+        <item quantity="one">เหลืออีก 1 เพลงในเกม</item>
+        <item quantity="other">เหลืออีก %1$d เพลงในเกม</item>
+    </plurals>
+    <string name="guess_game_hint_default">ทายเพื่อไปต่อ</string>
+    <string name="guess_game_hint_wrong">คุณทายผิด! รอ 3 วินาที</string>
+    <string name="guess_game_new_best">สถิติใหม่!</string>
+    <string name="guess_game_result_correct">%1$d/%2$d</string>
+    <string name="guess_game_result_correct_label">ถูกต้อง</string>
+    <string name="guess_game_not_enough_songs">พบเพลงไม่เพียงพอสำหรับการเล่นเกมนี้</string>
+    <string name="guess_game_loading_hint">การโหลดอาจใช้เวลาสักครู่ — เพลงทุกเพลงถูกโหลดแบบเต็มล่วงหน้า เพื่อให้แต่ละรอบเริ่มได้ทันทีโดยไม่มีการบัฟเฟอร์</string>
+
+    <!-- Menu -->
     <string name="details">รายละเอียด</string>
     <string name="edit">แก้ไข</string>
     <string name="start_radio">เริ่มวิทยุ</string>
     <string name="play">เล่น</string>
+    <string name="pause">หยุดชั่วคราว</string>
     <string name="play_next">เล่นถัดไป</string>
     <string name="add_to_queue">เพิ่มไปยังคิว</string>
+    <string name="swipe_label_next">ถัดไป</string>
+    <string name="swipe_label_queue">คิวเพลง</string>
     <string name="add_to_library">เพิ่มไปยังคลัง</string>
     <string name="add_all_to_library">เพิ่มทั้งหมดไปยังคลัง</string>
     <string name="remove_from_library">ลบออกจากคลัง</string>
@@ -75,18 +159,36 @@
     <string name="remove_download">ลบไฟล์ที่ดาวน์โหลด</string>
     <string name="import_playlist">นำเข้าเพลย์ลิสต์</string>
     <string name="add_to_playlist">เพิ่มไปยังเพลย์ลิสต์</string>
+    <string name="category_add">เพิ่ม</string>
+    <string name="add_to_category">เพิ่มในหมวดหมู่</string>
+    <string name="new_category">หมวดหมู่ใหม่</string>
+    <string name="category_name_hint">ชื่อหมวดหมู่</string>
+    <string name="added_to_category">เพิ่มในหมวดหมู่แล้ว</string>
+    <string name="search_categories">ค้นหาหมวดหมู่</string>
+    <string name="action_add">เพิ่ม</string>
     <string name="view_artist">ดูศิลปิน</string>
     <string name="view_album">ดูอัลบั้ม</string>
     <string name="refetch">ดึงข้อมูลใหม่</string>
     <string name="share">แชร์</string>
+    <string name="share_choose_platform">แชร์ผ่าน</string>
+    <string name="share_platform_youtube_music">YouTube Music</string>
+    <string name="share_platform_spotify">Spotify</string>
+    <string name="share_platform_apple_music">Apple Music</string>
+    <string name="share_platform_soundcloud">SoundCloud</string>
+    <string name="share_link_resolving">กำลังค้นหาลิงก์…</string>
+    <string name="share_link_not_found">ไม่พบลิงก์สำหรับเพลงนี้บนแพลตฟอร์มนี้</string>
     <string name="delete">ลบ</string>
     <string name="remove_from_history">ลบออกจากประวัติ</string>
     <string name="remove_from_playlist">ลบออกจากเพลย์ลิสต์</string>
     <string name="remove_from_queue">ลบออกจากคิว</string>
     <string name="search_online">ค้นหาออนไลน์</string>
     <string name="action_sync">ซิงค์</string>
+    <string name="library_refresh">รีเฟรชคลังเพลง</string>
+    <string name="library_refreshing">กำลังรีเฟรช…</string>
     <string name="advanced">ขั้นสูง</string>
     <string name="tempo_and_pitch">ความเร็วและคีย์เสียง</string>
+
+    <!-- Sort menu -->
     <string name="sort_by_create_date">วันที่เพิ่ม</string>
     <string name="sort_by_name">ชื่อ</string>
     <string name="sort_by_artist">ศิลปิน</string>
@@ -95,6 +197,8 @@
     <string name="sort_by_length">ความยาว</string>
     <string name="sort_by_play_time">เวลาเล่น</string>
     <string name="sort_by_custom">ลำดับที่กำหนดเอง</string>
+
+    <!-- Dialog -->
     <string name="media_id">รหัสสื่อ</string>
     <string name="mime_type">ประเภท MIME</string>
     <string name="codecs">ตัวแปลงสัญญาณ</string>
@@ -105,62 +209,77 @@
     <string name="file_size">ขนาดไฟล์</string>
     <string name="unknown">ไม่ทราบ</string>
     <string name="copied">คัดลอกไปยังคลิปบอร์ดแล้ว</string>
+
     <string name="edit_lyrics">แก้ไขเนื้อเพลง</string>
     <string name="search_lyrics">ค้นหาเนื้อเพลง</string>
+
     <string name="edit_song">แก้ไขเพลง</string>
     <string name="song_title">ชื่อเพลง</string>
     <string name="song_artists">ศิลปิน</string>
     <string name="error_song_title_empty">ชื่อเพลงต้องไม่ว่างเปล่า</string>
     <string name="error_song_artist_empty">ต้องระบุชื่อศิลปิน</string>
     <string name="save">บันทึก</string>
+
     <string name="choose_playlist">เลือกเพลย์ลิสต์</string>
     <string name="edit_playlist">แก้ไขเพลย์ลิสต์</string>
     <string name="create_playlist">สร้างเพลย์ลิสต์</string>
     <string name="playlist_name">ชื่อเพลย์ลิสต์</string>
     <string name="error_playlist_name_empty">ชื่อเพลย์ลิสต์ต้องไม่ว่างเปล่า</string>
+
     <string name="edit_artist">แก้ไขศิลปิน</string>
     <string name="artist_name">ชื่อศิลปิน</string>
     <string name="error_artist_name_empty">ชื่อศิลปินต้องไม่ว่างเปล่า</string>
+
     <string name="duplicates">รายการซ้ำ</string>
     <string name="skip_duplicates">ข้ามรายการซ้ำ</string>
     <string name="add_anyway">เพิ่มต่อไป</string>
     <string name="duplicates_description_single">เพลงนี้อยู่ในเพลย์ลิสต์ของคุณแล้ว</string>
     <string name="duplicates_description_multiple">มี %d เพลงอยู่ในเพลย์ลิสต์ของคุณแล้ว</string>
-    <plurals name="n_song">
+
+    <!-- Noun -->
+        <plurals name="n_song">
         <item quantity="other">%d เพลง</item>
     </plurals>
-    <plurals name="n_artist">
+        <plurals name="n_artist">
         <item quantity="other">%d ศิลปิน</item>
     </plurals>
-    <plurals name="n_album">
+        <plurals name="n_album">
         <item quantity="other">%d อัลบั้ม</item>
     </plurals>
-    <plurals name="n_playlist">
+        <plurals name="n_playlist">
         <item quantity="other">%d เพลย์ลิสต์</item>
     </plurals>
-    <plurals name="n_week">
+        <plurals name="n_week">
         <item quantity="other">%d สัปดาห์</item>
     </plurals>
-    <plurals name="n_month">
+        <plurals name="n_month">
         <item quantity="other">%d เดือน</item>
     </plurals>
-    <plurals name="n_year">
+        <plurals name="n_year">
         <item quantity="other">%d ปี</item>
     </plurals>
+
+    <!-- Snackbar -->
     <string name="playlist_imported">นำเข้าเพลย์ลิสต์แล้ว</string>
     <string name="removed_song_from_playlist">ลบ \"%s\" ออกจากเพลย์ลิสต์แล้ว</string>
     <string name="playlist_synced">ซิงค์เพลย์ลิสต์แล้ว</string>
     <string name="undo">เลิกทำ</string>
+
+    <!-- Player -->
     <string name="lyrics_not_found">ไม่พบเนื้อเพลง</string>
+    <string name="lyrics_searching">…</string>
     <string name="sleep_timer">ตั้งเวลาปิดเพลง</string>
     <string name="end_of_song">เมื่อเพลงจบ</string>
-    <plurals name="minute">
+        <plurals name="minute">
+        <item quantity="one">1 นาที</item>
         <item quantity="other">%d นาที</item>
     </plurals>
     <string name="error_no_stream">ไม่มีสตรีมให้เล่น</string>
     <string name="error_no_internet">ไม่มีการเชื่อมต่อเครือข่าย</string>
     <string name="error_timeout">หมดเวลาการเชื่อมต่อ</string>
     <string name="error_unknown">เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ</string>
+
+    <!-- Player action -->
     <string name="action_like">Star</string>
     <string name="action_like_all">Star all</string>
     <string name="action_remove_like">Remove star</string>
@@ -170,12 +289,23 @@
     <string name="repeat_mode_off">ปิดการเล่นซ้ำ</string>
     <string name="repeat_mode_one">เล่นเพลงปัจจุบันซ้ำ</string>
     <string name="repeat_mode_all">เล่นเพลงซ้ำทั้งคิว</string>
+
+    <!-- Queue Title -->
     <string name="queue_all_songs">เพลงทั้งหมด</string>
     <string name="queue_searched_songs">เพลงจากผลการค้นหา</string>
+
+    <!-- Notification name -->
     <string name="music_player">เครื่องเล่นเพลง</string>
+
+    <!-- Settings -->
     <string name="settings">การตั้งค่า</string>
     <string name="appearance">การแสดงผล</string>
     <string name="theme">ธีม</string>
+    <string name="theme_desc">ปรับแต่งธีมของแอป</string>
+    <string name="theme_colors">ธีม &amp; สี</string>
+    <string name="theme_mode">โหมดธีม</string>
+    <string name="color_palette">ชุดสี</string>
+    <string name="use_system_colors">ใช้สีตามระบบ</string>
     <string name="enable_dynamic_theme">เปิดใช้งานธีมแบบไดนามิก</string>
     <string name="dark_theme">ธีมมืด</string>
     <string name="dark_theme_on">เปิด</string>
@@ -198,12 +328,14 @@
     <string name="grid_cell_size">ขนาดช่องตาราง</string>
     <string name="small">เล็ก</string>
     <string name="big">ใหญ่</string>
+
     <string name="content">เนื้อหา</string>
     <string name="action_logout">ออกจากระบบ</string>
     <string name="action_login">เข้าสู่ระบบ</string>
     <string name="login">เข้าสู่ระบบ</string>
     <string name="not_logged_in">ยังไม่ได้เข้าสู่ระบบ</string>
     <string name="login_failed">เข้าสู่ระบบไม่สำเร็จ</string>
+
     <string name="content_language">ภาษาเริ่มต้นของเนื้อหา</string>
     <string name="content_country">ประเทศเริ่มต้นของเนื้อหา</string>
     <string name="system_default">ค่าเริ่มต้นของระบบ</string>
@@ -211,12 +343,34 @@
     <string name="proxy_type">ประเภทพร็อกซี</string>
     <string name="proxy_url">URL พร็อกซี</string>
     <string name="restart_to_take_effect">รีสตาร์ทเพื่อให้มีผล</string>
+
     <string name="player_and_audio">เครื่องเล่นและเสียง</string>
     <string name="audio_quality">คุณภาพเสียง</string>
     <string name="audio_quality_auto">อัตโนมัติ</string>
     <string name="audio_quality_high">สูง</string>
     <string name="audio_quality_low">ต่ำ</string>
+    <string name="scratch_buffer">บัฟเฟอร์เลื่อนย้อน</string>
+    <string name="scratch_buffer_short">สั้น</string>
+    <string name="scratch_buffer_medium">ปานกลาง</string>
+    <string name="scratch_buffer_long">ยาว</string>
+    <string name="scratch_buffer_full">ทั้งเพลง</string>
+    <string name="scratch_buffer_short_desc">เลื่อนย้อนได้ 15 วินาที ใช้หน่วยความจำน้อยที่สุด</string>
+    <string name="scratch_buffer_medium_desc">เลื่อนย้อนได้ 1 นาที</string>
+    <string name="scratch_buffer_long_desc">เลื่อนย้อนได้ 3 นาที</string>
+    <string name="scratch_buffer_full_desc">เลื่อนย้อนได้ทั้งเพลง ใช้หน่วยความจำมากที่สุด</string>
     <string name="queue">คิวเพลง</string>
+    <string name="queue_recently_played">เพิ่งเล่น</string>
+    <string name="queue_recently_played_more">เพิ่งเล่น  ↑</string>
+    <string name="queue_scroll_for_history">เลื่อนขึ้นเพื่อดูประวัติ</string>
+    <string name="queue_autoplay">มิกซ์อัตโนมัติ</string>
+    <string name="queue_continue_listening">ฟังต่อ</string>
+    <string name="queue_filter_all">ทั้งหมด</string>
+    <string name="queue_filter_popular">ยอดนิยม</string>
+    <string name="queue_filter_discover">ค้นพบ</string>
+    <string name="queue_filter_familiar">คุ้นเคย</string>
+    <string name="queue_filter_party">ปาร์ตี้</string>
+    <string name="queue_filter_workout">ออกกำลังกาย</string>
+    <string name="queue_filter_deep_cuts">เพลงนอกกระแส</string>
     <string name="persistent_queue">บันทึกคิวเพลงล่าสุด</string>
     <string name="persistent_queue_desc">กู้คืนคิวเพลงล่าสุดเมื่อเปิดแอป</string>
     <string name="auto_load_more">โหลดเพลงเพิ่มอัตโนมัติ</string>
@@ -227,6 +381,7 @@
     <string name="auto_skip_next_on_error_desc">เพื่อให้การเล่นเพลงต่อเนื่องไม่สะดุด</string>
     <string name="stop_music_on_task_clear">หยุดเพลงเมื่อปิดแอปจากหน้าจอแอปล่าสุด</string>
     <string name="equalizer">อีควอไลเซอร์</string>
+
     <string name="storage">พื้นที่จัดเก็บ</string>
     <string name="cache">แคช</string>
     <string name="image_cache">แคชรูปภาพ</string>
@@ -239,6 +394,7 @@
     <string name="max_song_cache_size">ขนาดแคชเพลงสูงสุด</string>
     <string name="clear_song_cache">ล้างแคชเพลง</string>
     <string name="size_used">ใช้ไปแล้ว %s</string>
+
     <string name="privacy">ความเป็นส่วนตัว</string>
     <string name="listen_history">ประวัติการฟัง</string>
     <string name="pause_listen_history">หยุดบันทึกประวัติการฟัง</string>
@@ -255,6 +411,10 @@
     <string name="enable_lrclib">เปิดใช้งานผู้ให้บริการเนื้อเพลง LrcLib</string>
     <string name="enable_kugou">เปิดใช้งานผู้ให้บริการเนื้อเพลง KuGou</string>
     <string name="hide_explicit">ซ่อนเนื้อหาที่ไม่เหมาะสม</string>
+    <string name="hide_explicit_desc">ลบเพลงที่มีเนื้อหาไม่เหมาะสมออกจากผลการค้นหาและการเรียกดู</string>
+    <string name="show_explicit_badge">แสดงป้ายเนื้อหาไม่เหมาะสม</string>
+    <string name="show_explicit_badge_desc">แสดงไอคอน \"E\" สำหรับเพลงที่มีเนื้อหาไม่เหมาะสม</string>
+
     <string name="backup_restore">สำรองข้อมูลและกู้คืน</string>
     <string name="action_backup">สำรองข้อมูล</string>
     <string name="action_restore">กู้คืนข้อมูล</string>
@@ -262,15 +422,49 @@
     <string name="backup_create_success">สร้างไฟล์สำรองข้อมูลสำเร็จ</string>
     <string name="backup_create_failed">ไม่สามารถสร้างไฟล์สำรองข้อมูลได้</string>
     <string name="restore_failed">ไม่สามารถกู้คืนข้อมูลสำรองได้</string>
+
     <string name="discord_integration">การเชื่อมต่อกับ Discord</string>
     <string name="discord_information">Metrolist ใช้ไลบรารี KizzyRPC เพื่อแสดงสถานะบนบัญชี Discord ของคุณ ซึ่งต้องใช้การเชื่อมต่อผ่าน Discord Gateway และอาจถือว่าเป็นการละเมิดข้อกำหนดการใช้งาน (ToS) ของ Discord อย่างไรก็ตาม ยังไม่มีรายงานว่ามีบัญชีผู้ใช้ถูกระงับจากสาเหตุนี้ โปรดใช้งานด้วยความระมัดระวังและยอมรับความเสี่ยงเอง\n\nMetrolist จะดึงเฉพาะโทเคนของคุณเท่านั้น และข้อมูลอื่น ๆ ทั้งหมดจะถูกจัดเก็บไว้ในอุปกรณ์ของคุณ</string>
     <string name="dismiss">ปิด</string>
     <string name="options">ตัวเลือก</string>
     <string name="preview">ตัวอย่าง</string>
     <string name="enable_discord_rpc">เปิดใช้งาน Rich Presence</string>
+
     <string name="about">เกี่ยวกับ</string>
     <string name="app_version">เวอร์ชันแอป</string>
+
     <string name="new_version_available">มีเวอร์ชันใหม่พร้อมใช้งาน</string>
+
+    <!-- Advanced Mode -->
+    <string name="advanced_mode">โหมดขั้นสูง</string>
+    <string name="advanced_mode_banner">เปิดโหมดขั้นสูงอยู่ คาดหวังการตั้งค่าและตัวเลือกทางเทคนิคเพิ่มเติมทั่วทั้งแอป — UI นี้ไม่ได้ออกแบบมาสำหรับการใช้งานทั่วไปในชีวิตประจำวัน</string>
+    <string name="my_account">บัญชีของฉัน</string>
+    <string name="your_contents">เนื้อหาของคุณ</string>
+    <string name="playback">การเล่น</string>
+    <string name="default_category">หมวดหมู่เริ่มต้น</string>
+    <string name="music_section">เพลง</string>
+    <string name="interface_section">อินเทอร์เฟซ</string>
+    <string name="lyrics_translation">การแปลเนื้อเพลง</string>
+    <string name="behavior">พฤติกรรม</string>
+
     <string name="translation_models">โมเดลการแปล</string>
     <string name="clear_translation_models">ล้างโมเดลการแปล</string>
+
+    <!-- New settings for track resolution -->
+    <string name="resolve_video_songs">แปลงเพลงวิดีโอเป็นเวอร์ชันเสียง</string>
+    <string name="resolve_video_songs_desc">ค้นหาและแทนที่เพลงวิดีโอด้วยเวอร์ชันเสียงโดยอัตโนมัติ</string>
+    <string name="hide_video_only_results">ซ่อนผลลัพธ์ที่มีแต่วิดีโอ</string>
+    <string name="hide_video_only_results_desc">ซ่อนเพลงที่มีเฉพาะเวอร์ชันวิดีโอ (เมื่อการแปลงล้มเหลว)</string>
+    <string name="hide_videos_in_library">ซ่อนวิดีโอในคลังเพลง/เพลย์ลิสต์</string>
+    <string name="hide_videos_in_library_desc">ใช้ตรรกะการซ่อนวิดีโอกับคลังเพลงและเพลย์ลิสต์ที่คุณสร้าง</string>
+    <string name="resolved_track_cache">แคชเพลงที่แปลงแล้ว</string>
+    <string name="max_resolved_track_cache_size">ขนาดแคชสูงสุด</string>
+    <string name="clear_resolved_track_cache">ล้างแคชเพลงที่แปลงแล้ว</string>
+    <string name="clear_resolved_track_cache_dialog">คุณต้องการล้างแคชเพลงที่แปลงแล้วจริงหรือไม่? การกระทำนี้จะบังคับให้แอปค้นหาเวอร์ชันเสียงของวิดีโออีกครั้ง</string>
+    <string name="searching_synced_lyrics">กำลังค้นหาเนื้อเพลงแบบซิงก์…</string>
+
+    <string name="main_top_gradient">สีไล่ระดับด้านบนบนหน้าจอหลัก</string>
+    <string name="main_top_gradient_desc">แสดงสีไล่ระดับของเพลเยอร์จากเพลงปัจจุบันแบบกลมกลืน ด้านหลังส่วนบนของหน้าแรก คลังเพลง ค้นหา และข่าวสาร</string>
+    <string name="album_top_gradient">สีไล่ระดับด้านบนบนอัลบั้ม</string>
+    <string name="album_top_gradient_desc">แสดงสีไล่ระดับของเพลเยอร์จากอัลบั้มที่กำลังดูแบบกลมกลืน ด้านหลังส่วนบนของหน้าอัลบั้ม ซิงเกิล และ EP</string>
 </resources>

@@ -124,6 +124,7 @@ import com.metrolist.music.constants.LyricsClickKey
 import com.metrolist.music.constants.LyricsRomanizeAsMainKey
 import com.metrolist.music.constants.LyricsRomanizeCyrillicByLineKey
 import com.metrolist.music.constants.LyricsRomanizeList
+import com.metrolist.music.constants.LyricsRomanizeToggleKey
 import com.metrolist.music.constants.LyricsTextPositionKey
 import com.metrolist.music.constants.OpenRouterApiKey
 import com.metrolist.music.constants.OpenRouterBaseUrlKey
@@ -169,8 +170,10 @@ import com.metrolist.music.lyrics.LyricsDebugLog
 class LyricsPillController {
     var hasTranslations by mutableStateOf(false)
     var isSelectionModeActive by mutableStateOf(false)
+    var isRomanizeActive by mutableStateOf(false)
     var translateAction: () -> Unit = {}
     var selectionAction: () -> Unit = {}
+    var romanizeAction: () -> Unit = {}
 }
 
 @Composable
@@ -243,6 +246,7 @@ fun ExperimentalLyrics(
     val romanizeLyricsList = rememberPreference(LyricsRomanizeList, "")
     val romanizeAsMain by rememberPreference(LyricsRomanizeAsMainKey, false)
     val romanizeCyrillicByLine by rememberPreference(LyricsRomanizeCyrillicByLineKey, false)
+    var romanizeEnabled by rememberPreference(LyricsRomanizeToggleKey, false)
     val respectAgentPositioning by rememberPreference(RespectAgentPositioningKey, true)
     val showIntervalIndicator by rememberPreference(ShowIntervalIndicatorKey, true)
 
@@ -415,6 +419,12 @@ fun ExperimentalLyrics(
         }
     }
 
+    val hasRomanizations by remember(lines) {
+        derivedStateOf {
+            lines.any { it.romanizedTextFlow.value != null }
+        }
+    }
+
     BackHandler(enabled = isSelectionModeActive) {
         isSelectionModeActive = false
         selectedIndices.clear()
@@ -424,6 +434,8 @@ fun ExperimentalLyrics(
         if (pillsController != null) {
             pillsController.hasTranslations = hasTranslations
             pillsController.isSelectionModeActive = isSelectionModeActive
+            pillsController.isRomanizeActive = romanizeEnabled && hasRomanizations
+            pillsController.romanizeAction = { romanizeEnabled = !romanizeEnabled }
             pillsController.translateAction = {
                 if (hasTranslations) {
                     lyricsEntity?.let { entity ->
@@ -593,22 +605,31 @@ fun ExperimentalLyrics(
     LaunchedEffect(isAutoScrollEnabled) {
         if (!isAutoScrollEnabled) {
             skippedLinesAfterScroll = 0
+            var anchorLineIndex = -1
             snapshotFlow { activeLineIndices }
                 .collectLatest { newActiveIndices ->
-                    if (newActiveIndices != previousScrollActiveIndices && newActiveIndices.isNotEmpty()) {
-                        val userJustScrolled = System.currentTimeMillis() - lastPreviewTime < 500L
-                        if (userJustScrolled) {
-                            skippedLinesAfterScroll = 0
-                        } else {
+                    if (newActiveIndices.isEmpty()) return@collectLatest
+                    val maxMainIndex = newActiveIndices
+                        .filter { lines.getOrNull(it)?.isBackground == false }
+                        .maxOrNull()
+                    if (maxMainIndex == null) return@collectLatest
+                    if (anchorLineIndex == -1) {
+                        anchorLineIndex = maxMainIndex
+                        return@collectLatest
+                    }
+                    val userJustScrolled = System.currentTimeMillis() - lastPreviewTime < 500L
+                    when {
+                        userJustScrolled -> skippedLinesAfterScroll = 0
+                        maxMainIndex > anchorLineIndex -> {
+                            anchorLineIndex = maxMainIndex
                             skippedLinesAfterScroll++
-                            if (skippedLinesAfterScroll >= 2) {
+                            if (skippedLinesAfterScroll >= 1) {
                                 userManualOffset = 0f
                                 isAutoScrollEnabled = true
                                 lastPreviewTime = 0L
                                 skippedLinesAfterScroll = 0
                             }
                         }
-                        previousScrollActiveIndices = newActiveIndices
                     }
                 }
         }
@@ -1115,9 +1136,9 @@ fun ExperimentalLyrics(
                                         respectAgentPositioning = respectAgentPositioning,
                                         isAutoScrollEnabled = isAutoScrollEnabled,
                                         displayedCurrentLineIndex = deferredCurrentLineIndex,
-                                        romanizeAsMain = romanizeAsMain,
+                                        romanizeAsMain = romanizeAsMain && romanizeEnabled,
                                         enabledLanguages = enabledLanguages,
-                                        romanizeLyrics = currentSong?.romanizeLyrics ?: true,
+                                        romanizeLyrics = (currentSong?.romanizeLyrics ?: true) && romanizeEnabled,
                                         lyricsBlurEnabled = true,
                                         onSizeChanged = { itemHeights[listIndex] = it },
                                         onClick = {

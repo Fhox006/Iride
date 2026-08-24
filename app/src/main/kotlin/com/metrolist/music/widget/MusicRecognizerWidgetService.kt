@@ -47,6 +47,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import timber.log.Timber
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -185,7 +186,8 @@ class MusicRecognizerWidgetService : Service() {
                                 )
                             )
                             MusicRecognitionService.resultSavedExternally = true
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to save recognition history")
                         }
                     }
                     is RecognitionStatus.NoMatch -> {

@@ -124,6 +124,10 @@ import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
+import com.metrolist.music.ui.theme.textTertiary
 import com.metrolist.music.ui.menu.AlbumMenu
 import com.metrolist.music.ui.menu.ArtistMenu
 import com.metrolist.music.ui.menu.PlaylistMenu
@@ -538,7 +542,7 @@ fun LibraryMixScreen(
                                     letterSpacing = 0.2.sp,
                                 ),
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color.White.copy(alpha = 0.55f),
+                                color = MaterialTheme.colorScheme.textSecondary,
                                 modifier = Modifier
                                     .padding(vertical = 12.dp)
                                     .animateItem(placementSpec = IrideMotion.PlacementSpec)
@@ -928,7 +932,11 @@ private fun LibraryRefreshButton(
 ) {
     val label = stringResource(if (isRefreshing) R.string.library_refreshing else R.string.library_refresh)
     val contentColor = if (useIrideStyle) {
-        Color.White.copy(alpha = if (isRefreshing) 0.45f else 0.6f)
+        if (isRefreshing) {
+            MaterialTheme.colorScheme.textTertiary
+        } else {
+            MaterialTheme.colorScheme.textSecondary
+        }
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -1011,7 +1019,7 @@ private fun CategoriesContent(
                     painter = painterResource(item.icon),
                     contentDescription = null,
                     modifier = Modifier.size(if (useIrideStyle) 20.dp else 24.dp),
-                    tint = if (useIrideStyle) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (useIrideStyle) MaterialTheme.colorScheme.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.width(12.dp))
                 Text(
@@ -1026,19 +1034,19 @@ private fun CategoriesContent(
                         MaterialTheme.typography.bodyLarge
                     },
                     fontWeight = if (useIrideStyle) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (useIrideStyle) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface,
+                    color = if (useIrideStyle) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                 )
                 Icon(
                     painter = painterResource(R.drawable.navigate_next),
                     contentDescription = null,
                     modifier = Modifier.size(if (useIrideStyle) 18.dp else 24.dp),
-                    tint = if (useIrideStyle) Color.White.copy(alpha = 0.55f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (useIrideStyle) MaterialTheme.colorScheme.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             HorizontalDivider(
                 color = if (useIrideStyle) {
-                    Color.White.copy(alpha = 0.08f)
+                    MaterialTheme.colorScheme.strokeHairline
                 } else {
                     MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                 },

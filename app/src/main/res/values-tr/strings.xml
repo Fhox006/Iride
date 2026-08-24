@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
@@ -21,8 +21,8 @@
 
     <!-- Top bar -->
         <plurals name="n_selected">
-        </item>%d seçildi</item>
-        </item>%d seçililer</item>
+        <item quantity="one">%d seçildi</item>
+        <item quantity="other">%d seçililer</item>
     </plurals>
 
     <!-- Home -->
@@ -130,8 +130,8 @@
     <string name="guess_game_no_score">Henüz skor yok</string>
     <string name="guess_game_play_now">Hemen oyna</string>
         <plurals name="guess_game_songs_left">
-        </item>Oynamak için %1$d şarkı kaldı</item>
-        </item>Oynamak için %1$d şarkı kaldı</item>
+        <item quantity="one">Oynamak için %1$d şarkı kaldı</item>
+        <item quantity="other">Oynamak için %1$d şarkı kaldı</item>
     </plurals>
     <string name="guess_game_hint_default">Devam etmek için tahmin et</string>
     <string name="guess_game_hint_wrong">Yanlış! 3 saniye bekle</string>
@@ -239,32 +239,32 @@
 
     <!-- Noun -->
         <plurals name="n_song">
-        </item>%d şarkı</item>
-        </item>%d şarkılar</item>
+        <item quantity="one">%d şarkı</item>
+        <item quantity="other">%d şarkılar</item>
     </plurals>
         <plurals name="n_artist">
-        </item>%d sanatçı</item>
-        </item>%d sanatçılar</item>
+        <item quantity="one">%d sanatçı</item>
+        <item quantity="other">%d sanatçılar</item>
     </plurals>
         <plurals name="n_album">
-        </item>%d albüm</item>
-        </item>%d albümler</item>
+        <item quantity="one">%d albüm</item>
+        <item quantity="other">%d albümler</item>
     </plurals>
         <plurals name="n_playlist">
-        </item>%d çalma listesi</item>
-        </item>%d çalma listeleri</item>
+        <item quantity="one">%d çalma listesi</item>
+        <item quantity="other">%d çalma listeleri</item>
     </plurals>
         <plurals name="n_week">
-        </item>%d hafta</item>
-        </item>%d haftalar</item>
+        <item quantity="one">%d hafta</item>
+        <item quantity="other">%d haftalar</item>
     </plurals>
         <plurals name="n_month">
-        </item>%d ay</item>
-        </item>%d aylar</item>
+        <item quantity="one">%d ay</item>
+        <item quantity="other">%d aylar</item>
     </plurals>
         <plurals name="n_year">
-        </item>%d yıl</item>
-        </item>%d yıllar</item>
+        <item quantity="one">%d yıl</item>
+        <item quantity="other">%d yıllar</item>
     </plurals>
 
     <!-- Snackbar -->
@@ -279,8 +279,8 @@
     <string name="sleep_timer">Uyku zamanlayıcısı</string>
     <string name="end_of_song">Şarkının sonu</string>
         <plurals name="minute">
-        </item>1 dakika</item>
-        </item>%d dakika</item>
+        <item quantity="one">1 dakika</item>
+        <item quantity="other">%d dakika</item>
     </plurals>
     <string name="error_no_stream">Akış yok</string>
     <string name="error_no_internet">Ağ bağlantısı yok</string>

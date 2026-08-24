@@ -63,7 +63,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -106,6 +105,8 @@ import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.VolumeSlider
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 import androidx.datastore.preferences.core.edit
 import com.metrolist.music.utils.SharePlatform
 import com.metrolist.music.utils.SongLinkResolver
@@ -435,7 +436,7 @@ fun PlayerMenu(
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = (-0.2).sp,
                                 ),
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.textPrimary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.basicMarquee(),
@@ -445,7 +446,7 @@ fun PlayerMenu(
                             Text(
                                 text = mediaMetadata.artists.joinToString(", ") { it.name },
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.6f),
+                                color = MaterialTheme.colorScheme.textSecondary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -454,7 +455,7 @@ fun PlayerMenu(
                     IconButton(onClick = { showSharePlatformDialog = true }) {
                         Icon(
                             painter = painterResource(R.drawable.share),
-                            tint = Color.White.copy(alpha = 0.85f),
+                            tint = MaterialTheme.colorScheme.textPrimary,
                             contentDescription = null,
                         )
                     }
@@ -479,7 +480,7 @@ fun PlayerMenu(
                                         painter = painterResource(R.drawable.bedtime),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = Color.White.copy(alpha = 0.85f),
+                                        tint = MaterialTheme.colorScheme.textPrimary,
                                     )
                                 },
                                 text = stringResource(R.string.sleep_timer),
@@ -498,7 +499,7 @@ fun PlayerMenu(
                                             if (repeatMode == Player.REPEAT_MODE_ONE) {
                                                 MaterialTheme.colorScheme.primary
                                             } else {
-                                                Color.White.copy(alpha = 0.85f)
+                                                MaterialTheme.colorScheme.textPrimary
                                             },
                                     )
                                 },
@@ -515,7 +516,7 @@ fun PlayerMenu(
                                             painter = painterResource(R.drawable.group),
                                             contentDescription = null,
                                             modifier = Modifier.size(28.dp),
-                                            tint = Color.White.copy(alpha = 0.85f),
+                                            tint = MaterialTheme.colorScheme.textPrimary,
                                         )
                                         if (pendingSuggestions.isNotEmpty()) {
                                             Surface(

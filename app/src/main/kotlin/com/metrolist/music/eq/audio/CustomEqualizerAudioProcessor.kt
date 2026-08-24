@@ -29,11 +29,22 @@ class CustomEqualizerAudioProcessor : AudioProcessor {
     private var inputEnded = false
 
     private var filters: List<BiquadFilter> = emptyList()
+    private var filterSpecs: List<ParametricEQBand> = emptyList()
     private var preampGain: Double = 1.0
     private var pendingProfile: ParametricEQ? = null
 
+    @Volatile
+    private var dynamicBassStage: DynamicBassStage? = null
+
+    @Volatile
+    private var dynamicBassRequested = false
+
+    private var pendingShelfDb: Double = 0.0
+    private var pendingStrength: Double = 0.0
+
     companion object {
         private const val TAG = "CustomEqualizerAudioProcessor"
+        private const val DYNAMIC_BASS_SHELF_HZ = 90.0
         private val EMPTY_BUFFER: ByteBuffer = ByteBuffer.allocateDirect(0).order(ByteOrder.nativeOrder())
     }
 
@@ -52,9 +63,8 @@ class CustomEqualizerAudioProcessor : AudioProcessor {
         preampGain = 10.0.pow(parametricEQ.preamp / 20.0)
 
         createFilters(parametricEQ.bands)
+        ensureDynamicBassStage()
         equalizerEnabled = true
-
-        filters.forEach { it.reset() }
 
         Timber.tag(TAG)
             .d("Applied EQ profile with ${filters.size} bands and ${parametricEQ.preamp} dB preamp")
@@ -67,9 +77,51 @@ class CustomEqualizerAudioProcessor : AudioProcessor {
     fun disable() {
         equalizerEnabled = false
         filters = emptyList()
+        filterSpecs = emptyList()
         preampGain = 1.0
         pendingProfile = null
+        dynamicBassStage = null
+        dynamicBassRequested = false
+        pendingShelfDb = 0.0
+        pendingStrength = 0.0
         Timber.tag(TAG).d("Equalizer disabled")
+    }
+
+    /**
+     * Configure the dynamic low-shelf stage (advanced "Duration" transient shaper).
+     * When [strength] > 0 the shelf boost is applied dynamically by this stage instead
+     * of a static band, so it must not be added to [applyProfile] bands as well.
+     */
+    @Synchronized
+    fun setDynamicBass(shelfGainDb: Double, strength: Double) {
+        dynamicBassRequested = strength > 0.0 && shelfGainDb != 0.0
+        pendingShelfDb = if (dynamicBassRequested) shelfGainDb else 0.0
+        pendingStrength = strength.coerceIn(0.0, 1.0)
+
+        val stage = dynamicBassStage
+        if (dynamicBassRequested && stage != null) {
+            stage.shelfGainDb = pendingShelfDb
+            stage.strength = pendingStrength
+        } else if (!dynamicBassRequested) {
+            dynamicBassStage = null
+        }
+        Timber.tag(TAG)
+            .d("Dynamic bass requested=$dynamicBassRequested shelf=${pendingShelfDb}dB strength=${pendingStrength}")
+    }
+
+    private fun ensureDynamicBassStage() {
+        if (!dynamicBassRequested || sampleRate == 0) return
+        var stage = dynamicBassStage
+        if (stage == null) {
+            stage = DynamicBassStage(sampleRate, DYNAMIC_BASS_SHELF_HZ).apply {
+                shelfGainDb = pendingShelfDb
+                strength = pendingStrength
+            }
+            dynamicBassStage = stage
+        } else {
+            stage.shelfGainDb = pendingShelfDb
+            stage.strength = pendingStrength
+        }
     }
 
     /**
@@ -81,6 +133,10 @@ class CustomEqualizerAudioProcessor : AudioProcessor {
      * Create biquad filters from ParametricEQ bands
      * Only creates filters for enabled bands below Nyquist frequency
      * Supports PK (peaking), LSC (low-shelf), and HSC (high-shelf) filter types
+     *
+     * When the band topology is unchanged (same count and filter types) the existing
+     * filters are retuned in place, preserving their delay-line state: applying tweaks
+     * while playing stays click-free.
      */
     private fun createFilters(bands: List<ParametricEQBand>) {
         if (sampleRate == 0) {
@@ -88,9 +144,25 @@ class CustomEqualizerAudioProcessor : AudioProcessor {
             return
         }
 
-        filters = bands
-            .filter { it.enabled && it.frequency < sampleRate / 2.0 }
-            .map { band ->
+        val active = bands.filter { it.enabled && it.frequency < sampleRate / 2.0 }
+        val current = filters
+
+        val topologyMatches = current.size == active.size &&
+                filterSpecs.size == active.size &&
+                filterSpecs.indices.all { i ->
+                    filterSpecs[i].filterType == active[i].filterType
+                }
+
+        if (topologyMatches && current.isNotEmpty()) {
+            current.forEachIndexed { i, filter ->
+                filter.recalculate(
+                    gainOverride = active[i].gain,
+                    frequencyOverride = active[i].frequency,
+                    qOverride = active[i].q
+                )
+            }
+        } else {
+            filters = active.map { band ->
                 BiquadFilter(
                     sampleRate = sampleRate,
                     frequency = band.frequency,
@@ -99,9 +171,11 @@ class CustomEqualizerAudioProcessor : AudioProcessor {
                     filterType = band.filterType
                 )
             }
+        }
+        filterSpecs = active
 
         Timber.tag(TAG)
-            .d("Created ${filters.size} biquad filters from ${bands.size} bands (PK/LSC/HSC)")
+            .d("Applied ${filters.size} biquad filters from ${bands.size} bands (PK/LSC/HSC)")
     }
 
     override fun configure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
@@ -120,6 +194,8 @@ class CustomEqualizerAudioProcessor : AudioProcessor {
             Timber.tag(TAG)
                 .d("Applied pending profile with ${filters.size} bands and ${profile.preamp} dB preamp")
         }
+
+        ensureDynamicBassStage()
 
         if (encoding != C.ENCODING_PCM_16BIT || channelCount > 2) {
             val exception = AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
@@ -185,6 +261,10 @@ class CustomEqualizerAudioProcessor : AudioProcessor {
                     val sample = input.getShort().toDouble() / 32768.0
                     var processed = sample
 
+                    dynamicBassStage?.let { stage ->
+                        processed = stage.process(processed, processed).first
+                    }
+
                     for (filter in filters) {
                         processed = filter.processSample(processed)
                     }
@@ -200,6 +280,12 @@ class CustomEqualizerAudioProcessor : AudioProcessor {
 
                     var processedLeft = leftSample
                     var processedRight = rightSample
+
+                    dynamicBassStage?.let { stage ->
+                        val (shapedLeft, shapedRight) = stage.process(processedLeft, processedRight)
+                        processedLeft = shapedLeft
+                        processedRight = shapedRight
+                    }
 
                     for (filter in filters) {
                         val (left, right) = filter.processStereo(processedLeft, processedRight)
@@ -241,6 +327,7 @@ class CustomEqualizerAudioProcessor : AudioProcessor {
         inputEnded = false
 
         filters.forEach { it.reset() }
+        dynamicBassStage?.reset()
     }
 
     override fun reset() {
@@ -252,6 +339,7 @@ class CustomEqualizerAudioProcessor : AudioProcessor {
         encoding = C.ENCODING_INVALID
         isActive = false
         filters.forEach { it.reset() }
+        dynamicBassStage = null
     }
 
     override fun queueEndOfStream() {

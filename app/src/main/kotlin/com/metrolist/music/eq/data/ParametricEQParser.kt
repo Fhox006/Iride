@@ -1,6 +1,7 @@
 package com.metrolist.music.eq.data
 
 import java.io.File
+import timber.log.Timber
 
 /**
  * Parser for AutoEq ParametricEQ.txt files.
@@ -115,8 +116,7 @@ object ParametricEQParser {
                 q = q
             )
         } catch (e: Exception) {
-            println("Warning: Failed to parse filter line: $line")
-            println("Error: ${e.message}")
+            Timber.w(e, "Failed to parse EQ filter line")
             return null
         }
     }

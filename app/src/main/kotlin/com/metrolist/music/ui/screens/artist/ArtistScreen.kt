@@ -78,6 +78,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.textPrimary
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -208,7 +209,7 @@ private fun ColumnScope.ArtistOverflowMenu(
             painter = painterResource(res),
             contentDescription = null,
             modifier = Modifier.size(28.dp),
-            tint = Color.White.copy(alpha = 0.85f),
+            tint = MaterialTheme.colorScheme.textPrimary,
         )
     }
 
@@ -1487,7 +1488,7 @@ fun ArtistScreen(
                     onClick = { viewModel.toggleChannelSubscription() },
                     icon = if (isChannelSubscribed) R.drawable.favorite else R.drawable.favorite_border,
                     contentDescription = stringResource(R.string.subscribe),
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.textPrimary,
                     size = 40.dp,
                     iconSize = 20.dp,
                     pressEffect = IridePressEffect.Punch,
@@ -1517,7 +1518,7 @@ fun ArtistScreen(
                     },
                     icon = R.drawable.more_vert,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.textPrimary,
                     size = 40.dp,
                     iconSize = 20.dp,
                     modifier = Modifier.irideEnterScale(

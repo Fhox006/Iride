@@ -33,7 +33,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -50,6 +49,7 @@ import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.component.shimmer.TextPlaceholder
+import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberPreference
 
@@ -135,7 +135,7 @@ fun ShowMediaInfo(videoId: String) {
                         Text(
                             text = listOfNotNull(bitrate, fileSize).joinToString("  •  "),
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = MaterialTheme.colorScheme.textSecondary,
                             modifier = Modifier.padding(horizontal = 0.dp)
                         )
                     }

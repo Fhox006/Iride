@@ -27,6 +27,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -186,6 +187,31 @@ fun AboutScreen(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
                     )
                 }
+            }
+
+            // Prominent, always-visible entry to the manual updater (download state,
+            // changelog). The automatic announcement only surfaces once per release; this
+            // is where users go when they want to check on their own.
+            Spacer(Modifier.height(24.dp))
+
+            Button(
+                onClick = { navController.navigate("settings/updater") },
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.download),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = stringResource(R.string.about_check_updates),
+                    style = MaterialTheme.typography.titleSmall.copy(fontFamily = SpaceMonoFontFamily),
+                    fontWeight = FontWeight.SemiBold
+                )
             }
 
             Spacer(Modifier.height(32.dp))

@@ -106,6 +106,7 @@ import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.irideEnter
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
@@ -367,7 +368,7 @@ fun LibrarySongsScreen(
                         Icon(
                             painter = painterResource(R.drawable.star),
                             contentDescription = if (betterLibraryBeta) stringResource(R.string.starred) else null,
-                            tint = if (betterLibraryBeta) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
+                            tint = if (betterLibraryBeta) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.textPrimary,
                         )
                     }
                 }

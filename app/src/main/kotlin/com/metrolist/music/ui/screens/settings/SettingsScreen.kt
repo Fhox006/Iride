@@ -387,7 +387,7 @@ fun SettingsScreen(
                 )
                 Text(
                     text = stringResource(R.string.sign_in_desc),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
                     color = secondaryTextColor
                 )
                 Spacer(modifier = Modifier.height(16.dp))

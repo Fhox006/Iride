@@ -43,6 +43,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textTertiary
 import com.metrolist.music.utils.rememberPreference
 
 @Composable
@@ -81,7 +84,7 @@ fun NewActionButton(
             modifier
                 .clip(RoundedCornerShape(12.dp))
                 .border(
-                    BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.strokeHairline),
                     RoundedCornerShape(12.dp),
                 )
                 .clickable(enabled = enabled) { performAction = true }
@@ -105,7 +108,7 @@ fun NewActionButton(
                 letterSpacing = (-0.1).sp,
             ),
             fontWeight = FontWeight.Bold,
-            color = Color.White.copy(alpha = if (enabled) 0.85f else 0.4f),
+            color = if (enabled) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,

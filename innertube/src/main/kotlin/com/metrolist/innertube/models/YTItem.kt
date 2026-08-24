@@ -1,7 +1,10 @@
 package com.metrolist.innertube.models
 
 import com.metrolist.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV
+import kotlinx.serialization.Serializable
 
+
+@Serializable
 sealed class YTItem {
     abstract val id: String
     abstract val title: String
@@ -10,16 +13,19 @@ sealed class YTItem {
     abstract val shareLink: String
 }
 
+@Serializable
 data class Artist(
     val name: String,
     val id: String?,
 )
 
+@Serializable
 data class Album(
     val name: String,
     val id: String,
 )
 
+@Serializable
 data class SongItem(
     override val id: String,
     override val title: String,
@@ -46,6 +52,7 @@ data class SongItem(
         get() = "https://music.youtube.com/watch?v=$id"
 }
 
+@Serializable
 data class AlbumItem(
     val browseId: String,
     val playlistId: String,
@@ -61,6 +68,7 @@ data class AlbumItem(
         get() = "https://music.youtube.com/playlist?list=$playlistId"
 }
 
+@Serializable
 data class PlaylistItem(
     override val id: String,
     override val title: String,
@@ -79,6 +87,7 @@ data class PlaylistItem(
         get() = "https://music.youtube.com/playlist?list=$id"
 }
 
+@Serializable
 data class ArtistItem(
     override val id: String,
     override val title: String,
@@ -95,6 +104,7 @@ data class ArtistItem(
         get() = "https://music.youtube.com/channel/$id"
 }
 
+@Serializable
 data class PodcastItem(
     override val id: String,
     override val title: String,
@@ -126,6 +136,7 @@ data class PodcastItem(
     )
 }
 
+@Serializable
 data class EpisodeItem(
     override val id: String,
     override val title: String,

@@ -47,6 +47,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
+import com.metrolist.music.ui.theme.textTertiary
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -90,7 +94,7 @@ private fun IrideSettingsGroup(
                     letterSpacing = (-0.1).sp,
                 ),
                 fontWeight = FontWeight.Bold,
-                color = Color.White.copy(alpha = 0.55f),
+                color = MaterialTheme.colorScheme.textSecondary,
                 modifier = Modifier.padding(bottom = 6.dp, top = 4.dp)
             )
         }
@@ -99,7 +103,7 @@ private fun IrideSettingsGroup(
             items.forEachIndexed { index, item ->
                 IrideSettingsItemRow(item = item)
                 if (index != items.lastIndex) {
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.strokeHairline, thickness = 1.dp)
                 }
             }
         }
@@ -123,7 +127,7 @@ private fun IrideSettingsItemRow(item: Material3SettingsItem) {
             item.leadingContent.invoke()
             Spacer(modifier = Modifier.width(16.dp))
         } else if (item.icon != null) {
-            val iconTint = Color.White.copy(alpha = if (item.isHighlighted) 1f else 0.85f)
+            val iconTint = MaterialTheme.colorScheme.textPrimary.copy(alpha = if (item.isHighlighted) 1f else 0.85f)
             if (item.showBadge) {
                 BadgedBox(
                     badge = { Badge(containerColor = MaterialTheme.colorScheme.error) }
@@ -153,7 +157,7 @@ private fun IrideSettingsItemRow(item: Material3SettingsItem) {
                     fontSize = 15.sp,
                     letterSpacing = (-0.1).sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.textPrimary,
                 )
             ) {
                 item.title()
@@ -162,7 +166,7 @@ private fun IrideSettingsItemRow(item: Material3SettingsItem) {
             item.description?.let { desc ->
                 Spacer(modifier = Modifier.height(2.dp))
                 ProvideTextStyle(
-                    MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.6f))
+                    MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.textSecondary)
                 ) {
                     desc()
                 }
@@ -206,7 +210,7 @@ fun ExpandableSettingsSection(
                 Icon(
                     painter = icon,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.85f),
+                    tint = MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.85f),
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(16.dp))
@@ -220,13 +224,13 @@ fun ExpandableSettingsSection(
                         letterSpacing = (-0.1).sp,
                     ),
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.textPrimary
                 )
                 if (description.isNotEmpty()) {
                     Text(
                         text = description,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.6f)
+                        color = MaterialTheme.colorScheme.textSecondary
                     )
                 }
             }
@@ -235,7 +239,7 @@ fun ExpandableSettingsSection(
                     if (expanded) R.drawable.expand_less else R.drawable.expand_more
                 ),
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.35f),
+                tint = MaterialTheme.colorScheme.textTertiary,
                 modifier = Modifier.size(18.dp)
             )
         }

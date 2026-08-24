@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Iride eye mark for the launch splash, tuned for the light splash background. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    <!-- Scaled 1.25x about the center for a modest, quiet mark; see the dark variant. -->
+    <group
+        android:scaleX="1.25"
+        android:scaleY="1.25"
+        android:pivotX="100"
+        android:pivotY="100">
+        <path
+            android:fillColor="#1C1B1F"
+            android:fillType="evenOdd"
+            android:pathData="M60,100 Q100,65 140,100 Q100,135 60,100 Z M100,100 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0" />
+    </group>
+</vector>

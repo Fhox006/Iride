@@ -31,6 +31,13 @@ import kotlinx.coroutines.withContext
 
 val DefaultThemeColor = Color(0xFFED5564)
 
+/**
+ * Kill-switch for the light theme: implementation is complete but hidden from
+ * settings until polished. While true, every theme resolver locks to dark
+ * regardless of the stored DarkMode preference.
+ */
+const val ForceDarkTheme = true
+
 @Composable
 fun IrideTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -39,14 +46,15 @@ fun IrideTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
+    val dark = darkTheme || ForceDarkTheme
     val useSystemDynamicColor = (themeColor == DefaultThemeColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
 
     val baseColorScheme = if (useSystemDynamicColor) {
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     } else {
         rememberDynamicColorScheme(
             seedColor = themeColor,
-            isDark = darkTheme,
+            isDark = dark,
             specVersion = ColorSpec.SpecVersion.SPEC_2025,
             style = PaletteStyle.TonalSpot
         )
@@ -54,8 +62,8 @@ fun IrideTheme(
 
     // Neutral surfaces mirror the app's monochrome identity; accent roles
     // (primary/secondary/tertiary) are kept from the generated base scheme.
-    val colorScheme = remember(baseColorScheme, darkTheme) {
-        if (darkTheme) {
+    val colorScheme = remember(baseColorScheme, dark) {
+        if (dark) {
             baseColorScheme.copy(
                 background = Color.Black,
                 onBackground = Color.White,

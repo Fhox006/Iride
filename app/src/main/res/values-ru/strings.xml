@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
@@ -21,10 +21,10 @@
 
     <!-- Top bar -->
         <plurals name="n_selected">
-        </item>%d выбран</item>
-        </item>%d выбрано</item>
-        </item>%d выбрано</item>
-        </item>%d выбрано</item>
+        <item quantity="one">%d выбран</item>
+        <item quantity="few">%d выбрано</item>
+        <item quantity="many">%d выбрано</item>
+        <item quantity="other">%d выбрано</item>
     </plurals>
 
     <!-- Home -->
@@ -132,8 +132,8 @@
     <string name="guess_game_no_score">Результатов пока нет</string>
     <string name="guess_game_play_now">Играть сейчас</string>
         <plurals name="guess_game_songs_left">
-        </item>Осталась %1$d песня</item>
-        </item>Осталось %1$d песен</item>
+        <item quantity="one">Осталась %1$d песня</item>
+        <item quantity="other">Осталось %1$d песен</item>
     </plurals>
     <string name="guess_game_hint_default">Угадайте, чтобы продолжить</string>
     <string name="guess_game_hint_wrong">Неверно! Подождите 3 секунды</string>
@@ -241,46 +241,46 @@
 
     <!-- Noun -->
         <plurals name="n_song">
-        </item>%d композиция</item>
-        </item>%d композиции</item>
-        </item>%d композиций</item>
-        </item>%d композиций</item>
+        <item quantity="one">%d композиция</item>
+        <item quantity="few">%d композиции</item>
+        <item quantity="many">%d композиций</item>
+        <item quantity="other">%d композиций</item>
     </plurals>
         <plurals name="n_artist">
-        </item>%d исполнитель</item>
-        </item>%d исполнителя</item>
-        </item>%d исполнителей</item>
-        </item>%d исполнителей</item>
+        <item quantity="one">%d исполнитель</item>
+        <item quantity="few">%d исполнителя</item>
+        <item quantity="many">%d исполнителей</item>
+        <item quantity="other">%d исполнителей</item>
     </plurals>
         <plurals name="n_album">
-        </item>%d альбом</item>
-        </item>%d альбома</item>
-        </item>%d альбомов</item>
-        </item>%d альбомов</item>
+        <item quantity="one">%d альбом</item>
+        <item quantity="few">%d альбома</item>
+        <item quantity="many">%d альбомов</item>
+        <item quantity="other">%d альбомов</item>
     </plurals>
         <plurals name="n_playlist">
-        </item>%d плейлист</item>
-        </item>%d плейлиста</item>
-        </item>%d плейлистов</item>
-        </item>%d плейлистов</item>
+        <item quantity="one">%d плейлист</item>
+        <item quantity="few">%d плейлиста</item>
+        <item quantity="many">%d плейлистов</item>
+        <item quantity="other">%d плейлистов</item>
     </plurals>
         <plurals name="n_week">
-        </item>%d неделя</item>
-        </item>%d недели</item>
-        </item>%d недель</item>
-        </item>%d недель</item>
+        <item quantity="one">%d неделя</item>
+        <item quantity="few">%d недели</item>
+        <item quantity="many">%d недель</item>
+        <item quantity="other">%d недель</item>
     </plurals>
         <plurals name="n_month">
-        </item>%d месяц</item>
-        </item>%d месяца</item>
-        </item>%d месяцев</item>
-        </item>%d месяцев</item>
+        <item quantity="one">%d месяц</item>
+        <item quantity="few">%d месяца</item>
+        <item quantity="many">%d месяцев</item>
+        <item quantity="other">%d месяцев</item>
     </plurals>
         <plurals name="n_year">
-        </item>%d год</item>
-        </item>%d года</item>
-        </item>%d лет</item>
-        </item>%d лет</item>
+        <item quantity="one">%d год</item>
+        <item quantity="few">%d года</item>
+        <item quantity="many">%d лет</item>
+        <item quantity="other">%d лет</item>
     </plurals>
 
     <!-- Snackbar -->
@@ -295,10 +295,10 @@
     <string name="sleep_timer">Таймер сна</string>
     <string name="end_of_song">Конец песни</string>
         <plurals name="minute">
-        </item>%d минута</item>
-        </item>%d минуты</item>
-        </item>%d минут</item>
-        </item>%d минут</item>
+        <item quantity="one">%d минута</item>
+        <item quantity="few">%d минуты</item>
+        <item quantity="many">%d минут</item>
+        <item quantity="other">%d минут</item>
     </plurals>
     <string name="error_no_stream">Нет доступных потоков</string>
     <string name="error_no_internet">Нет подключения к сети</string>

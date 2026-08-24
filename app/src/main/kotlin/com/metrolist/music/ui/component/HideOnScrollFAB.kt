@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.ui.utils.isScrollingUp
+import com.metrolist.music.ui.theme.strokeCard
 
 /**
  * New Iride UI: flat, monochrome, borderless-fill replacement for the default Material
@@ -64,7 +65,7 @@ private fun IrideFlatFAB(
             .size(56.dp)
             .clip(CircleShape)
             .background(Color.Black.copy(alpha = 0.85f))
-            .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
+            .border(1.dp, MaterialTheme.colorScheme.strokeCard, CircleShape)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,

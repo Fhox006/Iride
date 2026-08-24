@@ -2,18 +2,26 @@
 <resources>
     <string name="local_history">ในเครื่อง</string>
     <string name="remote_history">จากบัญชี</string>
+
     <string name="charts">ชาร์ตเพลง</string>
     <string name="back_button_desc">ย้อนกลับ</string>
     <string name="album_cover_desc">ปกอัลบั้ม</string>
     <string name="top_music_videos">มิวสิกวิดีโอยอดนิยม</string>
     <string name="trending">กำลังมาแรง</string>
+    <string name="parsed_from_link">ดึงข้อมูลจากลิงก์แล้ว</string>
+
     <string name="weeks">สัปดาห์</string>
     <string name="months">เดือน</string>
     <string name="years">ปี</string>
     <string name="continuous">ต่อเนื่อง</string>
+
     <string name="liked">ถูกใจ</string>
+    <string name="starred">เพลงที่ติดดาว</string>
     <string name="offline">ดาวน์โหลดแล้ว</string>
+    <string name="downloads">ดาวน์โหลด</string>
     <string name="my_top">เพลงที่คุณฟังบ่อยที่สุด</string>
+    <string name="weekly_most_playlist_name">ยอดนิยมประจำสัปดาห์</string>
+    <string name="monthly_most_playlist_name">ยอดนิยมประจำเดือน</string>
     <string name="cached_playlist">แคชแล้ว</string>
     <string name="uploaded_playlist">อัปโหลดแล้ว</string>
     <string name="filter_uploaded">อัปโหลดแล้ว</string>
@@ -26,108 +34,195 @@
     <string name="enable">เปิดใช้งาน</string>
     <string name="share_lyrics">แชร์เนื้อเพลง</string>
     <string name="share_as_text">แชร์เป็นข้อความ</string>
-    <string name="share_as_image">แชร์เป็นรูปภาพ</string>
+    <string name="max_selection_limit">จำนวนที่เลือกได้สูงสุด</string>
     <string name="share_selected">แชร์ที่เลือก</string>
     <string name="customize_colors">ปรับแต่งสี</string>
     <string name="text_color">สีข้อความ</string>
     <string name="secondary_text_color">สีข้อความรอง</string>
     <string name="background_color">สีพื้นหลัง</string>
+
     <string name="remove_from_cache">ลบออกจากแคช</string>
+
+    <!-- Artist discography -->
+    <string name="view_discography">ดูผลงานทั้งหมด</string>
+    <string name="discography">ผลงานทั้งหมด</string>
+    <string name="discography_from_artist">จากศิลปิน</string>
+    <string name="discography_appears_on">ปรากฏใน</string>
+    <string name="discography_singles">ซิงเกิล</string>
+    <string name="discography_eps">EP</string>
+    <string name="discography_empty">ไม่มีอะไรให้แสดงอีกแล้ว</string>
+
+    <!-- Artist about section -->
     <string name="about_artist">เกี่ยวกับศิลปิน</string>
     <string name="show_more">แสดงเพิ่มเติม</string>
     <string name="show_less">แสดงน้อยลง</string>
+    <string name="artist_page_settings">หน้าศิลปิน</string>
     <string name="show_artist_description">แสดงคำอธิบายศิลปิน</string>
     <string name="show_artist_subscriber_count">แสดงจำนวนผู้ติดตาม</string>
-    <string name="max_selection_limit">จำนวนที่เลือกได้สูงสุด</string>
-    <string name="artist_page_settings">หน้าศิลปิน</string>
     <string name="show_artist_monthly_listeners">แสดงจำนวนผู้ฟังรายเดือน</string>
+
+    <!-- Menu descriptions -->
     <string name="download_playlist_desc">ดาวน์โหลดเพลงทั้งหมดไว้ฟังแบบออฟไลน์</string>
     <string name="remove_download_playlist_desc">ลบเพลงที่ดาวน์โหลดทั้งหมดออกจากเพลย์ลิสต์นี้</string>
     <string name="download_in_progress_desc">กำลังดาวน์โหลด</string>
     <string name="share_playlist_desc">แชร์เพลย์ลิสต์นี้ให้ผู้อื่น</string>
     <string name="delete_playlist_desc">ลบเพลย์ลิสต์นี้อย่างถาวร</string>
     <string name="sync_playlist_desc">ซิงค์เพลย์ลิสต์กับ YouTube Music</string>
+    <string name="reorder">จัดเรียงใหม่</string>
+    <string name="reorder_desc">ลากเพลงเพื่อกำหนดลำดับเอง</string>
+    <string name="menu">เมนู</string>
     <string name="copy_link">คัดลอกลิงก์</string>
     <string name="select">เลือกทั้งหมด</string>
     <string name="like_all">ถูกใจทั้งหมด</string>
     <string name="dislike_all">ไม่ถูกใจทั้งหมด</string>
-    <string name="link_copied">คัดลอกลิงก์แล้ว</string>
     <string name="sort_by_last_updated">วันที่อัปเดตล่าสุด</string>
+    <string name="link_copied">คัดลอกลิงก์แล้ว</string>
     <string name="starting_radio">กำลังเริ่มวิทยุ</string>
     <string name="now_playing">กำลังเล่น</string>
+
     <string name="lyrics">เนื้อเพลง</string>
     <string name="close">ปิด</string>
     <string name="hide_player_thumbnail">ซ่อนภาพตัวอย่างในเครื่องเล่น</string>
     <string name="hide_player_thumbnail_desc">แทนที่ภาพปกอัลบั้มด้วยโลโก้แอปในเครื่องเล่น</string>
     <string name="crop_album_art">ครอบตัดภาพปกอัลบั้ม</string>
     <string name="crop_album_art_desc">บังคับให้เป็นอัตราส่วนสี่เหลี่ยมจัตุรัสโดยครอบตัดภาพตัวอย่างวิดีโอ</string>
+
     <string name="already_in_playlist">มีอยู่ในเพลย์ลิสต์แล้ว:</string>
-    <plurals name="n_time">
+
+        <plurals name="n_time">
         <item quantity="other">%d ครั้ง</item>
     </plurals>
+
     <string name="seek_forward_dynamic">+%1$d วินาที</string>
     <string name="seek_backward_dynamic">-%1$d วินาที</string>
-    <string name="seek_seconds_addup_description">หากเปิดใช้งาน จะเพิ่มเวลาอีก 5 วินาทีแบบสะสมทุกครั้งที่กดข้าม</string>
     <string name="seek_seconds_addup">เพิ่มเวลาข้ามแบบต่อเนื่อง</string>
+    <string name="seek_seconds_addup_description">หากเปิดใช้งาน จะเพิ่มเวลาอีก 5 วินาทีแบบสะสมทุกครั้งที่กดข้าม</string>
+
     <string name="similar_content">เนื้อหาที่คล้ายกัน</string>
+
+    <string name="share_as_image">แชร์เป็นรูปภาพ</string>
+    <string name="copy_as_image">คัดลอกเป็นรูปภาพ</string>
     <string name="player_background_style">รูปแบบพื้นหลังเครื่องเล่น</string>
+    <string name="player_background_solid">สีทึบ</string>
     <string name="follow_theme">ตามธีมระบบ</string>
     <string name="gradient">ไล่ระดับสี</string>
-    <string name="new_player_design">ดีไซน์เครื่องเล่นใหม่</string>
-    <string name="new_mini_player_design">ดีไซน์มินิเพลเยอร์ใหม่</string>
+    <string name="animated_gradient">สีไล่ระดับแบบเคลื่อนไหว</string>
+    <string name="better_animated_gradient">สีไล่ระดับแบบเคลื่อนไหวที่ดีกว่า</string>
+    <string name="better_gradient_smooth_transition">การเปลี่ยนพื้นหลังอย่างนุ่มนวล</string>
+    <string name="better_gradient_smooth_transition_desc">ไล่ตัดระหว่างสีของอัลบั้มเมื่อเปลี่ยนเพลง</string>
     <string name="player_background_blur">เบลอพื้นหลัง</string>
     <string name="player_buttons_style">สีปุ่มเครื่องเล่น</string>
     <string name="default_style">ค่าเริ่มต้น</string>
     <string name="primary_color_style">สีหลัก</string>
     <string name="tertiary_color_style">สีระดับที่สาม</string>
+    <string name="display_density">ความหนาแน่นการแสดงผล</string>
+    <string name="restart">เริ่มต้นใหม่</string>
+    <string name="restart_required">ต้องรีสตาร์ท</string>
+    <string name="density_restart_message">การเปลี่ยนความหนาแน่นของหน้าจอจะมีผลหลังจากรีสตาร์ทแอป คุณต้องการรีสตาร์ทตอนนี้หรือไม่?</string>
     <string name="wavy">คลื่น</string>
     <string name="enable_swipe_thumbnail">เปิดใช้งานการปัดเพื่อเปลี่ยนเพลง</string>
+    <string name="thumbnail_carousel_mode">โหมดรูปย่อแบบหมุนเวียน</string>
+    <string name="thumbnail_carousel_mode_desc">แสดงปกก่อนหน้า/ถัดไปโผล่จากด้านข้างพร้อมแอนิเมชันการปัด</string>
+    <string name="swipe_song_to_add_title">ปัดเพื่อเพิ่มในคิว</string>
     <string name="swipe_song_to_add">ปัดเพลงไปทางซ้ายเพื่อเพิ่มในคิว หรือปัดไปทางขวาเพื่อเล่นเป็นลำดับถัดไป</string>
+    <string name="swipe_song_to_remove_title">ปัดเพื่อลบออก</string>
     <string name="swipe_song_to_remove">ปัดเพลงเพื่อเอาออกจากเพลย์ลิสต์</string>
     <string name="lyrics_click_change">เปลี่ยนเนื้อเพลงเมื่อแตะ</string>
+    <string name="lyrics_from_provider">เนื้อเพลงจาก %s</string>
     <string name="lyrics_auto_scroll">เลื่อนเนื้อเพลงอัตโนมัติ</string>
+    <string name="hide_status_bar_fullscreen">ซ่อนแถบสถานะในโหมดเต็มหน้าจอ</string>
+    <string name="hide_status_bar_fullscreen_desc">ซ่อนแถบสถานะเมื่อเปิดโหมดเนื้อเพลงเต็มหน้าจออยู่</string>
+    <string name="show_interval_indicator">แสดงตัวบอกช่วงเวลา</string>
+    <string name="show_interval_indicator_desc">แสดงแถบความคืบหน้าระหว่างช่วงดนตรีที่ไม่มีเสียงร้องยาวๆ</string>
+    <string name="respect_agent_positioning">ใช้ตำแหน่งตามบทบาทของผู้ขับร้อง</string>
+    <string name="respect_agent_positioning_desc">จัดตำแหน่งเนื้อเพลงตามบทบาทของผู้ขับร้อง (เช่น เสียงประสานเบื้องหลัง)</string>
     <string name="lyrics_glow_effect">เปิดเอฟเฟกต์เรืองแสงของเนื้อเพลง</string>
     <string name="lyrics_glow_effect_desc">เพิ่มแอนิเมชันเรืองแสงและเอฟเฟกต์เด้งให้กับเนื้อเพลงที่กำลังแสดง</string>
+    <string name="lyrics_animation_style">รูปแบบแอนิเมชันแบบคำต่อคำ</string>
+    <string name="lyrics_animation_none">ไม่มี</string>
+    <string name="lyrics_animation_fade">จางหาย</string>
+    <string name="lyrics_animation_glow">เรืองแสง</string>
+    <string name="lyrics_animation_slide">เลื่อน</string>
+    <string name="lyrics_animation_karaoke">คาราโอเกะ</string>
+    <string name="lyrics_animation_apple">สไตล์ Apple Music</string>
+    <string name="lyrics_text_size">ขนาดตัวอักษรเนื้อเพลง</string>
+    <string name="lyrics_line_spacing">ระยะห่างบรรทัดเนื้อเพลง</string>
+    <string name="enable_lrclib_desc">ฐานข้อมูลเนื้อเพลงแบบซิงค์ที่ขับเคลื่อนโดยชุมชนผู้ใช้</string>
+    <string name="enable_kugou_desc">ดึงเนื้อเพลงจาก KuGou แพลตฟอร์มเพลงยอดนิยมของจีน</string>
+    <string name="youtube_music_lyrics_note">หมายเหตุ: เนื้อเพลงจาก YouTube Music จะแสดงโดยอัตโนมัติเมื่อไม่พบเนื้อเพลงจากแหล่งอื่น โดยทั่วไปเนื้อเพลงจาก YTM มักจะไม่ซิงค์กับเพลง</string>
     <string name="enable_better_lyrics">เปิดใช้งาน Better Lyrics</string>
     <string name="enable_better_lyrics_desc">เนื้อเพลงแบบซิงค์ระดับพยางค์สำหรับทุกเพลง เหมาะสำหรับร้องคาราโอเกะ</string>
+    <string name="enable_better_lyrics_unison">เปิดใช้ Better Lyrics Unison</string>
+    <string name="enable_better_lyrics_unison_desc">เนื้อเพลงซิงก์ระดับคำ เอนจิน Unison</string>
+    <string name="enable_better_lyrics_sillaba">เปิดใช้ Better Lyrics Sillaba</string>
+    <string name="enable_better_lyrics_sillaba_desc">เนื้อเพลงซิงก์ระดับคำ เอนจิน Sillaba</string>
+    <string name="enable_paxsenix">เปิดใช้ Paxsenix</string>
+    <string name="enable_paxsenix_desc">เนื้อเพลงซิงก์คุณภาพสูงจาก Paxsenix API</string>
+    <string name="enable_lyricsplus">เปิดใช้งาน LyricsPlus</string>
+    <string name="enable_lyricsplus_desc">เนื้อเพลงแบบซิงค์จากหลายแหล่ง</string>
+    <string name="lyrics_provider_selection">การเลือกผู้ให้บริการเนื้อเพลง</string>
+    <string name="lyrics_provider_selection_desc">เลือกแหล่งที่มาของเนื้อเพลงที่ต้องการเปิดใช้งาน</string>
     <string name="auto_scroll">ซิงค์ใหม่</string>
     <string name="slim">บาง</string>
     <string name="slim_navbar">แถบนำทางด้านล่างแบบบาง</string>
     <string name="auto_playlists">เพลย์ลิสต์อัตโนมัติ</string>
     <string name="show_liked_playlist">แสดงเพลย์ลิสต์ \"ถูกใจ\"</string>
     <string name="show_downloaded_playlist">แสดงเพลย์ลิสต์ \"ดาวน์โหลดแล้ว\"</string>
+    <string name="show_top_playlist">แสดงเพลย์ลิสต์ \"เพลงที่คุณฟังบ่อยที่สุด\"</string>
     <string name="show_cached_playlist">แสดงเพลย์ลิสต์ \"แคช\"</string>
+    <string name="enable_song_cache">เปิดใช้แคชเพลง</string>
+    <string name="enable_song_cache_desc">แคชเพลงโดยอัตโนมัติเพื่อการเล่นครั้งต่อไปที่รวดเร็วขึ้น</string>
     <string name="show_uploaded_playlist">แสดงเพลย์ลิสต์ \"อัปโหลดแล้ว\"</string>
     <string name="shuffle_playlist_first">เล่นแบบสุ่มจากเพลย์ลิสต์/อัลบั้มก่อน</string>
     <string name="shuffle_playlist_first_desc">เมื่อเปิดโหมดสุ่ม จะเล่นเพลงทั้งหมดจากเพลย์ลิสต์/อัลบั้มเดิมก่อน แล้วจึงเล่นเนื้อหาที่คล้ายกัน</string>
+    <string name="prevent_duplicate_tracks_in_queue">ป้องกันแทร็กซ้ำในคิว</string>
+    <string name="prevent_duplicate_tracks_in_queue_desc">เมื่อเพิ่มแทร็กลงในคิว หากมีอยู่แล้วให้ลบออกจากตำแหน่งเดิม</string>
     <string name="show_wrapped_card">แสดงการ์ด Wrapped</string>
     <string name="skip_silence_desc">ข้ามช่วงที่เงียบของเพลงอย่างรวดเร็ว</string>
     <string name="skip_silence_instant">ข้ามช่วงเงียบทันที</string>
     <string name="skip_silence_instant_desc">กระโดดข้ามช่วงเงียบแทนการเร่งความเร็วการเล่น</string>
-    <string name="show_top_playlist">แสดงเพลย์ลิสต์ \"เพลงที่คุณฟังบ่อยที่สุด\"</string>
+
     <string name="advanced_login">เข้าสู่ระบบด้วยโทเค็น</string>
     <string name="token_hidden">แตะเพื่อแสดงโทเค็น</string>
     <string name="token_shown">แตะอีกครั้งเพื่อคัดลอกหรือแก้ไข</string>
     <string name="token_adv_login_description">นี่เป็นวิธีเข้าสู่ระบบขั้นสูง คุณสามารถกรอกหรืออัปเดตโทเค็นเข้าสู่ระบบได้โดยตรงแทนการใช้เว็บพอร์ทัล วิธีนี้ช่วยให้เข้าสู่ระบบบนหลายอุปกรณ์ได้รวดเร็วขึ้น โปรดทราบว่าโทเค็นที่มีรูปแบบไม่ถูกต้องจะไม่สามารถใช้งานได้</string>
     <string name="yt_sync">ซิงค์กับบัญชีโดยอัตโนมัติ</string>
+    <string name="settings_section_sync_data">ซิงก์ &amp; ข้อมูล</string>
+    <string name="auto_sync">ซิงก์อัตโนมัติ</string>
     <string name="more_content">เนื้อหาเพิ่มเติม</string>
+    <string name="other_content">เนื้อหาอื่นๆ</string>
+    <string name="show_token">แสดงโทเคน</string>
+
+    <string name="sort_ascending">เรียงจากน้อยไปมาก</string>
+    <string name="sort_descending">เรียงจากมากไปน้อย</string>
+
+    <!-- Playlist cover edit -->
     <string name="edit_playlist_cover">แก้ไขปกเพลย์ลิสต์</string>
     <string name="edit_playlist_cover_note">หมายเหตุ: บัญชีของคุณต้องเชื่อมโยงกับหมายเลขโทรศัพท์และยืนยันตัวตนบน YouTube Music ก่อนจึงจะสามารถเปลี่ยนปกเพลย์ลิสต์ได้</string>
     <string name="edit_playlist_cover_note_wait">หลังจากเลือกภาพแล้ว โปรดรอสักครู่เพื่อให้ปกใหม่แสดงในเพลย์ลิสต์ของคุณ</string>
     <string name="choose_from_library">เลือกจากคลัง</string>
     <string name="remove_custom_image">ลบภาพที่กำหนดเอง</string>
+
+    <!-- General -->
     <string name="general">ทั่วไป</string>
     <string name="proxy">พร็อกซี</string>
     <string name="default_lib_chips">เปลี่ยนแท็บเริ่มต้นในคลัง</string>
+    <string name="set_quick_picks">ตั้งค่าการเลือกด่วน</string>
     <string name="last_song_listened">อิงจากเพลงล่าสุดที่ฟัง</string>
     <string name="app_language">ภาษาของแอป</string>
-    <string name="set_quick_picks">ตั้งค่าการเลือกด่วน</string>
+    <string name="lyrics_provider_priority">ลำดับความสำคัญของแหล่งเนื้อเพลง</string>
+    <string name="lyrics_provider_priority_desc">ลากเพื่อจัดเรียงลำดับผู้ให้บริการตามความต้องการ ตำแหน่งที่อยู่สูงกว่าจะมีลำดับความสำคัญมากกว่า</string>
+    <string name="experimental_lyrics">เนื้อเพลงแบบทดลอง</string>
+    <string name="experimental_lyrics_desc">เปิดใช้คอมโพเนนต์เนื้อเพลงแบบทดลองใหม่ที่มีแอนิเมชันและประสิทธิภาพที่ดีขึ้น</string>
+    <string name="experimental_lyrics_beta_title">ฟีเจอร์แบบทดลอง</string>
+    <string name="experimental_lyrics_beta_message">คอมโพเนนต์เนื้อเพลงใหม่อยู่ระหว่างพัฒนาและอาจมีบั๊ก คุณแน่ใจหรือไม่ว่าต้องการเปิดใช้?</string>
     <string name="config_proxy">ตั้งค่าพร็อกซี</string>
     <string name="proxy_username">ชื่อผู้ใช้พร็อกซี</string>
     <string name="proxy_password">รหัสผ่านพร็อกซี</string>
     <string name="enable_authentication">เปิดใช้งานการยืนยันตัวตน</string>
     <string name="discord_use_details">ใช้รายละเอียดแทนสถานะ</string>
     <string name="discord_use_details_description">แสดงชื่อเพลงอย่างเด่นชัดแทนชื่อศิลปิน</string>
+
     <string name="enable_similar_content">เปิดใช้งานเนื้อหาที่คล้ายกัน</string>
     <string name="similar_content_desc">เพิ่มเพลงที่คล้ายกันโดยอัตโนมัติเมื่อถึงท้ายคิว</string>
     <string name="persistent_shuffle_title">โหมดสุ่มคงที่</string>
@@ -135,20 +230,66 @@
     <string name="remember_shuffle_and_repeat">จดจำการตั้งค่าโหมดสุ่มและเล่นซ้ำ</string>
     <string name="remember_shuffle_and_repeat_desc">จดจำโหมดสุ่มและเล่นซ้ำเมื่อเปิดแอปใหม่</string>
     <string name="percentage_format">%d%%</string>
+
     <string name="import_online">นำเข้าเพลย์ลิสต์ \"m3u\"</string>
     <string name="import_csv">นำเข้าเพลย์ลิสต์ \"csv\"</string>
     <string name="playlist_add_local_to_synced_note">หมายเหตุ: ไม่รองรับการเพิ่มเพลงในเครื่องลงในเพลย์ลิสต์ที่ซิงค์/ระยะไกล การเพิ่มในรูปแบบอื่นสามารถใช้งานได้ตามปกติ</string>
+    <string name="export_playlist">ส่งออกเพลย์ลิสต์</string>
+    <string name="export_as_csv">ส่งออกเป็น CSV</string>
+    <string name="export_as_m3u">ส่งออกเป็น M3U</string>
+    <string name="export_success">ส่งออกเพลย์ลิสต์สำเร็จ</string>
+    <string name="export_failed">ส่งออกเพลย์ลิสต์ไม่สำเร็จ</string>
+    <string name="export_option_share">แชร์</string>
+    <string name="export_option_save">บันทึกไปที่เอกสาร</string>
+
     <string name="auto_download_on_like">ดาวน์โหลดอัตโนมัติเมื่อกดถูกใจ</string>
     <string name="auto_download_on_like_desc">ดาวน์โหลดเพลงโดยอัตโนมัติเมื่อคุณกดถูกใจ</string>
+
     <string name="swipe_sensitivity">ความไวในการปัดของมินิเพลเยอร์</string>
     <string name="sensitivity_percentage">%1$d%%</string>
+
     <string name="clear_song_cache_dialog">คุณแน่ใจหรือไม่ว่าต้องการลบแคชเพลงทั้งหมด?</string>
     <string name="clear_image_cache_dialog">คุณแน่ใจหรือไม่ว่าต้องการลบแคชรูปภาพทั้งหมด?</string>
     <string name="clear_downloads_dialog">คุณแน่ใจหรือไม่ว่าต้องการลบไฟล์ที่ดาวน์โหลดทั้งหมด?</string>
+
     <string name="disable">ปิดใช้งาน</string>
+
     <string name="not_logged_in_youtube">ยังไม่ได้เข้าสู่ระบบ YouTube</string>
+
     <string name="default_links">เปิดลิงก์ที่รองรับ</string>
     <string name="open_app_settings_error">ไม่สามารถเปิดการตั้งค่าแอปได้</string>
+    <string name="changelog_empty">ยังไม่มีบันทึกการเปลี่ยนแปลง</string>
+    <string name="github_releases_url">https://github.com/IrideGroup/Iride/releases</string>
+    <string name="list_bullet">•</string>
+    <string name="view_on_github">ดูบน GitHub</string>
+    <string name="current_version">เวอร์ชันปัจจุบัน</string>
+    <string name="version_format">เวอร์ชัน: %s</string>
+    <string name="update_settings">การตั้งค่าการอัปเดต</string>
+    <string name="check_for_updates_title">ตรวจสอบการอัปเดต</string>
+    <string name="checking_for_updates">กำลังตรวจสอบการอัปเดต…</string>
+    <string name="latest_version_format">เวอร์ชันล่าสุด: %s</string>
+    <string name="check_for_updates_button">ตรวจสอบการอัปเดต</string>
+    <string name="hide_changelog">ซ่อนบันทึกการเปลี่ยนแปลง</string>
+    <string name="view_changelog">ดูบันทึกการเปลี่ยนแปลง</string>
+    <string name="failed_to_check_updates">ไม่สามารถตรวจสอบการอัปเดต: %s</string>
+    <string name="update_dialog_title_new_version">มีเวอร์ชันใหม่พร้อมใช้งาน</string>
+    <string name="update_dialog_version_available">Iride %s พร้อมใช้งานแล้ว</string>
+    <string name="update_dialog_experimental_build">บิลด์นี้อาจเป็นเวอร์ชันทดลอง</string>
+    <string name="update_dialog_no_compatible_package">ไม่พบแพ็กเกจที่รองรับสำหรับบิลด์นี้</string>
+    <string name="update_dialog_back">ย้อนกลับ</string>
+    <string name="update_action_download">ดาวน์โหลด</string>
+    <string name="update_action_install">ติดตั้ง</string>
+    <string name="update_action_retry">ลองอีกครั้ง</string>
+    <string name="update_state_downloading_percent">กำลังดาวน์โหลด… %d%%</string>
+    <string name="update_state_ready_to_install">ดาวน์โหลดอัปเดตแล้ว — แตะเพื่อติดตั้ง</string>
+    <string name="update_permission_explanation">หากต้องการติดตั้งอัปเดต ให้อนุญาต Iride ติดตั้งแอปในหน้าถัดไป</string>
+    <string name="update_action_allow">อนุญาต</string>
+    <string name="update_download_started">เริ่มดาวน์โหลดอัปเดตแล้ว</string>
+    <string name="update_download_failed">ดาวน์โหลดอัปเดตไม่สำเร็จ</string>
+    <string name="update_download_error_no_space">พื้นที่ว่างไม่เพียงพอ</string>
+    <string name="update_download_error_connection">ข้อผิดพลาดของการเชื่อมต่อ</string>
+    <string name="update_download_notification_description">กำลังดาวน์โหลดเวอร์ชันใหม่…</string>
+
     <string name="all_time">ตลอดเวลา</string>
     <string name="past_24_hours">24 ชั่วโมงที่ผ่านมา</string>
     <string name="past_week">สัปดาห์ที่ผ่านมา</string>
@@ -158,18 +299,86 @@
     <string name="history_duration">ระยะเวลาการเก็บประวัติ</string>
     <string name="information">ข้อมูล</string>
     <string name="description">คำอธิบาย</string>
+    <string name="album">อัลบั้ม</string>
+    <string name="duration">ระยะเวลา</string>
     <string name="views">ยอดเข้าชม</string>
     <string name="likes">จำนวนถูกใจ</string>
     <string name="dislikes">จำนวนไม่ถูกใจ</string>
     <string name="subscribe">ติดตาม</string>
     <string name="subscribed">ติดตามแล้ว</string>
-    <plurals name="seconds">
+        <plurals name="seconds">
+        <item quantity="one">1 วินาที</item>
         <item quantity="other">%d วินาที</item>
     </plurals>
+
+    <!-- Sleep timer -->
+    <string name="set_as_default">ตั้งเป็นค่าเริ่มต้น</string>
+    <string name="sleep_timer_default_set">ตั้งค่าเวลาปิดเพลงอัตโนมัติเริ่มต้นเป็น %d นาที</string>
+    <string name="enable_automatic_sleeptimer">เปิดตัวตั้งเวลาปิดอัตโนมัติ</string>
+    <string name="sleeptimer_description">เปิดใช้งานตัวตั้งเวลาปิดอัตโนมัติด้วยค่าเริ่มต้นตามเวลาที่กำหนดเอง</string>
+    <string name="sleep_timer_repeat_description">กำหนดวันและเวลาที่ต้องการให้ตัวตั้งเวลาปิดทำงานอัตโนมัติ</string>
+    <string name="sleep_timer_repeat">ทำซ้ำ</string>
+    <string name="sleep_timer_daily">ทุกวัน</string>
+    <string name="sleep_timer_weekdays">วันจันทร์–ศุกร์</string>
+    <string name="sleep_timer_weekdays_weekends">วันธรรมดา / วันหยุดสุดสัปดาห์</string>
+    <string name="sleep_timer_weekends">วันหยุดสุดสัปดาห์ (เสาร์–อาทิตย์)</string>
+    <string name="sleep_timer_custom">กำหนดเอง</string>
+    <string name="sleep_timer_start_time">เวลาเริ่มต้น</string>
+    <string name="sleep_timer_end_time">เวลาสิ้นสุด</string>
+    <string name="sleep_timer_monday">วันจันทร์</string>
+    <string name="sleep_timer_tuesday">วันอังคาร</string>
+    <string name="sleep_timer_wednesday">วันพุธ</string>
+    <string name="sleep_timer_thursday">วันพฤหัสบดี</string>
+    <string name="sleep_timer_friday">วันศุกร์</string>
+    <string name="sleep_timer_saturday">วันเสาร์</string>
+    <string name="sleep_timer_sunday">วันอาทิตย์</string>
+    <string name="sleep_timer_stop_after_current_song_title">หยุดเมื่อเพลงปัจจุบันจบ</string>
+    <string name="sleep_timer_stop_after_current_song_description">รอให้เพลงที่กำลังเล่นจบก่อนหยุด</string>
+    <string name="sleep_timer_fade_out_title">ค่อยๆ เบาลง</string>
+    <string name="sleep_timer_fade_out_description">ลดระดับเสียงลงอย่างช้าๆ ในนาทีสุดท้าย</string>
+
+    <!-- Alarm -->
+    <string name="alarm">นาฬิกาปลุก</string>
+    <string name="alarm_enabled">เปิดใช้นาฬิกาปลุก</string>
+    <string name="alarm_time">เวลาปลุก</string>
+    <string name="alarm_playlist">เพลย์ลิสต์</string>
+    <string name="alarm_select_playlist">เลือกเพลย์ลิสต์</string>
+    <string name="alarm_no_playlists">ไม่พบเพลย์ลิสต์</string>
+        <plurals name="alarm_playlist_song_count">
+        <item quantity="other">%d เพลง</item>
+    </plurals>
+    <string name="alarm_selected">เลือกแล้ว</string>
+    <string name="alarm_playlist_helper">เลือกเพลย์ลิสต์ที่นาฬิกาปลุกจะเล่น</string>
+    <string name="alarm_add">เพิ่มนาฬิกาปลุก</string>
+    <string name="alarm_empty">ยังไม่มีนาฬิกาปลุก เพิ่มรายการเพื่อเริ่มเล่นตามกำหนดเวลา</string>
+    <string name="alarm_disabled">ปิดอยู่</string>
+    <string name="alarm_random_enabled">สุ่ม</string>
+    <string name="alarm_random_disabled">ตามลำดับ</string>
+    <string name="alarm_next_prefix">ถัดไป: %s</string>
+    <string name="alarm_new">นาฬิกาปลุกใหม่</string>
+    <string name="alarm_edit">แก้ไขนาฬิกาปลุก</string>
+    <string name="alarm_save">บันทึก</string>
+    <string name="alarm_time_picker_value">เวลา: %s</string>
+    <string name="alarm_delete">ลบนาฬิกาปลุก</string>
+    <string name="alarm_duplicate_time_warning">มีนาฬิกาปลุกอื่นอยู่ในเวลานี้แล้ว หากทั้งสองทำงานพร้อมกัน อาจมีเพียงรายการเดียวที่เล่น</string>
+    <string name="alarm_random_song">เล่นเพลงสุ่มจากเพลย์ลิสต์</string>
+    <string name="alarm_next_trigger">ปลุกครั้งถัดไป</string>
+    <string name="alarm_not_scheduled">ไม่ได้ตั้งเวลา</string>
+    <string name="alarm_exact_permission_title">อนุญาตนาฬิกาปลุกเวลาแม่นยำ</string>
+    <string name="alarm_exact_permission_desc">ขอสิทธิ์สำหรับเวลาปลุกที่แม่นยำ ช่วยให้ทำงานได้เชื่อถือได้มากขึ้นเมื่อแอปอยู่เบื้องหลัง</string>
+    <string name="alarm_exact_permission_missing">ขาดสิทธิ์นาฬิกาปลุกเวลาแม่นยำ: นาฬิกาปลุกอาจดึงกว่ากำหนด</string>
+    <string name="alarm_battery_optimization_title">การเพิ่มประสิทธิภาพแบตเตอรี่</string>
+    <string name="alarm_battery_optimization_desc">ปิดการเพิ่มประสิทธิภาพแบตเตอรี่เพื่อให้นาฬิกาปลุกทำงานได้เชื่อถือได้มากขึ้นเมื่อแอปอยู่เบื้องหลัง</string>
+    <string name="open_settings">การตั้งค่า</string>
+    <string name="lastfm_api_not_configured">LastFM ยังไม่ได้ตั้งค่าในบิลด์นี้</string>
+
+    <!-- Player Settings -->
     <string name="disable_load_more_when_repeat_all">ปิดการโหลดเพิ่มเมื่อเปิดโหมดเล่นซ้ำทั้งหมด</string>
     <string name="disable_load_more_when_repeat_all_desc">ไม่โหลดเพลงและเนื้อหาที่คล้ายกันเพิ่มโดยอัตโนมัติเมื่อเปิดโหมดเล่นซ้ำทั้งหมด</string>
     <string name="pause_music_when_media_is_muted">หยุดเพลงเมื่อปิดเสียงสื่อ</string>
+    <string name="resume_on_bluetooth_connect">เล่นต่อเมื่อเชื่อมต่อบลูทูธ</string>
     <string name="keep_screen_on_when_player_is_expanded">เปิดหน้าจอไว้เมื่อขยายเครื่องเล่น</string>
+
     <string name="crossfade">ครอสเฟด</string>
     <string name="crossfade_desc">ครอสเฟดระหว่างเพลง</string>
     <string name="crossfade_duration">ระยะเวลาครอสเฟด</string>
@@ -177,12 +386,19 @@
     <string name="crossfade_gapless_desc">ไม่ใช้ครอสเฟดหากอัลบั้มไม่มีช่วงว่างระหว่างเพลง</string>
     <string name="crossfade_beta_title">ฟีเจอร์เบต้า</string>
     <string name="crossfade_beta_message">ครอสเฟดเป็นฟีเจอร์ใหม่และอาจมีข้อผิดพลาด หากพบปัญหา โปรดรายงานให้เราทราบ\n\nฟีเจอร์นี้จะปิดการใช้งาน audio offload เนื่องจากข้อจำกัดทางเทคนิค</string>
+    <string name="skip_fade">เบาลงเมื่อเปลี่ยนเพลง</string>
+    <string name="skip_fade_desc">เพลงถัดไปเริ่มทันที โดยเพลงก่อนหน้าจะค่อยๆ เบาลงในเบื้องหลังสั้นๆ</string>
+    <string name="skip_fade_duration">ระยะเวลาการเบาลงเมื่อเปลี่ยนเพลง</string>
+
+    <!-- Romanization Settings -->
     <string name="lyrics_romanization_cyrillic">ซีริลลิก</string>
     <string name="lyrics_romanize_title">การถอดเสียง</string>
     <string name="lyrics_romanization">การถอดเสียงเนื้อเพลง</string>
     <string name="lyrics_romanize_japanese">ถอดเสียงเนื้อเพลงภาษาญี่ปุ่น</string>
     <string name="lyrics_romanize_korean">ถอดเสียงเนื้อเพลงภาษาเกาหลี</string>
     <string name="lyrics_romanize_chinese">ถอดเสียงเนื้อเพลงภาษาจีน</string>
+    <string name="lyrics_romanize_hindi">ถอดเสียงเนื้อเพลงภาษาฮินดี</string>
+    <string name="lyrics_romanize_punjabi">ถอดเสียงเนื้อเพลงภาษาปัญจาบ</string>
     <string name="lyrics_romanize_russian">ถอดเสียงเนื้อเพลงภาษารัสเซีย</string>
     <string name="lyrics_romanize_ukrainian">ถอดเสียงเนื้อเพลงภาษายูเครน</string>
     <string name="lyrics_romanize_belarusian">ถอดเสียงเนื้อเพลงภาษาเบลารุส</string>
@@ -194,39 +410,83 @@
     <string name="line_by_line_dialog_title">คุณแน่ใจหรือไม่?</string>
     <string name="line_by_line_dialog_desc">ฟีเจอร์นี้ยังอยู่ในขั้นทดลองและอาจทำงานได้ไม่สม่ำเสมอ\n\nโดยปกติ ระบบจะตรวจจับภาษาจากทั้งเพลง แต่เมื่อเปิดตัวเลือกนี้ จะตรวจจับทีละบรรทัดแทน ซึ่งช่วยให้เพลงหลายภาษาใช้งานได้ดีขึ้น อย่างไรก็ตาม ภาษาอาจตรวจจับไม่ถูกต้องเสมอไป (เช่น หากมีเนื้อเพลงภาษายูเครนที่ไม่มีตัวอักษรเฉพาะ ระบบอาจถอดเสียงเป็นภาษารัสเซียแทน)\n\nหากคุณไม่พบปัญหา แนะนำให้ปิดตัวเลือกนี้ไว้</string>
     <string name="romanize_current_track">ถอดเสียงเพลงที่กำลังเล่น</string>
+
+    <!-- Japanese dictionary on-demand download -->
+    <string name="lyrics_romanize_japanese_dict_title">ดาวน์โหลดพจนานุกรมภาษาญี่ปุ่นหรือไม่?</string>
+    <string name="lyrics_romanize_japanese_dict_message">การแปลงเนื้อเพลงภาษาญี่ปุ่นเป็นอักษรโรมันต้องใช้พจนานุกรมภาษาญี่ปุ่น (~13 MB) ซึ่งดาวน์โหลดเพียงครั้งเดียวผ่านอินเทอร์เน็ตของคุณ</string>
+    <string name="lyrics_romanize_japanese_dict_downloading">กำลังดาวน์โหลดพจนานุกรมภาษาญี่ปุ่น… %d%%</string>
+    <string name="lyrics_romanize_japanese_dict_failed">ดาวน์โหลดไม่สำเร็จ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง</string>
+    <string name="lyrics_romanize_japanese_dict_download">ดาวน์โหลด</string>
+
+    <!-- Lyrics Offset Settings -->
     <string name="lyrics_offset">การหน่วงเวลาเนื้อเพลง</string>
+
+    <!-- Material 3 Settings Sections -->
     <string name="settings_section_ui">อินเทอร์เฟซ</string>
     <string name="settings_section_privacy">ความเป็นส่วนตัวและความปลอดภัย</string>
     <string name="settings_section_player_content">เครื่องเล่นและเนื้อหา</string>
     <string name="settings_section_storage">พื้นที่จัดเก็บและข้อมูล</string>
+    <string name="app_data_storage">ข้อมูลแอป &amp; พื้นที่จัดเก็บ</string>
+    <string name="app_management_backup">ข้อมูล &amp; พื้นที่จัดเก็บ</string>
     <string name="settings_section_system">ระบบและเกี่ยวกับแอป</string>
+    <string name="settings_section_player">การเล่น</string>
+    <string name="settings_section_content">เนื้อหา</string>
+    <string name="settings_section_ai">ปัญญาประดิษฐ์</string>
+    <string name="settings_section_integrations">การเชื่อมต่อ</string>
+    <string name="settings_section_audio">เสียง</string>
+    <string name="settings_section_behavior">พฤติกรรม</string>
+    <string name="settings_section_interface">อินเทอร์เฟซ</string>
+    <string name="settings_section_navigation">การนำทาง</string>
+    <string name="settings_section_display">การแสดงผล</string>
+    <string name="settings_section_lab">ห้องทดลอง</string>
+    <string name="settings_section_system_short">ระบบ</string>
+
+    <!-- Updater -->
     <string name="updater">ตัวอัปเดต</string>
     <string name="check_for_updates">ตรวจสอบการอัปเดตอัตโนมัติ</string>
     <string name="update_notifications">เปิดการแจ้งเตือนการอัปเดต</string>
     <string name="update_available_title">มีการอัปเดตใหม่</string>
     <string name="update_channel_name">การอัปเดตแอป</string>
     <string name="update_channel_desc">การแจ้งเตือนเกี่ยวกับเวอร์ชันใหม่</string>
+
+    <!-- Offload -->
     <string name="audio_offload">เปิดใช้งาน Audio Offload</string>
     <string name="audio_offload_description">ใช้เส้นทางเสียงแบบ offload สำหรับการเล่นเสียง การปิดใช้งานอาจทำให้ใช้พลังงานเพิ่มขึ้น แต่สามารถช่วยแก้ปัญหาการเล่นเสียงหรือการประมวลผลเสียงเพิ่มเติมได้</string>
     <string name="audio_offload_disabled_by_crossfade">ปิดใช้งานเนื่องจากเปิดครอสเฟดอยู่</string>
+
+    <!-- Varispeed -->
+    <string name="speed">ความเร็วการเล่น</string>
+    <string name="varispeed">เปิดใช้ varispeed</string>
+    <string name="varispeed_description">เชื่อมโยงระดับเสียงกับความเร็วการเล่น ทำให้เกิดเอฟเฟกต์เร่งและชะลอแบบเทป</string>
+
+    <!-- Google Cast -->
     <string name="google_cast">Google Cast</string>
     <string name="google_cast_description">เปิดใช้งานการส่งเสียงไปยัง Chromecast และอุปกรณ์ที่รองรับ Cast อื่น ๆ</string>
+
     <string name="lyrics_romanize_macedonian">ถอดเสียงเนื้อเพลงภาษามาซิโดเนีย</string>
+    <string name="lyrics_romanize_as_main">แสดงเนื้อเพลงที่ถอดเสียงเป็นหลัก</string>
+
     <string name="integrations">การเชื่อมต่อบริการ</string>
     <string name="username">ชื่อผู้ใช้</string>
     <string name="password">รหัสผ่าน</string>
+
+    <!-- Last.fm -->
     <string name="lastfm_integration">การเชื่อมต่อ Last.fm</string>
     <string name="enable_scrobbling">เปิดใช้งาน Scrobbling</string>
     <string name="lastfm_now_playing">ส่งสถานะ “กำลังเล่น”</string>
     <string name="last_fm_send_likes">ส่งสถานะถูกใจ/ยกเลิกถูกใจ</string>
     <string name="last_fm_send_likes_description">กด Love/Unlove เพลงใน Last.fm เมื่อมีการกดถูกใจ/ยกเลิกถูกใจใน Iride</string>
     <string name="logging_in">กำลังเข้าสู่ระบบ…</string>
+
     <string name="scrobbling_configuration">การตั้งค่า Scrobbling</string>
     <string name="scrobble_min_track_duration">Scrobble เพลงที่ยาวกว่า</string>
     <string name="scrobble_delay_percent">เปอร์เซ็นต์หน่วงเวลาก่อน Scrobble</string>
     <string name="scrobble_delay_minutes">หน่วงเวลาก่อน Scrobble (นาที)</string>
     <string name="hide_video_songs">ซ่อนเพลงที่เป็นวิดีโอ</string>
+    <string name="square_video_thumbnail">รูปย่อวิดีโอแบบจัตุรัส</string>
+    <string name="square_video_thumbnail_desc">ครอปรูปย่อวิดีโอให้เป็นสัดส่วนจัตุรัส</string>
     <string name="hide_youtube_shorts">ซ่อน YouTube Shorts</string>
+
     <string name="details_desc">ดูข้อมูลเพลง</string>
     <string name="edit_desc">เปลี่ยนชื่อเพลงหรือศิลปิน</string>
     <string name="start_radio_desc">สร้างสถานีจากรายการนี้</string>
@@ -238,23 +498,32 @@
     <string name="refetch_desc">ดึงข้อมูลล่าสุดจาก YouTube Music</string>
     <string name="share_desc">แชร์ลิงก์ของรายการนี้</string>
     <string name="delete_desc">ลบรายการนี้อย่างถาวร</string>
+    <string name="lyrics_edit_desc">แก้ไขข้อความเนื้อเพลงด้วยตนเอง</string>
+    <string name="lyrics_refetch_desc">ดึงเนื้อเพลงใหม่จากผู้ให้บริการ</string>
+    <string name="lyrics_search_desc">ค้นหาเนื้อเพลงตามชื่อเพลงและศิลปิน</string>
+    <string name="lyrics_copy_desc">คัดลอกเนื้อเพลงทั้งหมดไปยังคลิปบอร์ด</string>
     <string name="advanced_desc">ปรับความเร็วและคีย์เสียงของเพลง</string>
+    <string name="repeat_one">เล่นซ้ำเพลงเดียว</string>
+    <string name="repeat_one_desc">เริ่มเพลงนี้ใหม่ตลอดไป ไม่เล่นเพลงอื่น</string>
+    <string name="night_mode">โหมดกลางคืน</string>
     <string name="equalizer_desc">ปรับอีควอไลเซอร์เสียง</string>
     <string name="enable_dynamic_icon">เปิดใช้งานไอคอนไดนามิก</string>
     <string name="mini_player">มินิเพลเยอร์</string>
     <string name="pure_black_mini_player">มินิเพลเยอร์สีดำสนิท</string>
+    <string name="mini_player_background_style">สไตล์พื้นหลังมินิเพลเยอร์</string>
+    <string name="transparent">โปร่งใส</string>
+    <string name="mini_player_background_not_available">ไม่พร้อมใช้งานเมื่อปิดดีไซน์มินิเพลเยอร์ใหม่อยู่</string>
     <string name="cache_size_warning_title">เดี๋ยวก่อน!</string>
     <string name="cache_size_warning_message">คุณได้เลือกขีดจำกัดแคชที่น้อยกว่าที่แอปกำลังใช้อยู่ในขณะนี้ (%1$s) หากดำเนินการต่อ แอปอาจลบ %2$s บางส่วนที่ถูกแคชไว้เพื่อให้ตรงกับขีดจำกัดใหม่ ต้องการดำเนินการต่อหรือไม่?</string>
     <string name="cache_size_warning_confirm">ดำเนินการต่อ</string>
-    <string name="lyrics_animation_style">รูปแบบแอนิเมชันแบบคำต่อคำ</string>
+
+    <string name="lyrics_animation_style_title">สไตล์แอนิเมชันระดับคำ</string>
     <string name="none">ไม่มี</string>
     <string name="fade">จางเข้า</string>
     <string name="glow">เรืองแสง</string>
     <string name="slide">เลื่อนเข้า</string>
     <string name="karaoke">คาราโอเกะ</string>
     <string name="apple_music_style">สไตล์ Apple Music</string>
-    <string name="lyrics_text_size">ขนาดตัวอักษรเนื้อเพลง</string>
-    <string name="lyrics_line_spacing">ระยะห่างบรรทัดเนื้อเพลง</string>
     <string name="album_art_for">ปกอัลบั้มของ %s</string>
     <string name="wrapped_total_albums_title">คุณฟังไปทั้งหมด</string>
     <string name="wrapped_total_albums_subtitle">อัลบั้มที่ไม่ซ้ำกัน</string>
@@ -290,7 +559,10 @@
     <string name="wrapped_playlist_title">Wrapped %s ของคุณ</string>
     <string name="wrapped_create_playlist">สร้างเพลย์ลิสต์</string>
     <string name="wrapped_playlist_saved">บันทึกเพลย์ลิสต์แล้ว</string>
-    <plurals name="profiles_count">
+
+    <!-- Equalizer UI -->
+        <plurals name="profiles_count">
+        <item quantity="one">1 โปรไฟล์</item>
         <item quantity="other">%d โปรไฟล์</item>
     </plurals>
     <string name="equalizer_header">อีควอไลเซอร์</string>
@@ -298,8 +570,9 @@
     <string name="import_profile">นำเข้าโปรไฟล์</string>
     <string name="system_equalizer">อีควอไลเซอร์ของระบบ</string>
     <string name="eq_disabled">ปิดใช้งาน</string>
-    <plurals name="band_count">
-        <item quantity="other">%d แบนด์</item>
+        <plurals name="band_count">
+        <item quantity="one">1 แถบความถี่</item>
+        <item quantity="other">%d แถบความถี่</item>
     </plurals>
     <string name="delete_profile_desc">ลบโปรไฟล์</string>
     <string name="delete_profile_confirmation">คุณแน่ใจหรือไม่ว่าต้องการลบ %1$s? การดำเนินการนี้ไม่สามารถย้อนกลับได้</string>
@@ -308,6 +581,44 @@
     <string name="import_error_title">ข้อผิดพลาดในการนำเข้า</string>
     <string name="error_title">ข้อผิดพลาด</string>
     <string name="error_eq_apply_failed">ไม่สามารถใช้โปรไฟล์ EQ : %1$s</string>
+
+    <!-- Parametric equalizer editor -->
+    <string name="eq_editor_subtitle">Shape the sound for every output device</string>
+    <string name="eq_master_enable">Enable equalizer</string>
+    <string name="eq_output_source">Output</string>
+    <string name="eq_device_speaker">Phone speaker</string>
+    <string name="eq_device_wired">Wired headphones</string>
+    <string name="eq_device_unknown">Audio output</string>
+    <string name="eq_save_for_device">Save for this device</string>
+    <string name="eq_saved_for_device">Linked to %1$s</string>
+    <string name="eq_manage_devices">Saved devices</string>
+    <string name="eq_no_saved_devices">No linked devices yet</string>
+    <string name="eq_unbind_device">Remove link</string>
+    <string name="eq_unbind_done">Device link removed</string>
+    <string name="eq_preset_balanced">Balanced</string>
+    <string name="eq_preset_more_bass">More bass</string>
+    <string name="eq_preset_more_treble">More treble</string>
+    <string name="eq_preset_voice">Vocal</string>
+    <string name="eq_selected_band_label">Band %1$d · %2$s · Q %3$s</string>
+    <string name="eq_frequency">Frequency</string>
+    <string name="eq_q_factor">Q</string>
+    <string name="eq_bass_enhance">Bass enhance</string>
+    <string name="eq_bass_enhance_desc">Low-shelf boost around 90 Hz</string>
+    <string name="eq_transient_title">Duration</string>
+    <string name="eq_transient_desc">Full bass only on short transients: sustained low frequencies are softened. Great for low-quality devices that need punchy bass without constant rumble.</string>
+    <string name="eq_advanced_options">Advanced options</string>
+    <string name="eq_exact_gain_title">Exact gain</string>
+    <string name="eq_reset_band">Reset band</string>
+    <string name="eq_profile_saved">Equalizer saved</string>
+    <string name="queue_empty">Queue is empty</string>
+    <string name="queue_history_title">History</string>
+    <string name="queue_radio_section_title">Radio</string>
+    <string name="queue_radio_section_subtitle">These songs come from the radio</string>
+
+    <!-- Hardcoded strings -->
+    <string name="found_in_settings_content">ดูได้ที่ การตั้งค่า &gt; เนื้อหา</string>
+    <string name="your_daily_discover">สิ่งที่ค้นพบประจำวันของคุณ</string>
+    <string name="plays">ครั้ง</string>
     <string name="casting_to">กำลังแคสต์ไปยัง %s</string>
     <string name="progress_percent">ความคืบหน้า %s%%</string>
     <string name="listening_to_metrolist">กำลังฟังผ่าน Iride</string>
@@ -317,7 +628,16 @@
     <string name="copied_artist">คัดลอกชื่อศิลปินแล้ว</string>
     <string name="error_playing">เกิดข้อผิดพลาดในการเล่น</string>
     <string name="failed_to_parse_proxy">ไม่สามารถอ่านค่า Proxy URL ได้</string>
+
+    <!-- Playback errors -->
     <string name="error_playback_failed">การเล่นล้มเหลว</string>
+    <string name="error_episode_save">เกิดข้อผิดพลาดในการบันทึกตอน</string>
+    <string name="error_episode_remove">เกิดข้อผิดพลาดในการลบตอน</string>
+    <string name="error_podcast_subscribe">เกิดข้อผิดพลาดในการติดตามพอดแคสต์</string>
+    <string name="error_podcast_unsubscribe">เกิดข้อผิดพลาดในการเลิกติดตามพอดแคสต์</string>
+    <string name="view_channel">ดูช่อง</string>
+
+    <!-- Widget strings -->
     <string name="album_art">ปกอัลบั้ม</string>
     <string name="no_song_playing">ไม่มีเพลงกำลังเล่น</string>
     <string name="tap_to_open">แตะเพื่อเปิด Iride</string>
@@ -331,6 +651,28 @@
     <string name="turntable_widget_description">วิดเจ็ตเพลงแบบวงกลม พร้อมปุ่มเล่นและถูกใจ</string>
     <string name="widget_music_player">เครื่องเล่นเพลง</string>
     <string name="widget_turntable">เทิร์นเทเบิล</string>
+
+    <!-- Music Recognizer Widget strings -->
+    <string name="widget_recognizer_name">ระบบค้นหาเพลง</string>
+    <string name="widget_recognizer_description">ระบุชื่อเพลงที่กำลังเล่นรอบตัวคุณได้จากหน้าจอหลักโดยตรง</string>
+    <string name="widget_recognizer_tap_to_search">แตะเพื่อค้นหาเพลง</string>
+    <string name="widget_recognizer_listening">กำลังฟัง…</string>
+    <string name="widget_recognizer_processing">กำลังระบุเพลง…</string>
+    <string name="widget_recognizer_no_match">ไม่พบเพลงที่ตรงกัน ลองใหม่อีกครั้ง</string>
+    <string name="widget_recognizer_error">การค้นหาเพลงล้มเหลว</string>
+    <string name="widget_recognizer_error_generic">เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง</string>
+    <string name="widget_recognizer_unknown_song">ไม่ทราบชื่อเพลง</string>
+    <string name="widget_recognizer_unknown_artist">ไม่ทราบชื่อศิลปิน</string>
+    <string name="widget_recognizer_mic_desc">ค้นหาเพลง</string>
+    <string name="widget_recognizer_channel_name">การค้นหาเพลง</string>
+    <string name="widget_recognizer_channel_desc">แสดงการแจ้งเตือนขณะกำลังค้นหาเพลงจากวิดเจ็ต</string>
+    <string name="widget_recognizer_notification_text">กำลังบันทึกเสียงเพื่อระบุเพลง…</string>
+
+    <!-- Player Client Settings -->
+
+    <!-- Decryption Library Settings -->
+
+    <!-- Listen Together -->
     <string name="together">ร่วมกัน</string>
     <string name="listen_together">ฟังเพลงร่วมกัน</string>
     <string name="listen_together_server_url">URL เซิร์ฟเวอร์</string>
@@ -358,6 +700,8 @@
     <string name="listen_together_no_logs">ยังไม่มีบันทึกการทำงาน</string>
     <string name="listen_together_auto_approval_joins">อนุมัติคำขอเข้าร่วมอัตโนมัติ</string>
     <string name="listen_together_auto_approval_joins_desc">อนุมัติคำขอเข้าร่วมโดยอัตโนมัติ แทนการตรวจสอบด้วยตนเอง</string>
+    <string name="listen_together_auto_approval_suggestions">อนุมัติคำแนะนำเพลงอัตโนมัติ</string>
+    <string name="listen_together_auto_approval_suggestions_desc">อนุมัติและเพิ่มเพลงที่ผู้เข้าร่วมแนะนำเข้าสู่คิวโดยอัตโนมัติ</string>
     <string name="listen_together_sync_volume">ซิงก์ระดับเสียงกับโฮสต์</string>
     <string name="listen_together_sync_volume_desc">ผู้เข้าร่วมจะใช้ระดับเสียงเดียวกับโฮสต์</string>
     <string name="listen_together_in_top_bar">แสดง Listen Together บนแถบด้านบน</string>
@@ -390,6 +734,8 @@
     <string name="reject">ปฏิเสธ</string>
     <string name="clear">ล้าง</string>
     <string name="copy">คัดลอก</string>
+    <string name="copy_all_lyrics">คัดลอกเนื้อเพลงทั้งหมด</string>
+    <string name="change">เปลี่ยน</string>
     <string name="copied_to_clipboard">คัดลอกไปยังคลิปบอร์ดแล้ว</string>
     <string name="not_set">ยังไม่ได้ตั้งค่า</string>
     <string name="hosting_room">กำลังเป็นโฮสต์</string>
@@ -418,6 +764,8 @@
     <string name="listen_together_no_blocked_users">ไม่มีผู้ใช้ที่ถูกบล็อก</string>
     <string name="unblock">เลิกบล็อก</string>
     <string name="user_blocked_by_host">ผู้ใช้ถูกบล็อกโดยโฮสต์</string>
+
+    <!-- AI Lyrics Translation -->
     <string name="ai_lyrics_translation">แปลเนื้อเพลงด้วย AI</string>
     <string name="ai_translating_lyrics">กำลังแปลเนื้อเพลง...</string>
     <string name="ai_lyrics_translated">แปลเนื้อเพลงแล้ว</string>
@@ -429,7 +777,9 @@
     <string name="ai_target_language">ภาษาปลายทาง</string>
     <string name="ai_setup_guide">API Credentials</string>
     <string name="ai_translation_literal">การแปลภาษา</string>
+    <string name="ai_translation_literal_desc">แปลความหมายเป็นภาษาปลายทาง</string>
     <string name="ai_translation_transcribed">การถอดเสียง</string>
+    <string name="ai_translation_transcribed_desc">แปลงเสียงอ่านเป็นอักษรของภาษาปลายทาง</string>
     <string name="ai_api_key_required">จำเป็นต้องใช้ API Key</string>
     <string name="ai_error_api_key_required">จำเป็นต้องระบุ API Key</string>
     <string name="ai_error_no_lyrics">ไม่มีเนื้อเพลงให้แปล</string>
@@ -438,6 +788,26 @@
     <string name="ai_error_unexpected">ผลลัพธ์การแปลไม่ถูกต้องตามที่คาดไว้</string>
     <string name="ai_error_unknown">เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ</string>
     <string name="ai_error_translation_failed">การแปลล้มเหลว</string>
+    <string name="ai_provider_help">รับ API Key</string>
+    <string name="ai_provider_openrouter_help">ไปที่ https://openrouter.ai เพื่อดูโมเดลแบบฟรีและแบบชำระเงิน</string>
+    <string name="ai_provider_openai_help">ไปที่ https://platform.openai.com/api-keys</string>
+    <string name="ai_provider_claude_help">ไปที่ https://console.anthropic.com/settings/keys</string>
+    <string name="ai_provider_gemini_help">ไปที่ https://aistudio.google.com/apikey</string>
+    <string name="ai_provider_perplexity_help">ไปที่ https://perplexity.ai/settings/api</string>
+    <string name="ai_provider_xai_help">ไปที่ https://console.x.ai</string>
+    <string name="ai_provider_deepl_help">ไปที่ https://deepl.com/pro-api เพื่อรับ API Key แบบฟรีหรือแบบชำระเงิน</string>
+    <string name="ai_provider_mistral_help">เยี่ยมชม https://console.mistral.ai/api-keys</string>
+    <string name="ai_deepl_formality">ระดับความเป็นทางการ</string>
+    <string name="ai_deepl_formality_default">ค่าเริ่มต้น</string>
+    <string name="ai_deepl_formality_more">ทางการมากขึ้น</string>
+    <string name="ai_deepl_formality_less">ทางการน้อยลง</string>
+    <string name="ai_system_prompt">พรอมต์ระบบ</string>
+    <string name="ai_system_prompt_desc">คำแนะนำเฉพาะที่ส่งให้โมเดล AI ปล่อยว่างไว้เพื่อใช้พรอมต์เริ่มต้น</string>
+    <string name="ai_system_prompt_placeholder">ใช้ {lineCount} เป็นตัวแทนของจำนวนบรรทัดที่จะแปล</string>
+    <string name="ai_system_prompt_default">ค่าเริ่มต้น</string>
+    <string name="ai_system_prompt_reset">รีเซ็ตเป็นค่าเริ่มต้น</string>
+
+    <!-- Crash Handler -->
     <string name="crash_title">แอปหยุดทำงาน</string>
     <string name="crash_description">เกิดข้อผิดพลาดที่ไม่คาดคิด โปรดแชร์รายงานข้อขัดข้องเพื่อช่วยให้เราแก้ไขปัญหา</string>
     <string name="crash_share_logs">แชร์บันทึกข้อขัดข้อง</string>
@@ -445,6 +815,8 @@
     <string name="crash_report_subject">รายงานข้อขัดข้องของ Iride</string>
     <string name="crash_close">ปิด</string>
     <string name="crash_no_log">ไม่มีบันทึกข้อขัดข้อง</string>
+
+    <!-- Theme Palette Names -->
     <string name="palette_dynamic">ไดนามิก</string>
     <string name="palette_crimson">คริมสัน</string>
     <string name="palette_rose">โรส</string>
@@ -465,6 +837,13 @@
     <string name="palette_brown">น้ำตาล</string>
     <string name="palette_grey">เทา</string>
     <string name="palette_blue_grey">เทาน้ำเงิน</string>
+
+    <!-- Theme Mode Selector -->
+    <string name="theme_mode_light">สว่าง</string>
+    <string name="theme_mode_dark">มืด</string>
+    <string name="theme_mode_system">ระบบ</string>
+
+    <!-- Theme Content Descriptions -->
     <string name="cd_back">ย้อนกลับ</string>
     <string name="cd_pure_black_mode">โหมดดำสนิท</string>
     <string name="cd_light_mode">โหมดสว่าง</string>
@@ -472,8 +851,19 @@
     <string name="cd_system_mode">ตามค่าระบบ</string>
     <string name="cd_palette_item">ชุดสี %1$s</string>
     <string name="play_all">เล่นทั้งหมด</string>
+    <string name="mp3_panel_lyrics">เนื้อเพลง</string>
+    <string name="mp3_panel_up_next">ถัดไป</string>
+
+    <!-- Library Albums screen sections -->
+    <string name="continue_listening">ฟังต่อ</string>
+    <string name="remove_from_continue_listening">ลบออกจากรายการฟังต่อ</string>
+    <string name="favorite_albums">รายการโปรด</string>
+    <string name="remove_suggested_follow_artist">ลบคำแนะนำ</string>
+
     <string name="enable_high_refresh_rate">เปิดใช้งานรีเฟรชเรตสูง</string>
     <string name="enable_high_refresh_rate_desc">บังคับให้หน้าจอทำงานที่อัตรารีเฟรชสูงสุดที่รองรับ (เช่น 120Hz)</string>
+
+    <!-- Music Recognition -->
     <string name="recognize_music">ค้นหาเพลงจากเสียง</string>
     <string name="tap_to_recognize">แตะเพื่อค้นหาเพลง</string>
     <string name="listening">กำลังฟัง…</string>
@@ -481,12 +871,23 @@
     <string name="no_match_found">ไม่พบเพลงที่ตรงกัน</string>
     <string name="recognition_error">เกิดข้อผิดพลาดในการรู้จำเพลง</string>
     <string name="try_again">ลองอีกครั้ง</string>
+    <string name="refresh">รีเฟรช</string>
     <string name="recognition_history">ประวัติการค้นหาเพลง</string>
     <string name="clear_recognition_history">ล้างประวัติการค้นหาเพลง</string>
     <string name="clear_recognition_history_confirm">คุณแน่ใจหรือไม่ว่าต้องการล้างประวัติการค้นหาเพลงทั้งหมด?</string>
     <string name="delete_from_history">ออก</string>
     <string name="re_listen">ฟังอีกครั้ง</string>
     <string name="play_on_app">เล่นบน Iride</string>
+    <string name="qs_tile_music_recognizer">ระบุเพลง</string>
+    <string name="recognition_notification_channel_name">การระบุเพลง</string>
+    <string name="recognition_notification_channel_desc">แสดงการแจ้งเตือนขณะระบุเพลงจากการตั้งค่าด่วน</string>
+    <string name="recognition_notification_listening">กำลังฟังเพลง…</string>
+    <string name="recognition_notification_processing">กำลังระบุ…</string>
+    <string name="recognition_notification_no_match">ไม่พบผลลัพธ์ที่ตรงกัน</string>
+    <string name="recognition_notification_failed">การระบุเพลงล้มเหลว</string>
+    <string name="listen_on_metrolist">ฟังบน Iride</string>
+
+    <!-- CSV Import Strings -->
     <string name="map_csv_columns">จับคู่คอลัมน์ CSV</string>
     <string name="first_row_is_header">แถวแรกเป็นหัวตาราง</string>
     <string name="artist_name_column">คอลัมน์ชื่อศิลปิน</string>
@@ -494,33 +895,21 @@
     <string name="youtube_url_column">คอลัมน์ YouTube URL (ไม่บังคับ)</string>
     <string name="continue_action">ดำเนินการต่อ</string>
     <string name="importing_csv">กำลังนำเข้าไฟล์ CSV</string>
+    <string name="importing_playlist">กำลังนำเข้าเพลย์ลิสต์</string>
+
     <string name="recently_converted">แปลงล่าสุด</string>
     <string name="column_label">คอลัมน์ %d</string>
-    <string name="prevent_duplicate_tracks_in_queue">ป้องกันแทร็กซ้ำในคิว</string>
-    <string name="prevent_duplicate_tracks_in_queue_desc">เมื่อเพิ่มแทร็กลงในคิว หากมีอยู่แล้วให้ลบออกจากตำแหน่งเดิม</string>
-    <string name="ai_translation_literal_desc">แปลความหมายเป็นภาษาปลายทาง</string>
-    <string name="ai_translation_transcribed_desc">แปลงเสียงอ่านเป็นอักษรของภาษาปลายทาง</string>
-    <string name="ai_provider_help">รับ API Key</string>
-    <string name="ai_provider_openrouter_help">ไปที่ https://openrouter.ai เพื่อดูโมเดลแบบฟรีและแบบชำระเงิน</string>
-    <string name="ai_provider_openai_help">ไปที่ https://platform.openai.com/api-keys</string>
-    <string name="ai_provider_claude_help">ไปที่ https://console.anthropic.com/settings/keys</string>
-    <string name="ai_provider_gemini_help">ไปที่ https://aistudio.google.com/apikey</string>
-    <string name="ai_provider_perplexity_help">ไปที่ https://perplexity.ai/settings/api</string>
-    <string name="ai_provider_xai_help">ไปที่ https://console.x.ai</string>
-    <string name="ai_provider_deepl_help">ไปที่ https://deepl.com/pro-api เพื่อรับ API Key แบบฟรีหรือแบบชำระเงิน</string>
-    <string name="ai_deepl_formality">ระดับความเป็นทางการ</string>
-    <string name="ai_deepl_formality_default">ค่าเริ่มต้น</string>
-    <string name="ai_deepl_formality_more">ทางการมากขึ้น</string>
-    <string name="ai_deepl_formality_less">ทางการน้อยลง</string>
+
+    <!-- Discord Integration -->
     <string name="discord_status">สถานะ</string>
     <string name="discord_status_online">ออนไลน์</string>
+    <string name="discord_status_idle">ไม่อยู่</string>
     <string name="discord_status_dnd">ห้ามรบกวน</string>
     <string name="discord_buttons">ปุ่ม</string>
     <string name="discord_button_1">ปุ่มที่ 1</string>
     <string name="discord_button_2">ปุ่มที่ 2</string>
     <string name="login_successful">เข้าสู่ระบบสำเร็จ!</string>
     <string name="discord_information_warning">ฟีเจอร์นี้ใช้ไลบรารี KizzyRPC เพื่อเชื่อมต่อกับ Discord Gateway และตั้งค่า Rich Presence ของคุณ แม้ยังไม่มีรายงานว่าบัญชีถูกระงับจากการใช้งานลักษณะนี้ แต่วิธีนี้ไม่ได้รับการสนับสนุนอย่างเป็นทางการจาก Discord และอาจเข้าข่ายละเมิดข้อกำหนดการให้บริการ โทเคนของคุณจะถูกดึงและใช้งานภายในเครื่องเท่านั้น และจะไม่ถูกส่งไปยังเซิร์ฟเวอร์ของบุคคลที่สาม โปรดพิจารณาและตัดสินใจใช้งานด้วยความระมัดระวัง</string>
-    <string name="discord_status_idle">ไม่อยู่</string>
     <string name="discord_activity_type">ประเภทกิจกรรม</string>
     <string name="discord_activity_playing">กำลังเล่น</string>
     <string name="discord_activity_listening">กำลังฟัง</string>
@@ -537,69 +926,45 @@
     <string name="discord_activity_name_description">กำหนดชื่อกิจกรรมเอง (เว้นว่างเพื่อใช้ค่าเริ่มต้น)</string>
     <string name="discord_advanced_mode">โหมดขั้นสูง</string>
     <string name="discord_advanced_mode_description">แสดงตัวเลือกการปรับแต่งเพิ่มเติมสำหรับ Rich Presence</string>
-    <string name="player_background_solid">สีทึบ</string>
-    <string name="resume_on_bluetooth_connect">เล่นต่อเมื่อเชื่อมต่อบลูทูธ</string>
-    <string name="lyrics_romanize_hindi">ถอดเสียงเนื้อเพลงภาษาฮินดี</string>
-    <string name="lyrics_romanize_punjabi">ถอดเสียงเนื้อเพลงภาษาปัญจาบ</string>
-    <string name="lyrics_romanize_as_main">แสดงเนื้อเพลงที่ถอดเสียงเป็นหลัก</string>
-    <string name="display_density">ความหนาแน่นการแสดงผล</string>
-    <string name="restart">เริ่มต้นใหม่</string>
-    <string name="restart_required">ต้องรีสตาร์ท</string>
-    <string name="density_restart_message">การเปลี่ยนความหนาแน่นของหน้าจอจะมีผลหลังจากรีสตาร์ทแอป คุณต้องการรีสตาร์ทตอนนี้หรือไม่?</string>
-    <string name="enable_lrclib_desc">ฐานข้อมูลเนื้อเพลงแบบซิงค์ที่ขับเคลื่อนโดยชุมชนผู้ใช้</string>
-    <string name="enable_kugou_desc">ดึงเนื้อเพลงจาก KuGou แพลตฟอร์มเพลงยอดนิยมของจีน</string>
-    <string name="youtube_music_lyrics_note">หมายเหตุ: เนื้อเพลงจาก YouTube Music จะแสดงโดยอัตโนมัติเมื่อไม่พบเนื้อเพลงจากแหล่งอื่น โดยทั่วไปเนื้อเพลงจาก YTM มักจะไม่ซิงค์กับเพลง</string>
-    <string name="enable_lyricsplus">เปิดใช้งาน LyricsPlus</string>
-    <string name="enable_lyricsplus_desc">เนื้อเพลงแบบซิงค์จากหลายแหล่ง</string>
-    <string name="lyrics_provider_selection">การเลือกผู้ให้บริการเนื้อเพลง</string>
-    <string name="lyrics_provider_selection_desc">เลือกแหล่งที่มาของเนื้อเพลงที่ต้องการเปิดใช้งาน</string>
-    <string name="lyrics_provider_priority">ลำดับความสำคัญของแหล่งเนื้อเพลง</string>
-    <string name="lyrics_provider_priority_desc">ลากเพื่อจัดเรียงลำดับผู้ให้บริการตามความต้องการ ตำแหน่งที่อยู่สูงกว่าจะมีลำดับความสำคัญมากกว่า</string>
-    <string name="changelog_empty">ยังไม่มีบันทึกการเปลี่ยนแปลง</string>
-    <string name="github_releases_url">https://github.com/IrideGroup/Iride/releases</string>
-    <string name="list_bullet">•</string>
-    <string name="view_on_github">ดูบน GitHub</string>
-    <string name="current_version">เวอร์ชันปัจจุบัน</string>
-    <string name="version_format">เวอร์ชัน: %s</string>
-    <string name="update_settings">การตั้งค่าการอัปเดต</string>
-    <string name="check_for_updates_title">ตรวจสอบการอัปเดต</string>
-    <string name="checking_for_updates">กำลังตรวจสอบการอัปเดต…</string>
-    <string name="latest_version_format">เวอร์ชันล่าสุด: %s</string>
-    <string name="check_for_updates_button">ตรวจสอบการอัปเดต</string>
-    <string name="hide_changelog">ซ่อนบันทึกการเปลี่ยนแปลง</string>
-    <string name="view_changelog">ดูบันทึกการเปลี่ยนแปลง</string>
-    <string name="failed_to_check_updates">ไม่สามารถตรวจสอบการอัปเดต: %s</string>
-    <string name="set_as_default">ตั้งเป็นค่าเริ่มต้น</string>
-    <string name="sleep_timer_default_set">ตั้งค่าเวลาปิดเพลงอัตโนมัติเริ่มต้นเป็น %d นาที</string>
-    <string name="found_in_settings_content">ดูได้ที่ การตั้งค่า &gt; เนื้อหา</string>
-    <string name="plays">ครั้ง</string>
-    <string name="error_episode_save">เกิดข้อผิดพลาดในการบันทึกตอน</string>
-    <string name="error_episode_remove">เกิดข้อผิดพลาดในการลบตอน</string>
-    <string name="error_podcast_subscribe">เกิดข้อผิดพลาดในการติดตามพอดแคสต์</string>
-    <string name="error_podcast_unsubscribe">เกิดข้อผิดพลาดในการเลิกติดตามพอดแคสต์</string>
-    <string name="listen_together_auto_approval_suggestions">อนุมัติคำแนะนำเพลงอัตโนมัติ</string>
-    <string name="listen_together_auto_approval_suggestions_desc">อนุมัติและเพิ่มเพลงที่ผู้เข้าร่วมแนะนำเข้าสู่คิวโดยอัตโนมัติ</string>
-    <string name="importing_playlist">กำลังนำเข้าเพลย์ลิสต์</string>
+    <string name="enable_advanced_settings">เปิดใช้การตั้งค่าขั้นสูง</string>
+    <string name="disable_advanced_settings">ปิดใช้การตั้งค่าขั้นสูง</string>
     <string name="speed_dial">ปุ่มลัด</string>
     <string name="pin_to_speed_dial">ปักหมุดไว้ในปุ่มลัด</string>
     <string name="unpin_from_speed_dial">เอาหมุดออกจากปุ่มลัด</string>
     <string name="randomize_home_order">สุ่มลำดับหน้าแรก</string>
     <string name="randomize_home_order_desc">สุ่มจัดเรียงส่วนต่าง ๆ ในหน้าแรกใหม่ตามลำดับความสำคัญแบบถ่วงน้ำหนัก</string>
+    <string name="hero_carousel_title">แบนเนอร์หมุนเวียนหลัก</string>
+    <string name="hero_carousel_desc">แบนเนอร์หมุนเวียนที่แสดงผลงานใหม่และสิ่งที่คัดสำหรับคุณ</string>
+
+    <!-- Smart boot -->
+    <string name="smart_boot">การเริ่มต้นอย่างชาญฉลาด</string>
+    <string name="smart_boot_desc">เริ่มต้นแอปเร็วขึ้น: ส่วนแนะนำโหลดทันที แต่ละส่วนคงตำแหน่งเดิมระหว่างโหลด และดาวน์โหลดซ้ำน้อยลง ปิดเพื่อกลับไปใช้พฤติกรรมเดิม (รีสตาร์ทเพื่อให้มีผลเต็มที่)</string>
+
+    <!-- Daily Discover -->
     <string name="daily_discover_sounds_like">ฟังดูคล้ายกับ %1$s</string>
     <string name="daily_discover_because_you_listen_to">เพราะคุณฟัง %1$s</string>
     <string name="daily_discover_similar_to">คล้ายกับ %1$s</string>
     <string name="daily_discover_based_on">อิงจาก %1$s</string>
     <string name="daily_discover_for_fans_of">สำหรับแฟน ๆ ของ %1$s</string>
     <string name="from_the_community">จากชุมชนผู้ใช้</string>
+
+    <!-- Logout dialog -->
     <string name="logout_dialog_title">เก็บข้อมูลคลังเพลงไว้หรือไม่?</string>
     <string name="logout_dialog_message">คุณต้องการเก็บเพลย์ลิสต์และข้อมูลคลังเพลงไว้หรือไม่? เพลงที่ดาวน์โหลดไว้จะยังคงอยู่ไม่ว่าคุณจะเลือกแบบใด</string>
     <string name="logout_keep">เก็บไว้</string>
     <string name="logout_clear">ล้างข้อมูล</string>
+
+    <!-- Credits / About Screen -->
     <string name="credits_lead_developer">หัวหน้านักพัฒนา</string>
+    <string name="about_creator_role">ผู้สร้าง Iride</string>
+    <string name="about_release_badge">เวอร์ชันแรกเร็วๆ นี้</string>
+    <string name="credits_special_thanks">ขอขอบคุณเป็นพิเศษ</string>
     <string name="credits_collaborator">ผู้ร่วมพัฒนา</string>
     <string name="credits_collaborators_section">ผู้ร่วมพัฒนา</string>
     <string name="credits_license_name">GNU General Public License v3.0</string>
     <string name="credits_license_desc">ซอฟต์แวร์โอเพนซอร์สฟรี คุณสามารถใช้งาน ศึกษา แจกจ่าย และพัฒนาเพิ่มเติมได้</string>
+    <string name="credits_donations">การบริจาค</string>
+    <string name="credits_donations_desc">สนับสนุนโปรเจกต์บน Ko-fi</string>
     <string name="credits_discord">เซิร์ฟเวอร์ Discord</string>
     <string name="credits_telegram">ช่อง Telegram</string>
     <string name="credits_website">เว็บไซต์</string>
@@ -614,6 +979,8 @@
     <string name="wanna_play_favorite_song">อยากเปิดเพลงโปรดของพวกเขาไหม?</string>
     <string name="yeah">ใช่เลย</string>
     <string name="stands_with_palestine">โปรเจกต์นี้ขอยืนหยัดเคียงข้างปาเลสไตน์ 🇵🇸</string>
+
+    <!-- Podcasts -->
     <string name="filter_podcasts">พอดแคสต์</string>
     <string name="view_podcast">ดูพอดแคสต์</string>
     <string name="podcast_channels">ช่องพอดแคสต์</string>
@@ -625,58 +992,32 @@
     <string name="save_episode_for_later_desc">เพิ่มลงในเพลย์ลิสต์ “ฟังทีหลัง”</string>
     <string name="remove_episode_from_saved">นำออกจากรายการที่บันทึกไว้</string>
     <string name="subscribe_to_podcast">บันทึกพอดแคสต์ไว้ในคลัง</string>
-    <plurals name="n_episode">
+        <plurals name="n_episode">
         <item quantity="other">%d ตอน</item>
     </plurals>
+    <string name="filter_episodes">ตอน</string>
+    <string name="filter_profiles">โปรไฟล์</string>
+    <string name="filter_smart_search">ค้นหาอัจฉริยะ</string>
+    <string name="filter_channels">ช่อง</string>
+    <string name="auto_playlist">เพลย์ลิสต์อัตโนมัติ</string>
+    <string name="downloaded_episodes">ตอนที่ดาวน์โหลดแล้ว</string>
+    <string name="no_subscribed_channels">ยังไม่มีช่องที่ติดตาม</string>
+    <string name="no_downloaded_episodes">ยังไม่มีตอนที่ดาวน์โหลด</string>
+        <plurals name="n_channel">
+        <item quantity="other">%d ช่อง</item>
+    </plurals>
+
+    <!-- Restore confirmation dialog -->
     <string name="restore_confirm_title">กู้คืนข้อมูลจากแบ็กอัป?</string>
     <string name="restore_confirm_message">การดำเนินการนี้จะกู้คืนข้อมูลแอปจากไฟล์แบ็กอัป</string>
     <string name="restore_account_warning">หลังการกู้คืน คุณจะต้องเข้าสู่ระบบอีกครั้ง บัญชีต่อไปนี้จะถูกออกจากระบบ:</string>
     <string name="restore">กู้คืน</string>
     <string name="checking_previous_account">กำลังตรวจสอบบัญชีเดิม…</string>
     <string name="no_account_found">ไม่พบบัญชี</string>
-    <string name="widget_recognizer_name">ระบบค้นหาเพลง</string>
-    <string name="widget_recognizer_description">ระบุชื่อเพลงที่กำลังเล่นรอบตัวคุณได้จากหน้าจอหลักโดยตรง</string>
-    <string name="widget_recognizer_tap_to_search">แตะเพื่อค้นหาเพลง</string>
-    <string name="widget_recognizer_listening">กำลังฟัง…</string>
-    <string name="widget_recognizer_processing">กำลังระบุเพลง…</string>
-    <string name="widget_recognizer_no_match">ไม่พบเพลงที่ตรงกัน ลองใหม่อีกครั้ง</string>
-    <string name="widget_recognizer_error">การค้นหาเพลงล้มเหลว</string>
-    <string name="widget_recognizer_error_generic">เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง</string>
-    <string name="widget_recognizer_unknown_song">ไม่ทราบชื่อเพลง</string>
-    <string name="widget_recognizer_unknown_artist">ไม่ทราบชื่อศิลปิน</string>
-    <string name="widget_recognizer_mic_desc">ค้นหาเพลง</string>
-    <string name="widget_recognizer_channel_name">การค้นหาเพลง</string>
-    <string name="widget_recognizer_channel_desc">แสดงการแจ้งเตือนขณะกำลังค้นหาเพลงจากวิดเจ็ต</string>
-    <string name="widget_recognizer_notification_text">กำลังบันทึกเสียงเพื่อระบุเพลง…</string>
-    <string name="filter_episodes">ตอน</string>
-    <string name="filter_channels">ช่อง</string>
-    <string name="auto_playlist">เพลย์ลิสต์อัตโนมัติ</string>
-    <string name="downloaded_episodes">ตอนที่ดาวน์โหลดแล้ว</string>
-    <string name="no_subscribed_channels">ยังไม่มีช่องที่ติดตาม</string>
-    <string name="no_downloaded_episodes">ยังไม่มีตอนที่ดาวน์โหลด</string>
-    <plurals name="n_channel">
-        <item quantity="other">%d ช่อง</item>
-    </plurals>
-    <string name="view_channel">ดูช่อง</string>
-    <string name="filter_profiles">โปรไฟล์</string>
-    <string name="enable_automatic_sleeptimer">เปิดตัวตั้งเวลาปิดอัตโนมัติ</string>
-    <string name="sleeptimer_description">เปิดใช้งานตัวตั้งเวลาปิดอัตโนมัติด้วยค่าเริ่มต้นตามเวลาที่กำหนดเอง</string>
-    <string name="sleep_timer_repeat_description">กำหนดวันและเวลาที่ต้องการให้ตัวตั้งเวลาปิดทำงานอัตโนมัติ</string>
-    <string name="sleep_timer_repeat">ทำซ้ำ</string>
-    <string name="sleep_timer_daily">ทุกวัน</string>
-    <string name="sleep_timer_weekdays">วันจันทร์–ศุกร์</string>
-    <string name="sleep_timer_weekdays_weekends">วันธรรมดา / วันหยุดสุดสัปดาห์</string>
-    <string name="sleep_timer_weekends">วันหยุดสุดสัปดาห์ (เสาร์–อาทิตย์)</string>
-    <string name="sleep_timer_custom">กำหนดเอง</string>
-    <string name="sleep_timer_start_time">เวลาเริ่มต้น</string>
-    <string name="sleep_timer_end_time">เวลาสิ้นสุด</string>
-    <string name="sleep_timer_monday">วันจันทร์</string>
-    <string name="sleep_timer_tuesday">วันอังคาร</string>
-    <string name="sleep_timer_wednesday">วันพุธ</string>
-    <string name="sleep_timer_thursday">วันพฤหัสบดี</string>
-    <string name="sleep_timer_friday">วันศุกร์</string>
-    <string name="sleep_timer_saturday">วันเสาร์</string>
-    <string name="sleep_timer_sunday">วันอาทิตย์</string>
+
+    <!-- Cache settings -->
+
+    <!-- Upload songs -->
     <string name="upload_songs">อัปโหลดเพลง</string>
     <string name="uploading">กำลังอัปโหลด…</string>
     <string name="upload_progress">%1$d จาก %2$d</string>
@@ -692,4 +1033,162 @@
     <string name="delete_uploaded_songs_confirm">คุณแน่ใจหรือไม่ว่าต้องการลบเพลงที่อัปโหลด %1$d เพลง? การดำเนินการนี้ไม่สามารถย้อนกลับได้</string>
     <string name="deleted_n_songs">ลบแล้ว %1$d เพลง</string>
     <string name="deleting">กำลังลบ…</string>
+
+    <!-- Android Auto settings -->
+    <string name="android_auto">Android Auto</string>
+    <string name="android_auto_visible_sections">ส่วนที่แสดง</string>
+    <string name="android_auto_reorder_hint">แตะส่วนใดก็ได้เพื่อเปิดหรือปิด\nกดค้างที่จุดจับเพื่อลากจัดเรียงใหม่ ส่วนแรกจะแสดงเป็นค่าเริ่มต้น</string>
+    <string name="android_auto_youtube_playlists">แสดงเพลย์ลิสต์ที่ YouTube แนะนำ</string>
+    <string name="android_auto_youtube_playlists_desc">แสดงเพลย์ลิสต์ที่ YouTube Music แนะนำในส่วนเพลย์ลิสต์ขณะเรียกดูด้วย Android Auto</string>
+    <string name="android_auto_target_playlist">ปลายทางสำหรับเพิ่มด่วน</string>
+    <string name="android_auto_target_playlist_desc">เลือกเพลย์ลิสต์ที่จะบันทึกเพลงเมื่อใช้ปุ่มเพิ่มด่วนใน Android Auto</string>
+    <string name="android_auto_target_playlist_auto">ยังไม่ได้ตั้ง</string>
+    <string name="added_to_playlist">เพิ่มในเพลย์ลิสต์แล้ว</string>
+    <string name="android_auto_target_playlist_not_set">ยังไม่ได้เลือกเพลย์ลิสต์ เลือกหนึ่งรายการในการตั้งค่า Android Auto</string>
+
+    <!-- Stats time transfer -->
+    <string name="time_transfer_title">โอนเวลาฟัง</string>
+    <string name="time_transfer_warning">คำเตือน: การกระทำนี้ไม่สามารถย้อนกลับได้เมื่อเสร็จสิ้นแล้ว สร้างข้อมูลสำรองก่อนดำเนินการ มีเพลงที่มีการนับการเล่นอย่างน้อยหนึ่งครั้งเท่านั้นที่ใช้ได้</string>
+    <string name="time_transfer_source_song">เพลงต้นทาง</string>
+    <string name="time_transfer_target_song">เพลงปลายทาง</string>
+    <string name="time_transfer_listen_time_label">เวลาฟัง:</string>
+    <string name="time_transfer_convert">แปลง</string>
+    <string name="song_dropdown_more_results">พิมพ์ต่อเพื่อจำกัดผลลัพธ์ (อีก %d รายการ)</string>
+
+    <!-- Accessibility -->
+    <string name="back">ย้อนกลับ</string>
+    <string name="clear_search">ล้างการค้นหา</string>
+    <string name="close_chip">ปิด</string>
+    <string name="switch_to_list_view">สลับไปมุมมองรายการ</string>
+    <string name="switch_to_grid_view">สลับไปมุมมองตาราง</string>
+    <string name="switch_to_wide_grid_view">สลับไปมุมมองตารางแบบกว้าง</string>
+    <string name="more_options">ตัวเลือกเพิ่มเติม</string>
+
+    <!-- Settings hub descriptions -->
+    <string name="music_settings">การตั้งค่าเพลง</string>
+    <string name="music_settings_desc">รูปลักษณ์ การเล่น และเนื้อหา</string>
+    <string name="settings_appearance_desc">ธีม หน้าจอหลัก เพลเยอร์ และเนื้อเพลง</string>
+    <string name="settings_appearance_theme_desc">สี โหมดมืด และสีเน้น</string>
+    <string name="settings_appearance_interface_desc">แท็บ หน้าจอหลัก และค่าเริ่มต้นของคลังเพลง</string>
+    <string name="settings_appearance_player_desc">เพลเยอร์ มินิเพลเยอร์ และแถบเลื่อน</string>
+    <string name="settings_appearance_lyrics_desc">การแสดงผล แอนิเมชัน และการเลื่อน</string>
+    <string name="settings_playback_desc">คุณภาพเสียง การครอสเฟด และพฤติกรรม</string>
+    <string name="settings_content_desc">ภาษา ตัวกรอง และการค้นพบ</string>
+    <string name="settings_ai_desc">การแปลเนื้อเพลงและผู้ให้บริการ AI</string>
+    <string name="settings_integrations_desc">Discord, Last.fm และ Listen Together</string>
+    <string name="settings_privacy_desc">ประวัติการฟังและความเป็นส่วนตัว</string>
+    <string name="settings_storage_desc">ดาวน์โหลด แคช และข้อมูลสำรอง</string>
+    <string name="settings_system_desc">เครดิต ลิขสิทธิ์ และเวอร์ชัน</string>
+    <string name="settings_account_desc">การลงชื่อเข้าใช้ ซิงก์ สถิติ และความเป็นส่วนตัว</string>
+    <string name="android_auto_settings_desc">ส่วนที่แสดงและเพลย์ลิสต์</string>
+    <string name="manage_account">จัดการบัญชี</string>
+    <string name="spotify_import_title">นำเข้าคลังเพลง</string>
+    <string name="spotify_import_desc">เพลย์ลิสต์และเพลงจาก Spotify</string>
+    <string name="sign_in_desc">เชื่อมต่อบัญชีของคุณเพื่อเข้าถึงเพลย์ลิสต์และคำแนะนำ</string>
+    <string name="settings_theme">ธีม</string>
+    <string name="player_appearance">เพลเยอร์</string>
+    <string name="interface_settings">หน้าแรก &amp; การนำทาง</string>
+    <string name="hide_duration_standard_songs">ซ่อนระยะเวลาของเพลงปกติ</string>
+    <string name="hide_duration_standard_songs_desc">ซ่อนตัวบอกเวลาสำหรับเพลงที่ยาว 1 ถึง 5 นาที จะแสดงเฉพาะชื่อศิลปิน</string>
+    <string name="auto_link_featured_artists">ตรวจจับศิลปินร่วมร้องอัตโนมัติ</string>
+    <string name="auto_link_featured_artists_desc">ตัดเครดิต \"feat./ft.\" ออกจากชื่อเพลงและเชื่อมโยงผู้ร่วมงานเป็นศิลปินจริง</string>
+    <string name="show_featured_artists_in_top_songs">แสดงศิลปินร่วมร้องในเพลงยอดนิยม</string>
+    <string name="show_featured_artists_in_top_songs_desc">แสดงผู้ร่วมงานที่ได้รับเครดิตในเพลงควบคู่กับศิลปินหลักในเพลงยอดนิยม</string>
+    <string name="resume_album">เล่นอัลบั้มต่อ</string>
+    <string name="resume">เล่นต่อ</string>
+    <string name="resume_album_track_progress">เพลงที่ %1$d จาก %2$d</string>
+    <string name="muzza_player_logic">เอนจินเล่นแบบเร็ว</string>
+    <string name="muzza_player_logic_desc">โหลดเพลงได้เร็วขึ้นด้วยวิธีสตรีมมิงแบบอื่น</string>
+
+    <!-- News screen -->
+    <string name="show_news_tab">แสดงแท็บข่าวสาร</string>
+    <string name="show_news_tab_desc">เพิ่มแท็บข่าวสารในแถบนำทางด้านล่าง ระหว่างหน้าแรกกับคลังเพลง</string>
+    <string name="compact_top_navigation_bar">แถบด้านบนแบบกระชับ</string>
+    <string name="compact_top_navigation_bar_desc">หน้าแรกและคลังเพลงเป็นข้อความด้านซ้าย ค้นหาและรูปโปรไฟล์ของคุณเป็นไอคอนด้านขวา ปิดเพื่อกลับไปใช้แถบแบบเดิมที่แสดงชื่อทุกแท็บ</string>
+    <string name="iride_animations">แอนิเมชันของ Iride</string>
+    <string name="iride_animations_desc">ชื่อเรื่องแบบพิมพ์ดีด พารัลแลกซ์ และทรานซิชันการเข้าฉาก ปิดหากแอปกระตุก</string>
+    <string name="player_auto_hide_top_panel">ซ่อนแผงปุ่มกลับอัตโนมัติ</string>
+    <string name="player_auto_hide_top_panel_desc">จางแผงปุ่มกลับไปยังแอปด้านบนหลังไม่มีการใช้งาน 5 วินาทีในเพลเยอร์แบบขยาย เลื่อนลงเพื่อเรียกคืน</string>
+    <string name="news">ข่าวสาร</string>
+    <string name="news_new_albums">อัลบั้มใหม่</string>
+    <string name="news_new_songs">เพลงใหม่</string>
+    <string name="news_charts">ชาร์ต</string>
+    <string name="news_new_albums_title">อัลบั้มใหม่</string>
+    <string name="news_quick_play_title">เพลงใหม่</string>
+    <string name="news_empty_albums">ยังไม่พบอัลบั้มใหม่</string>
+    <string name="news_empty_songs">ยังไม่พบเพลงใหม่</string>
+
+    <string name="better_library_beta">คลังเพลงที่ดีขึ้น BETA</string>
+    <string name="better_library_beta_desc">เปิดใช้คลังเพลงที่ปรับปรุงใหม่ด้วย Material 3 (Top App Bar, FAB และการแก้ไข UI)</string>
+    <string name="upload">อัปโหลด</string>
+    <string name="new_playlist">เพลย์ลิสต์ใหม่</string>
+    <string name="toggle_view_type">สลับประเภทมุมมอง</string>
+    <string name="navigate_back">ย้อนกลับ</string>
+
+    <!-- Comments -->
+    <string name="comments">ความคิดเห็น</string>
+    <string name="comments_count">%s ความคิดเห็น</string>
+    <string name="comments_empty">ยังไม่มีความคิดเห็น</string>
+    <string name="comments_error">โหลดความคิดเห็นไม่สำเร็จ</string>
+    <string name="comments_sign_in_to_comment">ลงชื่อเข้าใช้เพื่อแสดงความคิดเห็น</string>
+    <string name="comments_write_hint">เพิ่มความคิดเห็น…</string>
+    <string name="comments_post">โพสต์</string>
+    <string name="comments_post_failed">โพสต์ความคิดเห็นของคุณไม่สำเร็จ</string>
+    <string name="comments_sort_top">ความคิดเห็นยอดนิยม</string>
+    <string name="comments_sort_newest">ใหม่สุดก่อน</string>
+    <string name="comments_reply_count">%d การตอบกลับ</string>
+    <string name="enable_comments">เปิดใช้ความคิดเห็น</string>
+    <string name="enable_comments_desc">แสดงความคิดเห็น YouTube สำหรับเพลงในเพลเยอร์ (แบบทดลอง อาจโหลดไม่ได้เสมอไป)</string>
+
+    <!-- Song menu redesign -->
+    <string name="add_note">เพิ่มโน้ต คะแนน หรือความคิด…</string>
+    <string name="note_title_placeholder">ชื่อเรื่อง</string>
+    <string name="note_description_placeholder">เพิ่มคำอธิบาย…</string>
+    <string name="view_ep">ดู EP</string>
+    <string name="view_single">ดูซิงเกิล</string>
+
+    <!-- Notes screen -->
+    <string name="notes_screen_title">โน้ต</string>
+    <string name="notes_screen_desc">บทวิจารณ์อัลบั้มและเพลงของคุณ</string>
+    <string name="notes_tab_albums">อัลบั้ม</string>
+    <string name="notes_tab_tracks">เพลง</string>
+    <string name="notes_empty_albums">ยังไม่มีโน้ตอัลบั้ม</string>
+    <string name="notes_empty_tracks">ยังไม่มีโน้ตเพลง</string>
+    <string name="notes_delete_title">ลบโน้ตหรือไม่?</string>
+    <string name="notes_delete_message">การกระทำนี้จะลบชื่อเรื่อง คะแนน และข้อความที่คุณเขียนไว้สำหรับสิ่งนี้</string>
+
+    <!-- Download all favorite albums -->
+    <string name="download_all_favorite_albums">ดาวน์โหลดอัลบั้มโปรดทั้งหมด</string>
+    <string name="download_all_favorite_albums_started">กำลังดาวน์โหลดอัลบั้มโปรดทั้งหมด…</string>
+    <string name="all_favorite_albums_downloaded">ดาวน์โหลดอัลบั้มโปรดทั้งหมดแล้ว</string>
+    <string name="remove_all_favorite_albums_confirm">คุณต้องการลบอัลบั้มโปรดทั้งหมดออกจากรายการดาวน์โหลดจริงหรือไม่?</string>
+    <string name="no_favorite_albums_to_download">ไม่มีอัลบั้มโปรดให้ดาวน์โหลด</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_tagline">Music you can feel and see.\nA complete sensory experience — not just sound, but visual emotion.</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_notifications_title">Stay Updated</string>
+    <string name="onboarding_notifications_desc">Notifications let you know when music is playing and control the player directly from the lock screen.</string>
+    <string name="onboarding_notifications_enable">Enable Notifications</string>
+    <string name="onboarding_notifications_skip">No Thanks</string>
+    <string name="onboarding_login_title">Connect Your Account</string>
+    <string name="onboarding_login_desc">Sign in with your YouTube account to sync playlists, liked songs and listening history.</string>
+    <string name="onboarding_login_cta">Sign in with YouTube</string>
+    <string name="onboarding_login_skip">Continue Without Account</string>
+
+    <!-- Update announcement interstitial -->
+    <string name="update_interstitial_title">New update ready</string>
+    <string name="update_interstitial_version">Version %1$s</string>
+    <string name="update_interstitial_update_now">Update now</string>
+    <string name="update_interstitial_not_now">Not now</string>
+    <string name="update_interstitial_enable_install_desc">Android requires a one-time permission to install this update. Enable \"Allow from this source\" on the next screen, then come back.</string>
+    <string name="update_interstitial_enable_install">Allow installation</string>
+    <string name="update_interstitial_preparing">Finishing preparation…</string>
+
+    <!-- About -->
+    <string name="about_check_updates">Check for updates</string>
+
+    <!-- Extra keys -->
+<string name="new_player_design">ดีไซน์เครื่องเล่นใหม่</string>
+<string name="new_mini_player_design">ดีไซน์มินิเพลเยอร์ใหม่</string>
 </resources>

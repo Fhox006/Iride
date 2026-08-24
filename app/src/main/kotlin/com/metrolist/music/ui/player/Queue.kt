@@ -173,14 +173,13 @@ private sealed class QueueSlot(val key: Any) {
 }
 
 const val AUTOMIX_FILTER_ALL = "ALL"
-const val AUTOMIX_FILTER_POPULAR = "POPULAR"
 const val AUTOMIX_FILTER_DISCOVER = "DISCOVER"
 const val AUTOMIX_FILTER_FAMILIAR = "FAMILIAR"
 const val AUTOMIX_FILTER_PARTY = "PARTY"
 const val AUTOMIX_FILTER_WORKOUT = "WORKOUT"
 const val AUTOMIX_FILTER_DEEP_CUTS = "DEEP CUTS"
 val AUTOMIX_STATIC_FILTERS = listOf(
-    AUTOMIX_FILTER_ALL, AUTOMIX_FILTER_POPULAR, AUTOMIX_FILTER_DISCOVER, AUTOMIX_FILTER_FAMILIAR,
+    AUTOMIX_FILTER_ALL, AUTOMIX_FILTER_DISCOVER, AUTOMIX_FILTER_FAMILIAR,
     AUTOMIX_FILTER_PARTY, AUTOMIX_FILTER_WORKOUT, AUTOMIX_FILTER_DEEP_CUTS,
 )
 private val PARTY_TAG_KEYWORDS = listOf("dance", "electro", "edm", "house", "pop")
@@ -192,7 +191,7 @@ fun filterAutomix(
     familiarArtists: Set<String>,
     genreBySongId: Map<String, List<String>>,
 ): List<androidx.media3.common.MediaItem> {
-    if (items.isEmpty() || filter == AUTOMIX_FILTER_ALL || filter == AUTOMIX_FILTER_POPULAR) return items
+    if (items.isEmpty() || filter == AUTOMIX_FILTER_ALL) return items
     val filtered = when (filter) {
         AUTOMIX_FILTER_DISCOVER -> items.filter { item ->
             item.metadata?.artists?.none { it.name in familiarArtists } == true

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Iride eye mark for the launch splash, tuned for the dark splash background.
+     Same geometry as the adaptive launcher foreground (200x200 viewport with the icon
+     living in the central safe zone), so it lands correctly inside the system's
+     circular splash mask on API 31+ and in the backported view below that. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    <!-- The eye artwork spans ~40% of the 200x200 viewport (adaptive-icon safe zone). The
+         splash icon is masked to a circle, so scale it up about the center: at 1.25x the eye
+         stays small and understated (Spotify-style brand cue) well inside the mask. -->
+    <group
+        android:scaleX="1.25"
+        android:scaleY="1.25"
+        android:pivotX="100"
+        android:pivotY="100">
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M60,100 Q100,65 140,100 Q100,135 60,100 Z M100,100 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0" />
+    </group>
+</vector>

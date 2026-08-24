@@ -100,6 +100,9 @@ import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IrideSegmentedToggle
 import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.fillSubtle
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
@@ -412,7 +415,7 @@ fun IrideSearchBox(
             .fillMaxWidth()
             .height(SearchBoxHeightDp)
             .clip(RoundedCornerShape(5.dp))
-            .background(Color.White.copy(alpha = 0.06f)),
+            .background(MaterialTheme.colorScheme.fillSubtle),
     ) {
         Row(
             modifier = Modifier
@@ -428,18 +431,18 @@ fun IrideSearchBox(
                     .focusRequester(focusRequester)
                     .onFocusChanged(onFocusChanged),
                 textStyle = TextStyle(
-                    color = Color.White.copy(alpha = 0.95f),
+                    color = MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.95f),
                     fontFamily = SpaceMonoFontFamily,
                     fontSize = 15.sp,
                 ),
-                cursorBrush = SolidColor(Color.White),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.textPrimary),
                 singleLine = true,
                 decorationBox = { innerTextField ->
                     if (query.text.isEmpty()) {
                         Text(
                             text = placeholderText,
                             style = TextStyle(
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.textSecondary,
                                 fontFamily = SpaceMonoFontFamily,
                                 fontSize = 15.sp,
                             ),
@@ -456,7 +459,7 @@ fun IrideSearchBox(
                     Icon(
                         painter = painterResource(R.drawable.close),
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.5f),
+                        tint = MaterialTheme.colorScheme.textSecondary,
                     )
                 }
             }

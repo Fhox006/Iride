@@ -35,6 +35,7 @@ import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.filterExplicit
 import com.metrolist.innertube.models.filterVideoSongs
 import com.metrolist.music.R
+import timber.log.Timber
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.MediaSessionConstants
@@ -519,6 +520,7 @@ constructor(
                         try {
                             database.query { insert(songItem.toMediaMetadata()) }
                         } catch (e: Exception) {
+                            Timber.w(e, "Failed to insert search result ${songItem.id}")
                         }
                         searchResults.add(
                             MediaItem.Builder()
@@ -711,6 +713,7 @@ constructor(
                                     searchResults.add(newSong)
                                 }
                             } catch (e: Exception) {
+                                Timber.w(e, "Failed to insert search result ${songItem.id}")
                             }
                         }
                     } catch (e: Exception) {

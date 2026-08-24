@@ -86,7 +86,9 @@ class App :
 
         playerAnchorCache = dataStore.get(PlayerAnchorKey, dismissedAnchor)
 
-        Timber.plant(Timber.DebugTree())
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
 
         applicationScope.launch {
             initializeSettings()

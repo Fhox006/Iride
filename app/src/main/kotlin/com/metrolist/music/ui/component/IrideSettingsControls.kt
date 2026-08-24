@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Slider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.ui.theme.textPrimary
 
 /**
  * Drop-in replacement for Material 3's [Switch]. Falls through to the stock [Switch] unless New
@@ -58,10 +60,11 @@ fun IrideSwitch(
             .size(width = trackWidth, height = trackHeight)
             .alpha(if (enabled) 1f else 0.35f)
             .clip(RoundedCornerShape(50))
-            .background(if (checked) Color.White else Color.Transparent)
+            .background(if (checked) MaterialTheme.colorScheme.textPrimary else Color.Transparent)
             .border(
                 width = 1.dp,
-                color = Color.White.copy(alpha = if (checked) 0f else 0.4f),
+                color = if (checked) Color.Transparent
+                else MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.4f),
                 shape = RoundedCornerShape(50),
             )
             .clickable(
@@ -76,7 +79,10 @@ fun IrideSwitch(
                 .offset(x = thumbOffset)
                 .size(thumbSize)
                 .clip(CircleShape)
-                .background(if (checked) Color.Black else Color.White.copy(alpha = 0.85f)),
+                .background(
+                    if (checked) MaterialTheme.colorScheme.background
+                    else MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.85f)
+                ),
         )
     }
 }
@@ -109,7 +115,7 @@ fun IrideSlider(
                 modifier = Modifier
                     .size(14.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(Color.White),
+                    .background(MaterialTheme.colorScheme.textPrimary),
             )
         },
         track = { sliderState ->
@@ -121,13 +127,13 @@ fun IrideSlider(
                     .fillMaxWidth()
                     .height(2.dp)
                     .clip(RoundedCornerShape(1.dp))
-                    .background(Color.White.copy(alpha = 0.2f)),
+                    .background(MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.2f)),
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(fraction)
                         .fillMaxHeight()
-                        .background(Color.White.copy(alpha = 0.9f)),
+                        .background(MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.9f)),
                 )
             }
         },

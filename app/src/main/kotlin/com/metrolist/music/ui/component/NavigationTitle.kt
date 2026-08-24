@@ -90,7 +90,15 @@ fun NavigationTitle(
             label?.let { label ->
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = if (useIrideStyle) {
+                        MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = SpaceMonoFontFamily,
+                            fontSize = 13.sp,
+                            letterSpacing = (-0.1).sp,
+                        )
+                    } else {
+                        MaterialTheme.typography.labelLarge
+                    },
                     overflow = TextOverflow.Ellipsis,
                 )
             }

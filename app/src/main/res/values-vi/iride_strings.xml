@@ -90,7 +90,7 @@
     <string name="already_in_playlist">Đã tồn tại trong danh sách phát:</string>
 
         <plurals name="n_time">
-        </item>%d lần</item>
+        <item quantity="other">%d lần</item>
     </plurals>
 
     <string name="seek_forward_dynamic">+%1$d giây chuyển tiếp</string>
@@ -307,7 +307,7 @@
     <string name="subscribe">Đăng ký</string>
     <string name="subscribed">Đã đăng ký</string>
         <plurals name="seconds">
-        </item>%d giây</item>
+        <item quantity="other">%d giây</item>
     </plurals>
 
     <!-- Sleep timer -->
@@ -344,8 +344,8 @@
     <string name="alarm_select_playlist">Chọn danh sách</string>
     <string name="alarm_no_playlists">Không tìm thấy danh sách phát nào</string>
         <plurals name="alarm_playlist_song_count">
-        </item>%d bài hát</item>
-        </item>%d bài hát</item>
+        <item quantity="one">%d bài hát</item>
+        <item quantity="other">%d bài hát</item>
     </plurals>
     <string name="alarm_selected">Đã chọn</string>
     <string name="alarm_playlist_helper">Chọn những danh sách báo thức phát</string>
@@ -562,7 +562,7 @@
 
     <!-- Equalizer UI -->
         <plurals name="profiles_count">
-        </item>%d Hồ sơ</item>
+        <item quantity="other">%d Hồ sơ</item>
     </plurals>
     <string name="equalizer_header">Bộ chỉnh âm</string>
     <string name="no_profiles">Không có hồ sơ chỉnh âm</string>
@@ -570,7 +570,7 @@
     <string name="system_equalizer">Bộ chỉnh âm hệ thống</string>
     <string name="eq_disabled">Vô hiệu hoá</string>
         <plurals name="band_count">
-        </item>%d ban nhạc</item>
+        <item quantity="other">%d ban nhạc</item>
     </plurals>
     <string name="delete_profile_desc">Xóa Hồ sơ</string>
     <string name="delete_profile_confirmation">Bạn có chắc mình muốn xoá %1$s không? Hành động này không thể được hoàn tác.</string>
@@ -579,6 +579,39 @@
     <string name="import_error_title">Lỗi nhập</string>
     <string name="error_title">Lỗi</string>
     <string name="error_eq_apply_failed">Không thể áp dụng hồ sơ EQ: %1$s</string>
+
+    <!-- Parametric equalizer editor -->
+    <string name="eq_editor_subtitle">Shape the sound for every output device</string>
+    <string name="eq_master_enable">Enable equalizer</string>
+    <string name="eq_output_source">Output</string>
+    <string name="eq_device_speaker">Phone speaker</string>
+    <string name="eq_device_wired">Wired headphones</string>
+    <string name="eq_device_unknown">Audio output</string>
+    <string name="eq_save_for_device">Save for this device</string>
+    <string name="eq_saved_for_device">Linked to %1$s</string>
+    <string name="eq_manage_devices">Saved devices</string>
+    <string name="eq_no_saved_devices">No linked devices yet</string>
+    <string name="eq_unbind_device">Remove link</string>
+    <string name="eq_unbind_done">Device link removed</string>
+    <string name="eq_preset_balanced">Balanced</string>
+    <string name="eq_preset_more_bass">More bass</string>
+    <string name="eq_preset_more_treble">More treble</string>
+    <string name="eq_preset_voice">Vocal</string>
+    <string name="eq_selected_band_label">Band %1$d · %2$s · Q %3$s</string>
+    <string name="eq_frequency">Frequency</string>
+    <string name="eq_q_factor">Q</string>
+    <string name="eq_bass_enhance">Bass enhance</string>
+    <string name="eq_bass_enhance_desc">Low-shelf boost around 90 Hz</string>
+    <string name="eq_transient_title">Duration</string>
+    <string name="eq_transient_desc">Full bass only on short transients: sustained low frequencies are softened. Great for low-quality devices that need punchy bass without constant rumble.</string>
+    <string name="eq_advanced_options">Advanced options</string>
+    <string name="eq_exact_gain_title">Exact gain</string>
+    <string name="eq_reset_band">Reset band</string>
+    <string name="eq_profile_saved">Equalizer saved</string>
+    <string name="queue_empty">Queue is empty</string>
+    <string name="queue_history_title">History</string>
+    <string name="queue_radio_section_title">Radio</string>
+    <string name="queue_radio_section_subtitle">These songs come from the radio</string>
 
     <!-- Hardcoded strings -->
     <string name="found_in_settings_content">Chuỗi cứng</string>
@@ -816,6 +849,8 @@
     <string name="cd_system_mode">Chế độ hệ thống</string>
     <string name="cd_palette_item">%1$s bảng màu</string>
     <string name="play_all">Phát tất cả</string>
+    <string name="mp3_panel_lyrics">LỜI BÀI HÁT</string>
+    <string name="mp3_panel_up_next">TIẾP THEO</string>
 
     <!-- Library Albums screen sections -->
     <string name="continue_listening">Tiếp tục nghe</string>
@@ -956,7 +991,7 @@
     <string name="remove_episode_from_saved">Đã xóa khỏi lưu</string>
     <string name="subscribe_to_podcast">Lưu podcast vào thư viện</string>
         <plurals name="n_episode">
-        </item>%d tập</item>
+        <item quantity="other">%d tập</item>
     </plurals>
     <string name="filter_episodes">Tập</string>
     <string name="filter_profiles">Hồ sơ</string>
@@ -967,7 +1002,7 @@
     <string name="no_subscribed_channels">Chưa có kênh được đăng kí</string>
     <string name="no_downloaded_episodes">Chưa có tập được tải về</string>
         <plurals name="n_channel">
-        </item>%d kênh</item>
+        <item quantity="other">%d kênh</item>
     </plurals>
 
     <!-- Restore confirmation dialog -->
@@ -1126,6 +1161,30 @@
     <string name="all_favorite_albums_downloaded">Đã tải xuống tất cả album yêu thích</string>
     <string name="remove_all_favorite_albums_confirm">Bạn có thật sự muốn xóa tất cả album yêu thích khỏi mục tải xuống không?</string>
     <string name="no_favorite_albums_to_download">Không có album yêu thích nào để tải xuống</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_tagline">Music you can feel and see.\nA complete sensory experience — not just sound, but visual emotion.</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_notifications_title">Stay Updated</string>
+    <string name="onboarding_notifications_desc">Notifications let you know when music is playing and control the player directly from the lock screen.</string>
+    <string name="onboarding_notifications_enable">Enable Notifications</string>
+    <string name="onboarding_notifications_skip">No Thanks</string>
+    <string name="onboarding_login_title">Connect Your Account</string>
+    <string name="onboarding_login_desc">Sign in with your YouTube account to sync playlists, liked songs and listening history.</string>
+    <string name="onboarding_login_cta">Sign in with YouTube</string>
+    <string name="onboarding_login_skip">Continue Without Account</string>
+
+    <!-- Update announcement interstitial -->
+    <string name="update_interstitial_title">New update ready</string>
+    <string name="update_interstitial_version">Version %1$s</string>
+    <string name="update_interstitial_update_now">Update now</string>
+    <string name="update_interstitial_not_now">Not now</string>
+    <string name="update_interstitial_enable_install_desc">Android requires a one-time permission to install this update. Enable \"Allow from this source\" on the next screen, then come back.</string>
+    <string name="update_interstitial_enable_install">Allow installation</string>
+    <string name="update_interstitial_preparing">Finishing preparation…</string>
+
+    <!-- About -->
+    <string name="about_check_updates">Check for updates</string>
 
     <!-- Extra keys -->
 <string name="new_player_design">Thiết kế trình phát mới</string>

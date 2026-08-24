@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
@@ -21,9 +21,9 @@
 
     <!-- Top bar -->
         <plurals name="n_selected">
-        </item>%d selecionado</item>
-        </item>%d de selecionados</item>
-        </item>%d selecionados</item>
+        <item quantity="one">%d selecionado</item>
+        <item quantity="few">%d de selecionados</item>
+        <item quantity="other">%d selecionados</item>
     </plurals>
 
     <!-- Home -->
@@ -131,8 +131,8 @@
     <string name="guess_game_no_score">Sem pontuação ainda</string>
     <string name="guess_game_play_now">Jogar agora</string>
         <plurals name="guess_game_songs_left">
-        </item>%1$d música restante para jogar</item>
-        </item>%1$d músicas restantes para jogar</item>
+        <item quantity="one">%1$d música restante para jogar</item>
+        <item quantity="other">%1$d músicas restantes para jogar</item>
     </plurals>
     <string name="guess_game_hint_default">Adivinhe para continuar</string>
     <string name="guess_game_hint_wrong">Você errou! Aguarde 3 segundos</string>
@@ -240,39 +240,39 @@
 
     <!-- Noun -->
         <plurals name="n_song">
-        </item>%d música</item>
-        </item>%d de músicas</item>
-        </item>%d músicas</item>
+        <item quantity="one">%d música</item>
+        <item quantity="few">%d de músicas</item>
+        <item quantity="other">%d músicas</item>
     </plurals>
         <plurals name="n_artist">
-        </item>%d artista</item>
-        </item>%d de artistas</item>
-        </item>%d artistas</item>
+        <item quantity="one">%d artista</item>
+        <item quantity="few">%d de artistas</item>
+        <item quantity="other">%d artistas</item>
     </plurals>
         <plurals name="n_album">
-        </item>%d álbum</item>
-        </item>%d de álbuns</item>
-        </item>%d álbuns</item>
+        <item quantity="one">%d álbum</item>
+        <item quantity="few">%d de álbuns</item>
+        <item quantity="other">%d álbuns</item>
     </plurals>
         <plurals name="n_playlist">
-        </item>%d playlist</item>
-        </item>%d de playlists</item>
-        </item>%d playlists</item>
+        <item quantity="one">%d playlist</item>
+        <item quantity="few">%d de playlists</item>
+        <item quantity="other">%d playlists</item>
     </plurals>
         <plurals name="n_week">
-        </item>%d semana</item>
-        </item>%d de semanas</item>
-        </item>%d semanas</item>
+        <item quantity="one">%d semana</item>
+        <item quantity="few">%d de semanas</item>
+        <item quantity="other">%d semanas</item>
     </plurals>
         <plurals name="n_month">
-        </item>%d mês</item>
-        </item>%d de meses</item>
-        </item>%d meses</item>
+        <item quantity="one">%d mês</item>
+        <item quantity="few">%d de meses</item>
+        <item quantity="other">%d meses</item>
     </plurals>
         <plurals name="n_year">
-        </item>%d ano</item>
-        </item>%d de anos</item>
-        </item>%d anos</item>
+        <item quantity="one">%d ano</item>
+        <item quantity="few">%d de anos</item>
+        <item quantity="other">%d anos</item>
     </plurals>
 
     <!-- Snackbar -->
@@ -287,9 +287,9 @@
     <string name="sleep_timer">Timer para soneca</string>
     <string name="end_of_song">Fim da música</string>
         <plurals name="minute">
-        </item>%d minuto</item>
-        </item>%d de minutos</item>
-        </item>%d minutos</item>
+        <item quantity="one">%d minuto</item>
+        <item quantity="few">%d de minutos</item>
+        <item quantity="other">%d minutos</item>
     </plurals>
     <string name="error_no_stream">Nenhum canal de reprodução disponível</string>
     <string name="error_no_internet">Sem conexão à internet</string>

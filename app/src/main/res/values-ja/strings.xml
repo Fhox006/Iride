@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
@@ -21,7 +21,7 @@
 
     <!-- Top bar -->
         <plurals name="n_selected">
-        </item>%d個を選択中</item>
+        <item quantity="other">%d個を選択中</item>
     </plurals>
 
     <!-- Home -->
@@ -129,8 +129,8 @@
     <string name="guess_game_no_score">スコアはまだありません</string>
     <string name="guess_game_play_now">今すぐプレイ</string>
         <plurals name="guess_game_songs_left">
-        </item>残り%1$d曲です</item>
-        </item>残り%1$d曲です</item>
+        <item quantity="one">残り%1$d曲です</item>
+        <item quantity="other">残り%1$d曲です</item>
     </plurals>
     <string name="guess_game_hint_default">続けるには曲を当ててください</string>
     <string name="guess_game_hint_wrong">不正解です！3秒お待ちください</string>
@@ -238,25 +238,25 @@
 
     <!-- Noun -->
         <plurals name="n_song">
-        </item>%d曲</item>
+        <item quantity="other">%d曲</item>
     </plurals>
         <plurals name="n_artist">
-        </item>%d人のアーティスト</item>
+        <item quantity="other">%d人のアーティスト</item>
     </plurals>
         <plurals name="n_album">
-        </item>%d件のアルバム</item>
+        <item quantity="other">%d件のアルバム</item>
     </plurals>
         <plurals name="n_playlist">
-        </item>%d件のプレイリスト</item>
+        <item quantity="other">%d件のプレイリスト</item>
     </plurals>
         <plurals name="n_week">
-        </item>%d週間</item>
+        <item quantity="other">%d週間</item>
     </plurals>
         <plurals name="n_month">
-        </item>%dか月</item>
+        <item quantity="other">%dか月</item>
     </plurals>
         <plurals name="n_year">
-        </item>%d年</item>
+        <item quantity="other">%d年</item>
     </plurals>
 
     <!-- Snackbar -->
@@ -271,7 +271,7 @@
     <string name="sleep_timer">スリープタイマー</string>
     <string name="end_of_song">曲の終わり</string>
         <plurals name="minute">
-        </item>%d分</item>
+        <item quantity="other">%d分</item>
     </plurals>
     <string name="error_no_stream">ストリームが利用できません</string>
     <string name="error_no_internet">ネットワーク接続がありません</string>

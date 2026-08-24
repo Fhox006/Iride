@@ -30,6 +30,7 @@ class DiscoveryWeeklyGenerator(
     private val maxPerArtist = 2
     private val seedCount = 15
     private val perSeedCandidates = 4
+    private val minCandidates = 10
 
     private val viralPattern = Regex(
         """(sped up|slowed( down)?|nightcore|8d audio|tiktok|\bmashup\b|\bedit\b)""",
@@ -45,41 +46,42 @@ class DiscoveryWeeklyGenerator(
         val likedSongs = database.likedSongsByCreateDateAsc().first()
         val recentlyPlayed = database.mostPlayedSongs(fromTimeStamp = 0L, limit = 60).first()
         val historyPool = (likedSongs + recentlyPlayed).distinctBy { it.id }
-        if (historyPool.isEmpty()) return@coroutineScope emptyList()
 
         val excludedIds = database.allPlayedSongIds().toSet() + historyPool.map { it.id }.toSet()
 
         val viralShare = historyPool.count { viralPattern.containsMatchIn(it.title) }
             .toDouble() / historyPool.size
-        val toleratesViral = viralShare >= viralToleranceShare
+        val toleratesViral = historyPool.isEmpty() || viralShare >= viralToleranceShare
 
-        val seeds = historyPool.shuffled().take(seedCount)
         val candidates = Collections.synchronizedList(mutableListOf<SongItem>())
 
-        seeds.map { seedSong ->
-            launch(Dispatchers.IO) {
-                val nextResult = YouTube.next(WatchEndpoint(videoId = seedSong.id))
-                val endpoint = nextResult.getOrNull()?.relatedEndpoint
-                    ?: run {
-                        nextResult.exceptionOrNull()?.let { Timber.tag("DiscoveryWeekly").w(it, "next() failed for seed ${seedSong.id}") }
-                        return@launch
-                    }
-                val relatedResult = YouTube.related(endpoint)
-                val related = relatedResult.getOrNull()?.songs
-                    ?: run {
-                        relatedResult.exceptionOrNull()?.let { Timber.tag("DiscoveryWeekly").w(it, "related() failed for seed ${seedSong.id}") }
-                        return@launch
-                    }
-                related
-                    .filter { it.id !in excludedIds }
+        val historySeedIds = historyPool.shuffled().take(seedCount).map { it.id }
+        collectCandidates(historySeedIds, excludedIds, hideExplicit, hideVideoSongs, toleratesViral, candidates)
+
+        var homePool = emptyList<SongItem>()
+        if (candidates.size < minCandidates) {
+            homePool = fetchHomeSongs()
+            val triedSeedIds = historySeedIds.toSet()
+            collectCandidates(
+                homePool.map { it.id }.filterNot { it in triedSeedIds }.shuffled().take(seedCount),
+                excludedIds + candidates.map { it.id }.toSet(),
+                hideExplicit,
+                hideVideoSongs,
+                toleratesViral,
+                candidates,
+            )
+        }
+
+        if (candidates.size < targetSize) {
+            val candidateIdSet = candidates.map { it.id }.toSet()
+            candidates.addAll(
+                homePool.filter { it.id !in excludedIds && it.id !in candidateIdSet }
                     .filter { !hideExplicit || !it.explicit }
                     .filter { !hideVideoSongs || !it.isVideoSong }
                     .filter { toleratesViral || !viralPattern.containsMatchIn(it.title) }
-                    .shuffled()
-                    .take(perSeedCandidates)
-                    .let { candidates.addAll(it) }
-            }
-        }.forEach { it.join() }
+                    .take(targetSize - candidates.size),
+            )
+        }
 
         val random = Random(seed)
         val perArtistCount = mutableMapOf<String, Int>()
@@ -92,5 +94,46 @@ class DiscoveryWeeklyGenerator(
                 (count < maxPerArtist).also { keep -> if (keep) perArtistCount[artistKey] = count + 1 }
             }
             .take(targetSize)
+    }
+
+    private suspend fun fetchHomeSongs(): List<SongItem> =
+        YouTube.home().getOrNull()
+            ?.sections.orEmpty()
+            .flatMap { it.items }
+            .filterIsInstance<SongItem>()
+            .distinctBy { it.id }
+
+    private suspend fun collectCandidates(
+        seedIds: List<String>,
+        excludedIds: Set<String>,
+        hideExplicit: Boolean,
+        hideVideoSongs: Boolean,
+        toleratesViral: Boolean,
+        candidates: MutableList<SongItem>,
+    ) = coroutineScope {
+        seedIds.map { videoId ->
+            launch(Dispatchers.IO) {
+                val nextResult = YouTube.next(WatchEndpoint(videoId = videoId))
+                val endpoint = nextResult.getOrNull()?.relatedEndpoint
+                    ?: run {
+                        nextResult.exceptionOrNull()?.let { Timber.tag("DiscoveryWeekly").w(it, "next() failed for seed $videoId") }
+                        return@launch
+                    }
+                val relatedResult = YouTube.related(endpoint)
+                val related = relatedResult.getOrNull()?.songs
+                    ?: run {
+                        relatedResult.exceptionOrNull()?.let { Timber.tag("DiscoveryWeekly").w(it, "related() failed for seed $videoId") }
+                        return@launch
+                    }
+                related
+                    .filter { it.id !in excludedIds }
+                    .filter { !hideExplicit || !it.explicit }
+                    .filter { !hideVideoSongs || !it.isVideoSong }
+                    .filter { toleratesViral || !viralPattern.containsMatchIn(it.title) }
+                    .shuffled()
+                    .take(perSeedCandidates)
+                    .let { candidates.addAll(it) }
+            }
+        }.forEach { it.join() }
     }
 }

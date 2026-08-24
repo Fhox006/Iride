@@ -90,9 +90,9 @@
     <string name="already_in_playlist">Já está na playlist:</string>
 
         <plurals name="n_time">
-        </item>%d vez</item>
-        </item>%d de vezes</item>
-        </item>%d vezes</item>
+        <item quantity="one">%d vez</item>
+        <item quantity="few">%d de vezes</item>
+        <item quantity="other">%d vezes</item>
     </plurals>
 
     <string name="seek_forward_dynamic">+%1$d segundos para frente</string>
@@ -309,9 +309,9 @@
     <string name="subscribe">Inscrever-se</string>
     <string name="subscribed">Inscrito</string>
         <plurals name="seconds">
-        </item>%d segundo</item>
-        </item>%d de segundos</item>
-        </item>%d segundos</item>
+        <item quantity="one">%d segundo</item>
+        <item quantity="few">%d de segundos</item>
+        <item quantity="other">%d segundos</item>
     </plurals>
 
     <!-- Sleep timer -->
@@ -348,9 +348,9 @@
     <string name="alarm_select_playlist">Selecionar playlist</string>
     <string name="alarm_no_playlists">Nenhuma playlist encontrada</string>
         <plurals name="alarm_playlist_song_count">
-        </item>%d música</item>
-        </item>%d de músicas</item>
-        </item>%d músicas</item>
+        <item quantity="one">%d música</item>
+        <item quantity="few">%d de músicas</item>
+        <item quantity="other">%d músicas</item>
     </plurals>
     <string name="alarm_selected">Selecionado</string>
     <string name="alarm_playlist_helper">Escolha qual playlist o alarme irá tocar</string>
@@ -567,9 +567,9 @@
 
     <!-- Equalizer UI -->
         <plurals name="profiles_count">
-        </item>%d perfil</item>
-        </item>%d de perfis</item>
-        </item>%d perfis</item>
+        <item quantity="one">%d perfil</item>
+        <item quantity="few">%d de perfis</item>
+        <item quantity="other">%d perfis</item>
     </plurals>
     <string name="equalizer_header">Equalizador</string>
     <string name="no_profiles">Sem perfis de equalizador</string>
@@ -577,9 +577,9 @@
     <string name="system_equalizer">Equalizador do Sistema</string>
     <string name="eq_disabled">Desativado</string>
         <plurals name="band_count">
-        </item>%d banda</item>
-        </item>%d bandas</item>
-        </item>%d bandas</item>
+        <item quantity="one">%d banda</item>
+        <item quantity="few">%d bandas</item>
+        <item quantity="other">%d bandas</item>
     </plurals>
     <string name="delete_profile_desc">Apagar perfil</string>
     <string name="delete_profile_confirmation">Tem certeza de que deseja apagar %1$s? Esta ação não pode ser desfeita</string>
@@ -588,6 +588,39 @@
     <string name="import_error_title">Erro de importação</string>
     <string name="error_title">Erro inesperado</string>
     <string name="error_eq_apply_failed">Falhou a aplicar o perfil do equalizador: %1$s</string>
+
+    <!-- Parametric equalizer editor -->
+    <string name="eq_editor_subtitle">Shape the sound for every output device</string>
+    <string name="eq_master_enable">Enable equalizer</string>
+    <string name="eq_output_source">Output</string>
+    <string name="eq_device_speaker">Phone speaker</string>
+    <string name="eq_device_wired">Wired headphones</string>
+    <string name="eq_device_unknown">Audio output</string>
+    <string name="eq_save_for_device">Save for this device</string>
+    <string name="eq_saved_for_device">Linked to %1$s</string>
+    <string name="eq_manage_devices">Saved devices</string>
+    <string name="eq_no_saved_devices">No linked devices yet</string>
+    <string name="eq_unbind_device">Remove link</string>
+    <string name="eq_unbind_done">Device link removed</string>
+    <string name="eq_preset_balanced">Balanced</string>
+    <string name="eq_preset_more_bass">More bass</string>
+    <string name="eq_preset_more_treble">More treble</string>
+    <string name="eq_preset_voice">Vocal</string>
+    <string name="eq_selected_band_label">Band %1$d · %2$s · Q %3$s</string>
+    <string name="eq_frequency">Frequency</string>
+    <string name="eq_q_factor">Q</string>
+    <string name="eq_bass_enhance">Bass enhance</string>
+    <string name="eq_bass_enhance_desc">Low-shelf boost around 90 Hz</string>
+    <string name="eq_transient_title">Duration</string>
+    <string name="eq_transient_desc">Full bass only on short transients: sustained low frequencies are softened. Great for low-quality devices that need punchy bass without constant rumble.</string>
+    <string name="eq_advanced_options">Advanced options</string>
+    <string name="eq_exact_gain_title">Exact gain</string>
+    <string name="eq_reset_band">Reset band</string>
+    <string name="eq_profile_saved">Equalizer saved</string>
+    <string name="queue_empty">Queue is empty</string>
+    <string name="queue_history_title">History</string>
+    <string name="queue_radio_section_title">Radio</string>
+    <string name="queue_radio_section_subtitle">These songs come from the radio</string>
 
     <!-- Hardcoded strings -->
     <string name="found_in_settings_content">Encontrado em Configurações &gt; Conteúdo</string>
@@ -825,6 +858,8 @@
     <string name="cd_system_mode">Modo de sistema</string>
     <string name="cd_palette_item">paleta %1$s</string>
     <string name="play_all">Reproduzir tudo</string>
+    <string name="mp3_panel_lyrics">LETRA</string>
+    <string name="mp3_panel_up_next">A SEGUIR</string>
 
     <!-- Library Albums screen sections -->
     <string name="continue_listening">Continuar ouvindo</string>
@@ -965,9 +1000,9 @@
     <string name="remove_episode_from_saved">Remover dos salvos</string>
     <string name="subscribe_to_podcast">Salvar podcast na biblioteca</string>
         <plurals name="n_episode">
-        </item>%d episódio</item>
-        </item>%d episódios</item>
-        </item>%d episódios</item>
+        <item quantity="one">%d episódio</item>
+        <item quantity="few">%d episódios</item>
+        <item quantity="other">%d episódios</item>
     </plurals>
     <string name="filter_episodes">Episódios</string>
     <string name="filter_profiles">Perfis</string>
@@ -978,9 +1013,9 @@
     <string name="no_subscribed_channels">Sem canais inscritos</string>
     <string name="no_downloaded_episodes">Sem episódios baixados</string>
         <plurals name="n_channel">
-        </item>%d canal</item>
-        </item>%d canais</item>
-        </item>%d canais</item>
+        <item quantity="one">%d canal</item>
+        <item quantity="few">%d canais</item>
+        <item quantity="other">%d canais</item>
     </plurals>
 
     <!-- Restore confirmation dialog -->
@@ -1139,6 +1174,30 @@
     <string name="all_favorite_albums_downloaded">Todos os álbuns favoritos baixados</string>
     <string name="remove_all_favorite_albums_confirm">Tem certeza de que deseja remover todos os álbuns favoritos dos downloads?</string>
     <string name="no_favorite_albums_to_download">Nenhum álbum favorito para baixar</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_tagline">Music you can feel and see.\nA complete sensory experience — not just sound, but visual emotion.</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_notifications_title">Stay Updated</string>
+    <string name="onboarding_notifications_desc">Notifications let you know when music is playing and control the player directly from the lock screen.</string>
+    <string name="onboarding_notifications_enable">Enable Notifications</string>
+    <string name="onboarding_notifications_skip">No Thanks</string>
+    <string name="onboarding_login_title">Connect Your Account</string>
+    <string name="onboarding_login_desc">Sign in with your YouTube account to sync playlists, liked songs and listening history.</string>
+    <string name="onboarding_login_cta">Sign in with YouTube</string>
+    <string name="onboarding_login_skip">Continue Without Account</string>
+
+    <!-- Update announcement interstitial -->
+    <string name="update_interstitial_title">New update ready</string>
+    <string name="update_interstitial_version">Version %1$s</string>
+    <string name="update_interstitial_update_now">Update now</string>
+    <string name="update_interstitial_not_now">Not now</string>
+    <string name="update_interstitial_enable_install_desc">Android requires a one-time permission to install this update. Enable \"Allow from this source\" on the next screen, then come back.</string>
+    <string name="update_interstitial_enable_install">Allow installation</string>
+    <string name="update_interstitial_preparing">Finishing preparation…</string>
+
+    <!-- About -->
+    <string name="about_check_updates">Check for updates</string>
 
     <!-- Extra keys -->
 <string name="new_player_design">Novo design do tocador</string>

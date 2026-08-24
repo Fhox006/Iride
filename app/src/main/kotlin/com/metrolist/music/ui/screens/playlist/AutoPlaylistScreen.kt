@@ -90,6 +90,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.strokeCard
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
@@ -1154,7 +1155,7 @@ private fun AutoPlaylistHeader(
                         ),
                 shape = coverSquircle,
                 color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f)),
+                border = BorderStroke(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard),
             ) {
                 AsyncImage(
                     model = songs[0].song.thumbnailUrl,

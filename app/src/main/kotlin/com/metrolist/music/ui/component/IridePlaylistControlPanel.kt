@@ -19,18 +19,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
 import com.metrolist.music.R
+import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.utils.pressScale
 
 /**
@@ -55,7 +57,7 @@ fun IridePlaylistControlPanel(
         Row(
             modifier = Modifier
                 .clip(pillShape)
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), pillShape)
+                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.strokeCard), pillShape)
                 .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -99,7 +101,7 @@ private fun IridePlayButton(
             .size(64.dp)
             .pressScale(interactionSource, pressedScale = 0.92f)
             .clip(CircleShape)
-            .border(BorderStroke(1.5.dp, Color.White.copy(alpha = 0.22f)), CircleShape)
+            .border(BorderStroke(1.5.dp, MaterialTheme.colorScheme.strokeCard), CircleShape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = ripple(bounded = true, radius = 32.dp),
@@ -110,7 +112,7 @@ private fun IridePlayButton(
         Icon(
             painter = painterResource(if (isPlaying) R.drawable.ic_iride_pause else R.drawable.ic_iride_play),
             contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.play),
-            tint = Color.White,
+            tint = MaterialTheme.colorScheme.textPrimary,
             modifier = Modifier
                 .size(26.dp)
                 .offset(x = if (isPlaying) 0.dp else 1.5.dp),

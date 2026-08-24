@@ -115,6 +115,7 @@ import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.irideEnter
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
@@ -633,7 +634,7 @@ fun LibraryAlbumsScreen(
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.textPrimary,
                         )
                     }
                     else -> {

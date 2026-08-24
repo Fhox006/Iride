@@ -405,6 +405,17 @@ interface DatabaseDao {
 
     @Transaction
     @Query(
+        """
+        SELECT song.* FROM song_artist_map
+        JOIN song ON song_artist_map.songId = song.id
+        WHERE song_artist_map.artistId = :artistId AND song.liked
+        ORDER BY song.totalPlayTime DESC
+        """,
+    )
+    fun artistLikedSongs(artistId: String): Flow<List<Song>>
+
+    @Transaction
+    @Query(
         "SELECT song.* FROM song_artist_map JOIN song ON song_artist_map.songId = song.id WHERE artistId = :artistId AND position > 0",
     )
     fun artistFeaturedSongs(artistId: String): Flow<List<Song>>

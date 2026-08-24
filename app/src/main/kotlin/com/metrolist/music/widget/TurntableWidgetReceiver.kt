@@ -10,6 +10,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import com.metrolist.music.playback.MusicService
+import timber.log.Timber
 
 class TurntableWidgetReceiver : AppWidgetProvider() {
 
@@ -25,6 +26,7 @@ class TurntableWidgetReceiver : AppWidgetProvider() {
             try {
                 context.startService(intent)
             } catch (e: Exception) {
+                Timber.w(e, "Turntable widget: failed to request update")
             }
         }
     }
@@ -46,6 +48,7 @@ class TurntableWidgetReceiver : AppWidgetProvider() {
                 try {
                     context.startService(serviceIntent)
                 } catch (e: Exception) {
+                    Timber.w(e, "Turntable widget: failed to forward command ${intent.action}")
                 }
             }
         }

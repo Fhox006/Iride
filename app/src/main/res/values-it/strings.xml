@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
@@ -21,9 +21,9 @@
 
     <!-- Top bar -->
         <plurals name="n_selected">
-        </item>%d selezionato</item>
-        </item>%d selezionati</item>
-        </item>%d selezionati</item>
+        <item quantity="one">%d selezionato</item>
+        <item quantity="few">%d selezionati</item>
+        <item quantity="other">%d selezionati</item>
     </plurals>
 
     <!-- Home -->
@@ -131,9 +131,9 @@
     <string name="guess_game_no_score">Nessun punteggio</string>
     <string name="guess_game_play_now">Gioca ora</string>
         <plurals name="guess_game_songs_left">
-        </item>%1$d canzone rimasta da giocare</item>
-        </item>%1$d canzoni rimaste da giocare</item>
-        </item>%1$d canzoni rimaste da giocare</item>
+        <item quantity="one">%1$d canzone rimasta da giocare</item>
+        <item quantity="few">%1$d canzoni rimaste da giocare</item>
+        <item quantity="other">%1$d canzoni rimaste da giocare</item>
     </plurals>
     <string name="guess_game_hint_default">Indovina per continuare</string>
     <string name="guess_game_hint_wrong">Hai sbagliato! Attendi 3 secondi</string>
@@ -151,7 +151,7 @@
     <string name="pause">Pausa</string>
     <string name="play_next">Riproduci come successiva</string>
     <string name="add_to_queue">Metti in coda</string>
-    <string name="swipe_label_next">SUCCESSIVA</string>
+    <string name="swipe_label_next">DOPO</string>
     <string name="swipe_label_queue">CODA</string>
     <string name="add_to_library">Aggiungi a libreria</string>
     <string name="add_all_to_library">Aggiungi tutto a libreria</string>
@@ -241,38 +241,38 @@
 
     <!-- Noun -->
         <plurals name="n_song">
-        </item>%d brano</item>
-        </item>%d brani</item>
-        </item>%d brani</item>
+        <item quantity="one">%d brano</item>
+        <item quantity="few">%d brani</item>
+        <item quantity="other">%d brani</item>
     </plurals>
         <plurals name="n_artist">
-        </item>%d artista</item>
-        </item>%d artisti</item>
-        </item>%d artisti</item>
+        <item quantity="one">%d artista</item>
+        <item quantity="few">%d artisti</item>
+        <item quantity="other">%d artisti</item>
     </plurals>
         <plurals name="n_album">
-        </item>%d album</item>
-        </item>%d albums</item>
+        <item quantity="one">%d album</item>
+        <item quantity="other">%d albums</item>
     </plurals>
         <plurals name="n_playlist">
-        </item>%d playlist</item>
-        </item>%d playlist</item>
-        </item>%d playlist</item>
+        <item quantity="one">%d playlist</item>
+        <item quantity="few">%d playlist</item>
+        <item quantity="other">%d playlist</item>
     </plurals>
         <plurals name="n_week">
-        </item>%d settimana</item>
-        </item>%d settimane</item>
-        </item>%d settimane</item>
+        <item quantity="one">%d settimana</item>
+        <item quantity="few">%d settimane</item>
+        <item quantity="other">%d settimane</item>
     </plurals>
         <plurals name="n_month">
-        </item>%d mese</item>
-        </item>%d mesi</item>
-        </item>%d mesi</item>
+        <item quantity="one">%d mese</item>
+        <item quantity="few">%d mesi</item>
+        <item quantity="other">%d mesi</item>
     </plurals>
         <plurals name="n_year">
-        </item>%d anno</item>
-        </item>%d anni</item>
-        </item>%d anni</item>
+        <item quantity="one">%d anno</item>
+        <item quantity="few">%d anni</item>
+        <item quantity="other">%d anni</item>
     </plurals>
 
     <!-- Snackbar -->
@@ -287,9 +287,9 @@
     <string name="sleep_timer">Timer per il sonno</string>
     <string name="end_of_song">Fine del brano</string>
         <plurals name="minute">
-        </item>1 minuto</item>
-        </item>%d minuti</item>
-        </item>%d minuti</item>
+        <item quantity="one">1 minuto</item>
+        <item quantity="few">%d minuti</item>
+        <item quantity="other">%d minuti</item>
     </plurals>
     <string name="error_no_stream">Stream non disponibile</string>
     <string name="error_no_internet">Nessuna connessione di rete</string>

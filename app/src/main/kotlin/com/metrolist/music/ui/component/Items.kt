@@ -107,6 +107,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.fillSubtle
+import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -322,6 +326,7 @@ fun VinylPeekDisc(
     )
     val painterState by painter.state.collectAsState()
     val isLoaded = painterState is AsyncImagePainter.State.Success
+    val grooveColor = MaterialTheme.colorScheme.fillSubtle
 
     AnimatedVisibility(
         visible = isLoaded,
@@ -339,7 +344,7 @@ fun VinylPeekDisc(
                     val outerRadius = this.size.minDimension / 2f * 0.97f
                     val labelRadius = this.size.minDimension / 2f * VinylPeekDiscLabelFraction
                     drawCircle(
-                        color = Color.White.copy(alpha = 0.07f),
+                        color = grooveColor,
                         radius = labelRadius + 15.dp.toPx(),
                         center = center,
                     )
@@ -347,14 +352,14 @@ fun VinylPeekDisc(
                         val t = i / (VinylPeekDiscGrooveCount - 1f)
                         val radius = outerRadius - (outerRadius - labelRadius - 4.dp.toPx()) * t
                         drawCircle(
-                            color = Color.White.copy(alpha = 0.08f),
+                            color = grooveColor,
                             radius = radius,
                             center = center,
                             style = Stroke(width = 0.6.dp.toPx()),
                         )
                     }
                 }
-                .border(width = 1.dp, color = Color.White.copy(alpha = 0.14f), shape = CircleShape)
+                .border(width = 1.dp, color = MaterialTheme.colorScheme.strokeCard, shape = CircleShape)
         ) {
             Image(
                 painter = painter,
@@ -365,7 +370,7 @@ fun VinylPeekDisc(
                     .fillMaxSize(VinylPeekDiscLabelFraction)
                     .shadow(elevation = 2.dp, shape = CircleShape, clip = false)
                     .clip(CircleShape)
-                    .border(width = 0.5.dp, color = Color.White.copy(alpha = 0.22f), shape = CircleShape)
+                    .border(width = 0.5.dp, color = MaterialTheme.colorScheme.strokeCard, shape = CircleShape)
             )
             Box(
                 modifier = Modifier
@@ -927,7 +932,7 @@ fun ArtistListItem(
             modifier = Modifier
                 .size(ListThumbnailSize)
                 .clip(CircleShape)
-                .border(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f), CircleShape),
+                .border(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, CircleShape),
         )
     },
     trailingContent = trailingContent,
@@ -963,7 +968,7 @@ fun ArtistGridItem(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(CircleShape)
-                .border(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f), CircleShape)
+                .border(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, CircleShape)
         )
     },
     fillMaxWidth = fillMaxWidth,
@@ -1732,7 +1737,7 @@ fun ItemThumbnail(
     hairlineBorder: Boolean = false,
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
-    val selectionBorderColor = Color.White.copy(alpha = 0.5f)
+    val selectionBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
     val selectionProgress = rememberSelectionProgress(isActive && !isPlaying)
 
     Box(
@@ -1750,7 +1755,7 @@ fun ItemThumbnail(
                         )
                         .padding(4.dp * selectionProgress)
                 } else if (hairlineBorder) {
-                    Modifier.border(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f), shape)
+                    Modifier.border(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, shape)
                 } else {
                     Modifier
                 }
@@ -1856,7 +1861,7 @@ fun LocalThumbnail(
     thumbnailRatio: Float = 1f
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
-    val selectionBorderColor = Color.White.copy(alpha = 0.5f)
+    val selectionBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
     val selectionProgress = rememberSelectionProgress(isActive && !isPlaying)
 
     Box(
@@ -1951,7 +1956,7 @@ fun PlaylistThumbnail(
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
     val hairlineModifier = if (hairlineBorder) {
-        Modifier.border(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f), shape)
+        Modifier.border(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, shape)
     } else {
         Modifier
     }
@@ -2339,11 +2344,17 @@ private fun SwipeRevealPanel(
         } else {
             Text(
                 text = label,
-                style = style,
+                style = if (label.length > 8) {
+                    style.copy(fontSize = style.fontSize * (8f / label.length))
+                } else {
+                    style
+                },
                 fontFamily = fontFamily,
                 fontWeight = FontWeight.Black,
                 letterSpacing = letterSpacing,
                 color = tint,
+                maxLines = 1,
+                softWrap = false,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
         }
@@ -2405,14 +2416,21 @@ private fun PasscodeSwipeLabel(
             }
         }
     }
+    val fitStyle = if (label.length > 8) {
+        style.copy(fontSize = style.fontSize * (8f / label.length))
+    } else {
+        style
+    }
     Text(
         text = displayed,
         textAlign = if (reverse) TextAlign.End else TextAlign.Start,
-        style = style,
+        style = fitStyle,
         fontFamily = fontFamily,
         fontWeight = FontWeight.Black,
         letterSpacing = letterSpacing,
         color = color,
+        maxLines = 1,
+        softWrap = false,
         modifier = modifier,
     )
 }
@@ -2439,14 +2457,14 @@ object Icon {
                 Icon(
                     painter = painterResource(R.drawable.arrow_downward),
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.85f),
+                    tint = MaterialTheme.colorScheme.textPrimary,
                     modifier = Modifier
                         .size(16.dp)
                         .padding(end = 2.dp),
                 )
             STATE_QUEUED, STATE_DOWNLOADING -> CircularProgressIndicator(
                 strokeWidth = 2.dp,
-                color = Color.White.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.textSecondary,
                 modifier = Modifier
                     .size(16.dp)
                     .padding(end = 2.dp)
@@ -2471,7 +2489,7 @@ object Icon {
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.textPrimary,
                     modifier = Modifier.padding(end = 4.dp),
                 )
             }
@@ -2498,6 +2516,6 @@ fun IrideLoadingIndicator(modifier: Modifier = Modifier) {
     CircularProgressIndicator(
         modifier = modifier.size(28.dp),
         strokeWidth = 2.dp,
-        color = Color.White.copy(alpha = 0.6f),
+        color = MaterialTheme.colorScheme.textSecondary,
     )
 }

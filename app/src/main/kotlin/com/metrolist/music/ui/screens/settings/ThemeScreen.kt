@@ -53,9 +53,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Switch
@@ -441,64 +438,6 @@ private fun IrideThemeControls(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
     ) {
-        IrideThemeSectionTitle(stringResource(R.string.theme_mode))
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Monochrome selection style: selected segment uses inverseSurface so it
-        // stays neutral (white-on-dark / dark-on-light) instead of Material tint.
-        val modeColors = SegmentedButtonDefaults.colors(
-            activeContainerColor = MaterialTheme.colorScheme.inverseSurface,
-            activeContentColor = MaterialTheme.colorScheme.inverseOnSurface,
-            inactiveContainerColor = Color.Transparent,
-            inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            activeBorderColor = MaterialTheme.colorScheme.outlineVariant,
-            inactiveBorderColor = MaterialTheme.colorScheme.outlineVariant
-        )
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            SegmentedButton(
-                selected = darkMode == DarkMode.OFF,
-                onClick = { onDarkModeChange(DarkMode.OFF) },
-                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                colors = modeColors,
-                label = {
-                    Text(
-                        text = stringResource(R.string.theme_mode_light),
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            )
-            SegmentedButton(
-                selected = darkMode == DarkMode.ON,
-                onClick = { onDarkModeChange(DarkMode.ON) },
-                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                colors = modeColors,
-                label = {
-                    Text(
-                        text = stringResource(R.string.theme_mode_dark),
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            )
-            SegmentedButton(
-                selected = darkMode == DarkMode.AUTO,
-                onClick = { onDarkModeChange(DarkMode.AUTO) },
-                shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                colors = modeColors,
-                label = {
-                    Text(
-                        text = stringResource(R.string.theme_mode_system),
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 1.dp)
-
         val (compactTopBar, onCompactTopBarChange) =
             rememberPreference(CompactTopNavigationBarKey, defaultValue = true)
         IrideThemeToggleRow(

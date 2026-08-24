@@ -1,5 +1,477 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Upstream InnerTune strings -->
+<!-- Do not add new features here -->
+<!-- Try to re-use strings here, but be careful on its usage e.g. verb vs noun -->
+<!-- "InnerTune" is replaced with "Iride" -->
+<!-- Translators: Do not modify this file for translations, use InnerTune's Weblate instead. -->
+
 <resources>
+    <!-- Bottom navigation -->
+    <string name="home">Hem</string>
     <string name="new_home">Home</string>
     <string name="old_home">Old Home</string>
-    </resources>
+    <string name="what_new">Nyheter</string>
+    <string name="songs">Låtar</string>
+    <string name="all_tracks">Alla spår</string>
+    <string name="artists">Artister</string>
+    <string name="albums">Album</string>
+    <string name="playlists">Spellistor</string>
+    <string name="mixes">Mixar</string>
+
+    <!-- Top bar -->
+        <plurals name="n_selected">
+        <item quantity="other">%d markerade</item>
+    </plurals>
+
+    <!-- Home -->
+    <string name="history">Historik</string>
+    <string name="stats">Statistik</string>
+    <string name="mood_and_genres">Stämning och genrer</string>
+    <string name="discovery_weekly">Upptäcksvecka</string>
+    <string name="discovery_weekly_creating">Skapar din mix…</string>
+    <string name="account">Konto</string>
+    <string name="account_content">Mitt YouTube-bibliotek</string>
+    <string name="quick_picks">Utvalt för dig</string>
+    <string name="quick_picks_empty">Lyssna på låtar för att börja få rekommendationer</string>
+    <string name="forgotten_favorites">Glömda favoriter</string>
+    <string name="keep_listening">Fortsätt lyssna</string>
+    <string name="discs_for_you">Skivor utvalda för dig</string>
+    <string name="for_you_shelf_title">På repeat för dig</string>
+    <string name="recommended_albums">Rekommenderade album</string>
+    <string name="recently_listened_albums">Nyligen lyssnat</string>
+    <string name="clear_recently_listened_albums">Rensa</string>
+    <string name="your_youtube_playlists">Dina spellistor</string>
+    <string name="similar_to">Liknar</string>
+    <string name="new_release_albums">Nya utgivningsalbum</string>
+    <string name="artist_latest_release">Senaste utgåva</string>
+    <string name="artist_release_type_album">ALBUM</string>
+    <string name="artist_release_type_ep">EP</string>
+    <string name="artist_release_type_single">SINGEL</string>
+    <string name="artist_release_type_feat">FEAT</string>
+    <string name="genius_section_title">Detektering av medverkande (Genius)</string>
+    <string name="genius_api_key">Genius API-token</string>
+    <string name="genius_api_key_description">Hittar \"feat.\"-krediteringar som artistens egen YTM-sida missar. Hämta en gratis token på genius.com/api-clients.</string>
+    <string name="essential_albums">Essentiella album</string>
+    <string name="featuring">Medverkande</string>
+    <string name="suggested_follow_artists">Du lyssnar mycket — följ dem?</string>
+    <string name="new_from_followed_artists">Nytt från artister du följer</string>
+
+    <!-- History -->
+    <string name="today">Idag</string>
+    <string name="yesterday">Igår</string>
+    <string name="this_week">Denna vecka</string>
+    <string name="last_week">Förra veckan</string>
+
+    <!-- Stats -->
+    <string name="most_played_songs">Mest spelade låtar</string>
+    <string name="most_played_artists">Mest spelade artister</string>
+    <string name="most_played_albums">Mest spelade album</string>
+    <string name="top_artists">Toppartister</string>
+    <string name="top_albums">Topalbum</string>
+    <string name="top_songs">Topplåtar</string>
+    <string name="top_genres">Toppgenrer</string>
+    <string name="listening_stats">Din statistik</string>
+    <string name="stats_not_enough_data">Fortsätt lyssna för att upptäcka din musikhistoria</string>
+    <string name="listened">Lyssnat</string>
+    <string name="songs_played">Spelade</string>
+
+    <!-- Search -->
+    <string name="search">Sök</string>
+    <string name="search_yt_music">Hitta något att spela…</string>
+    <string name="search_library">Sök i biblioteket…</string>
+    <string name="online">Online</string>
+    <string name="filter_library">Bibliotek</string>
+    <string name="filter_liked">Låtar</string>
+    <string name="filter_downloaded">Nedladdade</string>
+    <string name="filter_all">Alla</string>
+    <string name="filter_songs">Låtar</string>
+    <string name="filter_videos">Videor</string>
+    <string name="filter_albums">Album</string>
+    <string name="filter_artists">Artister</string>
+    <string name="filter_playlists">Spellistor</string>
+    <string name="filter_community_playlists">Community-spellistor</string>
+    <string name="filter_featured_playlists">Utvalda spellistor</string>
+    <string name="filter_bookmarked">Bokmärkta</string>
+    <string name="no_results_found">Inga resultat hittades</string>
+
+    <!-- Library -->
+    <string name="library_song_empty">Bibliotekslåtar visas här</string>
+    <string name="library_artist_empty">Biblioteksartister visas här</string>
+    <string name="library_album_empty">Biblioteksalbum visas här</string>
+    <string name="library_playlist_empty">Dina spellistor visas här</string>
+
+    <!-- Artist screen -->
+    <string name="from_your_library">Från ditt bibliotek</string>
+
+    <!-- Album screen -->
+    <string name="other_versions">Andra versioner</string>
+    <string name="similar_albums">Du kanske också gillar</string>
+
+    <!-- Playlist -->
+    <string name="liked_songs">Låtar</string>
+    <string name="downloaded_songs">Nedladdade låtar</string>
+    <string name="playlist_is_empty">Spellistan är tom</string>
+    <string name="remove_download_playlist_confirm">Vill du verkligen ta bort alla låtar i spellisten \"%s\" från lagringen för nedladdade låtar?</string>
+    <string name="delete_playlist_confirm">Vill du verkligen ta bort spellisten \"%s\"?</string>
+
+    <!-- Button -->
+    <string name="retry">Försök igen</string>
+    <string name="radio">Radio</string>
+    <string name="shuffle">Blanda</string>
+    <string name="reset">Återställ</string>
+
+    <!-- Guess the song game -->
+    <string name="guess_game">Gissa låten</string>
+    <string name="guess_game_subtitle">Gissa låten och ta reda på hur väl du verkligen känner artisten</string>
+    <string name="guess_game_best_score">Ditt bästa resultat: %1$s</string>
+    <string name="guess_game_best_label">Ditt bästa</string>
+    <string name="guess_game_no_score">Ingen poäng än</string>
+    <string name="guess_game_play_now">Spela nu</string>
+        <plurals name="guess_game_songs_left">
+        <item quantity="one">%1$d låt kvar att spela</item>
+        <item quantity="other">%1$d låtar kvar att spela</item>
+    </plurals>
+    <string name="guess_game_hint_default">Gissa för att fortsätta</string>
+    <string name="guess_game_hint_wrong">Du hade fel! Vänta 3 sekunder</string>
+    <string name="guess_game_new_best">Nytt rekord!</string>
+    <string name="guess_game_result_correct">%1$d/%2$d</string>
+    <string name="guess_game_result_correct_label">Rätt</string>
+    <string name="guess_game_not_enough_songs">Inte tillräckligt många låtar hittades för att spela spelet</string>
+    <string name="guess_game_loading_hint">Inläsningen kan ta en stund — varje låt läses in helt i förväg så att omgångarna startar direkt utan buffring.</string>
+
+    <!-- Menu -->
+    <string name="details">Detaljer</string>
+    <string name="edit">Redigera</string>
+    <string name="start_radio">Starta radio</string>
+    <string name="play">Spela</string>
+    <string name="pause">Pausa</string>
+    <string name="play_next">Spela härnäst</string>
+    <string name="add_to_queue">Lägg till i kön</string>
+    <string name="swipe_label_next">NÄSTA</string>
+    <string name="swipe_label_queue">KÖ</string>
+    <string name="add_to_library">Lägg till i biblioteket</string>
+    <string name="add_all_to_library">Lägg till alla i biblioteket</string>
+    <string name="remove_from_library">Ta bort från biblioteket</string>
+    <string name="remove_all_from_library">Ta bort alla från biblioteket</string>
+    <string name="action_download">Ladda ner</string>
+    <string name="downloading">Laddar ner</string>
+    <string name="remove_download">Ta bort nedladdning</string>
+    <string name="import_playlist">Importera spellista</string>
+    <string name="add_to_playlist">Lägg till i spellista</string>
+    <string name="category_add">Lägg till</string>
+    <string name="add_to_category">Lägg till i kategori</string>
+    <string name="new_category">Ny kategori</string>
+    <string name="category_name_hint">Kategorinamn</string>
+    <string name="added_to_category">Lagd till i kategori</string>
+    <string name="search_categories">Sök kategorier</string>
+    <string name="action_add">Lägg till</string>
+    <string name="view_artist">Visa artist</string>
+    <string name="view_album">Visa album</string>
+    <string name="refetch">Hämta igen</string>
+    <string name="share">Dela</string>
+    <string name="share_choose_platform">Dela via</string>
+    <string name="share_platform_youtube_music">YouTube Music</string>
+    <string name="share_platform_spotify">Spotify</string>
+    <string name="share_platform_apple_music">Apple Music</string>
+    <string name="share_platform_soundcloud">SoundCloud</string>
+    <string name="share_link_resolving">Söker efter länk…</string>
+    <string name="share_link_not_found">Ingen länk hittades på den här plattformen för den här låten</string>
+    <string name="delete">Ta bort</string>
+    <string name="remove_from_history">Ta bort från historiken</string>
+    <string name="remove_from_playlist">Ta bort från spellistan</string>
+    <string name="remove_from_queue">Ta bort från kön</string>
+    <string name="search_online">Sök online</string>
+    <string name="action_sync">Synka</string>
+    <string name="library_refresh">Uppdatera biblioteket</string>
+    <string name="library_refreshing">Uppdaterar…</string>
+    <string name="advanced">Avancerat</string>
+    <string name="tempo_and_pitch">Tempo och tonhöjd</string>
+
+    <!-- Sort menu -->
+    <string name="sort_by_create_date">Datum tillagt</string>
+    <string name="sort_by_name">Namn</string>
+    <string name="sort_by_artist">Artist</string>
+    <string name="sort_by_year">År</string>
+    <string name="sort_by_song_count">Antal låtar</string>
+    <string name="sort_by_length">Längd</string>
+    <string name="sort_by_play_time">Speltid</string>
+    <string name="sort_by_custom">Anpassad ordning</string>
+
+    <!-- Dialog -->
+    <string name="media_id">Medie-id</string>
+    <string name="mime_type">MIME-typ</string>
+    <string name="codecs">Kodekar</string>
+    <string name="bitrate">Bithastighet</string>
+    <string name="sample_rate">Samplingsfrekvens</string>
+    <string name="loudness">Ljudstyrka</string>
+    <string name="volume">Volym</string>
+    <string name="file_size">Filstorlek</string>
+    <string name="unknown">Okänd</string>
+    <string name="copied">Kopierades till urklipp</string>
+
+    <string name="edit_lyrics">Redigera låttext</string>
+    <string name="search_lyrics">Sök låttext</string>
+
+    <string name="edit_song">Redigera låt</string>
+    <string name="song_title">Låttitel</string>
+    <string name="song_artists">Låtens artister</string>
+    <string name="error_song_title_empty">Låttiteln får inte vara tom.</string>
+    <string name="error_song_artist_empty">Låtens artist får inte vara tom.</string>
+    <string name="save">Spara</string>
+
+    <string name="choose_playlist">Välj spellista</string>
+    <string name="edit_playlist">Redigera spellista</string>
+    <string name="create_playlist">Skapa spellista</string>
+    <string name="playlist_name">Spellistans namn</string>
+    <string name="error_playlist_name_empty">Spellistans namn får inte vara tomt.</string>
+
+    <string name="edit_artist">Redigera artist</string>
+    <string name="artist_name">Artistens namn</string>
+    <string name="error_artist_name_empty">Artistens namn får inte vara tomt.</string>
+
+    <string name="duplicates">Dubbletter</string>
+    <string name="skip_duplicates">Hoppa över dubbletter</string>
+    <string name="add_anyway">Lägg till ändå</string>
+    <string name="duplicates_description_single">Låten finns redan i din spellista</string>
+    <string name="duplicates_description_multiple">%d låtar finns redan i din spellista</string>
+
+    <!-- Noun -->
+        <plurals name="n_song">
+        <item quantity="one">%d låt</item>
+        <item quantity="other">%d låtar</item>
+    </plurals>
+        <plurals name="n_artist">
+        <item quantity="one">%d artist</item>
+        <item quantity="other">%d artister</item>
+    </plurals>
+        <plurals name="n_album">
+        <item quantity="one">%d album</item>
+        <item quantity="other">%d album</item>
+    </plurals>
+        <plurals name="n_playlist">
+        <item quantity="one">%d spellista</item>
+        <item quantity="other">%d spellistor</item>
+    </plurals>
+        <plurals name="n_week">
+        <item quantity="one">%d vecka</item>
+        <item quantity="other">%d veckor</item>
+    </plurals>
+        <plurals name="n_month">
+        <item quantity="one">%d månad</item>
+        <item quantity="other">%d månader</item>
+    </plurals>
+        <plurals name="n_year">
+        <item quantity="one">%d år</item>
+        <item quantity="other">%d år</item>
+    </plurals>
+
+    <!-- Snackbar -->
+    <string name="playlist_imported">Spellistan importerades</string>
+    <string name="removed_song_from_playlist">Tog bort \"%s\" från spellistan</string>
+    <string name="playlist_synced">Spellistan är synkad</string>
+    <string name="undo">Ångra</string>
+
+    <!-- Player -->
+    <string name="lyrics_not_found">Text saknas eller läses in</string>
+    <string name="lyrics_searching">…</string>
+    <string name="sleep_timer">Insomningstimer</string>
+    <string name="end_of_song">Vid låtens slut</string>
+        <plurals name="minute">
+        <item quantity="one">1 minut</item>
+        <item quantity="other">%d minuter</item>
+    </plurals>
+    <string name="error_no_stream">Ingen ström tillgänglig</string>
+    <string name="error_no_internet">Ingen nätverksanslutning</string>
+    <string name="error_timeout">Tidsgränsen uppnåddes</string>
+    <string name="error_unknown">Okänt fel</string>
+
+    <!-- Player action -->
+    <string name="action_like">Stjärnmärk</string>
+    <string name="action_like_all">Stjärnmärk alla</string>
+    <string name="action_remove_like">Ta bort stjärnmärke</string>
+    <string name="action_remove_like_all">Ta bort alla stjärnmärken</string>
+    <string name="action_shuffle_on">Blanda på</string>
+    <string name="action_shuffle_off">Blanda av</string>
+    <string name="repeat_mode_off">Upprepningsläget är av</string>
+    <string name="repeat_mode_one">Repetera aktuell låt</string>
+    <string name="repeat_mode_all">Repetera kön</string>
+
+    <!-- Queue Title -->
+    <string name="queue_all_songs">Alla låtar</string>
+    <string name="queue_searched_songs">Sökta låtar</string>
+
+    <!-- Notification name -->
+    <string name="music_player">Musikspelare</string>
+
+    <!-- Settings -->
+    <string name="settings">Inställningar</string>
+    <string name="appearance">Utseende</string>
+    <string name="theme">Tema</string>
+    <string name="theme_desc">Anpassa appens tema</string>
+    <string name="theme_colors">Tema &amp; färger</string>
+    <string name="theme_mode">Temaläge</string>
+    <string name="color_palette">Färgpalett</string>
+    <string name="use_system_colors">Använd systemfärger</string>
+    <string name="enable_dynamic_theme">Aktivera dynamiskt tema</string>
+    <string name="dark_theme">Mörkt tema</string>
+    <string name="dark_theme_on">På</string>
+    <string name="dark_theme_off">Av</string>
+    <string name="dark_theme_follow_system">Följ systemet</string>
+    <string name="pure_black">Helsvart</string>
+    <string name="customize_navigation_tabs">Anpassa navigeringsflikar</string>
+    <string name="player">Spelare</string>
+    <string name="player_text_alignment">Textjustering för spelaren</string>
+    <string name="lyrics_text_position">Textposition för låttext</string>
+    <string name="sided">Sidoställd</string>
+    <string name="left">Vänster</string>
+    <string name="center">Mitten</string>
+    <string name="right">Höger</string>
+    <string name="player_slider_style">Stil för spelarens reglage</string>
+    <string name="default_">Standard</string>
+    <string name="squiggly">Vågig</string>
+    <string name="misc">Övrigt</string>
+    <string name="default_open_tab">Default open tab</string>
+    <string name="grid_cell_size">Grid cell size</string>
+    <string name="small">Small</string>
+    <string name="big">Big</string>
+
+    <string name="content">Innehåll</string>
+    <string name="action_logout">Logga ut</string>
+    <string name="action_login">Logga in</string>
+    <string name="login">Inloggning</string>
+    <string name="not_logged_in">Inte inloggad</string>
+    <string name="login_failed">Inloggningen misslyckades</string>
+
+    <string name="content_language">Standardspråk för innehåll</string>
+    <string name="content_country">Standardland för innehåll</string>
+    <string name="system_default">Systemstandard</string>
+    <string name="enable_proxy">Aktivera proxy</string>
+    <string name="proxy_type">Proxytyp</string>
+    <string name="proxy_url">Proxy-URL</string>
+    <string name="restart_to_take_effect">Starta om för att verkställa</string>
+
+    <string name="player_and_audio">Spelare och ljud</string>
+    <string name="audio_quality">Ljudkvalitet</string>
+    <string name="audio_quality_auto">Auto</string>
+    <string name="audio_quality_high">Hög</string>
+    <string name="audio_quality_low">Låg</string>
+    <string name="scratch_buffer">Scratchbuffert</string>
+    <string name="scratch_buffer_short">Kort</string>
+    <string name="scratch_buffer_medium">Medel</string>
+    <string name="scratch_buffer_long">Förlängd</string>
+    <string name="scratch_buffer_full">Hela spåret</string>
+    <string name="scratch_buffer_short_desc">Scratcha tillbaka 15 sekunder. Minst minnesanvändning.</string>
+    <string name="scratch_buffer_medium_desc">Scratcha tillbaka 1 minut.</string>
+    <string name="scratch_buffer_long_desc">Scratcha tillbaka 3 minuter.</string>
+    <string name="scratch_buffer_full_desc">Gör hela låten scratchbar. Använder mest minne.</string>
+    <string name="queue">Härnäst</string>
+    <string name="queue_recently_played">Nyligen spelat</string>
+    <string name="queue_recently_played_more">Nyligen spelat  ↑</string>
+    <string name="queue_scroll_for_history">Scrolla upp för historiken</string>
+    <string name="queue_autoplay">Auto-Mix</string>
+    <string name="queue_continue_listening">Fortsätt lyssna</string>
+    <string name="queue_filter_all">Alla</string>
+    <string name="queue_filter_popular">Populärt</string>
+    <string name="queue_filter_discover">Upptäck</string>
+    <string name="queue_filter_familiar">Bekant</string>
+    <string name="queue_filter_party">Fest</string>
+    <string name="queue_filter_workout">Träning</string>
+    <string name="queue_filter_deep_cuts">Djupa spår</string>
+    <string name="persistent_queue">Beständig kö</string>
+    <string name="persistent_queue_desc">Återställ din senaste kö när appen startas</string>
+    <string name="auto_load_more">Lägg automatiskt till fler låtar</string>
+    <string name="auto_load_more_desc">Lägger automatiskt till fler låtar när slutet på kön nås, om möjligt</string>
+    <string name="skip_silence">Hoppa över tystnad</string>
+    <string name="audio_normalization">Ljudnormalisering</string>
+    <string name="auto_skip_next_on_error">Hoppa automatiskt till nästa låt när ett fel inträffar</string>
+    <string name="auto_skip_next_on_error_desc">Säkerställer oavbruten uppspelning</string>
+    <string name="stop_music_on_task_clear">Stoppa musiken när senaste appar rensas</string>
+    <string name="equalizer">Equalizer</string>
+
+    <string name="storage">Lagring</string>
+    <string name="cache">Cache</string>
+    <string name="image_cache">Bildcache</string>
+    <string name="song_cache">Låtcache</string>
+    <string name="max_cache_size">Maximal cachestorlek</string>
+    <string name="unlimited">Obegränsat</string>
+    <string name="clear_all_downloads">Rensa alla nedladdningar</string>
+    <string name="max_image_cache_size">Maximal bildcachestorlek</string>
+    <string name="clear_image_cache">Rensa bildcache</string>
+    <string name="max_song_cache_size">Maximal låtcachestorlek</string>
+    <string name="clear_song_cache">Rensa låtcache</string>
+    <string name="size_used">%s använt</string>
+
+    <string name="privacy">Integritet</string>
+    <string name="listen_history">Lyssningshistorik</string>
+    <string name="pause_listen_history">Pausa lyssningshistoriken</string>
+    <string name="clear_listen_history">Rensa lyssningshistoriken</string>
+    <string name="clear_listen_history_confirm">Är du säker på att du vill rensa all lyssningshistorik?</string>
+    <string name="search_history">Sökhistorik</string>
+    <string name="pause_search_history">Pausa sökhistoriken</string>
+    <string name="clear_search_history">Rensa sökhistoriken</string>
+    <string name="clear_search_history_confirm">Är du säker på att du vill rensa all sökhistorik?</string>
+    <string name="use_login_for_browse">Använd inloggning för bläddring</string>
+    <string name="use_login_for_browse_desc">Detta kan påverka vilket innehåll du ser och visar t.ex. album som kräver Premium om du är inloggad med ett Premium-konto</string>
+    <string name="disable_screenshot">Inaktivera skärmdumpar</string>
+    <string name="disable_screenshot_desc">När det här alternativet är på är skärmdumpar och appens vy i Senaste inaktiverade.</string>
+    <string name="enable_lrclib">Aktivera LrcLib som låttextkälla</string>
+    <string name="enable_kugou">Aktivera KuGou som låttextkälla</string>
+    <string name="hide_explicit">Dölj explicit innehåll</string>
+    <string name="hide_explicit_desc">Ta bort explicita låtar från sök- och bläddringsresultat</string>
+    <string name="show_explicit_badge">Visa explicit-märke</string>
+    <string name="show_explicit_badge_desc">Visa ikonen \"E\" för explicita låtar</string>
+
+    <string name="backup_restore">Säkerhetskopiering och återställning</string>
+    <string name="action_backup">Säkerhetskopiera</string>
+    <string name="action_restore">Återställ</string>
+    <string name="imported_playlist">Importerad spellista</string>
+    <string name="backup_create_success">Säkerhetskopian skapades</string>
+    <string name="backup_create_failed">Kunde inte skapa säkerhetskopia</string>
+    <string name="restore_failed">Kunde inte återställa säkerhetskopian</string>
+
+    <string name="discord_integration">Discord-integration</string>
+    <string name="discord_information">Iride använder biblioteket KizzyRPC för att ställa in statusen för ditt Discord-konto. Detta innebär att Discord Gateway-anslutningen används, vilket kan betraktas som ett brott mot Discords användarvillkor. Det finns dock inga kända fall där användarkonton har stängts av av den anledningen. Använd på egen risk.\n\Iride extraherar bara din token, och allt annat lagras lokalt.</string>
+    <string name="dismiss">Avfärda</string>
+    <string name="options">Alternativ</string>
+    <string name="preview">Förhandsvisning</string>
+    <string name="enable_discord_rpc">Aktivera Rich Presence</string>
+
+    <string name="about">Om</string>
+    <string name="app_version">Appversion</string>
+
+    <string name="new_version_available">Ny version tillgänglig</string>
+
+    <!-- Advanced Mode -->
+    <string name="advanced_mode">Avancerat läge</string>
+    <string name="advanced_mode_banner">Avancerat läge är aktiverat. Räkna med fler inställningar och tekniska alternativ i hela appen — det här gränssnittet är inte tänkt för vardagligt bruk.</string>
+    <string name="my_account">Mitt konto</string>
+    <string name="your_contents">Ditt innehåll</string>
+    <string name="playback">Uppspelning</string>
+    <string name="default_category">Standardkategori</string>
+    <string name="music_section">Musik</string>
+    <string name="interface_section">Gränssnitt</string>
+    <string name="lyrics_translation">Översättning av låttexter</string>
+    <string name="behavior">Beteende</string>
+
+    <string name="translation_models">Översättningsmodeller</string>
+    <string name="clear_translation_models">Rensa översättningsmodeller</string>
+
+    <!-- New settings for track resolution -->
+    <string name="resolve_video_songs">Konvertera videolåtar</string>
+    <string name="resolve_video_songs_desc">Hitta och ersätt automatiskt videospår med ljudversioner</string>
+    <string name="hide_video_only_results">Dölj resultat med endast video</string>
+    <string name="hide_video_only_results_desc">Dölj spår där endast en videoversion finns tillgänglig (när upplösningen misslyckas)</string>
+    <string name="hide_videos_in_library">Dölj videor i bibliotek/spellistor</string>
+    <string name="hide_videos_in_library_desc">Tillämpa videodöljarlogik på ditt bibliotek och dina skapade spellistor</string>
+    <string name="resolved_track_cache">Cache för upplösta spår</string>
+    <string name="max_resolved_track_cache_size">Max cachestorlek</string>
+    <string name="clear_resolved_track_cache">Rensa cachen för upplösta spår</string>
+    <string name="clear_resolved_track_cache_dialog">Vill du verkligen rensa cachen för upplösta spår? Detta tvingar appen att söka på nytt efter ljudversioner av videor.</string>
+    <string name="searching_synced_lyrics">Söker efter synkade låttexter…</string>
+
+    <string name="main_top_gradient">Toppgradient på huvudskärmar</string>
+    <string name="main_top_gradient_desc">Visar den aktuella låtens spelargradient, subtilt tonad, bakom toppen av Hem, Bibliotek, Sök och Nyheter</string>
+    <string name="album_top_gradient">Toppgradient på album</string>
+    <string name="album_top_gradient_desc">Visar det visade albumets spelargradient, subtilt tonad, bakom toppen av skärmarna för Album, Singel och EP</string>
+</resources>

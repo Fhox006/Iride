@@ -23,6 +23,23 @@
         <item name="android:windowBackground">#FFFBFF</item>
     </style>
 
+    <!-- Branded launch theme (androidx.core splashscreen API). Shows the Iride eye on a surface
+         matching the app's default (dark) window, then hands off to the regular theme without a
+         colour jump. On API 31+ the system renders the splash from these attributes; below that
+         the library draws it, honouring the runtime setTheme() choice made in onCreate. -->
+    <style name="Theme.Metrolist.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#000000</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo_dark</item>
+        <item name="postSplashScreenTheme">@style/Theme.Metrolist</item>
+    </style>
+
+    <!-- Light-mode variant of the branded launch theme. -->
+    <style name="Theme.Metrolist.Splash.Light" parent="Theme.Metrolist.Splash">
+        <item name="windowSplashScreenBackground">#FFFBFF</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo_light</item>
+        <item name="postSplashScreenTheme">@style/Theme.Metrolist.Light</item>
+    </style>
+
     <!-- Widget Theme with Material 3 colors fallback for API < 31 -->
     <style name="Theme.Widget.Metrolist" parent="@android:style/Theme.DeviceDefault.DayNight">
         <item name="android:colorBackground">#E6E1E5</item>

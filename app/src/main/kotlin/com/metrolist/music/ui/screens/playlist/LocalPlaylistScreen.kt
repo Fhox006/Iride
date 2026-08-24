@@ -102,7 +102,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import com.metrolist.music.ui.theme.ForceDarkTheme
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textTertiary
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
@@ -1059,7 +1063,7 @@ fun LocalPlaylistScreen(
                     Icon(
                         painter = painterResource(R.drawable.add),
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = if (addToCategoryEnabled) 0.9f else 0.3f),
+                        tint = if (addToCategoryEnabled) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(Modifier.width(6.dp))
@@ -1070,7 +1074,7 @@ fun LocalPlaylistScreen(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 13.sp,
                         ),
-                        color = Color.White.copy(alpha = if (addToCategoryEnabled) 0.9f else 0.3f),
+                        color = if (addToCategoryEnabled) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
                         maxLines = 1,
                     )
                 }
@@ -1295,7 +1299,9 @@ fun LocalPlaylistHeader(
         )
 
     val cropColor = MaterialTheme.colorScheme
-    val darkTheme = darkMode == DarkMode.ON || (darkMode == DarkMode.AUTO && isSystemInDarkTheme())
+    val darkTheme =
+        ForceDarkTheme ||
+            (darkMode == DarkMode.ON || (darkMode == DarkMode.AUTO && isSystemInDarkTheme()))
 
     val pickLauncher =
         rememberLauncherForActivityResult(
@@ -1423,7 +1429,7 @@ fun LocalPlaylistHeader(
             }
         }
         val playlistCoverSquircle = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
-        val coverBorder = BorderStroke(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f))
+        val coverBorder = BorderStroke(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard)
         var coverLoaded by remember(playlist.playlist.id) { mutableStateOf(false) }
         var skipCoverEnterAnim by remember(playlist.playlist.id) { mutableStateOf(false) }
         val animatedCoverProgress = rememberEnterProgress(play = coverLoaded, durationMillis = 420, easing = IrideMotion.EaseOutQuart)

@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,8 +27,14 @@ data class SavedEQProfile(
     val preamp: Double = 0.0,
     val isCustom: Boolean = false,
     val isActive: Boolean = false,
-    val addedTimestamp: Long = System.currentTimeMillis()
-)
+    val addedTimestamp: Long = System.currentTimeMillis(),
+    /** 0..1 low-shelf boost intensity around 90 Hz */
+    val bassBoostIntensity: Double = 0.0,
+    /** 0..1 transient-shaping strength (advanced "duration" parameter) */
+    val transientStrength: Double = 0.0
+) {
+    fun bassBoostDb(): Double = bassBoostIntensity * EQPreset.MAX_BASS_BOOST_DB
+}
 
 /**
  * Repository for managing EQ profiles
@@ -53,13 +60,26 @@ class EQProfileRepository @Inject constructor(
     private val _activeProfile = MutableStateFlow<SavedEQProfile?>(null)
     val activeProfile: StateFlow<SavedEQProfile?> = _activeProfile.asStateFlow()
 
+    private val _enabled = MutableStateFlow(true)
+    val enabled: StateFlow<Boolean> = _enabled.asStateFlow()
+
+    /** Profile actually applied to playback: null when the EQ is disabled */
+    private val _effectiveProfile = MutableStateFlow<SavedEQProfile?>(null)
+    val effectiveProfile: StateFlow<SavedEQProfile?> = _effectiveProfile.asStateFlow()
+
+    private val _deviceBindings = MutableStateFlow<Map<String, String>>(emptyMap())
+    val deviceBindings: StateFlow<Map<String, String>> = _deviceBindings.asStateFlow()
+
     companion object {
         private const val KEY_PROFILES = "eq_profiles"
         private const val KEY_ACTIVE_PROFILE_ID = "active_profile_id"
+        private const val KEY_ENABLED = "eq_enabled"
+        private const val KEY_DEVICE_BINDINGS = "eq_device_bindings"
     }
 
     init {
         loadProfiles()
+        refreshEffective()
     }
 
     /**
@@ -75,11 +95,20 @@ class EQProfileRepository @Inject constructor(
                 val activeId = prefs.getString(KEY_ACTIVE_PROFILE_ID, null)
                 _activeProfile.value = loadedProfiles.find { it.id == activeId }
             }
+            _enabled.value = prefs.getBoolean(KEY_ENABLED, true)
+            val bindingsJson = prefs.getString(KEY_DEVICE_BINDINGS, null)
+            if (bindingsJson != null) {
+                _deviceBindings.value = json.decodeFromString(bindingsJson)
+            }
         } catch (e: Exception) {
-            println("Error loading EQ profiles: ${e.message}")
+            Timber.e(e, "Error loading EQ profiles")
             _profiles.value = emptyList()
             _activeProfile.value = null
         }
+    }
+
+    private fun refreshEffective() {
+        _effectiveProfile.value = if (_enabled.value) _activeProfile.value else null
     }
 
     /**
@@ -99,7 +128,11 @@ class EQProfileRepository @Inject constructor(
         val profilesJson = json.encodeToString<List<SavedEQProfile>>(currentProfiles)
         prefs.edit { putString(KEY_PROFILES, profilesJson) }
 
+        if (_activeProfile.value?.id == profile.id) {
+            _activeProfile.value = profile
+        }
         _profiles.value = currentProfiles
+        refreshEffective()
     }
 
     /**
@@ -118,6 +151,7 @@ class EQProfileRepository @Inject constructor(
         }
 
         _profiles.value = currentProfiles
+        refreshEffective()
     }
 
     /**
@@ -135,6 +169,43 @@ class EQProfileRepository @Inject constructor(
             _activeProfile.value = profile
             prefs.edit { putString(KEY_ACTIVE_PROFILE_ID, profileId) }
         }
+        refreshEffective()
+    }
+
+    /**
+     * Enable or disable the equalizer globally.
+     * The working profile is kept so re-enabling restores it.
+     */
+    suspend fun setEnabled(value: Boolean) = withContext(Dispatchers.IO) {
+        prefs.edit { putBoolean(KEY_ENABLED, value) }
+        _enabled.value = value
+        refreshEffective()
+    }
+
+    /**
+     * Link an output device key to a profile: the device auto-switches to it on connect.
+     */
+    suspend fun bindDevice(deviceKey: String, profileId: String) = withContext(Dispatchers.IO) {
+        val updated = _deviceBindings.value + (deviceKey to profileId)
+        prefs.edit { putString(KEY_DEVICE_BINDINGS, json.encodeToString(updated)) }
+        _deviceBindings.value = updated
+    }
+
+    /**
+     * Remove a device link
+     */
+    suspend fun unbindDevice(deviceKey: String) = withContext(Dispatchers.IO) {
+        val updated = _deviceBindings.value - deviceKey
+        prefs.edit { putString(KEY_DEVICE_BINDINGS, json.encodeToString(updated)) }
+        _deviceBindings.value = updated
+    }
+
+    /**
+     * Profile bound to the given output device key, if any
+     */
+    fun profileForDevice(deviceKey: String): SavedEQProfile? {
+        val id = _deviceBindings.value[deviceKey] ?: return null
+        return _profiles.value.find { it.id == id }
     }
 
     /**

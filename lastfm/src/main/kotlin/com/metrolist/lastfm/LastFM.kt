@@ -124,7 +124,7 @@ object LastFM {
                 method = "track.updateNowPlaying",
                 apiKey = API_KEY,
                 secret = SECRET,
-                sessionKey = sessionKey!!,
+                sessionKey = requireNotNull(sessionKey) { "LastFM not authenticated" },
                 extra = buildMap {
                     put("artist", artist)
                     put("track", track)
@@ -146,7 +146,7 @@ object LastFM {
                 method = "track.scrobble",
                 apiKey = API_KEY,
                 secret = SECRET,
-                sessionKey = sessionKey!!,
+                sessionKey = requireNotNull(sessionKey) { "LastFM not authenticated" },
                 extra = buildMap {
                     put("artist[0]", artist)
                     put("track[0]", track)
@@ -170,7 +170,7 @@ object LastFM {
                 method = method,
                 apiKey = API_KEY,
                 secret = SECRET,
-                sessionKey = sessionKey!!,
+                sessionKey = requireNotNull(sessionKey) { "LastFM not authenticated" },
                 extra = buildMap {
                     put("artist", artist)
                     put("track", track)

@@ -24,17 +24,17 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.dialog
 import androidx.navigation.navArgument
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.PureBlackKey
+import com.metrolist.music.constants.AdvancedHomePageKey
 import com.metrolist.music.ui.screens.artist.ArtistAlbumsScreen
 import com.metrolist.music.ui.screens.artist.ArtistDiscographyScreen
 import com.metrolist.music.ui.screens.artist.ArtistGameScreen
 import com.metrolist.music.ui.screens.artist.ArtistItemsScreen
 import com.metrolist.music.ui.screens.artist.ArtistScreen
 import com.metrolist.music.ui.screens.artist.ArtistSongsScreen
-import com.metrolist.music.ui.screens.equalizer.EqScreen
+import com.metrolist.music.ui.screens.equalizer.EqEditorScreen
 import com.metrolist.music.ui.screens.library.LibraryAlbumsScreen
 import com.metrolist.music.ui.screens.library.LibraryArtistsScreen
 import com.metrolist.music.ui.screens.library.LibraryPlaylistsScreen
@@ -57,6 +57,7 @@ import com.metrolist.music.ui.screens.settings.AppearanceSettings
 import com.metrolist.music.ui.screens.settings.BackupAndRestore
 import com.metrolist.music.ui.screens.settings.ContentSettings
 import com.metrolist.music.ui.screens.settings.DarkMode
+import com.metrolist.music.ui.theme.ForceDarkTheme
 import com.metrolist.music.ui.screens.settings.DiscordLoginScreen
 import com.metrolist.music.ui.screens.settings.InterfaceSettings
 import com.metrolist.music.ui.screens.settings.LyricsSettings
@@ -94,7 +95,12 @@ fun NavGraphBuilder.NavigationBuilder(
     }
 
     composable(Screens.Home.route) {
-        HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
+        val advancedHomePage by rememberPreference(AdvancedHomePageKey, defaultValue = false)
+        if (advancedHomePage) {
+            AdvancedHomeScreen(navController = navController, snackbarHostState = snackbarHostState)
+        } else {
+            HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
+        }
     }
 
     composable(Screens.WhatNew.route) {
@@ -113,7 +119,8 @@ fun NavGraphBuilder.NavigationBuilder(
         val isSystemInDarkTheme = isSystemInDarkTheme()
 
         val useDarkTheme = remember(darkTheme, isSystemInDarkTheme) {
-            if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
+            ForceDarkTheme ||
+                if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
         }
         val pureBlack = remember(pureBlackEnabled, useDarkTheme) {
             pureBlackEnabled && useDarkTheme
@@ -393,16 +400,16 @@ fun NavGraphBuilder.NavigationBuilder(
         AboutScreen(navController)
     }
 
+    composable("settings/equalizer") {
+        EqEditorScreen(navController)
+    }
+
     composable("login") {
         LoginScreen(navController)
     }
 
     composable("wrapped") {
         WrappedScreen(navController)
-    }
-
-    dialog("equalizer") {
-        EqScreen()
     }
 
     composable(

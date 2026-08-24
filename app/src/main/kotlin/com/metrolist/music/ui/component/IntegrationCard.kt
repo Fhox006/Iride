@@ -35,6 +35,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -160,7 +163,7 @@ private fun IrideIntegrationGroup(
                     letterSpacing = (-0.1).sp,
                 ),
                 fontWeight = FontWeight.Bold,
-                color = Color.White.copy(alpha = 0.55f),
+                color = MaterialTheme.colorScheme.textSecondary,
                 modifier = Modifier.padding(bottom = 6.dp, top = 4.dp)
             )
         }
@@ -169,7 +172,7 @@ private fun IrideIntegrationGroup(
             items.forEachIndexed { index, item ->
                 IrideIntegrationItemRow(item = item)
                 if (index != items.lastIndex) {
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.strokeHairline, thickness = 1.dp)
                 }
             }
         }
@@ -189,7 +192,7 @@ private fun IrideIntegrationItemRow(item: IntegrationCardItem) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         item.icon?.let { icon ->
-            val iconTint = Color.White.copy(alpha = if (item.isHighlighted) 1f else 0.85f)
+            val iconTint = MaterialTheme.colorScheme.textPrimary.copy(alpha = if (item.isHighlighted) 1f else 0.85f)
             if (item.showBadge) {
                 BadgedBox(
                     badge = { Badge(containerColor = MaterialTheme.colorScheme.error) }
@@ -219,7 +222,7 @@ private fun IrideIntegrationItemRow(item: IntegrationCardItem) {
                     fontSize = 15.sp,
                     letterSpacing = (-0.1).sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.textPrimary,
                 )
             ) {
                 item.title()
@@ -228,7 +231,7 @@ private fun IrideIntegrationItemRow(item: IntegrationCardItem) {
             item.description?.let { desc ->
                 Spacer(modifier = Modifier.height(2.dp))
                 ProvideTextStyle(
-                    MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.6f))
+                    MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.textSecondary)
                 ) {
                     desc()
                 }

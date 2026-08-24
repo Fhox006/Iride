@@ -85,6 +85,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.strokeCard
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
@@ -976,7 +977,7 @@ private fun OnlinePlaylistHeader(
                     )
                     .clip(playlistCoverSquircle)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .border(BorderStroke(IrideBaseBorderWidth, Color.White.copy(alpha = 0.22f)), playlistCoverSquircle),
+                    .border(BorderStroke(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard), playlistCoverSquircle),
             )
         }
 

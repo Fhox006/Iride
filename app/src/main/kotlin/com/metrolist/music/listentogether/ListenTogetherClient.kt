@@ -988,9 +988,10 @@ class ListenTogetherClient
 
                     MessageTypes.USER_JOINED -> {
                         val payload = codec.decodePayload(msgType, payloadBytes) as? UserJoinedPayload ?: return
+                        val state = _roomState.value ?: return
                         _roomState.value =
-                            _roomState.value?.copy(
-                                users = _roomState.value!!.users + UserInfo(payload.userId, payload.username, false),
+                            state.copy(
+                                users = state.users + UserInfo(payload.userId, payload.username, false),
                             )
                         _pendingJoinRequests.value = _pendingJoinRequests.value.filter { it.userId != payload.userId }
 
@@ -1004,9 +1005,10 @@ class ListenTogetherClient
 
                     MessageTypes.USER_LEFT -> {
                         val payload = codec.decodePayload(msgType, payloadBytes) as? UserLeftPayload ?: return
+                        val state = _roomState.value ?: return
                         _roomState.value =
-                            _roomState.value?.copy(
-                                users = _roomState.value!!.users.filter { it.userId != payload.userId },
+                            state.copy(
+                                users = state.users.filter { it.userId != payload.userId },
                             )
                         log(LogLevel.INFO, "User left", payload.username)
                         scope.launch { _events.emit(ListenTogetherEvent.UserLeft(payload.userId, payload.username)) }
@@ -1014,11 +1016,12 @@ class ListenTogetherClient
 
                     MessageTypes.HOST_CHANGED -> {
                         val payload = codec.decodePayload(msgType, payloadBytes) as? HostChangedPayload ?: return
+                        val state = _roomState.value ?: return
                         _roomState.value =
-                            _roomState.value?.copy(
+                            state.copy(
                                 hostId = payload.newHostId,
                                 users =
-                                    _roomState.value!!.users.map {
+                                    state.users.map {
                                         it.copy(isHost = it.userId == payload.newHostId)
                                     },
                             )
@@ -1047,25 +1050,28 @@ class ListenTogetherClient
 
                         when (payload.action) {
                             PlaybackActions.PLAY -> {
+                                val state = _roomState.value ?: return
                                 _roomState.value =
-                                    _roomState.value?.copy(
+                                    state.copy(
                                         isPlaying = true,
-                                        position = payload.position ?: _roomState.value!!.position,
+                                        position = payload.position ?: state.position,
                                     )
                             }
 
                             PlaybackActions.PAUSE -> {
+                                val state = _roomState.value ?: return
                                 _roomState.value =
-                                    _roomState.value?.copy(
+                                    state.copy(
                                         isPlaying = false,
-                                        position = payload.position ?: _roomState.value!!.position,
+                                        position = payload.position ?: state.position,
                                     )
                             }
 
                             PlaybackActions.SEEK -> {
+                                val state = _roomState.value ?: return
                                 _roomState.value =
-                                    _roomState.value?.copy(
-                                        position = payload.position ?: _roomState.value!!.position,
+                                    state.copy(
+                                        position = payload.position ?: state.position,
                                     )
                             }
 
@@ -1248,10 +1254,11 @@ class ListenTogetherClient
 
                     MessageTypes.USER_RECONNECTED -> {
                         val payload = codec.decodePayload(msgType, payloadBytes) as? UserReconnectedPayload ?: return
+                        val state = _roomState.value ?: return
                         _roomState.value =
-                            _roomState.value?.copy(
+                            state.copy(
                                 users =
-                                    _roomState.value!!.users.map { user ->
+                                    state.users.map { user ->
                                         if (user.userId == payload.userId) user.copy(isConnected = true) else user
                                     },
                             )
@@ -1261,10 +1268,11 @@ class ListenTogetherClient
 
                     MessageTypes.USER_DISCONNECTED -> {
                         val payload = codec.decodePayload(msgType, payloadBytes) as? UserDisconnectedPayload ?: return
+                        val state = _roomState.value ?: return
                         _roomState.value =
-                            _roomState.value?.copy(
+                            state.copy(
                                 users =
-                                    _roomState.value!!.users.map { user ->
+                                    state.users.map { user ->
                                         if (user.userId == payload.userId) user.copy(isConnected = false) else user
                                     },
                             )

@@ -12,6 +12,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import com.metrolist.music.playback.MusicService
+import timber.log.Timber
 
 class MusicWidgetReceiver : AppWidgetProvider() {
 
@@ -27,6 +28,7 @@ class MusicWidgetReceiver : AppWidgetProvider() {
             try {
                 context.startService(intent)
             } catch (e: Exception) {
+                Timber.w(e, "Music widget: failed to request update")
             }
         }
     }
@@ -45,6 +47,7 @@ class MusicWidgetReceiver : AppWidgetProvider() {
             try {
                 context.startService(intent)
             } catch (e: Exception) {
+                Timber.w(e, "Music widget: failed to request resize update")
             }
         }
     }
@@ -65,6 +68,7 @@ class MusicWidgetReceiver : AppWidgetProvider() {
                         context.startService(serviceIntent)
                     }
                 } catch (e: Exception) {
+                    Timber.w(e, "Music widget: failed to forward command ${intent.action}")
                 }
             }
         }

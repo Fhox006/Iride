@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.metrolist.music.R
+import com.metrolist.music.ui.theme.ForceDarkTheme
 import com.metrolist.music.ui.theme.IrideTheme
 import com.metrolist.music.utils.CrashHandler
 import java.io.File
@@ -56,7 +57,7 @@ class CrashActivity : ComponentActivity() {
         enableEdgeToEdge()
         val crashLog = intent.getStringExtra(CrashHandler.EXTRA_CRASH_LOG) ?: getString(R.string.crash_no_log)
         setContent {
-            val darkTheme = isSystemInDarkTheme()
+            val darkTheme = ForceDarkTheme || isSystemInDarkTheme()
             IrideTheme(darkTheme = darkTheme) {
                 CrashScreen(
                     crashLog = crashLog,

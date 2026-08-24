@@ -99,6 +99,11 @@ import com.metrolist.music.ui.menu.YouTubeArtistMenu
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.fillSubtle
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
+import com.metrolist.music.ui.theme.textTertiary
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.utils.recordSearchHistoryOpen
@@ -200,7 +205,7 @@ fun OnlineSearchScreen(
                         letterSpacing = (-0.1).sp,
                     ),
                     fontWeight = FontWeight.Bold,
-                    color = Color.White.copy(alpha = 0.55f),
+                    color = MaterialTheme.colorScheme.textSecondary,
                     modifier = Modifier
                         .padding(
                             start = 20.dp,
@@ -251,7 +256,7 @@ fun OnlineSearchScreen(
                             is DiscoveryWeeklyPending -> {
                                 DiscoveryWeeklyCard(
                                     thumbnails = emptyList(),
-                                    onClick = {},
+                                    onClick = { homeViewModel.syncDiscoveryWeeklyIfNeeded(force = true) },
                                     useIrideStyle = true,
                                     pendingLabel = stringResource(R.string.discovery_weekly_creating),
                                     modifier = Modifier.weight(1f),
@@ -536,7 +541,7 @@ fun OnlineSearchScreen(
 
                 item(key = "parsed_url_divider") {
                     HorizontalDivider(
-                        color = Color.White.copy(alpha = 0.08f),
+                        color = MaterialTheme.colorScheme.strokeHairline,
                         modifier =
                             Modifier
                                 .padding(vertical = 8.dp)
@@ -604,7 +609,7 @@ fun OnlineSearchScreen(
             if (viewState.items.isNotEmpty() && viewState.history.size + viewState.suggestions.size > 0) {
                 item(key = "search_divider") {
                     HorizontalDivider(
-                        color = Color.White.copy(alpha = 0.08f),
+                        color = MaterialTheme.colorScheme.strokeHairline,
                         modifier = Modifier.animateItem(),
                     )
                 }
@@ -847,7 +852,7 @@ private fun SearchMoodCard(
             modifier = modifier
                 .height(72.dp)
                 .clip(RoundedCornerShape(5.dp))
-                .background(Color.White.copy(alpha = 0.06f))
+                .background(MaterialTheme.colorScheme.fillSubtle)
                 .clickable(onClick = onClick)
                 .padding(12.dp),
         ) {
@@ -859,7 +864,7 @@ private fun SearchMoodCard(
                     letterSpacing = (-0.1).sp,
                 ),
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = 0.85f),
+                color = MaterialTheme.colorScheme.textPrimary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -901,8 +906,8 @@ private fun DiscoveryWeeklyCard(
         modifier = modifier
             .height(height)
             .clip(RoundedCornerShape(if (useIrideStyle) 5.dp else 18.dp))
-            .background(if (useIrideStyle) Color.White.copy(alpha = 0.06f) else MaterialTheme.colorScheme.secondaryContainer)
-            .then(if (pendingLabel == null) Modifier.clickable(onClick = onClick) else Modifier),
+            .background(if (useIrideStyle) MaterialTheme.colorScheme.fillSubtle else MaterialTheme.colorScheme.secondaryContainer)
+            .clickable(onClick = onClick),
     ) {
         if (mosaicThumbnails.isNotEmpty()) {
             Box(
@@ -1067,7 +1072,7 @@ fun SuggestionItem(
             } else {
                 MaterialTheme.typography.bodyLarge
             },
-            color = if (useIrideStyle) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface,
+            color = if (useIrideStyle) MaterialTheme.colorScheme.textSecondary else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f).padding(end = if (useIrideStyle) 12.dp else 0.dp),
         )
 
@@ -1079,7 +1084,7 @@ fun SuggestionItem(
                 Icon(
                     painter = painterResource(R.drawable.close),
                     contentDescription = null,
-                    tint = if (useIrideStyle) Color.White.copy(alpha = 0.35f) else LocalContentColor.current,
+                    tint = if (useIrideStyle) MaterialTheme.colorScheme.textTertiary else LocalContentColor.current,
                 )
             }
         }
@@ -1091,7 +1096,7 @@ fun SuggestionItem(
             Icon(
                 painter = painterResource(R.drawable.arrow_top_left),
                 contentDescription = null,
-                tint = if (useIrideStyle) Color.White.copy(alpha = 0.35f) else LocalContentColor.current,
+                tint = if (useIrideStyle) MaterialTheme.colorScheme.textTertiary else LocalContentColor.current,
             )
         }
     }

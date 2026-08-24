@@ -1118,7 +1118,7 @@ object YouTube {
                 else -> null
             }
         } catch (e: Exception) {
-            println("Error converting chart item: ${e.message}\n${Json.encodeToString(renderer)}")
+            Timber.w(e, "Error converting chart item")
             null
         }
     }
@@ -1166,7 +1166,7 @@ object YouTube {
                 else -> null
             }
         } catch (e: Exception) {
-            println("Error converting two row item: ${e.message}\n${Json.encodeToString(renderer)}")
+            Timber.w(e, "Error converting two row item")
             null
         }
     }

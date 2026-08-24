@@ -51,6 +51,11 @@ import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.text.style.TextOverflow
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.fillSelected
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
+import com.metrolist.music.ui.theme.textTertiary
 import com.metrolist.music.ui.utils.resize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -259,7 +264,7 @@ private fun <E> IrideMoodChipsRow(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp),
-                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.35f),
+                    color = if (isSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                     maxLines = 1,
                     modifier = Modifier
@@ -283,7 +288,7 @@ private fun <E> IrideMoodChipsRow(
                     .offset { IntOffset(indicatorX.roundToInt(), 0) }
                     .width(with(density) { indicatorWidth.toDp() })
                     .height(2.dp)
-                    .background(Color.White),
+                    .background(MaterialTheme.colorScheme.textPrimary),
             )
         } else {
             Spacer(Modifier.height(2.dp))
@@ -924,8 +929,8 @@ fun HomeScreen(
                                 .padding(horizontal = 20.dp)
                                 .height(2.dp)
                                 .clip(RoundedCornerShape(1.dp)),
-                            color = Color.White.copy(alpha = 0.6f),
-                            trackColor = Color.White.copy(alpha = 0.12f),
+                            color = MaterialTheme.colorScheme.textSecondary,
+                            trackColor = MaterialTheme.colorScheme.fillSelected,
                         )
                     }
                 }
@@ -1306,7 +1311,7 @@ fun HomeScreen(
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(24.dp),
                                             strokeWidth = 2.dp,
-                                            color = Color.White.copy(alpha = 0.6f),
+                                            color = MaterialTheme.colorScheme.textSecondary,
                                         )
                                     }
                                 } else {
@@ -1364,7 +1369,7 @@ fun HomeScreen(
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(24.dp),
                                             strokeWidth = 2.dp,
-                                            color = Color.White.copy(alpha = 0.6f),
+                                            color = MaterialTheme.colorScheme.textSecondary,
                                         )
                                     }
                                 }
@@ -1411,7 +1416,7 @@ fun HomeScreen(
                                     .then(homeRowMotion("keep_listening_row"))
                                     .rubberBandOverscroll(Orientation.Horizontal, keepListeningState),
                             ) {
-                                items(kl) { localGridItem(it) }
+                                items(kl, key = { it.id }) { localGridItem(it) }
                             }
                         }
                     }
@@ -1724,7 +1729,7 @@ fun HomeScreen(
                                 modifier = homeRowMotion("similar_to_row_$index")
                                     .rubberBandOverscroll(Orientation.Horizontal, similarToState),
                             ) {
-                                items(rec.items) { recItem -> ytGridItem(recItem, null, false, null) }
+                                items(rec.items, key = { it.id }) { recItem -> ytGridItem(recItem, null, false, null) }
                             }
                         }
                     }
@@ -1952,7 +1957,7 @@ fun SyncBanner(syncState: SyncState, useIrideStyle: Boolean = false) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(16.dp),
                     strokeWidth = 2.dp,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = MaterialTheme.colorScheme.textSecondary,
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -1963,12 +1968,12 @@ fun SyncBanner(syncState: SyncState, useIrideStyle: Boolean = false) {
                             letterSpacing = (-0.1).sp,
                         ),
                         fontWeight = FontWeight.Bold,
-                        color = Color.White.copy(alpha = 0.55f),
+                        color = MaterialTheme.colorScheme.textSecondary,
                     )
                     Text(
                         text = "Network features may not work until sync completes.",
                         style = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily),
-                        color = Color.White.copy(alpha = 0.4f),
+                        color = MaterialTheme.colorScheme.textTertiary,
                     )
                 }
             }
@@ -1979,15 +1984,15 @@ fun SyncBanner(syncState: SyncState, useIrideStyle: Boolean = false) {
                     .fillMaxWidth()
                     .height(2.dp)
                     .clip(CircleShape),
-                color = Color.White.copy(alpha = 0.6f),
-                trackColor = Color.White.copy(alpha = 0.15f),
+                color = MaterialTheme.colorScheme.textSecondary,
+                trackColor = MaterialTheme.colorScheme.fillSelected,
             )
             if (syncState.currentOperation.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = syncState.currentOperation,
                     style = MaterialTheme.typography.labelSmall.copy(fontFamily = SpaceMonoFontFamily),
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = MaterialTheme.colorScheme.textTertiary,
                 )
             }
         }
@@ -2283,7 +2288,7 @@ private fun IrideDailyDiscoverCard(
         modifier = modifier
             .width(size)
             .clip(RoundedCornerShape(14.dp))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(14.dp))
+            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.strokeHairline), RoundedCornerShape(14.dp))
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = {
@@ -2314,14 +2319,14 @@ private fun IrideDailyDiscoverCard(
             text = dailyDiscover.recommendation.title,
             style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily),
             fontWeight = FontWeight.Bold,
-            color = Color.White.copy(alpha = 0.9f),
+            color = MaterialTheme.colorScheme.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
             text = song?.artists?.joinToString(", ") { it.name } ?: "",
             style = MaterialTheme.typography.bodySmall,
-            color = Color.White.copy(alpha = 0.6f),
+            color = MaterialTheme.colorScheme.textSecondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -2331,7 +2336,7 @@ private fun IrideDailyDiscoverCard(
                 "${dailyDiscover.seed.title} • ${dailyDiscover.seed.artists.joinToString(", ") { it.name }}",
             ),
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.45f),
+            color = MaterialTheme.colorScheme.textTertiary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 4.dp),

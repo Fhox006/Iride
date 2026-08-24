@@ -54,6 +54,8 @@ import com.metrolist.music.ui.component.IrideCollapsibleSection
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.theme.textPrimary
 import sv.lib.squircleshape.SquircleShape
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -113,8 +115,8 @@ fun HeroCarouselSection(
                             .clip(CircleShape)
                             .background(
                                 when {
-                                    selected -> Color.White.copy(alpha = 0.8f)
-                                    else -> Color.White.copy(alpha = 0.22f)
+                                    selected -> MaterialTheme.colorScheme.textPrimary
+                                    else -> MaterialTheme.colorScheme.strokeCard
                                 }
                             ),
                     )

@@ -46,6 +46,7 @@ import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
+import com.metrolist.music.constants.AdvancedHomePageKey
 import com.metrolist.music.constants.HeroCarouselEnabledKey
 import com.metrolist.music.constants.SmartBootKey
 import com.metrolist.music.constants.ShowFeaturedArtistsInTopSongsKey
@@ -103,6 +104,8 @@ fun InterfaceSettings(
         rememberPreference(ShowFeaturedArtistsInTopSongsKey, defaultValue = true)
     val (heroCarouselEnabled, onHeroCarouselEnabledChange) =
         rememberPreference(HeroCarouselEnabledKey, defaultValue = false)
+    val (advancedHomePage, onAdvancedHomePageChange) =
+        rememberPreference(AdvancedHomePageKey, defaultValue = false)
     val (smartBootEnabled, onSmartBootEnabledChange) =
         rememberPreference(SmartBootKey, defaultValue = true)
 
@@ -306,6 +309,27 @@ fun InterfaceSettings(
                         )
                     },
                     onClick = { onHeroCarouselEnabledChange(!heroCarouselEnabled) },
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.home_outlined),
+                    title = { Text(stringResource(R.string.adv_home_settings_title)) },
+                    description = { Text(stringResource(R.string.adv_home_settings_desc)) },
+                    trailingContent = {
+                        IrideSwitch(
+                            checked = advancedHomePage,
+                            onCheckedChange = onAdvancedHomePageChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        if (advancedHomePage) R.drawable.check else R.drawable.close
+                                    ),
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                    contentDescription = null,
+                                )
+                            },
+                        )
+                    },
+                    onClick = { onAdvancedHomePageChange(!advancedHomePage) },
                 )
             )
         )

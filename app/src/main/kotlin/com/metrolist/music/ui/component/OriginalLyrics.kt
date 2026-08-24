@@ -138,6 +138,7 @@ import com.metrolist.music.constants.LyricsLineSpacingKey
 import com.metrolist.music.constants.LyricsRomanizeAsMainKey
 import com.metrolist.music.constants.LyricsRomanizeCyrillicByLineKey
 import com.metrolist.music.constants.LyricsRomanizeList
+import com.metrolist.music.constants.LyricsRomanizeToggleKey
 import com.metrolist.music.constants.LyricsScrollKey
 import com.metrolist.music.constants.LyricsTextPositionKey
 import com.metrolist.music.constants.LyricsTextSizeKey
@@ -173,6 +174,7 @@ import com.metrolist.music.lyrics.LyricsUtils.romanizeKorean
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.component.shimmer.TextPlaceholder
 import com.metrolist.music.ui.screens.settings.DarkMode
+import com.metrolist.music.ui.theme.ForceDarkTheme
 import com.metrolist.music.ui.screens.settings.LyricsPosition
 import com.metrolist.music.ui.screens.settings.defaultList
 import com.metrolist.music.ui.theme.InterFontFamily
@@ -221,6 +223,7 @@ fun OriginalLyrics(
     val romanizeLyricsList = rememberPreference(LyricsRomanizeList, "")
     val romanizeAsMain by rememberPreference(LyricsRomanizeAsMainKey, false)
     val romanizeCyrillicByLine by rememberPreference(LyricsRomanizeCyrillicByLineKey, false)
+    var romanizeToggleEnabled by rememberPreference(LyricsRomanizeToggleKey, false)
     val lyricsGlowEffect by rememberPreference(LyricsGlowEffectKey, false)
     val lyricsAnimationStyle by rememberEnumPreference(LyricsAnimationStyleKey, LyricsAnimationStyle.APPLE)
     val lyricsTextSize by rememberPreference(LyricsTextSizeKey, 24f)
@@ -252,7 +255,8 @@ fun OriginalLyrics(
     val isSystemInDarkTheme = isSystemInDarkTheme()
     val useDarkTheme =
         remember(darkTheme, isSystemInDarkTheme) {
-            if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
+            ForceDarkTheme ||
+                if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
         }
 
     val decodedList =
@@ -1127,10 +1131,10 @@ fun OriginalLyrics(
                             val romanizedText = romanizedTextState
                             val isRomanizedAvailable = romanizedText != null
 
-                            val mainText = if (romanizeAsMain && isRomanizedAvailable) romanizedText else item.text
-                            val subText = if (romanizeAsMain && isRomanizedAvailable) item.text else romanizedText
+                            val mainText = if (romanizeToggleEnabled && romanizeAsMain && isRomanizedAvailable) romanizedText else item.text
+                            val subText = if (romanizeToggleEnabled && romanizeAsMain && isRomanizedAvailable) item.text else romanizedText
 
-                            val hasWordTimings = if (romanizeAsMain && isRomanizedAvailable) false else item.words?.isNotEmpty() == true
+                            val hasWordTimings = if (romanizeToggleEnabled && romanizeAsMain && isRomanizedAvailable) false else item.words?.isNotEmpty() == true
 
                             // Word-by-word animation styles
                             if (hasWordTimings && lyricsAnimationStyle == LyricsAnimationStyle.NONE) {
@@ -1736,7 +1740,7 @@ fun OriginalLyrics(
                                     letterSpacing = 1.5.sp,
                                 )
                             }
-                            if (currentSong?.romanizeLyrics == true && enabledLanguages.isNotEmpty()) {
+                            if (romanizeToggleEnabled && currentSong?.romanizeLyrics == true && enabledLanguages.isNotEmpty()) {
                                 // Show secondary text (romanized or original) if available
                                 subText?.let { text ->
                                     Text(

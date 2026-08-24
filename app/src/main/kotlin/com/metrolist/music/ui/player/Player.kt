@@ -102,6 +102,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LongState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -211,9 +212,11 @@ import com.metrolist.music.ui.component.WavySlider
 import com.metrolist.music.ui.component.rememberBottomSheetState
 import com.metrolist.music.ui.menu.PlayerMenu
 import com.metrolist.music.ui.screens.settings.DarkMode
+import com.metrolist.music.ui.theme.ForceDarkTheme
 import com.metrolist.music.ui.theme.InterFontFamily
 import com.metrolist.music.ui.theme.PlayerColorExtractor
 import com.metrolist.music.ui.theme.PlayerSliderColors
+import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.utils.ShowMediaInfo
 import com.metrolist.music.ui.utils.ShowOffsetDialog
 import com.metrolist.music.ui.utils.backToMain
@@ -314,7 +317,8 @@ fun BottomSheetPlayer(
     val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
     val useDarkTheme =
         remember(darkTheme, isSystemInDarkTheme) {
-            if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
+            ForceDarkTheme ||
+                if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
         }
 
     val shouldUseDarkButtonColors =
@@ -385,7 +389,8 @@ fun BottomSheetPlayer(
     val useBlackBackground =
         remember(isSystemInDarkTheme, darkTheme, pureBlack) {
             val useDarkTheme =
-                if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
+                ForceDarkTheme ||
+                    if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
             useDarkTheme && pureBlack
         }
 
@@ -460,8 +465,8 @@ fun BottomSheetPlayer(
 
     val isAutoMixQueueActive by playerConnection.service.isAutoMixQueueActive.collectAsState()
     LaunchedEffect(canSkipNext, automix, isAutoMixQueueActive) {
-        if (!canSkipNext && automix.isNotEmpty() && isAutoMixQueueActive) {
-            playerConnection.service.addToQueueAutomix(automix[0], 0)
+        if (isAutoMixQueueActive) {
+            playerConnection.service.ensureAutomixUpNext()
         }
     }
 
@@ -576,7 +581,7 @@ fun BottomSheetPlayer(
                 when (playerButtonsStyle) {
                     PlayerButtonsStyle.DEFAULT -> {
                         if (useDarkTheme) {
-                            Pair(Color.White, Color.Black)
+                            Pair(MaterialTheme.colorScheme.textPrimary, Color.Black)
                         } else {
                             Pair(Color.Black, Color.White)
                         }
@@ -803,8 +808,7 @@ fun BottomSheetPlayer(
         mutableStateOf(false)
     }
 
-    fun heardPosition(): Long {
-        val drift = playerConnection.service.scratchProcessor.driftMs
+    fun heardPosition(): Long {        val drift = playerConnection.service.scratchProcessor.driftMs
         return (playerConnection.player.currentPosition + drift)
             .coerceIn(0L, playerConnection.player.duration.coerceAtLeast(0L))
     }
@@ -1043,6 +1047,7 @@ fun BottomSheetPlayer(
                             onSurfaceColor = Color.White,
                             errorColor = Color(0xFFFF6B6B),
                             onExpandClick = { if (currentMetadata != null) state.expandSoft() },
+                            bottomSheetState = state,
                             onArtPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniArt = r } },
                             onInfoPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniInfo = r } },
                             onProgressChanged = bridgeState?.let { bs -> { p: Float -> bs.progress = p } },
@@ -1433,11 +1438,18 @@ fun BottomSheetPlayer(
 
             Spacer(Modifier.height(controlsToSliderSpacing))
 
+            PositionValues(
+                positionState = positionState,
+                durationState = durationState,
+                sliderPosition = sliderPosition,
+                isCasting = isCasting,
+                castPosition = castPosition,
+            ) { pos, dur ->
             when (sliderStyle) {
                 SliderStyle.DEFAULT -> {
                     Slider(
-                        value = (sliderPosition ?: effectivePosition).toFloat(),
-                        valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
+                        value = pos.toFloat(),
+                        valueRange = 0f..(if (dur == C.TIME_UNSET) 0f else dur.toFloat()),
                         onValueChange = {
                             if (!isListenTogetherGuest) {
                                 sliderPosition = it.toLong()
@@ -1466,8 +1478,8 @@ fun BottomSheetPlayer(
                 SliderStyle.WAVY -> {
                     if (squigglySlider) {
                         SquigglySlider(
-                            value = (sliderPosition ?: effectivePosition).toFloat(),
-                            valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
+                            value = pos.toFloat(),
+                            valueRange = 0f..(if (dur == C.TIME_UNSET) 0f else dur.toFloat()),
                             onValueChange = {
                                 sliderPosition = it.toLong()
                             },
@@ -1489,8 +1501,8 @@ fun BottomSheetPlayer(
                         )
                     } else {
                         WavySlider(
-                            value = (sliderPosition ?: effectivePosition).toFloat(),
-                            valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
+                            value = pos.toFloat(),
+                            valueRange = 0f..(if (dur == C.TIME_UNSET) 0f else dur.toFloat()),
                             onValueChange = {
                                 sliderPosition = it.toLong()
                             },
@@ -1515,8 +1527,8 @@ fun BottomSheetPlayer(
 
                 SliderStyle.SLIM -> {
                     Slider(
-                        value = (sliderPosition ?: effectivePosition).toFloat(),
-                        valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
+                        value = pos.toFloat(),
+                        valueRange = 0f..(if (dur == C.TIME_UNSET) 0f else dur.toFloat()),
                         onValueChange = {
                             if (!isListenTogetherGuest) {
                                 sliderPosition = it.toLong()
@@ -1560,7 +1572,7 @@ fun BottomSheetPlayer(
                         .padding(horizontal = PlayerHorizontalPadding + 4.dp),
             ) {
                 Text(
-                    text = makeTimeString(sliderPosition ?: effectivePosition),
+                    text = makeTimeString(pos),
                     style = MaterialTheme.typography.labelMedium.copy(fontSize = durationFontSize.sp),
                     color = TextBackgroundColor,
                     maxLines = 1,
@@ -1568,12 +1580,13 @@ fun BottomSheetPlayer(
                 )
 
                 Text(
-                    text = if (duration != C.TIME_UNSET) makeTimeString(duration) else "",
+                    text = if (dur != C.TIME_UNSET) makeTimeString(dur) else "",
                     style = MaterialTheme.typography.labelMedium.copy(fontSize = durationFontSize.sp),
                     color = TextBackgroundColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+            }
             }
 
             Spacer(Modifier.height(24.dp))
@@ -1836,10 +1849,17 @@ fun BottomSheetPlayer(
                 val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
 
                 mediaMetadata?.let {
+                    PositionValues(
+                        positionState = positionState,
+                        durationState = durationState,
+                        sliderPosition = sliderPosition,
+                        isCasting = isCasting,
+                        castPosition = castPosition,
+                    ) { pos, dur ->
                     IrideMp3PlayerContent(
                         mediaMetadata = it,
-                        position = sliderPosition ?: effectivePosition,
-                        duration = duration,
+                        position = pos,
+                        duration = dur,
                         isPlaying = effectiveIsPlaying,
                         isFavorite = isFavorite,
                         onPlayPauseClick = {
@@ -1856,17 +1876,11 @@ fun BottomSheetPlayer(
                         },
                         onPreviousClick = {
                             if (!isListenTogetherGuest) {
-                                if (playerConnection.service.isAutoMixQueueActive.value) {
-                                    playerConnection.service.clearRadioState()
-                                }
                                 playerConnection.seekToPrevious()
                             }
                         },
                         onNextClick = {
                             if (!isListenTogetherGuest) {
-                                if (playerConnection.service.isAutoMixQueueActive.value) {
-                                    playerConnection.service.clearRadioState()
-                                }
                                 playerConnection.seekToNext()
                             }
                         },
@@ -1878,6 +1892,7 @@ fun BottomSheetPlayer(
                             radioNonce++
                         },
                         radioTrigger = radioNonce,
+                        queueOpenNonce = queueOpenNonce,
                         isListenTogetherGuest = isListenTogetherGuest,
                         isMuted = isMuted,
                         onSeek = { fraction ->
@@ -1921,6 +1936,7 @@ fun BottomSheetPlayer(
                         modifier = Modifier
                             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
                     )
+                    }
                 }
         }
         }
@@ -2152,4 +2168,19 @@ internal fun InlinePlayerPageFrame(
         }
         Box(modifier = Modifier.weight(1f), content = content)
     }
+}
+
+@Composable
+private fun PositionValues(
+    positionState: LongState,
+    durationState: LongState,
+    sliderPosition: Long?,
+    isCasting: Boolean,
+    castPosition: Long,
+    content: @Composable (position: Long, duration: Long) -> Unit,
+) {
+    val position =
+        sliderPosition
+            ?: if (isCasting) castPosition else positionState.longValue
+    content(position, durationState.longValue)
 }

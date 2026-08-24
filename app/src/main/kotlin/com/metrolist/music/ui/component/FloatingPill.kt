@@ -18,6 +18,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -54,6 +56,8 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import kotlinx.coroutines.isActive
+import android.view.ViewConfiguration
+import kotlin.math.abs
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,6 +94,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
@@ -113,8 +118,11 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.CastConnectionHandler
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.ui.player.irideReportRect
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.screens.settings.DarkMode
+import com.metrolist.music.ui.theme.ForceDarkTheme
 import com.metrolist.music.ui.theme.PlayerColorExtractor
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.rememberEnumPreference
@@ -326,7 +334,8 @@ private fun PillContent(
     val isSystemInDarkTheme = isSystemInDarkTheme()
     val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
     val useDarkTheme = remember(darkTheme, isSystemInDarkTheme) {
-        if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
+        ForceDarkTheme ||
+            if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
     }
 
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
@@ -520,17 +529,73 @@ fun PillPlayerRow(
     onSurfaceColor: Color,
     errorColor: Color,
     onExpandClick: () -> Unit,
+    bottomSheetState: BottomSheetState? = null,
     modifier: Modifier = Modifier,
     onArtPositioned: ((Rect) -> Unit)? = null,
     onInfoPositioned: ((Rect) -> Unit)? = null,
     onProgressChanged: ((Float) -> Unit)? = null,
+    artistAlpha: Float = 0.7f,
 ) {
     val isIrideStyle = onArtPositioned != null
+    val context = LocalContext.current
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(MiniPlayerHeight)
+            // Deterministic expand gesture: pure taps are never consumed, so the row's own
+            // clickable and the action buttons (favorite / play-pause / next) keep working;
+            // only a decisive upward drag expands the player — from anywhere on the pill,
+            // including over the buttons, which never consume vertical movement.
+            .then(
+                if (bottomSheetState != null) {
+                    Modifier.pointerInput(bottomSheetState) {
+                        val commitDistance =
+                            ViewConfiguration.get(context).scaledTouchSlop * 2f
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            var totalX = 0f
+                            var totalY = 0f
+                            var expanding = false
+                            var stolenByChild = false
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                val delta = change.positionChange()
+                                if (!expanding) {
+                                    if (change.isConsumed) {
+                                        stolenByChild = true
+                                        break
+                                    }
+                                    totalX += delta.x
+                                    totalY += delta.y
+                                    if (-totalY > commitDistance && -totalY >= abs(totalX) * 0.9f) {
+                                        expanding = true
+                                        change.consume()
+                                        bottomSheetState.dispatchRawDelta(totalY)
+                                    }
+                                    if (!change.pressed) break
+                                } else {
+                                    bottomSheetState.dispatchRawDelta(delta.y)
+                                    change.consume()
+                                    if (!change.pressed) break
+                                }
+                            }
+                            when {
+                                // An activated upward drag always ends expanded.
+                                expanding -> bottomSheetState.performFling(0f, null, -1)
+                                // A decisive upward intent that lost the dominance race to a
+                                // diagonal drift still expands, so no start position on the
+                                // pill behaves as a dead zone.
+                                !stolenByChild && -totalY > commitDistance && -totalY > abs(totalX) ->
+                                    bottomSheetState.performFling(0f, null, -1)
+                            }
+                        }
+                    }
+                } else {
+                    Modifier
+                },
+            )
             .clickable { onExpandClick() },
         contentAlignment = Alignment.Center,
     ) {
@@ -561,6 +626,7 @@ fun PillPlayerRow(
                 errorColor = errorColor,
                 isIrideStyle = isIrideStyle,
                 onInfoPositioned = onInfoPositioned,
+                artistAlpha = artistAlpha,
                 modifier = Modifier.weight(1f),
             )
 
@@ -759,6 +825,7 @@ private fun PillSongInfo(
     isIrideStyle: Boolean = false,
     modifier: Modifier = Modifier,
     onInfoPositioned: ((Rect) -> Unit)? = null,
+    artistAlpha: Float = 0.7f,
 ) {
     val error by LocalPlayerConnection.current?.error?.collectAsState() ?: remember { mutableStateOf(null) }
 
@@ -771,12 +838,15 @@ private fun PillSongInfo(
                     Modifier
                 },
             ),
-        verticalArrangement = Arrangement.Center,
+        // Tight negative spacing keeps the artist line right under the title instead of
+        // drifting apart with the default font metrics.
+        verticalArrangement = Arrangement.spacedBy(if (isIrideStyle) (-3).dp else 0.dp),
     ) {
         Text(
             text = mediaMetadata.title,
             color = onSurfaceColor,
             fontSize = if (isIrideStyle) 20.sp else 14.sp,
+            lineHeight = if (isIrideStyle) 20.sp else TextUnit.Unspecified,
             fontWeight = if (isIrideStyle) FontWeight.SemiBold else FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Clip,
@@ -785,13 +855,12 @@ private fun PillSongInfo(
         if (mediaMetadata.artists.any { it.name.isNotBlank() }) {
             Text(
                 text = mediaMetadata.artists.joinToString { it.name },
-                color = onSurfaceColor.copy(alpha = 0.7f),
+                color = onSurfaceColor.copy(alpha = artistAlpha),
                 fontSize = if (isIrideStyle) 16.sp else 12.sp,
+                lineHeight = if (isIrideStyle) 15.sp else TextUnit.Unspecified,
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
-                modifier = Modifier
-                    .offset(y = (-2).dp)
-                    .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
+                modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
             )
         }
         AnimatedVisibility(visible = error != null, enter = fadeIn(), exit = fadeOut()) {

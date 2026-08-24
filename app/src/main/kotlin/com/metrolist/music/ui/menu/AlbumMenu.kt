@@ -56,7 +56,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -107,6 +106,8 @@ import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.utils.PlaylistExporter
 import com.metrolist.music.utils.getExportFileUri
 import com.metrolist.music.utils.rememberPreference
@@ -533,7 +534,7 @@ fun AlbumMenu(
                                         painter = painterResource(R.drawable.shuffle),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = Color.White.copy(alpha = 0.85f),
+                                        tint = MaterialTheme.colorScheme.textPrimary,
                                     )
                                 },
                                 text = stringResource(R.string.shuffle),
@@ -558,7 +559,7 @@ fun AlbumMenu(
                                         painter = painterResource(R.drawable.playlist_play),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = Color.White.copy(alpha = 0.85f),
+                                        tint = MaterialTheme.colorScheme.textPrimary,
                                     )
                                 },
                                 text = stringResource(R.string.swipe_label_next).lowercase().replaceFirstChar { it.uppercase() },
@@ -573,7 +574,7 @@ fun AlbumMenu(
                                         painter = painterResource(R.drawable.radio),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = Color.White.copy(alpha = 0.85f),
+                                        tint = MaterialTheme.colorScheme.textPrimary,
                                     )
                                 },
                                 text = stringResource(R.string.radio),
@@ -769,7 +770,7 @@ private fun NewIrideAlbumMenuHeader(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.2).sp,
                     ),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.basicMarquee(),
@@ -785,7 +786,7 @@ private fun NewIrideAlbumMenuHeader(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -799,7 +800,7 @@ private fun NewIrideAlbumMenuHeader(
         ) {
             Icon(
                 painter = painterResource(if (album.album.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border),
-                tint = if (album.album.bookmarkedAt != null) Color.White else Color.White.copy(alpha = 0.85f),
+                tint = if (album.album.bookmarkedAt != null) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textPrimary,
                 contentDescription = null,
             )
         }
@@ -817,7 +818,7 @@ private fun NewIrideAlbumMenuHeader(
         ) {
             Icon(
                 painter = painterResource(R.drawable.share),
-                tint = Color.White.copy(alpha = 0.85f),
+                tint = MaterialTheme.colorScheme.textPrimary,
                 contentDescription = null,
             )
         }

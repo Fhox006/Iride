@@ -70,6 +70,8 @@ import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.PlaylistListItem
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.menu.ExportDialog
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.utils.PlaylistExporter
 import com.metrolist.music.utils.getExportFileUri
 import com.metrolist.music.utils.rememberPreference
@@ -320,7 +322,7 @@ fun PlaylistMenu(
     )
 
     Spacer(modifier = Modifier.height(6.dp))
-    HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 1.dp)
+    HorizontalDivider(color = MaterialTheme.colorScheme.strokeHairline, thickness = 1.dp)
     Spacer(modifier = Modifier.height(20.dp))
 
     val configuration = LocalConfiguration.current
@@ -346,7 +348,7 @@ fun PlaylistMenu(
                                         painter = painterResource(R.drawable.shuffle),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = Color.White.copy(alpha = 0.85f),
+                                        tint = MaterialTheme.colorScheme.textPrimary,
                                     )
                                 },
                                 text = stringResource(R.string.shuffle),
@@ -368,7 +370,7 @@ fun PlaylistMenu(
                                         painter = painterResource(R.drawable.playlist_play),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = Color.White.copy(alpha = 0.85f),
+                                        tint = MaterialTheme.colorScheme.textPrimary,
                                     )
                                 },
                                 text = stringResource(R.string.swipe_label_next).lowercase().replaceFirstChar { it.uppercase() },
@@ -385,7 +387,7 @@ fun PlaylistMenu(
                                         painter = painterResource(R.drawable.radio),
                                         contentDescription = null,
                                         modifier = Modifier.size(28.dp),
-                                        tint = Color.White.copy(alpha = 0.85f),
+                                        tint = MaterialTheme.colorScheme.textPrimary,
                                     )
                                 },
                                 text = stringResource(R.string.radio),

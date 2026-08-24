@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,12 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
+import com.metrolist.music.ui.theme.textPrimary
 
 /**
  * Monospace/New-Iride-UI selection dot used in multi-select mode: a bare outline circle when
@@ -75,16 +76,16 @@ fun SelectionIndicator(
             modifier = Modifier
                 .size(size)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = fillProgress))
+                .background(MaterialTheme.colorScheme.textPrimary.copy(alpha = fillProgress))
                 .border(
-                    BorderStroke(1.5.dp, Color.White.copy(alpha = 0.6f - 0.6f * fillProgress)),
+                    BorderStroke(1.5.dp, MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.6f - 0.6f * fillProgress)),
                     CircleShape,
                 ),
         )
         Icon(
             painter = painterResource(R.drawable.check),
             contentDescription = null,
-            tint = Color.Black,
+            tint = MaterialTheme.colorScheme.background,
             modifier = Modifier
                 .size(size * 0.6f)
                 .graphicsLayer {

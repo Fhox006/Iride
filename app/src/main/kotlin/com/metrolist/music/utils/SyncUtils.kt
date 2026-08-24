@@ -1003,7 +1003,13 @@ class SyncUtils @Inject constructor(
 
                     remoteAlbums.forEach { album ->
                         try {
-                            val dbAlbum = database.album(album.id).firstOrNull()
+                            val dbAlbum = database.albumWithSongs(album.id).firstOrNull()
+                            if (dbAlbum != null &&
+                                dbAlbum.album.bookmarkedAt != null &&
+                                dbAlbum.songs.isNotEmpty()
+                            ) {
+                                return@forEach
+                            }
                             YouTube.album(album.browseId).onSuccess { albumPage ->
                                 if (dbAlbum == null) {
                                     database.insert(albumPage)
@@ -1074,7 +1080,13 @@ class SyncUtils @Inject constructor(
 
                     remoteAlbums.forEach { album ->
                         try {
-                            val dbAlbum = database.album(album.id).firstOrNull()
+                            val dbAlbum = database.albumWithSongs(album.id).firstOrNull()
+                            if (dbAlbum != null &&
+                                dbAlbum.album.isUploaded &&
+                                dbAlbum.songs.isNotEmpty()
+                            ) {
+                                return@forEach
+                            }
                             YouTube.album(album.browseId).onSuccess { albumPage ->
                                 if (dbAlbum == null) {
                                     database.insert(albumPage)

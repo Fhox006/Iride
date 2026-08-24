@@ -100,6 +100,7 @@ import com.metrolist.music.playback.CastConnectionHandler
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.ui.component.BottomSheetState
 import com.metrolist.music.ui.screens.settings.DarkMode
+import com.metrolist.music.ui.theme.ForceDarkTheme
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -197,7 +198,8 @@ private fun NewMiniPlayer(
     val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
     val useDarkTheme =
         remember(darkTheme, isSystemInDarkTheme) {
-            if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
+            ForceDarkTheme ||
+                if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
         }
 
     val playbackState by playerConnection.playbackState.collectAsState()
@@ -406,7 +408,7 @@ private fun NewMiniPlayer(
                 NewMiniPlayerPlayButton(
                     progressState = progressState,
                     mediaMetadata = mediaMetadata,
-                    primaryColor = Color.White,
+                    primaryColor = onSurfaceColor,
                     outlineColor = outlineColor,
                     playerBottomSheetState = playerBottomSheetState,
                 )

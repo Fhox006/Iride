@@ -25,11 +25,13 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.utils.rememberPreference
 
 @Composable
@@ -49,7 +51,7 @@ private fun IrideMenuGroup(items: List<Material3MenuItemData>) {
         items.forEachIndexed { index, item ->
             IrideMenuItemRow(item = item)
             if (index != items.lastIndex) {
-                HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
+                HorizontalDivider(color = MaterialTheme.colorScheme.strokeHairline, thickness = 1.dp)
             }
         }
     }
@@ -79,7 +81,7 @@ private fun IrideMenuItemRow(item: Material3MenuItemData) {
                     fontSize = 15.sp,
                     letterSpacing = (-0.1).sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.textPrimary,
                 )
             ) {
                 item.title()
@@ -88,7 +90,7 @@ private fun IrideMenuItemRow(item: Material3MenuItemData) {
             item.description?.let { desc ->
                 Spacer(modifier = Modifier.height(2.dp))
                 ProvideTextStyle(
-                    MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.55f))
+                    MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.textSecondary)
                 ) {
                     desc()
                 }

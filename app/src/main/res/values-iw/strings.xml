@@ -1,294 +1,495 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Upstream InnerTune strings -->
+<!-- Do not add new features here -->
+<!-- Try to re-use strings here, but be careful on its usage e.g. verb vs noun -->
+<!-- "InnerTune" is replaced with "Iride" -->
+<!-- Translators: Do not modify this file for translations, use InnerTune's Weblate instead. -->
+
 <resources>
-    <string name="songs">שירים</string>
-    <string name="history">היסטוריה</string>
-    <string name="home">בית</string>
+    <!-- Bottom navigation -->
+    <string name="home">Home</string>
     <string name="new_home">Home</string>
     <string name="old_home">Old Home</string>
+    <string name="what_new">מה חדש</string>
+    <string name="songs">שירים</string>
+    <string name="all_tracks">כל הרצועות</string>
     <string name="artists">אמנים</string>
     <string name="albums">אלבומים</string>
     <string name="playlists">פלייליסטים</string>
-    <string name="mixes">Mixes</string>
-    <plurals name="n_selected">
-        <item quantity="one">%d נבחר</item>
-        <item quantity="two">%d נבחרו</item>
+    <string name="mixes">מיקסים</string>
+
+    <!-- Top bar -->
+        <plurals name="n_selected">
         <item quantity="other">%d נבחרו</item>
     </plurals>
+
+    <!-- Home -->
+    <string name="history">היסטוריה</string>
     <string name="stats">סטטיסטיקות</string>
-    <string name="mood_and_genres">מצב רוח וז\'אנרים</string>
+    <string name="mood_and_genres">מצבי רוח וז\'אנרים</string>
+    <string name="discovery_weekly">גילוי שבועי</string>
+    <string name="discovery_weekly_creating">יוצר את המיקס שלך…</string>
     <string name="account">חשבון</string>
-    <string name="quick_picks">בחירות מהירות</string>
-    <string name="quick_picks_empty">האזינו לשירים כדי ליצור את הבחירות המהירות שלכם</string>
-    <string name="forgotten_favorites">מועדפים שנשכחו</string>
-    <string name="keep_listening">המשך האזנה</string>
-    <string name="your_youtube_playlists">פלייליסטים ביוטיוב שלך</string>
+    <string name="account_content">ספריית ה-YouTube שלי</string>
+    <string name="quick_picks">נבחרו עבורך</string>
+    <string name="quick_picks_empty">האזן לשירים כדי להתחיל לקבל המלצות שנבחרו עבורך</string>
+    <string name="forgotten_favorites">אהובים שנשכחו</string>
+    <string name="keep_listening">המשך להקשיב</string>
+    <string name="discs_for_you">דיסקים שנבחרו עבורך</string>
+    <string name="for_you_shelf_title">בחזרה אצלך</string>
+    <string name="recommended_albums">אלבומים מומלצים</string>
+    <string name="recently_listened_albums">הושמעו לאחרונה</string>
+    <string name="clear_recently_listened_albums">נקה</string>
+    <string name="your_youtube_playlists">הפלייליסטים שלך</string>
     <string name="similar_to">דומה ל</string>
     <string name="new_release_albums">אלבומים חדשים</string>
+    <string name="artist_latest_release">יציאה אחרונה</string>
+    <string name="artist_release_type_album">ALBUM</string>
+    <string name="artist_release_type_ep">EP</string>
+    <string name="artist_release_type_single">SINGLE</string>
+    <string name="artist_release_type_feat">FEAT</string>
+    <string name="genius_section_title">זיהוי Featuring (Genius)</string>
+    <string name="genius_api_key">אסימון API של Genius</string>
+    <string name="genius_api_key_description">מוצא קרדיטים של \"feat.\" שדף ה-YTM של האמן עצמו מפספס. קבל אסימון בחינם ב-genius.com/api-clients.</string>
+    <string name="essential_albums">אלבומים חיוניים</string>
+    <string name="featuring">Featuring</string>
+    <string name="suggested_follow_artists">אתה מקשיב הרבה — לעקוב אחריהם?</string>
+    <string name="new_from_followed_artists">חדש מאמנים שאתה עוקב אחריהם</string>
+
+    <!-- History -->
     <string name="today">היום</string>
     <string name="yesterday">אתמול</string>
     <string name="this_week">השבוע</string>
-    <string name="last_week">בשבוע האחרון</string>
-    <string name="most_played_songs">השירים הכי מושמעים</string>
-    <string name="most_played_artists">האמנים הכי מושמעים</string>
-    <string name="most_played_albums">אלבומים הכי מושמעים</string>
+    <string name="last_week">שבוע שעבר</string>
+
+    <!-- Stats -->
+    <string name="most_played_songs">השירים המושמעים ביותר</string>
+    <string name="most_played_artists">האמנים המושמעים ביותר</string>
+    <string name="most_played_albums">האלבומים המושמעים ביותר</string>
+    <string name="top_artists">אמנים מובילים</string>
+    <string name="top_albums">אלבומים מובילים</string>
+    <string name="top_songs">שירים מובילים</string>
+    <string name="top_genres">ז\'אנרים מובילים</string>
+    <string name="listening_stats">הסטטיסטיקות שלך</string>
+    <string name="stats_not_enough_data">המשך להקשיב כדי לגלות את סיפור המוזיקה שלך</string>
+    <string name="listened">הושמעו</string>
+    <string name="songs_played">הושמעו</string>
+
+    <!-- Search -->
     <string name="search">חיפוש</string>
-    <string name="search_yt_music">חפש ביוטיוב מוזיקה…</string>
+    <string name="search_yt_music">מצא משהו להשמעה…</string>
     <string name="search_library">חפש בספרייה…</string>
+    <string name="online">מחובר</string>
     <string name="filter_library">ספרייה</string>
-    <string name="filter_liked">Starred</string>
-    <string name="filter_downloaded">ירדו</string>
-    <string name="filter_all">הכל</string>
+    <string name="filter_liked">שירים</string>
+    <string name="filter_downloaded">הורדו</string>
+    <string name="filter_all">הכול</string>
     <string name="filter_songs">שירים</string>
     <string name="filter_videos">סרטונים</string>
     <string name="filter_albums">אלבומים</string>
     <string name="filter_artists">אמנים</string>
     <string name="filter_playlists">פלייליסטים</string>
     <string name="filter_community_playlists">פלייליסטים קהילתיים</string>
-    <string name="filter_featured_playlists">פלייליסטים נבחרים</string>
-    <string name="filter_bookmarked">סומן כמועדף</string>
+    <string name="filter_featured_playlists">פלייליסטים מומלצים</string>
+    <string name="filter_bookmarked">סימניות</string>
     <string name="no_results_found">לא נמצאו תוצאות</string>
+
+    <!-- Library -->
     <string name="library_song_empty">שירי הספרייה יופיעו כאן</string>
     <string name="library_artist_empty">אמני הספרייה יופיעו כאן</string>
     <string name="library_album_empty">אלבומי הספרייה יופיעו כאן</string>
     <string name="library_playlist_empty">הפלייליסטים שלך יופיעו כאן</string>
+
+    <!-- Artist screen -->
     <string name="from_your_library">מהספרייה שלך</string>
-    <string name="other_versions">גירסאות אחרות</string>
-    <string name="liked_songs">Starred</string>
-    <string name="downloaded_songs">שירים שהורדתי</string>
+
+    <!-- Album screen -->
+    <string name="other_versions">גרסאות אחרות</string>
+    <string name="similar_albums">אולי יעניין אותך גם</string>
+
+    <!-- Playlist -->
+    <string name="liked_songs">שירים</string>
+    <string name="downloaded_songs">שירים שהורדו</string>
     <string name="playlist_is_empty">הפלייליסט ריק</string>
-    <string name="remove_download_playlist_confirm">האם אתה באמת רוצה להסיר את כל שירי הפלייליסט \"%s\" מאחסון השירים שהורדו?</string>
-    <string name="delete_playlist_confirm">האם אתה באמת רוצה למחוק את רשימת ההשמעה \"%s\"?</string>
+    <string name="remove_download_playlist_confirm">האם ברצונך להסיר את כל שירי הפלייליסט \"%s\" מאחסון השירים שהורדו?</string>
+    <string name="delete_playlist_confirm">האם ברצונך למחוק את הפלייליסט \"%s\"?</string>
+
+    <!-- Button -->
     <string name="retry">נסה שוב</string>
     <string name="radio">רדיו</string>
-    <string name="shuffle">ערבוב</string>
-    <string name="reset">איפוס</string>
+    <string name="shuffle">ערבב</string>
+    <string name="reset">אפס</string>
+
+    <!-- Guess the song game -->
+    <string name="guess_game">נחש את השיר</string>
+    <string name="guess_game_subtitle">נחש את השיר וגלה עד כמה אתה באמת מכיר את האמן</string>
+    <string name="guess_game_best_score">הניקוד הטוב ביותר שלך: %1$s</string>
+    <string name="guess_game_best_label">השיא שלך</string>
+    <string name="guess_game_no_score">אין עדיין ניקוד</string>
+    <string name="guess_game_play_now">שחק עכשיו</string>
+        <plurals name="guess_game_songs_left">
+        <item quantity="one">נותר שיר אחד למשחק</item>
+        <item quantity="two">נותרו שני שירים למשחק</item>
+        <item quantity="many">נותרו %1$d שירים למשחק</item>
+        <item quantity="other">נותרו %1$d שירים למשחק</item>
+    </plurals>
+    <string name="guess_game_hint_default">נחש כדי להמשיך</string>
+    <string name="guess_game_hint_wrong">טעית! המתן 3 שניות</string>
+    <string name="guess_game_new_best">שיא חדש!</string>
+    <string name="guess_game_result_correct">%1$d/%2$d</string>
+    <string name="guess_game_result_correct_label">נכונות</string>
+    <string name="guess_game_not_enough_songs">לא נמצאו מספיק שירים כדי לשחק</string>
+    <string name="guess_game_loading_hint">הטעינה עשויה לקחת רגע — כל שיר נטען במלואו מראש כדי שהסבבים יתחילו מיד ללא חיץ.</string>
+
+    <!-- Menu -->
     <string name="details">פרטים</string>
-    <string name="edit">עריכה</string>
+    <string name="edit">ערוך</string>
     <string name="start_radio">התחל רדיו</string>
     <string name="play">נגן</string>
-    <string name="play_next">הפעל הבא</string>
+    <string name="pause">השהה</string>
+    <string name="play_next">השמע את הבא</string>
     <string name="add_to_queue">הוסף לתור</string>
+    <string name="swipe_label_next">הבא</string>
+    <string name="swipe_label_queue">תור</string>
     <string name="add_to_library">הוסף לספרייה</string>
-    <string name="add_all_to_library">הוסף הכל לספרייה</string>
+    <string name="add_all_to_library">הוסף הכול לספרייה</string>
     <string name="remove_from_library">הסר מהספרייה</string>
-    <string name="remove_all_from_library">הסר הכל מהספרייה</string>
+    <string name="remove_all_from_library">הסר הכול מהספרייה</string>
     <string name="action_download">הורד</string>
     <string name="downloading">מוריד</string>
     <string name="remove_download">הסר הורדה</string>
-    <string name="import_playlist">ייבוא פלייליסט</string>
+    <string name="import_playlist">ייבא פלייליסט</string>
     <string name="add_to_playlist">הוסף לפלייליסט</string>
+    <string name="category_add">הוסף</string>
+    <string name="add_to_category">הוסף לקטגוריה</string>
+    <string name="new_category">קטגוריה חדשה</string>
+    <string name="category_name_hint">שם הקטגוריה</string>
+    <string name="added_to_category">נוסף לקטגוריה</string>
+    <string name="search_categories">חפש קטגוריות</string>
+    <string name="action_add">הוסף</string>
     <string name="view_artist">הצג אמן</string>
     <string name="view_album">הצג אלבום</string>
-    <string name="refetch">אחזור</string>
-    <string name="share">שיתוף</string>
-    <string name="delete">מחיקה</string>
+    <string name="refetch">רענן</string>
+    <string name="share">שתף</string>
+    <string name="share_choose_platform">שתף דרך</string>
+    <string name="share_platform_youtube_music">YouTube Music</string>
+    <string name="share_platform_spotify">Spotify</string>
+    <string name="share_platform_apple_music">Apple Music</string>
+    <string name="share_platform_soundcloud">SoundCloud</string>
+    <string name="share_link_resolving">מחפש קישור…</string>
+    <string name="share_link_not_found">לא נמצא קישור לשיר זה בפלטפורמה זו</string>
+    <string name="delete">מחק</string>
     <string name="remove_from_history">הסר מההיסטוריה</string>
     <string name="remove_from_playlist">הסר מהפלייליסט</string>
     <string name="remove_from_queue">הסר מהתור</string>
-    <string name="search_online">חיפוש באינטרנט</string>
-    <string name="action_sync">סינכרון</string>
+    <string name="search_online">חיפוש מקוון</string>
+    <string name="action_sync">סנכרן</string>
+    <string name="library_refresh">רענן ספרייה</string>
+    <string name="library_refreshing">מרענן…</string>
     <string name="advanced">מתקדם</string>
-    <string name="tempo_and_pitch">קצב וגובה צליל</string>
+    <string name="tempo_and_pitch">טמפו וגובה צליל</string>
+
+    <!-- Sort menu -->
     <string name="sort_by_create_date">תאריך הוספה</string>
     <string name="sort_by_name">שם</string>
     <string name="sort_by_artist">אמן</string>
     <string name="sort_by_year">שנה</string>
-    <string name="sort_by_song_count">ספירת שירים</string>
-    <string name="sort_by_length">משך</string>
+    <string name="sort_by_song_count">מספר שירים</string>
+    <string name="sort_by_length">אורך</string>
     <string name="sort_by_play_time">זמן ניגון</string>
-    <string name="sort_by_custom">הזמנה בהתאמה אישית</string>
+    <string name="sort_by_custom">סדר מותאם</string>
+
+    <!-- Dialog -->
     <string name="media_id">מזהה מדיה</string>
     <string name="mime_type">סוג MIME</string>
-    <string name="codecs">קודקים</string>
-    <string name="bitrate">קצב סיביות</string>
+    <string name="codecs">Codecs</string>
+    <string name="bitrate">Bitrate</string>
     <string name="sample_rate">קצב דגימה</string>
     <string name="loudness">עוצמת קול</string>
     <string name="volume">עוצמת שמע</string>
     <string name="file_size">גודל קובץ</string>
     <string name="unknown">לא ידוע</string>
     <string name="copied">הועתק ללוח</string>
-    <string name="edit_lyrics">עריכת מילות שיר</string>
-    <string name="search_lyrics">חיפוש מילות שיר</string>
+
+    <string name="edit_lyrics">ערוך מילים</string>
+    <string name="search_lyrics">חפש מילים</string>
+
     <string name="edit_song">ערוך שיר</string>
-    <string name="song_title">כותרת שיר</string>
-    <string name="song_artists">אמני שיר</string>
-    <string name="error_song_title_empty">שם השיר לא יכול להיות ריק.</string>
-    <string name="error_song_artist_empty">לא ניתן להשאיר את שדה אמן השיר ריק.</string>
+    <string name="song_title">כותרת השיר</string>
+    <string name="song_artists">אמני השיר</string>
+    <string name="error_song_title_empty">כותרת השיר אינה יכולה להיות ריקה.</string>
+    <string name="error_song_artist_empty">אמן השיר אינו יכול להיות ריק.</string>
     <string name="save">שמור</string>
+
     <string name="choose_playlist">בחר פלייליסט</string>
     <string name="edit_playlist">ערוך פלייליסט</string>
     <string name="create_playlist">צור פלייליסט</string>
-    <string name="playlist_name">שם פלייליסט</string>
-    <string name="error_playlist_name_empty">שם הפלייליסט לא יכול להיות ריק.</string>
+    <string name="playlist_name">שם הפלייליסט</string>
+    <string name="error_playlist_name_empty">שם הפלייליסט אינו יכול להיות ריק.</string>
+
     <string name="edit_artist">ערוך אמן</string>
-    <string name="artist_name">שם אמן</string>
-    <string name="error_artist_name_empty">שם האמן לא יכול להיות ריק.</string>
+    <string name="artist_name">שם האמן</string>
+    <string name="error_artist_name_empty">שם האמן אינו יכול להיות ריק.</string>
+
     <string name="duplicates">כפילויות</string>
-    <string name="skip_duplicates">דילוג על כפילויות</string>
+    <string name="skip_duplicates">דלג על כפילויות</string>
     <string name="add_anyway">הוסף בכל זאת</string>
-    <string name="duplicates_description_single">השיר כבר נמצא ברשימת ההשמעה שלך</string>
-    <string name="duplicates_description_multiple">%d שירים כבר נמצאים ברשימת ההשמעה שלך</string>
-    <plurals name="n_song">
-        <item quantity="one">שיר %d</item>
-        <item quantity="two">%d שירים</item>
+    <string name="duplicates_description_single">השיר כבר בפלייליסט שלך</string>
+    <string name="duplicates_description_multiple">%d שירים כבר בפלייליסט שלך</string>
+
+    <!-- Noun -->
+        <plurals name="n_song">
+        <item quantity="one">שיר אחד</item>
+        <item quantity="two">שני שירים</item>
+        <item quantity="many">%d שירים</item>
         <item quantity="other">%d שירים</item>
     </plurals>
-    <plurals name="n_artist">
-        <item quantity="one">אמן %d</item>
-        <item quantity="two">%d אמנים</item>
+        <plurals name="n_artist">
+        <item quantity="one">אמן אחד</item>
+        <item quantity="two">שני אמנים</item>
+        <item quantity="many">%d אמנים</item>
         <item quantity="other">%d אמנים</item>
     </plurals>
-    <plurals name="n_album">
-        <item quantity="one">אלבום %d</item>
-        <item quantity="two">%d אלבומים</item>
+        <plurals name="n_album">
+        <item quantity="one">אלבום אחד</item>
+        <item quantity="two">שני אלבומים</item>
+        <item quantity="many">%d אלבומים</item>
         <item quantity="other">%d אלבומים</item>
     </plurals>
-    <plurals name="n_playlist">
-        <item quantity="one">פלייליסט %d</item>
-        <item quantity="two">%d פלייליסטים</item>
+        <plurals name="n_playlist">
+        <item quantity="one">פלייליסט אחד</item>
+        <item quantity="two">שני פלייליסטים</item>
+        <item quantity="many">%d פלייליסטים</item>
         <item quantity="other">%d פלייליסטים</item>
     </plurals>
-    <plurals name="n_week">
-        <item quantity="one">שבוע %d</item>
-        <item quantity="two">%d שבועות</item>
+        <plurals name="n_week">
+        <item quantity="one">שבוע אחד</item>
+        <item quantity="two">שבועיים</item>
+        <item quantity="many">%d שבועות</item>
         <item quantity="other">%d שבועות</item>
     </plurals>
-    <plurals name="n_month">
-        <item quantity="one">חודש %d</item>
-        <item quantity="two">%d חודשים</item>
+        <plurals name="n_month">
+        <item quantity="one">חודש אחד</item>
+        <item quantity="two">חודשיים</item>
+        <item quantity="many">%d חודשים</item>
         <item quantity="other">%d חודשים</item>
     </plurals>
-    <string name="end_of_song">סוף השיר</string>
-    <string name="action_like_all">Star all</string>
-    <string name="queue_all_songs">כל השירים</string>
-    <string name="music_player">‪שירים שחיפשת</string>
-    <string name="pure_black">שחור</string>
-    <plurals name="n_year">
-        <item quantity="one">שנה %d</item>
-        <item quantity="two">%d שנים</item>
+        <plurals name="n_year">
+        <item quantity="one">שנה אחת</item>
+        <item quantity="two">שנתיים</item>
+        <item quantity="many">%d שנים</item>
         <item quantity="other">%d שנים</item>
     </plurals>
-    <string name="playlist_imported">פלייליסט יובא</string>
-    <string name="removed_song_from_playlist">\"%s\" הוסר מרשימת ההשמעה</string>
-    <string name="playlist_synced">פלייסליט סונכרן</string>
+
+    <!-- Snackbar -->
+    <string name="playlist_imported">הפלייליסט יובא</string>
+    <string name="removed_song_from_playlist">הוסר \"%s\" מהפלייליסט</string>
+    <string name="playlist_synced">הפלייליסט סונכרן</string>
     <string name="undo">בטל</string>
-    <string name="lyrics_not_found">מילות השיר לא נמצאו</string>
+
+    <!-- Player -->
+    <string name="lyrics_not_found">מילים חסרות או בטעינה</string>
+    <string name="lyrics_searching">…</string>
     <string name="sleep_timer">טיימר שינה</string>
-    <plurals name="minute">
-        <item quantity="one">דקה 1</item>
-        <item quantity="two">%d דקות</item>
+    <string name="end_of_song">סוף השיר</string>
+        <plurals name="minute">
+        <item quantity="one">דקה</item>
+        <item quantity="two">שתי דקות</item>
+        <item quantity="many">%d דקות</item>
         <item quantity="other">%d דקות</item>
     </plurals>
-    <string name="error_no_stream">אין סטרים זמין</string>
-    <string name="error_no_internet">אין חיבור אינטרנט</string>
+    <string name="error_no_stream">אין זרימה זמינה</string>
+    <string name="error_no_internet">אין חיבור לרשת</string>
     <string name="error_timeout">פסק זמן</string>
     <string name="error_unknown">שגיאה לא ידועה</string>
-    <string name="action_like">Star</string>
-    <string name="action_remove_like">Remove star</string>
-    <string name="action_remove_like_all">Remove all stars</string>
-    <string name="action_shuffle_on">ערבוב מופעל</string>
-    <string name="action_shuffle_off">ערבוב כבוי</string>
+
+    <!-- Player action -->
+    <string name="action_like">סמן</string>
+    <string name="action_like_all">סמן הכול</string>
+    <string name="action_remove_like">הסר סימון</string>
+    <string name="action_remove_like_all">הסר את כל הסימונים</string>
+    <string name="action_shuffle_on">מצב ערבוב הופעל</string>
+    <string name="action_shuffle_off">מצב ערבוב כבוי</string>
     <string name="repeat_mode_off">מצב חזרה כבוי</string>
-    <string name="repeat_mode_one">חזרה על השיר הנוכחי</string>
-    <string name="repeat_mode_all">חזרה על התור</string>
-    <string name="queue_searched_songs">שירים שחיפשת</string>
+    <string name="repeat_mode_one">חזור על השיר הנוכחי</string>
+    <string name="repeat_mode_all">חזור על התור</string>
+
+    <!-- Queue Title -->
+    <string name="queue_all_songs">כל השירים</string>
+    <string name="queue_searched_songs">שירים שחופשו</string>
+
+    <!-- Notification name -->
+    <string name="music_player">נגן מוזיקה</string>
+
+    <!-- Settings -->
     <string name="settings">הגדרות</string>
-    <string name="appearance">נראות</string>
-    <string name="theme">עיצוב</string>
-    <string name="enable_dynamic_theme">הפעלת עיצוב דינמית</string>
-    <string name="dark_theme">עיצוב כהה</string>
-    <string name="dark_theme_on">פועל</string>
+    <string name="appearance">מראה</string>
+    <string name="theme">ערכת נושא</string>
+    <string name="theme_desc">התאם אישית את ערכת הנושא של האפליקציה</string>
+    <string name="theme_colors">ערכת נושא וצבעים</string>
+    <string name="theme_mode">מצב ערכת נושא</string>
+    <string name="color_palette">פלטת צבעים</string>
+    <string name="use_system_colors">השתמש בצבעי המערכת</string>
+    <string name="enable_dynamic_theme">הפעל ערכת נושא דינמית</string>
+    <string name="dark_theme">ערכת נושא כהה</string>
+    <string name="dark_theme_on">מופעל</string>
     <string name="dark_theme_off">כבוי</string>
-    <string name="dark_theme_follow_system">כמו המערכת</string>
-    <string name="customize_navigation_tabs">התאמה אישית של כרטיסיות ניווט</string>
+    <string name="dark_theme_follow_system">לפי המערכת</string>
+    <string name="pure_black">שחור טהור</string>
+    <string name="customize_navigation_tabs">התאם אישית את לשוניות הניווט</string>
     <string name="player">נגן</string>
-    <string name="sided">צדדי</string>
+    <string name="player_text_alignment">יישור טקסט הנגן</string>
+    <string name="lyrics_text_position">מיקום טקסט המילים</string>
+    <string name="sided">בצד</string>
     <string name="left">שמאל</string>
     <string name="center">מרכז</string>
     <string name="right">ימין</string>
-    <string name="player_slider_style">‎סגנון מחוון הנגן</string>
+    <string name="player_slider_style">סגנון מחוון הנגן</string>
     <string name="default_">ברירת מחדל</string>
-    <string name="player_text_alignment">יישור טקסט של הנגן</string>
-    <string name="lyrics_text_position">מיקום מילות השיר</string>
-    <string name="squiggly">מתפתל</string>
+    <string name="squiggly">מתולתל</string>
     <string name="misc">שונות</string>
-    <string name="default_open_tab">‌כרטיסיית פתיחה כברירת מחדל</string>
-    <string name="grid_cell_size">גודל תא הרשת</string>
+    <string name="default_open_tab">לשונית פתיחה ברירת מחדל</string>
+    <string name="grid_cell_size">גודל תא ברשת</string>
     <string name="small">קטן</string>
     <string name="big">גדול</string>
+
     <string name="content">תוכן</string>
-    <string name="action_logout">התנתקות</string>
-    <string name="action_login">התחברות</string>
+    <string name="action_logout">התנתק</string>
+    <string name="action_login">התחבר</string>
     <string name="login">התחברות</string>
     <string name="not_logged_in">לא מחובר</string>
     <string name="login_failed">ההתחברות נכשלה</string>
+
     <string name="content_language">שפת תוכן ברירת מחדל</string>
     <string name="content_country">מדינת תוכן ברירת מחדל</string>
-    <string name="system_default">ברירת מחדל מערכת</string>
-    <string name="enable_proxy">הפעלת פרוקסי</string>
-    <string name="proxy_type">סוג פרוקסי</string>
-    <string name="proxy_url">כתובת פרוקסי</string>
-    <string name="restart_to_take_effect">הפעל מחדש כדי שיכנס לתוקף</string>
+    <string name="system_default">ברירת המחדל של המערכת</string>
+    <string name="enable_proxy">הפעל proxy</string>
+    <string name="proxy_type">סוג proxy</string>
+    <string name="proxy_url">כתובת proxy</string>
+    <string name="restart_to_take_effect">הפעל מחדש כדי שהשינויים ייכנסו לתוקף</string>
+
     <string name="player_and_audio">נגן ושמע</string>
     <string name="audio_quality">איכות שמע</string>
-    <string name="audio_quality_auto">אוטומטי</string>
-    <string name="audio_quality_high">גבוה</string>
-    <string name="audio_quality_low">נמוך</string>
-    <string name="queue">תור</string>
-    <string name="persistent_queue">תור קבוע</string>
-    <string name="persistent_queue_desc">שחזר את התור האחרון שלך כאשר האפליקציה נדלקת</string>
-    <string name="auto_load_more">טעינה אוטומטית של שירים נוספים</string>
+    <string name="audio_quality_auto">אוטומטית</string>
+    <string name="audio_quality_high">גבוהה</string>
+    <string name="audio_quality_low">נמוכה</string>
+    <string name="scratch_buffer">מאגר Scratch</string>
+    <string name="scratch_buffer_short">קצר</string>
+    <string name="scratch_buffer_medium">בינוני</string>
+    <string name="scratch_buffer_long">מורחב</string>
+    <string name="scratch_buffer_full">כל הרצועה</string>
+    <string name="scratch_buffer_short_desc">Scratch אחורה 15 שניות. שימוש מועט ביותר בזיכרון.</string>
+    <string name="scratch_buffer_medium_desc">Scratch אחורה דקה.</string>
+    <string name="scratch_buffer_long_desc">Scratch אחורה 3 דקות.</string>
+    <string name="scratch_buffer_full_desc">מאפשר Scratch על כל השיר. משתמש ביותר זיכרון.</string>
+    <string name="queue">הבא בתור</string>
+    <string name="queue_recently_played">הושמעו לאחרונה</string>
+    <string name="queue_recently_played_more">הושמעו לאחרונה ↑</string>
+    <string name="queue_scroll_for_history">גלול למעלה להיסטוריה</string>
+    <string name="queue_autoplay">מיקס אוטומטי</string>
+    <string name="queue_continue_listening">המשך להקשיב</string>
+    <string name="queue_filter_all">הכול</string>
+    <string name="queue_filter_popular">פופולריים</string>
+    <string name="queue_filter_discover">גלה</string>
+    <string name="queue_filter_familiar">מוכרים</string>
+    <string name="queue_filter_party">מסיבה</string>
+    <string name="queue_filter_workout">אימון</string>
+    <string name="queue_filter_deep_cuts">פחות מוכרים</string>
+    <string name="persistent_queue">תור מתמשך</string>
+    <string name="persistent_queue_desc">שחזר את התור האחרון בהפעלת האפליקציה</string>
+    <string name="auto_load_more">טען שירים נוספים אוטומטית</string>
     <string name="auto_load_more_desc">הוסף אוטומטית שירים נוספים כאשר מגיעים לסוף התור, אם אפשר</string>
-    <string name="skip_silence">דילוג על שקט</string>
+    <string name="skip_silence">דלג על שקט</string>
     <string name="audio_normalization">נרמול שמע</string>
-    <string name="auto_skip_next_on_error">דילוג אוטומטי לשיר הבא כאשר מתרחשת שגיאה</string>
-    <string name="auto_skip_next_on_error_desc">הבטיחו את חוויית ההשמעה הרציפה שלכם</string>
-    <string name="stop_music_on_task_clear">עצירת מוזיקה בעת ניקוי המשימה</string>
-    <string name="equalizer">אקלוייזר</string>
+    <string name="auto_skip_next_on_error">דלג אוטומטית לשיר הבא כשמתרחשת שגיאה</string>
+    <string name="auto_skip_next_on_error_desc">לחוויית נגינה רציפה</string>
+    <string name="stop_music_on_task_clear">עצור מוזיקה בסגירת המשימה</string>
+    <string name="equalizer">אקולייזר</string>
+
     <string name="storage">אחסון</string>
     <string name="cache">מטמון</string>
-    <string name="image_cache">מטמון תמונה</string>
+    <string name="image_cache">מטמון תמונות</string>
     <string name="song_cache">מטמון שירים</string>
-    <string name="max_cache_size">גודל מטמון מקסימלי</string>
+    <string name="max_cache_size">גודל מטמון מרבי</string>
     <string name="unlimited">ללא הגבלה</string>
     <string name="clear_all_downloads">נקה את כל ההורדות</string>
-    <string name="max_image_cache_size">גודל מטמון מקסימלי של תמונה</string>
-    <string name="clear_image_cache">נקה את מטמון התמונה</string>
-    <string name="max_song_cache_size">גודל מטמון מקסימלי של שירים</string>
-    <string name="clear_song_cache">נקה את מטמון השירים</string>
+    <string name="max_image_cache_size">גודל מטמון תמונות מרבי</string>
+    <string name="clear_image_cache">נקה מטמון תמונות</string>
+    <string name="max_song_cache_size">גודל מטמון שירים מרבי</string>
+    <string name="clear_song_cache">נקה מטמון שירים</string>
     <string name="size_used">%s בשימוש</string>
+
     <string name="privacy">פרטיות</string>
-    <string name="listen_history">היסטוריית האזנה</string>
-    <string name="pause_listen_history">השהיית היסטוריית ההאזנה</string>
-    <string name="clear_listen_history">נקה את היסטוריית ההאזנה</string>
-    <string name="clear_listen_history_confirm">האם אתה בטוח שברצונך לנקות את כל היסטוריית ההאזנה?</string>
+    <string name="listen_history">היסטוריית השמעות</string>
+    <string name="pause_listen_history">השהה היסטוריית השמעות</string>
+    <string name="clear_listen_history">נקה היסטוריית השמעות</string>
+    <string name="clear_listen_history_confirm">האם לנקות את כל היסטוריית ההשמעות?</string>
     <string name="search_history">היסטוריית חיפוש</string>
-    <string name="pause_search_history">השהיית היסטוריית החיפוש</string>
-    <string name="clear_search_history">…נקה את היסטוריית החיפוש</string>
-    <string name="clear_search_history_confirm">האם אתה בטוח שברצונך למחוק את כל היסטוריית החיפוש?</string>
-    <string name="use_login_for_browse">השתמש בכניסה כדי לגלוש בתוכן</string>
-    <string name="use_login_for_browse_desc">זה יכול להשפיע על התוכן שתראו, לדוגמה, יציג אלבומים למשתמשי פרימיום בלבד אם אתם מחוברים לחשבון פרימיום</string>
-    <string name="disable_screenshot">השבתת צילום מסך</string>
-    <string name="disable_screenshot_desc">כאשר אפשרות זו מופעלת, צילומי מסך ותצוגת האפליקציה תחת \'אחרונים\' מושבתות.</string>
-    <string name="enable_lrclib">הפעל את ספק המילים של LrcLib</string>
-    <string name="enable_kugou">הפעלת ספק מילות השיר KuGou</string>
-    <string name="hide_explicit">הסתר תוכן בוטה</string>
+    <string name="pause_search_history">השהה היסטוריית חיפוש</string>
+    <string name="clear_search_history">נקה היסטוריית חיפוש</string>
+    <string name="clear_search_history_confirm">האם לנקות את כל היסטוריית החיפוש?</string>
+    <string name="use_login_for_browse">השתמש בהתחברות לעיון בתוכן</string>
+    <string name="use_login_for_browse_desc">זה עשוי להשפיע על התוכן שאתה רואה, למשל להציג אלבומים למנויי Premium בלבד אם מחוברים עם חשבון Premium</string>
+    <string name="disable_screenshot">השבת צילום מסך</string>
+    <string name="disable_screenshot_desc">כשהאפשרות מופעלת, צילומי מסך ותצוגת האפליקציה ב\"אחרונים\" מושבתים.</string>
+    <string name="enable_lrclib">הפעל ספק מילים LrcLib</string>
+    <string name="enable_kugou">הפעל ספק מילים KuGou</string>
+    <string name="hide_explicit">הסתר תוכן מוגבל</string>
+    <string name="hide_explicit_desc">הסר שירים עם תוכן מוגבל מתוצאות חיפוש ועיון</string>
+    <string name="show_explicit_badge">הצג סמל תוכן מוגבל</string>
+    <string name="show_explicit_badge_desc">הצג את הסמל \"E\" לשירים עם תוכן מוגבל</string>
+
     <string name="backup_restore">גיבוי ושחזור</string>
-    <string name="action_backup">גיבוי</string>
-    <string name="action_restore">שחזור</string>
-    <string name="imported_playlist">רשימת השמעה מיובאת</string>
-    <string name="backup_create_success">גיבוי נוצר בהצלחה</string>
-    <string name="backup_create_failed">לא ניתן היה ליצור גיבוי</string>
+    <string name="action_backup">גבה</string>
+    <string name="action_restore">שחזר</string>
+    <string name="imported_playlist">פלייליסט שיובא</string>
+    <string name="backup_create_success">הגיבוי נוצר בהצלחה</string>
+    <string name="backup_create_failed">יצירת הגיבוי נכשלה</string>
     <string name="restore_failed">שחזור הגיבוי נכשל</string>
-    <string name="discord_integration">שילוב דיסקורד</string>
-    <string name="discord_information">Metrolist משתמשת בספריית KizzyRPC כדי לקבוע את סטטוס חשבון הדיסקורד שלך. זה כרוך בשימוש בחיבור Discord Gateway, דבר שעשוי להיחשב כהפרה של תנאי השימוש של Discord. עם זאת, לא ידוע על מקרים של השעיית חשבונות משתמש מסיבה זו. השימוש על אחריותך בלבד.\n\nMetrolist יחלץ רק את הטוקן שלך, וכל השאר מאוחסן באופן מקומי.</string>
-    <string name="dismiss">התעלמות</string>
+
+    <string name="discord_integration">שילוב Discord</string>
+    <string name="discord_information">Iride משתמשת בספריית KizzyRPC כדי להגדיר את הסטטוס של חשבון ה-Discord שלך. הדבר כרוך בשימוש בחיבור Discord Gateway, שעשוי להיחשב להפרה של תנאי השירות של Discord. עם זאת, אין מקרים ידועים של השעיית חשבונות מסיבה זו. השתמש על אחריותך.\n\nIride תחלץ רק את האסימון שלך, וכל השאר נשמר מקומית.</string>
+    <string name="dismiss">שגר</string>
     <string name="options">אפשרויות</string>
     <string name="preview">תצוגה מקדימה</string>
-    <string name="enable_discord_rpc">הפעלת נוכחות עשירה</string>
+    <string name="enable_discord_rpc">הפעל Rich Presence</string>
+
     <string name="about">אודות</string>
-    <string name="app_version">גירסת אפליקציה</string>
-    <string name="new_version_available">גירסה חדשה זמינה</string>
-    <string name="translation_models">מודלים של תרגום</string>
-    <string name="clear_translation_models">ניקוי מודלי תרגום</string>
+    <string name="app_version">גרסת האפליקציה</string>
+
+    <string name="new_version_available">גרסה חדשה זמינה</string>
+
+    <!-- Advanced Mode -->
+    <string name="advanced_mode">מצב מתקדם</string>
+    <string name="advanced_mode_banner">מצב מתקדם פעיל. היה מוכן להגדרות נוספות ולאפשרויות טכניות בכל האפליקציה — הממשק הזה אינו מיועד לשימוש יומיומי פשוט.</string>
+    <string name="my_account">החשבון שלי</string>
+    <string name="your_contents">התוכן שלך</string>
+    <string name="playback">נגינה</string>
+    <string name="default_category">קטגוריית ברירת מחדל</string>
+    <string name="music_section">מוזיקה</string>
+    <string name="interface_section">ממשק</string>
+    <string name="lyrics_translation">תרגום מילים</string>
+    <string name="behavior">התנהגות</string>
+
+    <string name="translation_models">מודלים לתרגום</string>
+    <string name="clear_translation_models">נקה מודלי תרגום</string>
+
+    <!-- New settings for track resolution -->
+    <string name="resolve_video_songs">פתור שירי וידאו</string>
+    <string name="resolve_video_songs_desc">מצא והחלף אוטומטית רצועות וידאו בגרסאות אודיו</string>
+    <string name="hide_video_only_results">הסתר תוצאות שיש להן רק גרסת וידאו</string>
+    <string name="hide_video_only_results_desc">הסתר רצועות שרק להן גרסת וידאו זמינה (כשהפתרון נכשל)</string>
+    <string name="hide_videos_in_library">הסתר סרטונים בספרייה/פלייליסטים</string>
+    <string name="hide_videos_in_library_desc">החל את לוגיקת הסתרת הסרטונים על הספרייה והפלייליסטים שיצרת</string>
+    <string name="resolved_track_cache">מטמון רצועות פתורות</string>
+    <string name="max_resolved_track_cache_size">גודל מטמון מרבי</string>
+    <string name="clear_resolved_track_cache">נקה מטמון רצועות פתורות</string>
+    <string name="clear_resolved_track_cache_dialog">האם ברצונך לנקות את מטמון הרצועות הפתורות? זה יאלץ את האפליקציה לחפש שוב גרסאות אודיו לסרטונים.</string>
+    <string name="searching_synced_lyrics">מחפש מילים מסונכרנות…</string>
+
+    <string name="main_top_gradient">גרדיאנט עליון במסכים הראשיים</string>
+    <string name="main_top_gradient_desc">מציג את גרדיאנט הנגן של השיר הנוכחי, מעורבב בעדינות, מאחורי החלק העליון של Home, ספרייה, חיפוש ו-News</string>
+    <string name="album_top_gradient">גרדיאנט עליון באלבומים</string>
+    <string name="album_top_gradient_desc">מציג את גרדיאנט הנגן של האלבום המוצג, מעורבב בעדינות, מאחורי החלק העליון של מסכי אלבום, סינגל ו-EP</string>
 </resources>

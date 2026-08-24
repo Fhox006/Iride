@@ -344,6 +344,13 @@ fun PlayerSettings(
                 ))
 
                 add(Material3SettingsItem(
+                    icon = painterResource(R.drawable.equalizer),
+                    title = { Text(stringResource(R.string.equalizer_header)) },
+                    description = { Text(stringResource(R.string.equalizer_desc)) },
+                    onClick = { navController.navigate("settings/equalizer") }
+                ))
+
+                add(Material3SettingsItem(
                     icon = painterResource(R.drawable.album),
                     title = { Text(stringResource(R.string.scratch_buffer)) },
                     description = { Text(scratchBufferLabel(scratchBuffer)) },

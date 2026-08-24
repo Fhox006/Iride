@@ -106,12 +106,12 @@ class NewReleaseNotifier @Inject constructor(
 
     private val maxFeatureAlbumFetchesPerArtist = 20
 
-    private val maxFeatureAlbumFetchesBaseline = 100
+    private val maxFeatureAlbumFetchesBaseline = 25
 
     private val maxGeniusPagesPerCycle = 2
     private val maxGeniusPagesBaseline = 6
     private val maxGeniusResolveAttemptsPerCycle = 10
-    private val maxGeniusResolveAttemptsBaseline = 40
+    private val maxGeniusResolveAttemptsBaseline = 12
 
     private fun parse(raw: String?): Map<String, ArtistReleaseState> =
         raw?.let { runCatching { json.decodeFromString<Map<String, ArtistReleaseState>>(it) }.getOrNull() }

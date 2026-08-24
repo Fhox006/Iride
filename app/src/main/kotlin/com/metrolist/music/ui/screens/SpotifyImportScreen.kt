@@ -26,9 +26,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -60,7 +61,7 @@ fun SpotifyImportScreen(navController: NavController) {
             Icon(
                 painter = painterResource(R.drawable.download),
                 contentDescription = null,
-                tint = Color.White,
+                tint = MaterialTheme.colorScheme.textPrimary,
                 modifier = Modifier.size(48.dp)
             )
 
@@ -73,7 +74,7 @@ fun SpotifyImportScreen(navController: NavController) {
                     fontWeight = FontWeight.Bold,
                     letterSpacing = (-0.1).sp,
                 ),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.textPrimary,
                 textAlign = TextAlign.Center
             )
 
@@ -85,7 +86,7 @@ fun SpotifyImportScreen(navController: NavController) {
                     fontFamily = SpaceMonoFontFamily,
                     letterSpacing = 1.sp,
                 ),
-                color = Color.White.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.textSecondary,
                 fontWeight = FontWeight.Bold
             )
 
@@ -94,7 +95,7 @@ fun SpotifyImportScreen(navController: NavController) {
             Text(
                 text = "Import your saved tracks, playlists, and artists from external services directly into your Iride library.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.textSecondary,
                 textAlign = TextAlign.Center
             )
 
@@ -107,7 +108,7 @@ fun SpotifyImportScreen(navController: NavController) {
                     fontWeight = FontWeight.Bold,
                     letterSpacing = (-0.1).sp,
                 ),
-                color = Color.White.copy(alpha = 0.85f)
+                color = MaterialTheme.colorScheme.textPrimary
             )
         }
 

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
@@ -21,7 +21,7 @@
 
     <!-- Top bar -->
         <plurals name="n_selected">
-        </item>Đã chọn %d</item>
+        <item quantity="other">Đã chọn %d</item>
     </plurals>
 
     <!-- Home -->
@@ -129,8 +129,8 @@
     <string name="guess_game_no_score">Chưa có điểm</string>
     <string name="guess_game_play_now">Chơi ngay</string>
         <plurals name="guess_game_songs_left">
-        </item>Còn %1$d bài hát để chơi</item>
-        </item>Còn %1$d bài hát để chơi</item>
+        <item quantity="one">Còn %1$d bài hát để chơi</item>
+        <item quantity="other">Còn %1$d bài hát để chơi</item>
     </plurals>
     <string name="guess_game_hint_default">Đoán để tiếp tục</string>
     <string name="guess_game_hint_wrong">Sai rồi! Chờ 3 giây</string>
@@ -238,25 +238,25 @@
 
     <!-- Noun -->
         <plurals name="n_song">
-        </item>%d bài hát</item>
+        <item quantity="other">%d bài hát</item>
     </plurals>
         <plurals name="n_artist">
-        </item>%d nghệ sĩ</item>
+        <item quantity="other">%d nghệ sĩ</item>
     </plurals>
         <plurals name="n_album">
-        </item>%d album</item>
+        <item quantity="other">%d album</item>
     </plurals>
         <plurals name="n_playlist">
-        </item>%d danh sách phát</item>
+        <item quantity="other">%d danh sách phát</item>
     </plurals>
         <plurals name="n_week">
-        </item>%d tuần</item>
+        <item quantity="other">%d tuần</item>
     </plurals>
         <plurals name="n_month">
-        </item>%d tháng</item>
+        <item quantity="other">%d tháng</item>
     </plurals>
         <plurals name="n_year">
-        </item>%d năm</item>
+        <item quantity="other">%d năm</item>
     </plurals>
 
     <!-- Snackbar -->
@@ -271,7 +271,7 @@
     <string name="sleep_timer">Hẹn giờ ngủ</string>
     <string name="end_of_song">Kết thúc bài hát</string>
         <plurals name="minute">
-        </item>%d phút</item>
+        <item quantity="other">%d phút</item>
     </plurals>
     <string name="error_no_stream">Không có luồng nào khả dụng</string>
     <string name="error_no_internet">Không có kết nối mạng</string>

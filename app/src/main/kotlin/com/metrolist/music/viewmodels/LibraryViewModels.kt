@@ -778,7 +778,7 @@ constructor(
         .uploadedSongs(SongSortType.CREATE_DATE, true)
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     var downloadedAlbums = database
-        .albumsWithDownloadedSongsByDateDesc()
+        .albumsDownloadedByDateDesc()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val downloadedPlaylistIds = database.playlistIdsWithDownloadedSongs()
         .map { it.toSet() }

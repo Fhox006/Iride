@@ -122,6 +122,19 @@ val LastUpdateCheckTimeKey = longPreferencesKey("lastUpdateCheckTime")
 val UpdateDownloadIdKey = longPreferencesKey("updateDownloadId")
 val BetaBannerDismissedVersionKey = stringPreferencesKey("betaBannerDismissedVersion")
 
+// Update announcement ("sneaky updater") state: the check runs silently on launch N and
+// persists what it found; the full-screen announcement renders on launch N+1 from this
+// persisted data alone. Dismissal is remembered per release tag.
+val PendingUpdateTagKey = stringPreferencesKey("pendingUpdateTag")
+val PendingUpdateVersionNameKey = stringPreferencesKey("pendingUpdateVersionName")
+val PendingUpdateNotesKey = stringPreferencesKey("pendingUpdateNotes")
+val UpdateAnnouncementDismissedTagKey = stringPreferencesKey("updateAnnouncementDismissedTag")
+
+// Wall-clock timestamp of the last time the activity left the foreground; a launch after a
+// gap of many hours counts as a fresh session (splash branding + update announcement),
+// while a quick reopen of a still-running app does not.
+val LastSessionEndedAtKey = longPreferencesKey("lastSessionEndedAt")
+
 val AudioQualityKey = stringPreferencesKey("audioQuality")
 
 enum class AudioQuality {
@@ -273,6 +286,7 @@ val SimpMusicMigrationDoneKey = booleanPreferencesKey("simpMusicMigrationDone")
 val OnboardingCompletedKey = booleanPreferencesKey("onboardingCompleted")
 val QueueEditLockKey = booleanPreferencesKey("queueEditLock")
 val HomeCacheLastLoadedKey = longPreferencesKey("home_cache_last_loaded")
+val LastUpdateCheckKey = longPreferencesKey("last_update_check")
 val SmartBootKey = booleanPreferencesKey("smartBoot")
 val HeroCarouselSnapshotKey = stringPreferencesKey("heroCarouselSnapshot")
 val ShowWrappedCardKey = booleanPreferencesKey("show_wrapped_card")
@@ -286,6 +300,8 @@ val LastMoodChipParamsKey = stringPreferencesKey("lastMoodChipParams")
 val HeroCarouselEnabledKey = booleanPreferencesKey("discoveryCarouselEnabled")
 val SeenNewReleaseFirstIdsKey = stringSetPreferencesKey("seenNewReleaseFirstIds")
 val HomeCollapsedSectionsKey = stringSetPreferencesKey("homeCollapsedSections")
+
+val AdvancedHomePageKey = booleanPreferencesKey("advancedHomePage")
 
 val LibraryOfflineModeKey = booleanPreferencesKey("library_offline_mode")
 
@@ -515,6 +531,7 @@ CRITICAL RULES:
 val LyricsGlowEffectKey = booleanPreferencesKey("lyricsGlowEffect")
 
 val LyricsRomanizeList = stringPreferencesKey("lyricsRomanizeList")
+val LyricsRomanizeToggleKey = booleanPreferencesKey("lyricsRomanizeToggle")
 val LyricsAnimationStyleKey = stringPreferencesKey("lyricsAnimationStyle")
 
 enum class LyricsAnimationStyle {
