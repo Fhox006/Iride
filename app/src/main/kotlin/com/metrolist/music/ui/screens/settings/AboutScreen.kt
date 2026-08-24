@@ -5,6 +5,10 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -39,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -53,8 +58,12 @@ import com.metrolist.music.R
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
+import com.metrolist.music.utils.DiagnosticLog
 import com.metrolist.music.utils.rememberPreference
 import java.util.Locale
 
@@ -127,14 +136,21 @@ fun AboutScreen(
     navController: NavController,
 ) {
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
     val windowInsets = LocalPlayerAwareWindowInsets.current
     val scrollState = rememberScrollState()
+    val frostBackdrop = rememberFrostBackdrop()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent)
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop)
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -312,16 +328,41 @@ fun AboutScreen(
 
             Spacer(Modifier.height(16.dp))
 
+            Material3SettingsGroup(
+                items = listOf(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.content_copy),
+                        title = { Text(stringResource(R.string.diagnostic_copy_log)) },
+                        onClick = {
+                            try {
+                                val clipboard =
+                                    context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(
+                                    ClipData.newPlainText("Iride log", DiagnosticLog.snapshot())
+                                )
+                                Toast.makeText(context, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
+                            } catch (_: Exception) {
+                            }
+                        }
+                    )
+                )
+            )
+
+            Spacer(Modifier.height(16.dp))
+
             Spacer(
                 Modifier.windowInsetsPadding(
                     windowInsets.only(WindowInsetsSides.Bottom)
                 )
             )
         }
+        }
 
         SettingsBackTopBar(
             title = stringResource(R.string.about),
             navController = navController,
+            backdrop = frostBackdrop,
+            revealProgress = rememberDiscreteProgress(active = scrollState.value > 0),
         )
     }
 }

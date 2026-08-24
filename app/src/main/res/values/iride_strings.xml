@@ -24,6 +24,8 @@
     <string name="monthly_most_playlist_name">Monthly Most</string>
     <string name="cached_playlist">Cached</string>
     <string name="uploaded_playlist">Uploaded</string>
+    <string name="recently_added">Recently Added</string>
+    <string name="recently_downloaded">Recently Downloaded</string>
     <string name="filter_uploaded">Uploaded</string>
     <string name="sync_playlist">Sync playlist</string>
     <string name="sync_disabled">Sync disabled</string>
@@ -753,6 +755,7 @@
     <string name="copy_all_lyrics">Copy all lyrics</string>
     <string name="change">Change</string>
     <string name="copied_to_clipboard">Copied to clipboard</string>
+    <string name="diagnostic_copy_log">Copy diagnostic log</string>
     <string name="not_set">Not set</string>
     <string name="hosting_room">Hosting room</string>
     <string name="in_room">In room</string>
@@ -1119,8 +1122,6 @@
     <string name="muzza_player_logic_desc">Loads songs faster using an alternate streaming method.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">Show News tab</string>
-    <string name="show_news_tab_desc">Adds a News tab to the bottom navigation, between Home and Library</string>
     <string name="compact_top_navigation_bar">Compact top bar</string>
     <string name="compact_top_navigation_bar_desc">Home and Library as text on the left, Search and your profile picture as icons on the right. Turn off to go back to the classic bar with every tab spelled out</string>
     <string name="iride_animations">Iride animations</string>
@@ -1128,6 +1129,8 @@
     <string name="player_auto_hide_top_panel">Auto-hide return panel</string>
     <string name="player_auto_hide_top_panel_desc">Fades out the top return-to-app panel after 5s idle in the expanded player. Scrolling down brings it back</string>
     <string name="news">News</string>
+    <string name="show_news_tab">Show News tab</string>
+    <string name="show_news_tab_desc">Adds a News tab to the bottom navigation, between Home and Library</string>
     <string name="news_new_albums">New albums</string>
     <string name="news_new_songs">New songs</string>
     <string name="news_charts">Charts</string>
@@ -1135,6 +1138,22 @@
     <string name="news_quick_play_title">New Songs</string>
     <string name="news_empty_albums">No new albums found yet</string>
     <string name="news_empty_songs">No new songs found yet</string>
+    <string name="news_from_your_artists">From your artists</string>
+    <string name="news_your_artists_releases">All from your artists</string>
+    <string name="news_just_out">Just out</string>
+    <string name="news_hot_right_now">Hot right now</string>
+    <string name="news_your_world">Your world</string>
+    <string name="news_discover">Discover</string>
+    <string name="news_pick_genre">Pick a genre you love to fill this shelf</string>
+    <string name="news_filter_all">All</string>
+    <string name="news_filter_albums">Albums</string>
+    <string name="news_filter_singles">Singles</string>
+    <string name="news_see_all">See all</string>
+    <string name="news_show_less">Show less</string>
+    <string name="news_empty_personal">Follow or listen to some artists — their new releases will land here</string>
+    <string name="news_empty_general">No fresh releases found yet. Check back soon</string>
+    <string name="news_empty_charts">The charts are warming up. Try again in a moment</string>
+    <string name="news_all_done">That\'s all for today — new music usually drops on Fridays</string>
 
     <string name="better_library_beta">Better Library BETA</string>
     <string name="better_library_beta_desc">Enable Material 3 refactored Library (Top App Bar, FAB, and UI fixes)</string>
@@ -1205,4 +1224,23 @@
 
     <!-- About -->
     <string name="about_check_updates">Check for updates</string>
+
+    <!-- Advanced home -->
+    <string name="adv_home_settings_title">Advanced home</string>
+    <string name="adv_home_settings_desc">A calmer, simpler home with a mood trigger and a daily pick. Turn it off to go back to the classic home.</string>
+    <string name="adv_feelings_question">How\'s it going?</string>
+    <string name="adv_feeling_energy">Energy</string>
+    <string name="adv_feeling_chill">Chill</string>
+    <string name="adv_feeling_focus">Focus</string>
+    <string name="adv_feeling_nostalgia">Nostalgia</string>
+    <string name="adv_feeling_party">Party</string>
+    <string name="adv_feeling_surprise">Surprise me</string>
+    <string name="adv_thread_section">Keep going</string>
+    <string name="adv_daily_pick">Daily pick</string>
+    <string name="adv_all_news">All new releases</string>
+    <string name="adv_badge_new">New</string>
+    <string name="adv_badge_rotation">On repeat</string>
+    <string name="adv_badge_foryou">For you</string>
+    <string name="adv_badge_trending">Trending</string>
+    <string name="adv_badge_radio">Radio</string>
 </resources>

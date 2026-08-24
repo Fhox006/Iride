@@ -50,6 +50,8 @@ fun SettingsBackTopBar(
     title: String,
     navController: NavController,
     actions: @Composable RowScope.() -> Unit = {},
+    backdrop: FrostBackdrop? = null,
+    revealProgress: Float = 0f,
 ) {
     val (pureBlack) = rememberPreference(PureBlackKey, defaultValue = false)
 
@@ -57,6 +59,12 @@ fun SettingsBackTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .background(if (pureBlack) Color.Black else Color.Transparent)
+            .frostedTopBarBackground(
+                progress = revealProgress,
+                barColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
+                strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                backdrop = LocalScreenFrostBackdrop.current ?: backdrop,
+            )
             .statusBarsPadding()
             .height(56.dp)
             .padding(horizontal = 4.dp),
@@ -106,6 +114,8 @@ fun IrideAdaptiveTopBar(
     actions: @Composable RowScope.() -> Unit = {},
     transparent: Boolean = false,
     scrollBehavior: TopAppBarScrollBehavior? = null,
+    backdrop: FrostBackdrop? = null,
+    revealProgress: Float = 0f,
 ) {
     val (pureBlack) = rememberPreference(PureBlackKey, defaultValue = false)
 
@@ -118,6 +128,12 @@ fun IrideAdaptiveTopBar(
                     pureBlack -> Color.Black
                     else -> MaterialTheme.colorScheme.background
                 },
+            )
+            .frostedTopBarBackground(
+                progress = revealProgress,
+                barColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
+                strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                backdrop = LocalScreenFrostBackdrop.current ?: backdrop,
             )
             .statusBarsPadding()
             .height(56.dp)

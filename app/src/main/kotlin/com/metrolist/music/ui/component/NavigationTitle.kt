@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.textSecondary
+import com.metrolist.music.ui.utils.pressScale
 
 @Composable
 fun NavigationTitle(
@@ -66,12 +67,18 @@ fun NavigationTitle(
     topPadding: Dp? = null,
     bottomPadding: Dp? = null,
 ) {
+    val headerInteractionSource = remember { MutableInteractionSource() }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier
             .fillMaxWidth()
-            .clickable(enabled = onClick != null) {
+            .pressScale(headerInteractionSource)
+            .clickable(
+                enabled = onClick != null,
+                interactionSource = headerInteractionSource,
+                indication = null,
+            ) {
                 onClick?.invoke()
             }
             .padding(
@@ -123,14 +130,16 @@ fun NavigationTitle(
 
         onPlayAllClick?.let { playAllClick ->
             if (useIrideStyle) {
+                val playAllInteractionSource = remember { MutableInteractionSource() }
                 Icon(
                     painter = painterResource(R.drawable.play),
                     contentDescription = stringResource(R.string.play_all),
                     tint = MaterialTheme.colorScheme.textSecondary,
                     modifier = Modifier
                         .size(20.dp)
+                        .pressScale(playAllInteractionSource, pressedScale = 0.85f)
                         .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
+                            interactionSource = playAllInteractionSource,
                             indication = null,
                             onClick = playAllClick,
                         ),
@@ -168,6 +177,7 @@ fun NavigationTitle(
             } else {
                 0f
             }
+            val refreshInteractionSource = remember { MutableInteractionSource() }
             Icon(
                 painter = painterResource(R.drawable.refresh),
                 contentDescription = stringResource(R.string.refresh),
@@ -175,8 +185,9 @@ fun NavigationTitle(
                 modifier = Modifier
                     .size(20.dp)
                     .graphicsLayer { rotationZ = rotation }
+                    .pressScale(refreshInteractionSource, pressedScale = 0.85f)
                     .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
+                        interactionSource = refreshInteractionSource,
                         indication = null,
                         enabled = !isRefreshing,
                         onClick = refreshClick,
@@ -189,6 +200,7 @@ fun NavigationTitle(
                 targetValue = if (collapsed) 180f else 0f,
                 label = "collapseArrowRotation",
             )
+            val collapseInteractionSource = remember { MutableInteractionSource() }
             Icon(
                 painter = painterResource(R.drawable.expand_more),
                 contentDescription = null,
@@ -196,8 +208,9 @@ fun NavigationTitle(
                 modifier = Modifier
                     .size(18.dp)
                     .graphicsLayer { rotationZ = rotation }
+                    .pressScale(collapseInteractionSource, pressedScale = 0.85f)
                     .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
+                        interactionSource = collapseInteractionSource,
                         indication = null,
                         onClick = onCollapseToggle,
                     ),

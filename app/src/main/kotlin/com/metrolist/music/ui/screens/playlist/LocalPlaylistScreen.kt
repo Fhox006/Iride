@@ -790,7 +790,6 @@ fun LocalPlaylistScreen(
                                 sortDescending = sortDescending,
                                 onSortDescendingChange = onSortDescendingChange,
                                 showDescending = sortType != PlaylistSongSortType.CUSTOM,
-                                useIrideStyle = true,
                                 modifier = Modifier.weight(1f),
                             )
                         }

@@ -140,7 +140,11 @@ fun BottomSheet(
                 Box(
                     modifier = Modifier
                         .graphicsLayer {
-                            alpha = 1f - (state.progress / 0.15f).coerceIn(0f, 1f)
+                            val collapseFade = 1f - (state.progress / 0.15f).coerceIn(0f, 1f)
+                            val dismissTravel = (state.collapsedBound - state.value).coerceAtLeast(0.dp)
+                            val dismissRange = (state.collapsedBound - state.dismissedBound).coerceAtLeast(1.dp)
+                            val dismissFade = 1f - (dismissTravel / dismissRange).coerceIn(0f, 1f)
+                            alpha = collapseFade * dismissFade
                         }
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
@@ -178,24 +182,12 @@ internal suspend fun PointerInputScope.handleBottomSheetDrag(
         var accumulatedY = 0f
         var accumulatedX = 0f
         var dragging = false
-        var stolenByChild = false
-        var lastEventTime = down.uptimeMillis
-        var velocityY = 0f
         while (true) {
             val event = awaitPointerEvent()
             val change = event.changes.firstOrNull { it.id == down.id } ?: break
-            val delta = change.positionChange()
-            val dt = (change.uptimeMillis - lastEventTime).coerceAtLeast(1L)
-            if (delta != Offset.Zero) {
-                val instantVelocity = delta.y / dt * 1000f
-                velocityY = 0.65f * velocityY + 0.35f * instantVelocity
-            }
-            lastEventTime = change.uptimeMillis
             if (!dragging) {
-                if (change.isConsumed) {
-                    stolenByChild = true
-                    break
-                }
+                if (change.isConsumed) break
+                val delta = change.positionChange()
                 accumulatedY += delta.y
                 accumulatedX += delta.x
                 if (abs(accumulatedY) > dragSlopPx && abs(accumulatedY) >= abs(accumulatedX) * dominanceRatio) {
@@ -205,9 +197,9 @@ internal suspend fun PointerInputScope.handleBottomSheetDrag(
                 }
                 if (!change.pressed) break
             } else {
-                // Fully-expanded is the hard ceiling: upward drags are swallowed so the
-                // panel stays pinned instead of grinding against the bound while an inner
-                // list scrolls.
+                // Fully-expanded is a hard ceiling: upward drags are swallowed so the panel
+                // never grinds against its bound while an inner list scrolls.
+                val delta = change.positionChange()
                 if (!(state.isExpanded && delta.y < 0)) {
                     state.dispatchRawDelta(delta.y)
                 }
@@ -219,19 +211,12 @@ internal suspend fun PointerInputScope.handleBottomSheetDrag(
         // vertical drift (e.g. scrolling a list through its gaps) must not collapse it.
         val downCommitPx = if (state.isExpanded) commitPx * 2f else commitPx
         val direction = when {
-            accumulatedY < -commitPx -> -1
+            accumulatedY < 0f -> -1
             accumulatedY > downCommitPx -> 1
             else -> 0
         }
-        if (dragging || (!stolenByChild && abs(accumulatedY) > commitPx)) {
-            if (direction != 0) {
-                // Clear travel direction wins outright: up always expands (from anywhere),
-                // down collapses. Ambiguous wiggles settle to the nearest anchor instead,
-                // which is what killed the old "teleport-close".
-                state.performFling(0f, onDismiss, direction)
-            } else {
-                state.performFling(if (dragging) velocityY else 0f, onDismiss)
-            }
+        if (dragging || abs(accumulatedY) > commitPx) {
+            state.performFling(0f, onDismiss, if (abs(accumulatedY) > commitPx) direction else 0)
         }
     }
 }
@@ -323,8 +308,8 @@ class BottomSheetState(
         when {
             dragDirection < 0 -> expand()
             dragDirection > 0 -> dismissOrCollapse(onDismiss)
-            velocity > 250 -> dismissOrCollapse(onDismiss)
-            velocity < -250 -> expand()
+            velocity > 250 -> expand()
+            velocity < -250 -> dismissOrCollapse(onDismiss)
             else -> {
                 val l0 = dismissedBound
                 val l1 = (collapsedBound - dismissedBound) / 2
@@ -386,7 +371,8 @@ class BottomSheetState(
 
             override suspend fun onPreFling(available: Velocity): Velocity {
                 return if (isTopReached) {
-                    performFling(available.y, null)
+                    val velocity = -available.y
+                    performFling(velocity, null)
 
                     available
                 } else {

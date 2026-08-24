@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
@@ -6,9 +6,11 @@
 package com.metrolist.music.ui.screens.settings
 import com.metrolist.music.ui.component.IrideSwitch
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -44,7 +46,10 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.rememberPreference
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,121 +141,134 @@ fun PrivacySettings(
         )
     }
 
-    Column(
-        Modifier
-            .windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Horizontal
-                )
-            )
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-    ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Top
-                )
-            )
-        )
+    val settingsScrollState = rememberScrollState()
+    val frostBackdrop = rememberFrostBackdrop()
 
-        Material3SettingsGroup(
-            title = stringResource(R.string.listen_history),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.history),
-                    title = { Text(stringResource(R.string.pause_listen_history)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = pauseListenHistory,
-                            onCheckedChange = onPauseListenHistoryChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (pauseListenHistory) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)
-                                )
-                            }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop)
+        ) {
+            Column(
+                Modifier
+                    .windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current.only(
+                            WindowInsetsSides.Horizontal
                         )
-                    },
-                    onClick = { onPauseListenHistoryChange(!pauseListenHistory) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.delete_history),
-                    title = { Text(stringResource(R.string.clear_listen_history)) },
-                    onClick = { showClearListenHistoryDialog = true }
-                )
-            )
-        )
-
-        Spacer(modifier = Modifier.height(27.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.search_history),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.search_off),
-                    title = { Text(stringResource(R.string.pause_search_history)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = pauseSearchHistory,
-                            onCheckedChange = onPauseSearchHistoryChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (pauseSearchHistory) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)
-                                )
-                            }
+                    )
+                    .verticalScroll(settingsScrollState)
+                    .padding(horizontal = 16.dp)
+            ) {
+                Spacer(
+                    Modifier.windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current.only(
+                            WindowInsetsSides.Top
                         )
-                    },
-                    onClick = { onPauseSearchHistoryChange(!pauseSearchHistory) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.clear_all),
-                    title = { Text(stringResource(R.string.clear_search_history)) },
-                    onClick = { showClearSearchHistoryDialog = true }
+                    )
                 )
-            )
-        )
 
-        Spacer(modifier = Modifier.height(27.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.settings_section_system_short),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.screenshot),
-                    title = { Text(stringResource(R.string.disable_screenshot)) },
-                    description = { Text(stringResource(R.string.disable_screenshot_desc)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = disableScreenshot,
-                            onCheckedChange = onDisableScreenshotChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (disableScreenshot) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)
+                Material3SettingsGroup(
+                    title = stringResource(R.string.listen_history),
+                    items = listOf(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.history),
+                            title = { Text(stringResource(R.string.pause_listen_history)) },
+                            trailingContent = {
+                                IrideSwitch(
+                                    checked = pauseListenHistory,
+                                    onCheckedChange = onPauseListenHistoryChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter = painterResource(
+                                                id = if (pauseListenHistory) R.drawable.check else R.drawable.close
+                                            ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)
+                                        )
+                                    }
                                 )
-                            }
+                            },
+                            onClick = { onPauseListenHistoryChange(!pauseListenHistory) }
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.delete_history),
+                            title = { Text(stringResource(R.string.clear_listen_history)) },
+                            onClick = { showClearListenHistoryDialog = true }
                         )
-                    },
-                    onClick = { onDisableScreenshotChange(!disableScreenshot) }
+                    )
                 )
-            )
+
+                Spacer(modifier = Modifier.height(27.dp))
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.search_history),
+                    items = listOf(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.search_off),
+                            title = { Text(stringResource(R.string.pause_search_history)) },
+                            trailingContent = {
+                                IrideSwitch(
+                                    checked = pauseSearchHistory,
+                                    onCheckedChange = onPauseSearchHistoryChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter = painterResource(
+                                                id = if (pauseSearchHistory) R.drawable.check else R.drawable.close
+                                            ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)
+                                        )
+                                    }
+                                )
+                            },
+                            onClick = { onPauseSearchHistoryChange(!pauseSearchHistory) }
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.clear_all),
+                            title = { Text(stringResource(R.string.clear_search_history)) },
+                            onClick = { showClearSearchHistoryDialog = true }
+                        )
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(27.dp))
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.settings_section_system_short),
+                    items = listOf(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.screenshot),
+                            title = { Text(stringResource(R.string.disable_screenshot)) },
+                            description = { Text(stringResource(R.string.disable_screenshot_desc)) },
+                            trailingContent = {
+                                IrideSwitch(
+                                    checked = disableScreenshot,
+                                    onCheckedChange = onDisableScreenshotChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter = painterResource(
+                                                id = if (disableScreenshot) R.drawable.check else R.drawable.close
+                                            ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)
+                                        )
+                                    }
+                                )
+                            },
+                            onClick = { onDisableScreenshotChange(!disableScreenshot) }
+                        )
+                    )
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+
+        SettingsBackTopBar(
+            title = stringResource(R.string.privacy),
+            navController = navController,
+            backdrop = frostBackdrop,
+            revealProgress = rememberDiscreteProgress(active = settingsScrollState.value > 0),
         )
-        Spacer(modifier = Modifier.height(16.dp))
     }
-
-    SettingsBackTopBar(
-        title = stringResource(R.string.privacy),
-        navController = navController,
-    )
 }

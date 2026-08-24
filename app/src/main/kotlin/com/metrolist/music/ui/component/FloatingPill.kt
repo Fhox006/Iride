@@ -535,6 +535,7 @@ fun PillPlayerRow(
     onInfoPositioned: ((Rect) -> Unit)? = null,
     onProgressChanged: ((Float) -> Unit)? = null,
     artistAlpha: Float = 0.7f,
+    compact: Boolean = false,
 ) {
     val isIrideStyle = onArtPositioned != null
     val context = LocalContext.current
@@ -557,18 +558,15 @@ fun PillPlayerRow(
                             var totalX = 0f
                             var totalY = 0f
                             var expanding = false
-                            var stolenByChild = false
                             while (true) {
                                 val event = awaitPointerEvent()
                                 val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                                val delta = change.positionChange()
                                 if (!expanding) {
-                                    if (change.isConsumed) {
-                                        stolenByChild = true
-                                        break
-                                    }
-                                    totalX += delta.x
-                                    totalY += delta.y
+                                    if (change.isConsumed) break
+                                    totalX += change.positionChange().x
+                                    totalY += change.positionChange().y
+                                    // Slightly forgiving on the diagonal so a start position
+                                    // drifting sideways still opens instead of dying.
                                     if (-totalY > commitDistance && -totalY >= abs(totalX) * 0.9f) {
                                         expanding = true
                                         change.consume()
@@ -576,19 +574,15 @@ fun PillPlayerRow(
                                     }
                                     if (!change.pressed) break
                                 } else {
-                                    bottomSheetState.dispatchRawDelta(delta.y)
+                                    bottomSheetState.dispatchRawDelta(change.positionChange().y)
                                     change.consume()
                                     if (!change.pressed) break
                                 }
                             }
-                            when {
-                                // An activated upward drag always ends expanded.
-                                expanding -> bottomSheetState.performFling(0f, null, -1)
-                                // A decisive upward intent that lost the dominance race to a
-                                // diagonal drift still expands, so no start position on the
-                                // pill behaves as a dead zone.
-                                !stolenByChild && -totalY > commitDistance && -totalY > abs(totalX) ->
-                                    bottomSheetState.performFling(0f, null, -1)
+                            // An activated drag — or any clearly upward gesture that lost
+                            // the dominance race to diagonal noise — always ends expanded.
+                            if (expanding || (-totalY > commitDistance && -totalY > abs(totalX))) {
+                                bottomSheetState.performFling(0f, null, -1)
                             }
                         }
                     }
@@ -604,8 +598,16 @@ fun PillPlayerRow(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-                    horizontal = if (isIrideStyle) 16.dp else 6.dp,
-                    vertical = if (isIrideStyle) 6.dp else 8.dp,
+                    horizontal = when {
+                        !isIrideStyle -> 6.dp
+                        compact -> 14.dp
+                        else -> 16.dp
+                    },
+                    vertical = when {
+                        !isIrideStyle -> 8.dp
+                        compact -> 4.dp
+                        else -> 6.dp
+                    },
                 ),
         ) {
             PillPlayButton(
@@ -614,6 +616,7 @@ fun PillPlayerRow(
                 primaryColor = primaryColor,
                 outlineColor = outlineColor,
                 isIrideStyle = isIrideStyle,
+                compact = compact,
                 onArtPositioned = onArtPositioned,
                 onProgressChanged = onProgressChanged,
             )
@@ -625,6 +628,7 @@ fun PillPlayerRow(
                 onSurfaceColor = onSurfaceColor,
                 errorColor = errorColor,
                 isIrideStyle = isIrideStyle,
+                compact = compact,
                 onInfoPositioned = onInfoPositioned,
                 artistAlpha = artistAlpha,
                 modifier = Modifier.weight(1f),
@@ -766,6 +770,7 @@ private fun PillPlayButton(
     primaryColor: Color,
     outlineColor: Color,
     isIrideStyle: Boolean = false,
+    compact: Boolean = false,
     onArtPositioned: ((Rect) -> Unit)? = null,
     onProgressChanged: ((Float) -> Unit)? = null,
 ) {
@@ -773,8 +778,16 @@ private fun PillPlayButton(
     val strokeWidth = 2.5.dp
     val pillDrawCache = remember { PillProgressDrawCache() }
     SideEffect { onProgressChanged?.invoke(progressState.progress) }
-    val outerSize = if (isIrideStyle) 50.dp else 42.dp
-    val innerSize = if (isIrideStyle) 46.dp else 38.dp
+    val outerSize = when {
+        !isIrideStyle -> 42.dp
+        compact -> 44.dp
+        else -> 50.dp
+    }
+    val innerSize = when {
+        !isIrideStyle -> 38.dp
+        compact -> 40.dp
+        else -> 46.dp
+    }
 
     Box(
         contentAlignment = Alignment.Center,
@@ -823,6 +836,7 @@ private fun PillSongInfo(
     onSurfaceColor: Color,
     errorColor: Color,
     isIrideStyle: Boolean = false,
+    compact: Boolean = false,
     modifier: Modifier = Modifier,
     onInfoPositioned: ((Rect) -> Unit)? = null,
     artistAlpha: Float = 0.7f,
@@ -845,8 +859,12 @@ private fun PillSongInfo(
         Text(
             text = mediaMetadata.title,
             color = onSurfaceColor,
-            fontSize = if (isIrideStyle) 20.sp else 14.sp,
-            lineHeight = if (isIrideStyle) 20.sp else TextUnit.Unspecified,
+            fontSize = when {
+                !isIrideStyle -> 14.sp
+                compact -> 17.sp
+                else -> 20.sp
+            },
+            lineHeight = if (isIrideStyle) (if (compact) 17.sp else 20.sp) else TextUnit.Unspecified,
             fontWeight = if (isIrideStyle) FontWeight.SemiBold else FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Clip,
@@ -856,8 +874,16 @@ private fun PillSongInfo(
             Text(
                 text = mediaMetadata.artists.joinToString { it.name },
                 color = onSurfaceColor.copy(alpha = artistAlpha),
-                fontSize = if (isIrideStyle) 16.sp else 12.sp,
-                lineHeight = if (isIrideStyle) 15.sp else TextUnit.Unspecified,
+                fontSize = when {
+                    !isIrideStyle -> 12.sp
+                    compact -> 14.sp
+                    else -> 16.sp
+                },
+                lineHeight = when {
+                    !isIrideStyle -> TextUnit.Unspecified
+                    compact -> 13.sp
+                    else -> 15.sp
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
                 modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),

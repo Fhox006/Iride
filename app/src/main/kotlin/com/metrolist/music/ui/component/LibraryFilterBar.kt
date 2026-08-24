@@ -13,7 +13,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +23,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -37,11 +35,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -62,77 +59,57 @@ fun <T> LibrarySortRow(
     onViewTypeChange: (LibraryViewType) -> Unit = {},
     showDescending: Boolean = true,
     modifier: Modifier = Modifier,
-    useIrideStyle: Boolean = false,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     val currentLabel = sortOptions.firstOrNull { it.first == currentSort }?.second ?: ""
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(if (useIrideStyle) 12.dp else 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = if (useIrideStyle) 0.dp else 4.dp, vertical = 6.dp),
+            .padding(horizontal = 0.dp, vertical = 6.dp),
     ) {
         Box {
             SortMenuChip(
                 label = currentLabel,
                 expanded = menuExpanded,
                 onClick = { menuExpanded = true },
-                useIrideStyle = useIrideStyle,
             )
             DropdownMenu(
                 expanded = menuExpanded,
                 onDismissRequest = { menuExpanded = false },
-                shape = RoundedCornerShape(16.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             ) {
                 sortOptions.forEach { (type, label) ->
                     val isSelected = type == currentSort
-                    if (useIrideStyle) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        fontFamily = SpaceMonoFontFamily,
-                                    ),
-                                    fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.SemiBold
-                                                 else androidx.compose.ui.text.font.FontWeight.Normal,
-                                    color = if (isSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textSecondary,
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontFamily = SpaceMonoFontFamily,
+                                ),
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textSecondary,
+                            )
+                        },
+                        trailingIcon = if (isSelected) {
+                            {
+                                Icon(
+                                    painter = painterResource(R.drawable.check),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.textPrimary,
+                                    modifier = Modifier.size(18.dp),
                                 )
-                            },
-                            trailingIcon = if (isSelected) {
-                                {
-                                    Icon(
-                                        painter = painterResource(R.drawable.check),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.textPrimary,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                }
-                            } else null,
-                            onClick = {
-                                onSortChange(type)
-                                menuExpanded = false
-                            },
-                        )
-                    } else {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textDecoration = if (isSelected) TextDecoration.Underline
-                                                     else TextDecoration.None,
-                                )
-                            },
-                            onClick = {
-                                onSortChange(type)
-                                menuExpanded = false
-                            },
-                        )
-                    }
+                            }
+                        } else null,
+                        onClick = {
+                            onSortChange(type)
+                            menuExpanded = false
+                        },
+                    )
                 }
             }
         }
@@ -141,7 +118,6 @@ fun <T> LibrarySortRow(
             SortDirectionButton(
                 descending = sortDescending,
                 onClick = { onSortDescendingChange(!sortDescending) },
-                useIrideStyle = useIrideStyle,
             )
         }
 
@@ -150,7 +126,6 @@ fun <T> LibrarySortRow(
             LibraryViewTypeButton(
                 viewType = viewType,
                 onViewTypeChange = onViewTypeChange,
-                useIrideStyle = useIrideStyle,
             )
         }
     }
@@ -161,7 +136,6 @@ private fun SortMenuChip(
     label: String,
     expanded: Boolean,
     onClick: () -> Unit,
-    useIrideStyle: Boolean = false,
 ) {
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
@@ -169,65 +143,31 @@ private fun SortMenuChip(
         label = "sortMenuArrow",
     )
 
-    if (useIrideStyle) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier
-                .height(32.dp)
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                    onClick = onClick,
-                ),
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontFamily = SpaceMonoFontFamily,
-                ),
-                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Icon(
-                painter = painterResource(R.drawable.expand_more),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.textSecondary,
-                modifier = Modifier
-                    .size(16.dp)
-                    .graphicsLayer { rotationZ = arrowRotation },
-            )
-        }
-        return
-    }
-
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier
             .height(32.dp)
-            .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
                 onClick = onClick,
-            )
-            .padding(horizontal = 12.dp),
+            ),
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontFamily = SpaceMonoFontFamily,
+            ),
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Icon(
             painter = painterResource(R.drawable.expand_more),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = MaterialTheme.colorScheme.textSecondary,
             modifier = Modifier
                 .size(16.dp)
                 .graphicsLayer { rotationZ = arrowRotation },
@@ -240,7 +180,6 @@ private fun SortDirectionButton(
     descending: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    useIrideStyle: Boolean = false,
 ) {
     val rotation by animateFloatAsState(
         targetValue = if (descending) 0f else 180f,
@@ -248,34 +187,9 @@ private fun SortDirectionButton(
         label = "sortDirection",
     )
 
-    if (useIrideStyle) {
-        Box(
-            modifier = modifier
-                .size(32.dp)
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                    onClick = onClick,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.arrow_downward),
-                contentDescription = stringResource(if (descending) R.string.sort_descending else R.string.sort_ascending),
-                tint = MaterialTheme.colorScheme.textSecondary,
-                modifier = Modifier
-                    .size(18.dp)
-                    .graphicsLayer { rotationZ = rotation },
-            )
-        }
-        return
-    }
-
     Box(
         modifier = modifier
             .size(32.dp)
-            .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
@@ -286,9 +200,9 @@ private fun SortDirectionButton(
         Icon(
             painter = painterResource(R.drawable.arrow_downward),
             contentDescription = stringResource(if (descending) R.string.sort_descending else R.string.sort_ascending),
-            tint = MaterialTheme.colorScheme.primary,
+            tint = MaterialTheme.colorScheme.textSecondary,
             modifier = Modifier
-                .size(16.dp)
+                .size(18.dp)
                 .graphicsLayer { rotationZ = rotation },
         )
     }
@@ -300,77 +214,42 @@ fun LibraryViewTypeButton(
     onViewTypeChange: (LibraryViewType) -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = 32.dp,
-    useIrideStyle: Boolean = false,
 ) {
-    if (useIrideStyle) {
-        Box(
-            modifier = modifier
-                .size(size)
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                ) { onViewTypeChange(viewType.toggle()) },
-            contentAlignment = Alignment.Center,
-        ) {
-            AnimatedContent(
-                targetState = viewType,
-                transitionSpec = {
-                    (fadeIn() + scaleIn(initialScale = 0.7f)) togetherWith
-                        (fadeOut() + scaleOut(targetScale = 0.7f))
-                },
-                label = "libraryViewTypeIcon",
-            ) { currentViewType ->
-                Icon(
-                    painter = painterResource(
-                        when (currentViewType) {
-                            LibraryViewType.LIST -> R.drawable.list
-                            LibraryViewType.GRID -> R.drawable.grid_view
-                            LibraryViewType.GRID_WIDE -> R.drawable.grid_view_3
-                        },
-                    ),
-                    contentDescription = stringResource(
-                        when (currentViewType) {
-                            LibraryViewType.LIST -> R.string.switch_to_grid_view
-                            LibraryViewType.GRID -> R.string.switch_to_wide_grid_view
-                            LibraryViewType.GRID_WIDE -> R.string.switch_to_list_view
-                        },
-                    ),
-                    tint = MaterialTheme.colorScheme.textSecondary,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-        }
-        return
-    }
-
     Box(
         modifier = modifier
             .size(size)
-            .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
             ) { onViewTypeChange(viewType.toggle()) },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            painter = painterResource(
-                when (viewType) {
-                    LibraryViewType.LIST -> R.drawable.list
-                    LibraryViewType.GRID -> R.drawable.grid_view
-                    LibraryViewType.GRID_WIDE -> R.drawable.grid_view_3
-                },
-            ),
-            contentDescription = stringResource(
-                when (viewType) {
-                    LibraryViewType.LIST -> R.string.switch_to_grid_view
-                    LibraryViewType.GRID -> R.string.switch_to_wide_grid_view
-                    LibraryViewType.GRID_WIDE -> R.string.switch_to_list_view
-                },
-            ),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp),
-        )
+        AnimatedContent(
+            targetState = viewType,
+            transitionSpec = {
+                (fadeIn() + scaleIn(initialScale = 0.7f)) togetherWith
+                    (fadeOut() + scaleOut(targetScale = 0.7f))
+            },
+            label = "libraryViewTypeIcon",
+        ) { currentViewType ->
+            Icon(
+                painter = painterResource(
+                    when (currentViewType) {
+                        LibraryViewType.LIST -> R.drawable.list
+                        LibraryViewType.GRID -> R.drawable.grid_view
+                        LibraryViewType.GRID_WIDE -> R.drawable.grid_view_3
+                    },
+                ),
+                contentDescription = stringResource(
+                    when (currentViewType) {
+                        LibraryViewType.LIST -> R.string.switch_to_grid_view
+                        LibraryViewType.GRID -> R.string.switch_to_wide_grid_view
+                        LibraryViewType.GRID_WIDE -> R.string.switch_to_list_view
+                    },
+                ),
+                tint = MaterialTheme.colorScheme.textSecondary,
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }

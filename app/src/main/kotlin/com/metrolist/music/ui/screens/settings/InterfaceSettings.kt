@@ -4,16 +4,13 @@
  */
 
 package com.metrolist.music.ui.screens.settings
-import com.metrolist.music.ui.component.IrideSwitch
 
 import android.app.Activity
-import android.content.Context
-import android.content.Intent
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -25,51 +22,39 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
-import com.metrolist.music.constants.AdvancedModeKey
-import com.metrolist.music.constants.AdvancedHomePageKey
 import com.metrolist.music.constants.HeroCarouselEnabledKey
-import com.metrolist.music.constants.SmartBootKey
-import com.metrolist.music.constants.ShowFeaturedArtistsInTopSongsKey
-import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.DefaultOpenTabKey
-import com.metrolist.music.constants.DensityScale
-import com.metrolist.music.constants.DensityScaleKey
-import com.metrolist.music.constants.GridItemSize
-import com.metrolist.music.constants.GridItemsSizeKey
-import com.metrolist.music.constants.ShowCachedPlaylistKey
-import com.metrolist.music.constants.ShowDownloadedPlaylistKey
-import com.metrolist.music.constants.ShowLikedPlaylistKey
-import com.metrolist.music.constants.ShowTopPlaylistKey
-import com.metrolist.music.constants.ShowUploadedPlaylistKey
+import com.metrolist.music.constants.EnableHighRefreshRateKey
+import com.metrolist.music.constants.HideDurationForStandardSongsKey
+import com.metrolist.music.constants.ShowFeaturedArtistsInTopSongsKey
+import com.metrolist.music.constants.SmartBootKey
 import com.metrolist.music.constants.SwipeToRemoveSongKey
 import com.metrolist.music.constants.SwipeToSongKey
-import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.EnumDialog
-import com.metrolist.music.ui.component.IconButton
+import com.metrolist.music.ui.component.IrideSwitch
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 
@@ -79,21 +64,11 @@ fun InterfaceSettings(
     navController: NavController,
     activity: Activity
 ) {
-    val (advancedMode, _) = rememberPreference(AdvancedModeKey, defaultValue = false)
+    val scrollState = rememberScrollState()
+    val frostBackdrop = rememberFrostBackdrop()
+
     val (defaultOpenTab, onDefaultOpenTabChange) =
         rememberEnumPreference(DefaultOpenTabKey, defaultValue = NavigationTab.HOME)
-    val (gridItemSize, onGridItemSizeChange) =
-        rememberEnumPreference(GridItemsSizeKey, defaultValue = GridItemSize.BIG)
-    val (showLikedPlaylist, onShowLikedPlaylistChange) =
-        rememberPreference(ShowLikedPlaylistKey, defaultValue = false)
-    val (showDownloadedPlaylist, onShowDownloadedPlaylistChange) =
-        rememberPreference(ShowDownloadedPlaylistKey, defaultValue = false)
-    val (showTopPlaylist, onShowTopPlaylistChange) =
-        rememberPreference(ShowTopPlaylistKey, defaultValue = false)
-    val (showCachedPlaylist, onShowCachedPlaylistChange) =
-        rememberPreference(ShowCachedPlaylistKey, defaultValue = false)
-    val (showUploadedPlaylist, onShowUploadedPlaylistChange) =
-        rememberPreference(ShowUploadedPlaylistKey, defaultValue = false)
     val (swipeToSong, onSwipeToSongChange) =
         rememberPreference(SwipeToSongKey, defaultValue = true)
     val (swipeToRemoveSong, onSwipeToRemoveSongChange) =
@@ -104,29 +79,12 @@ fun InterfaceSettings(
         rememberPreference(ShowFeaturedArtistsInTopSongsKey, defaultValue = true)
     val (heroCarouselEnabled, onHeroCarouselEnabledChange) =
         rememberPreference(HeroCarouselEnabledKey, defaultValue = false)
-    val (advancedHomePage, onAdvancedHomePageChange) =
-        rememberPreference(AdvancedHomePageKey, defaultValue = false)
     val (smartBootEnabled, onSmartBootEnabledChange) =
         rememberPreference(SmartBootKey, defaultValue = true)
+    val (enableHighRefreshRate, onEnableHighRefreshRateChange) =
+        rememberPreference(EnableHighRefreshRateKey, defaultValue = true)
 
-    val context = activity as Context
-    val sharedPreferences = remember { context.getSharedPreferences("metrolist_settings", Context.MODE_PRIVATE) }
-    val prefDensityScale = remember(sharedPreferences) {
-        sharedPreferences.getFloat("density_scale_factor", 1.0f)
-    }
-    val (densityScale, setDensityScale) = rememberPreference(DensityScaleKey, defaultValue = prefDensityScale)
-
-    var showRestartDialog by rememberSaveable { mutableStateOf(false) }
-    var showDensityScaleDialog by rememberSaveable { mutableStateOf(false) }
-    var showDefaultOpenTabDialog by rememberSaveable { mutableStateOf(false) }
-    var showGridSizeDialog by rememberSaveable { mutableStateOf(false) }
-
-    val onDensityScaleChange: (Float) -> Unit = { newScale ->
-        setDensityScale(newScale)
-        sharedPreferences.edit { putFloat("density_scale_factor", newScale) }
-        showRestartDialog = true
-    }
-
+    var showDefaultOpenTabDialog by remember { mutableStateOf(false) }
 
     if (showDefaultOpenTabDialog) {
         EnumDialog(
@@ -145,310 +103,212 @@ fun InterfaceSettings(
         )
     }
 
-    if (showGridSizeDialog) {
-        EnumDialog(
-            onDismiss = { showGridSizeDialog = false },
-            onSelect = { onGridItemSizeChange(it); showGridSizeDialog = false },
-            title = stringResource(R.string.grid_cell_size),
-            current = gridItemSize,
-            values = GridItemSize.values().toList(),
-            valueText = {
-                when (it) {
-                    GridItemSize.BIG -> stringResource(R.string.big)
-                    GridItemSize.SMALL -> stringResource(R.string.small)
-                }
-            }
-        )
-    }
-
-    if (showRestartDialog) {
-        DefaultDialog(
-            onDismiss = { showRestartDialog = false },
-            buttons = {
-                TextButton(onClick = { showRestartDialog = false }) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-                TextButton(onClick = {
-                    showRestartDialog = false
-                    val intent = context.packageManager
-                        .getLaunchIntentForPackage(context.packageName)?.apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                        }
-                    context.startActivity(intent)
-                    Runtime.getRuntime().exit(0)
-                }) {
-                    Text(stringResource(R.string.restart))
-                }
-            }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop)
         ) {
-            Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp)) {
-                Text(
-                    text = stringResource(R.string.restart_required),
-                    style = MaterialTheme.typography.titleLarge
+            Column(
+                Modifier
+                    .windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current.only(
+                            WindowInsetsSides.Horizontal
+                        )
+                    )
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 16.dp)
+            ) {
+                Spacer(
+                    Modifier.windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top)
+                    )
                 )
-                Text(
-                    text = stringResource(R.string.density_restart_message),
-                    style = MaterialTheme.typography.bodyMedium
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.settings_section_navigation),
+                    items = listOf(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.nav_bar),
+                            title = { Text(stringResource(R.string.default_open_tab)) },
+                            description = {
+                                Text(
+                                    when (defaultOpenTab) {
+                                        NavigationTab.HOME -> stringResource(R.string.home)
+                                        NavigationTab.SEARCH -> stringResource(R.string.search)
+                                        NavigationTab.LIBRARY -> stringResource(R.string.filter_library)
+                                    }
+                                )
+                            },
+                            onClick = { showDefaultOpenTabDialog = true }
+                        )
+                    )
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.home),
+                    items = listOf(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.explore_outlined),
+                            title = { Text(stringResource(R.string.hero_carousel_title)) },
+                            description = { Text(stringResource(R.string.hero_carousel_desc)) },
+                            trailingContent = {
+                                IrideSwitch(
+                                    checked = heroCarouselEnabled,
+                                    onCheckedChange = onHeroCarouselEnabledChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter = painterResource(
+                                                if (heroCarouselEnabled) R.drawable.check else R.drawable.close
+                                            ),
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                            contentDescription = null,
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onHeroCarouselEnabledChange(!heroCarouselEnabled) },
+                        )
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.smart_boot),
+                    items = listOf(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.speed),
+                            title = { Text(stringResource(R.string.smart_boot)) },
+                            description = { Text(stringResource(R.string.smart_boot_desc)) },
+                            trailingContent = {
+                                IrideSwitch(
+                                    checked = smartBootEnabled,
+                                    onCheckedChange = onSmartBootEnabledChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter = painterResource(
+                                                if (smartBootEnabled) R.drawable.check else R.drawable.close
+                                            ),
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                            contentDescription = null,
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onSmartBootEnabledChange(!smartBootEnabled) },
+                        )
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.settings_section_behavior),
+                    items = listOf(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.swipe),
+                            title = { Text(stringResource(R.string.swipe_song_to_add_title)) },
+                            description = { Text(stringResource(R.string.swipe_song_to_add)) },
+                            trailingContent = {
+                                IrideSwitch(
+                                    checked = swipeToSong, onCheckedChange = onSwipeToSongChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter = painterResource(if (swipeToSong) R.drawable.check else R.drawable.close),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize)
+                                        )
+                                    }
+                                )
+                            },
+                            onClick = { onSwipeToSongChange(!swipeToSong) }
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.swipe),
+                            title = { Text(stringResource(R.string.swipe_song_to_remove_title)) },
+                            description = { Text(stringResource(R.string.swipe_song_to_remove)) },
+                            trailingContent = {
+                                IrideSwitch(
+                                    checked = swipeToRemoveSong, onCheckedChange = onSwipeToRemoveSongChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter = painterResource(if (swipeToRemoveSong) R.drawable.check else R.drawable.close),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize)
+                                        )
+                                    }
+                                )
+                            },
+                            onClick = { onSwipeToRemoveSongChange(!swipeToRemoveSong) }
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.timer),
+                            title = { Text(stringResource(R.string.hide_duration_standard_songs)) },
+                            description = { Text(stringResource(R.string.hide_duration_standard_songs_desc)) },
+                            trailingContent = {
+                                IrideSwitch(
+                                    checked = hideDurationForStandard, onCheckedChange = onHideDurationForStandardChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter = painterResource(if (hideDurationForStandard) R.drawable.check else R.drawable.close),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize)
+                                        )
+                                    }
+                                )
+                            },
+                            onClick = { onHideDurationForStandardChange(!hideDurationForStandard) }
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.group),
+                            title = { Text(stringResource(R.string.show_featured_artists_in_top_songs)) },
+                            description = { Text(stringResource(R.string.show_featured_artists_in_top_songs_desc)) },
+                            trailingContent = {
+                                IrideSwitch(
+                                    checked = showFeaturedArtistsInTopSongs, onCheckedChange = onShowFeaturedArtistsInTopSongsChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter = painterResource(if (showFeaturedArtistsInTopSongs) R.drawable.check else R.drawable.close),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize)
+                                        )
+                                    }
+                                )
+                            },
+                            onClick = { onShowFeaturedArtistsInTopSongsChange(!showFeaturedArtistsInTopSongs) }
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.speed),
+                            title = { Text(stringResource(R.string.enable_high_refresh_rate)) },
+                            trailingContent = {
+                                IrideSwitch(
+                                    checked = enableHighRefreshRate, onCheckedChange = onEnableHighRefreshRateChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter = painterResource(if (enableHighRefreshRate) R.drawable.check else R.drawable.close),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize)
+                                        )
+                                    }
+                                )
+                            },
+                            onClick = { onEnableHighRefreshRateChange(!enableHighRefreshRate) }
+                        )
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
+
+        SettingsBackTopBar(
+            title = stringResource(R.string.interface_settings),
+            navController = navController,
+            backdrop = frostBackdrop,
+            revealProgress = rememberDiscreteProgress(active = scrollState.value > 0),
+        )
     }
-
-    if (showDensityScaleDialog) {
-        DefaultDialog(
-            onDismiss = { showDensityScaleDialog = false },
-            buttons = {
-                TextButton(onClick = { showDensityScaleDialog = false }) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-            }
-        ) {
-            Column {
-                DensityScale.entries.forEach { scale ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                onDensityScaleChange(scale.value)
-                                showDensityScaleDialog = false
-                            }
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = scale.label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (densityScale == scale.value)
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-
-    Column(
-        Modifier
-            .windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Horizontal
-                )
-            )
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-    ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top)
-            )
-        )
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.settings_section_navigation),
-            items = listOfNotNull(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.nav_bar),
-                    title = { Text(stringResource(R.string.default_open_tab)) },
-                    description = {
-                        Text(
-                            when (defaultOpenTab) {
-                                NavigationTab.HOME -> stringResource(R.string.home)
-                                NavigationTab.SEARCH -> stringResource(R.string.search)
-                                NavigationTab.LIBRARY -> stringResource(R.string.filter_library)
-                            }
-                        )
-                    },
-                    onClick = { showDefaultOpenTabDialog = true }
-                ),
-                if (advancedMode) Material3SettingsItem(
-                    icon = painterResource(R.drawable.grid_view),
-                    title = { Text(stringResource(R.string.grid_cell_size)) },
-                    description = {
-                        Text(
-                            when (gridItemSize) {
-                                GridItemSize.BIG -> stringResource(R.string.big)
-                                GridItemSize.SMALL -> stringResource(R.string.small)
-                            }
-                        )
-                    },
-                    onClick = { showGridSizeDialog = true }
-                ) else null,
-                if (advancedMode) Material3SettingsItem(
-                    icon = painterResource(R.drawable.grid_view_3),
-                    title = { Text(stringResource(R.string.display_density)) },
-                    description = { Text(DensityScale.fromValue(densityScale).label) },
-                    onClick = { showDensityScaleDialog = true }
-                ) else null
-            )
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.home),
-            items = listOfNotNull(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.explore_outlined),
-                    title = { Text(stringResource(R.string.hero_carousel_title)) },
-                    description = { Text(stringResource(R.string.hero_carousel_desc)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = heroCarouselEnabled,
-                            onCheckedChange = onHeroCarouselEnabledChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        if (heroCarouselEnabled) R.drawable.check else R.drawable.close
-                                    ),
-                                    modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    contentDescription = null,
-                                )
-                            },
-                        )
-                    },
-                    onClick = { onHeroCarouselEnabledChange(!heroCarouselEnabled) },
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.home_outlined),
-                    title = { Text(stringResource(R.string.adv_home_settings_title)) },
-                    description = { Text(stringResource(R.string.adv_home_settings_desc)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = advancedHomePage,
-                            onCheckedChange = onAdvancedHomePageChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        if (advancedHomePage) R.drawable.check else R.drawable.close
-                                    ),
-                                    modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    contentDescription = null,
-                                )
-                            },
-                        )
-                    },
-                    onClick = { onAdvancedHomePageChange(!advancedHomePage) },
-                )
-            )
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.smart_boot),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.speed),
-                    title = { Text(stringResource(R.string.smart_boot)) },
-                    description = { Text(stringResource(R.string.smart_boot_desc)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = smartBootEnabled,
-                            onCheckedChange = onSmartBootEnabledChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        if (smartBootEnabled) R.drawable.check else R.drawable.close
-                                    ),
-                                    modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    contentDescription = null,
-                                )
-                            },
-                        )
-                    },
-                    onClick = { onSmartBootEnabledChange(!smartBootEnabled) },
-                )
-            )
-        )
-
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.settings_section_behavior),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.swipe),
-                    title = { Text(stringResource(R.string.swipe_song_to_add_title)) },
-                    description = { Text(stringResource(R.string.swipe_song_to_add)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = swipeToSong, onCheckedChange = onSwipeToSongChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (swipeToSong) R.drawable.check else R.drawable.close),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onSwipeToSongChange(!swipeToSong) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.swipe),
-                    title = { Text(stringResource(R.string.swipe_song_to_remove_title)) },
-                    description = { Text(stringResource(R.string.swipe_song_to_remove)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = swipeToRemoveSong, onCheckedChange = onSwipeToRemoveSongChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (swipeToRemoveSong) R.drawable.check else R.drawable.close),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onSwipeToRemoveSongChange(!swipeToRemoveSong) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.timer),
-                    title = { Text(stringResource(R.string.hide_duration_standard_songs)) },
-                    description = { Text(stringResource(R.string.hide_duration_standard_songs_desc)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = hideDurationForStandard, onCheckedChange = onHideDurationForStandardChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (hideDurationForStandard) R.drawable.check else R.drawable.close),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onHideDurationForStandardChange(!hideDurationForStandard) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.group),
-                    title = { Text(stringResource(R.string.show_featured_artists_in_top_songs)) },
-                    description = { Text(stringResource(R.string.show_featured_artists_in_top_songs_desc)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = showFeaturedArtistsInTopSongs, onCheckedChange = onShowFeaturedArtistsInTopSongsChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (showFeaturedArtistsInTopSongs) R.drawable.check else R.drawable.close),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onShowFeaturedArtistsInTopSongsChange(!showFeaturedArtistsInTopSongs) }
-                )
-            )
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-    }
-
-    SettingsBackTopBar(
-        title = stringResource(R.string.interface_settings),
-        navController = navController,
-    )
 }

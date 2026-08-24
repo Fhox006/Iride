@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -87,8 +88,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
-import com.metrolist.music.constants.ArtistFilter
-import com.metrolist.music.constants.ArtistFilterKey
 import com.metrolist.music.constants.ArtistSortDescendingKey
 import com.metrolist.music.constants.ArtistSortType
 import com.metrolist.music.constants.ArtistSortTypeKey
@@ -107,9 +106,13 @@ import com.metrolist.music.ui.component.LibrarySuggestedFollowArtistItem
 import com.metrolist.music.ui.component.LibrarySuggestedFollowArtistListItem
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
-import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.LibraryHeroTitle
+import com.metrolist.music.ui.component.LibraryFooterCount
+import com.metrolist.music.ui.component.LibraryPageTopBar
+import com.metrolist.music.ui.component.rememberLibraryPageRevealState
+import com.metrolist.music.ui.component.rememberLibraryTopBarProgress
 import com.metrolist.music.ui.component.SortHeader
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -132,7 +135,6 @@ fun LibraryArtistsScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     var viewType by rememberEnumPreference(ArtistViewTypeKey, LibraryViewType.GRID)
 
-    var filter by rememberEnumPreference(ArtistFilterKey, ArtistFilter.LIKED)
     val (sortType, onSortTypeChange) = rememberEnumPreference(
         ArtistSortTypeKey,
         ArtistSortType.CREATE_DATE
@@ -170,6 +172,7 @@ fun LibraryArtistsScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val filteredArtistsRaw by viewModel.filteredArtists.collectAsState()
     val filteredArtists = if (isOffline) emptyList() else filteredArtistsRaw
+    val itemCountText = pluralStringResource(R.plurals.n_artist, filteredArtists.size, filteredArtists.size)
 
     val newSongCounts by viewModel.newSongCounts.collectAsState()
     val totalNewSongs by viewModel.totalNewSongs.collectAsState()
@@ -193,49 +196,20 @@ fun LibraryArtistsScreen(
     }
 
     val frostBackdrop = rememberFrostBackdrop()
-    var titleBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
-    var topBarBottomPx by remember { mutableStateOf(0f) }
-    val headerTitleCovered by remember {
-        derivedStateOf {
-            val scrolledPastHeader = if (viewType == LibraryViewType.LIST) {
-                lazyListState.firstVisibleItemIndex > 0
-            } else {
-                lazyGridState.firstVisibleItemIndex > 0
-            }
-            scrolledPastHeader || titleBottomPx <= topBarBottomPx
-        }
-    }
-    val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
+    val revealState = rememberLibraryPageRevealState()
+    val topBarRevealProgress = rememberLibraryTopBarProgress(
+        state = revealState,
+        scrolledPastHeader = if (viewType == LibraryViewType.LIST) {
+            lazyListState.firstVisibleItemIndex > 0
+        } else {
+            lazyGridState.firstVisibleItemIndex > 0
+        },
+    )
     val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
 
-    val heroHeader: @Composable () -> Unit = {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .irideEnter(screenProgress, 10.dp),
-        ) {
-            Spacer(modifier = Modifier.height(28.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onGloballyPositioned { titleBottomPx = it.boundsInWindow().bottom },
-            ) {
-                Text(
-                    text = stringResource(R.string.artists),
-                    style = TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 40.sp,
-                        letterSpacing = (-0.6).sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                if (totalNewSongs > 0) {
-                    Spacer(modifier = Modifier.width(10.dp))
-                    NewReleaseBadge(count = totalNewSongs)
-                }
-            }
+    val heroTitleBadge: @Composable RowScope.() -> Unit = {
+        if (totalNewSongs > 0) {
+            NewReleaseBadge(count = totalNewSongs)
         }
     }
 
@@ -266,9 +240,12 @@ fun LibraryArtistsScreen(
                                 .asPaddingValues().calculateBottomPadding(),
                         ),
                     ) {
-                        item(key = "hero_header") { heroHeader() }
-
-                        item(key = "sort", contentType = CONTENT_TYPE_HEADER) {
+                        item(key = "page_header", contentType = CONTENT_TYPE_HEADER) {
+                            LibraryHeroTitle(
+                                title = stringResource(R.string.artists),
+                                entranceAlpha = screenProgress,
+                                revealState = revealState,
+                            )
                             LibrarySortRow(
                                 sortOptions = sortOptions,
                                 currentSort = sortType,
@@ -277,7 +254,6 @@ fun LibraryArtistsScreen(
                                 onSortDescendingChange = onSortDescendingChange,
                                 viewType = viewType,
                                 onViewTypeChange = { viewType = it },
-                                useIrideStyle = true,
                             )
                         }
 
@@ -331,6 +307,10 @@ fun LibraryArtistsScreen(
                                 )
                             }
                         }
+
+                        item(key = "footer") {
+                            LibraryFooterCount(text = itemCountText)
+                        }
                     }
 
                 LibraryViewType.GRID, LibraryViewType.GRID_WIDE ->
@@ -354,13 +334,16 @@ fun LibraryArtistsScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        item(key = "hero_header", span = { GridItemSpan(maxLineSpan) }) { heroHeader() }
-
                         item(
-                            key = "sort",
+                            key = "page_header",
                             span = { GridItemSpan(maxLineSpan) },
                             contentType = CONTENT_TYPE_HEADER,
                         ) {
+                            LibraryHeroTitle(
+                                title = stringResource(R.string.artists),
+                                entranceAlpha = screenProgress,
+                                revealState = revealState,
+                            )
                             LibrarySortRow(
                                 sortOptions = sortOptions,
                                 currentSort = sortType,
@@ -369,7 +352,6 @@ fun LibraryArtistsScreen(
                                 onSortDescendingChange = onSortDescendingChange,
                                 viewType = viewType,
                                 onViewTypeChange = { viewType = it },
-                                useIrideStyle = true,
                             )
                         }
 
@@ -423,72 +405,34 @@ fun LibraryArtistsScreen(
                                 )
                             }
                         }
+
+                        item(
+                            key = "footer",
+                            span = { GridItemSpan(maxLineSpan) },
+                        ) {
+                            LibraryFooterCount(text = itemCountText)
+                        }
                     }
             }
         }
     }
 
-        val backProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
-        LibrarySearchHeader(
+        LibraryPageTopBar(
+            title = stringResource(R.string.artists),
+            revealProgress = topBarRevealProgress,
+            revealState = revealState,
+            backdrop = frostBackdrop,
             isSearchActive = isSearchActive,
             searchQuery = searchQuery,
             onSearchQueryChange = viewModel::updateSearchQuery,
-            onBack = {
+            onNavigateUp = { navController.navigateUp() },
+            onSearchClick = { isSearchActive = true },
+            onCloseSearch = {
                 isSearchActive = false
                 viewModel.updateSearchQuery("")
             },
             keyboardController = keyboardController,
-            modifier = Modifier
-                .fillMaxWidth()
-                .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
-                .frostedTopBarBackground(
-                    progress = topBarRevealProgress,
-                    barColor = MaterialTheme.colorScheme.background,
-                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                    backdrop = frostBackdrop,
-                )
-                .statusBarsPadding()
-                .height(56.dp)
-                .padding(horizontal = 4.dp),
-        ) {
-            Box(modifier = Modifier.irideEnter(backProgress, 6.dp)) {
-                IconButton(onClick = { navController.navigateUp() }) {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_back),
-                        contentDescription = null,
-                    )
-                }
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 4.dp)
-                    .irideEnter(topBarRevealProgress, 6.dp)
-                    .revealMask(topBarRevealProgress),
-            ) {
-                Text(
-                    text = stringResource(R.string.artists),
-                    style = TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        letterSpacing = (-0.1).sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                )
-                if (totalNewSongs > 0) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    NewReleaseBadge(count = totalNewSongs)
-                }
-            }
-            IconButton(onClick = { isSearchActive = true }) {
-                Icon(
-                    painter = painterResource(R.drawable.search),
-                    contentDescription = stringResource(R.string.search),
-                )
-            }
-        }
+            titleBadge = heroTitleBadge,
+        )
     }
 }

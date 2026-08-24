@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textTertiary
+import com.metrolist.music.ui.utils.pressScale
 import com.metrolist.music.utils.GenreProvider
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.async
@@ -241,11 +242,13 @@ fun UnderlinePill(
         animationSpec = spring(stiffness = 400f),
         label = "underlinePillUnderlineAlpha",
     )
+    val interactionSource = remember { MutableInteractionSource() }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
+            .pressScale(interactionSource)
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = null,
             ) { onClick() }
             .padding(vertical = 6.dp),

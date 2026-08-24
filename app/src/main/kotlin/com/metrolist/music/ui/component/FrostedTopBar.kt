@@ -32,6 +32,13 @@ class FrostBackdrop internal constructor(
     internal val blurred: GraphicsLayer,
 )
 
+/**
+ * Screen-wide frost snapshot recorded once around the tab surface (gradient included), so every
+ * main tab's top bar can blur exactly what sits behind it — same result as screens that own their
+ * gradient (Album/Artist), without each screen recording its own copy.
+ */
+val LocalScreenFrostBackdrop = androidx.compose.runtime.staticCompositionLocalOf<FrostBackdrop?> { null }
+
 /** Layers backing the frosted bar. Null when the device has no RenderEffect blur (API < 31). */
 @Composable
 fun rememberFrostBackdrop(): FrostBackdrop? {
@@ -54,6 +61,30 @@ fun Modifier.recordFrostBackdrop(backdrop: FrostBackdrop?): Modifier {
         layer.record { this@drawWithContent.drawContent() }
         drawLayer(layer)
     }
+}
+
+/**
+ * Plain scroll-reveal bar background: fades the bar color in with [progress] and draws the
+ * hairline. No backdrop sampling, so whatever sits behind the screen (the shared top gradient)
+ * stays visible until the bar itself covers it — used by screens that don't own their gradient.
+ */
+fun Modifier.scrolledTopBarBackground(
+    progress: Float,
+    barColor: Color,
+    strokeColor: Color,
+): Modifier = drawBehind {
+    val p = progress.coerceIn(0f, 1f)
+    if (p <= 0f) return@drawBehind
+    drawRect(barColor, alpha = p)
+    val sw = 1.dp.toPx()
+    val y = size.height - sw / 2f
+    drawLine(
+        color = strokeColor,
+        start = Offset(0f, y),
+        end = Offset(size.width, y),
+        strokeWidth = sw,
+        alpha = p,
+    )
 }
 
 fun Modifier.frostedTopBarBackground(

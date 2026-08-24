@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
@@ -7,10 +7,12 @@ package com.metrolist.music.ui.screens.settings
 import com.metrolist.music.ui.component.IrideSwitch
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -52,10 +54,13 @@ import com.metrolist.music.constants.AndroidAutoYouTubePlaylistsKey
 import com.metrolist.music.constants.MediaSessionConstants
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.SettingsBackTopBar
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.PreferenceEntry
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.flow.map
 import sh.calvin.reorderable.ReorderableItem
@@ -148,185 +153,198 @@ fun AndroidAutoSettings(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-    ) {
-        Material3SettingsGroup(
-            title = stringResource(R.string.android_auto_visible_sections),
-            items = listOf(
-                Material3SettingsItem(
-                    title = {},
-                    description = { Text(stringResource(R.string.android_auto_reorder_hint)) },
-                    onClick = null
-                )
-            )
-        )
+    val settingsScrollState = rememberScrollState()
+    val frostBackdrop = rememberFrostBackdrop()
 
-        LazyColumn(
-            state = lazyListState,
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height((sections.size * 80).dp),
-            userScrollEnabled = false,
+                .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop)
         ) {
-            items(sections, key = { (section, _) -> section.id }) { (section, enabled) ->
-                ReorderableItem(reorderableState, key = section.id) {
-                    PreferenceEntry(
-                        modifier = Modifier.fillMaxWidth(),
-                        icon = {
-                            Icon(
-                                painter = painterResource(
-                                    when (section) {
-                                        AndroidAutoSection.LIKED -> R.drawable.favorite
-                                        AndroidAutoSection.SONGS -> R.drawable.music_note
-                                        AndroidAutoSection.ARTISTS -> R.drawable.artist
-                                        AndroidAutoSection.ALBUMS -> R.drawable.album
-                                        AndroidAutoSection.PLAYLISTS -> R.drawable.queue_music
-                                    }
-                                ),
-                                contentDescription = null,
-                            )
-                        },
-                        title = { Text(section.label()) },
-                        trailingContent = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    painter = painterResource(R.drawable.drag_handle),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .longPressDraggableHandle(
-                                            onDragStarted = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            Column(
+                modifier = Modifier
+                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
+                    .verticalScroll(settingsScrollState)
+                    .padding(horizontal = 16.dp)
+            ) {
+                Material3SettingsGroup(
+                    title = stringResource(R.string.android_auto_visible_sections),
+                    items = listOf(
+                        Material3SettingsItem(
+                            title = {},
+                            description = { Text(stringResource(R.string.android_auto_reorder_hint)) },
+                            onClick = null
+                        )
+                    )
+                )
+
+                LazyColumn(
+                    state = lazyListState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height((sections.size * 80).dp),
+                    userScrollEnabled = false,
+                ) {
+                    items(sections, key = { (section, _) -> section.id }) { (section, enabled) ->
+                        ReorderableItem(reorderableState, key = section.id) {
+                            PreferenceEntry(
+                                modifier = Modifier.fillMaxWidth(),
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(
+                                            when (section) {
+                                                AndroidAutoSection.LIKED -> R.drawable.favorite
+                                                AndroidAutoSection.SONGS -> R.drawable.music_note
+                                                AndroidAutoSection.ARTISTS -> R.drawable.artist
+                                                AndroidAutoSection.ALBUMS -> R.drawable.album
+                                                AndroidAutoSection.PLAYLISTS -> R.drawable.queue_music
                                             }
                                         ),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(Modifier.width(12.dp))
+                                        contentDescription = null,
+                                    )
+                                },
+                                title = { Text(section.label()) },
+                                trailingContent = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.drag_handle),
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .longPressDraggableHandle(
+                                                    onDragStarted = {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    }
+                                                ),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Spacer(Modifier.width(12.dp))
+                                        IrideSwitch(
+                                            checked = enabled,
+                                            onCheckedChange = { newValue ->
+                                                sections = sections.map { (s, e) ->
+                                                    if (s == section) s to newValue else s to e
+                                                }
+                                                onSectionsChange(serializeSections(sections))
+                                            },
+                                            thumbContent = {
+                                                Icon(
+                                                    painter = painterResource(
+                                                        if (enabled) R.drawable.check else R.drawable.close
+                                                    ),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                )
+                                            }
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    sections = sections.map { (s, e) ->
+                                        if (s == section) s to !e else s to e
+                                    }
+                                    onSectionsChange(serializeSections(sections))
+                                },
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(27.dp))
+
+                var showTargetPlaylistDialog by remember { mutableStateOf(false) }
+
+                if (showTargetPlaylistDialog) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { showTargetPlaylistDialog = false },
+                        title = { Text(stringResource(R.string.android_auto_target_playlist)) },
+                        text = {
+                            androidx.compose.foundation.lazy.LazyColumn {
+                                items(playlistOptions) { value ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                showTargetPlaylistDialog = false
+                                                onTargetPlaylistChange(value)
+                                            }
+                                            .padding(vertical = 12.dp),
+                                    ) {
+                                        androidx.compose.material3.RadioButton(
+                                            selected = value == targetPlaylist,
+                                            onClick = null,
+                                        )
+                                        Text(
+                                            text = playlistLabels(value),
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            modifier = Modifier.padding(start = 16.dp),
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(
+                                onClick = { showTargetPlaylistDialog = false }
+                            ) {
+                                Text(stringResource(android.R.string.cancel))
+                            }
+                        }
+                    )
+                }
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.android_auto_target_playlist),
+                    items = listOf(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.playlist_add),
+                            title = { Text(stringResource(R.string.android_auto_target_playlist)) },
+                            description = { Text(playlistLabels(targetPlaylist)) },
+                            onClick = { showTargetPlaylistDialog = true }
+                        )
+                    )
+                )
+
+                Spacer(Modifier.height(27.dp))
+
+                Material3SettingsGroup(
+                    title = stringResource(R.string.your_youtube_playlists),
+                    items = listOf(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.queue_music),
+                            title = { Text(stringResource(R.string.android_auto_youtube_playlists)) },
+                            description = { Text(stringResource(R.string.android_auto_youtube_playlists_desc)) },
+                            trailingContent = {
                                 IrideSwitch(
-                                    checked = enabled,
-                                    onCheckedChange = { newValue ->
-                                        sections = sections.map { (s, e) ->
-                                            if (s == section) s to newValue else s to e
-                                        }
-                                        onSectionsChange(serializeSections(sections))
-                                    },
+                                    checked = youtubePlaylistsEnabled,
+                                    onCheckedChange = onYoutubePlaylistsChange,
                                     thumbContent = {
                                         Icon(
                                             painter = painterResource(
-                                                if (enabled) R.drawable.check else R.drawable.close
+                                                if (youtubePlaylistsEnabled) R.drawable.check else R.drawable.close
                                             ),
                                             contentDescription = null,
                                             modifier = Modifier.size(SwitchDefaults.IconSize),
                                         )
                                     }
                                 )
-                            }
-                        },
-                        onClick = {
-                            sections = sections.map { (s, e) ->
-                                if (s == section) s to !e else s to e
-                            }
-                            onSectionsChange(serializeSections(sections))
-                        },
+                            },
+                            onClick = { onYoutubePlaylistsChange(!youtubePlaylistsEnabled) }
+                        )
                     )
-                }
+                )
+
+                Spacer(Modifier.height(27.dp))
             }
         }
 
-        Spacer(Modifier.height(27.dp))
-
-        var showTargetPlaylistDialog by remember { mutableStateOf(false) }
-
-        if (showTargetPlaylistDialog) {
-            androidx.compose.material3.AlertDialog(
-                onDismissRequest = { showTargetPlaylistDialog = false },
-                title = { Text(stringResource(R.string.android_auto_target_playlist)) },
-                text = {
-                    androidx.compose.foundation.lazy.LazyColumn {
-                        items(playlistOptions) { value ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        showTargetPlaylistDialog = false
-                                        onTargetPlaylistChange(value)
-                                    }
-                                    .padding(vertical = 12.dp),
-                            ) {
-                                androidx.compose.material3.RadioButton(
-                                    selected = value == targetPlaylist,
-                                    onClick = null,
-                                )
-                                Text(
-                                    text = playlistLabels(value),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.padding(start = 16.dp),
-                                )
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    androidx.compose.material3.TextButton(
-                        onClick = { showTargetPlaylistDialog = false }
-                    ) {
-                        Text(stringResource(android.R.string.cancel))
-                    }
-                }
-            )
-        }
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.android_auto_target_playlist),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.playlist_add),
-                    title = { Text(stringResource(R.string.android_auto_target_playlist)) },
-                    description = { Text(playlistLabels(targetPlaylist)) },
-                    onClick = { showTargetPlaylistDialog = true }
-                )
-            )
+        SettingsBackTopBar(
+            title = stringResource(R.string.android_auto),
+            navController = navController,
+            backdrop = frostBackdrop,
+            revealProgress = rememberDiscreteProgress(active = settingsScrollState.value > 0),
         )
-
-        Spacer(Modifier.height(27.dp))
-
-        Material3SettingsGroup(
-            title = stringResource(R.string.your_youtube_playlists),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.queue_music),
-                    title = { Text(stringResource(R.string.android_auto_youtube_playlists)) },
-                    description = { Text(stringResource(R.string.android_auto_youtube_playlists_desc)) },
-                    trailingContent = {
-                        IrideSwitch(
-                            checked = youtubePlaylistsEnabled,
-                            onCheckedChange = onYoutubePlaylistsChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        if (youtubePlaylistsEnabled) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize),
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onYoutubePlaylistsChange(!youtubePlaylistsEnabled) }
-                )
-            )
-        )
-
-        Spacer(Modifier.height(27.dp))
     }
-
-    SettingsBackTopBar(
-        title = stringResource(R.string.android_auto),
-        navController = navController,
-    )
 }

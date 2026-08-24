@@ -80,7 +80,10 @@ import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.TextFieldDialog
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.AccountSettingsViewModel
 import kotlinx.coroutines.launch
@@ -183,10 +186,18 @@ fun MyAccountScreen(
         )
     }
 
+    val scrollState = rememberScrollState()
+    val frostBackdrop = rememberFrostBackdrop()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent)
+    ) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .recordFrostBackdrop(frostBackdrop)
     ) {
     Column(
         Modifier
@@ -195,7 +206,7 @@ fun MyAccountScreen(
                     WindowInsetsSides.Horizontal
                 )
             )
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(horizontal = 20.dp)
     ) {
         Spacer(
@@ -523,10 +534,13 @@ fun MyAccountScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
     }
+    }
 
     SettingsBackTopBar(
         title = stringResource(R.string.my_account),
         navController = navController,
+        backdrop = frostBackdrop,
+        revealProgress = rememberDiscreteProgress(active = scrollState.value > 0),
     )
     }
 }

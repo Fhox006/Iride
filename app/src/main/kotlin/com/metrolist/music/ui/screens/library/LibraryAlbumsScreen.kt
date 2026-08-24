@@ -103,17 +103,21 @@ import com.metrolist.music.ui.component.LibraryAlbumGridItem
 import com.metrolist.music.ui.component.LibraryAlbumListItem
 import com.metrolist.music.ui.component.LibraryContinueListeningAlbumItem
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
-import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.currentGridThumbnailHeight
 import com.metrolist.music.ui.component.frostedTopBarBackground
 import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.rubberBandOverscroll
+import com.metrolist.music.ui.component.LibraryHeroTitle
+import com.metrolist.music.ui.component.LibraryCollapsibleSectionLabel
+import com.metrolist.music.ui.component.LibraryFooterCount
+import com.metrolist.music.ui.component.LibraryPageTopBar
+import com.metrolist.music.ui.component.rememberLibraryPageRevealState
+import com.metrolist.music.ui.component.rememberLibraryTopBarProgress
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.utils.IrideMotion
@@ -292,13 +296,11 @@ fun LibraryAlbumsScreen(
     val continueListeningSpacing = 12.dp
 
     val continueListeningTitle: @Composable () -> Unit = {
-        NavigationTitle(
-            title = stringResource(R.string.continue_listening),
-            useIrideStyle = true,
+        LibraryCollapsibleSectionLabel(
+            text = stringResource(R.string.continue_listening),
             collapsed = isSectionCollapsed("continue_listening"),
-            onCollapseToggle = { toggleSection("continue_listening") },
-            topPadding = 8.dp,
-            modifier = Modifier.offset(x = (-20).dp),
+            onToggle = { toggleSection("continue_listening") },
+            modifier = Modifier.padding(top = 4.dp),
         )
     }
     val continueListeningRow: @Composable () -> Unit = {
@@ -328,49 +330,19 @@ fun LibraryAlbumsScreen(
         IrideCollapsibleSection(collapsed = isSectionCollapsed("continue_listening")) { content() }
     }
 
-    val favoritesTitle: @Composable () -> Unit = {
-        Spacer(modifier = Modifier.height(8.dp))
-    }
     val favoritesCollapsed = isSectionCollapsed("favorite_albums")
 
     val frostBackdrop = rememberFrostBackdrop()
-    var titleBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
-    var topBarBottomPx by remember { mutableStateOf(0f) }
-    val headerTitleCovered by remember {
-        derivedStateOf {
-            val scrolledPastHeader = if (viewType == LibraryViewType.LIST) {
-                lazyListState.firstVisibleItemIndex > 0
-            } else {
-                lazyGridState.firstVisibleItemIndex > 0
-            }
-            scrolledPastHeader || titleBottomPx <= topBarBottomPx
-        }
-    }
-    val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
+    val revealState = rememberLibraryPageRevealState()
+    val topBarRevealProgress = rememberLibraryTopBarProgress(
+        state = revealState,
+        scrolledPastHeader = if (viewType == LibraryViewType.LIST) {
+            lazyListState.firstVisibleItemIndex > 0
+        } else {
+            lazyGridState.firstVisibleItemIndex > 0
+        },
+    )
     val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
-
-    val heroHeader: @Composable () -> Unit = {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .irideEnter(screenProgress, 10.dp),
-        ) {
-            Spacer(modifier = Modifier.height(28.dp))
-            Text(
-                text = stringResource(R.string.albums),
-                style = TextStyle(
-                    fontFamily = SpaceMonoFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 40.sp,
-                    letterSpacing = (-0.6).sp,
-                ),
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onGloballyPositioned { titleBottomPx = it.boundsInWindow().bottom },
-            )
-        }
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
     Box(
@@ -401,14 +373,18 @@ fun LibraryAlbumsScreen(
                         overscrollEffect = null,
                         modifier = Modifier.rubberBandOverscroll(Orientation.Vertical, lazyListState),
                     ) {
-                        item(key = "hero_header") { heroHeader() }
+                        item(key = "hero_header") {
+                            LibraryHeroTitle(
+                                title = stringResource(R.string.albums),
+                                entranceAlpha = screenProgress,
+                                revealState = revealState,
+                            )
+                        }
 
                         if (continueListeningAlbums.isNotEmpty()) {
                             item(key = "continue_listening_title") { continueListeningTitle() }
                             item(key = "continue_listening_row") { continueListeningRow() }
                         }
-
-                        item(key = "favorite_albums_title") { favoritesTitle() }
 
                         if (!favoritesCollapsed) {
                             item(key = "sort", contentType = CONTENT_TYPE_HEADER) {
@@ -420,7 +396,6 @@ fun LibraryAlbumsScreen(
                                     onSortDescendingChange = onSortDescendingChange,
                                     viewType = viewType,
                                     onViewTypeChange = { viewType = it },
-                                    useIrideStyle = true,
                                 )
                             }
 
@@ -454,18 +429,7 @@ fun LibraryAlbumsScreen(
                                 }
                             }
                             item(key = "footer") {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 16.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        text = itemCountText,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
+                                LibraryFooterCount(text = itemCountText)
                             }
                         }
                     }
@@ -494,14 +458,18 @@ fun LibraryAlbumsScreen(
                         overscrollEffect = null,
                         modifier = Modifier.rubberBandOverscroll(Orientation.Vertical, lazyGridState),
                     ) {
-                        item(key = "hero_header", span = { GridItemSpan(maxLineSpan) }) { heroHeader() }
+                        item(key = "hero_header", span = { GridItemSpan(maxLineSpan) }) {
+                            LibraryHeroTitle(
+                                title = stringResource(R.string.albums),
+                                entranceAlpha = screenProgress,
+                                revealState = revealState,
+                            )
+                        }
 
                         if (continueListeningAlbums.isNotEmpty()) {
                             item(key = "continue_listening_title", span = { GridItemSpan(maxLineSpan) }) { continueListeningTitle() }
                             item(key = "continue_listening_row", span = { GridItemSpan(maxLineSpan) }) { continueListeningRow() }
                         }
-
-                        item(key = "favorite_albums_title", span = { GridItemSpan(maxLineSpan) }) { favoritesTitle() }
 
                         if (!favoritesCollapsed) {
                             item(
@@ -517,7 +485,6 @@ fun LibraryAlbumsScreen(
                                     onSortDescendingChange = onSortDescendingChange,
                                     viewType = viewType,
                                     onViewTypeChange = { viewType = it },
-                                    useIrideStyle = true,
                                 )
                             }
 
@@ -555,18 +522,7 @@ fun LibraryAlbumsScreen(
                                 key = "footer",
                                 span = { GridItemSpan(maxLineSpan) },
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 16.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        text = itemCountText,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
+                                LibraryFooterCount(text = itemCountText)
                             }
                         }
                     }
@@ -575,82 +531,46 @@ fun LibraryAlbumsScreen(
         }
     }
 
-        val backProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
-        LibrarySearchHeader(
+        LibraryPageTopBar(
+            title = stringResource(R.string.albums),
+            revealProgress = topBarRevealProgress,
+            revealState = revealState,
+            backdrop = frostBackdrop,
             isSearchActive = isSearchActive,
             searchQuery = searchQuery,
             onSearchQueryChange = viewModel::updateSearchQuery,
-            onBack = {
+            onNavigateUp = { navController.navigateUp() },
+            onSearchClick = { isSearchActive = true },
+            onCloseSearch = {
                 isSearchActive = false
                 viewModel.updateSearchQuery("")
             },
             keyboardController = keyboardController,
-            modifier = Modifier
-                .fillMaxWidth()
-                .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
-                .frostedTopBarBackground(
-                    progress = topBarRevealProgress,
-                    barColor = MaterialTheme.colorScheme.background,
-                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                    backdrop = frostBackdrop,
-                )
-                .statusBarsPadding()
-                .height(56.dp)
-                .padding(horizontal = 4.dp),
-        ) {
-            Box(modifier = Modifier.irideEnter(backProgress, 6.dp)) {
-                IconButton(onClick = { navController.navigateUp() }) {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_back),
-                        contentDescription = null,
-                    )
-                }
-            }
-            Text(
-                text = stringResource(R.string.albums),
-                style = TextStyle(
-                    fontFamily = SpaceMonoFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    letterSpacing = (-0.1).sp,
-                ),
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 4.dp)
-                    .irideEnter(topBarRevealProgress, 6.dp)
-                    .revealMask(topBarRevealProgress),
-            )
-            IconButton(onClick = onDownloadAllClick) {
-                when (downloadState) {
-                    Download.STATE_COMPLETED -> {
-                        Icon(
-                            painter = painterResource(R.drawable.offline),
-                            contentDescription = stringResource(R.string.all_favorite_albums_downloaded),
-                        )
-                    }
-                    Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.textPrimary,
-                        )
-                    }
-                    else -> {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_circle_down),
-                            contentDescription = stringResource(R.string.download_all_favorite_albums),
-                        )
+            extraActions = {
+                IconButton(onClick = onDownloadAllClick) {
+                    when (downloadState) {
+                        Download.STATE_COMPLETED -> {
+                            Icon(
+                                painter = painterResource(R.drawable.offline),
+                                contentDescription = stringResource(R.string.all_favorite_albums_downloaded),
+                            )
+                        }
+                        Download.STATE_DOWNLOADING, Download.STATE_QUEUED -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.textPrimary,
+                            )
+                        }
+                        else -> {
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_circle_down),
+                                contentDescription = stringResource(R.string.download_all_favorite_albums),
+                            )
+                        }
                     }
                 }
-            }
-            IconButton(onClick = { isSearchActive = true }) {
-                Icon(
-                    painter = painterResource(R.drawable.search),
-                    contentDescription = stringResource(R.string.search),
-                )
-            }
-        }
+            },
+        )
     }
 }

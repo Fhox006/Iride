@@ -32,6 +32,7 @@ import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.extensions.toInetSocketAddress
 import com.metrolist.music.lyrics.JapaneseDictManager
 import com.metrolist.music.utils.CrashHandler
+import com.metrolist.music.utils.DiagnosticLog
 import com.metrolist.music.utils.GenreProvider
 import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
@@ -89,6 +90,7 @@ class App :
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
+        Timber.plant(DiagnosticLog.tree)
 
         applicationScope.launch {
             initializeSettings()

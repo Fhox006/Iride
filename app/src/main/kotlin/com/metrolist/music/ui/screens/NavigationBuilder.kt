@@ -27,7 +27,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.PureBlackKey
-import com.metrolist.music.constants.AdvancedHomePageKey
 import com.metrolist.music.ui.screens.artist.ArtistAlbumsScreen
 import com.metrolist.music.ui.screens.artist.ArtistDiscographyScreen
 import com.metrolist.music.ui.screens.artist.ArtistGameScreen
@@ -95,12 +94,7 @@ fun NavGraphBuilder.NavigationBuilder(
     }
 
     composable(Screens.Home.route) {
-        val advancedHomePage by rememberPreference(AdvancedHomePageKey, defaultValue = false)
-        if (advancedHomePage) {
-            AdvancedHomeScreen(navController = navController, snackbarHostState = snackbarHostState)
-        } else {
-            HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
-        }
+        HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
     }
 
     composable(Screens.WhatNew.route) {

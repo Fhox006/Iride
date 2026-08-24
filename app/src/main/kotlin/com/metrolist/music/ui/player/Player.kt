@@ -201,10 +201,6 @@ import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.Lyrics
 import com.metrolist.music.ui.component.LyricsPillController
-import com.metrolist.music.ui.component.PillPlayerRow
-import com.metrolist.music.ui.component.PillProgressState
-import com.metrolist.music.ui.component.PillShimmerSkeleton
-import com.metrolist.music.ui.component.PlaceholderMediaMetadata
 import com.metrolist.music.ui.component.PlayerSliderTrack
 import com.metrolist.music.ui.component.ResizableIconButton
 import com.metrolist.music.ui.component.SquigglySlider
@@ -1010,51 +1006,16 @@ fun BottomSheetPlayer(
         },
         onDismiss = onSheetDismiss,
         collapsedContent = {
-            val currentMetadata = mediaMetadata
             if (curtainMode) {
-                val displayMetadata = currentMetadata ?: PlaceholderMediaMetadata
-                val pillProgressState = remember(positionState, durationState) {
-                    PillProgressState(positionState, durationState)
-                }
-                val hasPendingQueueRestore by playerConnection.service.hasPendingQueueRestoreFlow.collectAsState()
+                // The interactive pill row lives in MainActivity (drawn above every screen so
+                // nothing can steal its taps). Painting it here too stacked two identical
+                // rows of controls on top of each other — this slot only paints the backdrop
+                // the floating pill sits on.
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(bottomSheetBackgroundColor),
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .align(Alignment.BottomStart)
-                            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom)),
-                        verticalArrangement = Arrangement.Bottom,
-                    ) {
-                        if (hasPendingQueueRestore) {
-                            PillShimmerSkeleton(isTopLevelRoute = false)
-                        } else {
-                        PillPlayerRow(
-                            progressState = pillProgressState,
-                            displayMetadata = displayMetadata,
-                            favoriteSongId = currentMetadata?.id,
-                            playbackState = playbackState,
-                            canSkipNext = canSkipNext,
-                            isCasting = isCasting,
-                            castHandler = castHandler,
-                            playerConnection = playerConnection,
-                            listenTogetherManager = listenTogetherManager,
-                            primaryColor = Color.White,
-                            outlineColor = Color.White,
-                            onSurfaceColor = Color.White,
-                            errorColor = Color(0xFFFF6B6B),
-                            onExpandClick = { if (currentMetadata != null) state.expandSoft() },
-                            bottomSheetState = state,
-                            onArtPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniArt = r } },
-                            onInfoPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniInfo = r } },
-                            onProgressChanged = bridgeState?.let { bs -> { p: Float -> bs.progress = p } },
-                        )
-                        }
-                    }
-                }
+                )
             } else if (showPeekContent) {
                 MiniPlayer(
                     positionState = positionState,

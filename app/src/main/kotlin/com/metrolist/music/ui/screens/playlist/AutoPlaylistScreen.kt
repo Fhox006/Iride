@@ -715,7 +715,6 @@ fun AutoPlaylistScreen(
                                 onSortChange = onSortTypeChange,
                                 sortDescending = sortDescending,
                                 onSortDescendingChange = onSortDescendingChange,
-                                useIrideStyle = true,
                                 modifier = Modifier.weight(1f),
                             )
                         }

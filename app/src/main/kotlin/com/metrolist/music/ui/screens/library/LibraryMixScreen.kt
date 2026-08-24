@@ -114,7 +114,9 @@ import com.metrolist.music.ui.component.LibraryPlaylistListItem
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.IrideSegmentedToggle
+import com.metrolist.music.ui.component.LibrarySectionLabel
 import com.metrolist.music.ui.component.TopNavigationBar
+import com.metrolist.music.ui.component.frostedTopBarBackground
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
@@ -135,6 +137,7 @@ import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.IrideTabEntrance
 import com.metrolist.music.ui.utils.irideEnter
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.revealMask
 import com.metrolist.music.ui.utils.rememberEnterProgress
 import com.metrolist.music.ui.utils.rememberSectionEnter
@@ -443,9 +446,30 @@ fun LibraryMixScreen(
     val fraction = scrollBehavior.state.collapsedFraction
     val onFilterToggle = { isLibraryFilter = !isLibraryFilter }
 
+    val libraryHeaderScrolled by remember {
+        androidx.compose.runtime.derivedStateOf {
+            lazyGridState.firstVisibleItemIndex > 0 || lazyGridState.firstVisibleItemScrollOffset > 8
+        }
+    }
+    val topBarRevealProgress = rememberDiscreteProgress(libraryHeaderScrolled)
+
     Scaffold(
         modifier = Modifier,
         topBar = {
+            TopNavigationBar(
+                navigationItems = topNavBarController?.navigationItems ?: emptyList(),
+                currentRoute = topNavBarController?.currentRoute,
+                onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
+                compact = topNavBarController?.compact ?: false,
+                accountImageUrl = topNavBarController?.accountImageUrl,
+                modifier = Modifier.frostedTopBarBackground(
+                    progress = topBarRevealProgress,
+                    barColor = MaterialTheme.colorScheme.background,
+                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                    backdrop = com.metrolist.music.ui.component.LocalScreenFrostBackdrop.current,
+                ),
+                containerColor = Color.Transparent,
+            )
         },
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
@@ -484,20 +508,6 @@ fun LibraryMixScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
-                    item(key = "top_nav_bar", span = { GridItemSpan(maxLineSpan) }) {
-                        TopNavigationBar(
-                            navigationItems = topNavBarController?.navigationItems ?: emptyList(),
-                            currentRoute = topNavBarController?.currentRoute,
-                            onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
-                            compact = topNavBarController?.compact ?: false,
-                            accountImageUrl = topNavBarController?.accountImageUrl,
-                            modifier = Modifier
-                                .animateItem(placementSpec = IrideMotion.PlacementSpec)
-                                .irideEnter(rememberSectionEnter("top_nav_bar", revealedSections), 8.dp),
-                            containerColor = Color.Transparent,
-                            horizontalPadding = 0.dp,
-                        )
-                    }
                     item(key = "library_filter_toggle", span = { GridItemSpan(maxLineSpan) }) {
                         Row(
                             modifier = Modifier
@@ -534,17 +544,13 @@ fun LibraryMixScreen(
                             span = { GridItemSpan(maxLineSpan) },
                             contentType = CONTENT_TYPE_HEADER,
                         ) {
-                            Text(
-                                text = if (isLibraryFilter) "Recently Added" else "Recently Downloaded",
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    fontFamily = SpaceMonoFontFamily,
-                                    fontSize = 13.sp,
-                                    letterSpacing = 0.2.sp,
-                                ),
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.textSecondary,
+                            LibrarySectionLabel(
+                                text = if (isLibraryFilter) {
+                                    stringResource(R.string.recently_added)
+                                } else {
+                                    stringResource(R.string.recently_downloaded)
+                                },
                                 modifier = Modifier
-                                    .padding(vertical = 12.dp)
                                     .animateItem(placementSpec = IrideMotion.PlacementSpec)
                                     .revealMask(rememberSectionEnter("recently_added_label", revealedSections)),
                             )
@@ -562,7 +568,6 @@ fun LibraryMixScreen(
                                 onSortDescendingChange = onSortDescendingChange,
                                 viewType = viewType,
                                 onViewTypeChange = { viewType = it },
-                                useIrideStyle = true,
                                 modifier = Modifier
                                     .animateItem(placementSpec = IrideMotion.PlacementSpec)
                                     .irideEnter(rememberSectionEnter("sort_header", revealedSections), 6.dp),

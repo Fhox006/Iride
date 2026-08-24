@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
@@ -95,7 +95,10 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IntegrationCard
 import com.metrolist.music.ui.component.IntegrationCardItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.ListenTogetherViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -350,171 +353,185 @@ fun ListenTogetherSettings(
         )
     }
 
-    Column(
-        Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal))
-            .verticalScroll(rememberScrollState()),
-    ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top),
-            ),
-        )
+    val settingsScrollState = rememberScrollState()
+    val frostBackdrop = rememberFrostBackdrop()
 
-        val selectedServer = remember(serverUrl) { ListenTogetherServers.findByUrl(serverUrl) }
-
-        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-            IntegrationCard(
-                title = stringResource(R.string.settings),
-                items =
-                    listOf(
-                        IntegrationCardItem(
-                            icon = painterResource(R.drawable.person),
-                            title = { Text(stringResource(R.string.listen_together_blocked_users)) },
-                            description = {
-                                Text(
-                                    if (blockedUsernames.isNotEmpty()) {
-                                        stringResource(R.string.listen_together_blocked_users_count, blockedUsernames.size)
-                                    } else {
-                                        stringResource(R.string.listen_together_no_blocked_users)
-                                    },
-                                )
-                            },
-                            onClick =
-                                if (blockedUsernames.isNotEmpty()) {
-                                    { showBlockedUsersDialog = true }
-                                } else {
-                                    null
-                                },
-                        ),
-                        IntegrationCardItem(
-                            icon = painterResource(R.drawable.cloud),
-                            title = { Text(stringResource(R.string.listen_together_server_url)) },
-                            description = {
-                                Text(
-                                    selectedServer?.let { server ->
-                                        "${server.name} - ${server.location}"
-                                    } ?: serverUrl,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            },
-                            onClick = { showServerUrlDialog = true },
-                        ),
-                        IntegrationCardItem(
-                            icon = painterResource(R.drawable.person),
-                            title = { Text(stringResource(R.string.listen_together_username)) },
-                            description = {
-                                Text(username.ifEmpty { stringResource(R.string.not_set) })
-                            },
-                            onClick =
-                                if (roomState == null) {
-                                    { showUsernameDialog = true }
-                                } else {
-                                    {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                cannotEditUsernameInRoomStr,
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
-                                    }
-                                },
-                        ),
-                        IntegrationCardItem(
-                            icon = painterResource(R.drawable.done),
-                            title = { Text(stringResource(R.string.listen_together_auto_approval_joins)) },
-                            description = {
-                                Text(stringResource(R.string.listen_together_auto_approval_joins_desc))
-                            },
-                            trailingContent = {
-                                IrideSwitch(
-                                    checked = autoApprovalJoins,
-                                    onCheckedChange = { autoApprovalJoins = it },
-                                    enabled = roomState == null || role != RoomRole.GUEST,
-                                    thumbContent = {
-                                        Icon(
-                                            painter =
-                                                painterResource(
-                                                    id = if (autoApprovalJoins) R.drawable.check else R.drawable.close,
-                                                ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize),
-                                        )
-                                    },
-                                )
-                            },
-                            onClick = { if (roomState == null || role != RoomRole.GUEST) autoApprovalJoins = !autoApprovalJoins },
-                        ),
-                        IntegrationCardItem(
-                            icon = painterResource(R.drawable.done),
-                            title = { Text(stringResource(R.string.listen_together_auto_approval_suggestions)) },
-                            description = {
-                                Text(stringResource(R.string.listen_together_auto_approval_suggestions_desc))
-                            },
-                            trailingContent = {
-                                IrideSwitch(
-                                    checked = autoApproveSuggestions,
-                                    onCheckedChange = { autoApproveSuggestions = it },
-                                    enabled = roomState == null || role != RoomRole.GUEST,
-                                    thumbContent = {
-                                        Icon(
-                                            painter =
-                                                painterResource(
-                                                    id = if (autoApproveSuggestions) R.drawable.check else R.drawable.close,
-                                                ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize),
-                                        )
-                                    },
-                                )
-                            },
-                            onClick = { if (roomState == null || role != RoomRole.GUEST) autoApproveSuggestions = !autoApproveSuggestions },
-                        ),
-                        IntegrationCardItem(
-                            icon = painterResource(R.drawable.volume_up),
-                            title = { Text(stringResource(R.string.listen_together_sync_volume)) },
-                            description = {
-                                Text(stringResource(R.string.listen_together_sync_volume_desc))
-                            },
-                            trailingContent = {
-                                IrideSwitch(
-                                    checked = syncHostVolume,
-                                    onCheckedChange = { syncHostVolume = it },
-                                    thumbContent = {
-                                        Icon(
-                                            painter =
-                                                painterResource(
-                                                    id = if (syncHostVolume) R.drawable.check else R.drawable.close,
-                                                ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize),
-                                        )
-                                    },
-                                )
-                            },
-                            onClick = { syncHostVolume = !syncHostVolume },
-                        ),
-                        IntegrationCardItem(
-                            icon = painterResource(R.drawable.bug_report),
-                            title = { Text(stringResource(R.string.listen_together_view_logs)) },
-                            description = {
-                                Text(stringResource(R.string.listen_together_view_logs_desc))
-                            },
-                            onClick = { showLogsDialog = true },
-                        ),
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop)
+        ) {
+            Column(
+                Modifier
+                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal))
+                    .verticalScroll(settingsScrollState),
+            ) {
+                Spacer(
+                    Modifier.windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top),
                     ),
-            )
+                )
+
+                val selectedServer = remember(serverUrl) { ListenTogetherServers.findByUrl(serverUrl) }
+
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    IntegrationCard(
+                        title = stringResource(R.string.settings),
+                        items =
+                            listOf(
+                                IntegrationCardItem(
+                                    icon = painterResource(R.drawable.person),
+                                    title = { Text(stringResource(R.string.listen_together_blocked_users)) },
+                                    description = {
+                                        Text(
+                                            if (blockedUsernames.isNotEmpty()) {
+                                                stringResource(R.string.listen_together_blocked_users_count, blockedUsernames.size)
+                                            } else {
+                                                stringResource(R.string.listen_together_no_blocked_users)
+                                            },
+                                        )
+                                    },
+                                    onClick =
+                                        if (blockedUsernames.isNotEmpty()) {
+                                            { showBlockedUsersDialog = true }
+                                        } else {
+                                            null
+                                        },
+                                ),
+                                IntegrationCardItem(
+                                    icon = painterResource(R.drawable.cloud),
+                                    title = { Text(stringResource(R.string.listen_together_server_url)) },
+                                    description = {
+                                        Text(
+                                            selectedServer?.let { server ->
+                                                "${server.name} - ${server.location}"
+                                            } ?: serverUrl,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    },
+                                    onClick = { showServerUrlDialog = true },
+                                ),
+                                IntegrationCardItem(
+                                    icon = painterResource(R.drawable.person),
+                                    title = { Text(stringResource(R.string.listen_together_username)) },
+                                    description = {
+                                        Text(username.ifEmpty { stringResource(R.string.not_set) })
+                                    },
+                                    onClick =
+                                        if (roomState == null) {
+                                            { showUsernameDialog = true }
+                                        } else {
+                                            {
+                                                Toast
+                                                    .makeText(
+                                                        context,
+                                                        cannotEditUsernameInRoomStr,
+                                                        Toast.LENGTH_SHORT,
+                                                    ).show()
+                                            }
+                                        },
+                                ),
+                                IntegrationCardItem(
+                                    icon = painterResource(R.drawable.done),
+                                    title = { Text(stringResource(R.string.listen_together_auto_approval_joins)) },
+                                    description = {
+                                        Text(stringResource(R.string.listen_together_auto_approval_joins_desc))
+                                    },
+                                    trailingContent = {
+                                        IrideSwitch(
+                                            checked = autoApprovalJoins,
+                                            onCheckedChange = { autoApprovalJoins = it },
+                                            enabled = roomState == null || role != RoomRole.GUEST,
+                                            thumbContent = {
+                                                Icon(
+                                                    painter =
+                                                        painterResource(
+                                                            id = if (autoApprovalJoins) R.drawable.check else R.drawable.close,
+                                                        ),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                )
+                                            },
+                                        )
+                                    },
+                                    onClick = { if (roomState == null || role != RoomRole.GUEST) autoApprovalJoins = !autoApprovalJoins },
+                                ),
+                                IntegrationCardItem(
+                                    icon = painterResource(R.drawable.done),
+                                    title = { Text(stringResource(R.string.listen_together_auto_approval_suggestions)) },
+                                    description = {
+                                        Text(stringResource(R.string.listen_together_auto_approval_suggestions_desc))
+                                    },
+                                    trailingContent = {
+                                        IrideSwitch(
+                                            checked = autoApproveSuggestions,
+                                            onCheckedChange = { autoApproveSuggestions = it },
+                                            enabled = roomState == null || role != RoomRole.GUEST,
+                                            thumbContent = {
+                                                Icon(
+                                                    painter =
+                                                        painterResource(
+                                                            id = if (autoApproveSuggestions) R.drawable.check else R.drawable.close,
+                                                        ),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                )
+                                            },
+                                        )
+                                    },
+                                    onClick = { if (roomState == null || role != RoomRole.GUEST) autoApproveSuggestions = !autoApproveSuggestions },
+                                ),
+                                IntegrationCardItem(
+                                    icon = painterResource(R.drawable.volume_up),
+                                    title = { Text(stringResource(R.string.listen_together_sync_volume)) },
+                                    description = {
+                                        Text(stringResource(R.string.listen_together_sync_volume_desc))
+                                    },
+                                    trailingContent = {
+                                        IrideSwitch(
+                                            checked = syncHostVolume,
+                                            onCheckedChange = { syncHostVolume = it },
+                                            thumbContent = {
+                                                Icon(
+                                                    painter =
+                                                        painterResource(
+                                                            id = if (syncHostVolume) R.drawable.check else R.drawable.close,
+                                                        ),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                )
+                                            },
+                                        )
+                                    },
+                                    onClick = { syncHostVolume = !syncHostVolume },
+                                ),
+                                IntegrationCardItem(
+                                    icon = painterResource(R.drawable.bug_report),
+                                    title = { Text(stringResource(R.string.listen_together_view_logs)) },
+                                    description = {
+                                        Text(stringResource(R.string.listen_together_view_logs_desc))
+                                    },
+                                    onClick = { showLogsDialog = true },
+                                ),
+                            ),
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        SettingsBackTopBar(
+            title = stringResource(R.string.listen_together),
+            navController = navController,
+            backdrop = frostBackdrop,
+            revealProgress = rememberDiscreteProgress(active = settingsScrollState.value > 0),
+        )
     }
-
-    SettingsBackTopBar(
-        title = stringResource(R.string.listen_together),
-        navController = navController,
-    )
 }
+
 
 @Composable
 fun LogsDialog(

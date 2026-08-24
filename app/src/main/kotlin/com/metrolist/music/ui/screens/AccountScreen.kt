@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -73,6 +74,7 @@ import com.metrolist.music.ui.component.FloatingPillHeight
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.TopNavigationBar
+import com.metrolist.music.ui.component.frostedTopBarBackground
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
@@ -109,7 +111,6 @@ fun AccountScreen(
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val topNavBarController = LocalTopNavBarController.current
-    val keyboardController = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(Unit) {
         if (playlists == null || albums == null || artists == null) {
@@ -117,44 +118,30 @@ fun AccountScreen(
         }
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-        snapAnimationSpec = tween(durationMillis = 200),
-    )
+    val scrollState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    val accountHeaderScrolled by androidx.compose.runtime.remember {
+        androidx.compose.runtime.derivedStateOf {
+            scrollState.firstVisibleItemIndex > 0 || scrollState.firstVisibleItemScrollOffset > 8
+        }
+    }
+    val topBarRevealProgress = com.metrolist.music.ui.utils.rememberDiscreteProgress(accountHeaderScrolled)
+
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            Column {
-                if (topNavBarController != null) {
-                    TopNavigationBar(
-                        navigationItems = topNavBarController.navigationItems,
-                        currentRoute = topNavBarController.currentRoute,
-                        onItemClick = topNavBarController.onItemClick,
-                        containerColor = Color.Transparent,
-                        compact = topNavBarController.compact,
-                        accountImageUrl = topNavBarController.accountImageUrl,
-                    )
-                }
-                CollapsingScreenHeader(
-                    title = stringResource(R.string.account_content),
-                    scrollBehavior = scrollBehavior,
-                    pureBlack = pureBlack,
-                    isSearchActive = false,
-                    onSearchActiveChange = {},
-                    searchQuery = "",
-                    onSearchQueryChange = {},
-                    keyboardController = keyboardController,
-                    trailingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.settings),
-                            contentDescription = stringResource(R.string.settings),
-                            tint = MaterialTheme.colorScheme.textSecondary,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clickable { navController.navigate("settings") },
-                        )
-                    },
-                    transparentBackground = mainTopGradient,
-                    hideTitle = true,
+            if (topNavBarController != null) {
+                TopNavigationBar(
+                    navigationItems = topNavBarController.navigationItems,
+                    currentRoute = topNavBarController.currentRoute,
+                    onItemClick = topNavBarController.onItemClick,
+                    containerColor = Color.Transparent,
+                    compact = topNavBarController.compact,
+                    accountImageUrl = topNavBarController.accountImageUrl,
+                    modifier = Modifier.frostedTopBarBackground(
+                        progress = topBarRevealProgress,
+                        barColor = MaterialTheme.colorScheme.background,
+                        strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                        backdrop = com.metrolist.music.ui.component.LocalScreenFrostBackdrop.current,
+                    ),
                 )
             }
         },
@@ -162,8 +149,11 @@ fun AccountScreen(
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         LazyVerticalGrid(
+            state = scrollState,
             columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
-            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            contentPadding = PaddingValues(
+                bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+            ),
             modifier = Modifier
                 .padding(paddingValues)
                 .background(

@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.ui.utils.isScrollingUp
+import com.metrolist.music.ui.utils.pressScale
 import com.metrolist.music.ui.theme.strokeCard
 
 /**
@@ -60,14 +61,16 @@ private fun IrideFlatFAB(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .size(56.dp)
+            .pressScale(interactionSource, pressedScale = 0.92f)
             .clip(CircleShape)
             .background(Color.Black.copy(alpha = 0.85f))
             .border(1.dp, MaterialTheme.colorScheme.strokeCard, CircleShape)
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
             ),

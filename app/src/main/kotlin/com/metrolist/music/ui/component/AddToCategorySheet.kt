@@ -60,6 +60,7 @@ import com.metrolist.music.ui.theme.fillSelected
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.ui.theme.textTertiary
+import com.metrolist.music.ui.utils.pressScale
 
 /**
  * "Add to category" bottom sheet (New Iride UI selection-mode flow): search, pick one or more
@@ -156,15 +157,17 @@ fun AddToCategorySheet(
             }
             Spacer(Modifier.height(12.dp))
             val enabled = selectedIds.value.isNotEmpty()
+            val confirmInteractionSource = remember { MutableInteractionSource() }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 20.dp)
                     .height(52.dp)
+                    .pressScale(confirmInteractionSource, pressedScale = 0.97f)
                     .clip(RoundedCornerShape(percent = 50))
                     .background(if (enabled) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.fillSelected)
                     .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
+                        interactionSource = confirmInteractionSource,
                         indication = null,
                         enabled = enabled,
                         role = Role.Button,
@@ -202,13 +205,15 @@ private fun CategoryRow(
     onToggle: () -> Unit,
 ) {
     val dotColor = remember(entry.category.colorHex) { parseCategoryColor(entry.category.colorHex) }
+    val interactionSource = remember { MutableInteractionSource() }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
+            .pressScale(interactionSource)
             .selectable(
                 selected = selected,
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = null,
                 role = Role.Checkbox,
                 onClick = onToggle,
@@ -242,12 +247,14 @@ private fun CategoryRow(
 
 @Composable
 private fun NewCategoryRow(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
+            .pressScale(interactionSource)
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = null,
                 role = Role.Button,
                 onClick = onClick,

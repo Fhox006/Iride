@@ -341,9 +341,6 @@ fun ExploreScreen(
                 explorePage?.newReleaseAlbums?.let { newReleaseAlbums ->
                     NavigationTitle(
                         title = stringResource(R.string.new_release_albums),
-                        onClick = {
-                            navController.navigate("new_release")
-                        },
                     )
                     LazyRow(
                         contentPadding =

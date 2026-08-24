@@ -5,7 +5,9 @@
 
 package com.metrolist.music.ui.screens.settings.integrations
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -21,11 +23,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.R
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IntegrationCard
 import com.metrolist.music.ui.component.IntegrationCardItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.utils.backToMain
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,35 +38,48 @@ import com.metrolist.music.ui.utils.backToMain
 fun IntegrationScreen(
     navController: NavController
 ) {
-    Column(
-        Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
-    ) {
-        IntegrationCard(
-            title = stringResource(R.string.general),
-            items = listOf(
-                IntegrationCardItem(
-                    icon = painterResource(R.drawable.discord),
-                    title = { Text(stringResource(R.string.discord_integration)) },
-                    onClick = {
-                        navController.navigate("settings/integrations/discord")
-                    }
-                ),
-                IntegrationCardItem(
-                    icon = painterResource(R.drawable.music_note),
-                    title = { Text(stringResource(R.string.lastfm_integration)) },
-                    onClick = {
-                        navController.navigate("settings/integrations/lastfm")
-                    }
+    val settingsScrollState = rememberScrollState()
+    val frostBackdrop = rememberFrostBackdrop()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop)
+        ) {
+            Column(
+                Modifier
+                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
+                    .verticalScroll(settingsScrollState)
+                    .padding(horizontal = 16.dp),
+            ) {
+                IntegrationCard(
+                    title = stringResource(R.string.general),
+                    items = listOf(
+                        IntegrationCardItem(
+                            icon = painterResource(R.drawable.discord),
+                            title = { Text(stringResource(R.string.discord_integration)) },
+                            onClick = {
+                                navController.navigate("settings/integrations/discord")
+                            }
+                        ),
+                        IntegrationCardItem(
+                            icon = painterResource(R.drawable.music_note),
+                            title = { Text(stringResource(R.string.lastfm_integration)) },
+                            onClick = {
+                                navController.navigate("settings/integrations/lastfm")
+                            }
+                        )
+                    )
                 )
-            )
+            }
+        }
+
+        SettingsBackTopBar(
+            title = stringResource(R.string.integrations),
+            navController = navController,
+            backdrop = frostBackdrop,
+            revealProgress = rememberDiscreteProgress(active = settingsScrollState.value > 0),
         )
     }
-
-    SettingsBackTopBar(
-        title = stringResource(R.string.integrations),
-        navController = navController,
-    )
 }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -60,11 +61,14 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.menu.AddToPlaylistDialogOnline
 import com.metrolist.music.ui.menu.CsvColumnMappingDialog
 import com.metrolist.music.ui.menu.CsvImportProgressDialog
 import com.metrolist.music.ui.menu.LoadingScreen
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.BackupPreviewInfo
 import com.metrolist.music.viewmodels.BackupRestoreViewModel
@@ -162,98 +166,111 @@ fun BackupAndRestore(
             }
         }
 
-    Column(
-        Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
-    ) {
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Top,
-                ),
-            ),
-        )
+    val settingsScrollState = rememberScrollState()
+    val frostBackdrop = rememberFrostBackdrop()
 
-        val appName = stringResource(R.string.app_name)
-        val arrowIcon = painterResource(R.drawable.arrow_forward)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop)
+        ) {
+            Column(
+                Modifier
+                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                    .verticalScroll(settingsScrollState)
+                    .padding(horizontal = 16.dp),
+            ) {
+                Spacer(
+                    Modifier.windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current.only(
+                            WindowInsetsSides.Top,
+                        ),
+                    ),
+                )
 
-        Material3SettingsGroup(
-            items =
-                listOfNotNull(
-                    Material3SettingsItem(
-                        title = { Text(stringResource(R.string.action_backup)) },
-                        icon = painterResource(R.drawable.backup),
-                        onClick = {
-                            val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
-                            backupLauncher.launch(
-                                "${appName}_${
-                                    LocalDateTime.now().format(formatter)
-                                }.backup",
-                            )
-                        },
-                    ),
-                    Material3SettingsItem(
-                        title = { Text(stringResource(R.string.action_restore)) },
-                        icon = painterResource(R.drawable.restore),
-                        onClick = {
-                            restoreLauncher.launch(arrayOf("application/octet-stream"))
-                        },
-                    ),
-                    if (advancedMode) Material3SettingsItem(
-                        title = { Text(stringResource(R.string.import_online)) },
-                        icon = painterResource(R.drawable.playlist_add),
-                        onClick = {
-                            importM3uLauncherOnline.launch(arrayOf("audio/*"))
-                        },
-                    ) else null,
-                    if (advancedMode) Material3SettingsItem(
-                        title = { Text(stringResource(R.string.import_csv)) },
-                        icon = painterResource(R.drawable.playlist_add),
-                        onClick = {
-                            importPlaylistFromCsv.launch(
-                                arrayOf("text/csv", "text/comma-separated-values", "application/csv", "text/plain"),
-                            )
-                        },
-                    ) else null,
-                    if (BuildConfig.UPDATER_AVAILABLE) {
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.update),
-                            title = { Text(stringResource(R.string.updater)) },
-                            trailingContent = {
-                                Icon(
-                                    painter = arrowIcon,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
+                val appName = stringResource(R.string.app_name)
+                val arrowIcon = painterResource(R.drawable.arrow_forward)
+
+                Material3SettingsGroup(
+                    items =
+                        listOfNotNull(
+                            Material3SettingsItem(
+                                title = { Text(stringResource(R.string.action_backup)) },
+                                icon = painterResource(R.drawable.backup),
+                                onClick = {
+                                    val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
+                                    backupLauncher.launch(
+                                        "${appName}_${
+                                            LocalDateTime.now().format(formatter)
+                                        }.backup",
+                                    )
+                                },
+                            ),
+                            Material3SettingsItem(
+                                title = { Text(stringResource(R.string.action_restore)) },
+                                icon = painterResource(R.drawable.restore),
+                                onClick = {
+                                    restoreLauncher.launch(arrayOf("application/octet-stream"))
+                                },
+                            ),
+                            if (advancedMode) Material3SettingsItem(
+                                title = { Text(stringResource(R.string.import_online)) },
+                                icon = painterResource(R.drawable.playlist_add),
+                                onClick = {
+                                    importM3uLauncherOnline.launch(arrayOf("audio/*"))
+                                },
+                            ) else null,
+                            if (advancedMode) Material3SettingsItem(
+                                title = { Text(stringResource(R.string.import_csv)) },
+                                icon = painterResource(R.drawable.playlist_add),
+                                onClick = {
+                                    importPlaylistFromCsv.launch(
+                                        arrayOf("text/csv", "text/comma-separated-values", "application/csv", "text/plain"),
+                                    )
+                                },
+                            ) else null,
+                            if (BuildConfig.UPDATER_AVAILABLE) {
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.update),
+                                    title = { Text(stringResource(R.string.updater)) },
+                                    trailingContent = {
+                                        Icon(
+                                            painter = arrowIcon,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    },
+                                    onClick = { navController.navigate("settings/updater") }
                                 )
-                            },
-                            onClick = { navController.navigate("settings/updater") }
-                        )
-                    } else null,
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.storage),
-                        title = { Text(stringResource(R.string.storage)) },
-                        description = { Text(stringResource(R.string.settings_storage_desc), style = MaterialTheme.typography.bodySmall) },
-                        trailingContent = {
-                            Icon(
-                                painter = arrowIcon,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp)
+                            } else null,
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.storage),
+                                title = { Text(stringResource(R.string.storage)) },
+                                description = { Text(stringResource(R.string.settings_storage_desc), style = MaterialTheme.typography.bodySmall) },
+                                trailingContent = {
+                                    Icon(
+                                        painter = arrowIcon,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                },
+                                onClick = { navController.navigate("settings/storage") }
                             )
-                        },
-                        onClick = { navController.navigate("settings/storage") }
-                    )
-                ),
-        )
-    }
+                        ),
+                )
+            }
+        }
 
-    SettingsBackTopBar(
-        title = stringResource(R.string.app_management_backup),
-        navController = navController,
-    )
+        SettingsBackTopBar(
+            title = stringResource(R.string.app_management_backup),
+            navController = navController,
+            backdrop = frostBackdrop,
+            revealProgress = rememberDiscreteProgress(active = settingsScrollState.value > 0),
+        )
+
 
     AddToPlaylistDialogOnline(
         isVisible = showChoosePlaylistDialogOnline,
@@ -480,5 +497,6 @@ fun BackupAndRestore(
                 }
             }
         }
+    }
     }
 }

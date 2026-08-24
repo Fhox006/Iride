@@ -5,11 +5,9 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,16 +36,12 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
@@ -58,6 +52,8 @@ import androidx.compose.ui.text.font.FontWeight
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textTertiary
+import com.metrolist.music.ui.utils.IrideMotion
+import com.metrolist.music.ui.utils.pressScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -66,7 +62,6 @@ import coil3.compose.AsyncImage
 import com.metrolist.music.ui.screens.Screens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 
 @Immutable
 private data class NavItemState(
@@ -112,23 +107,9 @@ fun AppNavigationRail(
                 isRouteSelected(currentRoute, screen.route, navigationItems)
             }
             val currentIsSelected by rememberUpdatedState(isSelected)
-            val iconRes = remember(isSelected, screen) {
-                if (isSelected) screen.iconIdActive else screen.iconIdInactive
-            }
 
             val isSearchItem = screen == Screens.Search && onSearchLongClick != null
             val interactionSource = remember { MutableInteractionSource() }
-            val scope = rememberCoroutineScope()
-
-            var pressed by remember { mutableStateOf(false) }
-            val iconScale by animateFloatAsState(
-                targetValue = if (pressed) 0.75f else 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                ),
-                label = "iconScale"
-            )
 
             if (isSearchItem) {
                 LaunchedEffect(interactionSource) {
@@ -144,11 +125,6 @@ fun AppNavigationRail(
                             }
                             is PressInteraction.Release -> {
                                 if (!isLongClick) {
-                                    scope.launch {
-                                        pressed = true
-                                        delay(50)
-                                        pressed = false
-                                    }
                                     onItemClick(screen, currentIsSelected)
                                 }
                             }
@@ -163,23 +139,13 @@ fun AppNavigationRail(
             NavigationRailItem(
                 selected = isSelected,
                 onClick = {
-                    scope.launch {
-                        pressed = true
-                        delay(50)
-                        pressed = false
-                    }
                     if (!isSearchItem) {
                         onItemClick(screen, currentIsSelected)
                     }
                 },
                 interactionSource = interactionSource,
                 icon = {
-                    Box(
-                        modifier = Modifier.graphicsLayer {
-                            scaleX = iconScale
-                            scaleY = iconScale
-                        }
-                    ) {
+                    Box(modifier = Modifier.pressScale(interactionSource)) {
                         if (screen == Screens.Account && accountImageUrl != null) {
                             AsyncImage(
                                 model = accountImageUrl,
@@ -189,10 +155,18 @@ fun AppNavigationRail(
                                     .clip(CircleShape)
                             )
                         } else {
-                            Icon(
-                                painter = painterResource(id = iconRes),
-                                contentDescription = stringResource(screen.titleId)
-                            )
+                            Crossfade(
+                                targetState = isSelected,
+                                animationSpec = tween(IrideMotion.Quick, easing = IrideMotion.EaseOutQuart),
+                                label = "navIcon",
+                            ) { selected ->
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (selected) screen.iconIdActive else screen.iconIdInactive
+                                    ),
+                                    contentDescription = stringResource(screen.titleId)
+                                )
+                            }
                         }
                     }
                 }
@@ -229,23 +203,9 @@ fun AppNavigationBar(
                 isRouteSelected(currentRoute, screen.route, navigationItems)
             }
             val currentIsSelected by rememberUpdatedState(isSelected)
-            val iconRes = remember(isSelected, screen) {
-                if (isSelected) screen.iconIdActive else screen.iconIdInactive
-            }
 
             val isSearchItem = screen == Screens.Search && onSearchLongClick != null
             val interactionSource = remember { MutableInteractionSource() }
-            val scope = rememberCoroutineScope()
-
-            var pressed by remember { mutableStateOf(false) }
-            val iconScale by animateFloatAsState(
-                targetValue = if (pressed) 0.75f else 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                ),
-                label = "iconScale"
-            )
 
             if (isSearchItem) {
                 LaunchedEffect(interactionSource) {
@@ -261,11 +221,6 @@ fun AppNavigationBar(
                             }
                             is PressInteraction.Release -> {
                                 if (!isLongClick) {
-                                    scope.launch {
-                                        pressed = true
-                                        delay(50)
-                                        pressed = false
-                                    }
                                     onItemClick(screen, currentIsSelected)
                                 }
                             }
@@ -280,23 +235,13 @@ fun AppNavigationBar(
             NavigationBarItem(
                 selected = isSelected,
                 onClick = {
-                    scope.launch {
-                        pressed = true
-                        delay(50)
-                        pressed = false
-                    }
                     if (!isSearchItem) {
                         onItemClick(screen, currentIsSelected)
                     }
                 },
                 interactionSource = interactionSource,
                 icon = {
-                    Box(
-                        modifier = Modifier.graphicsLayer {
-                            scaleX = iconScale
-                            scaleY = iconScale
-                        }
-                    ) {
+                    Box(modifier = Modifier.pressScale(interactionSource)) {
                         if (screen == Screens.Account && accountImageUrl != null) {
                             AsyncImage(
                                 model = accountImageUrl,
@@ -306,10 +251,18 @@ fun AppNavigationBar(
                                     .clip(CircleShape)
                             )
                         } else {
-                            Icon(
-                                painter = painterResource(id = iconRes),
-                                contentDescription = stringResource(screen.titleId)
-                            )
+                            Crossfade(
+                                targetState = isSelected,
+                                animationSpec = tween(IrideMotion.Quick, easing = IrideMotion.EaseOutQuart),
+                                label = "navIcon",
+                            ) { selected ->
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (selected) screen.iconIdActive else screen.iconIdInactive
+                                    ),
+                                    contentDescription = stringResource(screen.titleId)
+                                )
+                            }
                         }
                     }
                 },
@@ -369,6 +322,7 @@ fun TopNavigationBar(
                     animationSpec = if (isSelected) tween(220) else snap(),
                     label = "titleColor"
                 )
+                val titleInteractionSource = remember { MutableInteractionSource() }
 
                 Text(
                     text = stringResource(screen.titleId),
@@ -383,8 +337,9 @@ fun TopNavigationBar(
                     softWrap = false,
                     modifier = Modifier
                         .padding(end = 20.dp)
+                        .pressScale(titleInteractionSource)
                         .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
+                            interactionSource = titleInteractionSource,
                             indication = null
                         ) {
                             onItemClick(screen, currentIsSelected)
@@ -399,11 +354,13 @@ fun TopNavigationBar(
                 animationSpec = if (searchSelected) tween(220) else snap(),
                 label = "searchTint"
             )
+            val searchInteractionSource = remember { MutableInteractionSource() }
             Box(
                 modifier = Modifier
                     .size(48.dp)
+                    .pressScale(searchInteractionSource, pressedScale = 0.85f)
                     .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
+                        interactionSource = searchInteractionSource,
                         indication = null
                     ) {
                         onItemClick(Screens.Search, currentSearchSelected)
@@ -425,11 +382,13 @@ fun TopNavigationBar(
                 animationSpec = if (accountSelected) tween(220) else snap(),
                 label = "accountTint"
             )
+            val accountInteractionSource = remember { MutableInteractionSource() }
             Box(
                 modifier = Modifier
                     .size(48.dp)
+                    .pressScale(accountInteractionSource, pressedScale = 0.85f)
                     .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
+                        interactionSource = accountInteractionSource,
                         indication = null
                     ) {
                         onItemClick(Screens.Account, currentAccountSelected)
@@ -479,6 +438,7 @@ fun TopNavigationBar(
                 animationSpec = if (isSelected) tween(220) else snap(),
                 label = "titleColor"
             )
+            val titleInteractionSource = remember { MutableInteractionSource() }
 
             Text(
                 text = stringResource(screen.titleId),
@@ -493,8 +453,9 @@ fun TopNavigationBar(
                 softWrap = false,
                 modifier = Modifier
                     .padding(end = 20.dp)
+                    .pressScale(titleInteractionSource)
                     .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
+                        interactionSource = titleInteractionSource,
                         indication = null
                     ) {
                         onItemClick(screen, currentIsSelected)

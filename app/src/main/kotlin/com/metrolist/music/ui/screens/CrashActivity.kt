@@ -5,8 +5,12 @@
 
 package com.metrolist.music.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -33,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -61,10 +66,20 @@ class CrashActivity : ComponentActivity() {
             IrideTheme(darkTheme = darkTheme) {
                 CrashScreen(
                     crashLog = crashLog,
+                    onCopy = { copyCrashLog(crashLog) },
                     onClose = { finishAffinity() },
                     onShare = { shareCrashLog(crashLog) }
                 )
             }
+        }
+    }
+
+    private fun copyCrashLog(crashLog: String) {
+        try {
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("Iride crash log", crashLog))
+            Toast.makeText(this, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
+        } catch (_: Exception) {
         }
     }
     private fun shareCrashLog(crashLog: String) {
@@ -100,10 +115,14 @@ class CrashActivity : ComponentActivity() {
 @Composable
 fun CrashScreen(
     crashLog: String,
+    onCopy: () -> Unit,
     onClose: () -> Unit,
     onShare: () -> Unit
 ) {
     val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        onCopy()
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -114,6 +133,12 @@ fun CrashScreen(
                     ) 
                 },
                 actions = {
+                    IconButton(onClick = onCopy) {
+                        Icon(
+                            painter = painterResource(R.drawable.content_copy),
+                            contentDescription = stringResource(R.string.copy)
+                        )
+                    }
                     IconButton(onClick = onClose) {
                         Icon(
                             painter = painterResource(R.drawable.close),

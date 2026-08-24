@@ -24,6 +24,8 @@
     <string name="monthly_most_playlist_name">Il meglio del mese</string>
     <string name="cached_playlist">In cache</string>
     <string name="uploaded_playlist">Caricato</string>
+    <string name="recently_added">Aggiunti di recente</string>
+    <string name="recently_downloaded">Scaricati di recente</string>
     <string name="filter_uploaded">Caricato</string>
     <string name="sync_playlist">Sincronizza playlist</string>
     <string name="sync_disabled">Sincronizzazione disabilitata</string>
@@ -757,6 +759,7 @@
     <string name="copy_all_lyrics">Copia tutti i testi</string>
     <string name="change">Modifica</string>
     <string name="copied_to_clipboard">Copiato negli appunti</string>
+    <string name="diagnostic_copy_log">Copia log diagnostici</string>
     <string name="not_set">Non impostato</string>
     <string name="hosting_room">Stanza ospitante</string>
     <string name="in_room">Nella stanza</string>
@@ -1216,4 +1219,23 @@
 <string name="top_navigation_bar_desc">Schede solo testo in alto e schermo interamente nero al posto della pillola in basso</string>
 <string name="new_player_design">Nuovo design del lettore</string>
 <string name="new_mini_player_design">Nuovo design del mini lettore</string>
+
+    <!-- Advanced home -->
+    <string name="adv_home_settings_title">Home avanzata</string>
+    <string name="adv_home_settings_desc">Una home più calma e semplice, con il grilletto dei sentimenti e un consiglio al giorno. Spegnila per tornare alla home classica.</string>
+    <string name="adv_feelings_question">Come va?</string>
+    <string name="adv_feeling_energy">Energia</string>
+    <string name="adv_feeling_chill">Chill</string>
+    <string name="adv_feeling_focus">Focus</string>
+    <string name="adv_feeling_nostalgia">Nostalgia</string>
+    <string name="adv_feeling_party">Festa</string>
+    <string name="adv_feeling_surprise">Sorprendimi</string>
+    <string name="adv_thread_section">Il filo</string>
+    <string name="adv_daily_pick">Consiglio del giorno</string>
+    <string name="adv_all_news">Tutte le novità</string>
+    <string name="adv_badge_new">Novità</string>
+    <string name="adv_badge_rotation">Che riascolti</string>
+    <string name="adv_badge_foryou">Per te</string>
+    <string name="adv_badge_trending">Di tendenza</string>
+    <string name="adv_badge_radio">Radio</string>
 </resources>

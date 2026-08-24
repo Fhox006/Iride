@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -86,10 +87,15 @@ import com.metrolist.music.ui.component.GenrePillsRow
 import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
-import com.metrolist.music.ui.component.LibrarySearchHeader
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
+import com.metrolist.music.ui.component.LibraryHeroTitle
+import com.metrolist.music.ui.component.LibraryFooterCount
+import com.metrolist.music.ui.component.LibraryPageTopBar
+import com.metrolist.music.ui.component.LocalItemHorizontalPadding
+import com.metrolist.music.ui.component.rememberLibraryPageRevealState
+import com.metrolist.music.ui.component.rememberLibraryTopBarProgress
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.frostedTopBarBackground
 import com.metrolist.music.ui.component.recordFrostBackdrop
@@ -214,6 +220,14 @@ fun CachePlaylistScreen(
 
     val itemCountText = pluralStringResource(R.plurals.n_song, filteredSongs.size, filteredSongs.size)
 
+    val frostBackdrop = rememberFrostBackdrop()
+    val revealState = rememberLibraryPageRevealState()
+    val topBarRevealProgress = rememberLibraryTopBarProgress(
+        state = revealState,
+        scrolledPastHeader = lazyListState.firstVisibleItemIndex > 0,
+    )
+    val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
+
     val selectionTopBar: @Composable () -> Unit = {
         IrideAdaptiveTopBar(
             title = {
@@ -263,7 +277,12 @@ fun CachePlaylistScreen(
     }
 
     val songListContent: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
-        item(key = "sort", contentType = CONTENT_TYPE_HEADER) {
+        item(key = "page_header", contentType = CONTENT_TYPE_HEADER) {
+            LibraryHeroTitle(
+                title = cachedPlaylistStr,
+                entranceAlpha = screenProgress,
+                revealState = revealState,
+            )
             LibrarySortRow(
                 sortOptions = listOf(
                     SongSortType.CREATE_DATE to stringResource(R.string.sort_by_create_date),
@@ -275,7 +294,6 @@ fun CachePlaylistScreen(
                 onSortChange = onSortTypeChange,
                 sortDescending = sortDescending,
                 onSortDescendingChange = onSortDescendingChange,
-                useIrideStyle = true,
                 modifier = Modifier,
             )
         }
@@ -380,18 +398,7 @@ fun CachePlaylistScreen(
         }
 
         item(key = "footer") {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                contentAlignment = androidx.compose.ui.Alignment.Center,
-            ) {
-                Text(
-                    text = itemCountText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            LibraryFooterCount(text = itemCountText)
         }
     }
 
@@ -411,40 +418,6 @@ fun CachePlaylistScreen(
             },
         )
     }
-
-        val frostBackdrop = rememberFrostBackdrop()
-        var titleBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
-        var topBarBottomPx by remember { mutableStateOf(0f) }
-        val headerTitleCovered by remember {
-            derivedStateOf {
-                lazyListState.firstVisibleItemIndex > 0 || titleBottomPx <= topBarBottomPx
-            }
-        }
-        val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
-        val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
-
-        val heroHeader: @Composable () -> Unit = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .irideEnter(screenProgress, 10.dp),
-            ) {
-                Spacer(modifier = Modifier.height(28.dp))
-                Text(
-                    text = cachedPlaylistStr,
-                    style = TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 40.sp,
-                        letterSpacing = (-0.6).sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onGloballyPositioned { titleBottomPx = it.boundsInWindow().bottom },
-                )
-            }
-        }
 
         Box(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -470,7 +443,11 @@ fun CachePlaylistScreen(
                             top = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateTopPadding(),
                         ),
                 ) {
-                    heroHeader()
+                    LibraryHeroTitle(
+                        title = cachedPlaylistStr,
+                        entranceAlpha = screenProgress,
+                        revealState = revealState,
+                    )
                     EmptyPlaceholder(
                         icon = R.drawable.music_note,
                         text = stringResource(R.string.playlist_is_empty),
@@ -478,18 +455,19 @@ fun CachePlaylistScreen(
                     )
                 }
             } else {
-                LazyColumn(
-                    state = lazyListState,
-                    contentPadding = PaddingValues(
-                        start = 20.dp,
-                        end = 20.dp,
-                        top = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateTopPadding(),
-                        bottom = LocalPlayerAwareWindowInsets.current
-                            .asPaddingValues().calculateBottomPadding(),
-                    ),
-                ) {
-                    item(key = "hero_header") { heroHeader() }
-                    songListContent()
+                CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
+                    LazyColumn(
+                        state = lazyListState,
+                        contentPadding = PaddingValues(
+                            start = 20.dp,
+                            end = 20.dp,
+                            top = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateTopPadding(),
+                            bottom = LocalPlayerAwareWindowInsets.current
+                                .asPaddingValues().calculateBottomPadding(),
+                        ),
+                    ) {
+                        songListContent()
+                    }
                 }
 
                 cacheFab()
@@ -499,60 +477,22 @@ fun CachePlaylistScreen(
             if (inSelectMode) {
                 selectionTopBar()
             } else {
-                val backProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
-                LibrarySearchHeader(
+                LibraryPageTopBar(
+                    title = cachedPlaylistStr,
+                    revealProgress = topBarRevealProgress,
+                    revealState = revealState,
+                    backdrop = frostBackdrop,
                     isSearchActive = isSearchActive,
                     searchQuery = searchQuery,
                     onSearchQueryChange = { searchQuery = it },
-                    onBack = {
+                    onNavigateUp = { navController.navigateUp() },
+                    onSearchClick = { isSearchActive = true },
+                    onCloseSearch = {
                         isSearchActive = false
                         searchQuery = ""
                     },
                     keyboardController = keyboardController,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
-                        .frostedTopBarBackground(
-                            progress = topBarRevealProgress,
-                            barColor = MaterialTheme.colorScheme.background,
-                            strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                            backdrop = frostBackdrop,
-                        )
-                        .statusBarsPadding()
-                        .height(56.dp)
-                        .padding(horizontal = 4.dp),
-                ) {
-                    Box(modifier = Modifier.irideEnter(backProgress, 6.dp)) {
-                        IconButton(onClick = { navController.navigateUp() }) {
-                            Icon(
-                                painter = painterResource(R.drawable.arrow_back),
-                                contentDescription = null,
-                            )
-                        }
-                    }
-                    Text(
-                        text = cachedPlaylistStr,
-                        style = TextStyle(
-                            fontFamily = SpaceMonoFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            letterSpacing = (-0.1).sp,
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground,
-                        maxLines = 1,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = 4.dp)
-                            .irideEnter(topBarRevealProgress, 6.dp)
-                            .revealMask(topBarRevealProgress),
-                    )
-                    IconButton(onClick = { isSearchActive = true }) {
-                        Icon(
-                            painter = painterResource(R.drawable.search),
-                            contentDescription = stringResource(R.string.search),
-                        )
-                    }
-                }
+                )
             }
         }
 }

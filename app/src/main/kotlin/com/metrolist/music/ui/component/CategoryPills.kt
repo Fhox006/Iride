@@ -50,6 +50,7 @@ import com.metrolist.music.db.entities.PlaylistCategoryWithCount
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textTertiary
+import com.metrolist.music.ui.utils.pressScale
 
 /** Filter state for the persisted, user-created playlist category pills (see [CategoryPillsRow]). */
 data class CategoryFilterState(
@@ -98,14 +99,16 @@ private fun AddCategoryPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier
             .heightIn(min = 48.dp)
             .widthIn(min = 48.dp)
+            .pressScale(interactionSource)
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = null,
                 role = Role.Button,
             ) { onClick() }
@@ -153,6 +156,7 @@ private fun CategoryPill(
         label = "categoryPillUnderlineAlpha",
     )
     val dotColor = remember(colorHex) { parseCategoryColor(colorHex) }
+    val interactionSource = remember { MutableInteractionSource() }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -160,9 +164,10 @@ private fun CategoryPill(
         modifier = modifier
             .heightIn(min = 48.dp)
             .widthIn(min = 48.dp)
+            .pressScale(interactionSource)
             .selectable(
                 selected = selected,
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = null,
                 role = Role.Tab,
                 onClick = onClick,
