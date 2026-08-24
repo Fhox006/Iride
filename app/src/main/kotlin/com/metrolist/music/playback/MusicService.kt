@@ -446,11 +446,6 @@ class MusicService :
     // empty reserve the radio disarms itself so the toggle never lies about being on.
     private var automixEmptyExtends: Int = 0
 
-    // Serializes every mutation of the radio reserve list: promotions run on service/UI
-    // threads while extension batches land on background ones, and an unsynchronized
-    // read-modify-write used to resurrect already-promoted tracks as duplicates.
-    private val automixLock = Any()
-
     // True while an extension batch is being fetched for the radio reserve list.
     private var automixExtending: Boolean = false
 
@@ -1775,12 +1770,10 @@ class MusicService :
         item: MediaItem,
         position: Int,
     ) {
-        synchronized(automixLock) {
-            automixItems.value =
-                automixItems.value.toMutableList().apply {
-                    removeAt(position)
-                }
-        }
+        automixItems.value =
+            automixItems.value.toMutableList().apply {
+                removeAt(position)
+            }
         playNext(listOf(item))
     }
 
@@ -1797,27 +1790,21 @@ class MusicService :
         // would immediately trigger another promotion, flooding the queue with the whole
         // fetched list at once.
         if (currentIndex == automixEnsuredAtIndex) return
-        var promotedHead: MediaItem? = null
-        synchronized(automixLock) {
-            val head = automixItems.value.firstOrNull()
-            if (head != null) {
-                val count = player.mediaItemCount
-                val alreadyAhead = ((currentIndex + 1)..minOf(currentIndex + 3, count - 1))
-                    .any { player.getMediaItemAt(it).mediaId == head.mediaId }
-                if (!alreadyAhead) {
+        val head = automixItems.value.firstOrNull()
+        if (head != null) {
+            val nextIndex = currentIndex + 1
+            if (!(nextIndex < player.mediaItemCount &&
+                    player.getMediaItemAt(nextIndex).mediaId == head.mediaId)
+            ) {
+                try {
                     automixItems.value = automixItems.value.drop(1)
                     appendedRadioMediaIds.add(head.mediaId)
-                    promotedHead = head
+                    player.addMediaItem(nextIndex.coerceAtMost(player.mediaItemCount), head)
+                } catch (_: Exception) {
+                    return
                 }
-                automixEnsuredAtIndex = currentIndex
             }
-        }
-        promotedHead?.let { head ->
-            try {
-                player.addMediaItem((currentIndex + 1).coerceAtMost(player.mediaItemCount), head)
-            } catch (_: Exception) {
-                return
-            }
+            automixEnsuredAtIndex = currentIndex
         }
         if (automixItems.value.size < AUTOMIX_REFILL_THRESHOLD) {
             extendAutomix()
@@ -1837,18 +1824,16 @@ class MusicService :
         scope.launch(SilentHandler) {
             fun merge(items: List<com.metrolist.innertube.models.SongItem>) {
                 if (!isAutoMixQueueActive.value || requestId != automixRequestId.get()) return
-                synchronized(automixLock) {
-                    val known =
-                        automixItems.value.map { it.mediaId }.toSet() + appendedRadioMediaIds
-                    val fresh = items
-                        .filter { it.id !in known }
-                        .map { it.toMediaItem() }
-                    if (fresh.isNotEmpty()) {
-                        automixEmptyExtends = 0
-                        automixItems.value = automixItems.value + fresh
-                    } else {
-                        automixEmptyExtends++
-                    }
+                val known =
+                    automixItems.value.map { it.mediaId }.toSet() + appendedRadioMediaIds
+                val fresh = items
+                    .filter { it.id !in known }
+                    .map { it.toMediaItem() }
+                if (fresh.isNotEmpty()) {
+                    automixEmptyExtends = 0
+                    automixItems.value = automixItems.value + fresh
+                } else {
+                    automixEmptyExtends++
                 }
             }
             try {
@@ -1873,66 +1858,20 @@ class MusicService :
     }
 
     fun reorderAutomix(fromIndex: Int, toIndex: Int) {
-        synchronized(automixLock) {
-            val list = automixItems.value.toMutableList()
-            if (fromIndex !in list.indices || toIndex !in list.indices || fromIndex == toIndex) return
-            list.add(toIndex, list.removeAt(fromIndex))
-            automixItems.value = list
-        }
-        notifyAutomixChanged()
+        val list = automixItems.value.toMutableList()
+        if (fromIndex !in list.indices || toIndex !in list.indices || fromIndex == toIndex) return
+        list.add(toIndex, list.removeAt(fromIndex))
+        automixItems.value = list
     }
 
     fun insertIntoAutomix(item: MediaItem, index: Int) {
-        synchronized(automixLock) {
-            val list = automixItems.value.toMutableList()
-            list.add(index.coerceIn(0, list.size), item)
-            automixItems.value = list
-        }
-        notifyAutomixChanged()
+        val list = automixItems.value.toMutableList()
+        list.add(index.coerceIn(0, list.size), item)
+        automixItems.value = list
     }
 
     fun removeFromAutomix(mediaId: String) {
-        synchronized(automixLock) {
-            automixItems.value = automixItems.value.filterNot { it.mediaId == mediaId }
-        }
-        notifyAutomixChanged()
-    }
-
-    /**
-     * Makes the reserve EXACTLY the given list. This is how queue filters become real:
-     * applying e.g. PARTY replaces what will actually play with the party selection, so the
-     * radio section on screen and the audio can never drift apart. Any outstanding promoted
-     * track is re-absorbed first so it can be re-placed freely by the new order.
-     */
-    fun applyAutomixOrder(items: List<MediaItem>) {
-        if (!playerInitialized.value || !isAutoMixQueueActive.value) return
-        synchronized(automixLock) {
-            val currentIndex = player.currentMediaItemIndex
-            val outstanding = mutableListOf<MediaItem>()
-            for (i in (player.mediaItemCount - 1) downTo (currentIndex + 1)) {
-                val item = player.getMediaItemAt(i)
-                if (item.mediaId in appendedRadioMediaIds) {
-                    outstanding.add(item)
-                    player.removeMediaItem(i)
-                }
-            }
-            outstanding.reverse()
-            automixEnsuredAtIndex = C.INDEX_UNSET
-            var seen = HashSet<String>()
-            automixItems.value = (outstanding + items).filter { seen.add(it.mediaId) }
-        }
-        ensureAutomixUpNext()
-    }
-
-    /**
-     * Call after any external edit to the radio reserve (reorder, insert, delete): lets the
-     * very next promotion happen again immediately so playback follows the edited list
-     * without waiting for a track transition.
-     */
-    fun notifyAutomixChanged() {
-        if (!isAutoMixQueueActive.value) return
-        automixEnsuredAtIndex = C.INDEX_UNSET
-        ensureAutomixUpNext()
+        automixItems.value = automixItems.value.filterNot { it.mediaId == mediaId }
     }
 
     /** True when this track is a radio song already spliced into the real timeline. */
