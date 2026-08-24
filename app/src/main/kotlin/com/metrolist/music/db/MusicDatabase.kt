@@ -185,7 +185,7 @@ abstract class InternalDatabase : RoomDatabase() {
                     MIGRATION_22_24,
                     MIGRATION_24_25,
                     MIGRATION_43_44,
-                )
+                ).fallbackToDestructiveMigration(dropAllTables = true)
                 .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                 .setTransactionExecutor(
                     java.util.concurrent.Executors
