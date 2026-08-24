@@ -233,6 +233,7 @@ class HomeViewModel @Inject constructor(
     fun syncDiscoveryWeeklyIfNeeded(force: Boolean = false) {
         viewModelScope.launch(Dispatchers.IO) {
             if (!discoveryWeeklySyncInFlight.compareAndSet(false, true)) return@launch
+            val syncStartedAtMillis = System.currentTimeMillis()
             try {
                 val prefs = context.dataStore.data.first()
                 val lastSyncMillis = prefs[LastDiscoveryWeeklySyncKey]
@@ -275,6 +276,11 @@ class HomeViewModel @Inject constructor(
                     database.insert(PlaylistSongMap(songId = song.id, playlistId = playlistId, position = position))
                 }
 
+                Timber.tag("DiscoveryWeekly").i(
+                    "playlist saved: %d songs in %d ms",
+                    songs.size,
+                    System.currentTimeMillis() - syncStartedAtMillis,
+                )
                 context.dataStore.edit { it[LastDiscoveryWeeklySyncKey] = System.currentTimeMillis() }
             } catch (e: Exception) {
                 reportException(e)
@@ -1290,7 +1296,6 @@ class HomeViewModel @Inject constructor(
                 communityPlaylistsLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
                         phase1Complete.filter { it }.first()
-                        kotlinx.coroutines.delay(2500L)
                         getCommunityPlaylists()
                         HomeCache.communityPlaylists = communityPlaylists.value
                     } finally {
@@ -1303,7 +1308,6 @@ class HomeViewModel @Inject constructor(
                 similarRecommendationsLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
                         phase1Complete.filter { it }.first()
-                        kotlinx.coroutines.delay(5000L)
                         getSimilarRecommendations()
                     } finally {
                         phase2SimilarDone.value = true
@@ -1315,7 +1319,6 @@ class HomeViewModel @Inject constructor(
                 dischiPerTeLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
                         phase1Complete.filter { it }.first()
-                        kotlinx.coroutines.delay(7500L)
                         getDischiPerTe()
                     } finally {
                         phase2DischiPerTeDone.value = true
@@ -1604,6 +1607,10 @@ class HomeViewModel @Inject constructor(
                     .filterVideoSongs(hideVideoSongs)
                     .filterYoutubeShorts(hideYoutubeShorts)
                 if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
+            }
+
+            if (filteredSections.isEmpty()) {
+                return@launch
             }
 
             previousHomePage.value = homePage.value
