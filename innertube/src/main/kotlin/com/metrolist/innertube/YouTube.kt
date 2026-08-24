@@ -1009,72 +1009,57 @@ object YouTube {
     }
 
     suspend fun getChartsPage(continuation: String? = null): Result<ChartsPage> = runCatching {
-        fun parse(response: BrowseResponse): List<ChartsPage.ChartSection> {
-            val sections = mutableListOf<ChartsPage.ChartSection>()
-            response.contents?.singleColumnBrowseResultsRenderer?.tabs?.firstOrNull()
-                ?.tabRenderer?.content?.sectionListRenderer?.contents?.forEach { content ->
-                    content.musicCarouselShelfRenderer?.let { renderer ->
-                        val title = renderer.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs?.firstOrNull()?.text
-                            ?: return@forEach
-                        val items = renderer.contents.mapNotNull { item ->
-                            when {
-                                item.musicResponsiveListItemRenderer != null ->
-                                    convertToChartItem(item.musicResponsiveListItemRenderer)
-                                item.musicTwoRowItemRenderer != null ->
-                                    convertMusicTwoRowItem(item.musicTwoRowItemRenderer)
-                                else -> null
-                            }
-                        }.filterNotNull()
-                        if (items.isNotEmpty()) {
-                            sections.add(
-                                ChartsPage.ChartSection(
-                                    title = title,
-                                    items = items,
-                                    chartType = determineChartType(title)
-                                )
-                            )
-                        }
-                    }
-                    content.gridRenderer?.let { renderer ->
-                        val title = renderer.header?.gridHeaderRenderer?.title?.runs?.firstOrNull()?.text
-                            ?: return@let
-                        val items = renderer.items.mapNotNull { item ->
-                            item.musicTwoRowItemRenderer?.let { renderer ->
-                                convertMusicTwoRowItem(renderer)
-                            }
-                        }.filterNotNull()
-                        if (items.isNotEmpty()) {
-                            sections.add(
-                                ChartsPage.ChartSection(
-                                    title = title,
-                                    items = items,
-                                    chartType = ChartsPage.ChartType.NEW_RELEASES
-                                )
-                            )
-                        }
-                    }
-                }
-            return sections
-        }
-
-        // Some clients/locales return the params URL-encoded, others expect the decoded form;
-        // retry once with the decoded variant before giving up on charts.
-        var response = innerTube.browse(
+        val response = innerTube.browse(
             client = WEB_REMIX,
             browseId = "FEmusic_charts",
             params = "ggMGCgQIgAQ%3D",
             continuation = continuation
         ).body<BrowseResponse>()
-        var sections = parse(response)
-        if (sections.isEmpty()) {
-            response = innerTube.browse(
-                client = WEB_REMIX,
-                browseId = "FEmusic_charts",
-                params = "ggMGCgQIgAQ=",
-                continuation = continuation
-            ).body<BrowseResponse>()
-            sections = parse(response)
-        }
+
+        val sections = mutableListOf<ChartsPage.ChartSection>()
+        response.contents?.singleColumnBrowseResultsRenderer?.tabs?.firstOrNull()
+            ?.tabRenderer?.content?.sectionListRenderer?.contents?.forEach { content ->
+                content.musicCarouselShelfRenderer?.let { renderer ->
+                    val title = renderer.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs?.firstOrNull()?.text
+                        ?: return@forEach
+                    val items = renderer.contents.mapNotNull { item ->
+                        when {
+                            item.musicResponsiveListItemRenderer != null -> 
+                                convertToChartItem(item.musicResponsiveListItemRenderer)
+                            item.musicTwoRowItemRenderer != null -> 
+                                convertMusicTwoRowItem(item.musicTwoRowItemRenderer)
+                            else -> null
+                        }
+                    }.filterNotNull()
+                    if (items.isNotEmpty()) {
+                        sections.add(
+                            ChartsPage.ChartSection(
+                                title = title,
+                                items = items,
+                                chartType = determineChartType(title)
+                            )
+                        )
+                    }
+                }
+                content.gridRenderer?.let { renderer ->
+                    val title = renderer.header?.gridHeaderRenderer?.title?.runs?.firstOrNull()?.text
+                        ?: return@let
+                    val items = renderer.items.mapNotNull { item ->
+                        item.musicTwoRowItemRenderer?.let { renderer ->
+                            convertMusicTwoRowItem(renderer)
+                        }
+                    }.filterNotNull()
+                    if (items.isNotEmpty()) {
+                        sections.add(
+                            ChartsPage.ChartSection(
+                                title = title,
+                                items = items,
+                                chartType = ChartsPage.ChartType.NEW_RELEASES
+                            )
+                        )
+                    }
+                }
+            }
 
         ChartsPage(
             sections = sections,

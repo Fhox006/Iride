@@ -167,7 +167,6 @@ import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.IrideCollapsibleSection
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.TopNavigationBar
-import com.metrolist.music.ui.component.frostedTopBarBackground
 import com.metrolist.music.LocalTopNavBarController
 import com.metrolist.music.ui.component.RandomizeGridItem
 import com.metrolist.music.ui.component.PlaylistGridItem
@@ -176,8 +175,6 @@ import com.metrolist.music.ui.component.SongCarousel
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.ui.layout.onSizeChanged
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.SpeedDialGridItem
 import com.metrolist.music.ui.component.YouTubeGridItem
@@ -217,7 +214,6 @@ import com.metrolist.music.db.entities.PlaylistSongMap
 import com.metrolist.music.utils.SyncState
 import com.metrolist.music.viewmodels.CommunityPlaylistItem
 import com.metrolist.music.ui.utils.IrideMotion
-import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.IrideTabEntrance
 import com.metrolist.music.ui.utils.irideEnter
 import com.metrolist.music.ui.utils.revealMask
@@ -550,33 +546,14 @@ fun HomeScreen(
         viewModel.onSectionBecameVisible("dischi_per_te")
     }
 
-    val headerScrolled by remember {
-        derivedStateOf {
-            lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 8
-        }
-    }
-    val topBarRevealProgress = rememberDiscreteProgress(headerScrolled)
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        snapAnimationSpec = tween(durationMillis = 200),
+    )
 
     Scaffold(
         modifier = Modifier,
         containerColor = if (mainTopGradient) Color.Transparent else MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0),
-        topBar = {
-            TopNavigationBar(
-                navigationItems = topNavBarController?.navigationItems ?: emptyList(),
-                currentRoute = topNavBarController?.currentRoute,
-                onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
-                modifier = Modifier.frostedTopBarBackground(
-                    progress = topBarRevealProgress,
-                    barColor = MaterialTheme.colorScheme.background,
-                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                    backdrop = com.metrolist.music.ui.component.LocalScreenFrostBackdrop.current,
-                ),
-                containerColor = Color.Transparent,
-                compact = topNavBarController?.compact ?: false,
-                accountImageUrl = topNavBarController?.accountImageUrl,
-            )
-        },
     ) { paddingValues ->
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val containerWidthDp = maxWidth
@@ -932,6 +909,18 @@ fun HomeScreen(
                     )
                     .rubberBandOverscroll(Orientation.Vertical, lazyListState),
             ) {
+                item(key = "top_nav_bar") {
+                    TopNavigationBar(
+                        navigationItems = topNavBarController?.navigationItems ?: emptyList(),
+                        currentRoute = topNavBarController?.currentRoute,
+                        onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
+                        modifier = Modifier.animateItem(),
+                        containerColor = Color.Transparent,
+                        compact = topNavBarController?.compact ?: false,
+                        accountImageUrl = topNavBarController?.accountImageUrl,
+                    )
+                }
+
                 if (isLoading) {
                     item(key = "loading_indicator") {
                         LinearProgressIndicator(

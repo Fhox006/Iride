@@ -13,7 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import java.util.Collections
 import kotlin.random.Random
@@ -31,7 +30,7 @@ class DiscoveryWeeklyGenerator(
     private val maxPerArtist = 2
     private val seedCount = 15
     private val perSeedCandidates = 4
-    private val seedTimeoutMillis = 12_000L
+    private val minCandidates = 10
 
     private val viralPattern = Regex(
         """(sped up|slowed( down)?|nightcore|8d audio|tiktok|\bmashup\b|\bedit\b)""",
@@ -55,51 +54,38 @@ class DiscoveryWeeklyGenerator(
         val toleratesViral = historyPool.isEmpty() || viralShare >= viralToleranceShare
 
         val candidates = Collections.synchronizedList(mutableListOf<SongItem>())
-        Timber.tag("DiscoveryWeekly").i("generate(): historyPool=%d excluded=%d", historyPool.size, excludedIds.size)
-
-        var homePool = emptyList<SongItem>()
-        var homeFetched = false
-        suspend fun homeSongs(): List<SongItem> {
-            if (!homeFetched) {
-                homePool = fetchHomeSongs()
-                homeFetched = true
-                Timber.tag("DiscoveryWeekly").i("generate(): homePool=%d", homePool.size)
-            }
-            return homePool
-        }
 
         val historySeedIds = historyPool.shuffled().take(seedCount).map { it.id }
         collectCandidates(historySeedIds, excludedIds, hideExplicit, hideVideoSongs, toleratesViral, candidates)
-        Timber.tag("DiscoveryWeekly").i("generate(): candidates after history seeds=%d", candidates.size)
 
-        if (candidates.size < targetSize) {
+        var homePool = emptyList<SongItem>()
+        if (candidates.size < minCandidates) {
+            homePool = fetchHomeSongs()
             val triedSeedIds = historySeedIds.toSet()
             collectCandidates(
-                homeSongs().map { it.id }.filterNot { it in triedSeedIds }.shuffled().take(seedCount),
+                homePool.map { it.id }.filterNot { it in triedSeedIds }.shuffled().take(seedCount),
                 excludedIds + candidates.map { it.id }.toSet(),
                 hideExplicit,
                 hideVideoSongs,
                 toleratesViral,
                 candidates,
             )
-            Timber.tag("DiscoveryWeekly").i("generate(): candidates after home seeds=%d", candidates.size)
         }
 
         if (candidates.size < targetSize) {
             val candidateIdSet = candidates.map { it.id }.toSet()
-            val filled = homeSongs()
-                .filter { it.id !in excludedIds && it.id !in candidateIdSet }
-                .filter { !hideExplicit || !it.explicit }
-                .filter { !hideVideoSongs || !it.isVideoSong }
-                .filter { toleratesViral || !viralPattern.containsMatchIn(it.title) }
-                .take(targetSize - candidates.size)
-            candidates.addAll(filled)
-            Timber.tag("DiscoveryWeekly").i("generate(): filled=%d from home", filled.size)
+            candidates.addAll(
+                homePool.filter { it.id !in excludedIds && it.id !in candidateIdSet }
+                    .filter { !hideExplicit || !it.explicit }
+                    .filter { !hideVideoSongs || !it.isVideoSong }
+                    .filter { toleratesViral || !viralPattern.containsMatchIn(it.title) }
+                    .take(targetSize - candidates.size),
+            )
         }
 
         val random = Random(seed)
         val perArtistCount = mutableMapOf<String, Int>()
-        val result = candidates
+        candidates
             .distinctBy { it.id }
             .shuffled(random)
             .filter { song ->
@@ -108,8 +94,6 @@ class DiscoveryWeeklyGenerator(
                 (count < maxPerArtist).also { keep -> if (keep) perArtistCount[artistKey] = count + 1 }
             }
             .take(targetSize)
-        Timber.tag("DiscoveryWeekly").i("generate(): final=%d", result.size)
-        result
     }
 
     private suspend fun fetchHomeSongs(): List<SongItem> =
@@ -129,20 +113,16 @@ class DiscoveryWeeklyGenerator(
     ) = coroutineScope {
         seedIds.map { videoId ->
             launch(Dispatchers.IO) {
-                val nextResult = withTimeoutOrNull(seedTimeoutMillis) {
-                    YouTube.next(WatchEndpoint(videoId = videoId))
-                }
-                val endpoint = nextResult?.getOrNull()?.relatedEndpoint
+                val nextResult = YouTube.next(WatchEndpoint(videoId = videoId))
+                val endpoint = nextResult.getOrNull()?.relatedEndpoint
                     ?: run {
-                        Timber.tag("DiscoveryWeekly").w("next() failed/timeout for seed %s", videoId)
+                        nextResult.exceptionOrNull()?.let { Timber.tag("DiscoveryWeekly").w(it, "next() failed for seed $videoId") }
                         return@launch
                     }
-                val relatedResult = withTimeoutOrNull(seedTimeoutMillis) {
-                    YouTube.related(endpoint)
-                }
-                val related = relatedResult?.getOrNull()?.songs
+                val relatedResult = YouTube.related(endpoint)
+                val related = relatedResult.getOrNull()?.songs
                     ?: run {
-                        Timber.tag("DiscoveryWeekly").w("related() failed/timeout for seed %s", videoId)
+                        relatedResult.exceptionOrNull()?.let { Timber.tag("DiscoveryWeekly").w(it, "related() failed for seed $videoId") }
                         return@launch
                     }
                 related

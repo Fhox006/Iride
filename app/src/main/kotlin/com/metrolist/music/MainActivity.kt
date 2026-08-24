@@ -30,10 +30,8 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -102,6 +100,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -170,6 +169,7 @@ import com.metrolist.music.constants.PendingUpdateTagKey
 import com.metrolist.music.constants.PendingUpdateVersionNameKey
 import com.metrolist.music.constants.PlayerAnchorKey
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
+import com.metrolist.music.constants.ShowNewsTabKey
 import com.metrolist.music.constants.ListenTogetherUsernameKey
 import com.metrolist.music.constants.LyricsProviderOrderKey
 import com.metrolist.music.constants.MiniPlayerHeight
@@ -206,8 +206,6 @@ import com.metrolist.music.ui.component.AppNavigationRail
 import com.metrolist.music.ui.component.RubberBandNavGate
 import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.DebugBubble
 import com.metrolist.music.ui.component.FloatingPillBottomSpacing
 import com.metrolist.music.ui.component.UpdateInterstitialScreen
@@ -611,13 +609,13 @@ class MainActivity : ComponentActivity() {
                     return@LaunchedEffect
                 }
 
-                delay(20_000)
-
                 val lastCheckAt = withContext(Dispatchers.IO) { dataStore.get(LastUpdateCheckKey, 0L) }
                 if (System.currentTimeMillis() - lastCheckAt <= Updater.CHECK_INTERVAL_MILLIS) {
                     onLatestVersionNameChange(BuildConfig.VERSION_NAME)
                     return@LaunchedEffect
                 }
+
+                delay(20_000)
 
                 withContext(Dispatchers.IO) {
                     Updater.checkForAnyUpdate(forceRefresh = false)
@@ -899,11 +897,13 @@ class MainActivity : ComponentActivity() {
                 val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
 
                 val (listenTogetherInTopBar) = rememberPreference(ListenTogetherInTopBarKey, defaultValue = true)
+                val (showNewsTab) = rememberPreference(ShowNewsTabKey, defaultValue = false)
                 val (compactTopNavigationBar) = rememberPreference(CompactTopNavigationBarKey, defaultValue = true)
                 val navigationItems =
-                    remember(listenTogetherInTopBar) {
+                    remember(listenTogetherInTopBar, showNewsTab) {
                         val filtered = Screens.MainScreens.filter {
-                            it != Screens.ListenTogether || !listenTogetherInTopBar
+                            (it != Screens.ListenTogether || !listenTogetherInTopBar) &&
+                                (it != Screens.News || showNewsTab)
                         }
                         filtered.sortedBy { screen ->
                             when (screen) {
@@ -1070,7 +1070,6 @@ class MainActivity : ComponentActivity() {
                 )
 
                 val irideBridgeState = remember { IrideBridgeState() }
-                val screenFrostBackdrop = rememberFrostBackdrop()
 
                 val playerAwareWindowInsets =
                     remember(bottomInset, showRail, isTopLevelRoute, curtainActive, playerBottomSheetState.isDismissed) {
@@ -1283,7 +1282,6 @@ class MainActivity : ComponentActivity() {
                     LocalSyncUtils provides syncUtils,
                     LocalListenTogetherManager provides listenTogetherManager,
                     LocalTopNavBarController provides topNavBarController,
-                    com.metrolist.music.ui.component.LocalScreenFrostBackdrop provides screenFrostBackdrop,
                 ) {
                     if (curtainActive && currentRoute != "wrapped") {
                         BottomSheetPlayer(
@@ -1305,7 +1303,7 @@ class MainActivity : ComponentActivity() {
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
                             Column {
-                                if (!showRail && isTopLevelRoute && currentRoute != "wrapped" && currentRoute != "onboarding" && currentRoute != "home" && currentRoute != "library" && currentRoute != Screens.Search.route && currentRoute != "settings" && currentRoute != Screens.News.route) {
+                                if (!showRail && isTopLevelRoute && currentRoute != "wrapped" && currentRoute != "onboarding" && currentRoute != "home" && currentRoute != "library" && currentRoute != Screens.Search.route && currentRoute != "settings") {
                                     TopNavigationBar(
                                         navigationItems = navigationItems,
                                         currentRoute = currentRoute,
@@ -1317,10 +1315,8 @@ class MainActivity : ComponentActivity() {
                                 }
                                 AnimatedVisibility(
                                     visible = shouldShowTopBar,
-                                    enter = fadeIn(animationSpec = tween(durationMillis = 200, easing = EaseInOut)) +
-                                        expandVertically(animationSpec = tween(durationMillis = 250, easing = EaseInOut)),
-                                    exit = fadeOut(animationSpec = tween(durationMillis = 160, easing = EaseInOut)) +
-                                        shrinkVertically(animationSpec = tween(durationMillis = 220, easing = EaseInOut)),
+                                    enter = fadeIn(animationSpec = tween(durationMillis = 600, easing = EaseInOut)),
+                                    exit = fadeOut(animationSpec = tween(durationMillis = 500, easing = EaseInOut)),
                                 ) {
                                     Row {
                                         TopAppBar(
@@ -1448,8 +1444,7 @@ class MainActivity : ComponentActivity() {
                             }
                             Box(
                                 Modifier
-                                    .weight(1f)
-                                    .recordFrostBackdrop(screenFrostBackdrop),
+                                    .weight(1f),
                             ) {
                                 val playerCoversScreen by remember(playerBottomSheetState) {
                                     derivedStateOf { playerBottomSheetState.progress >= 0.99f }
@@ -1705,13 +1700,12 @@ class MainActivity : ComponentActivity() {
                                             outlineColor = Color.White,
                                             onSurfaceColor = Color.White,
                                             errorColor = Color(0xFFFF6B6B),
-                                             onExpandClick = { if (stripInteractive) playerBottomSheetState.expandSoft() },
-                                             bottomSheetState = if (stripInteractive) playerBottomSheetState else null,
-                                             onArtPositioned = { r: Rect -> irideBridgeState.miniArt = r },
-                                             onProgressChanged = { p: Float -> irideBridgeState.progress = p },
-                                             artistAlpha = 0.85f,
-                                             compact = true,
-                                         )
+                                            onExpandClick = { if (stripInteractive) playerBottomSheetState.expandSoft() },
+                                            bottomSheetState = if (stripInteractive) playerBottomSheetState else null,
+                                            onArtPositioned = {},
+                                            artistAlpha = 0.85f,
+                                            modifier = Modifier.scale(0.94f),
+                                        )
                                     }
                                 }
                                 // While faded out the pill must stop being touchable entirely,
