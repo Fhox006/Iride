@@ -55,6 +55,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -96,6 +97,10 @@ import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.TopNavigationBar
+import com.metrolist.music.ui.component.frostedTopBarBackground
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
@@ -187,17 +192,38 @@ fun SettingsScreen(
     val accountName = if (accountNameFlow != "Guest") accountNameFlow else accountNamePref
     val accountImageUrl: String? = accountImageUrlFlow ?: accountPhotoUrlPref.takeIf { it.isNotEmpty() }
 
+    val settingsScrollState = rememberScrollState()
+    val frostBackdrop = rememberFrostBackdrop()
+    val headerScrolled by remember {
+        derivedStateOf { settingsScrollState.value > 8 }
+    }
+    val topBarRevealProgress = rememberDiscreteProgress(headerScrolled)
+
     Scaffold(
         modifier = Modifier,
         topBar = {
+            TopNavigationBar(
+                navigationItems = topNavBarController?.navigationItems ?: emptyList(),
+                currentRoute = topNavBarController?.currentRoute,
+                onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
+                modifier = Modifier.frostedTopBarBackground(
+                    progress = topBarRevealProgress,
+                    barColor = MaterialTheme.colorScheme.background,
+                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                    backdrop = frostBackdrop,
+                ),
+                containerColor = Color.Transparent,
+                compact = topNavBarController?.compact ?: false,
+                accountImageUrl = topNavBarController?.accountImageUrl,
+            )
         },
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
-    val settingsScrollState = rememberScrollState()
     Column(
         Modifier
             .fillMaxSize()
+            .recordFrostBackdrop(frostBackdrop)
             .padding(paddingValues)
             .windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(
@@ -208,14 +234,6 @@ fun SettingsScreen(
             .verticalScroll(settingsScrollState)
     ) {
         if (topNavBarController != null) {
-            TopNavigationBar(
-                navigationItems = topNavBarController.navigationItems,
-                currentRoute = topNavBarController.currentRoute,
-                onItemClick = topNavBarController.onItemClick,
-                containerColor = Color.Transparent,
-                compact = topNavBarController.compact,
-                accountImageUrl = topNavBarController.accountImageUrl,
-            )
             Row(
                 horizontalArrangement = Arrangement.End,
                 modifier = Modifier
