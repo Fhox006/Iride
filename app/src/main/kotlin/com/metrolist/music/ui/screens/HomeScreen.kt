@@ -53,6 +53,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.fillSelected
 import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.strokeItemSoft
+import com.metrolist.music.constants.IrideSoftBorderWidth
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.ui.theme.textTertiary
@@ -2350,7 +2352,8 @@ private fun IrideDailyDiscoverCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(10.dp)),
+                .clip(RoundedCornerShape(10.dp))
+                .border(IrideSoftBorderWidth, MaterialTheme.colorScheme.strokeItemSoft, RoundedCornerShape(10.dp)),
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
