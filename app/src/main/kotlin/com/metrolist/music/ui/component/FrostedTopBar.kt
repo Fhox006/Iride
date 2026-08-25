@@ -54,9 +54,13 @@ fun rememberFrostBackdrop(): FrostBackdrop? {
  * Put on the screen's scrolling content (must be a sibling drawn *before* the top bar, sharing its
  * top-left origin, so the blurred copy lands pixel-aligned under the bar). Draws the content
  * unchanged — the layer is only a snapshot for the bar to sample.
+ *
+ * [enabled] gates the recording: while false the layer is never touched, so an idle screen at the
+ * top of its feed pays zero recording cost and the GPU never sees a stale layer.
  */
-fun Modifier.recordFrostBackdrop(backdrop: FrostBackdrop?): Modifier {
+fun Modifier.recordFrostBackdrop(backdrop: FrostBackdrop?, enabled: Boolean = true): Modifier {
     val layer = backdrop?.content ?: return this
+    if (!enabled) return this
     return drawWithContent {
         layer.record { this@drawWithContent.drawContent() }
         drawLayer(layer)

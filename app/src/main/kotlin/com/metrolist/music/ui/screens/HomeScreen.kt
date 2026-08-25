@@ -168,6 +168,8 @@ import com.metrolist.music.ui.component.IrideCollapsibleSection
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.component.frostedTopBarBackground
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.LocalTopNavBarController
 import com.metrolist.music.ui.component.RandomizeGridItem
 import com.metrolist.music.ui.component.PlaylistGridItem
@@ -554,6 +556,7 @@ fun HomeScreen(
         }
     }
     val topBarRevealProgress = rememberDiscreteProgress(headerScrolled)
+    val frostBackdrop = rememberFrostBackdrop()
 
     Scaffold(
         modifier = Modifier,
@@ -568,7 +571,7 @@ fun HomeScreen(
                     progress = topBarRevealProgress,
                     barColor = MaterialTheme.colorScheme.background,
                     strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                    backdrop = com.metrolist.music.ui.component.LocalScreenFrostBackdrop.current,
+                    backdrop = frostBackdrop,
                 ),
                 containerColor = Color.Transparent,
                 compact = topNavBarController?.compact ?: false,
@@ -928,6 +931,7 @@ fun HomeScreen(
                     .then(
                         Modifier.graphicsLayer { alpha = screenProgress },
                     )
+                    .recordFrostBackdrop(frostBackdrop, enabled = headerScrolled)
                     .rubberBandOverscroll(Orientation.Vertical, lazyListState),
             ) {
                 if (isLoading) {
