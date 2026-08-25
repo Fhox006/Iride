@@ -1,17 +1,12 @@
-﻿
+
 package com.metrolist.music.ui.player
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
@@ -30,7 +25,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
@@ -92,6 +86,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -123,7 +118,6 @@ import androidx.compose.ui.zIndex
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
@@ -166,7 +160,6 @@ import com.metrolist.music.ui.utils.ShowMediaInfo
 import com.metrolist.music.ui.utils.pressScale
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.utils.makeTimeString
-import com.metrolist.music.viewmodels.LyricsViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -274,8 +267,8 @@ fun IrideMp3PlayerContent(
     val reducedMotion = rememberReducedMotion()
 
     // The thin frame belongs to the lyrics/queue panels that replace the artwork. While the
-    // album art itself is on display the frame is never drawn â€” not settled, not mid-drag,
-    // never â€” so nothing can ever peek out behind the photo.
+    // album art itself is on display the frame is never drawn — not settled, not mid-drag,
+    // never — so nothing can ever peek out behind the photo.
     val coverBorderAlpha by animateFloatAsState(
         targetValue = if (isLyricsActive || isQueueActive) 1f else 0f,
         animationSpec = tween(if (reducedMotion) 0 else 150),
@@ -466,13 +459,6 @@ fun IrideMp3PlayerContent(
                 }
             }
 
-            val sheetProgress = playerBottomSheetState.progress
-            val textEased = if (reducedMotion) {
-                if (sheetProgress >= 0.5f) 1f else 0f
-            } else {
-                sheetProgress.coerceIn(0f, 1f)
-            }
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth(IrideMp3CoverWidthFraction)
@@ -480,7 +466,15 @@ fun IrideMp3PlayerContent(
                     .padding(horizontal = 6.dp),
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (bridgeState != null) {
+                                Modifier.irideReportRect { bridgeState.playerInfo = it }.alpha(0f)
+                            } else {
+                                Modifier
+                            },
+                        ),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -496,7 +490,6 @@ fun IrideMp3PlayerContent(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
                                 .weight(1f)
-                                .graphicsLayer { alpha = textEased }
                                 .basicMarquee(iterations = 1, initialDelayMillis = 2000),
                         )
                         Spacer(Modifier.width(6.dp))
@@ -551,78 +544,46 @@ fun IrideMp3PlayerContent(
                         color = IrideArtistTextColor,
                         fontSize = 13.sp,
                         onArtistClick = onArtistClick,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .graphicsLayer { alpha = textEased },
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
 
                 Spacer(Modifier.height(10.dp))
 
-                // Seek model: while dragging, dragFraction rules; after release the bar
-                // HOLDS the committed value until the reported position catches up (or a
-                // safety timeout passes), so it never snaps back to the old spot.
-                var committedSeek by remember { mutableStateOf<Float?>(null) }
-                LaunchedEffect(committedSeek) {
-                    if (committedSeek != null) {
-                        delay(1200)
-                        committedSeek = null
-                    }
-                }
-                LaunchedEffect(position, duration) {
-                    val target = committedSeek ?: return@LaunchedEffect
-                    if (duration > 0 &&
-                        kotlin.math.abs(position.toFloat() / duration - target) < 0.01f
-                    ) {
-                        committedSeek = null
-                    }
-                }
-                val shownFraction = dragFraction
-                    ?: committedSeek
+                val rawProgress = dragFraction
                     ?: if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
-                val interacting = dragFraction != null || committedSeek != null
                 val progress by animateFloatAsState(
-                    targetValue = shownFraction,
-                    animationSpec = tween(if (interacting || reducedMotion) 0 else IrideMotion.Long, easing = IrideMotion.EaseOutQuart),
+                    targetValue = rawProgress,
+                    animationSpec = tween(if (dragFraction != null || reducedMotion) 0 else IrideMotion.Long, easing = IrideMotion.EaseOutQuart),
                     label = "irideProgress",
                 )
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 24.dp),
-                    contentAlignment = Alignment.CenterStart,
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.22f))
+                        .pointerInput(duration, isListenTogetherGuest) {
+                            if (duration <= 0 || isListenTogetherGuest) return@pointerInput
+                            awaitEachGesture {
+                                val down = awaitFirstDown()
+                                dragFraction = (down.position.x / size.width).coerceIn(0f, 1f)
+                                drag(down.id) { change ->
+                                    change.consume()
+                                    dragFraction = (change.position.x / size.width).coerceIn(0f, 1f)
+                                }
+                                dragFraction?.let { onSeek(it) }
+                                dragFraction = null
+                            }
+                        },
                 ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(5.dp)
+                            .fillMaxHeight()
+                            .fillMaxWidth(progress)
                             .clip(RoundedCornerShape(50))
-                            .background(Color.White.copy(alpha = 0.22f))
-                            .pointerInput(duration, isListenTogetherGuest) {
-                                if (duration <= 0 || isListenTogetherGuest) return@pointerInput
-                                awaitEachGesture {
-                                    val down = awaitFirstDown()
-                                    dragFraction = (down.position.x / size.width).coerceIn(0f, 1f)
-                                    drag(down.id) { change ->
-                                        change.consume()
-                                        dragFraction = (change.position.x / size.width).coerceIn(0f, 1f)
-                                    }
-                                    dragFraction?.let { target ->
-                                        committedSeek = target
-                                        onSeek(target)
-                                    }
-                                    dragFraction = null
-                                }
-                            },
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(progress)
-                                .clip(RoundedCornerShape(50))
-                                .background(Color.White),
-                        )
-                    }
+                            .background(Color.White),
+                    )
                 }
 
                 Spacer(Modifier.height(4.dp))
@@ -632,12 +593,8 @@ fun IrideMp3PlayerContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
-                        text = if (interacting && duration > 0) {
-                            makeTimeString((shownFraction * duration).toLong())
-                        } else {
-                            makeTimeString(position)
-                        },
-                        color = Color.White.copy(alpha = if (interacting) 1f else 0.65f),
+                        text = makeTimeString(position),
+                        color = Color.White.copy(alpha = 0.65f),
                         fontFamily = InterFontFamily,
                         fontSize = 11.sp,
                     )
@@ -711,7 +668,7 @@ fun IrideMp3PlayerContent(
  * True fullscreen for lyrics: a separate, edge-to-edge Android [Dialog] window instead of the
  * player card merely growing within its own bounds. A Dialog gets its own Window, so it is
  * guaranteed to draw above everything else in the activity (status bar, nav bar, any other
- * composable) â€” the previous in-card "expand" approach still shared the activity's single window
+ * composable) — the previous in-card "expand" approach still shared the activity's single window
  * with everything else, which is why some UI (title/date texts) could end up drawn above it: draw
  * order there depends on composition order, not on being "the fullscreen one".
  */
@@ -730,18 +687,6 @@ private fun FullScreenLyricsDialog(
     val currentLyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
     val translationsActive by LyricsTranslationHelper.hasActiveTranslations.collectAsState()
     var romanizeEnabled by rememberPreference(LyricsRomanizeToggleKey, false)
-    val lyricsViewModel: LyricsViewModel = hiltViewModel()
-    val lyricLines by lyricsViewModel.lines.collectAsState()
-    var hasRomanizedText by remember(lyricLines) { mutableStateOf(false) }
-    LaunchedEffect(lyricLines) {
-        lyricLines.forEach { entry ->
-            launch {
-                entry.romanizedTextFlow.collect { value ->
-                    if (value != null) hasRomanizedText = true
-                }
-            }
-        }
-    }
 
     fun requestClose() {
         if (closing) return
@@ -853,36 +798,25 @@ private fun FullScreenLyricsDialog(
                         modifier = Modifier.size(20.dp),
                     )
                 }
-                AnimatedVisibility(
-                    visible = hasRomanizedText,
-                    enter = fadeIn(tween(IrideMotion.Medium)) +
-                        scaleIn(
-                            initialScale = 0.6f,
-                            animationSpec = tween(IrideMotion.Medium, easing = IrideMotion.EaseOutExpo),
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(if (romanizeEnabled) Color.White.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.14f))
+                        .border(1.dp, IrideMp3PanelBorderColor, CircleShape)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { romanizeEnabled = !romanizeEnabled },
                         ),
-                    exit = fadeOut(tween(IrideMotion.Short)) +
-                        scaleOut(targetScale = 0.6f, animationSpec = tween(IrideMotion.Short)),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(if (romanizeEnabled) Color.White.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.14f))
-                            .border(1.dp, IrideMp3PanelBorderColor, CircleShape)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = { romanizeEnabled = !romanizeEnabled },
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.alphabet_cyrillic),
-                            contentDescription = null,
-                            tint = if (romanizeEnabled) Color.Black else Color.White.copy(alpha = 0.9f),
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
+                    Icon(
+                        painter = painterResource(R.drawable.alphabet_cyrillic),
+                        contentDescription = null,
+                        tint = if (romanizeEnabled) Color.Black else Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
                 Box(
                     modifier = Modifier
@@ -1064,7 +998,7 @@ private fun IrideQueuePreview(
     val automix by playerConnection.service.automixItems.collectAsState()
     val isRadioOn by playerConnection.service.isAutoMixQueueActive.collectAsState()
     // Seeded "similar content" only becomes a visible radio once the user actually arms the
-    // radio â€” the wheel icon and this section always agree on what "on" means.
+    // radio — the wheel icon and this section always agree on what "on" means.
     val visibleAutomix = if (isRadioOn) automix else emptyList()
     val mutableAutomixItems = remember { mutableStateListOf<MediaItem>() }
     LaunchedEffect(automix) {
@@ -1098,20 +1032,6 @@ private fun IrideQueuePreview(
             filterAutomix(radioSourceItems, selectedAutomixFilter, familiarArtistNames, automixGenreFilter.genreBySongId)
                 .take(playerConnection.service.automixUpcomingLimit - 1)
         }
-
-    // A filter is authoritative, not cosmetic: choosing one REPLACES the radio's real play
-    // order with exactly the filtered list, so what you see here is what will sound.
-    LaunchedEffect(selectedAutomixFilter, isRadioOn) {
-        if (!isRadioOn || selectedAutomixFilter == AUTOMIX_FILTER_ALL) return@LaunchedEffect
-        delay(80)
-        val ordered = filterAutomix(
-            mutableAutomixItems.toList(),
-            selectedAutomixFilter,
-            familiarArtistNames,
-            automixGenreFilter.genreBySongId,
-        )
-        playerConnection.service.applyAutomixOrder(ordered)
-    }
 
     // Flat slot list of the three sections. Rebuilt only while no drag is in progress so a
     // live reorder never fights the source refresh mid-gesture. The radio branch sits
@@ -1180,9 +1100,6 @@ private fun IrideQueuePreview(
         val promotedUid = visibleQueueWindows.drop(1)
             .firstOrNull { playerConnection.service.isRadioPromoted(it.mediaItem.mediaId) }
             ?.uid
-        // A song that is already a visible timeline row can never appear again as a radio
-        // row — this belt makes duplicate rows impossible even if the reserve ever races.
-        val shownWindowIds = visibleQueueWindows.mapTo(HashSet()) { it.mediaItem.mediaId }
         combinedList.apply {
             clear()
             addAll(historyItems.map { IrideQueueSlot.History(it) })
@@ -1190,7 +1107,7 @@ private fun IrideQueuePreview(
             visibleQueueWindows.drop(1)
                 .firstOrNull { it.uid == promotedUid }
                 ?.let { add(IrideQueueSlot.QueueEntry(it)) }
-            addAll(filteredAutomix.filterNot { it.mediaId in shownWindowIds }.map { IrideQueueSlot.Automix(it) })
+            addAll(filteredAutomix.map { IrideQueueSlot.Automix(it) })
             visibleQueueWindows.drop(1)
                 .filter { it.uid != promotedUid }
                 .forEach { add(IrideQueueSlot.QueueEntry(it)) }
@@ -1276,7 +1193,7 @@ private fun IrideQueuePreview(
                                 .map { it.metadata }
                         }
                         else -> {
-                            // Dropped into the queue at that spot â†’ real "play next" insertion.
+                            // Dropped into the queue at that spot → real "play next" insertion.
                             val insertionIndex = combinedList.take(idx).count { it is IrideQueueSlot.QueueEntry } +
                                 hiddenBefore
                             playerConnection.player.addMediaItem(insertionIndex, slot.metadata.toMediaItem())
@@ -1345,13 +1262,8 @@ private fun IrideQueuePreview(
         ) {
             val renderFirstQueueIdx = combinedList.indexOfFirst { it is IrideQueueSlot.QueueEntry }
                 .let { if (it == -1) combinedList.size else it }
-            // The radio group starts at the promoted track (the one that will actually play
-            // next), so skipping always fires the FIRST row visible under the RADIO header.
-            val renderAutomixStartIdx = combinedList.indexOfFirst { slot ->
-                (slot is IrideQueueSlot.QueueEntry &&
-                    playerConnection.service.isRadioPromoted(slot.window.mediaItem.mediaId)) ||
-                    slot is IrideQueueSlot.Automix
-            }.let { if (it == -1) combinedList.size else it }
+            val renderAutomixStartIdx = combinedList.indexOfFirst { it is IrideQueueSlot.Automix }
+                .let { if (it == -1) combinedList.size else it }
 
             if (historyItems.isNotEmpty()) {
                 item(key = "history_header") {
@@ -1382,7 +1294,7 @@ private fun IrideQueuePreview(
                     }
                 }
 
-                if (slotIdx == renderAutomixStartIdx && renderAutomixStartIdx < combinedList.size) {
+                if (slotIdx == renderAutomixStartIdx && visibleAutomix.isNotEmpty()) {
                     item(key = "radio_section_header") {
                         Column(modifier = Modifier.animateItem()) {
                             Text(
@@ -1483,8 +1395,6 @@ private fun IrideQueuePreview(
                                 val window = slot.window
                                 val metadata = window.mediaItem.metadata
                                 val isActive = window.uid == currentPlayingUid
-                                // Promoted radio rows belong visually to the radio group.
-                                val isRadioRow = playerConnection.service.isRadioPromoted(window.mediaItem.mediaId)
                                 val dismissState = rememberSwipeToDismissBoxState(
                                     positionalThreshold = { totalDistance -> totalDistance },
                                 )
@@ -1499,11 +1409,6 @@ private fun IrideQueuePreview(
                                             realIndex != playerConnection.player.currentMediaItemIndex
                                         ) {
                                             playerConnection.player.removeMediaItem(realIndex)
-                                            if (isRadioRow) {
-                                                // The next radio track must take its place
-                                                // immediately, not at the next transition.
-                                                playerConnection.service.notifyAutomixChanged()
-                                            }
                                         } else {
                                             // Nothing was removed: settle the row back instead
                                             // of leaving it stranded half-swiped.
@@ -1532,26 +1437,6 @@ private fun IrideQueuePreview(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .animateItem()
-                                        .then(
-                                            if (isRadioRow) {
-                                                Modifier
-                                                    .drawBehind {
-                                                        // Same vertical branch line as the rest
-                                                        // of the radio group.
-                                                        val x = 2.dp.toPx()
-                                                        drawLine(
-                                                            color = IrideRadioBranchColor,
-                                                            start = Offset(x, -7.dp.toPx()),
-                                                            end = Offset(x, size.height + 7.dp.toPx()),
-                                                            strokeWidth = 2.dp.toPx(),
-                                                            cap = StrokeCap.Round,
-                                                        )
-                                                    }
-                                                    .padding(start = 12.dp)
-                                            } else {
-                                                Modifier
-                                            },
-                                        )
                                         .clickable(
                                             interactionSource = remember { MutableInteractionSource() },
                                             indication = null,
@@ -1572,9 +1457,9 @@ private fun IrideQueuePreview(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = metadata?.title.orEmpty(),
-                                            color = Color.White,
+                                            color = if (isActive) Color.White else Color.White.copy(alpha = 0.75f),
                                             fontFamily = InterFontFamily,
-                                            fontWeight = if (isActive || isRadioRow) FontWeight.SemiBold else FontWeight.Normal,
+                                            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
                                             fontSize = 12.sp,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
@@ -1880,7 +1765,7 @@ private fun BoxScope.WheelZone(
 }
 
 /**
- * Plain-text LYRICS/QUEUE toggle â€” gray at rest, white when active. No icon, no background:
+ * Plain-text LYRICS/QUEUE toggle — gray at rest, white when active. No icon, no background:
  * pinned into the corners of the control pad's Box (see [IrideMp3PlayerContent]), not stacked
  * next to the wheel itself.
  */
@@ -1964,6 +1849,179 @@ fun IrideMiniPlayerBridgeOverlay(
     }
 }
 
+private const val IrideCoverTextSplit = 0.28f
+
+private val IrideBridgeInfoActionsWidth = 78.dp
+
+private val IrideBridgeInfoLineConvergence = 6.dp
+
+private val IrideBridgeInfoMiniBaselineGap = 7.sp
+
+@Composable
+private fun BridgedInfoBlock(
+    metadata: MediaMetadata,
+    start: Rect,
+    end: Rect,
+    rootOffset: Offset,
+    progress: Float,
+    navController: NavController,
+    playerBottomSheetState: BottomSheetState,
+    interactive: Boolean = true,
+) {
+    val density = LocalDensity.current
+    val startLocal = remember(start, rootOffset) { start.translate(-rootOffset.x, -rootOffset.y) }
+    val endLocal = remember(end, rootOffset) { end.translate(-rootOffset.x, -rootOffset.y) }
+    val left = lerp(startLocal.left, endLocal.left, progress)
+    val top = lerp(startLocal.top, endLocal.top, progress)
+    val width = lerp(startLocal.width, endLocal.width, progress)
+
+    var titleLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var artistLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
+    val lineConvergencePx = run {
+        val title = titleLayoutResult
+        val artist = artistLayoutResult
+        if (title == null || artist == null) {
+            with(density) { IrideBridgeInfoLineConvergence.toPx() }
+        } else {
+            val naturalGap = title.size.height + artist.getLineBaseline(0)
+            val targetGap =
+                title.getLineBaseline(0) + with(density) { IrideBridgeInfoMiniBaselineGap.toPx() }
+            (naturalGap - targetGap).coerceAtLeast(0f)
+        }
+    }
+
+    val miniTitleColor = MaterialTheme.colorScheme.onSurface
+    val miniArtistColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+
+    val playerConnection = LocalPlayerConnection.current
+    val database = LocalDatabase.current
+    val librarySong by database.song(metadata.id).collectAsState(initial = null)
+    val isEpisode = librarySong?.song?.isEpisode == true
+    val isFavorite = if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
+
+    val menuState = LocalMenuState.current
+    val bottomSheetPageState = LocalBottomSheetPageState.current
+    val onMoreClick = {
+        menuState.show {
+            PlayerMenu(
+                mediaMetadata = metadata,
+                navController = navController,
+                playerBottomSheetState = playerBottomSheetState,
+                onShowDetailsDialog = {
+                    metadata.id.let { id ->
+                        bottomSheetPageState.show { ShowMediaInfo(id) }
+                    }
+                },
+                onDismiss = menuState::dismiss,
+            )
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .offset { IntOffset(left.roundToInt(), top.roundToInt()) }
+            .width(with(density) { width.toDp() })
+            // Optical fix: the mini-side pair sits a touch high of center otherwise.
+            .graphicsLayer {
+                translationY = -with(density) { 2.dp.toPx() } * (1f - progress)
+            },
+    ) {
+        val iconReveal = if (playerConnection != null) {
+            ((progress - 0.6f) / 0.4f).coerceIn(0f, 1f)
+        } else {
+            0f
+        }
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = metadata.title,
+                    color = lerpColor(miniTitleColor, Color.White, progress),
+                    fontFamily = InterFontFamily,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { titleLayoutResult = it },
+                    modifier = Modifier
+                        .weight(1f)
+                        .graphicsLayer {
+                            val scale = lerp(14f / 16f, 1f, progress)
+                            scaleX = scale
+                            scaleY = scale
+                            transformOrigin = TransformOrigin(0f, 0f)
+                            translationY = lineConvergencePx / 2f * (1f - progress)
+                        },
+                )
+                Spacer(Modifier.width(IrideBridgeInfoActionsWidth * iconReveal))
+            }
+            if (playerConnection != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .graphicsLayer { alpha = iconReveal },
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .padding(start = 6.dp)
+                            .size(36.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                enabled = iconReveal > 0f,
+                            ) { onMoreClick() },
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.more_vert),
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                enabled = iconReveal > 0f,
+                            ) { playerConnection.service.toggleLike() },
+                    ) {
+                        Icon(
+                            painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
+                            contentDescription = null,
+                            tint = if (isFavorite) Color.White else Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+            }
+        }
+        if (metadata.artists.any { it.name.isNotBlank() }) {
+            IrideArtistText(
+                mediaMetadata = metadata,
+                color = lerpColor(miniArtistColor, IrideArtistTextColor, progress),
+                fontSize = 12.sp,
+                onTextLayout = { artistLayoutResult = it },
+                enabled = interactive,
+                modifier = Modifier.graphicsLayer {
+                    translationY = -lineConvergencePx / 2f * (1f - progress)
+                },
+                onArtistClick = { artistId ->
+                    if (progress < 1f) {
+                        playerBottomSheetState.expandSoft()
+                    } else if (artistId.isNotBlank()) {
+                        navController.navigate("artist/$artistId")
+                        playerBottomSheetState.collapseSoft()
+                    }
+                },
+            )
+        }
+    }
+}
 
 @Composable
 private fun BridgedElement(

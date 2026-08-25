@@ -44,7 +44,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -162,49 +161,7 @@ internal fun LyricsLine(
     lyricsBlurEnabled: Boolean = true
 ) {
 
-    val agentAlignment = when {
-        respectAgentPositioning && item.agent == "v1" -> Alignment.Start
-        respectAgentPositioning && item.agent == "v2" -> Alignment.End
-        respectAgentPositioning && item.agent == "v1000" -> Alignment.CenterHorizontally
-        item.isBackground -> Alignment.CenterHorizontally
-        else -> when (lyricsTextPosition) {
-            LyricsPosition.LEFT -> Alignment.Start
-            LyricsPosition.CENTER -> Alignment.CenterHorizontally
-            LyricsPosition.RIGHT -> Alignment.End
-        }
-    }
-
-    // Slight emphasis: the active line scales up a touch, anchored to its text
-    // alignment so left/right aligned lyrics don't drift horizontally.
-    // The line is emphasized as soon as it becomes the focused lyric (the scroll
-    // target advances already during inter-line gaps), not only once singing starts.
-    val lineScale by animateFloatAsState(
-        targetValue = if (!item.isBackground &&
-            (isActiveLine || (isSynced && isAutoScrollEnabled && index == displayedCurrentLineIndex))
-        ) {
-            1.05f
-        } else {
-            1f
-        },
-        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
-        label = "lyricsLineScale"
-    )
-    val lineScaleOrigin = TransformOrigin(
-        pivotFractionX = when (agentAlignment) {
-            Alignment.Start -> 0f
-            Alignment.End -> 1f
-            else -> 0.5f
-        },
-        pivotFractionY = 0.5f
-    )
-
     val itemModifier = modifier
-        .graphicsLayer {
-            scaleX = lineScale
-            scaleY = lineScale
-            transformOrigin = lineScaleOrigin
-            clip = false
-        }
         .fillMaxWidth()
         .onSizeChanged { onSizeChanged(it.height) }
         .clip(RoundedCornerShape(8.dp))
@@ -239,6 +196,18 @@ internal fun LyricsLine(
         ),
         label = "lyricsBlurRadius"
     )
+
+    val agentAlignment = when {
+        respectAgentPositioning && item.agent == "v1" -> Alignment.Start
+        respectAgentPositioning && item.agent == "v2" -> Alignment.End
+        respectAgentPositioning && item.agent == "v1000" -> Alignment.CenterHorizontally
+        item.isBackground -> Alignment.CenterHorizontally
+        else -> when (lyricsTextPosition) {
+            LyricsPosition.LEFT -> Alignment.Start
+            LyricsPosition.CENTER -> Alignment.CenterHorizontally
+            LyricsPosition.RIGHT -> Alignment.End
+        }
+    }
 
     val agentTextAlign = when {
         respectAgentPositioning && item.agent == "v1" -> TextAlign.Left
@@ -297,11 +266,8 @@ internal fun LyricsLine(
 
                 val romanizedTextState by item.romanizedTextFlow.collectAsState()
                 val isRomanizedAvailable = romanizedTextState != null
-                // Background vocals stay clean: never swap to romanization or show
-                // the pronunciation line underneath them.
-                val effectiveRomanizeAsMain = romanizeAsMain && !item.isBackground
-                val mainTextRaw = if (effectiveRomanizeAsMain && isRomanizedAvailable) romanizedTextState else item.text
-                val subTextRaw = if (effectiveRomanizeAsMain && isRomanizedAvailable) item.text else romanizedTextState
+                val mainTextRaw = if (romanizeAsMain && isRomanizedAvailable) romanizedTextState else item.text
+                val subTextRaw = if (romanizeAsMain && isRomanizedAvailable) item.text else romanizedTextState
                 val mainText = if (item.isBackground) mainTextRaw?.removePrefix("(")?.removeSuffix(")") else mainTextRaw
                 val subText = if (item.isBackground) subTextRaw?.removePrefix("(")?.removeSuffix(")") else subTextRaw
 
@@ -374,7 +340,7 @@ internal fun LyricsLine(
                     )
                 }
 
-                if (romanizeLyrics && enabledLanguages.isNotEmpty() && !item.isBackground) {
+                if (romanizeLyrics && enabledLanguages.isNotEmpty()) {
                     subText?.let {
                         Text(
                             text = it,
@@ -388,24 +354,15 @@ internal fun LyricsLine(
                 }
 
                 val transText by item.translatedTextFlow.collectAsState()
-                // Very short interjections (e.g. "Oh", "(Hey)") are not translated to
-                // avoid cluttering the lyrics with noisy one-word translations.
-                val isTranslatableText = item.text.trim()
-                    .removePrefix("(")
-                    .removeSuffix(")")
-                    .trim()
-                    .length >= 4
-                if (isTranslatableText) {
-                    transText?.let {
-                        Text(
-                            text = it,
-                            fontSize = 16.sp,
-                            color = expressiveAccent.copy(alpha = 0.5f),
-                            textAlign = agentTextAlign,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
+                transText?.let {
+                    Text(
+                        text = it,
+                        fontSize = 16.sp,
+                        color = expressiveAccent.copy(alpha = 0.5f),
+                        textAlign = agentTextAlign,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
             }
         }
