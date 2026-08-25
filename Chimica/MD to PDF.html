@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MD → PDF</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,700;1,6..72,400&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #111;
+  --surface: #1c1c1c;
+  --border: #2e2e2e;
+  --text: #e8e4de;
+  --muted: #666;
+  --accent: #c8a96e;
+  --accent-dim: rgba(200,169,110,0.12);
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Newsreader', Georgia, serif;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ── Layout ─────────────────────────────── */
+.layout {
+  display: flex;
+  flex: 1;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* ── LEFT PANEL ─────────────────────────── */
+.panel {
+  width: 340px;
+  min-width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  padding: 2rem 1.8rem;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+header { text-align: center; }
+
+h1 {
+  font-size: 1.35rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+h1 span { color: var(--accent); }
+
+.sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+.drop-zone {
+  border: 1.5px dashed var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 1.8rem 1.2rem;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s, background 0.2s;
+}
+.drop-zone:hover, .drop-zone.over {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.drop-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+.drop-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+.drop-label strong {
+  color: var(--text);
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0.2rem;
+  font-weight: 500;
+}
+
+.file-name {
+  font-size: 0.78rem;
+  color: var(--accent);
+  font-style: italic;
+  text-align: center;
+  min-height: 1em;
+  word-break: break-all;
+}
+
+/* ── Sliders ─────────────────────────────── */
+.sliders { display: flex; flex-direction: column; gap: 1rem; }
+
+.slider-row { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.slider-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+  font-family: system-ui, sans-serif;
+}
+
+.slider-val {
+  font-size: 0.74rem;
+  color: var(--accent);
+  font-family: system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  transition: transform 0.1s;
+}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+input[type="range"]::-moz-range-thumb {
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+}
+
+.btn {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  background: var(--accent);
+  color: #111;
+  border: none;
+  border-radius: 5px;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  width: 100%;
+  letter-spacing: 0.02em;
+  transition: opacity 0.15s, background 0.15s;
+}
+.btn:hover { background: #d4b87a; }
+.btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.msg {
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+  min-height: 1em;
+}
+
+/* ── RIGHT PANEL — PREVIEW ───────────────── */
+.preview-wrap {
+  flex: 1;
+  overflow: auto;
+  background: #222;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.preview-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 0.5rem;
+  color: var(--border);
+  font-size: 0.8rem;
+  font-style: italic;
+  text-align: center;
+  pointer-events: none;
+  min-height: 60vh;
+}
+
+.preview-empty svg {
+  opacity: 0.18;
+  margin-bottom: 0.5rem;
+}
+
+/* The "paper" page at true A4 aspect (794×1123 px @ 96dpi) */
+.page-sheet {
+  width: 794px;
+  min-height: 1123px;
+  background: #fff;
+  box-shadow: 0 4px 40px rgba(0,0,0,0.5);
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.page-sheet iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 1123px;
+  border: none;
+  display: block;
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── LEFT PANEL ── -->
+  <div class="panel">
+
+    <header>
+      <h1>MD <span>→</span> PDF</h1>
+      <p class="sub">Tipografia editoriale, anteprima live</p>
+    </header>
+
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".md,.markdown,.txt">
+      <div class="drop-label">
+        <strong>Trascina il file .md qui</strong>
+        oppure clicca per sfogliare
+      </div>
+    </div>
+
+    <div class="file-name" id="fileName"></div>
+
+    <div class="sliders">
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-label">Dimensione testo</span>
+          <span class="slider-val" id="fontSizeVal">12 pt</span>
+        </div>
+        <input type="range" id="fontSize" min="9" max="16" step="0.5" value="12">
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-label">Interlinea</span>
+          <span class="slider-val" id="lineHeightVal">1.65</span>
+        </div>
+        <input type="range" id="lineHeight" min="1.0" max="2.2" step="0.05" value="1.65">
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-label">Margine laterale</span>
+          <span class="slider-val" id="marginLRVal">30 mm</span>
+        </div>
+        <input type="range" id="marginLR" min="10" max="60" step="2" value="30">
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-label">Margine alto / basso</span>
+          <span class="slider-val" id="marginTBVal">24 mm</span>
+        </div>
+        <input type="range" id="marginTB" min="10" max="70" step="2" value="24">
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-label">Spazio tra blocchi</span>
+          <span class="slider-val" id="blockSpacingVal">1.00 em</span>
+        </div>
+        <input type="range" id="blockSpacing" min="0.3" max="3" step="0.1" value="1">
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-label">Spessore testo</span>
+          <span class="slider-val" id="fontWeightVal">400</span>
+        </div>
+        <input type="range" id="fontWeight" min="300" max="600" step="50" value="400">
+      </div>
+    </div>
+
+    <button class="btn" id="convertBtn" disabled>Apri PDF</button>
+    <div class="msg" id="msg"></div>
+
+  </div>
+
+  <!-- ── RIGHT PANEL — PREVIEW ── -->
+  <div class="preview-wrap" id="previewWrap">
+    <div class="preview-empty" id="previewEmpty">
+      <svg width="48" height="60" viewBox="0 0 48 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="46" height="58" rx="3" stroke="#e8e4de" stroke-width="2"/>
+        <line x1="10" y1="18" x2="38" y2="18" stroke="#e8e4de" stroke-width="2" stroke-linecap="round"/>
+        <line x1="10" y1="26" x2="38" y2="26" stroke="#e8e4de" stroke-width="2" stroke-linecap="round"/>
+        <line x1="10" y1="34" x2="28" y2="34" stroke="#e8e4de" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      Carica un file per vedere l'anteprima
+    </div>
+    <div class="page-sheet" id="pageSheet" style="display:none;">
+      <iframe id="previewFrame" title="Anteprima PDF"></iframe>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  marked.setOptions({ breaks: false, gfm: true });
+
+  let mdContent = '';
+
+  const fileInput  = document.getElementById('fileInput');
+  const dropZone   = document.getElementById('dropZone');
+  const fileNameEl = document.getElementById('fileName');
+  const convertBtn = document.getElementById('convertBtn');
+  const msg        = document.getElementById('msg');
+  const previewEmpty = document.getElementById('previewEmpty');
+  const pageSheet  = document.getElementById('pageSheet');
+  const previewFrame = document.getElementById('previewFrame');
+
+  // ── Persist slider values in localStorage ──
+  const SLIDERS = [
+    { id: 'fontSize',     valId: 'fontSizeVal',     fmt: v => parseFloat(v).toFixed(1) + ' pt', key: 'md2pdf_fontSize',     def: '12' },
+    { id: 'lineHeight',   valId: 'lineHeightVal',   fmt: v => parseFloat(v).toFixed(2),          key: 'md2pdf_lineHeight',   def: '1.65' },
+    { id: 'marginLR',     valId: 'marginLRVal',     fmt: v => v + ' mm',                          key: 'md2pdf_marginLR',     def: '30' },
+    { id: 'marginTB',     valId: 'marginTBVal',     fmt: v => v + ' mm',                          key: 'md2pdf_marginTB',     def: '24' },
+    { id: 'blockSpacing', valId: 'blockSpacingVal', fmt: v => parseFloat(v).toFixed(2) + ' em',  key: 'md2pdf_blockSpacing', def: '1' },
+    { id: 'fontWeight',   valId: 'fontWeightVal',   fmt: v => v,                                   key: 'md2pdf_fontWeight',   def: '400' },
+  ];
+
+  SLIDERS.forEach(({ id, valId, fmt, key, def }) => {
+    const el  = document.getElementById(id);
+    const val = document.getElementById(valId);
+    // Restore
+    const saved = localStorage.getItem(key);
+    if (saved !== null) { el.value = saved; }
+    val.textContent = fmt(el.value);
+    // Save + update label + live preview
+    el.addEventListener('input', () => {
+      val.textContent = fmt(el.value);
+      localStorage.setItem(key, el.value);
+      if (mdContent) updatePreview();
+    });
+  });
+
+  // ── File loading ──
+  function loadFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      mdContent = e.target.result;
+      fileNameEl.textContent = file.name;
+      convertBtn.disabled = false;
+      msg.textContent = '';
+      updatePreview();
+    };
+    reader.readAsText(file);
+  }
+
+  fileInput.addEventListener('change', () => loadFile(fileInput.files[0]));
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('over');
+    loadFile(e.dataTransfer.files[0]);
+  });
+
+  // ── Build HTML string ──
+  function buildHtml(forPrint) {
+    const fontSize     = document.getElementById('fontSize').value;
+    const lineHeight   = document.getElementById('lineHeight').value;
+    const marginLR     = document.getElementById('marginLR').value + 'mm';
+    const marginTB     = document.getElementById('marginTB').value + 'mm';
+    const blockSpacing = document.getElementById('blockSpacing').value;
+    const fontWeight   = document.getElementById('fontWeight').value;
+    const fs = parseFloat(fontSize);
+    const bs = parseFloat(blockSpacing);
+    const html = marked.parse(mdContent);
+    const title = fileNameEl.textContent.replace(/\.(md|markdown|txt)$/i, '') || 'documento';
+
+    // For preview we simulate margins with body padding (no @page support in iframe)
+    const marginLRpx = Math.round(parseInt(marginLR) * 3.7795);
+    const marginTBpx = Math.round(parseInt(marginTB) * 3.7795);
+
+    const pageRule = forPrint
+      ? `@page { size: A4; margin: ${marginTB} ${marginLR}; }`
+      : '';
+
+    const bodyPadding = forPrint
+      ? ``
+      : `padding: ${marginTBpx}px ${marginLRpx}px;`;
+
+    return `<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>${title}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,700;1,6..72,400&display=swap');
+${pageRule}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
+  font-size: ${fontSize}pt;
+  font-weight: ${fontWeight};
+  line-height: ${lineHeight};
+  color: #1a1a1a;
+  ${bodyPadding}
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1,h2,h3,h4 { font-weight: 700; color: #111; margin-top: ${(bs*2).toFixed(2)}em; margin-bottom: ${(bs*0.5).toFixed(2)}em; line-height: 1.25; page-break-after: avoid; }
+h1 { font-size: ${(fs*1.75).toFixed(1)}pt; margin-top: 0; }
+h2 { font-size: ${(fs*1.25).toFixed(1)}pt; border-bottom: 1px solid #d0ccc7; padding-bottom: 0.3em; margin-top: ${(bs*2.5).toFixed(2)}em; }
+h3 { font-size: ${(fs*1.07).toFixed(1)}pt; font-style: normal; font-weight: 700; }
+h4 { font-size: ${fontSize}pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+p { margin-bottom: ${(bs*0.85).toFixed(2)}em; orphans: 3; widows: 3; }
+strong, b { font-weight: 700; color: #111; }
+em, i { font-style: italic; }
+a { color: #1a1a1a; text-decoration: underline; text-underline-offset: 2px; }
+ul, ol { margin: ${(bs*0.5).toFixed(2)}em 0 ${(bs*0.85).toFixed(2)}em 1.6em; }
+li { margin-bottom: ${(bs*0.3).toFixed(2)}em; }
+li > ul, li > ol { margin-top: ${(bs*0.2).toFixed(2)}em; margin-bottom: ${(bs*0.2).toFixed(2)}em; }
+code { font-family: 'SF Mono','Fira Mono','Menlo',monospace; font-size: 0.85em; background: #f0ede8; padding: 0.1em 0.35em; border-radius: 3px; color: #2d2d2d; }
+pre { background: #f0ede8; border-left: 3px solid #c8a96e; padding: 0.8em 1em; margin: ${(bs*0.8).toFixed(2)}em 0 ${(bs*1).toFixed(2)}em; border-radius: 0 4px 4px 0; page-break-inside: avoid; }
+pre code { background: none; padding: 0; font-size: 0.82em; line-height: 1.55; }
+blockquote { border-left: 3px solid #c8a96e; margin: ${(bs*0.8).toFixed(2)}em 0 ${(bs*1).toFixed(2)}em; padding: 0.3em 1em; color: #4a4a4a; font-style: italic; }
+blockquote p { margin-bottom: 0.3em; }
+hr { border: none; border-top: 1px solid #d0ccc7; margin: ${(bs*2).toFixed(2)}em 0; }
+table { width: 100%; border-collapse: collapse; margin: ${(bs*0.8).toFixed(2)}em 0 ${(bs*1).toFixed(2)}em; font-size: 0.9em; page-break-inside: avoid; }
+th, td { border: 1px solid #d0ccc7; padding: 0.45em 0.7em; text-align: left; }
+th { background: #f0ede8; font-weight: 600; }
+tr:nth-child(even) td { background: #faf9f7; }
+img { max-width: 100%; height: auto; display: block; margin: ${(bs*0.8).toFixed(2)}em auto; }
+</style>
+</head>
+<body>${html}</body>
+</html>`;
+  }
+
+  // ── Live preview ──
+  let previewDebounce;
+  function updatePreview() {
+    clearTimeout(previewDebounce);
+    previewDebounce = setTimeout(() => {
+      const htmlStr = buildHtml(false);
+      const blob = new Blob([htmlStr], { type: 'text/html' });
+      const url  = URL.createObjectURL(blob);
+      const old  = previewFrame.src;
+      previewFrame.src = url;
+      previewFrame.onload = () => {
+        // Resize sheet height to content
+        try {
+          const h = previewFrame.contentDocument.body.scrollHeight;
+          pageSheet.style.minHeight = Math.max(1123, h + parseInt(document.getElementById('marginTB').value) * 7.559) + 'px';
+          previewFrame.style.minHeight = pageSheet.style.minHeight;
+        } catch(e) {}
+        if (old && old.startsWith('blob:')) URL.revokeObjectURL(old);
+      };
+      previewEmpty.style.display = 'none';
+      pageSheet.style.display = 'block';
+    }, 120);
+  }
+
+  // ── Open in new tab (original v1 behaviour) ──
+  convertBtn.addEventListener('click', () => {
+    if (!mdContent) return;
+    convertBtn.disabled = true;
+    msg.textContent = 'Apertura…';
+
+    const htmlStr = buildHtml(true);
+    const blob    = new Blob([htmlStr], { type: 'text/html' });
+    const url     = URL.createObjectURL(blob);
+    const win     = window.open(url, '_blank');
+
+    if (!win) {
+      msg.textContent = 'Popup bloccato — consenti i popup per questo sito.';
+    } else {
+      win.onload = () => {
+        win.focus();
+        win.print();
+        URL.revokeObjectURL(url);
+        msg.textContent = 'Scegli "Salva come PDF" nella finestra di stampa.';
+      };
+    }
+
+    setTimeout(() => { convertBtn.disabled = false; msg.textContent = ''; }, 2000);
+  });
+</script>
+</body>
+</html>

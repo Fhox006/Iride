@@ -191,6 +191,9 @@ import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.utils.SnapLayoutInfoProvider
 import com.metrolist.music.utils.SyncStatus
+import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.HomeViewModel
@@ -443,6 +446,10 @@ fun HomeScreen(
     val accountAvatarUrl = if (isLoggedIn) accountImageUrl else null
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(
+        PlayerBackgroundStyleKey,
+        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+    )
     val topNavBarController = LocalTopNavBarController.current
     val irideStart = 20.dp
     val irideListItemStart = 4.dp
@@ -903,21 +910,37 @@ fun HomeScreen(
                 }
             }
 
-            LazyColumn(
-                state = lazyListState,
-                overscrollEffect = null,
-                contentPadding = PaddingValues(
-                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp,
-                    bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-                ),
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(
-                        Modifier.graphicsLayer { alpha = screenProgress },
-                    )
-                    .recordFrostBackdrop(frostBackdrop)
-                    .rubberBandOverscroll(Orientation.Vertical, lazyListState),
+                    .recordFrostBackdrop(frostBackdrop),
             ) {
+                if (mainTopGradient) {
+                    TopScreenGradientBackground(
+                        mediaMetadata = mediaMetadata,
+                        playerBackground = playerBackgroundStyle,
+                    )
+                } else {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background),
+                    )
+                }
+                LazyColumn(
+                    state = lazyListState,
+                    overscrollEffect = null,
+                    contentPadding = PaddingValues(
+                        top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp,
+                        bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+                    ),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            Modifier.graphicsLayer { alpha = screenProgress },
+                        )
+                        .rubberBandOverscroll(Orientation.Vertical, lazyListState),
+                ) {
                 if (isLoading) {
                     item(key = "loading_indicator") {
                         LinearProgressIndicator(
@@ -1840,6 +1863,7 @@ fun HomeScreen(
                         }
                     }
                 }
+            }
             }
 
             TopNavigationBar(

@@ -1,0 +1,438 @@
+/**
+ * Metrolist Project (C) 2026
+ * Licensed under GPL-3.0 | See git history for contributors
+ */
+
+package com.metrolist.music.ui.screens.library
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.metrolist.music.constants.AlbumTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
+import com.metrolist.music.constants.PureBlackKey
+import com.metrolist.music.ui.component.CollapsingScreenHeader
+import com.metrolist.music.ui.component.NewReleaseBadge
+import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.component.frostedTopBarBackground
+import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.utils.IrideMotion
+import com.metrolist.music.ui.utils.irideEnter
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
+import com.metrolist.music.ui.utils.rememberEnterProgress
+import com.metrolist.music.ui.utils.revealMask
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.R
+import com.metrolist.music.constants.ArtistSortDescendingKey
+import com.metrolist.music.constants.ArtistSortType
+import com.metrolist.music.constants.ArtistSortTypeKey
+import com.metrolist.music.constants.ArtistViewTypeKey
+import com.metrolist.music.constants.CONTENT_TYPE_ARTIST
+import com.metrolist.music.constants.CONTENT_TYPE_HEADER
+import com.metrolist.music.constants.GridItemSize
+import com.metrolist.music.constants.GridItemsSizeKey
+import com.metrolist.music.constants.GridThumbnailHeight
+import com.metrolist.music.constants.LibraryViewType
+import com.metrolist.music.constants.YtmSyncKey
+import com.metrolist.music.ui.component.ChipsRow
+import com.metrolist.music.ui.component.LibraryArtistGridItem
+import com.metrolist.music.ui.component.LibraryArtistListItem
+import com.metrolist.music.ui.component.LibrarySuggestedFollowArtistItem
+import com.metrolist.music.ui.component.LibrarySuggestedFollowArtistListItem
+import com.metrolist.music.ui.component.LocalItemHorizontalPadding
+import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
+import com.metrolist.music.ui.component.LibrarySortRow
+import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.LibraryHeroTitle
+import com.metrolist.music.ui.component.LibraryFooterCount
+import com.metrolist.music.ui.component.LibraryPageTopBar
+import com.metrolist.music.ui.component.rememberLibraryPageRevealState
+import com.metrolist.music.ui.component.rememberLibraryTopBarProgress
+import com.metrolist.music.ui.component.SortHeader
+import com.metrolist.music.utils.rememberEnumPreference
+import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.viewmodels.LibraryArtistsViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun LibraryArtistsScreen(
+    navController: NavController,
+    isOffline: Boolean = false,
+    viewModel: LibraryArtistsViewModel = hiltViewModel(),
+) {
+    val menuState = LocalMenuState.current
+    val haptic = LocalHapticFeedback.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val coroutineScope = rememberCoroutineScope()
+    val playerConnection = LocalPlayerConnection.current ?: return
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    var viewType by rememberEnumPreference(ArtistViewTypeKey, LibraryViewType.GRID)
+
+    val (sortType, onSortTypeChange) = rememberEnumPreference(
+        ArtistSortTypeKey,
+        ArtistSortType.CREATE_DATE
+    )
+    val (sortDescending, onSortDescendingChange) = rememberPreference(ArtistSortDescendingKey, true)
+    val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
+    val (ytmSync) = rememberPreference(YtmSyncKey, true)
+    val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
+    val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(
+        PlayerBackgroundStyleKey,
+        defaultValue = com.metrolist.music.constants.PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+    )
+
+    val sortOptions = listOf(
+        ArtistSortType.CREATE_DATE to stringResource(R.string.sort_by_create_date),
+        ArtistSortType.NAME        to stringResource(R.string.sort_by_name),
+        ArtistSortType.SONG_COUNT  to stringResource(R.string.sort_by_song_count),
+        ArtistSortType.PLAY_TIME   to stringResource(R.string.sort_by_play_time),
+    )
+
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        snapAnimationSpec = tween(durationMillis = 200),
+    )
+
+    LaunchedEffect(Unit) {
+        if (ytmSync) {
+            withContext(Dispatchers.IO) {
+                viewModel.sync()
+            }
+        }
+    }
+
+    var isSearchActive by rememberSaveable { mutableStateOf(false) }
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val filteredArtistsRaw by viewModel.filteredArtists.collectAsState()
+    val filteredArtists = if (isOffline) emptyList() else filteredArtistsRaw
+    val itemCountText = pluralStringResource(R.plurals.n_artist, filteredArtists.size, filteredArtists.size)
+
+    val newSongCounts by viewModel.newSongCounts.collectAsState()
+    val totalNewSongs by viewModel.totalNewSongs.collectAsState()
+    val suggestedFollowArtists by viewModel.suggestedFollowArtists.collectAsState()
+    val showSuggestedFollow = !isOffline && searchQuery.isBlank() && suggestedFollowArtists.isNotEmpty()
+
+    val lazyListState = rememberLazyListState()
+    val lazyGridState = rememberLazyGridState()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val scrollToTop =
+        backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
+
+    LaunchedEffect(scrollToTop?.value) {
+        if (scrollToTop?.value == true) {
+            when (viewType) {
+                LibraryViewType.LIST -> lazyListState.animateScrollToItem(0)
+                else -> lazyGridState.animateScrollToItem(0)
+            }
+            backStackEntry?.savedStateHandle?.set("scrollToTop", false)
+        }
+    }
+
+    val frostBackdrop = rememberFrostBackdrop()
+    val revealState = rememberLibraryPageRevealState()
+    val topBarRevealProgress = rememberLibraryTopBarProgress(
+        state = revealState,
+        scrolledPastHeader = if (viewType == LibraryViewType.LIST) {
+            lazyListState.firstVisibleItemIndex > 0
+        } else {
+            lazyGridState.firstVisibleItemIndex > 0
+        },
+    )
+    val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
+
+    val heroTitleBadge: @Composable RowScope.() -> Unit = {
+        if (totalNewSongs > 0) {
+            NewReleaseBadge(count = totalNewSongs)
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+            .recordFrostBackdrop(frostBackdrop)
+            .graphicsLayer { alpha = screenProgress },
+    ) {
+        if (albumTopGradientEnabled) {
+            TopScreenGradientBackground(
+                mediaMetadata = mediaMetadata,
+                playerBackground = playerBackgroundStyle,
+            )
+        }
+        CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
+            when (viewType) {
+                LibraryViewType.LIST ->
+                    LazyColumn(
+                        state = lazyListState,
+                        contentPadding = PaddingValues(
+                            start = 20.dp,
+                            end = 20.dp,
+                            top = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateTopPadding(),
+                            bottom = LocalPlayerAwareWindowInsets.current
+                                .asPaddingValues().calculateBottomPadding(),
+                        ),
+                    ) {
+                        item(key = "page_header", contentType = CONTENT_TYPE_HEADER) {
+                            LibraryHeroTitle(
+                                title = stringResource(R.string.artists),
+                                entranceAlpha = screenProgress,
+                                revealState = revealState,
+                            )
+                            LibrarySortRow(
+                                sortOptions = sortOptions,
+                                currentSort = sortType,
+                                onSortChange = onSortTypeChange,
+                                sortDescending = sortDescending,
+                                onSortDescendingChange = onSortDescendingChange,
+                                viewType = viewType,
+                                onViewTypeChange = { viewType = it },
+                            )
+                        }
+
+                        filteredArtists.let { artists ->
+                            if (artists.isEmpty()) {
+                                item(key = "empty_placeholder") {
+                                    if (searchQuery.isNotBlank()) {
+                                        LibrarySearchEmptyPlaceholder(
+                                            icon = R.drawable.search,
+                                            text = stringResource(R.string.no_results_found),
+                                            modifier = Modifier.animateItem(),
+                                        )
+                                    } else {
+                                        LibrarySearchEmptyPlaceholder(
+                                            icon = R.drawable.artist,
+                                            text = stringResource(R.string.library_artist_empty),
+                                            modifier = Modifier.animateItem(),
+                                        )
+                                    }
+                                }
+                            }
+
+                            items(
+                                items = artists,
+                                key = { it.id },
+                                contentType = { CONTENT_TYPE_ARTIST },
+                            ) { artist ->
+                                LibraryArtistListItem(
+                                    navController = navController,
+                                    menuState = menuState,
+                                    coroutineScope = coroutineScope,
+                                    newSongCount = newSongCounts[artist.id] ?: 0,
+                                    modifier = Modifier.animateItem(),
+                                    artist = artist
+                                )
+                            }
+                        }
+
+                        if (showSuggestedFollow) {
+                            items(
+                                items = suggestedFollowArtists,
+                                key = { "suggested_follow_${it.id}" },
+                                contentType = { CONTENT_TYPE_ARTIST },
+                            ) { artist ->
+                                LibrarySuggestedFollowArtistListItem(
+                                    navController = navController,
+                                    artist = artist,
+                                    onFollow = { viewModel.followSuggestedArtist(artist.id) },
+                                    onDismiss = { viewModel.dismissSuggestedFollowArtist(artist.id) },
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+                        }
+
+                        item(key = "footer") {
+                            LibraryFooterCount(text = itemCountText)
+                        }
+                    }
+
+                LibraryViewType.GRID, LibraryViewType.GRID_WIDE ->
+                    LazyVerticalGrid(
+                        state = lazyGridState,
+                        columns = if (viewType == LibraryViewType.GRID_WIDE) {
+                            GridCells.Fixed(3)
+                        } else {
+                            GridCells.Adaptive(
+                                minSize = GridThumbnailHeight +
+                                    if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
+                            )
+                        },
+                        contentPadding = PaddingValues(
+                            start = 20.dp,
+                            end = 20.dp,
+                            top = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateTopPadding(),
+                            bottom = LocalPlayerAwareWindowInsets.current
+                                .asPaddingValues().calculateBottomPadding(),
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        item(
+                            key = "page_header",
+                            span = { GridItemSpan(maxLineSpan) },
+                            contentType = CONTENT_TYPE_HEADER,
+                        ) {
+                            LibraryHeroTitle(
+                                title = stringResource(R.string.artists),
+                                entranceAlpha = screenProgress,
+                                revealState = revealState,
+                            )
+                            LibrarySortRow(
+                                sortOptions = sortOptions,
+                                currentSort = sortType,
+                                onSortChange = onSortTypeChange,
+                                sortDescending = sortDescending,
+                                onSortDescendingChange = onSortDescendingChange,
+                                viewType = viewType,
+                                onViewTypeChange = { viewType = it },
+                            )
+                        }
+
+                        filteredArtists.let { artists ->
+                            if (artists.isEmpty()) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    if (searchQuery.isNotBlank()) {
+                                        LibrarySearchEmptyPlaceholder(
+                                            icon = R.drawable.search,
+                                            text = stringResource(R.string.no_results_found),
+                                            modifier = Modifier.animateItem(),
+                                        )
+                                    } else {
+                                        LibrarySearchEmptyPlaceholder(
+                                            icon = R.drawable.artist,
+                                            text = stringResource(R.string.library_artist_empty),
+                                            modifier = Modifier.animateItem(),
+                                        )
+                                    }
+                                }
+                            }
+
+                            items(
+                                items = artists,
+                                key = { it.id },
+                                contentType = { CONTENT_TYPE_ARTIST },
+                            ) { artist ->
+                                LibraryArtistGridItem(
+                                    navController = navController,
+                                    menuState = menuState,
+                                    coroutineScope = coroutineScope,
+                                    newSongCount = newSongCounts[artist.id] ?: 0,
+                                    modifier = Modifier.animateItem(),
+                                    artist = artist
+                                )
+                            }
+                        }
+
+                        if (showSuggestedFollow) {
+                            items(
+                                items = suggestedFollowArtists,
+                                key = { "suggested_follow_${it.id}" },
+                                contentType = { CONTENT_TYPE_ARTIST },
+                            ) { artist ->
+                                LibrarySuggestedFollowArtistItem(
+                                    navController = navController,
+                                    artist = artist,
+                                    onFollow = { viewModel.followSuggestedArtist(artist.id) },
+                                    onDismiss = { viewModel.dismissSuggestedFollowArtist(artist.id) },
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+                        }
+
+                        item(
+                            key = "footer",
+                            span = { GridItemSpan(maxLineSpan) },
+                        ) {
+                            LibraryFooterCount(text = itemCountText)
+                        }
+                    }
+            }
+        }
+    }
+
+        LibraryPageTopBar(
+            title = stringResource(R.string.artists),
+            revealProgress = topBarRevealProgress,
+            revealState = revealState,
+            backdrop = frostBackdrop,
+            isSearchActive = isSearchActive,
+            searchQuery = searchQuery,
+            onSearchQueryChange = viewModel::updateSearchQuery,
+            onNavigateUp = { navController.navigateUp() },
+            onSearchClick = { isSearchActive = true },
+            onCloseSearch = {
+                isSearchActive = false
+                viewModel.updateSearchQuery("")
+            },
+            keyboardController = keyboardController,
+            titleBadge = heroTitleBadge,
+        )
+    }
+}
