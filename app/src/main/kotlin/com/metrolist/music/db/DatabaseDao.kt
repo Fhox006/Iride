@@ -1976,17 +1976,21 @@ interface DatabaseDao {
      */
     @Transaction
     fun linkFeaturedArtist(song: Song): Boolean {
-        val (cleanTitle, featuredNames) = TitleFeaturingParser.extract(song.song.title) ?: return false
+        // The caller may hold a snapshot of a song that has since been removed
+        // from the library; song_artist_map's foreign key would reject the link,
+        // so bail out when the parent row no longer exists.
+        val current = getSongByIdBlocking(song.id) ?: return false
 
-        update(song.song.copy(title = cleanTitle))
+        val (cleanTitle, featuredNames) = TitleFeaturingParser.extract(current.title) ?: return false
+        update(current.song.copy(title = cleanTitle))
 
-        var nextPosition = (songArtistMap(song.id).maxOfOrNull { it.position } ?: -1) + 1
+        var nextPosition = (songArtistMap(current.id).maxOfOrNull { it.position } ?: -1) + 1
         for (featuredName in featuredNames) {
-            val alreadyCredited = song.artists.any { it.name.equals(featuredName, ignoreCase = true) }
+            val alreadyCredited = current.artists.any { it.name.equals(featuredName, ignoreCase = true) }
             if (alreadyCredited) continue
             val artistId = artistByName(featuredName)?.id ?: ArtistEntity.generateArtistId()
             insert(ArtistEntity(id = artistId, name = featuredName))
-            insert(SongArtistMap(songId = song.id, artistId = artistId, position = nextPosition))
+            insert(SongArtistMap(songId = current.id, artistId = artistId, position = nextPosition))
             nextPosition++
         }
         return true
