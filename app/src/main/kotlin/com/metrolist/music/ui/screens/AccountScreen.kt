@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -75,6 +76,7 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.component.frostedTopBarBackground
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
@@ -125,6 +127,7 @@ fun AccountScreen(
         }
     }
     val topBarRevealProgress = com.metrolist.music.ui.utils.rememberDiscreteProgress(accountHeaderScrolled)
+    val frostBackdrop = com.metrolist.music.ui.component.rememberFrostBackdrop()
 
     Scaffold(
         topBar = {
@@ -140,7 +143,7 @@ fun AccountScreen(
                         progress = topBarRevealProgress,
                         barColor = MaterialTheme.colorScheme.background,
                         strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                        backdrop = com.metrolist.music.ui.component.LocalScreenFrostBackdrop.current,
+                        backdrop = frostBackdrop,
                     ),
                 )
             }
@@ -152,10 +155,11 @@ fun AccountScreen(
             state = scrollState,
             columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
             contentPadding = PaddingValues(
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp,
                 bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
             ),
             modifier = Modifier
-                .padding(paddingValues)
+                .recordFrostBackdrop(frostBackdrop)
                 .background(
                     when {
                         pureBlack -> Color.Black

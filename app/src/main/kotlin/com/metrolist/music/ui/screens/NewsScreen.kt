@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -93,6 +94,8 @@ import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.component.frostedTopBarBackground
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
@@ -143,6 +146,7 @@ fun NewsScreen(
         }
     }
     val topBarRevealProgress = rememberDiscreteProgress(headerScrolled)
+    val frostBackdrop = rememberFrostBackdrop()
 
     val anyContentLoaded = personalReleases.isNotEmpty() || generalReleases.isNotEmpty() ||
         chartSongs.isNotEmpty() || discoverArtists.isNotEmpty()
@@ -151,34 +155,20 @@ fun NewsScreen(
         modifier = Modifier,
         containerColor = if (mainTopGradient) Color.Transparent else MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0),
-        topBar = {
-            TopNavigationBar(
-                navigationItems = topNavBarController?.navigationItems ?: emptyList(),
-                currentRoute = topNavBarController?.currentRoute,
-                onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
-                compact = topNavBarController?.compact ?: false,
-                accountImageUrl = topNavBarController?.accountImageUrl,
-                modifier = Modifier.frostedTopBarBackground(
-                    progress = topBarRevealProgress,
-                    barColor = MaterialTheme.colorScheme.background,
-                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                    backdrop = com.metrolist.music.ui.component.LocalScreenFrostBackdrop.current,
-                ),
-                containerColor = Color.Transparent,
-            )
-        },
     ) { paddingValues ->
-        LazyColumn(
-            state = lazyListState,
-            overscrollEffect = null,
-            contentPadding = PaddingValues(
-                top = paddingValues.calculateTopPadding(),
-                bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-            ),
-            modifier = Modifier
-                .fillMaxSize()
-                .rubberBandOverscroll(Orientation.Vertical, lazyListState),
-        ) {
+        Box(Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = lazyListState,
+                overscrollEffect = null,
+                contentPadding = PaddingValues(
+                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp,
+                    bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+                ),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .recordFrostBackdrop(frostBackdrop)
+                    .rubberBandOverscroll(Orientation.Vertical, lazyListState),
+            ) {
             if (isLoading && !anyContentLoaded) {
                 item(key = "loading_indicator") {
                     LinearProgressIndicator(
@@ -303,6 +293,24 @@ fun NewsScreen(
                     )
                 }
             }
+        }
+
+            TopNavigationBar(
+                navigationItems = topNavBarController?.navigationItems ?: emptyList(),
+                currentRoute = topNavBarController?.currentRoute,
+                onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
+                compact = topNavBarController?.compact ?: false,
+                accountImageUrl = topNavBarController?.accountImageUrl,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .frostedTopBarBackground(
+                        progress = topBarRevealProgress,
+                        barColor = MaterialTheme.colorScheme.background,
+                        strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                        backdrop = frostBackdrop,
+                    ),
+                containerColor = Color.Transparent,
+            )
         }
     }
 }

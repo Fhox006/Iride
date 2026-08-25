@@ -562,22 +562,6 @@ fun HomeScreen(
         modifier = Modifier,
         containerColor = if (mainTopGradient) Color.Transparent else MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0),
-        topBar = {
-            TopNavigationBar(
-                navigationItems = topNavBarController?.navigationItems ?: emptyList(),
-                currentRoute = topNavBarController?.currentRoute,
-                onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
-                modifier = Modifier.frostedTopBarBackground(
-                    progress = topBarRevealProgress,
-                    barColor = MaterialTheme.colorScheme.background,
-                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                    backdrop = frostBackdrop,
-                ),
-                containerColor = Color.Transparent,
-                compact = topNavBarController?.compact ?: false,
-                accountImageUrl = topNavBarController?.accountImageUrl,
-            )
-        },
     ) { paddingValues ->
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val containerWidthDp = maxWidth
@@ -923,7 +907,7 @@ fun HomeScreen(
                 state = lazyListState,
                 overscrollEffect = null,
                 contentPadding = PaddingValues(
-                    top = paddingValues.calculateTopPadding(),
+                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp,
                     bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
                 ),
                 modifier = Modifier
@@ -931,7 +915,7 @@ fun HomeScreen(
                     .then(
                         Modifier.graphicsLayer { alpha = screenProgress },
                     )
-                    .recordFrostBackdrop(frostBackdrop, enabled = headerScrolled)
+                    .recordFrostBackdrop(frostBackdrop)
                     .rubberBandOverscroll(Orientation.Vertical, lazyListState),
             ) {
                 if (isLoading) {
@@ -1857,6 +1841,23 @@ fun HomeScreen(
                     }
                 }
             }
+
+            TopNavigationBar(
+                navigationItems = topNavBarController?.navigationItems ?: emptyList(),
+                currentRoute = topNavBarController?.currentRoute,
+                onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .frostedTopBarBackground(
+                        progress = topBarRevealProgress,
+                        barColor = MaterialTheme.colorScheme.background,
+                        strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                        backdrop = frostBackdrop,
+                    ),
+                containerColor = Color.Transparent,
+                compact = topNavBarController?.compact ?: false,
+                accountImageUrl = topNavBarController?.accountImageUrl,
+            )
 
         }
     }

@@ -26,12 +26,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -96,6 +98,10 @@ import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.TopNavigationBar
+import com.metrolist.music.ui.component.frostedTopBarBackground
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
@@ -187,6 +193,10 @@ fun SettingsScreen(
     val accountName = if (accountNameFlow != "Guest") accountNameFlow else accountNamePref
     val accountImageUrl: String? = accountImageUrlFlow ?: accountPhotoUrlPref.takeIf { it.isNotEmpty() }
 
+    val settingsScrollState = rememberScrollState()
+    val frostBackdrop = rememberFrostBackdrop()
+    val topBarRevealProgress = rememberDiscreteProgress(settingsScrollState.value > 8)
+
     Scaffold(
         modifier = Modifier,
         topBar = {
@@ -194,11 +204,11 @@ fun SettingsScreen(
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
-    val settingsScrollState = rememberScrollState()
+    Box(Modifier.fillMaxSize()) {
     Column(
         Modifier
             .fillMaxSize()
-            .padding(paddingValues)
+            .recordFrostBackdrop(frostBackdrop)
             .windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(
                     WindowInsetsSides.Horizontal
@@ -206,16 +216,9 @@ fun SettingsScreen(
             )
             .rubberBandOverscroll(Orientation.Vertical, settingsScrollState)
             .verticalScroll(settingsScrollState)
+            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp)
     ) {
         if (topNavBarController != null) {
-            TopNavigationBar(
-                navigationItems = topNavBarController.navigationItems,
-                currentRoute = topNavBarController.currentRoute,
-                onItemClick = topNavBarController.onItemClick,
-                containerColor = Color.Transparent,
-                compact = topNavBarController.compact,
-                accountImageUrl = topNavBarController.accountImageUrl,
-            )
             Row(
                 horizontalArrangement = Arrangement.End,
                 modifier = Modifier
@@ -463,6 +466,23 @@ fun SettingsScreen(
             )
         )
     }
+    }
+    TopNavigationBar(
+        navigationItems = topNavBarController?.navigationItems ?: emptyList(),
+        currentRoute = topNavBarController?.currentRoute,
+        onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .frostedTopBarBackground(
+                progress = topBarRevealProgress,
+                barColor = MaterialTheme.colorScheme.background,
+                strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                backdrop = frostBackdrop,
+            ),
+        containerColor = Color.Transparent,
+        compact = topNavBarController?.compact ?: false,
+        accountImageUrl = topNavBarController?.accountImageUrl,
+    )
     }
     }
 }
