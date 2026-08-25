@@ -52,15 +52,12 @@ import com.metrolist.music.ui.screens.search.SearchScreen
 import com.metrolist.music.ui.screens.settings.AboutScreen
 import com.metrolist.music.ui.screens.settings.AiSettings
 import com.metrolist.music.ui.screens.settings.AndroidAutoSettings
-import com.metrolist.music.ui.screens.settings.AppearanceSettings
 import com.metrolist.music.ui.screens.settings.BackupAndRestore
 import com.metrolist.music.ui.screens.settings.ContentSettings
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.theme.ForceDarkTheme
 import com.metrolist.music.ui.screens.settings.DiscordLoginScreen
 import com.metrolist.music.ui.screens.settings.InterfaceSettings
-import com.metrolist.music.ui.screens.settings.LyricsSettings
-import com.metrolist.music.ui.screens.settings.PlayerAppearanceSettings
 import com.metrolist.music.ui.screens.settings.PlayerSettings
 import com.metrolist.music.ui.screens.settings.MyAccountScreen
 import com.metrolist.music.ui.screens.settings.NotesScreen
@@ -69,7 +66,6 @@ import com.metrolist.music.ui.screens.settings.RomanizationSettings
 import com.metrolist.music.ui.screens.settings.SettingsScreen
 import com.metrolist.music.ui.screens.settings.StorageSettings
 import com.metrolist.music.ui.screens.settings.UpdaterScreen
-import com.metrolist.music.ui.screens.settings.ThemeScreen
 import com.metrolist.music.ui.screens.SpotifyImportScreen
 import com.metrolist.music.ui.screens.settings.integrations.DiscordSettings
 import com.metrolist.music.ui.screens.settings.integrations.IntegrationScreen
@@ -95,10 +91,6 @@ fun NavGraphBuilder.NavigationBuilder(
 
     composable(Screens.Home.route) {
         HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
-    }
-
-    composable(Screens.WhatNew.route) {
-        WhatNewScreen(navController = navController)
     }
 
     composable(Screens.News.route) {
@@ -163,8 +155,6 @@ fun NavGraphBuilder.NavigationBuilder(
     composable("mood_and_genres") { MoodAndGenresScreen(navController) }
     composable("genres_screen") { GenresScreen(navController = navController) }
     composable("account") { AccountScreen(navController) }
-    composable("new_release") { NewReleaseScreen(navController) }
-    composable("charts_screen") { ChartsScreen(navController) }
 
     composable(
         route = "browse/{browseId}",
@@ -318,24 +308,8 @@ fun NavGraphBuilder.NavigationBuilder(
         MyAccountScreen(navController)
     }
 
-    composable("settings/appearance") {
-        AppearanceSettings(navController, activity, snackbarHostState)
-    }
-
-    composable("settings/appearance/theme") {
-        ThemeScreen(navController, activity, snackbarHostState)
-    }
-
-    composable("settings/appearance/interface") {
+    composable("settings/interface") {
         InterfaceSettings(navController, activity)
-    }
-
-    composable("settings/appearance/player") {
-        PlayerAppearanceSettings(navController)
-    }
-
-    composable("settings/appearance/lyrics") {
-        LyricsSettings(navController)
     }
 
     composable("settings/content") {
