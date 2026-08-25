@@ -160,7 +160,6 @@ import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.DisableScreenshotKey
 import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
-import com.metrolist.music.constants.ExperimentalLyricsKey
 import com.metrolist.music.constants.DataSyncIdKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.OnboardingCompletedKey
@@ -206,8 +205,6 @@ import com.metrolist.music.ui.component.AppNavigationRail
 import com.metrolist.music.ui.component.RubberBandNavGate
 import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.DebugBubble
 import com.metrolist.music.ui.component.FloatingPillBottomSpacing
 import com.metrolist.music.ui.component.UpdateInterstitialScreen
@@ -1070,7 +1067,6 @@ class MainActivity : ComponentActivity() {
                 )
 
                 val irideBridgeState = remember { IrideBridgeState() }
-                val screenFrostBackdrop = rememberFrostBackdrop()
 
                 val playerAwareWindowInsets =
                     remember(bottomInset, showRail, isTopLevelRoute, curtainActive, playerBottomSheetState.isDismissed) {
@@ -1283,7 +1279,6 @@ class MainActivity : ComponentActivity() {
                     LocalSyncUtils provides syncUtils,
                     LocalListenTogetherManager provides listenTogetherManager,
                     LocalTopNavBarController provides topNavBarController,
-                    com.metrolist.music.ui.component.LocalScreenFrostBackdrop provides screenFrostBackdrop,
                 ) {
                     if (curtainActive && currentRoute != "wrapped") {
                         BottomSheetPlayer(
@@ -1448,8 +1443,7 @@ class MainActivity : ComponentActivity() {
                             }
                             Box(
                                 Modifier
-                                    .weight(1f)
-                                    .recordFrostBackdrop(screenFrostBackdrop),
+                                    .weight(1f),
                             ) {
                                 val playerCoversScreen by remember(playerBottomSheetState) {
                                     derivedStateOf { playerBottomSheetState.progress >= 0.99f }
