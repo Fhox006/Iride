@@ -1,3 +1,10 @@
+## 0.1.0-alpha26
+
+### Fixes
+
+- **In-app updates work again**: the update checker, song-link sharing and genre lookup now run on the OkHttp engine, fixing the TLS failure (`hostname aware checkServerTrusted`) introduced by the new per-domain network security rules — the "New version available" popup and background downloads are back
+- Genre pills and song.link sharing no longer fail silently for the same reason
+
 ## 0.1.0-alpha25
 
 ### New look

@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
@@ -31,7 +32,7 @@ enum class SharePlatform(val odesliKey: String) {
  * using the Odesli (song.link) public API.
  */
 object SongLinkResolver {
-    private val client = HttpClient()
+    private val client = HttpClient(OkHttp)
     private const val API_URL = "https://api.song.link/v1-alpha.1/links"
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
