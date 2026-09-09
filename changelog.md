@@ -1,3 +1,18 @@
+## 0.1.0-alpha25
+
+### New look
+
+- **Frosted glass across the app**: the album-style frosted top bar now runs on Home, Settings, Account and player screens, with a per-screen backdrop that costs nothing at rest
+- **MP3 player skin**: redesigned full player with fluid title/artist text morph from the mini player, matching the New Iride UI
+
+### Improvements
+
+- Auto-Mix / radio lifecycle fixes: new queues cleanly take over, suggestions no longer leak across restarts
+- News tab removed along with other obsolete screens for a leaner app
+- Startup crash isolation: risky backdrop recording and nav-motion paths reverted to safe behavior
+- Uniform artwork borders and fullscreen bleed fixes, EQ device-card ergonomics
+- Queue rows and hero carousel startup refinements carried over from alpha24 work
+
 ## 0.1.0-alpha24
 
 ### New features
