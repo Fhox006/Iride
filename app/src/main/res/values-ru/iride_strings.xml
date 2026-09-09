@@ -1119,22 +1119,12 @@
     <string name="muzza_player_logic_desc">Загружает песни быстрее за счёт альтернативного метода стриминга.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">Показывать вкладку «Новости»</string>
-    <string name="show_news_tab_desc">Добавляет вкладку «Новости» на нижнюю панель навигации между «Главная» и «Медиатека»</string>
     <string name="compact_top_navigation_bar">Компактная верхняя панель</string>
     <string name="compact_top_navigation_bar_desc">«Главная» и «Медиатека» — текстом слева, «Поиск» и аватар профиля — значками справа. Отключите, чтобы вернуть классическую панель с подписями всех вкладок</string>
     <string name="iride_animations">Анимации Iride</string>
     <string name="iride_animations_desc">Печатающиеся заголовки, параллакс и анимации появления. Отключите, если приложение подлагивает</string>
     <string name="player_auto_hide_top_panel">Автоскрытие панели возврата</string>
     <string name="player_auto_hide_top_panel_desc">Скрывает верхнюю панель возврата в приложение после 5 секунд бездействия в развёрнутом плеере. Прокрутка вниз возвращает её</string>
-    <string name="news">Новости</string>
-    <string name="news_new_albums">Новые альбомы</string>
-    <string name="news_new_songs">Новые песни</string>
-    <string name="news_charts">Чарты</string>
-    <string name="news_new_albums_title">Новые альбомы</string>
-    <string name="news_quick_play_title">Новые песни</string>
-    <string name="news_empty_albums">Новых альбомов пока не найдено</string>
-    <string name="news_empty_songs">Новых песен пока не найдено</string>
 
     <string name="better_library_beta">Улучшенная медиатека BETA</string>
     <string name="better_library_beta_desc">Включить переработанную медиатеку на Material 3 (верхняя панель, FAB и исправления интерфейса)</string>
@@ -1209,4 +1199,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">Новый дизайн плеера</string>
 <string name="new_mini_player_design">Новый дизайн мини‑плеера</string>
-</resources>
+    <string name="featured_for_you">Рекомендованное для вас</string>
+    <string name="trending_artist_subtitle">Набирает популярность в вашем фиде</string>
+    <string name="artist_radio_subtitle">Бесконечный микс на основе этого артиста</string>
+    <string name="artist_radio_title">Радио %1$s</string>
+    <string name="mood_and_playlists_for_you">Настроение и плейлисты для вас</string>
+    <string name="syncing_library">Синхронизация медиатеки</string>
+    <string name="network_sync_warning">Сетевые функции могут не работать до завершения синхронизации.</string>
+    <string name="syncing_your_library">Синхронизация вашей медиатеки…</string>
+    <string name="collapse_section">Свернуть раздел</string>
+    <string name="expand_section">Развернуть раздел</string>
+    </resources>

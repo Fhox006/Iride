@@ -78,13 +78,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.LocalTopNavBarController
 import com.metrolist.music.R
 import com.metrolist.music.constants.AccountChannelHandleKey
@@ -93,18 +96,24 @@ import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.TopNavigationBar
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.frostedTopBarBackground
 import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.Updater
+import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.viewmodels.HomeViewModel
 
 
@@ -195,6 +204,12 @@ fun SettingsScreen(
 
     val settingsScrollState = rememberScrollState()
     val frostBackdrop = rememberFrostBackdrop()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by remember(playerConnection) {
+        playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+    }.collectAsStateWithLifecycle()
     val topBarRevealProgress = rememberDiscreteProgress(settingsScrollState.value > 8)
 
     Scaffold(
@@ -205,10 +220,26 @@ fun SettingsScreen(
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
     Box(Modifier.fillMaxSize()) {
-    Column(
+    Box(
         Modifier
             .fillMaxSize()
             .recordFrostBackdrop(frostBackdrop)
+    ) {
+        if (mainTopGradient) {
+            TopScreenGradientBackground(
+                mediaMetadata = mediaMetadata,
+                playerBackground = playerBackgroundStyle,
+            )
+        } else {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background),
+            )
+        }
+    Column(
+        Modifier
+            .fillMaxSize()
             .windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(
                     WindowInsetsSides.Horizontal
@@ -465,6 +496,7 @@ fun SettingsScreen(
                 LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom)
             )
         )
+    }
     }
     }
     TopNavigationBar(

@@ -46,6 +46,8 @@ class LyricsViewModel @Inject constructor(
     private var processJob: kotlinx.coroutines.Job? = null
     private var progressiveJob: kotlinx.coroutines.Job? = null
 
+    private var loadedMediaId: String? = null
+
     val lyricsSearchStatus = MutableStateFlow<LyricsSearchStatus>(LyricsSearchStatus.Idle)
 
     private val _lyricsRevision = MutableStateFlow(0)
@@ -123,9 +125,19 @@ class LyricsViewModel @Inject constructor(
         enabledLanguages: List<String>,
         romanizeCyrillicByLine: Boolean,
         showIntervalIndicator: Boolean,
+        force: Boolean = false,
     ) {
+        // Idempotent per song: re-entering the lyrics panel (or remounting the fullscreen
+        // dialog) must not tear down live state nor re-hit the network for a song that is
+        // already loaded or still loading. Only a different song or an explicit force
+        // (manual refetch) restarts the pipeline.
+        val alreadyHandled = loadedMediaId == mediaMetadata.id &&
+            (progressiveJob?.isActive == true || lyricsSearchStatus.value != LyricsSearchStatus.Idle)
+        if (alreadyHandled && !force) return
+
         progressiveJob?.cancel()
         processJob?.cancel()
+        loadedMediaId = mediaMetadata.id
         lyricsSearchStatus.value = LyricsSearchStatus.Loading
         _displayedLyrics.value = null
         _lines.value = emptyList()

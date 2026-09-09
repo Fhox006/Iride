@@ -169,9 +169,11 @@ object ComposeToImage {
                     if (coverArtBitmap != null) {
                         val scaledBitmap = Bitmap.createScaledBitmap(coverArtBitmap, imageWidth / 10, imageHeight.toInt() / 10, true)
                         val blurredBitmap = fastBlur(scaledBitmap, 1f, 20)
+                        scaledBitmap.recycle()
                         if (blurredBitmap != null) {
                             canvas.drawBitmap(blurredBitmap, null, backgroundRect, null)
                             canvas.drawRect(backgroundRect, Paint().apply { color = 0x4D000000 })
+                            blurredBitmap.recycle()
                         }
                     }
                 }
@@ -235,6 +237,7 @@ object ComposeToImage {
             val appNameY = footerY + logoSize / 2f - (appNamePaint.descent() + appNamePaint.ascent()) / 2f
             canvas.drawText("Iride", appNameX, appNameY, appNamePaint)
 
+            coverArtBitmap?.recycle()
             return@withContext bitmap
         }
 

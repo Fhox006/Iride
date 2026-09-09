@@ -1105,22 +1105,12 @@
     <string name="muzza_player_logic_desc">Alternatif bir akış yöntemi kullanarak şarkıları daha hızlı yükler.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">Haberler sekmesini göster</string>
-    <string name="show_news_tab_desc">Alt gezinmeye, Ana Sayfa ile Kitaplık arasına bir Haberler sekmesi ekler</string>
     <string name="compact_top_navigation_bar">Kompakt üst çubuk</string>
     <string name="compact_top_navigation_bar_desc">Solda Ana Sayfa ve Kitaplık metin olarak, sağda Ara ve profil fotoğrafınız simge olarak. Her sekmenin adının yazılı olduğu klasik çubuğa dönmek için kapatın</string>
     <string name="iride_animations">Iride animasyonları</string>
     <string name="iride_animations_desc">Daktilo usulü başlıklar, paralaks ve giriş geçişleri. Uygulama takılırsa kapatın</string>
     <string name="player_auto_hide_top_panel">Dönüş panelini otomatik gizle</string>
     <string name="player_auto_hide_top_panel_desc">Genişletilmiş oynatıcıda 5 sn boşta kalınca üstteki uygulamaya dönüş panelini soldurur. Aşağı kaydırmak geri getirir</string>
-    <string name="news">Haberler</string>
-    <string name="news_new_albums">Yeni albümler</string>
-    <string name="news_new_songs">Yeni şarkılar</string>
-    <string name="news_charts">Listeler</string>
-    <string name="news_new_albums_title">Yeni Albümler</string>
-    <string name="news_quick_play_title">Yeni Şarkılar</string>
-    <string name="news_empty_albums">Henüz yeni albüm bulunamadı</string>
-    <string name="news_empty_songs">Henüz yeni şarkı bulunamadı</string>
 
     <string name="better_library_beta">Better Library BETA</string>
     <string name="better_library_beta_desc">Material 3 ile yeniden yapılandırılmış Kitaplığı etkinleştir (Üst Uygulama Çubuğu, FAB ve arayüz düzeltmeleri)</string>
@@ -1195,4 +1185,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">Yeni oynatıcı tasarımı</string>
 <string name="new_mini_player_design">Yeni mini oynatıcı tasarımı</string>
-</resources>
+    <string name="featured_for_you">Sana özel seçkiler</string>
+    <string name="trending_artist_subtitle">Akışında yükseliyor</string>
+    <string name="artist_radio_subtitle">Bu sanatçıdan esinlenen sonsuz mix</string>
+    <string name="artist_radio_title">%1$s Radyosu</string>
+    <string name="mood_and_playlists_for_you">Senin için modlar ve çalma listeleri</string>
+    <string name="syncing_library">Kitaplık eşitleniyor</string>
+    <string name="network_sync_warning">Eşitleme tamamlanana kadar ağ özellikleri çalışmayabilir.</string>
+    <string name="syncing_your_library">Kitaplığın eşitleniyor…</string>
+    <string name="collapse_section">Bölümü daralt</string>
+    <string name="expand_section">Bölümü genişlet</string>
+    </resources>

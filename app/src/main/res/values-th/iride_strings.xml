@@ -1101,22 +1101,12 @@
     <string name="muzza_player_logic_desc">โหลดเพลงได้เร็วขึ้นด้วยวิธีสตรีมมิงแบบอื่น</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">แสดงแท็บข่าวสาร</string>
-    <string name="show_news_tab_desc">เพิ่มแท็บข่าวสารในแถบนำทางด้านล่าง ระหว่างหน้าแรกกับคลังเพลง</string>
     <string name="compact_top_navigation_bar">แถบด้านบนแบบกระชับ</string>
     <string name="compact_top_navigation_bar_desc">หน้าแรกและคลังเพลงเป็นข้อความด้านซ้าย ค้นหาและรูปโปรไฟล์ของคุณเป็นไอคอนด้านขวา ปิดเพื่อกลับไปใช้แถบแบบเดิมที่แสดงชื่อทุกแท็บ</string>
     <string name="iride_animations">แอนิเมชันของ Iride</string>
     <string name="iride_animations_desc">ชื่อเรื่องแบบพิมพ์ดีด พารัลแลกซ์ และทรานซิชันการเข้าฉาก ปิดหากแอปกระตุก</string>
     <string name="player_auto_hide_top_panel">ซ่อนแผงปุ่มกลับอัตโนมัติ</string>
     <string name="player_auto_hide_top_panel_desc">จางแผงปุ่มกลับไปยังแอปด้านบนหลังไม่มีการใช้งาน 5 วินาทีในเพลเยอร์แบบขยาย เลื่อนลงเพื่อเรียกคืน</string>
-    <string name="news">ข่าวสาร</string>
-    <string name="news_new_albums">อัลบั้มใหม่</string>
-    <string name="news_new_songs">เพลงใหม่</string>
-    <string name="news_charts">ชาร์ต</string>
-    <string name="news_new_albums_title">อัลบั้มใหม่</string>
-    <string name="news_quick_play_title">เพลงใหม่</string>
-    <string name="news_empty_albums">ยังไม่พบอัลบั้มใหม่</string>
-    <string name="news_empty_songs">ยังไม่พบเพลงใหม่</string>
 
     <string name="better_library_beta">คลังเพลงที่ดีขึ้น BETA</string>
     <string name="better_library_beta_desc">เปิดใช้คลังเพลงที่ปรับปรุงใหม่ด้วย Material 3 (Top App Bar, FAB และการแก้ไข UI)</string>
@@ -1191,4 +1181,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">ดีไซน์เครื่องเล่นใหม่</string>
 <string name="new_mini_player_design">ดีไซน์มินิเพลเยอร์ใหม่</string>
-</resources>
+    <string name="featured_for_you">แนะนำสำหรับคุณ</string>
+    <string name="trending_artist_subtitle">กำลังมาแรงในฟีดของคุณ</string>
+    <string name="artist_radio_subtitle">มิกซ์ไม่รู้จบจากแรงบันดาลใจของศิลปินนี้</string>
+    <string name="artist_radio_title">วิทยุ %1$s</string>
+    <string name="mood_and_playlists_for_you">อารมณ์และเพลย์ลิสต์สำหรับคุณ</string>
+    <string name="syncing_library">กำลังซิงค์คลัง</string>
+    <string name="network_sync_warning">ฟีเจอร์เครือข่ายอาจใช้งานไม่ได้จนกว่าการซิงค์จะเสร็จ</string>
+    <string name="syncing_your_library">กำลังซิงค์คลังของคุณ…</string>
+    <string name="collapse_section">ย่อส่วนนี้</string>
+    <string name="expand_section">ขยายส่วนนี้</string>
+    </resources>

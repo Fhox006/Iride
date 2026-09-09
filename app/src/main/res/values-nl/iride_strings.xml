@@ -1105,22 +1105,12 @@
     <string name="muzza_player_logic_desc">Laadt nummers sneller via een alternatieve streamingsmethode.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">Tabblad Nieuws tonen</string>
-    <string name="show_news_tab_desc">Voegt een tabblad Nieuws toe aan de navigatie onderaan, tussen Start en Bibliotheek</string>
     <string name="compact_top_navigation_bar">Compacte bovenbalk</string>
     <string name="compact_top_navigation_bar_desc">Start en Bibliotheek als tekst links, Zoeken en je profielfoto als pictogrammen rechts. Schakel uit om terug te keren naar de klassieke balk waarin elk tabblad volledig wordt weergegeven</string>
     <string name="iride_animations">Iride-animaties</string>
     <string name="iride_animations_desc">Typmachine-titels, parallax en overgangen bij het openen. Schakel uit als de app hapert</string>
     <string name="player_auto_hide_top_panel">Terugpaneel automatisch verbergen</string>
     <string name="player_auto_hide_top_panel_desc">Laat het bovenste terug-naar-app-paneel vervagen na 5 s inactiviteit in de uitgeklapte speler. Scroll omlaag om het weer te tonen</string>
-    <string name="news">Nieuws</string>
-    <string name="news_new_albums">Nieuwe albums</string>
-    <string name="news_new_songs">Nieuwe nummers</string>
-    <string name="news_charts">Hitlijsten</string>
-    <string name="news_new_albums_title">Nieuwe Albums</string>
-    <string name="news_quick_play_title">Nieuwe Nummers</string>
-    <string name="news_empty_albums">Nog geen nieuwe albums gevonden</string>
-    <string name="news_empty_songs">Nog geen nieuwe nummers gevonden</string>
 
     <string name="better_library_beta">Betere Bibliotheek BETA</string>
     <string name="better_library_beta_desc">Schakel de herontworpen Material 3-bibliotheek in (Top App Bar, FAB en UI-fixes)</string>
@@ -1195,4 +1185,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">Nieuw speler ontwerp</string>
 <string name="new_mini_player_design">Nieuw mini-speler ontwerp</string>
-</resources>
+    <string name="featured_for_you">Aanbevolen voor jou</string>
+    <string name="trending_artist_subtitle">In opkomst in je feed</string>
+    <string name="artist_radio_subtitle">Endeloze mix geïnspireerd op deze artiest</string>
+    <string name="artist_radio_title">Radio %1$s</string>
+    <string name="mood_and_playlists_for_you">Sfeer en afspeellijsten voor jou</string>
+    <string name="syncing_library">Bibliotheek wordt gesynchroniseerd</string>
+    <string name="network_sync_warning">Netwerkfuncties werken mogelijk niet totdat de synchronisatie is voltooid.</string>
+    <string name="syncing_your_library">Je bibliotheek wordt gesynchroniseerd…</string>
+    <string name="collapse_section">Sectie samenvouwen</string>
+    <string name="expand_section">Sectie uitvouwen</string>
+    </resources>

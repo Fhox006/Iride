@@ -1128,32 +1128,6 @@
     <string name="iride_animations_desc">Typewriter titles, parallax and entrance transitions. Turn off if the app stutters</string>
     <string name="player_auto_hide_top_panel">Auto-hide return panel</string>
     <string name="player_auto_hide_top_panel_desc">Fades out the top return-to-app panel after 5s idle in the expanded player. Scrolling down brings it back</string>
-    <string name="news">News</string>
-    <string name="show_news_tab">Show News tab</string>
-    <string name="show_news_tab_desc">Adds a News tab to the bottom navigation, between Home and Library</string>
-    <string name="news_new_albums">New albums</string>
-    <string name="news_new_songs">New songs</string>
-    <string name="news_charts">Charts</string>
-    <string name="news_new_albums_title">New Albums</string>
-    <string name="news_quick_play_title">New Songs</string>
-    <string name="news_empty_albums">No new albums found yet</string>
-    <string name="news_empty_songs">No new songs found yet</string>
-    <string name="news_from_your_artists">From your artists</string>
-    <string name="news_your_artists_releases">All from your artists</string>
-    <string name="news_just_out">Just out</string>
-    <string name="news_hot_right_now">Hot right now</string>
-    <string name="news_your_world">Your world</string>
-    <string name="news_discover">Discover</string>
-    <string name="news_pick_genre">Pick a genre you love to fill this shelf</string>
-    <string name="news_filter_all">All</string>
-    <string name="news_filter_albums">Albums</string>
-    <string name="news_filter_singles">Singles</string>
-    <string name="news_see_all">See all</string>
-    <string name="news_show_less">Show less</string>
-    <string name="news_empty_personal">Follow or listen to some artists — their new releases will land here</string>
-    <string name="news_empty_general">No fresh releases found yet. Check back soon</string>
-    <string name="news_empty_charts">The charts are warming up. Try again in a moment</string>
-    <string name="news_all_done">That\'s all for today — new music usually drops on Fridays</string>
 
     <string name="better_library_beta">Better Library BETA</string>
     <string name="better_library_beta_desc">Enable Material 3 refactored Library (Top App Bar, FAB, and UI fixes)</string>
@@ -1243,4 +1217,14 @@
     <string name="adv_badge_foryou">For you</string>
     <string name="adv_badge_trending">Trending</string>
     <string name="adv_badge_radio">Radio</string>
-</resources>
+    <string name="featured_for_you">Featured for you</string>
+    <string name="trending_artist_subtitle">Rising on your feed</string>
+    <string name="artist_radio_subtitle">Endless mix inspired by this artist</string>
+    <string name="artist_radio_title">%1$s Radio</string>
+    <string name="mood_and_playlists_for_you">Mood &amp; Playlists for You</string>
+    <string name="syncing_library">Syncing library</string>
+    <string name="network_sync_warning">Network features may not work until sync completes.</string>
+    <string name="syncing_your_library">Syncing your library…</string>
+    <string name="collapse_section">Collapse section</string>
+    <string name="expand_section">Expand section</string>
+    </resources>

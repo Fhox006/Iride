@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.palette.graphics.Palette
 import coil3.imageLoader
+import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
@@ -87,14 +88,25 @@ fun TopScreenGradientBackground(
             gradientColors = emptyList()
             return@LaunchedEffect
         }
-        val bitmap = withContext(Dispatchers.IO) {
-            val request = ImageRequest.Builder(context)
-                .data(url)
-                .size(100, 100)
-                .allowHardware(false)
-                .build()
-            runCatching { context.imageLoader.execute(request) }
-                .getOrNull()?.image?.toBitmap()
+        // Retry a few times: right after reboot the disk cache may be cold and
+        // the network may still be settling — a single cold miss left the gradient
+        // and mini-player blank until the next track change.
+        var bitmap: Bitmap? = null
+        repeat(3) { attempt ->
+            bitmap = withContext(Dispatchers.IO) {
+                val request = ImageRequest.Builder(context)
+                    .data(url)
+                    .size(100, 100)
+                    .allowHardware(false)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .networkCachePolicy(CachePolicy.ENABLED)
+                    .build()
+                runCatching { context.imageLoader.execute(request) }
+                    .getOrNull()?.image?.toBitmap()
+            }
+            if (bitmap != null) return@repeat
+            if (attempt < 2) kotlinx.coroutines.delay(1200)
         }
 
         if (smoothTransition && displayedThumbnail != null && bitmap != null) {

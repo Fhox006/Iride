@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -73,11 +74,12 @@ fun HeroCarouselSection(
     onCollapseToggle: (() -> Unit)? = null,
 ) {
     if (items.isEmpty()) return
+    val featuredTitle = stringResource(R.string.featured_for_you)
     val pagerState = rememberPagerState(pageCount = { items.size })
 
     Column(modifier = modifier.fillMaxWidth()) {
         NavigationTitle(
-            title = "Featured for you",
+            title = featuredTitle,
             useIrideStyle = true,
             collapsed = collapsed,
             onCollapseToggle = onCollapseToggle,
@@ -133,7 +135,7 @@ fun HeroCarouselSkeleton(modifier: Modifier = Modifier) {
     val cardShape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.48f)
 
     Column(modifier = modifier.fillMaxWidth()) {
-        NavigationTitle(title = "Featured for you", useIrideStyle = true)
+        NavigationTitle(title = stringResource(R.string.featured_for_you), useIrideStyle = true)
         ShimmerHost(modifier = Modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
@@ -164,7 +166,7 @@ private fun HeroCard(
 
     when (item) {
         is HeroCarouselItem.NewRelease -> {
-            badgeLabel = "NEW"
+            badgeLabel = stringResource(R.string.adv_badge_new)
             badgeIcon = R.drawable.trending_up
             title = item.title
             subtitle = item.artistName
@@ -172,7 +174,7 @@ private fun HeroCard(
             onClick = { onAlbumClick(item.albumId) }
         }
         is HeroCarouselItem.InRotation -> {
-            badgeLabel = "IN ROTATION"
+            badgeLabel = stringResource(R.string.adv_badge_rotation)
             badgeIcon = R.drawable.album
             title = item.title
             subtitle = item.artistName
@@ -180,7 +182,7 @@ private fun HeroCard(
             onClick = { onAlbumClick(item.albumId) }
         }
         is HeroCarouselItem.RecommendedAlbum -> {
-            badgeLabel = "FOR YOU"
+            badgeLabel = stringResource(R.string.adv_badge_foryou)
             badgeIcon = R.drawable.star
             title = item.title
             subtitle = item.artistName
@@ -188,18 +190,18 @@ private fun HeroCard(
             onClick = { onAlbumClick(item.albumId) }
         }
         is HeroCarouselItem.TrendingArtist -> {
-            badgeLabel = "TRENDING"
+            badgeLabel = stringResource(R.string.adv_badge_trending)
             badgeIcon = R.drawable.trending_up
             title = item.artistName
-            subtitle = "Rising on your feed"
+            subtitle = stringResource(R.string.trending_artist_subtitle)
             coverUrl = item.coverUrl
             onClick = { onArtistClick(item.artistId) }
         }
         is HeroCarouselItem.ArtistRadio -> {
-            badgeLabel = "RADIO"
+            badgeLabel = stringResource(R.string.adv_badge_radio)
             badgeIcon = R.drawable.radio
-            title = "${item.artistName} Radio"
-            subtitle = "Endless mix inspired by this artist"
+            title = stringResource(R.string.artist_radio_title, item.artistName)
+            subtitle = stringResource(R.string.artist_radio_subtitle)
             coverUrl = item.coverUrl
             onClick = { onArtistRadioClick(item.artistId, item.artistName) }
         }

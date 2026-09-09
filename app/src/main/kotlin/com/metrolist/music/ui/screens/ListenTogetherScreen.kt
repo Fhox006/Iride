@@ -65,6 +65,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,25 +84,37 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AppBarHeight
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.ListenTogetherUsernameKey
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.listentogether.ConnectionState
 import com.metrolist.music.listentogether.JoinRequestPayload
 import com.metrolist.music.listentogether.ListenTogetherEvent
 import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.listentogether.SuggestionReceivedPayload
 import com.metrolist.music.listentogether.UserInfo
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.SettingsBackTopBar
+import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
+import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import androidx.compose.material3.IconButton as MaterialIconButton
 
@@ -234,13 +247,36 @@ fun ListenTogetherScreen(
         }
     }
 
-    LazyColumn(
-        state = lazyListState,
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .imePadding(),
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
+    val headerScrolled by remember {
+        derivedStateOf {
+            lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 8
+        }
+    }
+    val frostBackdrop = rememberFrostBackdrop()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .recordFrostBackdrop(frostBackdrop),
+    ) {
+        if (mainTopGradient) {
+            TopScreenGradientBackground(
+                mediaMetadata = mediaMetadata,
+                playerBackground = playerBackgroundStyle,
+            )
+        } else {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+        }
+        LazyColumn(
+            state = lazyListState,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .imePadding(),
         contentPadding =
             PaddingValues(
                 start = 16.dp,
@@ -406,11 +442,14 @@ fun ListenTogetherScreen(
             )
         }
     }
+    }
 
     if (shouldShowTopBar) {
         SettingsBackTopBar(
             title = stringResource(R.string.together),
             navController = navController,
+            backdrop = frostBackdrop,
+            revealProgress = rememberDiscreteProgress(headerScrolled),
         )
     }
 }

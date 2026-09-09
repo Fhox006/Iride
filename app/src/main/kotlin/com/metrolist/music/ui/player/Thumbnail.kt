@@ -37,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.foundation.border
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
@@ -87,6 +88,9 @@ import com.metrolist.music.constants.PlayerHorizontalPadding
 import com.metrolist.music.constants.SeekExtraSeconds
 import com.metrolist.music.constants.SwipeThumbnailKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
+import com.metrolist.music.constants.irideArtworkBorderWidth
+import com.metrolist.music.ui.theme.strokeOverArtwork
+import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.ui.component.CastButton
 import com.metrolist.music.ui.utils.resize
@@ -196,6 +200,21 @@ private fun getTextColor(playerBackground: PlayerBackgroundStyle): Color {
     }
 }
 
+/**
+ * Light outline drawn around the full player artwork. Theme-based on plain
+ * surfaces, translucent white when the artwork sits over a media background.
+ * Stronger than list tokens: the stroke sits on top of image pixels.
+ */
+@Stable
+@Composable
+private fun getArtworkBorderColor(playerBackground: PlayerBackgroundStyle): Color {
+    return if (playerBackground == PlayerBackgroundStyle.DEFAULT) {
+        MaterialTheme.colorScheme.strokeOverArtwork
+    } else {
+        Color.White.copy(alpha = 0.4f)
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Thumbnail(
@@ -225,6 +244,7 @@ fun Thumbnail(
     )
 
     val textBackgroundColor = getTextColor(playerBackground)
+    val artworkBorderColor = getArtworkBorderColor(playerBackground)
     val mediaItemsData = remember(mediaMetadata, swipeThumbnail) {
         getMediaItems(playerConnection.player, swipeThumbnail)
     }
@@ -363,6 +383,7 @@ fun Thumbnail(
                                 hidePlayerThumbnail = hidePlayerThumbnail,
                                 cropAlbumArt = cropAlbumArt,
                                 textBackgroundColor = textBackgroundColor,
+                                borderColor = artworkBorderColor,
                                 layoutDirection = layoutDirection,
                                 onSeek = onSeekCallback,
                                 playerConnection = playerConnection,
@@ -443,6 +464,7 @@ private fun ThumbnailItem(
     hidePlayerThumbnail: Boolean,
     cropAlbumArt: Boolean,
     textBackgroundColor: Color,
+    borderColor: Color,
     layoutDirection: LayoutDirection,
     onSeek: (String, Boolean) -> Unit,
     playerConnection: com.metrolist.music.playback.PlayerConnection,
@@ -508,6 +530,11 @@ private fun ThumbnailItem(
         Box(
             modifier = Modifier
                 .size(dimensions.thumbnailSize)
+                .irideArtworkOverlayBorder(
+                    width = irideArtworkBorderWidth(dimensions.thumbnailSize),
+                    color = borderColor,
+                    shape = SquircleShape(radius = dimensions.thumbnailSize * 0.05f, cornerSmoothing = 0.48f)
+                )
                 .clip(SquircleShape(radius = dimensions.thumbnailSize * 0.05f, cornerSmoothing = 0.48f))
         ) {
             if (hidePlayerThumbnail) {

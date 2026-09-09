@@ -39,7 +39,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import sv.lib.squircleshape.SquircleShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -142,6 +141,7 @@ import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.rememberRubberBandPull
 import com.metrolist.music.ui.component.rubberBandOverscroll
+import com.metrolist.music.ui.component.SelectionIndicator
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.rememberGenreFilter
@@ -151,6 +151,7 @@ import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.screens.search.IrideSearchBox
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import com.metrolist.music.ui.utils.irideEnter
 import com.metrolist.music.ui.utils.irideEnterScale
 import com.metrolist.music.ui.utils.isScrollingUp
@@ -745,9 +746,9 @@ fun AutoPlaylistScreen(
                             isPlaying = isPlaying,
                             trailingContent = {
                                 if (inSelectMode) {
-                                    Checkbox(
-                                        checked = song.id in selection,
-                                        onCheckedChange = onCheckedChange,
+                                    SelectionIndicator(
+                                        selected = song.id in selection,
+                                        onClick = { onCheckedChange(song.id !in selection) },
                                     )
                                 } else {
                                     IconButton(
@@ -916,17 +917,6 @@ fun AutoPlaylistScreen(
         }
         val topBarActions: @Composable RowScope.() -> Unit = {
                 if (inSelectMode) {
-                    Checkbox(
-                        checked = selection.size == filteredSongs.size && selection.isNotEmpty(),
-                        onCheckedChange = {
-                            if (selection.size == filteredSongs.size) {
-                                selection.clear()
-                            } else {
-                                selection.clear()
-                                selection.addAll(filteredSongs.map { it.id })
-                            }
-                        },
-                    )
                     IconButton(
                         enabled = selection.isNotEmpty(),
                         onClick = {
@@ -1015,7 +1005,7 @@ fun AutoPlaylistScreen(
                     backdrop = frostBackdrop,
                 )
                 .statusBarsPadding()
-                .height(56.dp)
+                .height(40.dp)
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1147,6 +1137,11 @@ private fun AutoPlaylistHeader(
                 modifier =
                     Modifier
                         .size(240.dp)
+                        .irideArtworkOverlayBorder(
+                            IrideBaseBorderWidth,
+                            MaterialTheme.colorScheme.strokeCard,
+                            coverSquircle,
+                        )
                         .shadow(
                             elevation = 24.dp,
                             shape = coverSquircle,
@@ -1154,7 +1149,6 @@ private fun AutoPlaylistHeader(
                         ),
                 shape = coverSquircle,
                 color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard),
             ) {
                 AsyncImage(
                     model = songs[0].song.thumbnailUrl,

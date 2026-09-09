@@ -14,29 +14,44 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.DiscordTokenKey
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.SettingsBackTopBar
+import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -55,7 +70,36 @@ fun DiscordLoginScreen(navController: NavController) {
     var discordToken by rememberPreference(DiscordTokenKey, "")
     var webView: WebView? = null
 
-    AndroidView(
+    val frostBackdrop = rememberFrostBackdrop()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(
+        PlayerBackgroundStyleKey,
+        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+    )
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by remember(playerConnection) {
+        playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+    }.collectAsStateWithLifecycle()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop)
+        ) {
+        if (mainTopGradient) {
+            TopScreenGradientBackground(
+                mediaMetadata = mediaMetadata,
+                playerBackground = playerBackgroundStyle,
+            )
+        } else {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background),
+            )
+        }
+        AndroidView(
         modifier = Modifier
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
             .fillMaxSize(),
@@ -113,11 +157,14 @@ fun DiscordLoginScreen(navController: NavController) {
             }
         }
     )
+        }
 
-    SettingsBackTopBar(
-        title = stringResource(R.string.action_login),
-        navController = navController,
-    )
+        SettingsBackTopBar(
+            title = stringResource(R.string.action_login),
+            navController = navController,
+            backdrop = frostBackdrop,
+        )
+    }
 
     BackHandler(enabled = webView?.canGoBack() == true) {
         webView?.goBack()

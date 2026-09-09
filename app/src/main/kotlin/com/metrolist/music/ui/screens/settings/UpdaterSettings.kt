@@ -45,16 +45,23 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.CheckForUpdatesKey
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.UpdateNotificationsEnabledKey
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.utils.backToMain
@@ -62,9 +69,11 @@ import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.UpdateDownloadState
 import com.metrolist.music.utils.UpdateDownloader
 import com.metrolist.music.utils.Updater
+import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -114,6 +123,15 @@ fun UpdaterScreen(
 
     val settingsScrollState = rememberScrollState()
     val frostBackdrop = rememberFrostBackdrop()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(
+        PlayerBackgroundStyleKey,
+        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+    )
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by remember(playerConnection) {
+        playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+    }.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -121,6 +139,18 @@ fun UpdaterScreen(
                 .fillMaxSize()
                 .recordFrostBackdrop(frostBackdrop)
         ) {
+            if (mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
+                )
+            } else {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
+                )
+            }
             Column(
                 modifier =
                     Modifier

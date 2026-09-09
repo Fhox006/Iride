@@ -7,6 +7,7 @@ package com.metrolist.music.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,6 +44,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -83,7 +85,10 @@ import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.MyTopFilter
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.ExoDownloadService
@@ -98,12 +103,18 @@ import com.metrolist.music.ui.component.IrideAdaptiveTopBar
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.rememberGenreFilter
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.menu.TopPlaylistMenu
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.makeTimeString
+import com.metrolist.music.utils.rememberEnumPreference
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.TopPlaylistViewModel
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -258,13 +269,35 @@ fun TopPlaylistScreen(
 
     val state = rememberLazyListState()
 
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
+    val headerScrolled by remember {
+        derivedStateOf {
+            state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 8
+        }
+    }
+    val frostBackdrop = rememberFrostBackdrop()
+
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
-        LazyColumn(
-            state = state,
-            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop),
         ) {
+            if (mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
+                )
+            } else {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+            }
+            LazyColumn(
+                state = state,
+                contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            ) {
             if (songs != null) {
                 if (songs!!.isEmpty()) {
                     item(key = "empty_placeholder") {
@@ -409,6 +442,7 @@ fun TopPlaylistScreen(
                     }
                 }
             }
+        }
         }
 
         DraggableScrollbar(
@@ -572,19 +606,21 @@ fun TopPlaylistScreen(
                                                 }
                                             }
                                         }
-                                    },
+                                     },
                                     onDismiss = menuState::dismiss,
                                 )
                             }
                         },
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.more_vert),
-                            contentDescription = null,
-                        )
-                    }
-                }
-            }
+                         Icon(
+                             painter = painterResource(R.drawable.more_vert),
+                             contentDescription = null,
+                         )
+                     }
+                 }
+             },
+            backdrop = frostBackdrop,
+            revealProgress = rememberDiscreteProgress(headerScrolled),
         )
     }
 }

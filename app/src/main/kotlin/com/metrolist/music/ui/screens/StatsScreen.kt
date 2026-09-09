@@ -623,7 +623,7 @@ fun StatsScreen(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars)
-                        .height(56.dp)
+                        .height(40.dp)
                         .padding(end = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

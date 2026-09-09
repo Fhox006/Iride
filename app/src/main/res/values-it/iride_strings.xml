@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="local_history">Locale</string>
     <string name="remote_history">Remoto</string>
@@ -1128,22 +1128,12 @@
     <string name="muzza_player_logic_desc">Carica le canzoni più velocemente con un metodo di streaming alternativo.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">Mostra scheda News</string>
-    <string name="show_news_tab_desc">Aggiunge una scheda News alla barra di navigazione, tra Home e Libreria</string>
     <string name="compact_top_navigation_bar">Barra superiore compatta</string>
     <string name="compact_top_navigation_bar_desc">Home e Libreria come testo a sinistra, Cerca e la tua foto profilo come icone a destra. Disattiva per tornare alla barra classica con tutte le schede scritte per esteso</string>
     <string name="iride_animations">Animazioni Iride</string>
     <string name="iride_animations_desc">Titoli a macchina da scrivere, parallasse e transizioni d\'ingresso. Disattiva se l\'app scatta</string>
     <string name="player_auto_hide_top_panel">Dissolvenza pannello di ritorno</string>
     <string name="player_auto_hide_top_panel_desc">Dopo 5s di inattività nel player espanso, nasconde il pannello in alto per tornare all\'app. Scorrendo verso il basso riappare</string>
-    <string name="news">News</string>
-    <string name="news_new_albums">Album nuovi</string>
-    <string name="news_new_songs">Canzoni nuove</string>
-    <string name="news_charts">Classifiche</string>
-    <string name="news_new_albums_title">Nuovi album</string>
-    <string name="news_quick_play_title">Novità in ascolto rapido</string>
-    <string name="news_empty_albums">Nessun nuovo album trovato</string>
-    <string name="news_empty_songs">Nessuna nuova canzone trovata</string>
 
     <string name="better_library_beta">Libreria migliorata BETA</string>
     <string name="better_library_beta_desc">Attiva la libreria ridisegnata in Material 3 (barra superiore, FAB e correzioni all\'interfaccia)</string>
@@ -1238,4 +1228,14 @@
     <string name="adv_badge_foryou">Per te</string>
     <string name="adv_badge_trending">Di tendenza</string>
     <string name="adv_badge_radio">Radio</string>
-</resources>
+    <string name="featured_for_you">In evidenza per te</string>
+    <string name="trending_artist_subtitle">In crescita nel tuo feed</string>
+    <string name="artist_radio_subtitle">Mix infinito ispirato a quest\'artista</string>
+    <string name="artist_radio_title">Radio %1$s</string>
+    <string name="mood_and_playlists_for_you">Mood e playlist per te</string>
+    <string name="syncing_library">Sincronizzazione libreria</string>
+    <string name="network_sync_warning">Le funzioni di rete potrebbero non funzionare fino al termine della sincronizzazione.</string>
+    <string name="syncing_your_library">Sincronizzazione della tua libreria…</string>
+    <string name="collapse_section">Comprimi sezione</string>
+    <string name="expand_section">Espandi sezione</string>
+    </resources>

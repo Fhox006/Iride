@@ -48,15 +48,10 @@
     <string name="similar_to">Похожие на</string>
     <string name="new_release_albums">Новые релизы альбомов</string>
     <string name="artist_latest_release">Последний релиз</string>
-    <string name="artist_release_type_album">АЛЬБОМ</string>
-    <string name="artist_release_type_ep">EP</string>
-    <string name="artist_release_type_single">СИНГЛ</string>
-    <string name="artist_release_type_feat">FEAT</string>
     <string name="genius_section_title">Определение приглашённых исполнителей (Genius)</string>
     <string name="genius_api_key">Токен API Genius</string>
     <string name="genius_api_key_description">Находит указания «feat.», которые пропускает собственная страница исполнителя в YTM. Получите бесплатный токен на genius.com/api-clients.</string>
     <string name="essential_albums">Ключевые альбомы</string>
-    <string name="featuring">При участии</string>
     <string name="suggested_follow_artists">Вы часто слушаете этих исполнителей — подписаться?</string>
     <string name="new_from_followed_artists">Новое от исполнителей, на которых вы подписаны</string>
 

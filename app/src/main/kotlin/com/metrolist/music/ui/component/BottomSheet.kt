@@ -38,9 +38,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
@@ -64,8 +65,19 @@ fun BottomSheet(
     collapsedContent: @Composable BoxScope.() -> Unit,
     isExpandable: Boolean = true,
     clickableHeight: Dp = state.collapsedBound,
+    // When false, this composable never moves/clips itself (used for the "curtain" player layer
+    // that stays fixed behind the app content — the app layer does the moving instead) and does
+    // not attach its own drag gesture (the caller attaches it to the visible peek content instead).
     selfPositions: Boolean = true,
+    // Reserves space at the top of the expanded [content] — used in New Iride UI mode where the
+    // player is a fixed full-screen layer but its content must start below AppPeekHeight (the
+    // app-layer sliver that always stays visible at the top, since the player itself never moves).
     contentTopPadding: Dp = 0.dp,
+    // When true, [background] is drawn fully opaque at every drag position instead of fading in
+    // over the first ~10-61% of progress. Used by the New Iride UI curtain player: its collapsed
+    // peek content already paints the same dark background, so the generic fade-in left a gap at
+    // low progress where nothing was drawn yet — briefly showing raw black instead of the curtain's
+    // own color and reading as a mismatched, separate background peeking through at the seam.
     backgroundAlwaysOpaque: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -74,6 +86,7 @@ fun BottomSheet(
     Box(
         modifier = modifier
             .graphicsLayer {
+                // background fades during about 10%-61% progress (unless backgroundAlwaysOpaque)
                 alpha = if (backgroundAlwaysOpaque) {
                     1f
                 } else {
@@ -86,6 +99,7 @@ fun BottomSheet(
     Box(
         modifier = modifier
             .fillMaxSize()
+            // Use graphicsLayer for offset to ensure hardware acceleration and 120Hz support
             .graphicsLayer {
                 if (selfPositions) {
                     translationY = (state.expandedBound - state.value)
@@ -95,12 +109,56 @@ fun BottomSheet(
             }
             .pointerInput(state, isExpandable) {
                 if (!isExpandable) return@pointerInput
-                handleBottomSheetDrag(
-                    state = state,
-                    dragSlopPx = 32.dp.toPx(),
-                    dominanceRatio = 1f,
-                    onDismiss = onDismiss,
-                )
+                // Plain detectVerticalDragGestures claims the gesture at the platform's default
+                // touch slop (~8dp) — a real finger's ordinary jitter during a tap on a button
+                // anywhere in this full-surface Box crosses that easily, canceling the button's
+                // own click mid-press (Compose cancels a pressed clickable the moment an ancestor
+                // consumes a position change for that pointer) and, on release, can even read as a
+                // downward fling into performFling(onDismiss) — closing the whole player from what
+                // was meant to be a tap. Requiring a much larger, unambiguous vertical move before
+                // this Box claims the pointer lets ordinary taps reach their target reliably, while
+                // real swipes (expand/collapse/dismiss) still clear it well within a normal gesture.
+                val dragSlop = 32.dp.toPx()
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val velocityTracker = VelocityTracker()
+                    velocityTracker.addPointerInputChange(down)
+                    var accumulatedY = 0f
+                    var accumulatedX = 0f
+                    var dragging = false
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!dragging) {
+                            if (change.isConsumed) break
+                            val delta = change.positionChange()
+                            accumulatedY += delta.y
+                            accumulatedX += delta.x
+                            if (abs(accumulatedY) > dragSlop && abs(accumulatedY) > abs(accumulatedX)) {
+                                dragging = true
+                                change.consume()
+                                velocityTracker.addPointerInputChange(change)
+                                state.dispatchRawDelta(accumulatedY)
+                            }
+                            if (!change.pressed) break
+                        } else {
+                            velocityTracker.addPointerInputChange(change)
+                            state.dispatchRawDelta(change.positionChange().y)
+                            change.consume()
+                            if (!change.pressed) {
+                                val velocity = -velocityTracker.calculateVelocity().y
+                                state.performFling(velocity, onDismiss)
+                                dragging = false
+                                break
+                            }
+                        }
+                    }
+                    if (dragging) {
+                        // Pointer left the stream without a normal lift (e.g. another gesture
+                        // took over) mid-drag — same as the old onDragCancel path.
+                        state.performFling(0f, onDismiss)
+                    }
+                }
             }
             .graphicsLayer {
                 if (selfPositions) {
@@ -114,6 +172,7 @@ fun BottomSheet(
             BackHandler(onBack = state::collapseSoft)
         }
 
+        // main content
         if (!state.isCollapsed) {
             BoxWithConstraints(
                 modifier = Modifier
@@ -134,17 +193,24 @@ fun BottomSheet(
                     .fillMaxWidth()
                     .height(state.collapsedBound)
                     .then(
+                        // When the sheet doesn't self-translate (curtain mode), this Box would
+                        // otherwise sit at the top of the full-screen container (Box's default
+                        // TopStart alignment) instead of at the bottom where the visible "gap" the
+                        // app layer leaves actually is.
                         if (!selfPositions) Modifier.align(Alignment.BottomStart) else Modifier
                     ),
             ) {
                 Box(
                     modifier = Modifier
                         .graphicsLayer {
-                            val collapseFade = 1f - (state.progress / 0.15f).coerceIn(0f, 1f)
-                            val dismissTravel = (state.collapsedBound - state.value).coerceAtLeast(0.dp)
-                            val dismissRange = (state.collapsedBound - state.dismissedBound).coerceAtLeast(1.dp)
-                            val dismissFade = 1f - (dismissTravel / dismissRange).coerceIn(0f, 1f)
-                            alpha = collapseFade * dismissFade
+                            // Matches the expanded content's own fade-in start (progress 0.15,
+                            // just below) instead of the old faster 0.25 cutoff — that gap used to
+                            // leave both this collapsed row AND the expanded content (including
+                            // whatever queue/lyrics panel was open) partially visible and stacked
+                            // on top of each other for a stretch of the drag, so shrinking the
+                            // player with a panel open showed its dark background ghosting through
+                            // behind the miniplayer row.
+                            alpha = 1f - (state.progress / 0.15f).coerceIn(0f, 1f)
                         }
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
@@ -153,70 +219,10 @@ fun BottomSheet(
                             onClick = { if (isExpandable) state.expandSoft() },
                         )
                         .fillMaxWidth()
-                        .height(clickableHeight)
-                        .pointerInput(state, isExpandable) {
-                            if (!isExpandable) return@pointerInput
-                            handleBottomSheetDrag(
-                                state = state,
-                                dragSlopPx = 12.dp.toPx(),
-                                dominanceRatio = 0.6f,
-                                onDismiss = onDismiss,
-                            )
-                        },
+                        .height(clickableHeight),
                     content = collapsedContent,
                 )
             }
-        }
-    }
-}
-
-internal suspend fun PointerInputScope.handleBottomSheetDrag(
-    state: BottomSheetState,
-    dragSlopPx: Float,
-    dominanceRatio: Float,
-    onDismiss: (() -> Unit)?,
-) {
-    val commitPx = 28.dp.toPx()
-    awaitEachGesture {
-        val down = awaitFirstDown(requireUnconsumed = false)
-        var accumulatedY = 0f
-        var accumulatedX = 0f
-        var dragging = false
-        while (true) {
-            val event = awaitPointerEvent()
-            val change = event.changes.firstOrNull { it.id == down.id } ?: break
-            if (!dragging) {
-                if (change.isConsumed) break
-                val delta = change.positionChange()
-                accumulatedY += delta.y
-                accumulatedX += delta.x
-                if (abs(accumulatedY) > dragSlopPx && abs(accumulatedY) >= abs(accumulatedX) * dominanceRatio) {
-                    dragging = true
-                    change.consume()
-                    state.dispatchRawDelta(accumulatedY)
-                }
-                if (!change.pressed) break
-            } else {
-                // Fully-expanded is a hard ceiling: upward drags are swallowed so the panel
-                // never grinds against its bound while an inner list scrolls.
-                val delta = change.positionChange()
-                if (!(state.isExpanded && delta.y < 0)) {
-                    state.dispatchRawDelta(delta.y)
-                }
-                change.consume()
-                if (!change.pressed) break
-            }
-        }
-        // Closing needs more conviction than opening: from the expanded panel a stray
-        // vertical drift (e.g. scrolling a list through its gaps) must not collapse it.
-        val downCommitPx = if (state.isExpanded) commitPx * 2f else commitPx
-        val direction = when {
-            accumulatedY < 0f -> -1
-            accumulatedY > downCommitPx -> 1
-            else -> 0
-        }
-        if (dragging || abs(accumulatedY) > commitPx) {
-            state.performFling(0f, onDismiss, if (abs(accumulatedY) > commitPx) direction else 0)
         }
     }
 }
@@ -253,6 +259,9 @@ class BottomSheetState(
         1f - (animatable.upperBound!! - animatable.value) / (animatable.upperBound!! - collapsedBound)
     }
 
+    // Set whenever an expand is triggered. Lets callers tell "just opened, no time to interact
+    // yet" (e.g. an accidental tap while backgrounding) apart from "user has been sitting in the
+    // expanded player for a while and left it open on purpose".
     var lastExpandedAtMs: Long = 0L
         private set
 
@@ -293,6 +302,7 @@ class BottomSheetState(
             animatable.animateTo(animatable.lowerBound!!)
         }
     }
+    
     suspend fun dismissAndWait() {
         onAnchorChanged(dismissedAnchor)
         animatable.animateTo(animatable.lowerBound!!)
@@ -304,34 +314,36 @@ class BottomSheetState(
         }
     }
 
-    fun performFling(velocity: Float, onDismiss: (() -> Unit)?, dragDirection: Int = 0) {
-        when {
-            dragDirection < 0 -> expand()
-            dragDirection > 0 -> dismissOrCollapse(onDismiss)
-            velocity > 250 -> expand()
-            velocity < -250 -> dismissOrCollapse(onDismiss)
-            else -> {
-                val l0 = dismissedBound
-                val l1 = (collapsedBound - dismissedBound) / 2
-                val l2 = (expandedBound - collapsedBound) / 2
-                val l3 = expandedBound
-
-                when (value) {
-                    in l0..l1 -> dismissOrCollapse(onDismiss)
-                    in l1..l2 -> collapse()
-                    in l2..l3 -> expand()
-                    else -> Unit
-                }
+    fun performFling(velocity: Float, onDismiss: (() -> Unit)?) {
+        if (velocity > 250) {
+            expand()
+        } else if (velocity < -250) {
+            if (value < collapsedBound && onDismiss != null) {
+                dismiss()
+                onDismiss.invoke()
+            } else {
+                collapse()
             }
-        }
-    }
-
-    private fun dismissOrCollapse(onDismiss: (() -> Unit)?) {
-        if (value < collapsedBound && onDismiss != null) {
-            dismiss()
-            onDismiss.invoke()
         } else {
-            collapse()
+            val l0 = dismissedBound
+            val l1 = (collapsedBound - dismissedBound) / 2
+            val l2 = (expandedBound - collapsedBound) / 2
+            val l3 = expandedBound
+
+            when (value) {
+                in l0..l1 -> {
+                    if (onDismiss != null) {
+                        dismiss()
+                        onDismiss.invoke()
+                    } else {
+                        collapse()
+                    }
+                }
+
+                in l1..l2 -> collapse()
+                in l2..l3 -> expand()
+                else -> Unit
+            }
         }
     }
 
@@ -397,7 +409,16 @@ fun rememberBottomSheetState(
     expandedBound: Dp,
     collapsedBound: Dp = dismissedBound,
     initialAnchor: Int = dismissedAnchor,
+    // Fires on every transition between dismissed/collapsed/expanded so the caller can mirror the
+    // new anchor into DataStore and survive a real process kill (rememberSaveable alone only
+    // covers config-change recreation). Default no-op keeps this composable drop-in for callers
+    // that don't need cross-process persistence.
     onAnchorPersist: (Int) -> Unit = {},
+    // When true, an interactive drag can never pull the sheet below collapsedBound — no swipe-to-
+    // dismiss-by-dragging. Used by the New Iride UI curtain player: dragging down past the collapsed
+    // mini player used to shrink it away and silently stop playback, reading as "throwing the song
+    // away" instead of just refusing to close further. Opening (drag up) is untouched, and dismiss()
+    // can still be invoked programmatically (e.g. an explicit close action) regardless of this flag.
     preventDismissDrag: Boolean = false,
 ): BottomSheetState {
     val density = LocalDensity.current

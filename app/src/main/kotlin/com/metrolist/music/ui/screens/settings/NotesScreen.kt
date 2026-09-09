@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -53,17 +54,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Song
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.SettingsBackTopBar
+import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.menu.NoteRatingStars
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
+import com.metrolist.music.utils.rememberEnumPreference
+import com.metrolist.music.utils.rememberPreference
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,7 +90,37 @@ fun NotesScreen(
 
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
 
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    val albumsListState = rememberLazyListState()
+    val songsListState = rememberLazyListState()
+    val frostBackdrop = rememberFrostBackdrop()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(
+        PlayerBackgroundStyleKey,
+        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+    )
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by remember(playerConnection) {
+        playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+    }.collectAsStateWithLifecycle()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop)
+        ) {
+        if (mainTopGradient) {
+            TopScreenGradientBackground(
+                mediaMetadata = mediaMetadata,
+                playerBackground = playerBackgroundStyle,
+            )
+        } else {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background),
+            )
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -130,6 +174,7 @@ fun NotesScreen(
                     EmptyNotesState(stringResource(R.string.notes_empty_albums))
                 } else {
                     LazyColumn(
+                        state = albumsListState,
                         contentPadding = PaddingValues(
                             start = 16.dp,
                             end = 16.dp,
@@ -155,6 +200,7 @@ fun NotesScreen(
                     EmptyNotesState(stringResource(R.string.notes_empty_tracks))
                 } else {
                     LazyColumn(
+                        state = songsListState,
                         contentPadding = PaddingValues(
                             start = 16.dp,
                             end = 16.dp,
@@ -177,10 +223,15 @@ fun NotesScreen(
                 }
             }
         }
+        }
 
         SettingsBackTopBar(
             title = stringResource(R.string.notes_screen_title),
             navController = navController,
+            backdrop = frostBackdrop,
+            revealProgress = rememberDiscreteProgress(
+                active = (if (tabIndex == 0) albumsListState else songsListState).firstVisibleItemIndex > 0,
+            ),
         )
     }
 }

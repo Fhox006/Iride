@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -26,11 +27,21 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Velocity
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
 import kotlin.math.sign
 
 private const val RUBBER_BAND_CONSTANT = 0.2f
+
+/**
+ * Upper bound for how long the nav gate may stay latched after the last overscroll event. The
+ * settle spring is slower than this in the worst case only when the user keeps the finger down,
+ * in which case new events keep renewing the watchdog anyway.
+ */
+private const val NAV_GATE_WATCHDOG_MILLIS = 2_500L
 
 class RubberBandPull internal constructor(
     internal val raw: Animatable<Float, AnimationVector1D>,
@@ -89,11 +100,39 @@ private class RubberBandConnection(
     private val settle = spring<Float>(dampingRatio = 1f, stiffness = Spring.StiffnessLow)
 
     private var isPulling = false
+    private var watchdogJob: Job? = null
 
+    /**
+     * Enters/exits the nav gate. The watchdog armed on entry is the safety net for gestures that
+     * end without [onPreFling]/[onPostFling] running (cancelled pointer events, parent
+     * interception, composition disposal mid-drag): without it the gate stays latched and every
+     * top-bar click is silently swallowed until another overscroll cycle happens to release it.
+     */
     private fun setPulling(active: Boolean) {
         if (orientation != Orientation.Vertical || active == isPulling) return
         isPulling = active
-        if (active) RubberBandNavGate.enter() else RubberBandNavGate.exit()
+        if (active) {
+            RubberBandNavGate.enter()
+            armWatchdog()
+        } else {
+            disarmWatchdog()
+            RubberBandNavGate.exit()
+        }
+    }
+
+    private fun armWatchdog() {
+        disarmWatchdog()
+        watchdogJob = scope.launch {
+            withTimeoutOrNull(NAV_GATE_WATCHDOG_MILLIS) {
+                snapshotFlow { pull.value }.first { it == 0f }
+            }
+            setPulling(false)
+        }
+    }
+
+    private fun disarmWatchdog() {
+        watchdogJob?.cancel()
+        watchdogJob = null
     }
 
     fun releaseGate() = setPulling(false)

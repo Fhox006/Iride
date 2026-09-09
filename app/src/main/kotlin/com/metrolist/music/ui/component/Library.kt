@@ -43,50 +43,15 @@ import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
-fun NewReleaseBadge(
-    count: Int,
-    modifier: Modifier = Modifier,
-) {
-    if (count <= 0) return
-    Box(
-        modifier = modifier
-            .background(
-                androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
-                androidx.compose.foundation.shape.RoundedCornerShape(50),
-            )
-            .padding(horizontal = 6.dp, vertical = 1.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        androidx.compose.material3.Text(
-            text = "+$count",
-            color = androidx.compose.material3.MaterialTheme.colorScheme.background,
-            style = androidx.compose.ui.text.TextStyle(
-                fontFamily = com.metrolist.music.ui.theme.SpaceMonoFontFamily,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                fontSize = 11.sp,
-            ),
-            maxLines = 1,
-        )
-    }
-}
-
-@Composable
 fun LibraryArtistListItem(
     navController: NavController,
     menuState: MenuState,
     coroutineScope: CoroutineScope,
     artist: Artist,
-    newSongCount: Int = 0,
     modifier: Modifier = Modifier
 ) = ArtistListItem(
     artist = artist,
     showLikedIcon = false,
-    badges = {
-        NewReleaseBadge(
-            count = newSongCount,
-            modifier = Modifier.padding(end = 4.dp),
-        )
-    },
     trailingContent = {
         androidx.compose.material3.IconButton(
             onClick = {
@@ -119,17 +84,10 @@ fun LibraryArtistGridItem(
     menuState: MenuState,
     coroutineScope: CoroutineScope,
     artist: Artist,
-    newSongCount: Int = 0,
     modifier: Modifier = Modifier
 ) = ArtistGridItem(
     artist = artist,
     showLikedIcon = false,
-    badges = {
-        NewReleaseBadge(
-            count = newSongCount,
-            modifier = Modifier.padding(end = 4.dp),
-        )
-    },
     fillMaxWidth = true,
     modifier = modifier
         .fillMaxWidth()

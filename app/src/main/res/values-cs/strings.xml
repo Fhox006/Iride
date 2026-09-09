@@ -47,15 +47,10 @@
     <string name="similar_to">Podobné</string>
     <string name="new_release_albums">Nově vydaná alba</string>
     <string name="artist_latest_release">Nejnovější vydání</string>
-    <string name="artist_release_type_album">ALBUM</string>
-    <string name="artist_release_type_ep">EP</string>
-    <string name="artist_release_type_single">SINGL</string>
-    <string name="artist_release_type_feat">FEAT</string>
     <string name="genius_section_title">Detekce hostování (Genius)</string>
     <string name="genius_api_key">Token Genius API</string>
     <string name="genius_api_key_description">Najde údaje „feat.“, které stránce samotného umělce v YTM unikají. Bezplatný token získáte na genius.com/api-clients.</string>
     <string name="essential_albums">Klíčová alba</string>
-    <string name="featuring">Hostující umělci</string>
     <string name="suggested_follow_artists">Hodně posloucháte — sledovat je?</string>
     <string name="new_from_followed_artists">Novinky od sledovaných umělců</string>
 

@@ -119,7 +119,7 @@ class MusicDatabase(
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = 47,
+    version = 49,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 2, to = 3),
@@ -166,6 +166,7 @@ class MusicDatabase(
         AutoMigration(from = 44, to = 45),
         AutoMigration(from = 45, to = 46),
         AutoMigration(from = 46, to = 47),
+        AutoMigration(from = 47, to = 48),
     ],
 )
 @TypeConverters(Converters::class)
@@ -185,7 +186,9 @@ abstract class InternalDatabase : RoomDatabase() {
                     MIGRATION_22_24,
                     MIGRATION_24_25,
                     MIGRATION_43_44,
-                ).fallbackToDestructiveMigration(dropAllTables = true)
+                    MIGRATION_48_49,
+                ).fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = false)
                 .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                 .setTransactionExecutor(
                     java.util.concurrent.Executors
@@ -784,3 +787,30 @@ class Migration35To36 : AutoMigrationSpec {
         }
     }
 }
+
+val MIGRATION_48_49 =
+    object : Migration(48, 49) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Fix for Pixel 9a crash: song + event tables missing indices after earlier autoMigrations.
+            // Create them idempotently; Room will validate them at version 49.
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_inLibrary` ON `song` (`inLibrary`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_liked` ON `song` (`liked`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_isDownloaded` ON `song` (`isDownloaded`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_title` ON `song` (`title`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_albumId` ON `song` (`albumId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_event_songId` ON `event` (`songId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_event_timestamp` ON `event` (`timestamp`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_event_songId_timestamp` ON `event` (`songId`, `timestamp`)")
+            // Defensive: ensure other tables' indices that Room expects also exist (idempotent)
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_search_history_query` ON `search_history` (`query`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_artist_map_songId` ON `song_artist_map` (`songId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_artist_map_artistId` ON `song_artist_map` (`artistId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_album_map_songId` ON `song_album_map` (`songId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_album_map_albumId` ON `song_album_map` (`albumId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_album_artist_map_albumId` ON `album_artist_map` (`albumId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_album_artist_map_artistId` ON `album_artist_map` (`artistId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_song_map_playlistId` ON `playlist_song_map` (`playlistId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_song_map_songId` ON `playlist_song_map` (`songId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_category_playlistId` ON `playlist_category` (`playlistId`)")
+        }
+    }

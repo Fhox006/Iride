@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,7 +51,6 @@ import com.metrolist.music.constants.AlbumTopGradientKey
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.ui.component.CollapsingScreenHeader
-import com.metrolist.music.ui.component.NewReleaseBadge
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.frostedTopBarBackground
 import com.metrolist.music.ui.component.recordFrostBackdrop
@@ -174,8 +172,6 @@ fun LibraryArtistsScreen(
     val filteredArtists = if (isOffline) emptyList() else filteredArtistsRaw
     val itemCountText = pluralStringResource(R.plurals.n_artist, filteredArtists.size, filteredArtists.size)
 
-    val newSongCounts by viewModel.newSongCounts.collectAsState()
-    val totalNewSongs by viewModel.totalNewSongs.collectAsState()
     val suggestedFollowArtists by viewModel.suggestedFollowArtists.collectAsState()
     val showSuggestedFollow = !isOffline && searchQuery.isBlank() && suggestedFollowArtists.isNotEmpty()
 
@@ -206,12 +202,6 @@ fun LibraryArtistsScreen(
         },
     )
     val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
-
-    val heroTitleBadge: @Composable RowScope.() -> Unit = {
-        if (totalNewSongs > 0) {
-            NewReleaseBadge(count = totalNewSongs)
-        }
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
     Box(
@@ -285,7 +275,6 @@ fun LibraryArtistsScreen(
                                     navController = navController,
                                     menuState = menuState,
                                     coroutineScope = coroutineScope,
-                                    newSongCount = newSongCounts[artist.id] ?: 0,
                                     modifier = Modifier.animateItem(),
                                     artist = artist
                                 )
@@ -383,7 +372,6 @@ fun LibraryArtistsScreen(
                                     navController = navController,
                                     menuState = menuState,
                                     coroutineScope = coroutineScope,
-                                    newSongCount = newSongCounts[artist.id] ?: 0,
                                     modifier = Modifier.animateItem(),
                                     artist = artist
                                 )
@@ -432,7 +420,6 @@ fun LibraryArtistsScreen(
                 viewModel.updateSearchQuery("")
             },
             keyboardController = keyboardController,
-            titleBadge = heroTitleBadge,
         )
     }
 }

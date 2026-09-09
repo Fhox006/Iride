@@ -27,7 +27,6 @@ import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.toAlbumEntity
 import com.metrolist.music.extensions.filterExplicit
 import com.metrolist.music.extensions.filterExplicitAlbums
-import com.metrolist.music.utils.NewReleaseNotifier
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
@@ -62,68 +61,9 @@ class ArtistViewModel @Inject constructor(
     private val database: MusicDatabase,
     private val syncUtils: SyncUtils,
     private val musicBrainzRepository: MusicBrainzRepository,
-    private val newReleaseNotifier: NewReleaseNotifier,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     val artistId = savedStateHandle.get<String>("artistId")!!
-
-    init {
-        viewModelScope.launch(Dispatchers.IO) { newReleaseNotifier.markSeen(artistId) }
-    }
-
-    val unseenAlbumIds = newReleaseNotifier.unseenAlbumIds(artistId)
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
-
-    fun markAlbumSeen(albumId: String) {
-        viewModelScope.launch(Dispatchers.IO) { newReleaseNotifier.markAlbumSeen(artistId, albumId) }
-    }
-
-    val unseenSongIds = newReleaseNotifier.unseenSongIds
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
-
-    fun markSongSeen(songId: String) {
-        viewModelScope.launch(Dispatchers.IO) { newReleaseNotifier.markSongSeen(songId) }
-    }
-
-    private data class FeaturingEntry(val song: com.metrolist.innertube.models.SongItem, val sortKey: Long)
-
-    val featuringSongs = kotlinx.coroutines.flow.combine(
-        newReleaseNotifier.featuredSongs(artistId),
-        database.artistFeaturedSongs(artistId),
-    ) { remote, local ->
-        val remoteEntries = remote.map { info ->
-            FeaturingEntry(
-                song = com.metrolist.innertube.models.SongItem(
-                    id = info.songId,
-                    title = info.title,
-                    artists = info.otherArtists.map { com.metrolist.innertube.models.Artist(it.name, it.id) },
-                    album = if (info.albumId != null && info.albumTitle != null) {
-                        com.metrolist.innertube.models.Album(info.albumTitle, info.albumId)
-                    } else null,
-                    thumbnail = info.thumbnailUrl,
-                ),
-                sortKey = info.year?.let { (it - 1970).toLong() * 365L * 86_400_000L } ?: info.firstSeenMs,
-            )
-        }
-        val localEntries = local.filterNot { it.song.isVideo }.map { song ->
-            FeaturingEntry(
-                song = com.metrolist.innertube.models.SongItem(
-                    id = song.id,
-                    title = song.title,
-                    artists = song.orderedArtists.filter { it.id != artistId }
-                        .map { com.metrolist.innertube.models.Artist(it.name, it.id) },
-                    album = song.album?.let { com.metrolist.innertube.models.Album(it.title, it.id) },
-                    thumbnail = song.thumbnailUrl.orEmpty(),
-                    duration = song.song.duration.takeIf { it > 0 },
-                ),
-                sortKey = song.song.inLibrary?.toInstant(java.time.ZoneOffset.UTC)?.toEpochMilli() ?: 0L,
-            )
-        }
-        (remoteEntries + localEntries)
-            .distinctBy { it.song.id }
-            .sortedByDescending { it.sortKey }
-            .map { it.song }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val isPodcastChannel = savedStateHandle.get<Boolean>("isPodcastChannel") ?: false
     var artistPage by mutableStateOf<ArtistPage?>(null)

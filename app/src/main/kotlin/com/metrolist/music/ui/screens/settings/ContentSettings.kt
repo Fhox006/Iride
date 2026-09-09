@@ -11,6 +11,7 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,8 +56,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.AppLanguageKey
@@ -79,6 +82,9 @@ import com.metrolist.music.constants.LyricsScrollKey
 import com.metrolist.music.constants.ResolveVideoSongsKey
 import com.metrolist.music.constants.LanguageCodeToName
 import com.metrolist.music.constants.LyricsProviderOrderKey
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.ProxyEnabledKey
 import com.metrolist.music.constants.ProxyPasswordKey
 import com.metrolist.music.constants.ProxyTypeKey
@@ -94,16 +100,19 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.DraggableLyricsProviderItem
 import com.metrolist.music.ui.component.DraggableLyricsProviderList
 import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.lyrics.LyricsProviderRegistry
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import java.net.Proxy
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -721,6 +730,10 @@ fun ContentSettings(
 
     val contentScrollState = rememberScrollState()
     val frostBackdrop = rememberFrostBackdrop()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -728,6 +741,18 @@ fun ContentSettings(
                 .fillMaxSize()
                 .recordFrostBackdrop(frostBackdrop)
         ) {
+            if (mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
+                )
+            } else {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
+                )
+            }
             Column(
                 Modifier
                     .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)

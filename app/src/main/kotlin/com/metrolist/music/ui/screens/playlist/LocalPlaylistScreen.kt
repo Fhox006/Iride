@@ -17,9 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -48,7 +46,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import sv.lib.squircleshape.SquircleShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -99,7 +96,6 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import com.metrolist.music.ui.theme.ForceDarkTheme
@@ -159,7 +155,6 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.ActionPromptDialog
-import com.metrolist.music.ui.component.AddToCategorySheet
 import com.metrolist.music.ui.component.CategoryFilterState
 import com.metrolist.music.ui.component.CategoryPillsRow
 import com.metrolist.music.ui.component.DefaultDialog
@@ -195,6 +190,7 @@ import com.metrolist.music.ui.component.rememberGenreFilter
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.headerEnter
+import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import com.metrolist.music.ui.utils.irideEnter
 import com.metrolist.music.ui.utils.irideEnterScale
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
@@ -294,7 +290,6 @@ fun LocalPlaylistScreen(
     var topBarBottomPx by remember { mutableStateOf(0f) }
     val headerPull = rememberRubberBandPull()
 
-    val coroutineScope = rememberCoroutineScope()
     val syncUtils = LocalSyncUtils.current
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -335,8 +330,6 @@ fun LocalPlaylistScreen(
         selectedCategoryId = selectedCategoryId,
         onSelect = { id -> selectedCategoryId = if (selectedCategoryId == id) null else id },
     )
-    var showAddToCategorySheet by rememberSaveable { mutableStateOf(false) }
-    val addedToCategoryStr = stringResource(R.string.added_to_category)
 
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -1046,35 +1039,26 @@ fun LocalPlaylistScreen(
         }
         val topBarActions: @Composable RowScope.() -> Unit = {
             if (inSelectMode) {
-                val addToCategoryEnabled = selection.isNotEmpty()
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            enabled = addToCategoryEnabled,
-                            role = Role.Button,
-                        ) { showAddToCategorySheet = true }
-                        .padding(horizontal = 12.dp),
+                IconButton(
+                    enabled = selection.isNotEmpty(),
+                    onClick = {
+                        menuState.show {
+                            SelectionSongMenu(
+                                songSelection = displayedSongs
+                                    .filter { it.map.id in selection }
+                                    .map { it.song },
+                                onDismiss = menuState::dismiss,
+                                clearAction = onExitSelectionMode,
+                                songPosition = displayedSongs
+                                    .filter { it.map.id in selection }
+                                    .map { it.map },
+                            )
+                        }
+                    },
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.add),
+                        painter = painterResource(R.drawable.more_vert),
                         contentDescription = null,
-                        tint = if (addToCategoryEnabled) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = stringResource(R.string.add_to_category),
-                        style = TextStyle(
-                            fontFamily = SpaceMonoFontFamily,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 13.sp,
-                        ),
-                        color = if (addToCategoryEnabled) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textTertiary,
-                        maxLines = 1,
                     )
                 }
             } else if (!isSearching && locked) {
@@ -1161,7 +1145,7 @@ fun LocalPlaylistScreen(
                     backdrop = frostBackdrop,
                 )
                 .statusBarsPadding()
-                .height(56.dp)
+                .height(40.dp)
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1219,20 +1203,6 @@ fun LocalPlaylistScreen(
                 Modifier
                     .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime))
                     .align(Alignment.BottomCenter),
-        )
-
-        AddToCategorySheet(
-            isVisible = showAddToCategorySheet,
-            onDismissRequest = { showAddToCategorySheet = false },
-            categories = categories,
-            onCreateCategory = { name, colorHex -> viewModel.createCategory(name, colorHex).id },
-            onConfirm = { categoryIds ->
-                val songIds = selection.mapNotNull { mapId -> songs.find { it.map.id == mapId }?.song?.id }
-                viewModel.addSongsToCategories(songIds, categoryIds)
-                showAddToCategorySheet = false
-                onExitSelectionMode()
-                coroutineScope.launch { snackbarHostState.showSnackbar(addedToCategoryStr) }
-            },
         )
     }
 }
@@ -1428,7 +1398,6 @@ fun LocalPlaylistHeader(
             }
         }
         val playlistCoverSquircle = SquircleShape(radius = 12.dp, cornerSmoothing = 0.45f)
-        val coverBorder = BorderStroke(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard)
         var coverLoaded by remember(playlist.playlist.id) { mutableStateOf(false) }
         var skipCoverEnterAnim by remember(playlist.playlist.id) { mutableStateOf(false) }
         val animatedCoverProgress = rememberEnterProgress(play = coverLoaded, durationMillis = 420, easing = IrideMotion.EaseOutQuart)
@@ -1445,13 +1414,17 @@ fun LocalPlaylistHeader(
                             modifier =
                                 Modifier
                                     .size(coverSize)
+                                    .irideArtworkOverlayBorder(
+                                        IrideBaseBorderWidth,
+                                        MaterialTheme.colorScheme.strokeCard,
+                                        playlistCoverSquircle,
+                                    )
                                     .shadow(
                                         elevation = 16.dp,
                                         shape = playlistCoverSquircle,
                                     ),
                             shape = playlistCoverSquircle,
                             color = MaterialTheme.colorScheme.surfaceVariant,
-                            border = coverBorder,
                         ) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -1478,13 +1451,17 @@ fun LocalPlaylistHeader(
                                         scaleX = s
                                         scaleY = s
                                     }
+                                    .irideArtworkOverlayBorder(
+                                        IrideBaseBorderWidth,
+                                        MaterialTheme.colorScheme.strokeCard,
+                                        playlistCoverSquircle,
+                                    )
                                     .shadow(
                                         elevation = 24.dp,
                                         shape = playlistCoverSquircle,
                                         spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                                     ),
                             shape = playlistCoverSquircle,
-                            border = coverBorder,
                         ) {
                             AsyncImage(
                                 model = overrideThumbnail.value ?: playlist.thumbnails[0],
@@ -1556,13 +1533,17 @@ fun LocalPlaylistHeader(
                             modifier =
                                 Modifier
                                     .size(coverSize)
+                                    .irideArtworkOverlayBorder(
+                                        IrideBaseBorderWidth,
+                                        MaterialTheme.colorScheme.strokeCard,
+                                        playlistCoverSquircle,
+                                    )
                                     .shadow(
                                         elevation = 24.dp,
                                         shape = playlistCoverSquircle,
                                         spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                                     ),
                             shape = playlistCoverSquircle,
-                            border = coverBorder,
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 listOf(

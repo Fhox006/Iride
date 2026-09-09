@@ -37,7 +37,7 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "se
  * on the main thread while it was assembling the first frame.
  */
 @Volatile
-private var preferencesSnapshot: Preferences? = null
+internal var preferencesSnapshot: Preferences? = null
 
 /** Starts mirroring this store into [preferencesSnapshot]. Call once, at process start. */
 fun DataStore<Preferences>.keepPreferencesWarm(scope: CoroutineScope) {
@@ -50,6 +50,9 @@ private fun DataStore<Preferences>.snapshot(): Preferences =
     preferencesSnapshot ?: runBlocking(Dispatchers.IO) {
         data.first().also { preferencesSnapshot = it }
     }
+
+// Snapshot non-bloccante per chiamate su Main (usa default se non ancora caldo)
+fun DataStore<Preferences>.snapshotOrDefault(default: Preferences? = null): Preferences? = preferencesSnapshot ?: default
 
 operator fun <T> DataStore<Preferences>.get(key: Preferences.Key<T>): T? = snapshot()[key]
 

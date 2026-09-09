@@ -307,8 +307,12 @@ fun TopNavigationBar(
                 .fillMaxWidth()
                 .background(containerColor)
                 .statusBarsPadding()
-                .padding(top = 10.dp)
-                .height(64.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {},
+                )
+                .height(40.dp)
                 .padding(start = horizontalPadding, end = horizontalPadding),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -421,9 +425,13 @@ fun TopNavigationBar(
             .fillMaxWidth()
             .background(containerColor)
             .statusBarsPadding()
-            .padding(top = 10.dp)
-            .height(64.dp)
+            .height(40.dp)
             .horizontalScroll(rememberScrollState())
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {},
+            )
             .padding(start = horizontalPadding, end = horizontalPadding),
         verticalAlignment = Alignment.CenterVertically
     ) {

@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.recognition
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,7 +31,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -49,19 +51,34 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.db.entities.RecognitionHistory
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SettingsBackTopBar
+import com.metrolist.music.constants.IrideSoftBorderWidth
+import com.metrolist.music.ui.theme.strokeItemSoft
+import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
+import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.utils.rememberEnumPreference
+import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 
@@ -146,30 +163,32 @@ fun RecognitionHistoryScreen(navController: NavController) {
         }
     }
 
-    Scaffold(
-        topBar = {
-            SettingsBackTopBar(
-                title = stringResource(R.string.recognition_history),
-                navController = navController,
-                actions = {
-                    if (historyItems.isNotEmpty()) {
-                        IconButton(onClick = { showClearDialog = true }) {
-                            Icon(
-                                painter = painterResource(R.drawable.clear_all),
-                                contentDescription = stringResource(R.string.clear_recognition_history),
-                            )
-                        }
-                    }
-                },
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
+    val frostBackdrop = rememberFrostBackdrop()
+    val windowInsets = LocalPlayerAwareWindowInsets.current
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .recordFrostBackdrop(frostBackdrop),
+    ) {
+        if (mainTopGradient) {
+            TopScreenGradientBackground(
+                mediaMetadata = mediaMetadata,
+                playerBackground = playerBackgroundStyle,
             )
-        },
-    ) { paddingValues ->
+        } else {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+        }
         if (historyItems.isEmpty()) {
             Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
+                        .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Bottom)),
                 contentAlignment = Alignment.Center,
             ) {
                 Column(
@@ -194,9 +213,9 @@ fun RecognitionHistoryScreen(navController: NavController) {
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
+                        .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Top)),
                 contentPadding =
-                    LocalPlayerAwareWindowInsets.current
+                    windowInsets
                         .only(WindowInsetsSides.Bottom)
                         .asPaddingValues(),
             ) {
@@ -218,6 +237,22 @@ fun RecognitionHistoryScreen(navController: NavController) {
             }
         }
     }
+
+    SettingsBackTopBar(
+        title = stringResource(R.string.recognition_history),
+        navController = navController,
+        actions = {
+            if (historyItems.isNotEmpty()) {
+                IconButton(onClick = { showClearDialog = true }) {
+                    Icon(
+                        painter = painterResource(R.drawable.clear_all),
+                        contentDescription = stringResource(R.string.clear_recognition_history),
+                    )
+                }
+            }
+        },
+        backdrop = frostBackdrop,
+    )
 }
 
 @Composable
@@ -253,6 +288,7 @@ private fun RecognitionHistoryItem(
                 modifier =
                     Modifier
                         .size(60.dp)
+                        .irideArtworkOverlayBorder(1.dp, MaterialTheme.colorScheme.strokeItemSoft, RoundedCornerShape(ThumbnailCornerRadius))
                         .clip(RoundedCornerShape(ThumbnailCornerRadius)),
                 contentScale = ContentScale.Crop,
             )

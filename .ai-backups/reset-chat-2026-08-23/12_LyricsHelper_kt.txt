@@ -1,6 +1,0 @@
-FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\lyrics\LyricsHelper.kt
-LINES: 316
-NOTE: `!!` unnecessary (K2 proves `best` non-null when bestTier == SYNCED_WORD).
-<<<ORIGINAL
-316:                                 return@withTimeoutOrNull best!!
-ORIGINAL>>>

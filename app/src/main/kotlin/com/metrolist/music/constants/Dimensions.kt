@@ -42,6 +42,14 @@ val ThumbnailCornerRadius = 3.dp
 
 val IrideBaseBorderWidth = 1.5.dp
 
+val IrideSoftBorderWidth = 1.dp
+
+/**
+ * Artwork outline width that scales with the rendered size so the stroke reads
+ * consistently from miniplayer tiles (~1dp) up to the full player (~2dp).
+ */
+fun irideArtworkBorderWidth(size: Dp): Dp = (size * 0.006f).coerceIn(1.dp, 2.dp)
+
 val PlayerHorizontalPadding = 32.dp
 
 val NavigationBarAnimationSpec = spring<Dp>(

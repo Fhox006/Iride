@@ -1119,22 +1119,12 @@
     <string name="muzza_player_logic_desc">Ładuje utwory szybciej dzięki alternatywnej metodzie streamingu.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">Pokazuj zakładkę Nowości</string>
-    <string name="show_news_tab_desc">Dodaje zakładkę Nowości do dolnej nawigacji, między Start a Biblioteka</string>
     <string name="compact_top_navigation_bar">Kompaktowy górny pasek</string>
     <string name="compact_top_navigation_bar_desc">Start i Biblioteka jako tekst po lewej, Szukaj i Twoje zdjęcie profilowe jako ikony po prawej. Wyłącz, aby wrócić do klasycznego paska z podpisami wszystkich zakładek</string>
     <string name="iride_animations">Animacje Iride</string>
     <string name="iride_animations_desc">Tytuły pisane jak maszyną, paralaksa i animacje wejścia. Wyłącz, jeśli aplikacja się przycina</string>
     <string name="player_auto_hide_top_panel">Automatyczne ukrywanie panelu powrotu</string>
     <string name="player_auto_hide_top_panel_desc">Wygasza górny panel powrotu do aplikacji po 5 s bezczynności w rozwiniętym odtwarzaczu. Przewinięcie w dół przywraca go</string>
-    <string name="news">Nowości</string>
-    <string name="news_new_albums">Nowe albumy</string>
-    <string name="news_new_songs">Nowe utwory</string>
-    <string name="news_charts">Listy przebojów</string>
-    <string name="news_new_albums_title">Nowe albumy</string>
-    <string name="news_quick_play_title">Nowe utwory</string>
-    <string name="news_empty_albums">Nie znaleziono jeszcze nowych albumów</string>
-    <string name="news_empty_songs">Nie znaleziono jeszcze nowych utworów</string>
 
     <string name="better_library_beta">Lepsza biblioteka BETA</string>
     <string name="better_library_beta_desc">Włącza bibliotekę przebudowaną pod Material 3 (górny pasek aplikacji, FAB i poprawki UI)</string>
@@ -1209,4 +1199,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">Nowy wygląd odtwarzacza</string>
 <string name="new_mini_player_design">Nowy wygląd małego odwarzacza</string>
-</resources>
+    <string name="featured_for_you">Polecane dla Ciebie</string>
+    <string name="trending_artist_subtitle">Zyskuje popularność w Twoim feedzie</string>
+    <string name="artist_radio_subtitle">Nieskończony miks inspirowany tym wykonawcą</string>
+    <string name="artist_radio_title">Radio %1$s</string>
+    <string name="mood_and_playlists_for_you">Nastroje i playlisty dla Ciebie</string>
+    <string name="syncing_library">Synchronizowanie biblioteki</string>
+    <string name="network_sync_warning">Funkcje sieciowe mogą nie działać do zakończenia synchronizacji.</string>
+    <string name="syncing_your_library">Synchronizowanie Twojej biblioteki…</string>
+    <string name="collapse_section">Zwiń sekcję</string>
+    <string name="expand_section">Rozwiń sekcję</string>
+    </resources>

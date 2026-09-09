@@ -1098,22 +1098,12 @@
     <string name="muzza_player_logic_desc">別のストリーミング方式を使用して曲をより速く読み込みます。</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">ニュースタブを表示</string>
-    <string name="show_news_tab_desc">下部ナビゲーションのホームとライブラリの間にニュースタブを追加します</string>
     <string name="compact_top_navigation_bar">コンパクトな上部バー</string>
     <string name="compact_top_navigation_bar_desc">左側にホームとライブラリのテキスト、右側に検索とプロフィール画像のアイコンを表示します。オフにすると、すべてのタブ名が表示される従来のバーに戻ります</string>
     <string name="iride_animations">Iride のアニメーション</string>
     <string name="iride_animations_desc">タイプライター風タイトル、パララックス、表示時のトランジション。アプリがカクつく場合はオフにしてください</string>
     <string name="player_auto_hide_top_panel">戻るパネルを自動的に隠す</string>
     <string name="player_auto_hide_top_panel_desc">展開したプレーヤーで5秒間操作がないと、上部のアプリに戻るパネルをフェードアウトします。下にスクロールすると再度表示されます</string>
-    <string name="news">ニュース</string>
-    <string name="news_new_albums">新しいアルバム</string>
-    <string name="news_new_songs">新しい曲</string>
-    <string name="news_charts">チャート</string>
-    <string name="news_new_albums_title">新着アルバム</string>
-    <string name="news_quick_play_title">新着曲</string>
-    <string name="news_empty_albums">新しいアルバムはまだ見つかりません</string>
-    <string name="news_empty_songs">新しい曲はまだ見つかりません</string>
 
     <string name="better_library_beta">改良版ライブラリ BETA</string>
     <string name="better_library_beta_desc">Material 3 向けに刷新されたライブラリを有効にします（トップアプリバー、FAB、UI の修正を含む）</string>
@@ -1188,4 +1178,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">新しいプレーヤーのデザイン</string>
 <string name="new_mini_player_design">新しいミニプレーヤーのデザイン</string>
-</resources>
+    <string name="featured_for_you">あなたへのおすすめ</string>
+    <string name="trending_artist_subtitle">フィードで急上昇</string>
+    <string name="artist_radio_subtitle">このアーティストからインスピレーションを受けた無限ミックス</string>
+    <string name="artist_radio_title">%1$s ラジオ</string>
+    <string name="mood_and_playlists_for_you">ムードとおすすめプレイリスト</string>
+    <string name="syncing_library">ライブラリを同期しています</string>
+    <string name="network_sync_warning">同期が完了するまで、ネットワーク機能が動作しない場合があります。</string>
+    <string name="syncing_your_library">ライブラリを同期しています…</string>
+    <string name="collapse_section">セクションを折りたたむ</string>
+    <string name="expand_section">セクションを展開</string>
+    </resources>

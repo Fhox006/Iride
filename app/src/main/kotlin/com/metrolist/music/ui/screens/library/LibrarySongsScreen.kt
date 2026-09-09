@@ -159,11 +159,14 @@ fun LibrarySongsScreen(
         }
     }
 
-    val filteredSongs =
-        (if (hideExplicit) songs.filter { !it.song.explicit } else songs).filter { song ->
-            val artistNames = song.artists.map { it.name }.toTypedArray()
-            matchesNormalizedQuery(normalizedQuery, song.song.title, song.album?.title, *artistNames)
+    val filteredSongs by remember(songs, hideExplicit, normalizedQuery) {
+        androidx.compose.runtime.derivedStateOf {
+            (if (hideExplicit) songs.filter { !it.song.explicit } else songs).filter { song ->
+                val artistNames = song.artists.map { it.name }.toTypedArray()
+                matchesNormalizedQuery(normalizedQuery, song.song.title, song.album?.title, *artistNames)
+            }
         }
+    }
 
     val sortOptions = listOf(
         SongSortType.CREATE_DATE to stringResource(R.string.sort_by_create_date),

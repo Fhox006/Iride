@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
@@ -91,7 +92,9 @@ fun EqualizerResponseCurve(
         }
         drawPath(path, color = lineColor, style = Stroke(width = 1.8.dp.toPx()))
 
-        // Band position markers: a small white dot per parameter center
+        // Band position markers: each node is draggable (frequency on x, gain on y),
+        // so a faint guide ties every node to the 0 dB axis and the selected one
+        // gets a column highlight under it.
         bands.forEachIndexed { index, band ->
             val clamped = band.gain.coerceIn(-EqDbRange, EqDbRange)
             val center = Offset(
@@ -99,6 +102,19 @@ fun EqualizerResponseCurve(
                 yFor(clamped)
             )
             val active = index == selectedIndex
+            if (active) {
+                drawRect(
+                    color = lineColor.copy(alpha = 0.05f),
+                    topLeft = Offset(center.x - 9.dp.toPx(), topPad),
+                    size = Size(18.dp.toPx(), heightPx - topPad - bottomPad)
+                )
+            }
+            drawLine(
+                color = lineColor.copy(alpha = if (active) 0.35f else 0.12f),
+                start = Offset(center.x, yFor(0.0)),
+                end = center,
+                strokeWidth = 1.dp.toPx()
+            )
             drawCircle(
                 color = lineColor.copy(alpha = if (active) 1f else 0.7f),
                 radius = if (active) 3.5.dp.toPx() else 2.5.dp.toPx(),

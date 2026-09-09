@@ -39,6 +39,7 @@ import com.metrolist.music.utils.cipher.CipherDeobfuscator
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import com.metrolist.music.utils.keepPreferencesWarm
+import com.metrolist.music.utils.preferencesSnapshot
 import com.metrolist.music.utils.reportException
 import com.metrolist.music.ui.component.dismissedAnchor
 import dagger.hilt.android.HiltAndroidApp
@@ -51,7 +52,6 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.Credentials
 import timber.log.Timber
@@ -98,6 +98,13 @@ class App :
         }
 
         observeConnectivity()
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_MODERATE) {
+            coil3.SingletonImageLoader.get(this).memoryCache?.clear()
+        }
     }
 
     /**
@@ -286,10 +293,8 @@ class App :
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader {
-        val cacheSize =
-            runBlocking {
-                dataStore.data.map { it[MaxImageCacheSizeKey] ?: 512 }.first()
-            }
+        // Read synchronously from snapshot to avoid blocking Main thread (App.onCreate warms it)
+        val cacheSize = preferencesSnapshot?.get(MaxImageCacheSizeKey) ?: 256
         return ImageLoader
             .Builder(this)
             .apply {

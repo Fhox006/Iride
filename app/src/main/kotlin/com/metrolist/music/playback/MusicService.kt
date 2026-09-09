@@ -137,7 +137,6 @@ import com.metrolist.music.constants.ScrobbleMinSongDurationKey
 import com.metrolist.music.constants.ShowLyricsKey
 import com.metrolist.music.constants.ShuffleModeKey
 import com.metrolist.music.constants.ShufflePlaylistFirstKey
-import com.metrolist.music.constants.SimilarContent
 import com.metrolist.music.constants.SkipFadeDurationKey
 import com.metrolist.music.constants.SkipFadeKey
 import com.metrolist.music.constants.SkipSilenceInstantKey
@@ -429,6 +428,12 @@ class MusicService :
 
     val automixItems = MutableStateFlow<List<MediaItem>>(emptyList())
 
+    // Radio tracks already promoted into the real player timeline (sliced from
+    // [appendedRadioMediaIds] in playback order). The UI merges this with [automixItems]
+    // so the radio section is the single source of truth for "what plays next", with no
+    // duplicate real-timeline row sitting between the current track and the radio header.
+    val promotedRadioItems = MutableStateFlow<List<MediaItem>>(emptyList())
+
     val isAutoMixQueueActive = MutableStateFlow(false)
 
     // Bumped whenever the radio state is reset so that in-flight automix fetches
@@ -464,6 +469,23 @@ class MusicService :
     // Media IDs of radio songs auto-appended to the real timeline while the radio was
     // active; they must leave the queue again when the radio is turned off.
     private val appendedRadioMediaIds = LinkedHashSet<String>()
+
+    // Single-radio controller: the seed the running radio was started from, plus the
+    // timestamp of the last toggle. Rapid double taps on the wheel used to
+    // start-then-immediately-stop (or start twice), leaving the radio seemingly
+    // dead or with a doubled upcoming queue.
+    private var radioSeedId: String? = null
+    private var lastRadioToggleAt: Long = 0L
+    private val RADIO_TOGGLE_DEBOUNCE_MS = 600L
+
+    // Snapshot of the upcoming timeline taken when the stable radio is armed from
+    // the player, so toggling the radio back off restores exactly what was there
+    // before (same songs, same order, same continuation). Null means there is
+    // nothing to restore (radio started fresh from a menu, or a new queue has
+    // been played since).
+    private var preRadioUpcoming: List<MediaItem>? = null
+    private var preRadioQueue: Queue = EmptyQueue
+    private var preRadioTitle: String? = null
 
     private var originalQueueSize: Int = 0
 
@@ -1052,7 +1074,7 @@ class MusicService :
 
         scope.launch {
             while (isActive) {
-                delay(15.seconds)
+                delay(30.seconds)
                 if (persistentQueueEnabled) {
                     saveQueueToDisk()
                 }
@@ -1060,15 +1082,6 @@ class MusicService :
                 if (currentMetadata?.isEpisode == true && player.isPlaying && player.currentPosition > 0) {
                     previousEpisodePosition = player.currentPosition
                     saveEpisodePosition(currentMetadata.id, player.currentPosition)
-                }
-            }
-        }
-
-        scope.launch {
-            while (isActive) {
-                delay(10.seconds)
-                if (persistentQueueEnabled && player.isPlaying) {
-                    saveQueueToDisk()
                 }
             }
         }
@@ -1407,6 +1420,10 @@ class MusicService :
         currentQueue = queue
         queueTitle = null
         clearRadioState()
+        // A brand-new queue replaces everything: any pre-radio snapshot is stale.
+        preRadioUpcoming = null
+        preRadioQueue = EmptyQueue
+        preRadioTitle = null
         val persistShuffleAcrossQueues = dataStore.get(PersistentShuffleAcrossQueuesKey, false)
         val previousShuffleEnabled = player.shuffleModeEnabled
         if (!persistShuffleAcrossQueues) {
@@ -1472,14 +1489,31 @@ class MusicService :
             return
         }
 
-        // The seamless radio replaces the whole upcoming timeline, so any previously armed
-        // automix radio must be torn down first or its stale state would keep leaking in.
-        clearRadioState()
-
+        // Unified stable radio: same RDAMVM backend as the 3-dots menu.
+        // Keeps the current song, replaces everything after it.
+        // Snapshot once: if the radio is already on, the current upcoming list
+        // is already radio content, so keep the original snapshot for restore.
         val currentMediaMetadata = player.currentMetadata ?: return
 
         val currentIndex = player.currentMediaItemIndex
         val currentMediaId = currentMediaMetadata.id
+        if (!isAutoMixQueueActive.value) {
+            val upcoming = mutableListOf<MediaItem>()
+            val count = player.mediaItemCount
+            var i = currentIndex + 1
+            while (i < count) {
+                upcoming.add(player.getMediaItemAt(i))
+                i++
+            }
+            preRadioUpcoming = upcoming
+            preRadioQueue = currentQueue
+            preRadioTitle = queueTitle
+        }
+
+        clearRadioState()
+
+        synchronized(automixLock) { radioSeedId = currentMediaId }
+        isAutoMixQueueActive.value = true
 
         scope.launch(SilentHandler) {
             val radioQueue =
@@ -1499,9 +1533,17 @@ class MusicService :
                             .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
                     }
 
-                if (initialStatus.title != null) {
-                    queueTitle = initialStatus.title
-                }
+                // The server title for a mix is a generic word like "Radio":
+                // qualify it with the seed song so the queue header can never
+                // be mistaken for a track called "Radio".
+                val radioLabel = getString(R.string.radio)
+                val serverTitle = initialStatus.title
+                queueTitle =
+                    if (serverTitle.isNullOrBlank() || serverTitle.equals(radioLabel, ignoreCase = true)) {
+                        "$radioLabel • ${currentMediaMetadata.title}"
+                    } else {
+                        serverTitle
+                    }
 
                 val radioItems =
                     initialStatus.items.filter { item ->
@@ -1523,6 +1565,7 @@ class MusicService :
                 }
 
                 currentQueue = radioQueue
+                isAutoMixQueueActive.value = true
             } catch (e: Exception) {
                 try {
                     val nextResult =
@@ -1573,44 +1616,24 @@ class MusicService :
         }
 
         playQueue(YouTubeQueue.radio(mediaMetadata))
+        // playQueue() clears the flag synchronously, re-arm it for the new radio queue.
+        synchronized(automixLock) { radioSeedId = mediaMetadata.id }
+        isAutoMixQueueActive.value = true
     }
 
     suspend fun regenerateAutomix(mediaMetadata: MediaMetadata) {
-        val requestId = automixRequestId.get()
-        try {
-            YouTube.next(WatchEndpoint(videoId = mediaMetadata.id))
-                .onSuccess { result ->
-                    if (requestId != automixRequestId.get()) return@onSuccess
-                    val items = result.items
-                        .filter { it.id != mediaMetadata.id }
-                        .map { it.toMediaItem() }
-                    if (items.isNotEmpty() && requestId == automixRequestId.get()) {
-                        automixItems.value = items
-                    }
-                }
-        } catch (e: Exception) {
-            Timber.tag(TAG).w(e, "Failed to regenerate automix")
-        }
+        // Legacy virtual branch removed: player radio now uses the stable
+        // startRadioSeamlessly() backend. Kept as no-op for compatibility.
     }
 
     fun commitAutomixAsQueue() {
-        val items = automixItems.value
-        if (items.isEmpty() || !playerInitialized.value) return
-        val currentIndex = player.currentMediaItemIndex
-        val itemCount = player.mediaItemCount
-        if (itemCount > currentIndex + 1) {
-            player.removeMediaItems(currentIndex + 1, itemCount)
-        }
-        player.addMediaItems(currentIndex + 1, items)
-        if (player.shuffleModeEnabled) {
-            applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
-        }
-        automixItems.value = emptyList()
-        isAutoMixQueueActive.value = true
+        // Legacy virtual branch removed: nothing to commit, the stable radio
+        // already lives in the real timeline. Kept as no-op for compatibility.
     }
 
     fun clearRadioState() {
         automixRequestId.incrementAndGet()
+        synchronized(automixLock) { radioSeedId = null }
         isAutoMixQueueActive.value = false
         automixItems.value = emptyList()
         automixEnsuredAtIndex = C.INDEX_UNSET
@@ -1634,9 +1657,30 @@ class MusicService :
             }
         }
         appendedRadioMediaIds.clear()
+        rebuildPromotedRadioItems()
         if (removedAny && player.shuffleModeEnabled) {
             applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
         }
+    }
+
+    /**
+     * Re-derives [promotedRadioItems] from the live timeline in playback order, scoped to
+     * tracks after the currently playing one. Called whenever [appendedRadioMediaIds]
+     * changes (promotion, removal, clear) so the UI radio section stays in lockstep with
+     * what the player is about to actually play.
+     */
+    private fun rebuildPromotedRadioItems() {
+        if (!playerInitialized.value || appendedRadioMediaIds.isEmpty()) {
+            promotedRadioItems.value = emptyList()
+            return
+        }
+        val currentIndex = player.currentMediaItemIndex
+        val out = mutableListOf<MediaItem>()
+        for (i in (currentIndex + 1) until player.mediaItemCount) {
+            val item = player.getMediaItemAt(i)
+            if (item.mediaId in appendedRadioMediaIds) out.add(item)
+        }
+        promotedRadioItems.value = out
     }
 
     /**
@@ -1646,128 +1690,83 @@ class MusicService :
      * (toggle off, new content, …) stops it.
      */
     fun startAutoMixRadio(mediaMetadata: MediaMetadata) {
+        // Legacy virtual branch removed: unified on the stable RDAMVM backend.
+        // Keep the entry point for compatibility, behave like the player toggle.
         if (!playerInitialized.value) return
-        // Fresh start: invalidate any stale in-flight fetch and clear leftovers so the flag
-        // can never get stuck in a state where the next tap looks like a toggle-off.
-        automixRequestId.incrementAndGet()
-        automixItems.value = emptyList()
-        automixEnsuredAtIndex = C.INDEX_UNSET
-        automixEmptyExtends = 0
-        isAutoMixQueueActive.value = true
-        automixWatchJob?.cancel()
-        automixWatchJob = scope.launch(SilentHandler) {
-            // Heartbeat: keeps the "up next" promotion running even if no UI surface or
-            // transition hook fires, so skipping / letting a song end always continues the
-            // radio while it is armed.
-            while (isActive && isAutoMixQueueActive.value) {
-                delay(1500)
-                if (automixItems.value.isEmpty() && automixEmptyExtends >= 3) {
-                    // Reserve exhausted and refills keep coming back empty: end the radio
-                    // honestly instead of leaving the button lit with nothing to play.
-                    clearRadioState()
-                    break
-                }
-                ensureAutomixUpNext()
+        startRadioSeamlessly()
+    }
+
+    /**
+     * Single debounced entry point for the player radio toggle (MP3 wheel, queue
+     * pill, …). Unified on the stable RDAMVM backend: ON = seamless radio from
+     * the current song (same list as the 3-dots menu), OFF = stop infinite
+     * continuation but keep what is already queued.
+     *
+     * @return true when the radio is ON after this call.
+     */
+    fun toggleRadio(mediaMetadata: MediaMetadata): Boolean {
+        if (!playerInitialized.value) return false
+        synchronized(automixLock) {
+            val now = System.currentTimeMillis()
+            if (now - lastRadioToggleAt < RADIO_TOGGLE_DEBOUNCE_MS) {
+                return isAutoMixQueueActive.value
             }
+            lastRadioToggleAt = now
         }
-        scope.launch(SilentHandler) {
-            regenerateAutomix(mediaMetadata)
-            ensureAutomixUpNext()
+        return if (isAutoMixQueueActive.value && radioSeedId == mediaMetadata.id) {
+            stopRadioAndRestore()
+            false
+        } else {
+            startRadioSeamlessly()
+            true
+        }
+    }
+
+    /**
+     * Turns the stable radio off and puts back exactly the upcoming queue that
+     * was there before the radio was armed (same songs, same order, same
+     * continuation and title). The currently playing song is never touched.
+     * If there is nothing to restore (radio started fresh from a menu), it
+     * only stops the infinite continuation and keeps the queued songs.
+     */
+    fun stopRadioAndRestore() {
+        val snapshot = preRadioUpcoming
+        val resumeQueue = preRadioQueue
+        val resumeTitle = preRadioTitle
+        val currentIndex =
+            if (playerInitialized.value) player.currentMediaItemIndex else C.INDEX_UNSET
+        clearRadioState()
+        currentQueue = EmptyQueue
+        if (snapshot != null && currentIndex != C.INDEX_UNSET) {
+            val itemCount = player.mediaItemCount
+            if (itemCount > currentIndex + 1) {
+                player.removeMediaItems(currentIndex + 1, itemCount)
+            }
+            if (snapshot.isNotEmpty()) {
+                player.addMediaItems(currentIndex + 1, snapshot)
+            }
+            if (player.shuffleModeEnabled) {
+                applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+            }
+            currentQueue = resumeQueue
+            queueTitle = resumeTitle
         }
     }
 
     fun getAutomixAlbum(albumId: String) {
-        scope.launch(SilentHandler) {
-            YouTube
-                .album(albumId)
-                .onSuccess {
-                    getAutomix(it.album.playlistId)
-                }
-        }
+        // Legacy virtual branch removed: album play must not resurrect radio.
     }
 
     fun getAutomix(playlistId: String) {
-        if (dataStore.get(SimilarContent, true) &&
-            !(dataStore.get(DisableLoadMoreWhenRepeatAllKey, false) && player.repeatMode == REPEAT_MODE_ALL)
-        ) {
-            val requestId = automixRequestId.get()
-            fun isStale() = requestId != automixRequestId.get()
-            scope.launch(SilentHandler) {
-                try {
-                    YouTube
-                        .next(WatchEndpoint(playlistId = playlistId))
-                        .onSuccess { firstResult ->
-                            if (isStale()) return@onSuccess
-                            YouTube
-                                .next(WatchEndpoint(playlistId = firstResult.endpoint.playlistId))
-                                .onSuccess { secondResult ->
-                                    if (isStale()) return@onSuccess
-                                    automixItems.value =
-                                        secondResult.items.map { song ->
-                                            song.toMediaItem()
-                                        }
-                                }.onFailure {
-                                    if (firstResult.items.isNotEmpty() && !isStale()) {
-                                        automixItems.value =
-                                            firstResult.items.map { song ->
-                                                song.toMediaItem()
-                                            }
-                                    }
-                                }
-                        }.onFailure {
-                            if (isStale()) return@onFailure
-                            val currentSong = player.currentMetadata
-                            if (currentSong != null) {
-                                YouTube
-                                    .next(
-                                        WatchEndpoint(
-                                            videoId = currentSong.id,
-                                        ),
-                                    ).onSuccess { radioResult ->
-                                        if (isStale()) return@onSuccess
-                                        val filteredItems =
-                                            radioResult.items
-                                                .filter { it.id != currentSong.id }
-                                                .map { it.toMediaItem() }
-                                        if (filteredItems.isNotEmpty()) {
-                                            automixItems.value = filteredItems
-                                        }
-                                    }.onFailure {
-                                        YouTube
-                                            .next(WatchEndpoint(videoId = currentSong.id))
-                                            .getOrNull()
-                                            ?.relatedEndpoint
-                                            ?.let { relatedEndpoint ->
-                                                YouTube.related(relatedEndpoint).onSuccess { relatedPage ->
-                                                    if (isStale()) return@onSuccess
-                                                    val relatedItems =
-                                                        relatedPage.songs
-                                                            .filter { it.id != currentSong.id }
-                                                            .map { it.toMediaItem() }
-                                                    if (relatedItems.isNotEmpty()) {
-                                                        automixItems.value = relatedItems
-                                                    }
-                                                }
-                                            }
-                                     }
-                            }
-                        }
-                } catch (e: Exception) {
-                    Timber.tag(TAG).w(e, "Failed to fetch automix items")
-                }
-            }
-        }
+        // Legacy virtual branch removed: this used to refill automixItems AFTER
+        // playQueue() cleared them, resurrecting radio on album change. No-op now.
     }
 
     fun addToQueueAutomix(
         item: MediaItem,
         position: Int,
     ) {
-        automixItems.value =
-            automixItems.value.toMutableList().apply {
-                removeAt(position)
-            }
-        appendedRadioMediaIds.add(item.mediaId)
+        // Legacy virtual branch removed: behave like a normal queue append.
         addToQueue(listOf(item))
     }
 
@@ -1775,172 +1774,73 @@ class MusicService :
         item: MediaItem,
         position: Int,
     ) {
-        synchronized(automixLock) {
-            automixItems.value =
-                automixItems.value.toMutableList().apply {
-                    removeAt(position)
-                }
-        }
+        // Legacy virtual branch removed: behave like a normal play-next.
         playNext(listOf(item))
     }
 
     /**
-     * Keeps the virtual radio branch and the real playback timeline in lockstep. Exactly ONE
-     * radio track is promoted into the timeline (right after the current item), and the rest
-     * stay virtual — so the upcoming radio always looks like a fixed batch of
-     * [automixUpcomingLimit] tracks that refills one song at a time as they play.
+     * Legacy virtual promotion removed: stable radio lives directly in the
+     * timeline via startRadioSeamlessly(). Kept as no-op for compatibility.
      */
     fun ensureAutomixUpNext() {
-        if (!playerInitialized.value || !isAutoMixQueueActive.value) return
-        val currentIndex = player.currentMediaItemIndex
-        // One insertion per played position: without this guard every automixItems emission
-        // would immediately trigger another promotion, flooding the queue with the whole
-        // fetched list at once.
-        if (currentIndex == automixEnsuredAtIndex) return
-        var promotedHead: MediaItem? = null
-        synchronized(automixLock) {
-            val head = automixItems.value.firstOrNull()
-            if (head != null) {
-                val count = player.mediaItemCount
-                val alreadyAhead = ((currentIndex + 1)..minOf(currentIndex + 3, count - 1))
-                    .any { player.getMediaItemAt(it).mediaId == head.mediaId }
-                if (!alreadyAhead) {
-                    automixItems.value = automixItems.value.drop(1)
-                    appendedRadioMediaIds.add(head.mediaId)
-                    promotedHead = head
-                }
-                automixEnsuredAtIndex = currentIndex
-            }
-        }
-        promotedHead?.let { head ->
-            try {
-                player.addMediaItem((currentIndex + 1).coerceAtMost(player.mediaItemCount), head)
-            } catch (_: Exception) {
-                return
-            }
-        }
-        if (automixItems.value.size < AUTOMIX_REFILL_THRESHOLD) {
-            extendAutomix()
-        }
     }
 
     /**
-     * Fetches one extra batch of radio songs and merges them into the reserve list, skipping
-     * anything already known to the radio or the timeline. Falls back to the related-videos
-     * endpoint when the plain next() call yields nothing usable.
+     * Pins a timeline index right after the current item in the shuffle order: the
+     * current item stays first, [headIndex] becomes second (i.e. what plays next),
+     * everything else is shuffled. Used for radio promotions so the audio always
+     * follows the Up Next radio section, even with shuffle on.
+     */
+    private fun pinRadioHeadNext(headIndex: Int) {
+        val totalCount = player.mediaItemCount
+        val currentIndex = player.currentMediaItemIndex
+        if (totalCount == 0 || headIndex !in 0 until totalCount ||
+            currentIndex !in 0 until totalCount || headIndex == currentIndex
+        ) return
+        val rest = (0 until totalCount).filter { it != currentIndex && it != headIndex }.shuffled()
+        val order = IntArray(totalCount)
+        var pos = 0
+        order[pos++] = currentIndex
+        order[pos++] = headIndex
+        rest.forEach { order[pos++] = it }
+        player.setShuffleOrder(DefaultShuffleOrder(order, System.currentTimeMillis()))
+    }
+
+    /**
+     * Legacy virtual refill removed: stable radio continues via currentQueue
+     * pagination in onMediaItemTransition. Kept as no-op for compatibility.
      */
     private fun extendAutomix() {
-        if (automixExtending || !isAutoMixQueueActive.value) return
-        val seedId = player.currentMetadata?.id ?: return
-        automixExtending = true
-        val requestId = automixRequestId.get()
-        scope.launch(SilentHandler) {
-            fun merge(items: List<com.metrolist.innertube.models.SongItem>) {
-                if (!isAutoMixQueueActive.value || requestId != automixRequestId.get()) return
-                synchronized(automixLock) {
-                    val known =
-                        automixItems.value.map { it.mediaId }.toSet() + appendedRadioMediaIds
-                    val fresh = items
-                        .filter { it.id !in known }
-                        .map { it.toMediaItem() }
-                    if (fresh.isNotEmpty()) {
-                        automixEmptyExtends = 0
-                        automixItems.value = automixItems.value + fresh
-                    } else {
-                        automixEmptyExtends++
-                    }
-                }
-            }
-            try {
-                val nextResult = YouTube.next(WatchEndpoint(videoId = seedId)).getOrNull()
-                val directItems = nextResult?.items.orEmpty()
-                merge(directItems)
-                if (directItems.isEmpty()) {
-                    val relatedEndpoint = nextResult?.relatedEndpoint
-                        ?: YouTube.next(WatchEndpoint(videoId = seedId)).getOrNull()?.relatedEndpoint
-                    if (relatedEndpoint != null) {
-                        YouTube.related(relatedEndpoint).onSuccess { page ->
-                            merge(page.songs)
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.tag(TAG).w(e, "Failed to extend automix")
-            } finally {
-                automixExtending = false
-            }
-        }
     }
 
     fun reorderAutomix(fromIndex: Int, toIndex: Int) {
-        synchronized(automixLock) {
-            val list = automixItems.value.toMutableList()
-            if (fromIndex !in list.indices || toIndex !in list.indices || fromIndex == toIndex) return
-            list.add(toIndex, list.removeAt(fromIndex))
-            automixItems.value = list
-        }
-        notifyAutomixChanged()
     }
 
     fun insertIntoAutomix(item: MediaItem, index: Int) {
-        synchronized(automixLock) {
-            val list = automixItems.value.toMutableList()
-            list.add(index.coerceIn(0, list.size), item)
-            automixItems.value = list
-        }
-        notifyAutomixChanged()
     }
 
     fun removeFromAutomix(mediaId: String) {
-        synchronized(automixLock) {
-            automixItems.value = automixItems.value.filterNot { it.mediaId == mediaId }
-        }
-        notifyAutomixChanged()
     }
 
     /**
-     * Makes the reserve EXACTLY the given list. This is how queue filters become real:
-     * applying e.g. PARTY replaces what will actually play with the party selection, so the
-     * radio section on screen and the audio can never drift apart. Any outstanding promoted
-     * track is re-absorbed first so it can be re-placed freely by the new order.
+     * Legacy virtual reserve removed: stable radio lives in the timeline.
+     * Kept as no-op for compatibility.
      */
     fun applyAutomixOrder(items: List<MediaItem>) {
-        if (!playerInitialized.value || !isAutoMixQueueActive.value) return
-        synchronized(automixLock) {
-            val currentIndex = player.currentMediaItemIndex
-            val outstanding = mutableListOf<MediaItem>()
-            for (i in (player.mediaItemCount - 1) downTo (currentIndex + 1)) {
-                val item = player.getMediaItemAt(i)
-                if (item.mediaId in appendedRadioMediaIds) {
-                    outstanding.add(item)
-                    player.removeMediaItem(i)
-                }
-            }
-            outstanding.reverse()
-            automixEnsuredAtIndex = C.INDEX_UNSET
-            var seen = HashSet<String>()
-            automixItems.value = (outstanding + items).filter { seen.add(it.mediaId) }
-        }
-        ensureAutomixUpNext()
     }
 
     /**
-     * Call after any external edit to the radio reserve (reorder, insert, delete): lets the
-     * very next promotion happen again immediately so playback follows the edited list
-     * without waiting for a track transition.
+     * Legacy virtual reserve removed: no promotion to notify.
+     * Kept as no-op for compatibility.
      */
     fun notifyAutomixChanged() {
-        if (!isAutoMixQueueActive.value) return
-        automixEnsuredAtIndex = C.INDEX_UNSET
-        ensureAutomixUpNext()
     }
 
-    /** True when this track is a radio song already spliced into the real timeline. */
-    fun isRadioPromoted(mediaId: String): Boolean = mediaId in appendedRadioMediaIds
+    /** Stable radio lives in the timeline: nothing is virtually promoted. */
+    fun isRadioPromoted(mediaId: String): Boolean = false
 
     fun promoteAutomixToQueue(item: MediaItem, insertionIndex: Int) {
-        automixItems.value = automixItems.value.filterNot { it.mediaId == item.mediaId }
-        appendedRadioMediaIds.add(item.mediaId)
+        if (!playerInitialized.value) return
         player.addMediaItem(insertionIndex.coerceAtMost(player.mediaItemCount), item)
     }
 
@@ -2403,9 +2303,8 @@ class MusicService :
             }
         }
 
-        if (isAutoMixQueueActive.value) {
-            ensureAutomixUpNext()
-        }
+        // Stable radio continues via currentQueue pagination above; the legacy
+        // virtual automix branch is removed so there is nothing to consume here.
 
         if (persistentQueueEnabled) {
             saveQueueToDisk()
@@ -3694,6 +3593,7 @@ class MusicService :
     private fun updateWidgetUI(isPlaying: Boolean) {
         scope.launch {
             try {
+                if (widgetManager.getActiveWidgetIds().isEmpty()) return@launch
                 val songData = currentSong.value
                 val song = songData?.song
                 val songTitle = song?.title ?: getString(R.string.no_song_playing)
@@ -3725,7 +3625,7 @@ class MusicService :
                     if (player.isPlaying) {
                         updateWidgetUI(true)
                     }
-                    delay(200)
+                    delay(1000)
                 }
             }
     }
@@ -3875,7 +3775,7 @@ class MusicService :
     }
 
     private fun startCrossfade() {
-        if (isCrossfading) return
+        if (isCrossfading || secondaryPlayer != null) return
 
         val savedRepeatMode = player.repeatMode
         val savedShuffleEnabled = player.shuffleModeEnabled

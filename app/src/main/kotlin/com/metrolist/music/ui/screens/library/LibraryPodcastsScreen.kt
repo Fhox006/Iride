@@ -7,6 +7,7 @@ package com.metrolist.music.ui.screens.library
 
 import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -75,6 +76,9 @@ import com.metrolist.music.constants.SongSortDescendingKey
 import com.metrolist.music.constants.SongSortType
 import com.metrolist.music.constants.SongSortTypeKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
+import com.metrolist.music.constants.IrideBaseBorderWidth
+import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.PodcastEntity
 import com.metrolist.music.db.entities.SpeedDialItem
@@ -520,6 +524,7 @@ private fun AutoPlaylistCard(
             modifier =
                 Modifier
                     .size(56.dp)
+                    .irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, RoundedCornerShape(ThumbnailCornerRadius))
                     .clip(RoundedCornerShape(ThumbnailCornerRadius))
                     .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
@@ -590,6 +595,7 @@ private fun PodcastEpisodePlaylistItem(
             modifier =
                 Modifier
                     .size(56.dp)
+                    .irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, RoundedCornerShape(ThumbnailCornerRadius))
                     .clip(RoundedCornerShape(ThumbnailCornerRadius))
                     .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,

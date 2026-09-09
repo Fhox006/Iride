@@ -2,8 +2,10 @@ package com.metrolist.music.ui.screens.podcast
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,6 +42,7 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,6 +79,9 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.db.entities.PodcastEntity
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.queues.ListQueue
@@ -83,9 +89,18 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideLoadingIndicator
 import com.metrolist.music.ui.component.IrideAdaptiveTopBar
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.YouTubeListItem
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
+import com.metrolist.music.utils.rememberEnumPreference
+import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.constants.IrideBaseBorderWidth
+import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import com.metrolist.music.viewmodels.OnlinePodcastViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -111,6 +126,15 @@ fun OnlinePodcastScreen(
 
     val lazyListState = rememberLazyListState()
 
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
+    val headerScrolled by remember {
+        derivedStateOf {
+            lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 8
+        }
+    }
+    val frostBackdrop = rememberFrostBackdrop()
+
     var isSearching by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
 
@@ -133,10 +157,23 @@ fun OnlinePodcastScreen(
     }
 
     Box(Modifier.fillMaxSize()) {
-        LazyColumn(
-            state = lazyListState,
-            contentPadding = LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime).asPaddingValues(),
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop),
         ) {
+            if (mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
+                )
+            } else {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+            }
+            LazyColumn(
+                state = lazyListState,
+                contentPadding = LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime).asPaddingValues(),
+            ) {
             if (podcast == null && isLoading) {
                 item(key = "loading_placeholder") {
                     Box(
@@ -235,6 +272,7 @@ fun OnlinePodcastScreen(
                 }
             }
         }
+        }
 
         IrideAdaptiveTopBar(
             title = {
@@ -296,7 +334,9 @@ fun OnlinePodcastScreen(
                     }
                 }
             },
-            scrollBehavior = scrollBehavior
+            scrollBehavior = scrollBehavior,
+            backdrop = frostBackdrop,
+            revealProgress = rememberDiscreteProgress(headerScrolled),
         )
     }
 }
@@ -325,6 +365,7 @@ private fun PodcastHeader(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(200.dp)
+                .irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, RoundedCornerShape(8.dp))
                 .clip(RoundedCornerShape(8.dp))
         )
 

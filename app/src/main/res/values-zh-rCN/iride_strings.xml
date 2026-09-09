@@ -1098,22 +1098,12 @@
     <string name="muzza_player_logic_desc">Loads songs faster using an alternate streaming method.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">Show News tab</string>
-    <string name="show_news_tab_desc">Adds a News tab to the bottom navigation, between Home and Library</string>
     <string name="compact_top_navigation_bar">Compact top bar</string>
     <string name="compact_top_navigation_bar_desc">Home and Library as text on the left, Search and your profile picture as icons on the right. Turn off to go back to the classic bar with every tab spelled out</string>
     <string name="iride_animations">Iride animations</string>
     <string name="iride_animations_desc">Typewriter titles, parallax and entrance transitions. Turn off if the app stutters</string>
     <string name="player_auto_hide_top_panel">Auto-hide return panel</string>
     <string name="player_auto_hide_top_panel_desc">Fades out the top return-to-app panel after 5s idle in the expanded player. Scrolling down brings it back</string>
-    <string name="news">News</string>
-    <string name="news_new_albums">New albums</string>
-    <string name="news_new_songs">New songs</string>
-    <string name="news_charts">Charts</string>
-    <string name="news_new_albums_title">New Albums</string>
-    <string name="news_quick_play_title">New Songs</string>
-    <string name="news_empty_albums">No new albums found yet</string>
-    <string name="news_empty_songs">No new songs found yet</string>
 
     <string name="better_library_beta">Better Library BETA</string>
     <string name="better_library_beta_desc">Enable Material 3 refactored Library (Top App Bar, FAB, and UI fixes)</string>
@@ -1188,4 +1178,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">新播放器设计</string>
 <string name="new_mini_player_design">新迷你播放器设计</string>
-</resources>
+    <string name="featured_for_you">为你精选</string>
+    <string name="trending_artist_subtitle">在你的动态中人气上升</string>
+    <string name="artist_radio_subtitle">受这位艺人启发的无限混播</string>
+    <string name="artist_radio_title">%1$s 电台</string>
+    <string name="mood_and_playlists_for_you">心情与推荐歌单</string>
+    <string name="syncing_library">正在同步资料库</string>
+    <string name="network_sync_warning">同步完成前，部分网络功能可能无法使用。</string>
+    <string name="syncing_your_library">正在同步你的资料库…</string>
+    <string name="collapse_section">收起此板块</string>
+    <string name="expand_section">展开此板块</string>
+    </resources>

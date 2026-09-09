@@ -190,7 +190,7 @@ android {
             excludes += "META-INF/LICENSE.md"
             excludes += "META-INF/INDEX.LIST"
             excludes += "META-INF/io.netty.versions.properties"
-            excludes += "com/atilika/kuromoji/ipadic/[a-zA-Z]+[.]bin"
+            excludes += "com/atilika/kuromoji/ipadic/**"
         }
     }
 }
@@ -229,7 +229,7 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.util)
     implementation(libs.compose.ui.text.google.fonts)
-    implementation(libs.compose.ui.tooling)
+    debugImplementation(libs.compose.ui.tooling)
     implementation(libs.compose.animation)
     implementation(libs.compose.reorderable)
 
@@ -269,6 +269,7 @@ dependencies {
 
     implementation(libs.hilt)
     implementation(libs.jsoup)
+    implementation(libs.security.crypto)
     ksp(libs.hilt.compiler)
 
     implementation(project(":innertube"))

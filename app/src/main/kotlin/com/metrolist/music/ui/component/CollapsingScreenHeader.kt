@@ -106,7 +106,6 @@ fun CollapsingScreenHeader(
     navigationIcon: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
     transparentBackground: Boolean = false,
-    titleBadge: Int? = null,
     hideTitle: Boolean = false,
 ) {
     val density = LocalDensity.current
@@ -192,15 +191,6 @@ fun CollapsingScreenHeader(
                                     alpha = lerpFloat(1f, 0.95f, fraction)
                                 },
                         )
-                        if (titleBadge != null && titleBadge > 0) {
-                            androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
-                            NewReleaseBadge(
-                                count = titleBadge,
-                                modifier = Modifier.graphicsLayer {
-                                    alpha = lerpFloat(1f, 0f, (fraction * 2f).coerceIn(0f, 1f))
-                                },
-                            )
-                        }
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
                     }
 

@@ -6,6 +6,7 @@
 package com.metrolist.music.ui.screens
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
@@ -29,7 +30,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.strokeItemSoft
 import com.metrolist.music.ui.theme.textSecondary
+import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -174,6 +177,7 @@ private fun IrideTopItemCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(imageHeight)
+                    .irideArtworkOverlayBorder(1.dp, MaterialTheme.colorScheme.strokeItemSoft, CardSquircle)
                     .clip(CardSquircle)
             )
             Box(

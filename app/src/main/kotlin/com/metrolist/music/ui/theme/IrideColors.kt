@@ -23,7 +23,11 @@ import androidx.compose.ui.graphics.Color
  *
  * Surface hierarchy:
  *  - [strokeHairline] dividers and hairline borders
+ *  - [strokeItemSoft] light outline for song thumbnails and player artwork
  *  - [strokeCard]     strokes around items, artwork outlines, cards
+ *  - [strokeOverArtwork] opaque-enough outline drawn over full-bleed artwork
+ *                        (miniplayer tile, player covers) where softer tokens
+ *                        would vanish against the image pixels
  *  - [fillSubtle]     subtle surface fills, banners
  *  - [fillSelected]   chips, selected segments, emphasized fills
  *
@@ -38,7 +42,11 @@ val ColorScheme.textTertiary: Color get() = onSurface.copy(alpha = 0.45f)
 
 val ColorScheme.strokeHairline: Color get() = onSurface.copy(alpha = 0.10f)
 
+val ColorScheme.strokeItemSoft: Color get() = onSurface.copy(alpha = 0.14f)
+
 val ColorScheme.strokeCard: Color get() = onSurface.copy(alpha = 0.22f)
+
+val ColorScheme.strokeOverArtwork: Color get() = onSurface.copy(alpha = 0.38f)
 
 val ColorScheme.fillSubtle: Color get() = onSurface.copy(alpha = 0.06f)
 

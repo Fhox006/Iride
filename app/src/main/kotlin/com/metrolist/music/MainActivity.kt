@@ -49,8 +49,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
@@ -94,10 +92,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
-import com.metrolist.music.ui.component.PillPlayerRow
-import com.metrolist.music.ui.component.PillProgressState
-import com.metrolist.music.ui.component.PillShimmerSkeleton
-import com.metrolist.music.ui.component.PlaceholderMediaMetadata
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -222,7 +216,6 @@ import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.player.BottomSheetPlayer
 import com.metrolist.music.ui.player.IrideBridgeState
 import com.metrolist.music.ui.player.IrideMiniPlayerBridgeOverlay
-import androidx.media3.common.Player
 import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.screens.NavigationBuilder
 import com.metrolist.music.ui.screens.settings.DarkMode
@@ -990,7 +983,6 @@ class MainActivity : ComponentActivity() {
                         Screens.Home.route,
                         Screens.Library.route,
                         Screens.Search.route,
-                        Screens.News.route,
                         Screens.Account.route,
                     ) || currentRoute?.startsWith("settings") == true)
                 val topGradientAlpha by animateFloatAsState(
@@ -1289,8 +1281,13 @@ class MainActivity : ComponentActivity() {
                             bridgeState = if (curtainMode) irideBridgeState else null,
                         )
 
+                        // New Iride UI: draws the single moving cover on top of the curtain but
+                        // still *behind* the app (Scaffold, declared right below) — it morphs
+                        // between the collapsed and expanded cover position/size without ever
+                        // needing to draw over the app itself.
                         IrideMiniPlayerBridgeOverlay(
                             bridgeState = irideBridgeState,
+                            sheetProgress = playerBottomSheetState.progress,
                             navController = navController,
                             playerBottomSheetState = playerBottomSheetState,
                         )
@@ -1300,7 +1297,7 @@ class MainActivity : ComponentActivity() {
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
                             Column {
-                                if (!showRail && isTopLevelRoute && currentRoute != "wrapped" && currentRoute != "onboarding" && currentRoute != "home" && currentRoute != "library" && currentRoute != Screens.Search.route && currentRoute != "settings" && currentRoute != Screens.News.route) {
+                                if (!showRail && isTopLevelRoute && currentRoute != "wrapped" && currentRoute != "onboarding" && currentRoute != "home" && currentRoute != "library" && currentRoute != Screens.Search.route && currentRoute != "settings") {
                                     TopNavigationBar(
                                         navigationItems = navigationItems,
                                         currentRoute = currentRoute,
@@ -1619,116 +1616,6 @@ class MainActivity : ComponentActivity() {
                                 .clip(RoundedCornerShape(50))
                                 .background(Color.White.copy(alpha = 0.35f)),
                         )
-                    }
-
-                    // The interactive mini pill of the curtain UI. It lives ABOVE everything
-                    // else so no screen content can ever steal its taps or drags: swiping up
-                    // anywhere on it expands the player, tapping it does the same, and its
-                    // own action buttons stay reachable.
-                    if (curtainActive && !irideBridgeState.lyricsFullScreenActive && !playerBottomSheetState.isDismissed) {
-                        val stripPlayerConnection = playerConnection
-                        val stripPendingRestore = stripPlayerConnection?.service?.hasPendingQueueRestoreFlow
-                            ?.collectAsState()?.value ?: false
-                        val stripInteractive by remember(playerBottomSheetState) {
-                            derivedStateOf { playerBottomSheetState.progress < 0.05f }
-                        }
-
-                        val stripPositionState = remember { mutableLongStateOf(0L) }
-                        val stripDurationState = remember { mutableLongStateOf(0L) }
-                        val stripMetadata = stripPlayerConnection?.mediaMetadata?.collectAsState()?.value
-                        val stripPlaybackState = stripPlayerConnection?.playbackState?.collectAsState()?.value ?: Player.STATE_IDLE
-                        val stripCanSkipNext = stripPlayerConnection?.canSkipNext?.collectAsState()?.value ?: false
-                        val stripCastHandler = remember(stripPlayerConnection) {
-                            try { stripPlayerConnection?.service?.castConnectionHandler } catch (_: Exception) { null }
-                        }
-                        val stripIsCasting = stripCastHandler?.isCasting?.collectAsState()?.value ?: false
-                        val stripIsPlaying = stripPlayerConnection?.isPlaying?.collectAsState()?.value ?: false
-
-                        LaunchedEffect(stripPlayerConnection, stripIsPlaying, stripIsCasting) {
-                            val pc = stripPlayerConnection ?: return@LaunchedEffect
-                            if (stripIsCasting || !stripIsPlaying) return@LaunchedEffect
-                            while (isActive) {
-                                delay(200)
-                                stripPositionState.longValue = pc.player.currentPosition
-                                stripDurationState.longValue = pc.player.duration
-                            }
-                        }
-                        LaunchedEffect(stripPlaybackState, stripMetadata?.id) {
-                            val pc = stripPlayerConnection ?: return@LaunchedEffect
-                            if (!stripIsCasting) {
-                                stripPositionState.longValue = pc.player.currentPosition
-                                stripDurationState.longValue = pc.player.duration
-                            }
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))
-                                .graphicsLayer {
-                                    alpha = ((0.35f - playerBottomSheetState.progress) * 3f).coerceIn(0f, 1f)
-                                },
-                        ) {
-                            // Fully expanded: neither the pill nor its touch blocker may
-                            // exist here, or they would eat the player wheel's play/pause
-                            // taps along the bottom edge.
-                            if (!playerBottomSheetState.isExpanded) {
-                                Box(
-                                    modifier = Modifier.graphicsLayer {
-                                        alpha = ((0.35f - playerBottomSheetState.progress) * 3f).coerceIn(0f, 1f)
-                                    },
-                                ) {
-                                    if (stripPendingRestore) {
-                                        PillShimmerSkeleton(isTopLevelRoute = false)
-                                    } else if (stripPlayerConnection != null) {
-                                        val stripConnection = stripPlayerConnection
-                                        PillPlayerRow(
-                                            progressState = remember(stripPositionState, stripDurationState) {
-                                                PillProgressState(stripPositionState, stripDurationState)
-                                            },
-                                            displayMetadata = stripMetadata ?: PlaceholderMediaMetadata,
-                                            favoriteSongId = stripMetadata?.id,
-                                            playbackState = stripPlaybackState,
-                                            canSkipNext = stripCanSkipNext,
-                                            isCasting = stripIsCasting,
-                                            castHandler = stripCastHandler,
-                                            playerConnection = stripConnection,
-                                            listenTogetherManager = listenTogetherManager,
-                                            primaryColor = Color.White,
-                                            outlineColor = Color.White,
-                                            onSurfaceColor = Color.White,
-                                            errorColor = Color(0xFFFF6B6B),
-                                             onExpandClick = { if (stripInteractive) playerBottomSheetState.expandSoft() },
-                                             bottomSheetState = if (stripInteractive) playerBottomSheetState else null,
-                                             onArtPositioned = { r: Rect -> irideBridgeState.miniArt = r },
-                                             onProgressChanged = { p: Float -> irideBridgeState.progress = p },
-                                             artistAlpha = 0.85f,
-                                             compact = true,
-                                         )
-                                    }
-                                }
-                                // While faded out the pill must stop being touchable entirely,
-                                // otherwise its invisible buttons would steal taps meant for the
-                                // expanded player above.
-                                if (!stripInteractive) {
-                                    Box(
-                                        modifier = Modifier
-                                            .matchParentSize()
-                                            .pointerInput(Unit) {
-                                                awaitEachGesture {
-                                                    awaitFirstDown(requireUnconsumed = false)
-                                                    while (true) {
-                                                        val event = awaitPointerEvent()
-                                                        event.changes.forEach { it.consume() }
-                                                        if (event.changes.all { !it.pressed }) break
-                                                    }
-                                                }
-                                            },
-                                    )
-                                }
-                            }
-                        }
                     }
 
                     BottomSheetMenu(

@@ -154,6 +154,7 @@ import com.metrolist.music.ui.screens.search.IrideSearchBox
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.headerEnter
+import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import com.metrolist.music.ui.utils.irideEnter
 import com.metrolist.music.ui.utils.irideEnterScale
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
@@ -792,7 +793,7 @@ fun OnlinePlaylistScreen(
                     backdrop = frostBackdrop,
                 )
                 .statusBarsPadding()
-                .height(56.dp)
+                .height(40.dp)
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -970,14 +971,18 @@ private fun OnlinePlaylistHeader(
                         scaleX = s
                         scaleY = s
                     }
+                    .irideArtworkOverlayBorder(
+                        IrideBaseBorderWidth,
+                        MaterialTheme.colorScheme.strokeCard,
+                        playlistCoverSquircle,
+                    )
                     .shadow(
                         elevation = 20.dp,
                         shape = playlistCoverSquircle,
                         spotColor = Color.Black.copy(alpha = 0.5f),
                     )
                     .clip(playlistCoverSquircle)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .border(BorderStroke(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard), playlistCoverSquircle),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
             )
         }
 

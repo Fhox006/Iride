@@ -34,6 +34,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -64,6 +65,9 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.HistorySource
 import com.metrolist.music.constants.InnerTubeCookieKey
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.extensions.metadata
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.toMediaMetadata
@@ -75,11 +79,16 @@ import com.metrolist.music.ui.component.IrideAdaptiveTopBar
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.SongListItem
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.YouTubeListItem
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.menu.SelectionMediaMetadataMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
+import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.DateAgo
 import com.metrolist.music.viewmodels.HistoryViewModel
@@ -209,8 +218,30 @@ fun HistoryScreen(
 
     val lazyListState = rememberLazyListState()
 
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
+    val headerScrolled by remember {
+        derivedStateOf {
+            lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 8
+        }
+    }
+    val frostBackdrop = rememberFrostBackdrop()
+
     Box(Modifier.fillMaxSize()) {
-        LazyColumn(
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop),
+        ) {
+            if (mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
+                )
+            } else {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+            }
+            LazyColumn(
             state = lazyListState,
             contentPadding =
                 LocalPlayerAwareWindowInsets.current
@@ -399,6 +430,7 @@ fun HistoryScreen(
                 }
             }
         }
+        }
 
         val historyTitle = stringResource(R.string.history)
 
@@ -548,5 +580,7 @@ fun HistoryScreen(
                 }
             }
         },
+        backdrop = frostBackdrop,
+        revealProgress = rememberDiscreteProgress(headerScrolled),
     )
 }

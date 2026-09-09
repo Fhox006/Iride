@@ -10,10 +10,6 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.metrolist.innertube.YouTube
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
 /**
@@ -26,9 +22,11 @@ const val LYRICS_OFFSET_BIAS_MS = 250L
 @Entity(
     tableName = "song",
     indices = [
-        Index(
-            value = ["albumId"],
-        ),
+        Index(value = ["albumId"]),
+        Index(value = ["inLibrary"]),
+        Index(value = ["liked"]),
+        Index(value = ["isDownloaded"]),
+        Index(value = ["title"]),
     ],
 )
 data class SongEntity(
@@ -90,25 +88,14 @@ data class SongEntity(
             liked = !liked,
             likedDate = if (!liked) LocalDateTime.now() else null,
             inLibrary = if (!liked) inLibrary ?: LocalDateTime.now() else inLibrary,
-        ).also {
-            CoroutineScope(Dispatchers.IO).launch {
-                YouTube.likeVideo(id, !liked)
-            }
-        }
+        )
 
     fun toggleLibrary(syncToYouTube: Boolean = true) =
         copy(
             liked = if (inLibrary == null) liked else false,
             inLibrary = if (inLibrary == null) LocalDateTime.now() else null,
             likedDate = if (inLibrary == null) likedDate else null,
-        ).also {
-            if (syncToYouTube) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    val addToLibrary = inLibrary == null
-                    YouTube.toggleSongLibrary(id, addToLibrary)
-                }
-            }
-        }
+        )
 
     fun toggleUploaded() =
         copy(

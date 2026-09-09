@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
@@ -45,15 +45,10 @@
     <string name="similar_to">Similar to</string>
     <string name="new_release_albums">New release albums</string>
     <string name="artist_latest_release">Latest release</string>
-    <string name="artist_release_type_album">ALBUM</string>
-    <string name="artist_release_type_ep">EP</string>
-    <string name="artist_release_type_single">SINGLE</string>
-    <string name="artist_release_type_feat">FEAT</string>
     <string name="genius_section_title">Featuring detection (Genius)</string>
     <string name="genius_api_key">Genius API Token</string>
     <string name="genius_api_key_description">Finds "feat." credits the artist\'s own YTM page misses. Get a free token at genius.com/api-clients.</string>
     <string name="essential_albums">Essential Albums</string>
-    <string name="featuring">Featuring</string>
     <string name="suggested_follow_artists">You listen a lot — follow them?</string>
     <string name="new_from_followed_artists">New from artists you follow</string>
 
@@ -471,7 +466,7 @@
     <string name="searching_synced_lyrics">Searching for synced lyrics…</string>
 
     <string name="main_top_gradient">Top gradient on main screens</string>
-    <string name="main_top_gradient_desc">Shows the current song\'s player gradient, subtly blended, behind the top of Home, Library, Search and News</string>
+    <string name="main_top_gradient_desc">Shows the current song\'s player gradient, subtly blended, behind the top of Home, Library and Search</string>
     <string name="album_top_gradient">Top gradient on albums</string>
     <string name="album_top_gradient_desc">Shows the viewed album\'s player gradient, subtly blended, behind the top of Album, Single and EP screens</string>
 </resources>

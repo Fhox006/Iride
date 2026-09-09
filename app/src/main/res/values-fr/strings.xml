@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
@@ -47,15 +47,10 @@
     <string name="similar_to">Similaire à</string>
     <string name="new_release_albums">Nouveautés</string>
     <string name="artist_latest_release">Dernière sortie</string>
-    <string name="artist_release_type_album">ALBUM</string>
-    <string name="artist_release_type_ep">EP</string>
-    <string name="artist_release_type_single">SINGLE</string>
-    <string name="artist_release_type_feat">FEAT</string>
     <string name="genius_section_title">Détection des featurings (Genius)</string>
     <string name="genius_api_key">Jeton API Genius</string>
     <string name="genius_api_key_description">Trouve les mentions \"feat.\" que la page YTM de l\'artiste elle-même ignore. Obtenez un jeton gratuit sur genius.com/api-clients.</string>
     <string name="essential_albums">Albums essentiels</string>
-    <string name="featuring">Featuring</string>
     <string name="suggested_follow_artists">Vous écoutez beaucoup — les suivre ?</string>
     <string name="new_from_followed_artists">Nouveautés des artistes que vous suivez</string>
 

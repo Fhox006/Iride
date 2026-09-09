@@ -7,6 +7,7 @@ package com.metrolist.music.ui.screens.settings
 import com.metrolist.music.ui.component.IrideSlider
 import com.metrolist.music.ui.component.IrideSwitch
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -39,8 +41,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.AudioNormalizationKey
@@ -55,15 +59,17 @@ import com.metrolist.music.constants.CrossfadeEnabledKey
 import com.metrolist.music.constants.DisableLoadMoreWhenRepeatAllKey
 import com.metrolist.music.constants.HistoryDuration
 import com.metrolist.music.constants.KeepScreenOn
+import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PauseOnMute
 import com.metrolist.music.constants.PersistentQueueKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PersistentShuffleAcrossQueuesKey
 import com.metrolist.music.constants.PreventDuplicateTracksInQueueKey
 import com.metrolist.music.constants.RememberShuffleAndRepeatKey
 import com.metrolist.music.constants.ResumeOnBluetoothConnectKey
 import com.metrolist.music.constants.SeekExtraSeconds
 import com.metrolist.music.constants.ShufflePlaylistFirstKey
-import com.metrolist.music.constants.SimilarContent
 import com.metrolist.music.constants.SkipFadeDurationKey
 import com.metrolist.music.constants.SkipFadeKey
 import com.metrolist.music.constants.SkipSilenceInstantKey
@@ -80,12 +86,14 @@ import com.metrolist.music.constants.SleepTimerStartTimeKey
 import com.metrolist.music.constants.SleepTimerStopAfterCurrentSongKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
 import com.metrolist.music.constants.VarispeedKey
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.SleepTimerDialog
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.decodeDayTimes
 import com.metrolist.music.ui.component.encodeDayTimes
 import com.metrolist.music.ui.utils.backToMain
@@ -95,6 +103,7 @@ import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -162,10 +171,6 @@ fun PlayerSettings(
     val (autoDownloadOnLike, onAutoDownloadOnLikeChange) = rememberPreference(
         AutoDownloadOnLikeKey,
         defaultValue = false
-    )
-    val (similarContentEnabled, similarContentEnabledChange) = rememberPreference(
-        key = SimilarContent,
-        defaultValue = true
     )
     val (autoSkipNextOnError, onAutoSkipNextOnErrorChange) = rememberPreference(
         AutoSkipNextOnErrorKey,
@@ -253,6 +258,10 @@ fun PlayerSettings(
 
     val playerScrollState = rememberScrollState()
     val frostBackdrop = rememberFrostBackdrop()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -260,6 +269,18 @@ fun PlayerSettings(
                 .fillMaxSize()
                 .recordFrostBackdrop(frostBackdrop)
         ) {
+            if (mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
+                )
+            } else {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
+                )
+            }
             Column(
                 Modifier
                     .windowInsetsPadding(
@@ -806,27 +827,6 @@ fun PlayerSettings(
                                 )
                             },
                             onClick = { onAutoDownloadOnLikeChange(!autoDownloadOnLike) }
-                        ))
-                        if (advancedMode) add(Material3SettingsItem(
-                            icon = painterResource(R.drawable.similar),
-                            title = { Text(stringResource(R.string.enable_similar_content)) },
-                            description = { Text(stringResource(R.string.similar_content_desc)) },
-                            trailingContent = {
-                                IrideSwitch(
-                                    checked = similarContentEnabled,
-                                    onCheckedChange = similarContentEnabledChange,
-                                    thumbContent = {
-                                        Icon(
-                                            painter = painterResource(
-                                                if (similarContentEnabled) R.drawable.check else R.drawable.close
-                                            ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize)
-                                        )
-                                    }
-                                )
-                            },
-                            onClick = { similarContentEnabledChange(!similarContentEnabled) }
                         ))
                         if (advancedMode) add(Material3SettingsItem(
                             icon = painterResource(R.drawable.shuffle),

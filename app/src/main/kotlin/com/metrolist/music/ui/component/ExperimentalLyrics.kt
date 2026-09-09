@@ -30,6 +30,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDecay
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.snap
@@ -140,6 +141,7 @@ import com.metrolist.music.constants.TranslateLanguageKey
 import com.metrolist.music.constants.TranslateModeKey
 import com.metrolist.music.db.entities.LYRICS_OFFSET_BIAS_MS
 import com.metrolist.music.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
+import com.metrolist.music.lyrics.LyricsEntry
 import com.metrolist.music.lyrics.LyricsTranslationHelper
 import com.metrolist.music.lyrics.LyricsUtils.findActiveLineIndices
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
@@ -214,6 +216,12 @@ private val LYRICS_FADE_BOTTOM_DP = 160.dp
 private const val LYRICS_STAGGER_DELAY_PER_DISTANCE = 20
 private const val LYRICS_STAGGER_DELAY_MAX_MS = 200
 private const val LYRICS_PREVIEW_TIME = 8000L
+private const val LAST_LINE_TAIL_MS = 10000L
+
+// Once playback passes the last line, the whole block drifts down so that it rests in the
+// lower part of the screen instead of hovering at the reading anchor.
+private const val END_SETTLE_ANCHOR_RATIO = 0.60f
+private const val END_SETTLE_DURATION_MS = 900
 
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -232,6 +240,8 @@ fun ExperimentalLyrics(
     showPills: Boolean = true,
     pillsController: LyricsPillController? = null,
     textScale: Float = 1f,
+    fullness: () -> Float = { 0f },
+    morphing: () -> Boolean = { false },
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val database = LocalDatabase.current
@@ -290,20 +300,53 @@ fun ExperimentalLyrics(
         }.filter { it.second }.map { it.first }
     }
 
-    val lines by lyricsViewModel.lines.collectAsState()
+    val rawLines by lyricsViewModel.lines.collectAsState()
+
+    // ── TEST AID (flip to false before shipping) ────────────────────────────────────
+    // Pads the fetched lyrics with placeholder lines up to 100% of the track duration so
+    // the end-of-lyrics behavior (settle-down, no blur) can be observed on any song.
+    // TODO(test): set to false once end-of-lyrics is verified on real catalogs.
+    val fakeFullLyricsForTesting = false
+
+    var sampledTrackDuration by remember { mutableLongStateOf(0L) }
+    if (fakeFullLyricsForTesting) {
+        LaunchedEffect(Unit) {
+            while (true) {
+                sampledTrackDuration = playerConnection.player.duration
+                delay(1000)
+            }
+        }
+    }
+    val lines = remember(rawLines, sampledTrackDuration, fakeFullLyricsForTesting) {
+        if (!fakeFullLyricsForTesting || sampledTrackDuration <= 0L) {
+            rawLines
+        } else {
+            val padded = rawLines.toMutableList()
+            val lastIdx = padded.indexOfLast { !it.isBackground }
+            val lastEndMs = if (lastIdx >= 0) {
+                val entry = padded[lastIdx]
+                if (!entry.words.isNullOrEmpty()) {
+                    (entry.words.last().endTime * 1000).toLong()
+                } else {
+                    entry.time + LAST_LINE_TAIL_MS
+                }
+            } else 0L
+            var t = maxOf(lastEndMs, 0L)
+            var n = 0
+            while (t < sampledTrackDuration - 1000L && n < 500) {
+                padded.add(LyricsEntry(t, "♪ test ${n + 1}"))
+                t += 4000L
+                n++
+            }
+            padded
+        }
+    }
     val mergedLyricsList by lyricsViewModel.mergedLyricsList.collectAsState()
     val lyricsSearchStatus by lyricsViewModel.lyricsSearchStatus.collectAsState()
 
-    LaunchedEffect(mediaMetadata?.id) {
-        val metadata = mediaMetadata ?: return@LaunchedEffect
-        lyricsViewModel.loadProgressiveLyrics(
-            metadata,
-            enabledLanguages,
-            romanizeCyrillicByLine,
-            showIntervalIndicator,
-        )
-    }
-
+    // Loading is owned by the shared LyricsViewModel (pre-warmed eagerly by the player
+    // host); this composable only reacts to manual refetch requests so that re-entering
+    // the lyrics panel never tears down nor reloads the current song's lyrics.
     LaunchedEffect(refetchRequested) {
         if (refetchRequested) {
             lyricsMenuViewModel.clearRefetchRequest()
@@ -313,6 +356,7 @@ fun ExperimentalLyrics(
                 enabledLanguages,
                 romanizeCyrillicByLine,
                 showIntervalIndicator,
+                force = true,
             )
         }
     }
@@ -391,6 +435,30 @@ fun ExperimentalLyrics(
     var activeLineIndices by remember { mutableStateOf(emptySet<Int>()) }
     var scrollTargetIndex by rememberSaveable { mutableIntStateOf(-1) }
     var previousScrollActiveIndices by remember { mutableStateOf(emptySet<Int>()) }
+
+    // Value scrollTargetIndex held right before its last assignment; -1 while the very
+    // first positioning is still pending, which must snap instead of animating.
+    var lastAssignedScrollTarget by remember { mutableIntStateOf(-1) }
+
+    // End-of-lyrics state: once playback passes the final main line, the block settles
+    // toward the bottom of the screen and the fade masks are released.
+    var lyricsEnded by remember { mutableStateOf(false) }
+    val endSettleOffset = remember { Animatable(0f) }
+
+    val lastMainLineEndMs = remember(lines) {
+        val idx = lines.indexOfLast { !it.isBackground }
+        if (idx < 0) null
+        else {
+            val entry = lines[idx]
+            val endMs = if (!entry.words.isNullOrEmpty()) {
+                (entry.words.last().endTime * 1000).toLong()
+            } else {
+                entry.time + LAST_LINE_TAIL_MS
+            }
+            endMs
+        }
+    }
+    val lastMainIndex = remember(lines) { lines.indexOfLast { !it.isBackground } }
 
     var currentPositionState by remember { mutableLongStateOf(0L) }
     var deferredCurrentLineIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -489,7 +557,9 @@ fun ExperimentalLyrics(
         var lastUpdateTime = System.currentTimeMillis()
 
         while (isActive) {
-            delay(16)
+            // Full-rate tracking only while playback runs: a paused song needs no 60 fps
+            // sampling, and the extrapolation below keeps position smooth either way.
+            delay(if (playerConnection.player.isPlaying) 16L else 80L)
             val now = System.currentTimeMillis()
             val sliderPosition = sliderPositionProvider()
             isSeeking = sliderPosition != null
@@ -571,8 +641,27 @@ fun ExperimentalLyrics(
                     else -> scrollMax
                 }
                 if (targetToScroll != -1 && (isSeeking || targetToScroll > scrollTargetIndex)) {
+                    lastAssignedScrollTarget = scrollTargetIndex
                     scrollTargetIndex = targetToScroll
                 }
+            }
+
+            // Assign-on-change: writing this state every tick would needlessly dirty
+            // recomposition scopes downstream. Two triggers, whichever comes first:
+            // playback past the final line's end, or the tracker having reached the last
+            // main line with nothing left active.
+            val endedNow = !isSeeking && lines.isNotEmpty() && (
+                effectivePosition > (lastMainLineEndMs ?: Long.MAX_VALUE) ||
+                    (scrollActiveIndicesRaw.isEmpty() &&
+                        scrollTargetIndex != -1 &&
+                        scrollTargetIndex >= lastMainIndex)
+                )
+            if (endedNow != lyricsEnded) lyricsEnded = endedNow
+
+            // Once ended, the anchor must never advance again — pin it to the final line.
+            if (lyricsEnded && scrollTargetIndex > lastMainIndex) {
+                lastAssignedScrollTarget = scrollTargetIndex
+                scrollTargetIndex = lastMainIndex
             }
 
             if (scrollMax > lastMainMaxSeen && scrollMax != -1) {
@@ -635,10 +724,14 @@ fun ExperimentalLyrics(
         }
     }
 
-    LaunchedEffect(lyricsText) {
+    // Scroll state is reset only when the song changes: progressive tier upgrades
+    // (plain → line → word) replace the text mid-song and must not interrupt playback
+    // tracking, otherwise the lyrics would lose their constant progression.
+    LaunchedEffect(mediaMetadata?.id) {
         isAutoScrollEnabled = true
         userManualOffset = 0f
         scrollTargetIndex = -1
+        lastAssignedScrollTarget = -1
         isSelectionModeActive = false
         selectedIndices.clear()
         previousScrollActiveIndices = emptySet()
@@ -649,14 +742,11 @@ fun ExperimentalLyrics(
         if (isAutoScrollEnabled) pillsVisible = true
     }
 
-    var isSwitchingFullScreen by remember { mutableStateOf(false) }
-
+    // Pills hide while fullscreen so nothing floats over the enlarged lyrics. Text size
+    // stays constant here: the panel↔fullscreen growth is a rigid graphicsLayer transform
+    // owned by the host (IrideMp3Player), so no line ever re-wraps or overlaps mid-animation.
     LaunchedEffect(isFullScreen) {
-        isSwitchingFullScreen = true
-        if (isFullScreen) pillsVisible = false
-        else pillsVisible = true
-        delay(700L)
-        isSwitchingFullScreen = false
+        pillsVisible = !isFullScreen
     }
 
     var flingJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
@@ -696,6 +786,17 @@ fun ExperimentalLyrics(
     ) {
         val maxHeightPx = constraints.maxHeight.toFloat()
         val anchorY = maxHeightPx * LYRICS_ANCHOR_RATIO
+
+        // End-of-lyrics settle: drift the whole block toward the lower part of the screen
+        // once the final line has been sung, and release it again on seek back.
+        val endSettleTargetPx = (maxHeightPx * END_SETTLE_ANCHOR_RATIO - anchorY).coerceAtLeast(0f)
+        LaunchedEffect(lyricsEnded, endSettleTargetPx) {
+            endSettleOffset.animateTo(
+                if (lyricsEnded) endSettleTargetPx else 0f,
+                tween(END_SETTLE_DURATION_MS, easing = FastOutSlowInEasing),
+            )
+        }
+
         val lineHeightPx = with(density) { LYRICS_ITEM_FALLBACK_HEIGHT_DP.toPx() }
         val indicatorHeightPx = with(density) { 72.dp.toPx() }
         val constraintLineHeightPx = with(density) { 120.dp.toPx() }
@@ -1007,13 +1108,26 @@ fun ExperimentalLyrics(
             animationSpec = tween(durationMillis = 350),
             label = "lyricsAlpha"
         )
+        // Fade masks collapse smoothly once the lyrics have finished so the resting text
+        // stays crisp instead of dissolving into the background.
+        val baseTopFade = if (showPills && pillsVisible && !isFullScreen) 200.dp else 80.dp
+        val fadeTop by animateDpAsState(
+            targetValue = if (lyricsEnded) 1.dp else baseTopFade,
+            animationSpec = tween(END_SETTLE_DURATION_MS),
+            label = "lyricsFadeTop",
+        )
+        val fadeBottom by animateDpAsState(
+            targetValue = if (lyricsEnded) 1.dp else 40.dp,
+            animationSpec = tween(END_SETTLE_DURATION_MS),
+            label = "lyricsFadeBottom",
+        )
 
         if (lyricsContentReady) {
             Box(modifier = Modifier.fillMaxSize().alpha(lyricsAlpha)) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .fadingEdge(top = if (showPills && pillsVisible && !isFullScreen) 200.dp else 80.dp, bottom = 40.dp)
+                    .fadingEdge(top = fadeTop, bottom = fadeBottom)
                     .clipToBounds()
                     .nestedScroll(remember {
                         object : NestedScrollConnection {
@@ -1067,15 +1181,21 @@ fun ExperimentalLyrics(
                         val distance = abs(listIndex - activeListIndex)
                         val targetOffset = anchorY + positions.getOrDefault(listIndex, (listIndex - activeListIndex) * lineHeightPx)
                         val frozenOffset = remember { mutableFloatStateOf(targetOffset) }
-                        LaunchedEffect(isAutoScrollEnabled, targetOffset, isInitialLayout, isSwitchingFullScreen) {
-                            if (isSwitchingFullScreen) return@LaunchedEffect
+                        LaunchedEffect(isAutoScrollEnabled, targetOffset, isInitialLayout) {
                             if (isAutoScrollEnabled || isInitialLayout) frozenOffset.floatValue = targetOffset
                         }
                         val animatedOffset by animateFloatAsState(
-                            targetValue = if (isSwitchingFullScreen) frozenOffset.floatValue
-                                          else if (isAutoScrollEnabled) targetOffset
-                                          else frozenOffset.floatValue,
-                            animationSpec = if (isInitialLayout || !isAutoScrollEnabled) snap()
+                            targetValue = if (isAutoScrollEnabled) targetOffset else frozenOffset.floatValue,
+                            animationSpec = if (isInitialLayout || !isAutoScrollEnabled ||
+                                // First positioning of a freshly opened lyrics panel must
+                                // land on the current line instantly, without the staggered
+                                // "catch-up" sweep.
+                                (lastAssignedScrollTarget == -1 && scrollTargetIndex != -1) ||
+                                // While the container morphs (panel↔fullscreen) offsets
+                                // must track the layout EXACTLY every frame: snapping is
+                                // what keeps lines from ever overlapping during reflow.
+                                morphing()
+                            ) snap()
                             else tween(750, (distance * LYRICS_STAGGER_DELAY_PER_DISTANCE).coerceAtMost(LYRICS_STAGGER_DELAY_MAX_MS), FastOutSlowInEasing),
                             label = "lyricStaggeredOffset_$listIndex"
                         )
@@ -1083,7 +1203,7 @@ fun ExperimentalLyrics(
                             modifier = Modifier.fillMaxWidth().layout { m, c ->
                                 val p = m.measure(c.copy(maxHeight = Constraints.Infinity))
                                 layout(p.width, 0) { p.place(0, 0) }
-                            }.offset { IntOffset(0, (animatedOffset + userManualOffset).roundToInt()) }
+                            }.offset { IntOffset(0, (animatedOffset + userManualOffset + endSettleOffset.value).roundToInt()) }
                         ) {
                             when (listItem) {
                                 is LyricsListItem.Indicator -> {
@@ -1129,7 +1249,10 @@ fun ExperimentalLyrics(
                                         currentPositionState = currentPositionState,
                                         lyricsOffset = currentSong?.song?.effectiveLyricsOffset ?: LYRICS_OFFSET_BIAS_MS,
                                         playerConnection = playerConnection,
-                                        lyricsTextSize = (if (isFullScreen) 32.4f else 32.4f * 0.7f) * textScale,
+                                        // Font follows the panel↔fullscreen morph: the
+                                        // container is the frame itself, so text always
+                                        // lives inside it — no cross-surface math.
+                                        lyricsTextSize = 32.4f * textScale * (0.7f + 0.3f * fullness()),
                                         lyricsLineSpacing = 1.05f,
                                         expressiveAccent = expressiveAccent,
                                         lyricsTextPosition = lyricsTextPosition,
@@ -1192,7 +1315,7 @@ fun ExperimentalLyrics(
                     }
                     val animatedProviderBase by animateFloatAsState(
                         targetValue = if (isAutoScrollEnabled) targetProviderBase else frozenProviderBase.floatValue,
-                        animationSpec = if (isInitialLayout || !isAutoScrollEnabled) snap()
+                        animationSpec = if (isInitialLayout || !isAutoScrollEnabled || morphing()) snap()
                         else tween(750, 0, FastOutSlowInEasing),
                         label = "lyricsProviderOffset"
                     )
@@ -1202,7 +1325,7 @@ fun ExperimentalLyrics(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .offset { IntOffset(0, (animatedProviderBase + userManualOffset).roundToInt()) }
+                             .offset { IntOffset(0, (animatedProviderBase + userManualOffset + endSettleOffset.value).roundToInt()) }
                             .padding(horizontal = 32.dp, vertical = 4.dp)
                     )
                 }

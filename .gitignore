@@ -107,3 +107,6 @@ app/src/main/java/com/metrolist/music/listentogether/proto/*
 .build-fftw
 app/src/main/cpp/coverart/
 .aider*
+
+# Local AI session backups (kept on disk only, never pushed)
+.ai-backups/

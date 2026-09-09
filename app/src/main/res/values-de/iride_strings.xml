@@ -1105,22 +1105,12 @@
     <string name="muzza_player_logic_desc">Lädt Songs schneller über eine alternative Streaming-Methode.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">News-Tab anzeigen</string>
-    <string name="show_news_tab_desc">Fügt der unteren Navigation zwischen Start und Bibliothek einen News-Tab hinzu</string>
     <string name="compact_top_navigation_bar">Kompakte obere Leiste</string>
     <string name="compact_top_navigation_bar_desc">Start und Bibliothek als Text links, Suche und dein Profilbild als Symbole rechts. Deaktivieren, um zur klassischen Leiste mit allen Tabs zurückzukehren</string>
     <string name="iride_animations">Iride-Animationen</string>
     <string name="iride_animations_desc">Schreibmaschinen-Titel, Parallaxe und Einblendübergänge. Deaktivieren, wenn die App ruckelt</string>
     <string name="player_auto_hide_top_panel">Rückkehr-Leiste automatisch ausblenden</string>
     <string name="player_auto_hide_top_panel_desc">Blendet die obere „Zurück zur App“-Leiste nach 5 s Inaktivität im erweiterten Player aus. Nach unten scrollen holt sie zurück</string>
-    <string name="news">News</string>
-    <string name="news_new_albums">Neue Alben</string>
-    <string name="news_new_songs">Neue Songs</string>
-    <string name="news_charts">Charts</string>
-    <string name="news_new_albums_title">Neue Alben</string>
-    <string name="news_quick_play_title">Neue Songs</string>
-    <string name="news_empty_albums">Noch keine neuen Alben gefunden</string>
-    <string name="news_empty_songs">Noch keine neuen Songs gefunden</string>
 
     <string name="better_library_beta">Bessere Bibliothek BETA</string>
     <string name="better_library_beta_desc">Aktiviert die nach Material 3 umgebaute Bibliothek (Top App Bar, FAB und UI-Korrekturen)</string>
@@ -1195,4 +1185,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">Neues Design für den Player</string>
 <string name="new_mini_player_design">Neues Design für den Mini-Player</string>
-</resources>
+    <string name="featured_for_you">Für dich empfohlen</string>
+    <string name="trending_artist_subtitle">Aufsteigend in deinem Feed</string>
+    <string name="artist_radio_subtitle">Endloser Mix, inspiriert von diesem Künstler</string>
+    <string name="artist_radio_title">%1$s Radio</string>
+    <string name="mood_and_playlists_for_you">Stimmungen und Playlists für dich</string>
+    <string name="syncing_library">Bibliothek wird synchronisiert</string>
+    <string name="network_sync_warning">Netzwerkfunktionen funktionieren möglicherweise nicht, bis die Synchronisierung abgeschlossen ist.</string>
+    <string name="syncing_your_library">Deine Bibliothek wird synchronisiert…</string>
+    <string name="collapse_section">Bereich einklappen</string>
+    <string name="expand_section">Bereich ausklappen</string>
+    </resources>

@@ -268,6 +268,21 @@ class PlayerConnection(
         }
     }
 
+    /**
+     * Single debounced radio toggle (MP3 wheel, queue pill, …). Returns true when
+     * the radio is ON after this call. The read-toggle race lives inside the
+     * service lock, so the UI must not branch on [isAutoMixQueueActive] itself.
+     */
+    fun toggleRadio(mediaMetadata: MediaMetadata): Boolean {
+        if (!allowInternalSync && shouldBlockPlaybackChanges?.invoke() == true) return false
+        return try {
+            service.toggleRadio(mediaMetadata)
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Error in toggleRadio")
+            false
+        }
+    }
+
     suspend fun regenerateAutomix(mediaMetadata: MediaMetadata) {
         if (!allowInternalSync && shouldBlockPlaybackChanges?.invoke() == true) return
         try {

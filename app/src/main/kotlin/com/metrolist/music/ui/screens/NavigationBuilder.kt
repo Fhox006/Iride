@@ -93,10 +93,6 @@ fun NavGraphBuilder.NavigationBuilder(
         HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
     }
 
-    composable(Screens.News.route) {
-        NewsScreen(navController = navController)
-    }
-
     composable(
         route = Screens.Search.route,
     ) { backStackEntry ->

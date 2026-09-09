@@ -1,6 +1,0 @@
-FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\ui\screens\artist\ArtistGameScreen.kt
-LINES: 408
-NOTE: `!!` unnecessary (isSelected implies result non-null; smart cast).
-<<<ORIGINAL
-408:                         painter = painterResource(if (result!!.correct) R.drawable.check else R.drawable.close),
-ORIGINAL>>>

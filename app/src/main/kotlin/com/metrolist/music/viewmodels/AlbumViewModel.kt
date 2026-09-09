@@ -12,7 +12,6 @@ import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.music.data.remote.MusicBrainzRepository
 import com.metrolist.music.db.MusicDatabase
-import com.metrolist.music.utils.NewReleaseNotifier
 import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,19 +34,12 @@ class AlbumViewModel
 constructor(
     private val database: MusicDatabase,
     private val musicBrainzRepository: MusicBrainzRepository,
-    private val newReleaseNotifier: NewReleaseNotifier,
     private val networkConnectivity: NetworkConnectivityObserver,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     val albumId = savedStateHandle.get<String>("albumId")!!
     val playlistId = MutableStateFlow("")
 
-    val unseenSongIds = newReleaseNotifier.unseenSongIds
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
-
-    fun markSongSeen(songId: String) {
-        viewModelScope.launch(Dispatchers.IO) { newReleaseNotifier.markSongSeen(songId) }
-    }
     val albumWithSongs =
         database
             .albumWithSongs(albumId)

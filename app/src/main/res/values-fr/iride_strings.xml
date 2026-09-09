@@ -1112,22 +1112,12 @@
     <string name="muzza_player_logic_desc">Charge les titres plus rapidement grâce à une méthode de streaming alternative.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">Afficher l\'onglet Actualités</string>
-    <string name="show_news_tab_desc">Ajoute un onglet Actualités à la barre de navigation inférieure, entre Accueil et Bibliothèque</string>
     <string name="compact_top_navigation_bar">Barre supérieure compacte</string>
     <string name="compact_top_navigation_bar_desc">Accueil et Bibliothèque en texte à gauche, Recherche et photo de profil en icônes à droite. Désactivez pour revenir à la barre classique avec chaque onglet nommé</string>
     <string name="iride_animations">Animations d\'Iride</string>
     <string name="iride_animations_desc">Titres machine à écrire, parallaxe et transitions d\'entrée. Désactivez si l\'application rame</string>
     <string name="player_auto_hide_top_panel">Masquage auto du panneau retour</string>
     <string name="player_auto_hide_top_panel_desc">Estompe le panneau supérieur de retour vers l\'application après 5 s d\'inactivité dans le lecteur déployé. Faites-le réapparaître en défilant vers le bas</string>
-    <string name="news">Actualités</string>
-    <string name="news_new_albums">Nouveaux albums</string>
-    <string name="news_new_songs">Nouveaux titres</string>
-    <string name="news_charts">Classements</string>
-    <string name="news_new_albums_title">Nouveaux Albums</string>
-    <string name="news_quick_play_title">Nouveaux Titres</string>
-    <string name="news_empty_albums">Aucun nouvel album trouvé pour l\'instant</string>
-    <string name="news_empty_songs">Aucun nouveau titre trouvé pour l\'instant</string>
 
     <string name="better_library_beta">Bibliothèque améliorée BETA</string>
     <string name="better_library_beta_desc">Active la bibliothèque refactorisée Material 3 (barre supérieure, FAB et corrections d\'interface)</string>
@@ -1202,4 +1192,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">Nouveau design du lecteur</string>
 <string name="new_mini_player_design">Nouveau design du mini-lecteur</string>
-</resources>
+    <string name="featured_for_you">En vedette pour vous</string>
+    <string name="trending_artist_subtitle">En hausse dans votre flux</string>
+    <string name="artist_radio_subtitle">Mix infini inspiré par cet artiste</string>
+    <string name="artist_radio_title">Radio %1$s</string>
+    <string name="mood_and_playlists_for_you">Ambiances et playlists pour vous</string>
+    <string name="syncing_library">Synchronisation de la bibliothèque</string>
+    <string name="network_sync_warning">Les fonctions réseau peuvent ne pas fonctionner tant que la synchronisation n\'est pas terminée.</string>
+    <string name="syncing_your_library">Synchronisation de votre bibliothèque…</string>
+    <string name="collapse_section">Réduire la section</string>
+    <string name="expand_section">Développer la section</string>
+    </resources>

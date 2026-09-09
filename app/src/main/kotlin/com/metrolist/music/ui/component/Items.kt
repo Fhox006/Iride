@@ -109,6 +109,7 @@ import androidx.compose.ui.text.font.FontFamily
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.fillSubtle
 import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.theme.strokeItemSoft
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 import androidx.compose.ui.text.font.FontWeight
@@ -151,6 +152,7 @@ import com.metrolist.music.constants.AutoLinkFeaturedArtistsKey
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.HideDurationForStandardSongsKey
 import com.metrolist.music.constants.IrideBaseBorderWidth
+import com.metrolist.music.constants.IrideSoftBorderWidth
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
@@ -172,6 +174,7 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.audio.AudioBandLevels
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.SnapLayoutInfoProvider
+import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.joinByBullet
@@ -689,9 +692,7 @@ fun SongListItem(
     showDownloadIcon: Boolean = true,
     subtitleOverride: String? = null,
     subtitleColor: Color? = null,
-    showNewMarker: Boolean = false,
     badges: @Composable RowScope.() -> Unit = {
-        if (showNewMarker) Icon.New()
         if (showLikedIcon && song.song.liked && albumIndex == null) {
             Icon.Starred()
         }
@@ -714,6 +715,7 @@ fun SongListItem(
     trailingContent: @Composable RowScope.() -> Unit = {},
     showDivider: Boolean = true,
     hairlineBorder: Boolean = false,
+    softBorder: Boolean = !hairlineBorder,
 ) {
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
     AutoLinkFeaturedArtistEffect(song)
@@ -744,6 +746,7 @@ fun SongListItem(
                     modifier = Modifier.size(ListThumbnailSize),
                     showLikedStar = showLikedIcon && song.song.liked,
                     hairlineBorder = hairlineBorder,
+                    softBorder = softBorder && !hairlineBorder,
                 )
             },
             trailingContent = {
@@ -885,7 +888,8 @@ fun SongGridItem(
             isActive = isActive,
             isPlaying = isPlaying,
             shape = RoundedCornerShape(5.dp),
-            modifier = Modifier.size(gridHeight)
+            modifier = Modifier.size(gridHeight),
+            softBorder = true
         )
         if (!isActive) {
             OverlayPlayButton(
@@ -931,8 +935,8 @@ fun ArtistListItem(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(ListThumbnailSize)
-                .clip(CircleShape)
-                .border(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, CircleShape),
+                .irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, CircleShape)
+                .clip(CircleShape),
         )
     },
     trailingContent = trailingContent,
@@ -967,8 +971,8 @@ fun ArtistGridItem(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxSize()
+                .irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, CircleShape)
                 .clip(CircleShape)
-                .border(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, CircleShape)
         )
     },
     fillMaxWidth = fillMaxWidth,
@@ -1369,7 +1373,8 @@ fun MediaMetadataListItem(
                 isActive = isActive,
                 isPlaying = isPlaying,
                 shape = RoundedCornerShape(ThumbnailCornerRadius),
-                modifier = Modifier.size(ListThumbnailSize)
+                modifier = Modifier.size(ListThumbnailSize),
+                softBorder = true
             )
         },
         trailingContent = trailingContent,
@@ -1388,8 +1393,6 @@ fun YouTubeListItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     isSwipeable: Boolean = true,
-    showNewMarker: Boolean = false,
-    newMarkerLabel: String? = null,
     showAlbumInSubtitle: Boolean = false,
     trailingContent: @Composable RowScope.() -> Unit = {},
     badges: @Composable RowScope.() -> Unit = {
@@ -1401,7 +1404,6 @@ fun YouTubeListItem(
             if (item is AlbumItem) value = database.album(item.id).firstOrNull()
         }
 
-        if (showNewMarker) Icon.New(label = newMarkerLabel)
         if ((item is SongItem && song?.song?.liked == true) ||
             (item is AlbumItem && album?.album?.bookmarkedAt != null)
         ) {
@@ -1413,7 +1415,7 @@ fun YouTubeListItem(
             Icon.Download(download?.state)
         }
     },
-    hairlineBorder: Boolean = item is AlbumItem,
+    hairlineBorder: Boolean = item !is SongItem,
 ) {
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = true)
 
@@ -1459,6 +1461,7 @@ fun YouTubeListItem(
                     shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(ThumbnailCornerRadius),
                     modifier = Modifier.size(ListThumbnailSize),
                     hairlineBorder = hairlineBorder,
+                    softBorder = item is SongItem && !hairlineBorder,
                 )
             },
             trailingContent = trailingContent,
@@ -1484,8 +1487,6 @@ fun YouTubeGridItem(
     item: YTItem,
     modifier: Modifier = Modifier,
     coroutineScope: CoroutineScope? = null,
-    showNewMarker: Boolean = false,
-    newMarkerLabel: String? = null,
     badges: @Composable RowScope.() -> Unit = {
         val database = LocalDatabase.current
         val song by produceState<Song?>(initialValue = null, item.id) {
@@ -1495,7 +1496,6 @@ fun YouTubeGridItem(
             if (item is AlbumItem) value = database.album(item.id).firstOrNull()
         }
 
-        if (showNewMarker) Icon.New(label = newMarkerLabel)
         if ((item is SongItem && song?.song?.liked == true) ||
             (item is AlbumItem && album?.album?.bookmarkedAt != null)
         ) {
@@ -1516,7 +1516,7 @@ fun YouTubeGridItem(
     size: Dp = currentGridThumbnailHeight(),
     showTitle: Boolean = true,
     fallbackArtistName: String? = null,
-    hairlineBorder: Boolean = item is AlbumItem,
+    hairlineBorder: Boolean = item !is SongItem,
 ) {
     val squareVideoThumbnail by rememberPreference(SquareVideoThumbnailKey, defaultValue = true)
     val defaultRatio = if (item is SongItem) 16f / 9 else 1f
@@ -1582,6 +1582,7 @@ fun YouTubeGridItem(
                 else -> RoundedCornerShape(5.dp)
             },
             hairlineBorder = hairlineBorder,
+            softBorder = item is SongItem && !hairlineBorder,
         )
 
         if (item is SongItem && !isActive) {
@@ -1632,7 +1633,8 @@ fun LocalSongsGrid(
             shape = RoundedCornerShape(ThumbnailCornerRadius),
             modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
             showCenterPlay = true,
-            playButtonVisible = false
+            playButtonVisible = false,
+            softBorder = true
         )
     },
     fillMaxWidth = fillMaxWidth,
@@ -1674,7 +1676,8 @@ fun LocalArtistsGrid(
             shape = CircleShape,
             modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
             showCenterPlay = false,
-            playButtonVisible = false
+            playButtonVisible = false,
+            hairlineBorder = true
         )
     },
     fillMaxWidth = fillMaxWidth,
@@ -1716,7 +1719,8 @@ fun LocalAlbumsGrid(
             shape = RoundedCornerShape(ThumbnailCornerRadius),
             modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
             showCenterPlay = false,
-            playButtonVisible = true
+            playButtonVisible = true,
+            hairlineBorder = true
         )
     },
     fillMaxWidth = fillMaxWidth,
@@ -1735,16 +1739,34 @@ fun ItemThumbnail(
     thumbnailRatio: Float = 1f,
     showLikedStar: Boolean = false,
     hairlineBorder: Boolean = false,
+    softBorder: Boolean = false,
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
     val selectionBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
     val selectionProgress = rememberSelectionProgress(isActive && !isPlaying)
+
+    // Numbered track cells (album view) replace the artwork with an index: no outline there.
+    // The outline is drawn as an overlay so full-bleed artwork cannot paint over it.
+    val staticBorderColor =
+        if (hairlineBorder) MaterialTheme.colorScheme.strokeCard else MaterialTheme.colorScheme.strokeItemSoft
+    val staticBorderWidth = when {
+        hairlineBorder && albumIndex == null -> IrideBaseBorderWidth
+        softBorder && albumIndex == null -> IrideSoftBorderWidth
+        else -> null
+    }
 
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .fillMaxSize()
             .aspectRatio(thumbnailRatio)
+            .then(
+                if (staticBorderWidth != null && selectionProgress <= 0f) {
+                    Modifier.irideArtworkOverlayBorder(staticBorderWidth, staticBorderColor, shape)
+                } else {
+                    Modifier
+                }
+            )
             .clip(shape)
             .then(
                 if (selectionProgress > 0f) {
@@ -1754,8 +1776,6 @@ fun ItemThumbnail(
                             shape,
                         )
                         .padding(4.dp * selectionProgress)
-                } else if (hairlineBorder) {
-                    Modifier.border(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, shape)
                 } else {
                     Modifier
                 }
@@ -1858,16 +1878,24 @@ fun LocalThumbnail(
     modifier: Modifier = Modifier,
     showCenterPlay: Boolean = false,
     playButtonVisible: Boolean = false,
-    thumbnailRatio: Float = 1f
+    thumbnailRatio: Float = 1f,
+    hairlineBorder: Boolean = false,
+    softBorder: Boolean = false
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
     val selectionBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
     val selectionProgress = rememberSelectionProgress(isActive && !isPlaying)
+    val staticBorderModifier = when {
+        hairlineBorder -> Modifier.irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, shape)
+        softBorder -> Modifier.irideArtworkOverlayBorder(IrideSoftBorderWidth, MaterialTheme.colorScheme.strokeItemSoft, shape)
+        else -> Modifier
+    }
 
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .aspectRatio(thumbnailRatio)
+            .then(staticBorderModifier)
             .clip(shape)
             .border(
                 BorderStroke(1.5.dp, selectionBorderColor.copy(alpha = selectionBorderColor.alpha * selectionProgress)),
@@ -1956,7 +1984,7 @@ fun PlaylistThumbnail(
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
     val hairlineModifier = if (hairlineBorder) {
-        Modifier.border(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, shape)
+        Modifier.irideArtworkOverlayBorder(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard, shape)
     } else {
         Modifier
     }
@@ -1966,9 +1994,9 @@ fun PlaylistThumbnail(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(size)
+                .then(hairlineModifier)
                 .clip(shape)
                 .background(MaterialTheme.colorScheme.surfaceContainer)
-                .then(hairlineModifier)
         ) {
             placeHolder()
         }
@@ -1986,14 +2014,14 @@ fun PlaylistThumbnail(
             error = painterResource(R.drawable.queue_music),
             modifier = Modifier
                 .size(size)
-                .clip(shape)
                 .then(hairlineModifier)
+                .clip(shape)
         )
         else -> Box(
             modifier = Modifier
                 .size(size)
-                .clip(shape)
                 .then(hairlineModifier)
+                .clip(shape)
         ) {
             listOf(
                 Alignment.TopStart,
@@ -2435,8 +2463,6 @@ private fun PasscodeSwipeLabel(
     )
 }
 
-val NotificationDotGreen = Color(0xFF2E7D32)
-
 object Icon {
     @Composable
     fun Starred() {
@@ -2470,29 +2496,6 @@ object Icon {
                     .padding(end = 2.dp)
             )
             else -> {  }
-        }
-    }
-
-    @Composable
-    fun New(label: String? = null) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .padding(end = if (label != null) 3.dp else 4.dp)
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(NotificationDotGreen),
-            )
-            if (label != null) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp,
-                    color = MaterialTheme.colorScheme.textPrimary,
-                    modifier = Modifier.padding(end = 4.dp),
-                )
-            }
         }
     }
 

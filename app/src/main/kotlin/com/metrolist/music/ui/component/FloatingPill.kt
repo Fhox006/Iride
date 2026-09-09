@@ -18,8 +18,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -34,7 +32,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -56,8 +53,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import kotlinx.coroutines.isActive
-import android.view.ViewConfiguration
-import kotlin.math.abs
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -94,7 +89,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
@@ -112,17 +106,14 @@ import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.MiniPlayerBackgroundStyle
 import com.metrolist.music.constants.MiniPlayerBackgroundStyleKey
 import com.metrolist.music.constants.MiniPlayerHeight
-import com.metrolist.music.constants.CompactTopNavigationBarKey
+import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.listentogether.ListenTogetherManager
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.CastConnectionHandler
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.ui.player.irideReportRect
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
 import com.metrolist.music.ui.screens.Screens
 import com.metrolist.music.ui.screens.settings.DarkMode
-import com.metrolist.music.ui.theme.ForceDarkTheme
 import com.metrolist.music.ui.theme.PlayerColorExtractor
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.rememberEnumPreference
@@ -133,6 +124,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.withContext
 
+// Shared with BottomSheetPlayer's curtain collapsedContent (Player.kt) — the New Iride UI curtain
+// shows this same "no track yet" placeholder instead of ever falling back to this classic pill.
 internal val PlaceholderMediaMetadata = MediaMetadata(
     id = "",
     title = "Tap a track to start listening",
@@ -141,9 +134,13 @@ internal val PlaceholderMediaMetadata = MediaMetadata(
 )
 
 private val NavRowHeight = 56.dp
-val FloatingPillHeight = MiniPlayerHeight + NavRowHeight
+val FloatingPillHeight = MiniPlayerHeight + NavRowHeight  // 64 + 56 = 120dp
 val FloatingPillBottomSpacing = 12.dp
 
+// Cover/ring geometry shared by PillPlayButton's clip+border and PillProgressDrawCache's traced
+// outline — kept as one constant so the progress ring always matches the cover's actual shape
+// (see IrideMp3Player.kt's bridge overlay, which mirrors this same radius for the expand/collapse
+// morph).
 internal val PillCoverRadius = 10.dp
 
 @Stable
@@ -328,14 +325,13 @@ private fun PillContent(
         MiniPlayerBackgroundStyleKey,
         defaultValue = MiniPlayerBackgroundStyle.DEFAULT,
     )
-    val (newIrideUi, _) = rememberPreference(CompactTopNavigationBarKey, defaultValue = true)
+    val (newIrideUi, _) = rememberPreference(TopNavigationBarKey, defaultValue = true)
     val context = LocalContext.current
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
     val isSystemInDarkTheme = isSystemInDarkTheme()
-    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
+    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
     val useDarkTheme = remember(darkTheme, isSystemInDarkTheme) {
-        ForceDarkTheme ||
-            if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
+        if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
     }
 
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
@@ -437,6 +433,7 @@ private fun PillContent(
             .border(1.dp, outlineColor.copy(alpha = 0.3f), SquircleShape(radius = 24.dp, cornerSmoothing = 0.48f)),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            // Gradient overlay
             when (effectiveBackground) {
                 MiniPlayerBackgroundStyle.GRADIENT -> {
                     val colors = if (gradientColors.isNotEmpty()) gradientColors
@@ -452,6 +449,7 @@ private fun PillContent(
             }
 
             Column(modifier = Modifier.fillMaxWidth()) {
+                // ── TOP ROW: player (height = MiniPlayerHeight, fully clickable → open player) ──
                 PillPlayerRow(
                     progressState = progressState,
                     displayMetadata = effectiveMetadata,
@@ -472,6 +470,7 @@ private fun PillContent(
                     },
                 )
 
+                // ── BOTTOM ROW: nav buttons, visible only on top-level routes ──
                 AnimatedVisibility(
                     visible = showNavRow && isTopLevelRoute,
                     enter = fadeIn(tween(300)) + slideInVertically(tween(320), initialOffsetY = { it }),
@@ -529,67 +528,29 @@ fun PillPlayerRow(
     onSurfaceColor: Color,
     errorColor: Color,
     onExpandClick: () -> Unit,
-    bottomSheetState: BottomSheetState? = null,
     modifier: Modifier = Modifier,
+    // New Iride UI bridge: when set, the cover art below reports its on-screen rect here and hides
+    // itself instead of drawing — IrideMiniPlayerBridgeOverlay morphs a single moving copy between
+    // this collapsed position and the expanded player's cover, rather than cross-fading two
+    // duplicates. Play/pause, skip and favorite are left alone and keep cross-fading.
     onArtPositioned: ((Rect) -> Unit)? = null,
+    // Same idea as [onArtPositioned] but for the title/artist block — lets the bridge overlay morph
+    // the text (and cross-fade its font) between this collapsed position and the expanded player's.
     onInfoPositioned: ((Rect) -> Unit)? = null,
+    // New Iride UI bridge: reports the live playback fraction every frame so the bridge overlay's
+    // own progress ring (drawn on the moving cover, see IrideMiniPlayerBridgeOverlay) starts in
+    // sync with this row's ring instead of snapping to 0 the instant the expand begins.
     onProgressChanged: ((Float) -> Unit)? = null,
-    artistAlpha: Float = 0.7f,
-    compact: Boolean = false,
 ) {
+    // Non-null only when the caller is the New Iride UI's curtain peek row (see the doc comment
+    // above) — used to switch to the sharp icon set that matches the expanded player's wheel,
+    // without touching the classic FloatingPill's own icons.
     val isIrideStyle = onArtPositioned != null
-    val context = LocalContext.current
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(MiniPlayerHeight)
-            // Deterministic expand gesture: pure taps are never consumed, so the row's own
-            // clickable and the action buttons (favorite / play-pause / next) keep working;
-            // only a decisive upward drag expands the player — from anywhere on the pill,
-            // including over the buttons, which never consume vertical movement.
-            .then(
-                if (bottomSheetState != null) {
-                    Modifier.pointerInput(bottomSheetState) {
-                        val commitDistance =
-                            ViewConfiguration.get(context).scaledTouchSlop * 2f
-                        awaitEachGesture {
-                            val down = awaitFirstDown(requireUnconsumed = false)
-                            var totalX = 0f
-                            var totalY = 0f
-                            var expanding = false
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                                if (!expanding) {
-                                    if (change.isConsumed) break
-                                    totalX += change.positionChange().x
-                                    totalY += change.positionChange().y
-                                    // Slightly forgiving on the diagonal so a start position
-                                    // drifting sideways still opens instead of dying.
-                                    if (-totalY > commitDistance && -totalY >= abs(totalX) * 0.9f) {
-                                        expanding = true
-                                        change.consume()
-                                        bottomSheetState.dispatchRawDelta(totalY)
-                                    }
-                                    if (!change.pressed) break
-                                } else {
-                                    bottomSheetState.dispatchRawDelta(change.positionChange().y)
-                                    change.consume()
-                                    if (!change.pressed) break
-                                }
-                            }
-                            // An activated drag — or any clearly upward gesture that lost
-                            // the dominance race to diagonal noise — always ends expanded.
-                            if (expanding || (-totalY > commitDistance && -totalY > abs(totalX))) {
-                                bottomSheetState.performFling(0f, null, -1)
-                            }
-                        }
-                    }
-                } else {
-                    Modifier
-                },
-            )
             .clickable { onExpandClick() },
         contentAlignment = Alignment.Center,
     ) {
@@ -598,16 +559,8 @@ fun PillPlayerRow(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-                    horizontal = when {
-                        !isIrideStyle -> 6.dp
-                        compact -> 14.dp
-                        else -> 16.dp
-                    },
-                    vertical = when {
-                        !isIrideStyle -> 8.dp
-                        compact -> 4.dp
-                        else -> 6.dp
-                    },
+                    horizontal = if (isIrideStyle) 16.dp else 6.dp,
+                    vertical = if (isIrideStyle) 6.dp else 8.dp,
                 ),
         ) {
             PillPlayButton(
@@ -616,7 +569,6 @@ fun PillPlayerRow(
                 primaryColor = primaryColor,
                 outlineColor = outlineColor,
                 isIrideStyle = isIrideStyle,
-                compact = compact,
                 onArtPositioned = onArtPositioned,
                 onProgressChanged = onProgressChanged,
             )
@@ -628,9 +580,7 @@ fun PillPlayerRow(
                 onSurfaceColor = onSurfaceColor,
                 errorColor = errorColor,
                 isIrideStyle = isIrideStyle,
-                compact = compact,
                 onInfoPositioned = onInfoPositioned,
-                artistAlpha = artistAlpha,
                 modifier = Modifier.weight(1f),
             )
 
@@ -770,7 +720,6 @@ private fun PillPlayButton(
     primaryColor: Color,
     outlineColor: Color,
     isIrideStyle: Boolean = false,
-    compact: Boolean = false,
     onArtPositioned: ((Rect) -> Unit)? = null,
     onProgressChanged: ((Float) -> Unit)? = null,
 ) {
@@ -778,22 +727,19 @@ private fun PillPlayButton(
     val strokeWidth = 2.5.dp
     val pillDrawCache = remember { PillProgressDrawCache() }
     SideEffect { onProgressChanged?.invoke(progressState.progress) }
-    val outerSize = when {
-        !isIrideStyle -> 42.dp
-        compact -> 44.dp
-        else -> 50.dp
-    }
-    val innerSize = when {
-        !isIrideStyle -> 38.dp
-        compact -> 40.dp
-        else -> 46.dp
-    }
+    val outerSize = if (isIrideStyle) 50.dp else 42.dp
+    val innerSize = if (isIrideStyle) 46.dp else 38.dp
 
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(outerSize)
             .then(
+                // New Iride UI curtain: the bridge overlay draws its own copy of this ring on the
+                // moving cover (see IrideMiniPlayerBridgeOverlay) — drawing it here too would double
+                // it up while the player is expanding/collapsing, so this static copy only owns the
+                // ring at rest (onArtPositioned == null means the classic FloatingPill, which has no
+                // bridge overlay and always owns its own ring).
                 if (onArtPositioned == null) {
                     Modifier.drawWithContent {
                         drawContent()
@@ -836,10 +782,8 @@ private fun PillSongInfo(
     onSurfaceColor: Color,
     errorColor: Color,
     isIrideStyle: Boolean = false,
-    compact: Boolean = false,
     modifier: Modifier = Modifier,
     onInfoPositioned: ((Rect) -> Unit)? = null,
-    artistAlpha: Float = 0.7f,
 ) {
     val error by LocalPlayerConnection.current?.error?.collectAsState() ?: remember { mutableStateOf(null) }
 
@@ -852,19 +796,12 @@ private fun PillSongInfo(
                     Modifier
                 },
             ),
-        // Tight negative spacing keeps the artist line right under the title instead of
-        // drifting apart with the default font metrics.
-        verticalArrangement = Arrangement.spacedBy(if (isIrideStyle) (-3).dp else 0.dp),
+        verticalArrangement = Arrangement.Center,
     ) {
         Text(
             text = mediaMetadata.title,
             color = onSurfaceColor,
-            fontSize = when {
-                !isIrideStyle -> 14.sp
-                compact -> 17.sp
-                else -> 20.sp
-            },
-            lineHeight = if (isIrideStyle) (if (compact) 17.sp else 20.sp) else TextUnit.Unspecified,
+            fontSize = if (isIrideStyle) 20.sp else 14.sp,
             fontWeight = if (isIrideStyle) FontWeight.SemiBold else FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Clip,
@@ -873,17 +810,8 @@ private fun PillSongInfo(
         if (mediaMetadata.artists.any { it.name.isNotBlank() }) {
             Text(
                 text = mediaMetadata.artists.joinToString { it.name },
-                color = onSurfaceColor.copy(alpha = artistAlpha),
-                fontSize = when {
-                    !isIrideStyle -> 12.sp
-                    compact -> 14.sp
-                    else -> 16.sp
-                },
-                lineHeight = when {
-                    !isIrideStyle -> TextUnit.Unspecified
-                    compact -> 13.sp
-                    else -> 15.sp
-                },
+                color = onSurfaceColor.copy(alpha = 0.7f),
+                fontSize = if (isIrideStyle) 16.sp else 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
                 modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),

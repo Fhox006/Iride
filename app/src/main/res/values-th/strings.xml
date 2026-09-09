@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
@@ -45,15 +45,10 @@
     <string name="similar_to">คล้ายกับ</string>
     <string name="new_release_albums">อัลบั้มออกใหม่</string>
     <string name="artist_latest_release">ผลงานล่าสุด</string>
-    <string name="artist_release_type_album">อัลบั้ม</string>
-    <string name="artist_release_type_ep">EP</string>
-    <string name="artist_release_type_single">ซิงเกิล</string>
-    <string name="artist_release_type_feat">FEAT</string>
     <string name="genius_section_title">การตรวจจับศิลปินร่วมร้อง (Genius)</string>
     <string name="genius_api_key">Genius API Token</string>
     <string name="genius_api_key_description">ค้นหาเครดิต \"feat.\" ที่หน้า YTM ของศิลปินเองพลาดไป รับโทเคนฟรีได้ที่ genius.com/api-clients</string>
     <string name="essential_albums">อัลบั้มที่ต้องฟัง</string>
-    <string name="featuring">ร่วมร้องโดย</string>
     <string name="suggested_follow_artists">คุณฟังศิลปินเหล่านี้บ่อยมาก — ติดตามพวกเขาไหม?</string>
     <string name="new_from_followed_artists">ผลงานใหม่จากศิลปินที่คุณติดตาม</string>
 

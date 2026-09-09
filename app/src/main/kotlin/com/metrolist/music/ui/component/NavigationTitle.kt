@@ -203,7 +203,9 @@ fun NavigationTitle(
             val collapseInteractionSource = remember { MutableInteractionSource() }
             Icon(
                 painter = painterResource(R.drawable.expand_more),
-                contentDescription = null,
+                contentDescription = stringResource(
+                    if (collapsed) R.string.expand_section else R.string.collapse_section
+                ),
                 tint = MaterialTheme.colorScheme.textSecondary,
                 modifier = Modifier
                     .size(18.dp)

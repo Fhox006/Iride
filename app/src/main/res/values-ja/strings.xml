@@ -45,15 +45,10 @@
     <string name="similar_to">関連</string>
     <string name="new_release_albums">新作のアルバム</string>
     <string name="artist_latest_release">最新リリース</string>
-    <string name="artist_release_type_album">アルバム</string>
-    <string name="artist_release_type_ep">EP</string>
-    <string name="artist_release_type_single">シングル</string>
-    <string name="artist_release_type_feat">フィーチャリング</string>
     <string name="genius_section_title">フィーチャリング検出（Genius）</string>
     <string name="genius_api_key">Genius API トークン</string>
     <string name="genius_api_key_description">アーティスト自身の YouTube Music ページに表示されない「feat.」クレジットを検出します。無料のトークンは genius.com/api-clients から取得できます。</string>
     <string name="essential_albums">必聴アルバム</string>
-    <string name="featuring">フィーチャリング</string>
     <string name="suggested_follow_artists">よく聴いています。フォローしますか？</string>
     <string name="new_from_followed_artists">フォロー中のアーティストの新着</string>
 

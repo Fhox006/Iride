@@ -1112,22 +1112,12 @@
     <string name="muzza_player_logic_desc">Carrega músicas mais rápido usando um método alternativo de streaming.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">Mostrar aba Notícias</string>
-    <string name="show_news_tab_desc">Adiciona uma aba Notícias à navegação inferior, entre Início e Biblioteca</string>
     <string name="compact_top_navigation_bar">Barra superior compacta</string>
     <string name="compact_top_navigation_bar_desc">Início e Biblioteca como texto à esquerda, Pesquisa e sua foto de perfil como ícones à direita. Desative para voltar à barra clássica com todas as abas escritas por extenso</string>
     <string name="iride_animations">Animações do Iride</string>
     <string name="iride_animations_desc">Títulos com efeito máquina de escrever, parallax e transições de entrada. Desative se o aplicativo travar</string>
     <string name="player_auto_hide_top_panel">Ocultar painel de retorno automaticamente</string>
     <string name="player_auto_hide_top_panel_desc">Esmaece o painel superior de retorno ao aplicativo após 5 s de inatividade no player expandido. Rolar para baixo o traz de volta</string>
-    <string name="news">Notícias</string>
-    <string name="news_new_albums">Novos álbuns</string>
-    <string name="news_new_songs">Novas músicas</string>
-    <string name="news_charts">Paradas</string>
-    <string name="news_new_albums_title">Novos álbuns</string>
-    <string name="news_quick_play_title">Novas músicas</string>
-    <string name="news_empty_albums">Nenhum álbum novo encontrado ainda</string>
-    <string name="news_empty_songs">Nenhuma música nova encontrada ainda</string>
 
     <string name="better_library_beta">Biblioteca melhorada BETA</string>
     <string name="better_library_beta_desc">Ativa a Biblioteca refatorada em Material 3 (Top App Bar, FAB e correções de interface)</string>
@@ -1202,4 +1192,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">Novo design do tocador</string>
 <string name="new_mini_player_design">Novo design do mini-reprodutor</string>
-</resources>
+    <string name="featured_for_you">Em destaque para você</string>
+    <string name="trending_artist_subtitle">Em alta no seu feed</string>
+    <string name="artist_radio_subtitle">Mix infinito inspirado neste artista</string>
+    <string name="artist_radio_title">Rádio %1$s</string>
+    <string name="mood_and_playlists_for_you">Estilos e playlists para você</string>
+    <string name="syncing_library">Sincronizando a biblioteca</string>
+    <string name="network_sync_warning">Os recursos de rede podem não funcionar até que a sincronização seja concluída.</string>
+    <string name="syncing_your_library">Sincronizando sua biblioteca…</string>
+    <string name="collapse_section">Recolher seção</string>
+    <string name="expand_section">Expandir seção</string>
+    </resources>

@@ -70,6 +70,9 @@ class ArtistGameAudioService(
      * player has buffered enough to play instantly. Call for every round up front.
      */
     suspend fun prepareRound(songId: String, uri: Uri, positionMs: Long) {
+        if (preparedPlayers.size >= 3) {
+            preparedPlayers.entries.firstOrNull()?.let { (k, p) -> p.release(); preparedPlayers.remove(k) }
+        }
         suspendCancellableCoroutine { cont ->
             val exoPlayer = ExoPlayer.Builder(context).build()
             val listener = object : Player.Listener {

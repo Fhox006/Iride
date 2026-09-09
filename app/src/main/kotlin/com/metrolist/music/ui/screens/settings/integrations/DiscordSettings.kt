@@ -9,6 +9,7 @@ import com.metrolist.music.ui.component.IrideSwitch
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -91,13 +92,18 @@ import com.metrolist.music.constants.DiscordTokenKey
 import com.metrolist.music.constants.DiscordUseDetailsKey
 import com.metrolist.music.constants.DiscordUsernameKey
 import com.metrolist.music.constants.EnableDiscordRPCKey
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.db.entities.Song
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.InfoLabel
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.SettingsBackTopBar
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.TextFieldDialog
@@ -106,6 +112,7 @@ import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.DiscordRPC
 import com.metrolist.music.utils.SuperProperties
 import com.metrolist.music.utils.makeTimeString
+import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.my.kizzy.rpc.KizzyRPC
 import kotlinx.coroutines.Dispatchers
@@ -360,6 +367,12 @@ fun DiscordSettings(
 
     val settingsScrollState = rememberScrollState()
     val frostBackdrop = rememberFrostBackdrop()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(
+        PlayerBackgroundStyleKey,
+        defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
+    )
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -367,6 +380,18 @@ fun DiscordSettings(
                 .fillMaxSize()
                 .recordFrostBackdrop(frostBackdrop)
         ) {
+            if (mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
+                )
+            } else {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
+                )
+            }
             Column(
                 modifier =
                     Modifier

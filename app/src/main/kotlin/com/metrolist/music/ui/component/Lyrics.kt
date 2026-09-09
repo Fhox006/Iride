@@ -25,6 +25,8 @@ fun Lyrics(
     showPills: Boolean = true,
     pillsController: LyricsPillController? = null,
     textScale: Float = 1f,
+    fullness: () -> Float = { 0f },
+    morphing: () -> Boolean = { false },
 ) {
     val (experimentalLyrics, _) = rememberPreference(key = ExperimentalLyricsKey, defaultValue = true)
 
@@ -40,6 +42,8 @@ fun Lyrics(
             showPills = showPills,
             pillsController = pillsController,
             textScale = textScale,
+            fullness = fullness,
+            morphing = morphing,
         )
     } else {
         OriginalLyrics(

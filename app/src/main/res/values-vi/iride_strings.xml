@@ -1099,22 +1099,12 @@
     <string name="muzza_player_logic_desc">Tải bài hát nhanh hơn bằng phương pháp phát trực tuyến khác.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">Hiện tab Tin tức</string>
-    <string name="show_news_tab_desc">Thêm tab Tin tức vào thanh điều hướng dưới, giữa Trang chủ và Thư viện</string>
     <string name="compact_top_navigation_bar">Thanh trên gọn</string>
     <string name="compact_top_navigation_bar_desc">Trang chủ và Thư viện dạng chữ bên trái, Tìm kiếm và ảnh đại diện dạng biểu tượng bên phải. Tắt để quay lại thanh cổ điển có đầy đủ tên từng tab</string>
     <string name="iride_animations">Hoạt ảnh của Iride</string>
     <string name="iride_animations_desc">Tiêu đề kiểu đánh máy, hiệu ứng parallax và chuyển cảnh xuất hiện. Tắt nếu ứng dụng bị giật lag</string>
     <string name="player_auto_hide_top_panel">Tự ẩn bảng quay lại</string>
     <string name="player_auto_hide_top_panel_desc">Làm mờ bảng quay lại ứng dụng phía trên sau 5 giây không tương tác trong trình phát mở rộng. Cuộn xuống để hiện lại</string>
-    <string name="news">Tin tức</string>
-    <string name="news_new_albums">Album mới</string>
-    <string name="news_new_songs">Bài hát mới</string>
-    <string name="news_charts">Bảng xếp hạng</string>
-    <string name="news_new_albums_title">Album mới</string>
-    <string name="news_quick_play_title">Bài hát mới</string>
-    <string name="news_empty_albums">Chưa có album mới nào</string>
-    <string name="news_empty_songs">Chưa có bài hát mới nào</string>
 
     <string name="better_library_beta">Thư viện cải tiến BETA</string>
     <string name="better_library_beta_desc">Bật Thư viện được viết lại theo Material 3 (Top App Bar, FAB và sửa lỗi giao diện)</string>
@@ -1189,4 +1179,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">Thiết kế trình phát mới</string>
 <string name="new_mini_player_design">Thiết kế trình phát mini mới</string>
-</resources>
+    <string name="featured_for_you">Đề xuất cho bạn</string>
+    <string name="trending_artist_subtitle">Đang nổi bật trong nguồn của bạn</string>
+    <string name="artist_radio_subtitle">Bản mix không giới hạn lấy cảm hứng từ nghệ sĩ này</string>
+    <string name="artist_radio_title">Radio %1$s</string>
+    <string name="mood_and_playlists_for_you">Tâm trạng và danh sách phát cho bạn</string>
+    <string name="syncing_library">Đang đồng bộ thư viện</string>
+    <string name="network_sync_warning">Một số tính năng mạng có thể không hoạt động cho đến khi đồng bộ xong.</string>
+    <string name="syncing_your_library">Đang đồng bộ thư viện của bạn…</string>
+    <string name="collapse_section">Thu gọn mục</string>
+    <string name="expand_section">Mở rộng mục</string>
+    </resources>

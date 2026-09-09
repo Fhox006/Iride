@@ -29,6 +29,7 @@ import com.metrolist.innertube.pages.ExplorePage
 import com.metrolist.innertube.pages.HomePage
 import com.metrolist.innertube.utils.completed
 import com.metrolist.music.constants.HideExplicitKey
+import com.metrolist.music.constants.RandomizeHomeOrderKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.HomeCacheLastLoadedKey
@@ -49,7 +50,7 @@ import com.metrolist.music.constants.HeroCarouselSnapshotKey
 import com.metrolist.music.constants.SmartBootKey
 import com.metrolist.music.constants.LastDiscoveryWeeklySyncKey
 import com.metrolist.music.constants.SeenNewReleaseFirstIdsKey
-import com.metrolist.music.constants.RandomizeHomeOrderKey
+import com.metrolist.music.constants.HomeCollapsedSectionsKey
 import com.metrolist.music.constants.ShowWrappedCardKey
 import com.metrolist.music.discovery.AlbumRecommendationsGenerator
 import com.metrolist.music.discovery.DiscoveryWeeklyGenerator
@@ -85,7 +86,6 @@ import com.metrolist.music.models.SimilarRecommendation
 import com.metrolist.music.ui.screens.wrapped.WrappedAudioService
 import com.metrolist.music.ui.screens.wrapped.WrappedManager
 import com.metrolist.music.utils.HomeFeedSnapshotStore
-import com.metrolist.music.utils.NewReleaseNotifier
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
@@ -127,7 +127,6 @@ class HomeViewModel @Inject constructor(
     val syncUtils: SyncUtils,
     val wrappedManager: WrappedManager,
     private val wrappedAudioService: WrappedAudioService,
-    private val newReleaseNotifier: NewReleaseNotifier,
 ) : ViewModel() {
     val syncState = syncUtils.syncState
 
@@ -690,7 +689,6 @@ class HomeViewModel @Inject constructor(
     suspend fun getRandomItem(): YTItem? {
         try {
             isRandomizing.value = true
-            kotlinx.coroutines.delay(1000)
 
             val userSongs = mutableListOf<YTItem>()
             val otherSources = mutableListOf<YTItem>()
@@ -975,6 +973,8 @@ class HomeViewModel @Inject constructor(
                 val song = database.latestEvent().first()?.song
                 if (song != null && database.hasRelatedSongs(song.id)) {
                     quickPicks.value = database.getRelatedSongs(song.id).first().filterVideoSongs(hideVideoSongs).shuffled().take(20)
+                } else {
+                    quickPicks.value = emptyList()
                 }
             }
         }
@@ -1286,11 +1286,10 @@ class HomeViewModel @Inject constructor(
                     }
                 }
             }
-            sectionId == "from_the_community" && communityPlaylistsLaunchJob == null -> {
+                sectionId == "from_the_community" && communityPlaylistsLaunchJob == null -> {
                 communityPlaylistsLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
                         phase1Complete.filter { it }.first()
-                        kotlinx.coroutines.delay(2500L)
                         getCommunityPlaylists()
                         HomeCache.communityPlaylists = communityPlaylists.value
                     } finally {
@@ -1303,7 +1302,6 @@ class HomeViewModel @Inject constructor(
                 similarRecommendationsLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
                         phase1Complete.filter { it }.first()
-                        kotlinx.coroutines.delay(5000L)
                         getSimilarRecommendations()
                     } finally {
                         phase2SimilarDone.value = true
@@ -1315,7 +1313,6 @@ class HomeViewModel @Inject constructor(
                 dischiPerTeLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
                         phase1Complete.filter { it }.first()
-                        kotlinx.coroutines.delay(7500L)
                         getDischiPerTe()
                     } finally {
                         phase2DischiPerTeDone.value = true
@@ -1347,17 +1344,23 @@ class HomeViewModel @Inject constructor(
 
         try {
             coroutineScope {
-                launch(Dispatchers.IO) { getQuickPicks() }
                 launch(Dispatchers.IO) {
-                    val songs = database.mostPlayedSongs(fromTimeStamp, limit = 15, offset = 5).first()
-                        .filterVideoSongs(hideVideoSongs).shuffled().take(10)
-                    val albums = database.mostPlayedAlbums(fromTimeStamp, limit = 8, offset = 2).first()
-                        .filter { it.album.thumbnailUrl != null }.shuffled().take(5)
-                    val artists = database.mostPlayedArtists(fromTimeStamp).first()
-                        .filter { it.artist.isYouTubeArtist && it.artist.thumbnailUrl != null }.shuffled().take(5)
-                    keepListening.value = (songs + albums + artists).shuffled()
+                    runCatching { getQuickPicks() }.onFailure { reportException(it) }
                 }
-                launch(Dispatchers.IO) { getForYouShelves() }
+                launch(Dispatchers.IO) {
+                    runCatching {
+                        val songs = database.mostPlayedSongs(fromTimeStamp, limit = 15, offset = 5).first()
+                            .filterVideoSongs(hideVideoSongs).shuffled().take(10)
+                        val albums = database.mostPlayedAlbums(fromTimeStamp, limit = 8, offset = 2).first()
+                            .filter { it.album.thumbnailUrl != null }.shuffled().take(5)
+                        val artists = database.mostPlayedArtists(fromTimeStamp).first()
+                            .filter { it.artist.isYouTubeArtist && it.artist.thumbnailUrl != null }.shuffled().take(5)
+                        keepListening.value = (songs + albums + artists).shuffled()
+                    }.onFailure { reportException(it) }
+                }
+                launch(Dispatchers.IO) {
+                    runCatching { getForYouShelves() }.onFailure { reportException(it) }
+                }
             }
             allLocalItems.value = (quickPicks.value.orEmpty() + keepListening.value.orEmpty())
                 .filter { it is Song || it is Album }
@@ -1501,7 +1504,6 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch(Dispatchers.IO) {
-            if (!smartBootEnabled) kotlinx.coroutines.delay(4500)
             enrichQuickPicksFromNetwork()
             HomeCache.quickPicks = quickPicks.value
         }
@@ -1704,15 +1706,6 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
-        viewModelScope.launch(Dispatchers.IO) {
-            kotlinx.coroutines.delay(15_000L)
-            val followedIds = database.artistsBookmarked(ArtistSortType.CREATE_DATE, true)
-                .first()
-                .filter { it.artist.isYouTubeArtist && !it.artist.isPodcastChannel }
-                .map { it.id }
-            newReleaseNotifier.refresh(followedIds)
-        }
-
         viewModelScope.launch(Dispatchers.IO) {
             val prefs = context.dataStore.data.first()
             prefs[SpeedDialSnapshotKey]?.let { json ->

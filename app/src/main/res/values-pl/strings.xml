@@ -48,15 +48,10 @@
     <string name="similar_to">Podobne do</string>
     <string name="new_release_albums">Nowo wydane albumy</string>
     <string name="artist_latest_release">Najnowsza premiera</string>
-    <string name="artist_release_type_album">ALBUM</string>
-    <string name="artist_release_type_ep">EP</string>
-    <string name="artist_release_type_single">SINGIEL</string>
-    <string name="artist_release_type_feat">FEAT</string>
     <string name="genius_section_title">Wykrywanie występów gościnnych (Genius)</string>
     <string name="genius_api_key">Token Genius API</string>
     <string name="genius_api_key_description">Znajduje oznaczenia „feat.” pomijane przez samą stronę artysty w YTM. Bezpłatny token uzyskasz na genius.com/api-clients.</string>
     <string name="essential_albums">Kluczowe albumy</string>
-    <string name="featuring">Gościnne występy</string>
     <string name="suggested_follow_artists">Dużo słuchasz — zacząć ich obserwować?</string>
     <string name="new_from_followed_artists">Nowości od obserwowanych artystów</string>
 

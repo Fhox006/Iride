@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -41,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,18 +58,24 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
 import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.LocalTopNavBarController
 import com.metrolist.music.R
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.db.entities.PodcastEntity
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.FloatingPillBottomSpacing
@@ -75,6 +83,7 @@ import com.metrolist.music.ui.component.FloatingPillHeight
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.TopNavigationBar
+import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.frostedTopBarBackground
 import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.YouTubeGridItem
@@ -89,6 +98,7 @@ import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.viewmodels.AccountContentType
 import com.metrolist.music.viewmodels.AccountViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -112,6 +122,11 @@ fun AccountScreen(
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by remember(playerConnection) {
+        playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+    }.collectAsStateWithLifecycle()
     val topNavBarController = LocalTopNavBarController.current
 
     LaunchedEffect(Unit) {
@@ -121,9 +136,19 @@ fun AccountScreen(
     }
 
     val scrollState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
-    val accountHeaderScrolled by androidx.compose.runtime.remember {
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val scrollToTop =
+        backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
+    LaunchedEffect(scrollToTop?.value) {
+        if (scrollToTop?.value == true) {
+            scrollState.animateScrollToItem(0)
+            backStackEntry?.savedStateHandle?.set("scrollToTop", false)
+        }
+    }
+    val accountHeaderScrolled by androidx.compose.runtime.remember(scrollState) {
         androidx.compose.runtime.derivedStateOf {
-            scrollState.firstVisibleItemIndex > 0 || scrollState.firstVisibleItemScrollOffset > 8
+            val atTop = scrollState.firstVisibleItemIndex == 0 && scrollState.firstVisibleItemScrollOffset == 0 && !scrollState.canScrollBackward
+            !atTop
         }
     }
     val topBarRevealProgress = com.metrolist.music.ui.utils.rememberDiscreteProgress(accountHeaderScrolled)
@@ -151,23 +176,32 @@ fun AccountScreen(
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
-        LazyVerticalGrid(
-            state = scrollState,
-            columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
-            contentPadding = PaddingValues(
-                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp,
-                bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-            ),
+        Box(
             modifier = Modifier
-                .recordFrostBackdrop(frostBackdrop)
-                .background(
-                    when {
-                        pureBlack -> Color.Black
-                        mainTopGradient -> Color.Transparent
-                        else -> MaterialTheme.colorScheme.background
-                    },
-                ),
+                .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop),
         ) {
+            if (!pureBlack && mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
+                )
+            } else {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
+                )
+            }
+            LazyVerticalGrid(
+                state = scrollState,
+                columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
+                contentPadding = PaddingValues(
+                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp,
+                    bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+                ),
+                modifier = Modifier.fillMaxSize(),
+            ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 ChipsRow(
                     chips =
@@ -197,6 +231,7 @@ fun AccountScreen(
                 podcastPlaylists = podcastPlaylists,
                 podcastChannels = podcastChannels,
             )
+        }
         }
     }
 }

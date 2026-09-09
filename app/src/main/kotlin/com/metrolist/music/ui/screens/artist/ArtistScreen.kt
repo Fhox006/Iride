@@ -171,7 +171,6 @@ import androidx.compose.ui.util.lerp
 import coil3.compose.AsyncImagePainter
 import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.TypewriterText
-import com.metrolist.music.ui.component.rememberNewlyVisibleKeys
 import com.metrolist.music.ui.component.rememberRubberBandPull
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import androidx.compose.foundation.lazy.LazyListScope
@@ -281,9 +280,6 @@ fun ArtistScreen(
     val recentAlbum by viewModel.recentAlbum.collectAsState()
     val recentAlbumPreciseDate by viewModel.recentAlbumPreciseDate.collectAsState()
     val expandedTopSongs by viewModel.expandedTopSongs.collectAsState()
-    val unseenAlbumIds by viewModel.unseenAlbumIds.collectAsState()
-    val featuringSongs by viewModel.featuringSongs.collectAsState()
-    val unseenSongIds by viewModel.unseenSongIds.collectAsState()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val showArtistDescription by rememberPreference(key = ShowArtistDescriptionKey, defaultValue = true)
     val showArtistSubscriberCount by rememberPreference(key = ShowArtistSubscriberCountKey, defaultValue = true)
@@ -374,8 +370,14 @@ fun ArtistScreen(
     var topBarBottomPx by remember { mutableStateOf(0f) }
     val headerTitleCovered by remember {
         derivedStateOf {
+            if (!headerRevealed) return@derivedStateOf false
+            // Fallback to scroll offset when header is off-screen (nameBottom disposed)
+            // and require a bit more scroll (100px like transparentAppBar) to avoid
+            // flicker after a few pixels; this keeps frost stable even after the
+            // header item is recycled.
             headerRevealed && (
                 lazyListState.firstVisibleItemIndex > 0 ||
+                    lazyListState.firstVisibleItemScrollOffset > 100 ||
                     nameBottomPx <= topBarBottomPx
                 )
         }
@@ -402,8 +404,6 @@ fun ArtistScreen(
     }
 
     val artistLoading = artistPage == null && !showLocal
-
-    val featuringTitle = stringResource(R.string.featuring)
 
     Box(
         modifier = Modifier
@@ -726,7 +726,6 @@ fun ArtistScreen(
                                     isActive = song.id == mediaMetadata?.id,
                                     isPlaying = isPlaying,
                                     isSwipeable = false,
-                                    hairlineBorder = true,
                                     trailingContent = {
                                         IconButton(
                                             onClick = {
@@ -850,95 +849,6 @@ fun ArtistScreen(
                 } else {
                     var essentialAlbumsRendered = false
                     var discographyButtonRendered = false
-                    var featuringSectionRendered = false
-                    val featuringSection: LazyListScope.() -> Unit = {
-                        if (featuringSongs.isNotEmpty()) {
-                            item(key = "featuring_title") {
-                                NavigationTitle(
-                                    title = featuringTitle,
-                                    modifier = Modifier
-                                        .animateItem(placementSpec = IrideMotion.PlacementSpec)
-                                        .revealMask(rememberSectionEnter("featuring_section", revealedSections)),
-                                    useIrideStyle = true,
-                                )
-                            }
-                            item(key = "featuring_carousel") {
-                                val gridState = rememberLazyGridState()
-                                rememberNewlyVisibleKeys(gridState) { visibleIds ->
-                                    visibleIds.forEach { viewModel.markSongSeen(it) }
-                                }
-                                SongCarousel(
-                                    items = featuringSongs,
-                                    key = { it.id },
-                                    gridState = gridState,
-                                    modifier = Modifier.irideEnter(
-                                        rememberSectionEnter("featuring_carousel", revealedSections),
-                                        10.dp,
-                                    ),
-                                ) { song, itemWidth ->
-                                    YouTubeListItem(
-                                        item = song,
-                                        isActive = mediaMetadata?.id == song.id,
-                                        isPlaying = isPlaying,
-                                        isSwipeable = false,
-                                        showNewMarker = song.id in unseenSongIds,
-                                        newMarkerLabel = if (song.id in unseenSongIds) stringResource(R.string.artist_release_type_feat) else null,
-                                        showAlbumInSubtitle = true,
-                                        hairlineBorder = true,
-                                        trailingContent = {
-                                            IconButton(
-                                                onClick = {
-                                                    menuState.show {
-                                                        YouTubeSongMenu(
-                                                            song = song,
-                                                            navController = navController,
-                                                            onDismiss = menuState::dismiss,
-                                                        )
-                                                    }
-                                                },
-                                            ) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.more_vert),
-                                                    contentDescription = null,
-                                                )
-                                            }
-                                        },
-                                        modifier = Modifier
-                                            .width(itemWidth)
-                                            .padding(horizontal = 8.dp)
-                                            .combinedClickable(
-                                                onClick = {
-                                                    if (song.id in unseenSongIds) viewModel.markSongSeen(song.id)
-                                                    if (!isGuest) {
-                                                        if (song.id == mediaMetadata?.id) {
-                                                            playerConnection.togglePlayPause()
-                                                        } else {
-                                                            playerConnection.playQueue(
-                                                                ListQueue(
-                                                                    title = featuringTitle,
-                                                                    items = featuringSongs.map { it.toMediaItem() },
-                                                                    startIndex = featuringSongs.indexOfFirst { it.id == song.id },
-                                                                ),
-                                                            )
-                                                        }
-                                                    }
-                                                },
-                                                onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    menuState.show {
-                                                        YouTubeSongMenu(
-                                                            song = song,
-                                                            navController = navController,
-                                                            onDismiss = menuState::dismiss,
-                                                        )
-                                                    }
-                                                },
-                                            ),
-                                    )
-                                }
-                            }
-                        }
-                    }
                     artistPage?.sections?.fastForEach { section ->
                         val isFromYourLibrarySection = section.title.contains("your library", ignoreCase = true) ||
                                 section.title.contains("tua libreria", ignoreCase = true)
@@ -961,14 +871,6 @@ fun ArtistScreen(
                             if (filteredItems.isNotEmpty()) {
                                 val isTopSongsShelf = (filteredItems.firstOrNull() as? SongItem)?.album != null
 
-                                val isVideoSectionForFeaturingGate = section.title.contains("Video", ignoreCase = true) ||
-                                    section.title.contains("Performance", ignoreCase = true)
-                                if (isVideoSectionForFeaturingGate && !featuringSectionRendered) {
-                                    featuringSectionRendered = true
-                                    featuringSection()
-                                }
-
-                                if (!isVideoSectionForFeaturingGate) {
                                 item(key = "section_${section.title}") {
                                     NavigationTitle(
                                         title = section.title,
@@ -998,9 +900,6 @@ fun ArtistScreen(
                                     val topSongs = expandedTopSongs?.takeIf { it.size > shelfTopSongs.size } ?: shelfTopSongs
                                     item(key = "top_songs_carousel_${section.title}") {
                                         val topSongsGridState = rememberLazyGridState()
-                                        rememberNewlyVisibleKeys(topSongsGridState) { visibleIds ->
-                                            visibleIds.forEach { viewModel.markSongSeen(it) }
-                                        }
                                         SongCarousel(
                                             items = topSongs,
                                             key = { it.id },
@@ -1011,8 +910,6 @@ fun ArtistScreen(
                                                 isActive = mediaMetadata?.id == song.id,
                                                 isPlaying = isPlaying,
                                                 isSwipeable = false,
-                                                showNewMarker = song.id in unseenSongIds,
-                                                hairlineBorder = true,
                                                 trailingContent = {
                                                     IconButton(
                                                         onClick = {
@@ -1128,8 +1025,6 @@ fun ArtistScreen(
                                 } else {
                                     item(key = "section_list_${section.title}") {
                                         val isAlbumSection = section.title.contains("Album", ignoreCase = true)
-                                        val isSingleEpSection = section.title.contains("Single", ignoreCase = true) ||
-                                                section.title.contains("EP", ignoreCase = true)
                                         val isVideoSection = section.title.contains("Video", ignoreCase = true) ||
                                                 section.title.contains("Performance", ignoreCase = true)
                                         val rowState = rememberLazyListState()
@@ -1164,15 +1059,6 @@ fun ArtistScreen(
                                                     coroutineScope = coroutineScope,
                                                     thumbnailRatio = if (isVideoSection) 16f / 9f else 1f,
                                                     thumbnailCornerRadius = if (isVideoSection) 8.dp else 3.dp,
-                                                    hairlineBorder = true,
-                                                    showNewMarker = item is AlbumItem && item.id in unseenAlbumIds,
-                                                    newMarkerLabel = when {
-                                                        item !is AlbumItem || item.id !in unseenAlbumIds -> null
-                                                        isAlbumSection -> stringResource(R.string.artist_release_type_album)
-                                                        section.title.contains("EP", ignoreCase = true) -> stringResource(R.string.artist_release_type_ep)
-                                                        isSingleEpSection -> stringResource(R.string.artist_release_type_single)
-                                                        else -> null
-                                                    },
                                                     size = when {
                                                         isAlbumSection -> 180.dp
                                                         isVideoSection -> 110.dp
@@ -1182,9 +1068,6 @@ fun ArtistScreen(
                                                         Modifier
                                                             .combinedClickable(
                                                                 onClick = {
-                                                                    if (item is AlbumItem && item.id in unseenAlbumIds) {
-                                                                        viewModel.markAlbumSeen(item.id)
-                                                                    }
                                                                     when (item) {
                                                                         is SongItem -> {
                                                                             if (isVideoSection) {
@@ -1288,7 +1171,6 @@ fun ArtistScreen(
                                         }
                                     }
                                 }
-                                }
 
                                 if (isSinglesSection && !discographyButtonRendered) {
                                     discographyButtonRendered = true
@@ -1329,11 +1211,6 @@ fun ArtistScreen(
                                 }
                             }
                         }
-                    }
-
-                    if (!featuringSectionRendered) {
-                        featuringSectionRendered = true
-                        featuringSection()
                     }
 
                     if (!showLocal && (showArtistDescription || showArtistSubscriberCount)) {
@@ -1442,7 +1319,7 @@ fun ArtistScreen(
                     backdrop = frostBackdrop,
                 )
                 .statusBarsPadding()
-                .height(56.dp)
+                .height(40.dp)
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

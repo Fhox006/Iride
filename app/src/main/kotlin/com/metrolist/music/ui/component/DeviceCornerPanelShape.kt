@@ -32,7 +32,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.BuildConfig
@@ -181,10 +180,4 @@ fun DeviceCornerDebugPanel(
         Text("B spacing: ${bSpaceSlider.toInt()}dp", style = MaterialTheme.typography.labelSmall)
         Slider(value = bSpaceSlider, onValueChange = { bSpaceSlider = it }, valueRange = 0f..64f)
     }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF000000)
-@Composable
-private fun DeviceCornerDebugPanelPreview() {
-    DeviceCornerDebugPanel()
 }

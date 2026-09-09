@@ -47,15 +47,10 @@
     <string name="similar_to">Simile a</string>
     <string name="new_release_albums">Nuovi album in uscita</string>
     <string name="artist_latest_release">Ultima uscita</string>
-    <string name="artist_release_type_album">ALBUM</string>
-    <string name="artist_release_type_ep">EP</string>
-    <string name="artist_release_type_single">SINGOLO</string>
-    <string name="artist_release_type_feat">FEAT</string>
     <string name="genius_section_title">Rilevamento feat. (Genius)</string>
     <string name="genius_api_key">Token API Genius</string>
     <string name="genius_api_key_description">Trova i feat. che la pagina YTM dell\'artista non mostra. Ottieni un token gratuito su genius.com/api-clients.</string>
     <string name="essential_albums">Essential Albums</string>
-    <string name="featuring">Featuring</string>
     <string name="suggested_follow_artists">Li ascolti tanto: seguirli?</string>
     <string name="new_from_followed_artists">Novità dagli artisti che segui</string>
 

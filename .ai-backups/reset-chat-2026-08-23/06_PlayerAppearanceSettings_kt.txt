@@ -1,7 +1,0 @@
-FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\ui\screens\settings\PlayerAppearanceSettings.kt
-LINES: 104, 192
-NOTE: removed 2 redundant `else -> ""` branches in exhaustive `when` over PlayerBackgroundStyle.
-<<<ORIGINAL
-104:                     else -> ""
-192:                                     else -> ""
-ORIGINAL>>>

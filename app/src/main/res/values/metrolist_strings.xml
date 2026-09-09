@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="eq_global_profile">Profilo EQ</string>
+    <string name="eq_global_subtitle">Per tutti i dispositivi senza profilo</string>
+    <string name="eq_use_for_all_devices">Applica a tutti i dispositivi</string>
+    <string name="eq_bass_boost">Bass Boost</string>
+    <string name="eq_matched_profile">Profilo consigliato</string>
+    <string name="eq_hide_custom">Nascondi personalizzato</string>
+    <string name="eq_show_custom">Mostra personalizzato</string>
+    <string name="eq_delete_title">Eliminare profilo?</string>
+    <string name="eq_delete_message">Vuoi eliminare il profilo per %1$s? Potrai ricrearlo.</string>
+    <string name="eq_delete_confirm">Elimina</string>
+    <string name="eq_profile_label">Profilo</string>
+    <string name="eq_reset_to_base">Ripristina a Base</string>
+    <string name="eq_general_title">Preset EQ generale</string>
+    <string name="eq_specific_title">Preset EQ %1$s</string>
+    <string name="eq_not_connected">Non connesso</string>
+    <string name="eq_header_general">Per tutti i dispositivi</string>
+    <string name="eq_header_saved">Salvato</string>
+    <string name="eq_header_modified">Modificato</string>
+    <string name="eq_header_offline">Offline</string>
+    <string name="eq_bass_off">Off</string>
+    <string name="eq_bass_punch">Punch</string>
+</resources>

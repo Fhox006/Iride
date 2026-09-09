@@ -1119,22 +1119,12 @@
     <string name="muzza_player_logic_desc">Načítá skladby rychleji pomocí alternativní metody streamování.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">Zobrazit kartu Novinky</string>
-    <string name="show_news_tab_desc">Přidá do spodní navigace kartu Novinky, mezi Domů a Knihovnu</string>
     <string name="compact_top_navigation_bar">Kompaktní horní lišta</string>
     <string name="compact_top_navigation_bar_desc">Domů a Knihovna jako text vlevo, Hledání a váš profilový obrázek jako ikony vpravo. Vypnutím se vrátíte ke klasické liště s názvy všech karet</string>
     <string name="iride_animations">Animace Iride</string>
     <string name="iride_animations_desc">Psací titulky, paralaxa a vstupní přechody. Vypněte, pokud aplikace cuká</string>
     <string name="player_auto_hide_top_panel">Automatické skrývání panelu návratu</string>
     <string name="player_auto_hide_top_panel_desc">Po 5 s nečinnosti v rozbaleném přehrávači postupně skryje horní panel pro návrat do aplikace. Posunutím dolů se zase objeví</string>
-    <string name="news">Novinky</string>
-    <string name="news_new_albums">Nová alba</string>
-    <string name="news_new_songs">Nové skladby</string>
-    <string name="news_charts">Žebříčky</string>
-    <string name="news_new_albums_title">Nová alba</string>
-    <string name="news_quick_play_title">Nové skladby</string>
-    <string name="news_empty_albums">Zatím nebyla nalezena žádná nová alba</string>
-    <string name="news_empty_songs">Zatím nebyly nalezeny žádné nové skladby</string>
 
     <string name="better_library_beta">Vylepšená knihovna BETA</string>
     <string name="better_library_beta_desc">Zapne knihovnu přepracovanou podle Material 3 (horní panel, FAB a opravy rozhraní)</string>
@@ -1209,4 +1199,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">Nový vzhled přehrávače</string>
 <string name="new_mini_player_design">Nový vzhled mini přehrávače</string>
-</resources>
+    <string name="featured_for_you">Doporučeno pro vás</string>
+    <string name="trending_artist_subtitle">Rostoucí oblíbenost ve vašem feedu</string>
+    <string name="artist_radio_subtitle">Nekonečný mix inspirovaný tímto umělcem</string>
+    <string name="artist_radio_title">Rádio %1$s</string>
+    <string name="mood_and_playlists_for_you">Nálady a playlisty pro vás</string>
+    <string name="syncing_library">Probíhá synchronizace knihovny</string>
+    <string name="network_sync_warning">Síťové funkce nemusí fungovat, dokud není synchronizace dokončena.</string>
+    <string name="syncing_your_library">Synchronizace vaší knihovny…</string>
+    <string name="collapse_section">Sbalit sekci</string>
+    <string name="expand_section">Rozbalit sekci</string>
+    </resources>

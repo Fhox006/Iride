@@ -100,16 +100,21 @@ fun Modifier.frostedTopBarBackground(
     val p = progress.coerceIn(0f, 1f)
     if (p <= 0f) return@drawBehind
     val contentSize = backdrop?.content?.size
-    if (backdrop != null && contentSize != null && contentSize.width > 0 && contentSize.height > 0) {
-        val blurred = backdrop.blurred
-        drawRect(barColor, alpha = p)
+    val backdropReady = backdrop != null && contentSize != null && contentSize.width > 0 && contentSize.height > 0
+    if (backdropReady) {
+        val blurred = backdrop!!.blurred
         blurred.alpha = p
-        blurred.record(size = contentSize) { drawLayer(backdrop.content) }
+        blurred.record(size = contentSize!!) { drawLayer(backdrop.content) }
         clipRect { drawLayer(blurred) }
+        drawRect(barColor, alpha = p * FROST_SCRIM_ALPHA)
     } else {
-        drawRect(barColor, alpha = p)
+        // Fallback when blur is unavailable (API < 31) or the layer is still warming
+        // up: draw a solid scrim so the scrolled state never looks transparent.
+        // On blur-capable devices this fallback is only visible for the very first
+        // reveal frame until the GraphicsLayer gets a non-zero size.
+        val fallbackAlpha = if (backdrop == null) FROST_SCRIM_ALPHA_NO_BLUR else FROST_SCRIM_ALPHA
+        drawRect(barColor, alpha = p * fallbackAlpha)
     }
-    drawRect(barColor, alpha = p * if (backdrop != null) FROST_SCRIM_ALPHA else FROST_SCRIM_ALPHA_NO_BLUR)
     val sw = 1.dp.toPx()
     val y = size.height - sw / 2f
     drawLine(

@@ -29,4 +29,5 @@ fun <T> Flow<T>.collectLatest(
     }
 }
 
-val SilentHandler = CoroutineExceptionHandler { _, _ -> }
+val SilentHandler = CoroutineExceptionHandler { _, e -> timber.log.Timber.e(e, "Coroutine failed (SilentHandler)") }
+val LoggingHandler = CoroutineExceptionHandler { _, e -> timber.log.Timber.e(e, "Coroutine failed") }

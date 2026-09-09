@@ -59,7 +59,6 @@ import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.models.DischiPerTeItem
 import com.metrolist.music.playback.DownloadUtil
-import com.metrolist.music.utils.NewReleaseNotifier
 import com.metrolist.music.utils.PodcastRefreshTrigger
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.dataStore
@@ -107,7 +106,7 @@ constructor(
     val searchQuery = _searchQuery.asStateFlow()
     val debouncedSearchQuery = _searchQuery
         .debounce(300)
-        .stateIn(viewModelScope, SharingStarted.Lazily, "")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
@@ -134,7 +133,7 @@ constructor(
                     SongFilter.DOWNLOADED -> database.downloadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
                     SongFilter.UPLOADED -> database.uploadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
                 }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val downloadedSongs =
         context.dataStore.data
@@ -147,7 +146,7 @@ constructor(
             }.distinctUntilChanged()
             .flatMapLatest { (sortType, descending, hideExplicit) ->
                 database.downloadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit) }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun syncLikedSongs() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedSongs() }
@@ -171,23 +170,16 @@ constructor(
     @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
     private val syncUtils: SyncUtils,
-    private val newReleaseNotifier: NewReleaseNotifier,
 ) : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
     val debouncedSearchQuery = _searchQuery
         .debounce(300)
-        .stateIn(viewModelScope, SharingStarted.Lazily, "")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
     }
-
-    val newSongCounts = newReleaseNotifier.counts
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
-    val totalNewSongs = newSongCounts
-        .map { counts -> counts.values.sum() }
-        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
     private val dismissedSuggestedFollowIds = context.dataStore.data
         .map { prefs ->
@@ -214,7 +206,7 @@ constructor(
                 it.artist.channelId !in bookmarkedChannelIds &&
                 it.artist.name.trim().lowercase() !in bookmarkedNames
         }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun dismissSuggestedFollowArtist(artistId: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -252,14 +244,7 @@ constructor(
                     ArtistFilter.LIKED -> database.artistsBookmarked(sortType, descending)
                     ArtistFilter.LIBRARY -> database.artists(sortType, descending)
                 }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
-    val newReleaseArtists =
-        combine(allArtists, newSongCounts) { artists, counts ->
-            artists
-                .filter { (counts[it.id] ?: 0) > 0 }
-                .sortedByDescending { counts[it.id] ?: 0 }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val filteredArtists =
         combine(allArtists, searchQuery) { artists, query ->
@@ -269,20 +254,13 @@ constructor(
                     matchesNormalizedQuery(normalizedQuery, artist.artist.name)
                 }
                 .distinctBy { it.id }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun sync() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncArtistsSubscriptions() }
     }
 
     init {
-        viewModelScope.launch(Dispatchers.IO) {
-            val followedIds = database.artistsBookmarked(ArtistSortType.CREATE_DATE, true)
-                .first()
-                .filter { it.artist.isYouTubeArtist && !it.artist.isPodcastChannel }
-                .map { it.id }
-            newReleaseNotifier.refresh(followedIds)
-        }
         viewModelScope.launch(Dispatchers.IO) {
             allArtists.collect { artists ->
                 artists
@@ -336,7 +314,7 @@ constructor(
     val searchQuery = _searchQuery.asStateFlow()
     val debouncedSearchQuery = _searchQuery
         .debounce(300)
-        .stateIn(viewModelScope, SharingStarted.Lazily, "")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
@@ -353,13 +331,13 @@ constructor(
             }.distinctUntilChanged()
             .flatMapLatest { (sortType, descending, hideExplicit) ->
                 database.albumsLiked(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val downloadedAlbums = database.albumsDownloadedByDateDesc()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val likedAlbumsSongs = database.songsInBookmarkedAlbums()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _isProcessingDownloads = MutableStateFlow(false)
     val isProcessingDownloads = _isProcessingDownloads.asStateFlow()
@@ -549,7 +527,7 @@ constructor(
                 albums.sortedByDescending { candidates[it.id] }
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun dismissContinueListeningAlbum(albumId: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -577,7 +555,7 @@ constructor(
     ) { played, saved, dismissed ->
         val savedIds = saved.map { it.id }.toSet()
         played.filter { (it.songCountListened ?: 0) >= 2 && it.id !in savedIds && it.id !in dismissed }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun clearRecentlyListened() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -631,7 +609,7 @@ constructor(
     val searchQuery = _searchQuery.asStateFlow()
     val debouncedSearchQuery = _searchQuery
         .debounce(300)
-        .stateIn(viewModelScope, SharingStarted.Lazily, "")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
@@ -648,14 +626,14 @@ constructor(
             }.distinctUntilChanged()
             .flatMapLatest { (sortType, descending, hideYoutubeShorts) ->
                 database.playlists(sortType, descending).map { it.filterYoutubeShorts(hideYoutubeShorts) }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val downloadedPlaylistIds = database.playlistIdsWithDownloadedSongs()
         .map { it.toSet() }
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     val lastLikedThumbnails = database.lastLikedSongThumbnails()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun sync() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncSavedPlaylists() }
@@ -679,7 +657,7 @@ constructor(
     val artist =
         database
             .artist(artistId)
-            .stateIn(viewModelScope, SharingStarted.Lazily, null)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val songs =
         context.dataStore.data
@@ -694,7 +672,7 @@ constructor(
             .flatMapLatest { (sortDesc, hideExplicit, hideVideoSongs) ->
                 val (sortType, descending) = sortDesc
                 database.artistSongs(artistId, sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 }
 
 @HiltViewModel
@@ -714,7 +692,7 @@ constructor(
     val searchQuery = _searchQuery.asStateFlow()
     val debouncedSearchQuery = _searchQuery
         .debounce(300)
-        .stateIn(viewModelScope, SharingStarted.Lazily, "")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
@@ -753,13 +731,13 @@ constructor(
             .artistsBookmarked(
                 ArtistSortType.CREATE_DATE,
                 true,
-            ).stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     var albums = context.dataStore.data
         .map { it[HideExplicitKey] ?: false }
         .distinctUntilChanged()
         .flatMapLatest { hideExplicit ->
             database.albumsLiked(AlbumSortType.CREATE_DATE, true).map { it.filterExplicitAlbums(hideExplicit) }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     var songs = context.dataStore.data
         .map { Triple(it[HideExplicitKey] ?: false, it[HideVideoSongsKey] ?: false, it[HideYoutubeShortsKey] ?: false) }
         .distinctUntilChanged()
@@ -773,27 +751,27 @@ constructor(
                     .filterExplicit(hideExplicit)
                     .filterVideoSongs(hideVideoSongs)
             }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     var uploadedSongs = database
         .uploadedSongs(SongSortType.CREATE_DATE, true)
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     var downloadedAlbums = database
         .albumsDownloadedByDateDesc()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val downloadedPlaylistIds = database.playlistIdsWithDownloadedSongs()
         .map { it.toSet() }
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
     var playlists = context.dataStore.data
         .map { it[HideYoutubeShortsKey] ?: false }
         .distinctUntilChanged()
         .flatMapLatest { hideYoutubeShorts ->
             database.playlists(PlaylistSortType.CREATE_DATE, true).map { it.filterYoutubeShorts(hideYoutubeShorts) }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val lastLikedDate = database.lastLikedSongDate()
-        .stateIn(viewModelScope, SharingStarted.Lazily, null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val lastLikedThumbnails = database.lastLikedSongThumbnails()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -890,7 +868,7 @@ constructor(
             .flatMapLatest { (sortDesc, hideExplicit) ->
                 val (sortType, descending) = sortDesc
                 database.downloadedPodcastEpisodes(sortType, descending).map { it.filterExplicit(hideExplicit) }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val savedEpisodes =
         context.dataStore.data

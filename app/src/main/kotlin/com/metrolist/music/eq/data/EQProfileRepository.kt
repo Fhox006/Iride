@@ -70,11 +70,24 @@ class EQProfileRepository @Inject constructor(
     private val _deviceBindings = MutableStateFlow<Map<String, String>>(emptyMap())
     val deviceBindings: StateFlow<Map<String, String>> = _deviceBindings.asStateFlow()
 
+    private val _globalProfileId = MutableStateFlow<String?>(null)
+    val globalProfileId: StateFlow<String?> = _globalProfileId.asStateFlow()
+
+    private val _deviceIcons = MutableStateFlow<Map<String, String>>(emptyMap())
+    val deviceIcons: StateFlow<Map<String, String>> = _deviceIcons.asStateFlow()
+
+    /** Optional user-defined display name per device key */
+    private val _deviceNames = MutableStateFlow<Map<String, String>>(emptyMap())
+    val deviceNames: StateFlow<Map<String, String>> = _deviceNames.asStateFlow()
+
     companion object {
         private const val KEY_PROFILES = "eq_profiles"
         private const val KEY_ACTIVE_PROFILE_ID = "active_profile_id"
         private const val KEY_ENABLED = "eq_enabled"
         private const val KEY_DEVICE_BINDINGS = "eq_device_bindings"
+        private const val KEY_GLOBAL_PROFILE_ID = "eq_global_profile_id"
+        private const val KEY_DEVICE_ICONS = "eq_device_icons"
+        private const val KEY_DEVICE_NAMES = "eq_device_names"
     }
 
     init {
@@ -99,6 +112,15 @@ class EQProfileRepository @Inject constructor(
             val bindingsJson = prefs.getString(KEY_DEVICE_BINDINGS, null)
             if (bindingsJson != null) {
                 _deviceBindings.value = json.decodeFromString(bindingsJson)
+            }
+            _globalProfileId.value = prefs.getString(KEY_GLOBAL_PROFILE_ID, null)
+            val iconsJson = prefs.getString(KEY_DEVICE_ICONS, null)
+            if (iconsJson != null) {
+                _deviceIcons.value = json.decodeFromString(iconsJson)
+            }
+            val namesJson = prefs.getString(KEY_DEVICE_NAMES, null)
+            if (namesJson != null) {
+                _deviceNames.value = json.decodeFromString(namesJson)
             }
         } catch (e: Exception) {
             Timber.e(e, "Error loading EQ profiles")
@@ -242,6 +264,31 @@ class EQProfileRepository @Inject constructor(
         )
 
         saveProfile(customProfile)
+    }
+
+    suspend fun setGlobalProfileId(profileId: String?) = withContext(Dispatchers.IO) {
+        if (profileId == null) {
+            prefs.edit { remove(KEY_GLOBAL_PROFILE_ID) }
+        } else {
+            prefs.edit { putString(KEY_GLOBAL_PROFILE_ID, profileId) }
+        }
+        _globalProfileId.value = profileId
+    }
+
+    suspend fun setDeviceIcon(deviceKey: String, iconKey: String) = withContext(Dispatchers.IO) {
+        val updated = _deviceIcons.value + (deviceKey to iconKey)
+        prefs.edit { putString(KEY_DEVICE_ICONS, json.encodeToString(updated)) }
+        _deviceIcons.value = updated
+    }
+
+    fun deviceIconFor(deviceKey: String): String? = _deviceIcons.value[deviceKey]
+
+    /** Stores (or, when blank, clears) the custom display name of a device */
+    suspend fun setDeviceName(deviceKey: String, name: String?) = withContext(Dispatchers.IO) {
+        val updated = _deviceNames.value.toMutableMap()
+        if (name.isNullOrBlank()) updated.remove(deviceKey) else updated[deviceKey] = name.trim()
+        prefs.edit { putString(KEY_DEVICE_NAMES, json.encodeToString(updated)) }
+        _deviceNames.value = updated
     }
 
     /**

@@ -246,6 +246,18 @@ class ListenTogetherClient
 
         private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+        private val connectivityObserver: NetworkConnectivityObserver? = try {
+            NetworkConnectivityObserver(context.applicationContext)
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to create NetworkConnectivityObserver")
+            null
+        }
+        private var isNetworkAvailable: Boolean = try {
+            connectivityObserver?.isCurrentlyConnected() ?: true
+        } catch (e: Exception) {
+            true
+        }
+
         private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
         val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
@@ -279,7 +291,7 @@ class ListenTogetherClient
         init {
             setInstance(this)
             ensureNotificationChannel()
-            CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+            scope.launch {
                 loadPersistedSession()
                 observeNetworkChanges()
             }
@@ -469,21 +481,6 @@ class ListenTogetherClient
         private val joinRequestNotifications = mutableMapOf<String, Int>()
 
         private val suggestionNotifications = mutableMapOf<String, Int>()
-
-        private val connectivityObserver: NetworkConnectivityObserver? by lazy {
-            try {
-                NetworkConnectivityObserver(context)
-            } catch (e: Exception) {
-                Timber.tag(TAG).e(e, "Failed to create NetworkConnectivityObserver")
-                null
-            }
-        }
-        private var isNetworkAvailable =
-            try {
-                connectivityObserver?.isCurrentlyConnected() ?: true
-            } catch (e: Exception) {
-                true
-            }
 
         private val client =
             OkHttpClient
@@ -676,7 +673,7 @@ class ListenTogetherClient
             if (wakeLock?.isHeld == true) {
                 wakeLock?.release()
             }
-            wakeLock?.acquire(10 * 60 * 1000L)
+            wakeLock?.acquire(PING_INTERVAL_MS + 5_000L)
             log(LogLevel.DEBUG, "Wake lock acquired")
         }
 

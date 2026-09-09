@@ -52,7 +52,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -92,7 +91,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -168,6 +166,7 @@ import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.NeedleDropLeadInMs
+import com.metrolist.music.ui.component.SelectionIndicator
 import com.metrolist.music.ui.component.TypewriterText
 import com.metrolist.music.ui.component.VinylPeekDisc
 import com.metrolist.music.ui.component.YouTubeGridItem
@@ -181,6 +180,7 @@ import com.metrolist.music.ui.menu.YouTubeAlbumMenu
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.headerEnter
+import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import com.metrolist.music.ui.utils.irideEnter
 import com.metrolist.music.ui.utils.irideEnterScale
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
@@ -263,11 +263,6 @@ fun AlbumScreen(
     val hideVideoSongs by rememberPreference(key = HideVideoSongsKey, defaultValue = false)
     val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
     val lazyListState = rememberLazyListState()
-    val unseenSongIds by viewModel.unseenSongIds.collectAsState()
-    // Songs render in one plain Column (not lazily virtualized, see below), so a song's own
-    // composition can't be used as a "seen" proxy — this tracks the LazyColumn's actual on-screen
-    // bounds so each row can check itself against it.
-    var listViewportBounds by remember { mutableStateOf<Rect?>(null) }
     val frostBackdrop = rememberFrostBackdrop()
     // Stretch of the vertical rubber band, hoisted so the header art can answer the pull.
     val headerPull = rememberRubberBandPull()
@@ -401,7 +396,6 @@ fun AlbumScreen(
             } else {
                 albumWithSongs?.let { current ->
                     TurntableSfx.play()
-                    playerConnection.service.getAutomix(playlistId)
                     coroutineScope.launch {
                         delay(NeedleDropLeadInMs)
                         playerConnection.playQueue(LocalAlbumRadio(current))
@@ -561,7 +555,6 @@ fun AlbumScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .onGloballyPositioned { listViewportBounds = it.boundsInWindow() }
             .rubberBandOverscroll(Orientation.Vertical, lazyListState, headerPull),
         state = lazyListState,
         contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
@@ -616,7 +609,6 @@ fun AlbumScreen(
                     val onPlayClick: () -> Unit = {
                         if (!isListenTogetherGuest) {
                             TurntableSfx.play()
-                            playerConnection.service.getAutomix(playlistId)
                             coroutineScope.launch {
                                 delay(NeedleDropLeadInMs)
                                 playerConnection.playQueue(
@@ -817,14 +809,18 @@ fun AlbumScreen(
                                             scaleY = s
                                             translationX = -240.dp.toPx() * AlbumCoverShiftFraction * discRevealProgress
                                         }
+                                        .irideArtworkOverlayBorder(
+                                            IrideBaseBorderWidth,
+                                            MaterialTheme.colorScheme.strokeCard,
+                                            albumCoverSquircle,
+                                        )
                                         .shadow(
                                             elevation = 20.dp,
                                             shape = albumCoverSquircle,
                                             spotColor = Color.Black.copy(alpha = 0.5f),
                                         )
                                         .clip(albumCoverSquircle)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                                        .border(BorderStroke(IrideBaseBorderWidth, MaterialTheme.colorScheme.strokeCard), albumCoverSquircle),
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
                                 )
                             }
 
@@ -991,7 +987,6 @@ fun AlbumScreen(
                                             val album = albumWithSongs
                                             resumeDismissed = true
                                             if (!isListenTogetherGuest) {
-                                                playerConnection.service.getAutomix(playlistId)
                                                 playerConnection.playQueue(
                                                     LocalAlbumRadio(album, startIndex = resumeTrackIndex),
                                                 )
@@ -1048,7 +1043,6 @@ fun AlbumScreen(
                                         song = song,
                                         albumIndex = index + 1,
                                         subtitleOverride = subtitleText,
-                                        showNewMarker = song.id in unseenSongIds,
                                         // New Iride UI: featuring-artist credits ("feat. X") should
                                         // read in the same color as the rest of the row instead of
                                         // the default muted secondary tone.
@@ -1057,9 +1051,9 @@ fun AlbumScreen(
                                         isPlaying = isPlaying,
                                         trailingContent = {
                                             if (inSelectMode) {
-                                                Checkbox(
-                                                    checked = song.id in selection,
-                                                    onCheckedChange = onCheckedChange,
+                                                SelectionIndicator(
+                                                    selected = song.id in selection,
+                                                    onClick = { onCheckedChange(song.id !in selection) },
                                                 )
                                             } else {
                                                 IconButton(
@@ -1082,18 +1076,6 @@ fun AlbumScreen(
                                         },
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .then(
-                                                if (song.id in unseenSongIds) {
-                                                    Modifier.onGloballyPositioned { coords ->
-                                                        val viewport = listViewportBounds ?: return@onGloballyPositioned
-                                                        if (coords.boundsInWindow().overlaps(viewport)) {
-                                                            viewModel.markSongSeen(song.id)
-                                                        }
-                                                    }
-                                                } else {
-                                                    Modifier
-                                                },
-                                            )
                                             .combinedClickable(
                                                 onClick = {
                                                     if (inSelectMode) {
@@ -1102,7 +1084,6 @@ fun AlbumScreen(
                                                         if (song.id == mediaMetadata?.id) {
                                                             playerConnection.togglePlayPause()
                                                         } else {
-                                                            playerConnection.service.getAutomix(playlistId)
                                                             playerConnection.playQueue(
                                                                 LocalAlbumRadio(albumWithSongs, startIndex = index),
                                                             )
@@ -1285,17 +1266,6 @@ fun AlbumScreen(
     }
     val topBarActions: @Composable RowScope.() -> Unit = {
         if (inSelectMode) {
-            Checkbox(
-                checked = selection.size == filteredSongs.size && selection.isNotEmpty(),
-                onCheckedChange = {
-                    if (selection.size == filteredSongs.size) {
-                        selection.clear()
-                    } else {
-                        selection.clear()
-                        selection.addAll(filteredSongs.map { it.id })
-                    }
-                },
-            )
             IconButton(
                 enabled = selection.isNotEmpty(),
                 onClick = {
@@ -1351,7 +1321,7 @@ fun AlbumScreen(
                     backdrop = frostBackdrop,
                 )
                 .statusBarsPadding()
-                .height(56.dp)
+                .height(40.dp)
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

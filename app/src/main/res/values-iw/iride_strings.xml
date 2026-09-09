@@ -1119,22 +1119,12 @@
     <string name="muzza_player_logic_desc">טוען שירים מהר יותר בשיטת סטרימינג חלופית.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">הצג לשונית News</string>
-    <string name="show_news_tab_desc">מוסיף כרטיסיית חדשות לניווט התחתון, בין בית לספרייה</string>
     <string name="compact_top_navigation_bar">סרגל עליון קומפקטי</string>
     <string name="compact_top_navigation_bar_desc">Home וספרייה כטקסט בשמאל, חיפוש ותמונת הפרופיל כאייקונים בימין. כבה כדי לחזור לסרגל הקלאסי עם כל הלשוניות כתובות</string>
     <string name="iride_animations">אנימציות Iride</string>
     <string name="iride_animations_desc">כותרות בסגנון מכונת כתיבה, פרלקסה ומעברי כניסה. כבה אם האפליקציה מגמגמת</string>
     <string name="player_auto_hide_top_panel">הסתרה אוטומטית של פאנל החזרה</string>
     <string name="player_auto_hide_top_panel_desc">מדהים את פאנל החזרה-לאפליקציה אחרי 5 שניות חוסר פעילות בנגן המורחב. גלילה למטה מחזירה אותו</string>
-    <string name="news">חדשות</string>
-    <string name="news_new_albums">אלבומים חדשים</string>
-    <string name="news_new_songs">שירים חדשים</string>
-    <string name="news_charts">מצעדים</string>
-    <string name="news_new_albums_title">אלבומים חדשים</string>
-    <string name="news_quick_play_title">שירים חדשים</string>
-    <string name="news_empty_albums">עדיין לא נמצאו אלבומים חדשים</string>
-    <string name="news_empty_songs">עדיין לא נמצאו שירים חדשים</string>
 
     <string name="better_library_beta">ספרייה משופרת BETA</string>
     <string name="better_library_beta_desc">הפעל ספרייה מעוצבת מחדש ב-Material 3 (Top App Bar, FAB ותיקוני ממשק)</string>
@@ -1209,4 +1199,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">עיצוב נגן חדש</string>
 <string name="new_mini_player_design">עיצוב נגן זעיר חדש</string>
-</resources>
+    <string name="featured_for_you">מומלץ עבורך</string>
+    <string name="trending_artist_subtitle">עולה בפיד שלך</string>
+    <string name="artist_radio_subtitle">מיקס אינסופי בהשראת האמן הזה</string>
+    <string name="artist_radio_title">רדיו %1$s</string>
+    <string name="mood_and_playlists_for_you">מצב רוח ורשימות השמעה עבורך</string>
+    <string name="syncing_library">מסנכרן ספרייה</string>
+    <string name="network_sync_warning">ייתכן שתכונות רשת לא יפעלו עד השלמת הסנכרון.</string>
+    <string name="syncing_your_library">מסנכרן את הספרייה שלך…</string>
+    <string name="collapse_section">כיווץ מקטע</string>
+    <string name="expand_section">הרחבת מקטע</string>
+    </resources>

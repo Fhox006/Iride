@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 47,
-    "identityHash": "ffdd40f5f4b0eec5cc29108875f11ca1",
+    "identityHash": "2e48f5933e7cc8d9709b9c640f5a410d",
     "entities": [
       {
         "tableName": "song",
@@ -209,6 +209,42 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_song_albumId` ON `${TABLE_NAME}` (`albumId`)"
+          },
+          {
+            "name": "index_song_inLibrary",
+            "unique": false,
+            "columnNames": [
+              "inLibrary"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_song_inLibrary` ON `${TABLE_NAME}` (`inLibrary`)"
+          },
+          {
+            "name": "index_song_liked",
+            "unique": false,
+            "columnNames": [
+              "liked"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_song_liked` ON `${TABLE_NAME}` (`liked`)"
+          },
+          {
+            "name": "index_song_isDownloaded",
+            "unique": false,
+            "columnNames": [
+              "isDownloaded"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_song_isDownloaded` ON `${TABLE_NAME}` (`isDownloaded`)"
+          },
+          {
+            "name": "index_song_title",
+            "unique": false,
+            "columnNames": [
+              "title"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_song_title` ON `${TABLE_NAME}` (`title`)"
           }
         ]
       },
@@ -1013,6 +1049,25 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_event_songId` ON `${TABLE_NAME}` (`songId`)"
+          },
+          {
+            "name": "index_event_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_event_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          },
+          {
+            "name": "index_event_songId_timestamp",
+            "unique": false,
+            "columnNames": [
+              "songId",
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_event_songId_timestamp` ON `${TABLE_NAME}` (`songId`, `timestamp`)"
           }
         ],
         "foreignKeys": [
@@ -1557,7 +1612,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ffdd40f5f4b0eec5cc29108875f11ca1')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2e48f5933e7cc8d9709b9c640f5a410d')"
     ]
   }
 }

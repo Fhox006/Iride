@@ -1105,22 +1105,12 @@
     <string name="muzza_player_logic_desc">Läser in låtar snabbare med en alternativ strömningsmetod.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">Visa fliken Nyheter</string>
-    <string name="show_news_tab_desc">Lägger till en Nyheter-flik i nedre navigeringen, mellan Hem och Bibliotek</string>
     <string name="compact_top_navigation_bar">Kompakt översta fält</string>
     <string name="compact_top_navigation_bar_desc">Hem och Bibliotek som text till vänster, Sök och din profilbild som ikoner till höger. Stäng av för att återgå till det klassiska fältet där varje flik stavas ut</string>
     <string name="iride_animations">Iride-animationer</string>
     <string name="iride_animations_desc">Skrivmaskinstitlar, parallax och inledande övergångar. Stäng av om appen hackar</string>
     <string name="player_auto_hide_top_panel">Dölj panelen för att återgå automatiskt</string>
     <string name="player_auto_hide_top_panel_desc">Tonerar ut den övre panelen för att återgå till appen efter 5 sekunders inaktivitet i den utökade spelaren. Rulla nedåt för att visa den igen</string>
-    <string name="news">Nyheter</string>
-    <string name="news_new_albums">Nya album</string>
-    <string name="news_new_songs">Nya låtar</string>
-    <string name="news_charts">Topplistor</string>
-    <string name="news_new_albums_title">Nya album</string>
-    <string name="news_quick_play_title">Nya låtar</string>
-    <string name="news_empty_albums">Inga nya album hittades ännu</string>
-    <string name="news_empty_songs">Inga nya låtar hittades ännu</string>
 
     <string name="better_library_beta">Bättre bibliotek BETA</string>
     <string name="better_library_beta_desc">Aktivera omarbetat Material 3-bibliotek (Top App Bar, FAB och UI-fixar)</string>
@@ -1195,4 +1185,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">Ny spelardesign</string>
 <string name="new_mini_player_design">Ny mini spelardesign</string>
-</resources>
+    <string name="featured_for_you">Utvalt för dig</string>
+    <string name="trending_artist_subtitle">På väg upp i ditt flöde</string>
+    <string name="artist_radio_subtitle">Ändlös mix inspirerad av den här artisten</string>
+    <string name="artist_radio_title">Radio %1$s</string>
+    <string name="mood_and_playlists_for_you">Stämningar och spellistor för dig</string>
+    <string name="syncing_library">Synkroniserar biblioteket</string>
+    <string name="network_sync_warning">Nätverksfunktioner kanske inte fungerar förrän synkroniseringen är klar.</string>
+    <string name="syncing_your_library">Synkroniserar ditt bibliotek…</string>
+    <string name="collapse_section">Komprimera avsnittet</string>
+    <string name="expand_section">Fäll ut avsnittet</string>
+    </resources>

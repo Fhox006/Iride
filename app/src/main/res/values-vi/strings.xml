@@ -45,15 +45,10 @@
     <string name="similar_to">Tương tự</string>
     <string name="new_release_albums">Các album mới phát hành</string>
     <string name="artist_latest_release">Bản phát hành mới nhất</string>
-    <string name="artist_release_type_album">ALBUM</string>
-    <string name="artist_release_type_ep">EP</string>
-    <string name="artist_release_type_single">SINGLE</string>
-    <string name="artist_release_type_feat">FEAT</string>
     <string name="genius_section_title">Nhận diện feat. (Genius)</string>
     <string name="genius_api_key">Mã token Genius API</string>
     <string name="genius_api_key_description">Tìm các thông tin \"feat.\" mà chính trang YTM của nghệ sĩ bỏ sót. Nhận token miễn phí tại genius.com/api-clients.</string>
     <string name="essential_albums">Album thiết yếu</string>
-    <string name="featuring">Featuring</string>
     <string name="suggested_follow_artists">Bạn nghe nhiều — theo dõi họ nhé?</string>
     <string name="new_from_followed_artists">Mới từ nghệ sĩ bạn theo dõi</string>
 

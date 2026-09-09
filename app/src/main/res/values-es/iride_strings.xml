@@ -1111,22 +1111,12 @@
     <string name="muzza_player_logic_desc">Carga las canciones más rápido mediante un método de transmisión alternativo.</string>
 
     <!-- News screen -->
-    <string name="show_news_tab">Mostrar pestaña de Noticias</string>
-    <string name="show_news_tab_desc">Añade una pestaña de Noticias a la navegación inferior, entre Inicio y Biblioteca</string>
     <string name="compact_top_navigation_bar">Barra superior compacta</string>
     <string name="compact_top_navigation_bar_desc">Inicio y Biblioteca como texto a la izquierda, y Búsqueda y tu foto de perfil como iconos a la derecha. Desactívala para volver a la barra clásica, donde cada pestaña muestra su nombre completo</string>
     <string name="iride_animations">Animaciones de Iride</string>
     <string name="iride_animations_desc">Títulos con efecto de máquina de escribir, parallax y transiciones de entrada. Desactívala si la aplicación va con tirones</string>
     <string name="player_auto_hide_top_panel">Ocultar automáticamente el panel de retorno</string>
     <string name="player_auto_hide_top_panel_desc">Desvanece el panel superior de retorno a la aplicación tras 5 s de inactividad en el reproductor expandido. Al deslizar hacia abajo vuelve a aparecer</string>
-    <string name="news">Noticias</string>
-    <string name="news_new_albums">Nuevos álbumes</string>
-    <string name="news_new_songs">Canciones nuevas</string>
-    <string name="news_charts">Listas de éxitos</string>
-    <string name="news_new_albums_title">Nuevos álbumes</string>
-    <string name="news_quick_play_title">Canciones nuevas</string>
-    <string name="news_empty_albums">Aún no se encontraron álbumes nuevos</string>
-    <string name="news_empty_songs">Aún no se encontraron canciones nuevas</string>
 
     <string name="better_library_beta">Better Library BETA</string>
     <string name="better_library_beta_desc">Activa la Biblioteca refactorizada con Material 3 (barra de aplicaciones superior, FAB y correcciones de interfaz)</string>
@@ -1201,4 +1191,14 @@
     <!-- Extra keys -->
 <string name="new_player_design">Nuevo diseño del reproductor</string>
 <string name="new_mini_player_design">Nuevo diseño del mini reproductor</string>
-</resources>
+    <string name="featured_for_you">Destacado para ti</string>
+    <string name="trending_artist_subtitle">En auge en tu feed</string>
+    <string name="artist_radio_subtitle">Mezcla infinita inspirada en este artista</string>
+    <string name="artist_radio_title">Radio de %1$s</string>
+    <string name="mood_and_playlists_for_you">Estados de ánimo y listas para ti</string>
+    <string name="syncing_library">Sincronizando biblioteca</string>
+    <string name="network_sync_warning">Es posible que las funciones de red no funcionen hasta que termine la sincronización.</string>
+    <string name="syncing_your_library">Sincronizando tu biblioteca…</string>
+    <string name="collapse_section">Contraer sección</string>
+    <string name="expand_section">Expandir sección</string>
+    </resources>

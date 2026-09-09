@@ -1,6 +1,0 @@
-FILE: C:\Users\mrffh\Desktop\Iride\app\src\main\kotlin\com\metrolist\music\viewmodels\ArtistGameViewModel.kt
-LINES: 281
-NOTE: K2 data-flow proves previousBest non-null in else branch (isNewBest false implies previousBest != null).
-<<<ORIGINAL
-281:             bestScoreMs = if (isNewBest) totalMs else previousBest!!,
-ORIGINAL>>>

@@ -47,6 +47,13 @@ class MetrolistWidgetManager @Inject constructor(
     private var cachedAlbumArt: Bitmap? = null
     private var cachedCircularAlbumArt: Bitmap? = null
 
+    fun getActiveWidgetIds(): IntArray {
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val main = appWidgetManager.getAppWidgetIds(ComponentName(context, MusicWidgetReceiver::class.java))
+        val turn = appWidgetManager.getAppWidgetIds(ComponentName(context, TurntableWidgetReceiver::class.java))
+        return main + turn
+    }
+
     suspend fun updateWidgets(
         title: String,
         artist: String,

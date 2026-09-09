@@ -50,12 +50,11 @@ enum class DensityScale(
 }
 
 val DefaultOpenTabKey = stringPreferencesKey("defaultOpenTab")
-val NewsRefreshTimestampKey = longPreferencesKey("newsRefreshTimestamp")
-val NewsCollapsedZonesKey = stringSetPreferencesKey("newsCollapsedZones")
-val NewsSelectedGenreIdKey = stringPreferencesKey("newsSelectedGenreId")
-val NewsSelectedGenreParamsKey = stringPreferencesKey("newsSelectedGenreParams")
-val NewsSelectedGenreTitleKey = stringPreferencesKey("newsSelectedGenreTitle")
 val CompactTopNavigationBarKey = booleanPreferencesKey("compactTopNavigationBar")
+val TopNavigationBarKey = booleanPreferencesKey("topNavigationBar")
+val UseNewPlayerDesignKey = booleanPreferencesKey("useNewPlayerDesign")
+val UseNewMiniPlayerDesignKey = booleanPreferencesKey("useNewMiniPlayerDesign")
+val PureBlackMiniPlayerKey = booleanPreferencesKey("pureBlackMiniPlayer")
 val IrideAnimationsKey = booleanPreferencesKey("irideAnimations")
 val PlayerAutoHideTopPanelKey = booleanPreferencesKey("playerAutoHideTopPanel")
 val GridItemsSizeKey = stringPreferencesKey("gridItemSize")
@@ -600,12 +599,6 @@ val DismissedListenedAlbumsKey = stringPreferencesKey("dismissedListenedAlbums")
 val RecentlySuggestedAlbumsKey = stringPreferencesKey("recentlySuggestedAlbums")
 
 val DismissedContinueListeningAlbumsKey = stringPreferencesKey("dismissedContinueListeningAlbums")
-
-val ArtistNewReleasesKey = stringPreferencesKey("artistNewReleases")
-
-val ArtistNewReleasesCheckedKey = androidx.datastore.preferences.core.longPreferencesKey("artistNewReleasesChecked")
-
-val UnseenSongDotsKey = stringPreferencesKey("unseenSongDots")
 
 val DismissedSuggestedFollowArtistsKey = stringPreferencesKey("dismissedSuggestedFollowArtists")
 

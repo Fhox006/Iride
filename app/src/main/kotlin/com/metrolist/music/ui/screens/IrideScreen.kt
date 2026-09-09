@@ -9,11 +9,13 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -29,11 +31,23 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.palette.graphics.Palette
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.MainTopGradientKey
+import com.metrolist.music.constants.PlayerBackgroundStyle
+import com.metrolist.music.constants.PlayerBackgroundStyleKey
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.IrideAdaptiveTopBar
+import com.metrolist.music.ui.component.TopScreenGradientBackground
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.utils.rememberEnumPreference
+import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.max
@@ -190,8 +204,27 @@ fun IrideScreen(
     val o2 by inf.animateFloat(0f, targetO, infiniteRepeatable(tween(13000, easing = LinearEasing), RepeatMode.Reverse), label = "o2")
     val o3 by inf.animateFloat(0f, targetO, infiniteRepeatable(tween(17000, easing = LinearEasing), RepeatMode.Reverse), label = "o3")
 
+    val playerConnection = LocalPlayerConnection.current
+    val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
+    val frostBackdrop = rememberFrostBackdrop()
+
     Box(modifier = Modifier.fillMaxSize()) {
-        Canvas(modifier = Modifier.fillMaxSize().graphicsLayer {}) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .recordFrostBackdrop(frostBackdrop),
+        ) {
+            if (mainTopGradient) {
+                TopScreenGradientBackground(
+                    mediaMetadata = mediaMetadata,
+                    playerBackground = playerBackgroundStyle,
+                )
+            } else {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+            }
+            Canvas(modifier = Modifier.fillMaxSize().graphicsLayer {}) {
             val w = size.width; val h = size.height; val md = max(w, h)
             val totalPop = populations.sum().toFloat()
             fun getRadius(i: Int): Float {
@@ -214,6 +247,7 @@ fun IrideScreen(
                 drawCircle(brush = Brush.radialGradient(listOf(animColors[i], Color.Transparent), pos, r), radius = r, center = pos)
             }
         }
+        }
 
         IrideAdaptiveTopBar(
             title = { Text("Iride") },
@@ -223,6 +257,7 @@ fun IrideScreen(
                 }
             },
             transparent = true,
+            backdrop = frostBackdrop,
         )
     }
 }

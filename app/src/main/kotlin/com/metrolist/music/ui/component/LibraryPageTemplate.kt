@@ -64,7 +64,7 @@ object LibraryPageDefaults {
     val HeroTopSpace = 28.dp
     val HeroToControlsGap = 16.dp
     val GridSpacing = 12.dp
-    val TopBarHeight = 56.dp
+    val TopBarHeight = 40.dp
 }
 
 @Stable
@@ -218,7 +218,6 @@ fun LibraryPageTopBar(
     onCloseSearch: () -> Unit,
     keyboardController: SoftwareKeyboardController?,
     modifier: Modifier = Modifier,
-    titleBadge: (@Composable RowScope.() -> Unit)? = null,
     extraActions: @Composable RowScope.() -> Unit = {},
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -243,6 +242,11 @@ fun LibraryPageTopBar(
                 backdrop = backdrop,
             )
             .statusBarsPadding()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {},
+            )
             .height(LibraryPageDefaults.TopBarHeight)
             .padding(horizontal = 4.dp),
     ) {
@@ -307,10 +311,6 @@ fun LibraryPageTopBar(
                     color = MaterialTheme.colorScheme.onBackground,
                     maxLines = 1,
                 )
-                if (titleBadge != null) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    titleBadge()
-                }
             }
             extraActions()
             IconButton(onClick = onSearchClick) {

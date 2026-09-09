@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
@@ -45,15 +45,10 @@
     <string name="similar_to">아래 아티스트와 유사한 음악 추천</string>
     <string name="new_release_albums">최신 앨범</string>
     <string name="artist_latest_release">최신 발매</string>
-    <string name="artist_release_type_album">앨범</string>
-    <string name="artist_release_type_ep">EP</string>
-    <string name="artist_release_type_single">싱글</string>
-    <string name="artist_release_type_feat">피처링</string>
     <string name="genius_section_title">피처링 감지(Genius)</string>
     <string name="genius_api_key">Genius API 토큰</string>
     <string name="genius_api_key_description">아티스트 본인의 YTM 페이지에서 놓치는 \"feat.\" 크레딧을 찾아냅니다. genius.com/api-clients에서 무료 토큰을 받으세요.</string>
     <string name="essential_albums">필수 앨범</string>
-    <string name="featuring">피처링</string>
     <string name="suggested_follow_artists">자주 듣는 아티스트입니다. 팔로우하시겠어요?</string>
     <string name="new_from_followed_artists">팔로우하는 아티스트의 신곡</string>
 

@@ -153,7 +153,7 @@ class ArtistGameViewModel @Inject constructor(
             return
         }
 
-        val prepared = rounds.map { round ->
+        val prepared = rounds.take(3).map { round ->
             viewModelScope.async {
                 val uri = audioService.resolveStreamUrl(round.correct.id) ?: return@async null
                 audioService.prepareRound(round.correct.id, uri, round.positionMs)

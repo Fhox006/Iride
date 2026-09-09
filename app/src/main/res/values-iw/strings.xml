@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <!-- Upstream InnerTune strings -->
 <!-- Do not add new features here -->
@@ -45,15 +45,10 @@
     <string name="similar_to">דומה ל</string>
     <string name="new_release_albums">אלבומים חדשים</string>
     <string name="artist_latest_release">יציאה אחרונה</string>
-    <string name="artist_release_type_album">ALBUM</string>
-    <string name="artist_release_type_ep">EP</string>
-    <string name="artist_release_type_single">SINGLE</string>
-    <string name="artist_release_type_feat">FEAT</string>
     <string name="genius_section_title">זיהוי Featuring (Genius)</string>
     <string name="genius_api_key">אסימון API של Genius</string>
     <string name="genius_api_key_description">מוצא קרדיטים של \"feat.\" שדף ה-YTM של האמן עצמו מפספס. קבל אסימון בחינם ב-genius.com/api-clients.</string>
     <string name="essential_albums">אלבומים חיוניים</string>
-    <string name="featuring">Featuring</string>
     <string name="suggested_follow_artists">אתה מקשיב הרבה — לעקוב אחריהם?</string>
     <string name="new_from_followed_artists">חדש מאמנים שאתה עוקב אחריהם</string>
 

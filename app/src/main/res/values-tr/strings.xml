@@ -46,15 +46,10 @@
     <string name="similar_to">Benzerleri</string>
     <string name="new_release_albums">Yeni çıkan albümler</string>
     <string name="artist_latest_release">Son çıkış</string>
-    <string name="artist_release_type_album">ALBÜM</string>
-    <string name="artist_release_type_ep">EP</string>
-    <string name="artist_release_type_single">TEKLİ</string>
-    <string name="artist_release_type_feat">FEAT</string>
     <string name="genius_section_title">Featuring algılama (Genius)</string>
     <string name="genius_api_key">Genius API Token</string>
     <string name="genius_api_key_description">Sanatçının kendi YTM sayfasında gözden kaçan \"feat.\" künyelerini bulur. Ücretsiz token almak için genius.com/api-clients adresine gidin.</string>
     <string name="essential_albums">Vazgeçilmez Albümler</string>
-    <string name="featuring">Featuring</string>
     <string name="suggested_follow_artists">Bunları çok dinliyorsunuz — takip edilsin mi?</string>
     <string name="new_from_followed_artists">Takip ettiğiniz sanatçılardan yeniler</string>
 

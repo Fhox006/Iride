@@ -76,8 +76,10 @@ constructor(
             BetterLyricsUnisonProvider,
             BetterLyricsSillabaProvider,
             BetterLyricsProvider,
+            // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
             KuGouLyricsProvider,
             LyricsPlusProvider,
+            // YouTubeSubtitleLyricsProvider, // temporarily disabled for API benchmarking
             YouTubeLyricsProvider
         )
 
@@ -86,8 +88,10 @@ constructor(
             .map { preferences ->
                 val providerOrder = preferences[LyricsProviderOrderKey] ?: ""
                 if (providerOrder.isNotBlank()) {
+                    // Use the new provider order if available
                     LyricsProviderRegistry.getOrderedProviders(providerOrder)
                 } else {
+                    // Fall back to preferred provider logic for backward compatibility
                     val preferredProvider = preferences[PreferredLyricsProviderKey]
                         .toEnum(PreferredLyricsProvider.LRCLIB)
                     when (preferredProvider) {
@@ -96,8 +100,10 @@ constructor(
                             BetterLyricsUnisonProvider,
                             BetterLyricsSillabaProvider,
                             BetterLyricsProvider,
+                            // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
                             KuGouLyricsProvider,
                             LyricsPlusProvider,
+                            // YouTubeSubtitleLyricsProvider, // temporarily disabled for API benchmarking
                             YouTubeLyricsProvider
                         )
                         PreferredLyricsProvider.KUGOU -> listOf(
@@ -105,26 +111,32 @@ constructor(
                             BetterLyricsUnisonProvider,
                             BetterLyricsSillabaProvider,
                             BetterLyricsProvider,
+                            // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
                             LrcLibLyricsProvider,
                             LyricsPlusProvider,
+                            // YouTubeSubtitleLyricsProvider, // temporarily disabled for API benchmarking
                             YouTubeLyricsProvider
                         )
                         PreferredLyricsProvider.BETTER_LYRICS -> listOf(
                             BetterLyricsUnisonProvider,
                             BetterLyricsSillabaProvider,
                             BetterLyricsProvider,
+                            // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
                             LrcLibLyricsProvider,
                             KuGouLyricsProvider,
                             LyricsPlusProvider,
+                            // YouTubeSubtitleLyricsProvider, // temporarily disabled for API benchmarking
                             YouTubeLyricsProvider
                         )
                         PreferredLyricsProvider.PAXSENIX -> listOf(
+                            // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
                             BetterLyricsUnisonProvider,
                             BetterLyricsSillabaProvider,
                             BetterLyricsProvider,
                             LrcLibLyricsProvider,
                             KuGouLyricsProvider,
                             LyricsPlusProvider,
+                            // YouTubeSubtitleLyricsProvider, // temporarily disabled for API benchmarking
                             YouTubeLyricsProvider
                         )
                     }
@@ -138,7 +150,7 @@ constructor(
 
     init {
         helperScope.launch {
-            preferred.collect {  }
+            preferred.collect { /* lyricsProviders is already set inside the map {} */ }
         }
     }
 
@@ -147,6 +159,7 @@ constructor(
 
     private fun resolveWordLyricsDuration(mediaMetadata: MediaMetadata): Int {
         if (mediaMetadata.duration > 0) return mediaMetadata.duration
+        // MediaMetadata has no textual duration field; no other source to parse from
         return -1
     }
 
@@ -157,19 +170,23 @@ constructor(
         val cleanedTitle = LyricsUtils.cleanTitleForSearch(mediaMetadata.title)
         val artists = mediaMetadata.artists.joinToString { it.name }
         val wordDuration = resolveWordLyricsDuration(mediaMetadata)
+        // STAT MODE: query ALL providers regardless of user settings or isEnabled()
         val enabledProviders = listOf(
             LrcLibLyricsProvider,
             BetterLyricsUnisonProvider,
             BetterLyricsSillabaProvider,
             BetterLyricsProvider,
+            // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
             KuGouLyricsProvider,
             LyricsPlusProvider,
+            // YouTubeSubtitleLyricsProvider, // temporarily disabled for API benchmarking
             YouTubeLyricsProvider
         )
 
         val fastSet = setOf(YouTubeLyricsProvider)
         val subtitleSet = setOf(YouTubeSubtitleLyricsProvider)
         val lrcLibSet = setOf(LrcLibLyricsProvider)
+        // Word-by-word providers; Paxsenix has its own timeout below
         val wordProviderSet = setOf(BetterLyricsUnisonProvider, BetterLyricsSillabaProvider, BetterLyricsProvider)
 
         val tierMutex = Mutex()
@@ -184,7 +201,7 @@ constructor(
             val allJobs = enabledProviders.map { provider ->
                 val isWordProvider = provider in wordProviderSet
                 val timeout = when {
-                    provider == PaxsenixLyricsProvider -> 20_000L
+                    provider == PaxsenixLyricsProvider -> 20_000L // server retries ~9s internally
                     isWordProvider -> 12_000L
                     provider in subtitleSet -> 2_000L
                     provider in fastSet -> 4_000L
@@ -275,6 +292,9 @@ constructor(
             return LyricsWithProvider(cached.lyrics, cached.providerName)
         }
 
+        // No connectivity gate here: a transient false negative during a Wi-Fi↔mobile handover
+        // used to mark the song as "lyrics not found" without even trying. Requests fail fast
+        // on their own now, and each provider below already handles its own failures.
 
         val result = withTimeoutOrNull(MAX_LYRICS_FETCH_MS) {
             val cleanedTitle = LyricsUtils.cleanTitleForSearch(mediaMetadata.title)
@@ -312,8 +332,9 @@ constructor(
                                 bestTier = tier
                                 bestPriority = priority
                             }
+                            // A word-by-word result from the top-priority provider can't be beaten; stop early.
                             if (bestTier == LyricsTier.SYNCED_WORD && bestPriority == 0) {
-                                return@withTimeoutOrNull best
+                                return@withTimeoutOrNull best!!
                             }
                         }
                         result == null -> {
@@ -355,6 +376,8 @@ constructor(
             return
         }
 
+        // No connectivity gate here either (same rationale as getLyrics): attempt the
+        // providers regardless and let their own error handling deal with being offline.
 
         val allResult = mutableListOf<LyricsResult>()
         currentLyricsJob = CoroutineScope(SupervisorJob()).launch {
@@ -369,6 +392,7 @@ constructor(
                             callback(result)
                         }
                     } catch (e: Exception) {
+                        // Catch network-related exceptions like UnresolvedAddressException
                         reportException(e)
                     }
                 }

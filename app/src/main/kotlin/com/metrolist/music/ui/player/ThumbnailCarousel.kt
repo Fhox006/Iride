@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -77,6 +78,9 @@ import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerHorizontalPadding
 import com.metrolist.music.constants.SeekExtraSeconds
 import com.metrolist.music.constants.SwipeThumbnailKey
+import com.metrolist.music.constants.irideArtworkBorderWidth
+import com.metrolist.music.ui.theme.strokeOverArtwork
+import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import com.metrolist.music.ui.component.CastButton
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.rememberEnumPreference
@@ -116,6 +120,13 @@ fun ThumbnailCarousel(
     val textColor = when (playerBackground) {
         PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.onBackground
         else -> Color.White
+    }
+
+    // Light outline around the artwork: theme-based on plain surfaces, translucent
+    // white over a media background. Stronger than list tokens — it sits on image pixels.
+    val artworkBorderColor = when (playerBackground) {
+        PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.strokeOverArtwork
+        else -> Color.White.copy(alpha = 0.4f)
     }
 
     val mediaItemsData = remember(mediaMetadata, swipeThumbnail) {
@@ -341,6 +352,14 @@ fun ThumbnailCarousel(
                                             -(pageOffset / absOffset) * shrinkPx
                                         } else 0f
                                     }
+                                    .irideArtworkOverlayBorder(
+                                        width = irideArtworkBorderWidth(pageWidth),
+                                        color = artworkBorderColor,
+                                        shape = SquircleShape(
+                                            radius = thumbCornerRadius,
+                                            cornerSmoothing = 0.48f
+                                        )
+                                    )
                                     .clip(
                                         SquircleShape(
                                             radius = thumbCornerRadius,

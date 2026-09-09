@@ -13,7 +13,7 @@ room = "2.8.4"
 hilt = "2.59.2"
 ktor = "3.4.2"
 ksp = "2.3.6"
-jsoup = "1.22.1"
+jsoup = "1.23.1"
 coil = "3.4.0"
 ucrop = "2.2.11"
 guava = "33.5.0-jre"
@@ -29,6 +29,7 @@ palette = "1.0.0"
 apacheLang3 = "3.20.0"
 brotli = "0.1.2"
 desugaring = "2.1.5"
+securityCrypto = "1.1.0-alpha06"
 junit = "4.13.2"
 timber = "5.0.1"
 materialKolor = "4.1.1"
@@ -104,6 +105,7 @@ jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 json = { module = "org.json:json", version.ref = "json" }
 
 brotli = { module = "org.brotli:dec", version.ref = "brotli" }
+security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 
 desugaring = { module = "com.android.tools:desugar_jdk_libs_nio", version.ref = "desugaring" }
 
