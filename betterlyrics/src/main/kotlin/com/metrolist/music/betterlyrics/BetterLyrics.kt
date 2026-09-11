@@ -3,7 +3,7 @@ package com.metrolist.music.betterlyrics
 import com.metrolist.music.betterlyrics.models.TTMLResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.HttpTimeout
@@ -17,7 +17,7 @@ import timber.log.Timber
 object BetterLyrics {
     private const val TAG = "BetterLyrics"
     private val client by lazy {
-        HttpClient(CIO) {
+            HttpClient(OkHttp) {
             install(ContentNegotiation) {
                 json(
                     Json {
@@ -79,13 +79,50 @@ object BetterLyrics {
         album: String? = null,
         videoId: String? = null,
     ) = runCatching {
-        val ttml = fetchTTML(artist, title, duration, album, videoId, "/getLyrics")
-            ?: throw IllegalStateException("Lyrics unavailable")
-
-        val parsedLines = TTMLParser.parseTTML(ttml)
-        if (parsedLines.isEmpty()) throw IllegalStateException("Failed to parse lyrics")
-        TTMLParser.toLRC(parsedLines)
+        // Primary query with all metadata, then relaxed fallbacks: the artist string
+        // from players often contains featured artists ("A, B") while the API catalog
+        // is keyed on the primary artist, so a strict first attempt misses tracks
+        // that the API actually has word-level data for.
+        val primaryArtist = primaryArtistOf(artist)
+        val attempts = listOf(
+            Triple(title, artist, true),
+            Triple(title, primaryArtist, true),
+            Triple(title, primaryArtist, false),
+        ).distinct()
+        var lastError: Throwable? = null
+        for ((t, a, full) in attempts) {
+            val ttml = fetchTTML(
+                artist = a,
+                title = t,
+                duration = duration.takeIf { full } ?: -1,
+                album = album.takeIf { full },
+                videoId = videoId.takeIf { full },
+                endpoint = "/getLyrics",
+            )
+            if (!ttml.isNullOrBlank()) {
+                val parsedLines = TTMLParser.parseTTML(ttml)
+                if (parsedLines.isNotEmpty()) return@runCatching TTMLParser.toLRC(parsedLines)
+                lastError = IllegalStateException("Failed to parse lyrics")
+            } else {
+                lastError = IllegalStateException("Lyrics unavailable")
+            }
+        }
+        throw lastError ?: IllegalStateException("Lyrics unavailable")
     }
+
+    private fun primaryArtistOf(artist: String): String {
+        var cleaned = artist.trim()
+        for (separator in artistSeparators) {
+            if (cleaned.contains(separator, ignoreCase = true)) {
+                cleaned = cleaned.split(separator, ignoreCase = true, limit = 2)[0]
+                break
+            }
+        }
+        return cleaned.trim().ifEmpty { artist.trim() }
+    }
+
+    private val artistSeparators =
+        listOf(" & ", " and ", ", ", " x ", " X ", " feat. ", " feat ", " ft. ", " ft ", " featuring ", " with ")
 
     suspend fun getAllLyrics(
         title: String,

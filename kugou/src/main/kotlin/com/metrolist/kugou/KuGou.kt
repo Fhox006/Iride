@@ -6,6 +6,7 @@ import com.metrolist.kugou.models.SearchLyricsResponse
 import com.metrolist.kugou.models.SearchSongResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
@@ -21,7 +22,7 @@ import java.lang.Integer.min
 import kotlin.math.abs
 
 @OptIn(ExperimentalSerializationApi::class, ExperimentalEncodingApi::class)
-private val client = HttpClient {
+private val client = HttpClient(OkHttp) {
     expectSuccess = true
 
     install(ContentNegotiation) {

@@ -1,3 +1,10 @@
+## 0.1.0-alpha27
+
+### Fixes
+
+- **Synced lyrics are back**: all lyrics providers now run on the OkHttp engine, fixing the TLS failure that left only plain (unsynced) lyrics — line-by-line and word-by-word (karaoke) sync work again
+- Word-level search falls back to the primary artist when the track lists featured artists, so more songs find their karaoke lyrics
+
 ## 0.1.0-alpha26
 
 ### Fixes

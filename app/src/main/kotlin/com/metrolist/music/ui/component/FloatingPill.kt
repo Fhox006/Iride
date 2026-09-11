@@ -106,7 +106,6 @@ import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.MiniPlayerBackgroundStyle
 import com.metrolist.music.constants.MiniPlayerBackgroundStyleKey
 import com.metrolist.music.constants.MiniPlayerHeight
-import com.metrolist.music.constants.TopNavigationBarKey
 import com.metrolist.music.listentogether.ListenTogetherManager
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.CastConnectionHandler
@@ -325,7 +324,8 @@ private fun PillContent(
         MiniPlayerBackgroundStyleKey,
         defaultValue = MiniPlayerBackgroundStyle.DEFAULT,
     )
-    val (newIrideUi, _) = rememberPreference(TopNavigationBarKey, defaultValue = true)
+    // The new MP3 (Iride) UI is the only one: always on, no per-user toggle.
+    val newIrideUi = true
     val context = LocalContext.current
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
     val isSystemInDarkTheme = isSystemInDarkTheme()

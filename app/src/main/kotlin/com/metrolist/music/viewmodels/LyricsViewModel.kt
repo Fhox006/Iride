@@ -38,6 +38,8 @@ sealed class LyricsSearchStatus {
     object NotFoundFinal : LyricsSearchStatus()
 }
 
+private const val DELAYED_RETRY_MS = 15_000L
+
 @HiltViewModel
 class LyricsViewModel @Inject constructor(
     private val lyricsHelper: LyricsHelper,
@@ -45,8 +47,10 @@ class LyricsViewModel @Inject constructor(
 ) : ViewModel() {
     private var processJob: kotlinx.coroutines.Job? = null
     private var progressiveJob: kotlinx.coroutines.Job? = null
+    private var delayedRetryJob: kotlinx.coroutines.Job? = null
 
     private var loadedMediaId: String? = null
+    private var delayedRetriedMediaId: String? = null
 
     val lyricsSearchStatus = MutableStateFlow<LyricsSearchStatus>(LyricsSearchStatus.Idle)
 
@@ -120,28 +124,48 @@ class LyricsViewModel @Inject constructor(
         }
     }
 
+    /** True while a progressive fetch for [mediaId] is still running. */
+    fun isProgressiveLoading(mediaId: String): Boolean =
+        loadedMediaId == mediaId && progressiveJob?.isActive == true
+
     fun loadProgressiveLyrics(
         mediaMetadata: MediaMetadata,
         enabledLanguages: List<String>,
         romanizeCyrillicByLine: Boolean,
         showIntervalIndicator: Boolean,
         force: Boolean = false,
+        silent: Boolean = false,
     ) {
-        // Idempotent per song: re-entering the lyrics panel (or remounting the fullscreen
-        // dialog) must not tear down live state nor re-hit the network for a song that is
-        // already loaded or still loading. Only a different song or an explicit force
-        // (manual refetch) restarts the pipeline.
-        val alreadyHandled = loadedMediaId == mediaMetadata.id &&
-            (progressiveJob?.isActive == true || lyricsSearchStatus.value != LyricsSearchStatus.Idle)
+        // Idempotent per song: a still-running job or an already-reached SYNCED_WORD
+        // must not be torn down by a panel remount. But a *finished* job stuck on a
+        // poor tier (PLAIN/LINE/not-found) is NOT terminal: remounts may retry so a
+        // slow word-level provider still gets its chance to upgrade the display.
+        // Only a different song or an explicit force restarts the pipeline.
+        val isJobActive = progressiveJob?.isActive == true
+        val isTerminalWord = lyricsSearchStatus.value == LyricsSearchStatus.FoundWord
+        val alreadyHandled = loadedMediaId == mediaMetadata.id && (isJobActive || isTerminalWord)
         if (alreadyHandled && !force) return
 
         progressiveJob?.cancel()
         processJob?.cancel()
+        delayedRetryJob?.cancel()
+        // A new pipeline supersedes any pending delayed retry. Re-arm it for a new
+        // song, or for an explicit manual refetch (silent auto-retries don't re-arm,
+        // so there is at most one delayed retry per arming).
+        if (loadedMediaId != mediaMetadata.id || (force && !silent)) {
+            delayedRetriedMediaId = null
+        }
+        // Silent retry (same song, lines already on screen): keep showing the current
+        // lyrics while searching for an upgrade in the background instead of clearing
+        // the UI back to shimmer.
+        val keepDisplayed = silent && loadedMediaId == mediaMetadata.id && _lines.value.isNotEmpty()
         loadedMediaId = mediaMetadata.id
-        lyricsSearchStatus.value = LyricsSearchStatus.Loading
-        _displayedLyrics.value = null
-        _lines.value = emptyList()
-        _mergedLyricsList.value = emptyList()
+        if (!keepDisplayed) {
+            lyricsSearchStatus.value = LyricsSearchStatus.Loading
+            _displayedLyrics.value = null
+            _lines.value = emptyList()
+            _mergedLyricsList.value = emptyList()
+        }
 
         progressiveJob = viewModelScope.launch {
             val cached = withContext(Dispatchers.IO) {
@@ -230,6 +254,36 @@ class LyricsViewModel @Inject constructor(
             if (lyricsSearchStatus.value == LyricsSearchStatus.Loading ||
                 lyricsSearchStatus.value == LyricsSearchStatus.NotFoundTemporary) {
                 lyricsSearchStatus.value = LyricsSearchStatus.NotFoundFinal
+            }
+
+            // One delayed background retry if we settled below word-level: transient
+            // failures (rate-limit, slow network) get a second chance without any
+            // user action. Silent (current text stays), once per song per arming.
+            val settledPoor = lyricsSearchStatus.value == LyricsSearchStatus.FoundPlain ||
+                lyricsSearchStatus.value == LyricsSearchStatus.FoundLine ||
+                lyricsSearchStatus.value == LyricsSearchStatus.NotFoundFinal
+            if (settledPoor && delayedRetriedMediaId != mediaMetadata.id) {
+                delayedRetriedMediaId = mediaMetadata.id
+                delayedRetryJob?.cancel()
+                delayedRetryJob = viewModelScope.launch {
+                    kotlinx.coroutines.delay(DELAYED_RETRY_MS)
+                    val stillPoor = lyricsSearchStatus.value == LyricsSearchStatus.FoundPlain ||
+                        lyricsSearchStatus.value == LyricsSearchStatus.FoundLine ||
+                        lyricsSearchStatus.value == LyricsSearchStatus.NotFoundFinal ||
+                        lyricsSearchStatus.value == LyricsSearchStatus.NotFoundTemporary
+                    if (loadedMediaId == mediaMetadata.id &&
+                        !isProgressiveLoading(mediaMetadata.id) && stillPoor
+                    ) {
+                        loadProgressiveLyrics(
+                            mediaMetadata,
+                            enabledLanguages,
+                            romanizeCyrillicByLine,
+                            showIntervalIndicator,
+                            force = true,
+                            silent = true,
+                        )
+                    }
+                }
             }
         }
     }

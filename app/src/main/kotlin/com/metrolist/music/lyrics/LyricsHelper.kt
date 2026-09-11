@@ -170,11 +170,13 @@ constructor(
         val cleanedTitle = LyricsUtils.cleanTitleForSearch(mediaMetadata.title)
         val artists = mediaMetadata.artists.joinToString { it.name }
         val wordDuration = resolveWordLyricsDuration(mediaMetadata)
-        // STAT MODE: query ALL providers regardless of user settings or isEnabled()
+        // STAT MODE: query ALL providers regardless of user settings or isEnabled().
+        // BetterLyricsSillabaProvider is intentionally absent: it calls the exact same
+        // BetterLyrics endpoint with identical params, so querying both only doubles
+        // traffic (and rate-limit risk) for zero coverage gain.
         val enabledProviders = listOf(
             LrcLibLyricsProvider,
             BetterLyricsUnisonProvider,
-            BetterLyricsSillabaProvider,
             BetterLyricsProvider,
             // PaxsenixLyricsProvider,   // temporarily disabled for API benchmarking
             KuGouLyricsProvider,

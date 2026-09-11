@@ -346,7 +346,34 @@ fun ExperimentalLyrics(
 
     // Loading is owned by the shared LyricsViewModel (pre-warmed eagerly by the player
     // host); this composable only reacts to manual refetch requests so that re-entering
-    // the lyrics panel never tears down nor reloads the current song's lyrics.
+    // the lyrics panel never tears down a live load nor a word-level result.
+    // Additionally, if the shared state settled on a poor tier (plain/line/not-found)
+    // the panel retries once per mount, silently (no shimmer, current text stays),
+    // so a slow word-level provider still gets its chance to upgrade the display.
+    var autoRetryDone by remember(mediaMetadata?.id) { mutableStateOf(false) }
+    LaunchedEffect(mediaMetadata?.id, lyricsSearchStatus, refetchRequested) {
+        if (refetchRequested) return@LaunchedEffect
+        if (autoRetryDone) return@LaunchedEffect
+        val metadata = mediaMetadata ?: return@LaunchedEffect
+        // Never interrupt a fetch that is still running: its word-level result may
+        // simply not have arrived yet. Retry only once it settled on a poor tier.
+        if (lyricsViewModel.isProgressiveLoading(metadata.id)) return@LaunchedEffect
+        val poorTier = lyricsSearchStatus is LyricsSearchStatus.FoundPlain ||
+            lyricsSearchStatus is LyricsSearchStatus.FoundLine ||
+            lyricsSearchStatus is LyricsSearchStatus.NotFoundTemporary ||
+            lyricsSearchStatus is LyricsSearchStatus.NotFoundFinal
+        if (poorTier && lines.isNotEmpty()) {
+            autoRetryDone = true
+            lyricsViewModel.loadProgressiveLyrics(
+                metadata,
+                enabledLanguages,
+                romanizeCyrillicByLine,
+                showIntervalIndicator,
+                force = true,
+                silent = true,
+            )
+        }
+    }
     LaunchedEffect(refetchRequested) {
         if (refetchRequested) {
             lyricsMenuViewModel.clearRefetchRequest()

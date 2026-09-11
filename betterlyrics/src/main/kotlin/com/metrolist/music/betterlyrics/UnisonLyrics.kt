@@ -3,7 +3,7 @@ package com.metrolist.music.betterlyrics
 import com.metrolist.music.betterlyrics.models.UnisonApiResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.HttpTimeout
@@ -23,7 +23,7 @@ object UnisonLyrics {
     private const val TAG = "UnisonLyrics"
 
     private val client by lazy {
-        HttpClient(CIO) {
+            HttpClient(OkHttp) {
             install(ContentNegotiation) {
                 json(
                     Json {
