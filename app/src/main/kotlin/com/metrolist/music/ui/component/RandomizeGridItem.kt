@@ -40,7 +40,7 @@ fun RandomizeGridItem(
             modifier
                 .aspectRatio(1f)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.secondaryContainer)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -48,13 +48,13 @@ fun RandomizeGridItem(
             painter = painterResource(R.drawable.play),
             contentDescription = null,
             modifier = Modifier.size(48.dp),
-            tint = MaterialTheme.colorScheme.onSecondaryContainer
+            tint = MaterialTheme.colorScheme.onSurface
         )
 
         Box(modifier = Modifier.alpha(loadingAlpha)) {
             LoadingIndicator(
                 modifier = Modifier.size(48.dp),
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }

@@ -134,7 +134,11 @@ internal val PlaceholderMediaMetadata = MediaMetadata(
 
 private val NavRowHeight = 56.dp
 val FloatingPillHeight = MiniPlayerHeight + NavRowHeight  // 64 + 56 = 120dp
-val FloatingPillBottomSpacing = 12.dp
+val FloatingPillBottomSpacing = 0.dp
+// New Iride UI miniplayer: compact height achieved by cutting the box margins
+// (vertical padding + cover size), not the text content. Used only when
+// PillPlayerRow runs in isIrideStyle (curtain peek); the classic pill keeps MiniPlayerHeight.
+internal val IrideMiniPlayerHeight = 52.dp
 
 // Cover/ring geometry shared by PillPlayButton's clip+border and PillProgressDrawCache's traced
 // outline — kept as one constant so the progress ring always matches the cover's actual shape
@@ -265,7 +269,7 @@ fun FloatingPill(
             .padding(bottom = FloatingPillBottomSpacing)
             .padding(horizontal = 12.dp)
             .height(animatedPillHeight)
-            .clip(SquircleShape(radius = 24.dp, cornerSmoothing = 0.48f)),
+            .clip(RoundedCornerShape(18.dp)),
     ) {
         val hasPendingQueueRestore by playerConnection?.service?.hasPendingQueueRestoreFlow?.collectAsState()
             ?: remember { mutableStateOf(false) }
@@ -299,7 +303,7 @@ internal fun PillShimmerSkeleton(isTopLevelRoute: Boolean) {
             .fillMaxWidth()
             .height(pillHeight)
             .shimmer()
-            .clip(SquircleShape(radius = 24.dp, cornerSmoothing = 0.48f))
+            .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f)),
     )
 }
@@ -428,9 +432,9 @@ private fun PillContent(
         modifier = Modifier
             .fillMaxWidth()
             .height(animatedHeight)
-            .clip(SquircleShape(radius = 24.dp, cornerSmoothing = 0.48f))
+            .clip(RoundedCornerShape(18.dp))
             .background(backgroundColor)
-            .border(1.dp, outlineColor.copy(alpha = 0.3f), SquircleShape(radius = 24.dp, cornerSmoothing = 0.48f)),
+            .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(18.dp)),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Gradient overlay
@@ -529,6 +533,7 @@ fun PillPlayerRow(
     errorColor: Color,
     onExpandClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isIrideStyle: Boolean = false,
     // New Iride UI bridge: when set, the cover art below reports its on-screen rect here and hides
     // itself instead of drawing — IrideMiniPlayerBridgeOverlay morphs a single moving copy between
     // this collapsed position and the expanded player's cover, rather than cross-fading two
@@ -545,12 +550,10 @@ fun PillPlayerRow(
     // Non-null only when the caller is the New Iride UI's curtain peek row (see the doc comment
     // above) — used to switch to the sharp icon set that matches the expanded player's wheel,
     // without touching the classic FloatingPill's own icons.
-    val isIrideStyle = onArtPositioned != null
-
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(MiniPlayerHeight)
+            .height(if (isIrideStyle) IrideMiniPlayerHeight else MiniPlayerHeight)
             .clickable { onExpandClick() },
         contentAlignment = Alignment.Center,
     ) {
@@ -559,32 +562,36 @@ fun PillPlayerRow(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-                    horizontal = if (isIrideStyle) 16.dp else 6.dp,
-                    vertical = if (isIrideStyle) 6.dp else 8.dp,
+                    // Wider side breathing room on the flat row content; the curtain's
+                    // rounded smusso / corner-reveal gap below is untouched (see Player.kt
+                    // collapsedContent, which keeps its own insets).
+                    horizontal = if (isIrideStyle) 42.dp else 6.dp,
+                    vertical = if (isIrideStyle) 2.dp else 8.dp,
                 ),
         ) {
-            PillPlayButton(
-                progressState = progressState,
-                mediaMetadata = displayMetadata,
-                primaryColor = primaryColor,
-                outlineColor = outlineColor,
-                isIrideStyle = isIrideStyle,
-                onArtPositioned = onArtPositioned,
-                onProgressChanged = onProgressChanged,
-            )
-
-            Spacer(Modifier.width(12.dp))
+            if (!isIrideStyle) {
+                PillPlayButton(
+                    progressState = progressState,
+                    mediaMetadata = displayMetadata,
+                    primaryColor = primaryColor,
+                    outlineColor = outlineColor,
+                    isIrideStyle = false,
+                    onArtPositioned = onArtPositioned,
+                    onProgressChanged = onProgressChanged,
+                )
+                Spacer(Modifier.width(12.dp))
+            }
 
             PillSongInfo(
                 mediaMetadata = displayMetadata,
                 onSurfaceColor = onSurfaceColor,
                 errorColor = errorColor,
                 isIrideStyle = isIrideStyle,
-                onInfoPositioned = onInfoPositioned,
+                onInfoPositioned = if (isIrideStyle) null else onInfoPositioned,
                 modifier = Modifier.weight(1f),
             )
 
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(if (isIrideStyle) 2.dp else 8.dp))
 
             if (isCasting) {
                 Icon(
@@ -604,7 +611,7 @@ fun PillPlayerRow(
                 )
             }
 
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(2.dp))
 
             PillPlayPauseButton(
                 playbackState = playbackState,
@@ -727,8 +734,8 @@ private fun PillPlayButton(
     val strokeWidth = 2.5.dp
     val pillDrawCache = remember { PillProgressDrawCache() }
     SideEffect { onProgressChanged?.invoke(progressState.progress) }
-    val outerSize = if (isIrideStyle) 50.dp else 42.dp
-    val innerSize = if (isIrideStyle) 46.dp else 38.dp
+    val outerSize = if (isIrideStyle) 44.dp else 42.dp
+    val innerSize = if (isIrideStyle) 40.dp else 38.dp
 
     Box(
         contentAlignment = Alignment.Center,
@@ -789,6 +796,7 @@ private fun PillSongInfo(
 
     Column(
         modifier = modifier
+            .then(if (isIrideStyle) Modifier.height(48.dp) else Modifier)
             .then(
                 if (onInfoPositioned != null) {
                     Modifier.irideReportRect(onInfoPositioned).alpha(0f)
@@ -801,7 +809,8 @@ private fun PillSongInfo(
         Text(
             text = mediaMetadata.title,
             color = onSurfaceColor,
-            fontSize = if (isIrideStyle) 20.sp else 14.sp,
+            fontSize = if (isIrideStyle) 16.sp else 14.sp,
+            lineHeight = 18.sp,
             fontWeight = if (isIrideStyle) FontWeight.SemiBold else FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Clip,
@@ -811,7 +820,8 @@ private fun PillSongInfo(
             Text(
                 text = mediaMetadata.artists.joinToString { it.name },
                 color = onSurfaceColor.copy(alpha = 0.7f),
-                fontSize = if (isIrideStyle) 16.sp else 12.sp,
+                fontSize = if (isIrideStyle) 10.sp else 12.sp,
+                lineHeight = if (isIrideStyle) 12.sp else 16.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
                 modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
@@ -843,14 +853,14 @@ private fun PillFavoriteButton(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(36.dp)
+            .size(48.dp)
             .clickable { playerConnection.service.toggleLike() },
     ) {
         Icon(
             painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
             contentDescription = null,
             tint = onSurfaceColor,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(24.dp),
         )
     }
 }
@@ -893,7 +903,7 @@ private fun PillPlayPauseButton(
             ),
             contentDescription = null,
             tint = onSurfaceColor,
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(28.dp),
         )
     }
 }
@@ -912,10 +922,11 @@ private fun PillSkipNextButton(
         onClick = { playerConnection.seekToNext() },
     ) {
         Icon(
-            painter = painterResource(if (useSharpIcons) R.drawable.ic_iride_skip_next else R.drawable.skip_next),
+            // Apple-style double-chevron (>>) for skip-next everywhere in the player.
+            painter = painterResource(if (useSharpIcons) R.drawable.ic_iride_fast_forward_filled else R.drawable.fast_forward),
             contentDescription = null,
             tint = if (canSkipNext && !isListenTogetherGuest) onSurfaceColor else onSurfaceColor.copy(alpha = 0.3f),
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(28.dp),
         )
     }
 }

@@ -361,7 +361,7 @@ fun IrideMp3PlayerContent(
                             onClick = {},
                         )
                         .then(
-                            if (bridgeState != null) {
+                            if (bridgeState?.miniArt != null) {
                                 Modifier.irideReportRect { bridgeState.playerArt = it }.alpha(0f)
                             } else {
                                 Modifier
@@ -528,7 +528,7 @@ fun IrideMp3PlayerContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .then(
-                            if (bridgeState != null) {
+                            if (bridgeState?.miniInfo != null) {
                                 Modifier.irideReportRect { bridgeState.playerInfo = it }.alpha(0f)
                             } else {
                                 Modifier
@@ -1478,7 +1478,7 @@ private fun IrideClickWheel(
                 enabled = !isListenTogetherGuest,
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_iride_skip_next),
+                    painter = painterResource(R.drawable.fast_forward),
                     contentDescription = null,
                     tint = if (isListenTogetherGuest) IrideMp3DimIconColor else Color.White,
                     modifier = Modifier.size(skipIconSize),
@@ -1519,10 +1519,10 @@ private fun IrideClickWheel(
                 enabled = !isListenTogetherGuest,
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_iride_skip_previous),
+                    painter = painterResource(R.drawable.fast_forward),
                     contentDescription = null,
                     tint = if (isListenTogetherGuest) IrideMp3DimIconColor else Color.White,
-                    modifier = Modifier.size(skipIconSize),
+                    modifier = Modifier.size(skipIconSize).graphicsLayer { scaleX = -1f },
                 )
             }
         }
@@ -1641,8 +1641,8 @@ fun IrideMiniPlayerBridgeOverlay(
             .fillMaxSize()
             .onGloballyPositioned { rootOffset = it.positionInWindow() },
     ) {
-        val artStart = bridgeState.miniArt ?: bridgeState.playerArt
-        val artEnd = bridgeState.playerArt ?: artStart
+        val artStart = bridgeState.miniArt
+        val artEnd = bridgeState.playerArt
         if (artStart != null && artEnd != null && !bridgeState.panelActive) {
             // Fades out fast right at the start of the move instead of hanging around for the
             // whole morph — the mini pill's own ring (PillPlayButton) takes back over the instant
@@ -1687,8 +1687,8 @@ fun IrideMiniPlayerBridgeOverlay(
             }
         }
 
-        val infoStart = bridgeState.miniInfo ?: bridgeState.playerInfo
-        val infoEnd = bridgeState.playerInfo ?: infoStart
+        val infoStart = bridgeState.miniInfo
+        val infoEnd = bridgeState.playerInfo
         if (infoStart != null && infoEnd != null) {
             BridgedInfoBlock(
                 metadata = metadata,
@@ -1787,7 +1787,9 @@ private fun BridgedInfoBlock(
                     modifier = Modifier
                         .weight(1f)
                         .graphicsLayer {
-                            val scale = lerp(14f / 16f, 1f, progress)
+                            // Mini end sits at 15.5/16 (was 14/16): bigger collapsed title,
+                            // expanded end untouched at full 16.sp.
+                            val scale = lerp(15.5f / 16f, 1f, progress)
                             scaleX = scale
                             scaleY = scale
                             transformOrigin = TransformOrigin(0f, 0f)

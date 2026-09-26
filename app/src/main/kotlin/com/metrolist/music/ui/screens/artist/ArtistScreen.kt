@@ -94,7 +94,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import coil3.compose.AsyncImage
-import coil3.decode.DataSource
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.ArtistItem
@@ -152,7 +151,6 @@ import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.AlbumReleaseType
 import com.metrolist.music.viewmodels.ArtistViewModel
 import com.valentinilk.shimmer.shimmer
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.format.DateTimeFormatter
@@ -167,8 +165,6 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.util.lerp
-import coil3.compose.AsyncImagePainter
 import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.TypewriterText
 import com.metrolist.music.ui.component.rememberRubberBandPull
@@ -190,14 +186,13 @@ import com.metrolist.music.ui.utils.revealMask
 import sv.lib.squircleshape.SquircleShape
 
 /**
- * Overflow sheet for the top bar's three-dot button: game / radio / shuffle / share, the four
- * buttons the bar used to hold shoulder to shoulder. Each `on*` param is null when that action
+ * Overflow sheet for the top bar's three-dot button: radio / shuffle / share.
+ * Each `on*` param is null when that action
  * doesn't apply (offline branch, no endpoint, guest room) — same gating the inline buttons used to
  * do themselves, just read once here instead of duplicated per button.
  */
 @Composable
 private fun ColumnScope.ArtistOverflowMenu(
-    onGame: () -> Unit,
     onRadio: (() -> Unit)?,
     onShuffle: (() -> Unit)?,
     onShare: (() -> Unit)?,
@@ -213,13 +208,6 @@ private fun ColumnScope.ArtistOverflowMenu(
     }
 
     val actions = buildList {
-        add(
-            NewAction(
-                icon = icon(R.drawable.game_controller),
-                text = stringResource(R.string.guess_game),
-                onClick = { onDismiss(); onGame() },
-            ),
-        )
         onRadio?.let { action ->
             add(
                 NewAction(
@@ -362,10 +350,6 @@ fun ArtistScreen(
     val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
 
     val artistName = artistPage?.artist?.title ?: libraryArtist?.artist?.name
-    val nameTypingMs = remember(artistName) {
-        val length = artistName?.length ?: 0
-        if (length == 0) 0 else minOf(26 * length, 700)
-    }
     var nameBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
     var topBarBottomPx by remember { mutableStateOf(0f) }
     val headerTitleCovered by remember {
@@ -385,7 +369,6 @@ fun ArtistScreen(
     val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
     LaunchedEffect(artistName) {
         if (artistName != null && !headerRevealed) {
-            delay(nameTypingMs + 140L + IrideMotion.Medium)
             headerRevealed = true
         }
     }
@@ -433,14 +416,6 @@ fun ArtistScreen(
                             0
                         }
                         if (thumbnail != null) {
-                            var imageLoaded by remember(thumbnail) { mutableStateOf(false) }
-                            var skipImageEnterAnim by remember(thumbnail) { mutableStateOf(false) }
-                            val animatedImageProgress = rememberEnterProgress(
-                                play = imageLoaded,
-                                durationMillis = 520,
-                                easing = IrideMotion.EaseOutQuart,
-                            )
-                            val imageProgress = if (skipImageEnterAnim) 1f else animatedImageProgress
                             Box(
                                 modifier =
                                     Modifier
@@ -464,7 +439,7 @@ fun ArtistScreen(
                                                     } else {
                                                         0f
                                                     }
-                                                    val s = lerp(1.06f, 1f, imageProgress) + stretch
+                                                    val s = 1f + stretch
                                                     scaleX = s
                                                     scaleY = s
                                                     transformOrigin = TransformOrigin(0.5f, 1f)
@@ -476,17 +451,8 @@ fun ArtistScreen(
                                     model = thumbnail.resize(1200, 1200),
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
-                                    onState = { state ->
-                                        if (state is AsyncImagePainter.State.Success) {
-                                            if (state.result.dataSource == DataSource.MEMORY_CACHE) {
-                                                skipImageEnterAnim = true
-                                            }
-                                            imageLoaded = true
-                                        }
-                                    },
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .graphicsLayer { alpha = imageProgress }
                                         .grainOverlay(grainBrush),
                                 )
                                 val bgColor = MaterialTheme.colorScheme.background
@@ -556,7 +522,7 @@ fun ArtistScreen(
                                             style = irideNameStyle,
                                             color = MaterialTheme.colorScheme.onBackground,
                                             resetKey = viewModel.artistId,
-                                            animate = !headerRevealed,
+                                            animate = false,
                                             maxLines = 2,
                                             modifier = Modifier.weight(1f),
                                         )
@@ -564,7 +530,7 @@ fun ArtistScreen(
                                             val playProgress = headerEnter(
                                                 revealed = headerRevealed,
                                                 play = true,
-                                                delayMillis = nameTypingMs + 20,
+                                                delayMillis = 0,
                                                 durationMillis = IrideMotion.Short,
                                             )
                                             Box(
@@ -614,7 +580,7 @@ fun ArtistScreen(
                                     val toggleProgress = headerEnter(
                                         revealed = headerRevealed,
                                         play = artistName != null,
-                                        delayMillis = nameTypingMs + 40,
+                                        delayMillis = 0,
                                         durationMillis = IrideMotion.Short,
                                     )
                                     IrideSegmentedToggle(
@@ -644,7 +610,7 @@ fun ArtistScreen(
                                     val listenersProgress = headerEnter(
                                         revealed = headerRevealed,
                                         play = artistName != null,
-                                        delayMillis = nameTypingMs + 80,
+                                        delayMillis = 0,
                                         durationMillis = IrideMotion.Short,
                                     )
                                     Spacer(modifier = Modifier.height(10.dp))
@@ -661,7 +627,7 @@ fun ArtistScreen(
                                     val panelProgress = headerEnter(
                                         revealed = headerRevealed,
                                         play = artistName != null,
-                                        delayMillis = nameTypingMs + 140,
+                                        delayMillis = 0,
                                         durationMillis = IrideMotion.Medium,
                                     )
                                     Spacer(modifier = Modifier.height(14.dp))
@@ -1373,39 +1339,42 @@ fun ArtistScreen(
                         rememberEnterProgress(play = actionsReady, durationMillis = IrideMotion.Short),
                     ),
                 )
-                IrideOutlineIconButton(
-                    onClick = {
-                        menuState.show {
-                            ArtistOverflowMenu(
-                                onGame = { navController.navigate("artist/${viewModel.artistId}/game") },
-                                onRadio = if (!showLocal && !isGuest && radioEndpointAction != null) {
-                                    { playerConnection.playQueue(YouTubeQueue(radioEndpointAction)) }
-                                } else {
-                                    null
-                                },
-                                onShuffle = if (!showLocal && !isGuest && shuffleEndpointAction != null) {
-                                    { playerConnection.playQueue(YouTubeQueue(shuffleEndpointAction)) }
-                                } else {
-                                    null
-                                },
-                                onShare = shareLinkAction?.let { link -> { shareArtist(context, link) } },
-                                onDismiss = menuState::dismiss,
-                            )
-                        }
-                    },
-                    icon = R.drawable.more_vert,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.textPrimary,
-                    size = 40.dp,
-                    iconSize = 20.dp,
-                    modifier = Modifier.irideEnterScale(
-                        rememberEnterProgress(
-                            play = actionsReady,
-                            delayMillis = IrideMotion.StaggerStep,
-                            durationMillis = IrideMotion.Short,
+                val hasOverflowActions = shareLinkAction != null ||
+                    (!showLocal && !isGuest && (radioEndpointAction != null || shuffleEndpointAction != null))
+                if (hasOverflowActions) {
+                    IrideOutlineIconButton(
+                        onClick = {
+                            menuState.show {
+                                ArtistOverflowMenu(
+                                    onRadio = if (!showLocal && !isGuest && radioEndpointAction != null) {
+                                        { playerConnection.playQueue(YouTubeQueue(radioEndpointAction)) }
+                                    } else {
+                                        null
+                                    },
+                                    onShuffle = if (!showLocal && !isGuest && shuffleEndpointAction != null) {
+                                        { playerConnection.playQueue(YouTubeQueue(shuffleEndpointAction)) }
+                                    } else {
+                                        null
+                                    },
+                                    onShare = shareLinkAction?.let { link -> { shareArtist(context, link) } },
+                                    onDismiss = menuState::dismiss,
+                                )
+                            }
+                        },
+                        icon = R.drawable.more_vert,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.textPrimary,
+                        size = 40.dp,
+                        iconSize = 20.dp,
+                        modifier = Modifier.irideEnterScale(
+                            rememberEnterProgress(
+                                play = actionsReady,
+                                delayMillis = IrideMotion.StaggerStep,
+                                durationMillis = IrideMotion.Short,
+                            ),
                         ),
-                    ),
-                )
+                    )
+                }
             }
         }
 }

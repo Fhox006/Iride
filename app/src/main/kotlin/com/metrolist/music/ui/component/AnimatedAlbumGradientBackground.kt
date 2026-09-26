@@ -28,10 +28,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,12 +42,18 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.palette.graphics.Palette
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.ui.utils.rememberResumeFadeAlpha
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -71,8 +79,58 @@ private data class GradientBlob(
     val color: Color,
     val center: Offset,
     val radius: Float,
-    val alpha: Float
+    val alpha: Float,
+    val verticalScale: Float = 1f,
 )
+
+enum class AlbumGradientStyle {
+    FULLSCREEN,
+    AMBIENT,
+}
+
+private const val AmbientIntensity = 0.32f
+
+@Composable
+private fun rememberAlbumGradientTime(animated: Boolean): State<Double> {
+    val elapsed = remember { mutableStateOf(0.0) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle, animated) {
+        if (!animated) return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            var previousFrame: Long? = null
+            while (true) {
+                withFrameNanos { frame ->
+                    previousFrame?.let { previous ->
+                        elapsed.value += (frame - previous) / 1_000_000_000.0
+                    }
+                    previousFrame = frame
+                }
+            }
+        }
+    }
+    return elapsed
+}
+
+private fun DrawScope.drawGradientBlob(blob: GradientBlob, intensity: Float = 1f) {
+    // Scale around the halo itself so its feathering follows the same ellipse as its color.
+    scale(scaleX = 1f, scaleY = blob.verticalScale, pivot = blob.center) {
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    blob.color.copy(alpha = blob.alpha * intensity),
+                    blob.color.copy(alpha = blob.alpha * intensity * 0.45f),
+                    blob.color.copy(alpha = blob.alpha * intensity * 0.12f),
+                    Color.Transparent,
+                ),
+                center = blob.center,
+                radius = blob.radius,
+            ),
+            radius = blob.radius,
+            center = blob.center,
+            blendMode = BlendMode.SrcOver,
+        )
+    }
+}
 private data class BackgroundSpec(
     val baseBackground: Color,
     val palette: List<ExtractedColor>
@@ -229,7 +287,7 @@ private fun deduplicateGrays(colors: List<ExtractedColor>): List<ExtractedColor>
     return result
 }
 
-private fun extractColors(bitmap: Bitmap): List<ExtractedColor> {
+private fun extractColors(bitmap: Bitmap, colorCount: Int = 5): List<ExtractedColor> {
     val scaled  = downscaleBitmap(bitmap, 96)
     val palette = Palette.from(scaled).maximumColorCount(12).generate()
 
@@ -256,16 +314,20 @@ private fun extractColors(bitmap: Bitmap): List<ExtractedColor> {
         }
     }
 
-    while (distinct.size < 5) {
-        val base = distinct.getOrElse(distinct.size % max(1, distinct.size)) {
+    val seedColors = distinct.toList()
+    while (distinct.size < colorCount) {
+        val variantIndex = distinct.size - seedColors.size
+        val base = seedColors.getOrElse(variantIndex % max(1, seedColors.size)) {
             ExtractedColor(DarkGrayBlack, 1)
         }
-        val hsl     = colorToHsl(base.color)
+        val hsl = colorToHsl(base.color)
+        val shadeStep = variantIndex / max(1, seedColors.size) + 1
+        val lightnessDelta = if (hsl.l < 0.22f) 0.06f else -0.06f
         val variant = hslToColor(
             HslColor(
                 hsl.h,
                 hsl.s * 0.85f,
-                (hsl.l - 0.06f).coerceAtLeast(0.13f)
+                (hsl.l + lightnessDelta * shadeStep).coerceIn(0.13f, 0.62f)
             )
         )
         distinct += ExtractedColor(variant, 1)
@@ -281,7 +343,7 @@ private fun extractColors(bitmap: Bitmap): List<ExtractedColor> {
         colorToHsl(it.color).let { hsl -> hsl.s < 0.09f && hsl.l in 0.16f..0.55f }
     }
 
-    while (result.size < 5) {
+    while (result.size < colorCount) {
         if (!hasDarkGray) {
             result += ExtractedColor(Color(0xFF0B0B0B), 1)
             hasDarkGray = true
@@ -306,8 +368,11 @@ private fun extractColors(bitmap: Bitmap): List<ExtractedColor> {
         }
     }
 
-    return result.take(5)
+    return result.take(colorCount)
 }
+
+internal fun extractMiniPlayerAmbientColors(bitmap: Bitmap): List<Color> =
+    extractColors(bitmap, colorCount = 7).map { it.color }
 
 private fun buildBackgroundSpec(bitmap: Bitmap): BackgroundSpec {
     val extracted      = extractColors(bitmap)
@@ -409,9 +474,11 @@ fun HomeAnimatedAlbumGradient(
 @Composable
 fun AnimatedAlbumGradientBackground(
     thumbnail: Bitmap?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    style: AlbumGradientStyle = AlbumGradientStyle.FULLSCREEN,
+    animated: Boolean = true,
 ) {
-    var spec by remember(thumbnail) { mutableStateOf<BackgroundSpec?>(null) }
+    var spec by remember { mutableStateOf<BackgroundSpec?>(null) }
 
     LaunchedEffect(thumbnail) {
         if (thumbnail == null) {
@@ -434,28 +501,30 @@ fun AnimatedAlbumGradientBackground(
     val c1 by animateColorAsState(finalColors[0], tween(1400))
     val c2 by animateColorAsState(finalColors[1], tween(1400))
     val c3 by animateColorAsState(finalColors[2], tween(1400))
-    val c4 by animateColorAsState(finalColors[3], tween(1400))
-    val c5 by animateColorAsState(finalColors[4], tween(1400))
 
     val animatedBaseBackground by animateColorAsState(
         spec?.baseBackground ?: DarkGrayBlack,
         tween(1400)
     )
 
-    val infinite = rememberInfiniteTransition()
-    val t1 by infinite.animateFloat(0f, (Math.PI * 2).toFloat(), infiniteRepeatable(tween(24000, easing = LinearEasing)))
-    val t2 by infinite.animateFloat(0f, (Math.PI * 2).toFloat(), infiniteRepeatable(tween(31000, easing = LinearEasing)))
-    val t3 by infinite.animateFloat(0f, (Math.PI * 2).toFloat(), infiniteRepeatable(tween(39000, easing = LinearEasing)))
+    val reducedMotion = rememberReducedMotion()
+    val elapsed = rememberAlbumGradientTime(animated && !reducedMotion)
 
     val resumeFadeAlpha = rememberResumeFadeAlpha()
 
     Box(modifier = modifier.fillMaxSize().graphicsLayer { alpha = resumeFadeAlpha }) {
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val seconds = elapsed.value
+            val fullTurn = (Math.PI * 2).toFloat()
+            val t1 = ((seconds % 24.0) / 24.0).toFloat() * fullTurn
+            val t2 = ((seconds % 31.0) / 31.0).toFloat() * fullTurn
+            val t3 = ((seconds % 39.0) / 39.0).toFloat() * fullTurn
             val w      = size.width
             val h      = size.height
+            if (w <= 0f || h <= 0f) return@Canvas
             val maxDim = max(w, h)
 
-            drawRect(animatedBaseBackground)
+            if (style == AlbumGradientStyle.FULLSCREEN) drawRect(animatedBaseBackground)
 
             val dx1 = kotlin.math.sin(t1) * 0.07f
             val dy1 = kotlin.math.cos(t2) * 0.06f
@@ -466,7 +535,20 @@ fun AnimatedAlbumGradientBackground(
             val dx4 = kotlin.math.sin(t2 + 3f) * 0.07f
             val dy4 = kotlin.math.cos(t2 + 2f) * 0.06f
 
-            val blobs = listOf(
+            val blobs = if (style == AlbumGradientStyle.AMBIENT) {
+                // Keep the bright cores along the bottom and beyond the side edges. The upper
+                // transition is masked by the caller, so halo tails never darken the lower margins.
+                val radius = w * (0.52f + kotlin.math.sin(t3) * 0.03f)
+                val verticalScale = h * 0.88f / radius
+                listOf(
+                    GradientBlob(c1, Offset(w * (0.02f + dx1), h * (0.90f + dy1 * 2f)), radius, 0.80f, verticalScale),
+                    GradientBlob(c2, Offset(w * (0.16f + dx2), h * (0.86f + dy2 * 2.5f)), radius * 1.12f, 0.50f, verticalScale),
+                    GradientBlob(c3, Offset(w * (0.84f + dx3), h * (0.92f + dy3 * 2f)), radius * 1.12f, 0.50f, verticalScale),
+                    GradientBlob(c1, Offset(w * (0.98f + dx4), h * (0.90f + dy4 * 2f)), radius, 0.80f, verticalScale),
+                    GradientBlob(c2, Offset(w * (0.12f + dx1 * 0.5f), h * (1.08f + dy3)), radius * 1.25f, 0.20f, verticalScale),
+                    GradientBlob(c3, Offset(w * (0.88f + dx3 * 0.5f), h * (1.08f + dy1)), radius * 1.25f, 0.20f, verticalScale),
+                )
+            } else listOf(
                 GradientBlob(c1, Offset(w * (0.28f + dx1), h * (0.25f + dy1)), maxDim * 0.58f, 0.75f),
                 GradientBlob(c2, Offset(w * (0.75f + dx2), h * (0.32f + dy2)), maxDim * 0.52f, 0.65f),
                 GradientBlob(c3, Offset(w * (0.68f + dx3), h * (0.74f + dy3)), maxDim * 0.52f, 0.62f),
@@ -475,24 +557,10 @@ fun AnimatedAlbumGradientBackground(
             )
 
             blobs.forEach { blob ->
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            blob.color.copy(alpha = blob.alpha),
-                            blob.color.copy(alpha = blob.alpha * 0.45f),
-                            blob.color.copy(alpha = blob.alpha * 0.12f),
-                            Color.Transparent
-                        ),
-                        center = blob.center,
-                        radius = blob.radius
-                    ),
-                    radius    = blob.radius,
-                    center    = blob.center,
-                    blendMode = BlendMode.SrcOver
-                )
+                drawGradientBlob(blob, if (style == AlbumGradientStyle.AMBIENT) AmbientIntensity else 1f)
             }
 
-            drawRect(
+            if (style == AlbumGradientStyle.FULLSCREEN) drawRect(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
                         0.00f to Color.Black.copy(alpha = 0.10f),

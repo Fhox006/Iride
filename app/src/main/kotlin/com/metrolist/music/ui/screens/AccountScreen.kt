@@ -77,6 +77,11 @@ import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.db.entities.PodcastEntity
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.ChipsRow
+import com.metrolist.music.ui.component.IridePageTitle
+import com.metrolist.music.ui.component.FrostedPageTitleBar
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.FloatingPillBottomSpacing
 import com.metrolist.music.ui.component.FloatingPillHeight
@@ -85,7 +90,6 @@ import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.frostedTopBarBackground
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
@@ -121,7 +125,6 @@ fun AccountScreen(
     val selectedContentType by viewModel.selectedContentType.collectAsState()
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
     val playerConnection = LocalPlayerConnection.current
     val mediaMetadata by remember(playerConnection) {
@@ -136,6 +139,10 @@ fun AccountScreen(
     }
 
     val scrollState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    val frostBackdrop = rememberFrostBackdrop()
+    val titleRevealProgress = rememberDiscreteProgress(
+        scrollState.firstVisibleItemIndex > 0,
+    )
     val backStackEntry by navController.currentBackStackEntryAsState()
     val scrollToTop =
         backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
@@ -145,63 +152,37 @@ fun AccountScreen(
             backStackEntry?.savedStateHandle?.set("scrollToTop", false)
         }
     }
-    val accountHeaderScrolled by androidx.compose.runtime.remember(scrollState) {
-        androidx.compose.runtime.derivedStateOf {
-            val atTop = scrollState.firstVisibleItemIndex == 0 && scrollState.firstVisibleItemScrollOffset == 0 && !scrollState.canScrollBackward
-            !atTop
-        }
-    }
-    val topBarRevealProgress = com.metrolist.music.ui.utils.rememberDiscreteProgress(accountHeaderScrolled)
-    val frostBackdrop = com.metrolist.music.ui.component.rememberFrostBackdrop()
-
     Scaffold(
-        topBar = {
-            if (topNavBarController != null) {
-                TopNavigationBar(
-                    navigationItems = topNavBarController.navigationItems,
-                    currentRoute = topNavBarController.currentRoute,
-                    onItemClick = topNavBarController.onItemClick,
-                    containerColor = Color.Transparent,
-                    compact = topNavBarController.compact,
-                    accountImageUrl = topNavBarController.accountImageUrl,
-                    modifier = Modifier.frostedTopBarBackground(
-                        progress = topBarRevealProgress,
-                        barColor = MaterialTheme.colorScheme.background,
-                        strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                        backdrop = frostBackdrop,
-                    ),
-                )
-            }
-        },
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .recordFrostBackdrop(frostBackdrop),
-        ) {
-            if (!pureBlack && mainTopGradient) {
-                TopScreenGradientBackground(
-                    mediaMetadata = mediaMetadata,
-                    playerBackground = playerBackgroundStyle,
-                )
-            } else {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .recordFrostBackdrop(frostBackdrop, enabled = titleRevealProgress > 0f),
+            ) {
                 Box(
                     Modifier
                         .fillMaxSize()
                         .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
                 )
-            }
-            LazyVerticalGrid(
+                LazyVerticalGrid(
                 state = scrollState,
                 columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
                 contentPadding = PaddingValues(
-                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp,
+                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 16.dp,
                     bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
                 ),
                 modifier = Modifier.fillMaxSize(),
-            ) {
+                ) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                IridePageTitle(
+                    titleRes = R.string.account,
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
+                )
+            }
+
             item(span = { GridItemSpan(maxLineSpan) }) {
                 ChipsRow(
                     chips =
@@ -231,7 +212,13 @@ fun AccountScreen(
                 podcastPlaylists = podcastPlaylists,
                 podcastChannels = podcastChannels,
             )
-        }
+            }
+            }
+            FrostedPageTitleBar(
+                titleRes = R.string.account,
+                progress = titleRevealProgress,
+                backdrop = frostBackdrop,
+            )
         }
     }
 }

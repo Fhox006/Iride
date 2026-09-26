@@ -65,37 +65,31 @@ fun BottomSheet(
     collapsedContent: @Composable BoxScope.() -> Unit,
     isExpandable: Boolean = true,
     clickableHeight: Dp = state.collapsedBound,
-    // When false, this composable never moves/clips itself (used for the "curtain" player layer
-    // that stays fixed behind the app content — the app layer does the moving instead) and does
-    // not attach its own drag gesture (the caller attaches it to the visible peek content instead).
+    collapsedClickEnabled: Boolean = true,
+    // Kept for callers that position the sheet externally.
     selfPositions: Boolean = true,
-    // Reserves space at the top of the expanded [content] — used in New Iride UI mode where the
-    // player is a fixed full-screen layer but its content must start below AppPeekHeight (the
-    // app-layer sliver that always stays visible at the top, since the player itself never moves).
+    // Reserves space above the expanded content without changing its layout.
     contentTopPadding: Dp = 0.dp,
-    // When true, [background] is drawn fully opaque at every drag position instead of fading in
-    // over the first ~10-61% of progress. Used by the New Iride UI curtain player: its collapsed
-    // peek content already paints the same dark background, so the generic fade-in left a gap at
-    // low progress where nothing was drawn yet — briefly showing raw black instead of the curtain's
-    // own color and reading as a mismatched, separate background peeking through at the seam.
+    // Legacy background behavior for sheets that draw their background outside the moving content.
     backgroundAlwaysOpaque: Boolean = false,
+    // The player panel moves over the app, so its background must travel with its content.
+    backgroundFollowsContent: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val density = LocalDensity.current
-
-    Box(
-        modifier = modifier
-            .graphicsLayer {
-                // background fades during about 10%-61% progress (unless backgroundAlwaysOpaque)
-                alpha = if (backgroundAlwaysOpaque) {
-                    1f
-                } else {
-                    (1.4f * (state.progress.coerceAtLeast(0.1f) - 0.1f).pow(0.5f)).coerceIn(0f, 1f)
+    if (!backgroundFollowsContent) {
+        Box(
+            modifier = modifier
+                .graphicsLayer {
+                    alpha = if (backgroundAlwaysOpaque) {
+                        1f
+                    } else {
+                        (1.4f * (state.progress.coerceAtLeast(0.1f) - 0.1f).pow(0.5f)).coerceIn(0f, 1f)
+                    }
                 }
-            }
-            .fillMaxSize(),
-        content = background
-    )
+                .fillMaxSize(),
+            content = background,
+        )
+    }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -168,6 +162,14 @@ fun BottomSheet(
                 }
             }
     ) {
+        if (backgroundFollowsContent) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = (state.progress / 0.25f).coerceIn(0f, 1f) },
+                content = background,
+            )
+        }
         if (!state.isCollapsed && !state.isDismissed) {
             BackHandler(onBack = state::collapseSoft)
         }
@@ -193,29 +195,21 @@ fun BottomSheet(
                     .fillMaxWidth()
                     .height(state.collapsedBound)
                     .then(
-                        // When the sheet doesn't self-translate (curtain mode), this Box would
-                        // otherwise sit at the top of the full-screen container (Box's default
-                        // TopStart alignment) instead of at the bottom where the visible "gap" the
-                        // app layer leaves actually is.
+                        // Externally positioned sheets need their collapsed row at the bottom.
                         if (!selfPositions) Modifier.align(Alignment.BottomStart) else Modifier
                     ),
             ) {
                 Box(
                     modifier = Modifier
                         .graphicsLayer {
-                            // Matches the expanded content's own fade-in start (progress 0.15,
-                            // just below) instead of the old faster 0.25 cutoff — that gap used to
-                            // leave both this collapsed row AND the expanded content (including
-                            // whatever queue/lyrics panel was open) partially visible and stacked
-                            // on top of each other for a stretch of the drag, so shrinking the
-                            // player with a panel open showed its dark background ghosting through
-                            // behind the miniplayer row.
-                            alpha = 1f - (state.progress / 0.15f).coerceIn(0f, 1f)
+                            // The moving panel fades its background in as the mini row fades out.
+                            alpha = 1f - (state.progress / (if (backgroundFollowsContent) 0.25f else 0.15f))
+                                .coerceIn(0f, 1f)
                         }
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            enabled = isSettled.value,
+                            enabled = collapsedClickEnabled && isSettled.value,
                             onClick = { if (isExpandable) state.expandSoft() },
                         )
                         .fillMaxWidth()

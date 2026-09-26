@@ -125,3 +125,33 @@ fun Modifier.frostedTopBarBackground(
         alpha = p,
     )
 }
+
+fun Modifier.alpha23FrostedTopBarBackground(
+    progress: Float,
+    barColor: Color,
+    strokeColor: Color,
+    backdrop: FrostBackdrop? = null,
+): Modifier = drawBehind {
+    val p = progress.coerceIn(0f, 1f)
+    if (p <= 0f) return@drawBehind
+    val contentSize = backdrop?.content?.size
+    if (backdrop != null && contentSize != null && contentSize.width > 0 && contentSize.height > 0) {
+        drawRect(barColor, alpha = p)
+        val blurred = backdrop.blurred
+        blurred.alpha = p
+        blurred.record(size = contentSize) { drawLayer(backdrop.content) }
+        clipRect { drawLayer(blurred) }
+    } else {
+        drawRect(barColor, alpha = p)
+    }
+    drawRect(barColor, alpha = p * if (backdrop != null) FROST_SCRIM_ALPHA else FROST_SCRIM_ALPHA_NO_BLUR)
+    val sw = 1.dp.toPx()
+    val y = size.height - sw / 2f
+    drawLine(
+        color = strokeColor,
+        start = Offset(0f, y),
+        end = Offset(size.width, y),
+        strokeWidth = sw,
+        alpha = p,
+    )
+}

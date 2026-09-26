@@ -9,6 +9,11 @@ import androidx.compose.runtime.Immutable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.metrolist.innertube.YouTube
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.time.LocalDateTime
 
 @Immutable
@@ -52,5 +57,12 @@ data class AlbumEntity(
         inLibrary = if (inLibrary != null) null else LocalDateTime.now()
     )
 
-    fun toggleLike() = localToggleLike()
+    fun toggleLike(): AlbumEntity = localToggleLike().also {
+        playlistId?.let { id ->
+            CoroutineScope(Dispatchers.IO).launch {
+                YouTube.likePlaylist(id, bookmarkedAt == null)
+                    .onFailure { error -> Timber.e(error, "Failed to sync album like: %s", id) }
+            }
+        }
+    }
 }

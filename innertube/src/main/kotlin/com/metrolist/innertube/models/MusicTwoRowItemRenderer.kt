@@ -32,7 +32,8 @@ data class MusicTwoRowItemRenderer(
                 ?.browseEndpointContextSupportedConfigs
                 ?.browseEndpointContextMusicConfig
                 ?.pageType ==
-                MUSIC_PAGE_TYPE_PLAYLIST
+                MUSIC_PAGE_TYPE_PLAYLIST ||
+                navigationEndpoint.browseEndpoint?.browseId?.startsWith("VLPL") == true
     val isAlbum: Boolean
         get() =
             navigationEndpoint.browseEndpoint

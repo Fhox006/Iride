@@ -295,8 +295,10 @@ private fun NewMiniPlayer(
                         withContext(Dispatchers.Main) {
                             gradientColors = emptyList()
                         }
+                        }
                     }
-                }
+            } else {
+                gradientColors = emptyList()
             }
         } else {
             gradientColors = emptyList()
@@ -307,7 +309,7 @@ private fun NewMiniPlayer(
     val backgroundColor = when (miniPlayerBackground) {
         MiniPlayerBackgroundStyle.DEFAULT    -> MaterialTheme.colorScheme.surfaceContainer
         MiniPlayerBackgroundStyle.TRANSPARENT -> Color.Black.copy(alpha = 0.25f)
-        MiniPlayerBackgroundStyle.GRADIENT   -> MaterialTheme.colorScheme.surfaceContainer
+        MiniPlayerBackgroundStyle.GRADIENT   -> Color.Black
         MiniPlayerBackgroundStyle.PURE_BLACK -> Color.Black
     }
     val forceLightColors = !useDarkTheme && (miniPlayerBackground == MiniPlayerBackgroundStyle.PURE_BLACK ||
@@ -408,6 +410,7 @@ private fun NewMiniPlayer(
                     Box(
                         Modifier
                             .fillMaxSize()
+                            .background(Color.Black)
                             .background(
                                 Brush.horizontalGradient(colors)
                             )
@@ -619,6 +622,7 @@ private fun PlayPauseIconButton(
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
 
     IconButton(
+        modifier = Modifier.clip(CircleShape),
         onClick = {
             if (isListenTogetherGuest) return@IconButton
             if (isCasting) {
@@ -641,7 +645,7 @@ private fun PlayPauseIconButton(
             ),
             contentDescription = null,
             tint = onSurfaceColor,
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(28.dp),
         )
     }
 }
@@ -656,14 +660,15 @@ private fun SkipNextIconButton(
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
 
     IconButton(
+        modifier = Modifier.clip(CircleShape),
         enabled = canSkipNext && !isListenTogetherGuest,
         onClick = { playerConnection.seekToNext() },
     ) {
         Icon(
-            painter = painterResource(R.drawable.skip_next),
+            painter = painterResource(R.drawable.fast_forward),
             contentDescription = null,
             tint = if (canSkipNext && !isListenTogetherGuest) onSurfaceColor else onSurfaceColor.copy(alpha = 0.3f),
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(28.dp),
         )
     }
 }
@@ -684,7 +689,7 @@ private fun FavoriteButton(
 
     IconButton(
         onClick = { playerConnection.service.toggleLike() },
-        modifier = Modifier.size(40.dp),
+        modifier = Modifier.size(40.dp).clip(CircleShape),
     ) {
         Icon(
             painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),

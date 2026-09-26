@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
@@ -135,7 +135,7 @@ fun RomanizationSettings(
 
     val scrollState = rememberScrollState()
     val frostBackdrop = rememberFrostBackdrop()
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val playerBackgroundStyle by rememberEnumPreference(
         PlayerBackgroundStyleKey,
         defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,

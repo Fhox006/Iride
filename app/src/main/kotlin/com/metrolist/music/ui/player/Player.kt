@@ -257,8 +257,7 @@ fun BottomSheetPlayer(
     val thumbnailCarouselMode by rememberPreference(ThumbnailCarouselModeKey, defaultValue = false)
     val (hideStatusBarOnFullscreen) = rememberPreference(HideStatusBarOnFullscreenKey, false)
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
-    // The new MP3 (Iride) player is the only player: it is always a fixed curtain layer
-    // behind the app in portrait/top-level (the landscape rail's MiniPlayer peek stays untouched).
+    // The Iride player panel is drawn over the app; its collapsed content is the Mini Player.
     val curtainMode = !showPeekContent
 
     var showInlineLyrics by rememberSaveable {
@@ -876,24 +875,19 @@ fun BottomSheetPlayer(
         state = state,
         modifier = modifier,
         clickableHeight = if (curtainMode) state.collapsedBound else MiniPlayerHeight,
-        selfPositions = !curtainMode,
+        collapsedClickEnabled = !curtainMode,
+        selfPositions = true,
         // New Iride UI: the curtain is always mounted (see MainActivity's curtainActive), but with
         // no track loaded there's nothing to expand into — IrideMp3PlayerContent below only renders
         // for a non-null mediaMetadata, so disable both the tap and the drag-to-expand gesture until
         // a real track lands, instead of opening onto a blank body.
         isExpandable = if (curtainMode) mediaMetadata != null else true,
-        // Content starts CurtainCornerRevealHeight above AppPeekHeight (not exactly at it) so the
-        // expanded player's own background reaches up into the strip the app layer's rounded
-        // corner cuts into when fully expanded — otherwise that strip has nothing curtain-colored
-        // behind it. IrideMp3PlayerContent pads its inner content back down by the same amount so
-        // the visible layout doesn't shift.
+        // Preserve the expanded player's existing content position inside the moving panel.
         contentTopPadding = if (curtainMode) (AppPeekHeight - CurtainCornerRevealHeight).coerceAtLeast(0.dp) else 0.dp,
-        backgroundAlwaysOpaque = curtainMode,
+        backgroundAlwaysOpaque = false,
+        backgroundFollowsContent = curtainMode,
         background = background@{
-            // New Iride UI: only the app and the curtain player should ever be visible here — the
-            // classic gradient/blur backgrounds belong to the old (non-curtain) player and must
-            // stay off, otherwise they show through the app's corner-reveal strip as a mismatched
-            // "ghost" layer during expand/collapse.
+            // The compact panel uses its own artwork gradient; the expanded player keeps its dark surface.
             if (curtainMode) {
                 Box(
                     modifier = Modifier
@@ -1030,8 +1024,7 @@ fun BottomSheetPlayer(
                 val hasPendingQueueRestore by playerConnection.service.hasPendingQueueRestoreFlow.collectAsState()
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(bottomSheetBackgroundColor),
+                        .fillMaxSize(),
                 ) {
                     // Info row pinned to the bottom, with the reserved CurtainCornerRevealHeight
                     // gap left empty above the handle — that's the strip the app layer's rounded
@@ -1057,6 +1050,7 @@ fun BottomSheetPlayer(
                         // to the top of the screen as the player opens, so the curtain's drag
                         // affordance never vanishes mid-gesture.
                         PillPlayerRow(
+                            isIrideStyle = true,
                             progressState = pillProgressState,
                             displayMetadata = displayMetadata,
                             favoriteSongId = currentMetadata?.id,
@@ -1079,9 +1073,6 @@ fun BottomSheetPlayer(
                             // isExpandable — guard here too, or a placeholder tap would still open
                             // onto IrideMp3PlayerContent's blank (mediaMetadata == null) body.
                             onExpandClick = { if (currentMetadata != null) state.expandSoft() },
-                            onArtPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniArt = r } },
-                            onInfoPositioned = bridgeState?.let { bs -> { r: Rect -> bs.miniInfo = r } },
-                            onProgressChanged = bridgeState?.let { bs -> { p: Float -> bs.progress = p } },
                         )
                         }
                     }
@@ -1641,9 +1632,9 @@ fun BottomSheetPlayer(
                                 modifier = Modifier.size(96.dp),
                             ) {
                                 Icon(
-                                    painter = painterResource(R.drawable.skip_previous),
+                                    painter = painterResource(R.drawable.fast_forward),
                                     contentDescription = null,
-                                    modifier = Modifier.size(72.dp),
+                                    modifier = Modifier.size(72.dp).graphicsLayer { scaleX = -1f },
                                 )
                             }
                         }
@@ -1711,7 +1702,7 @@ fun BottomSheetPlayer(
                                 modifier = Modifier.size(96.dp),
                             ) {
                                 Icon(
-                                    painter = painterResource(R.drawable.skip_next),
+                                    painter = painterResource(R.drawable.fast_forward),
                                     contentDescription = null,
                                     modifier = Modifier.size(72.dp),
                                 )

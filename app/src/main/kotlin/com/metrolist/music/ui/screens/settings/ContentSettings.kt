@@ -60,6 +60,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.BuildConfig
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdvancedModeKey
 import com.metrolist.music.constants.AppLanguageKey
@@ -730,7 +731,7 @@ fun ContentSettings(
 
     val contentScrollState = rememberScrollState()
     val frostBackdrop = rememberFrostBackdrop()
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
     val playerConnection = LocalPlayerConnection.current
     val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
@@ -759,6 +760,7 @@ fun ContentSettings(
                     .verticalScroll(contentScrollState)
                     .padding(horizontal = 16.dp),
             ) {
+                Spacer(modifier = Modifier.height(56.dp))
                 Material3SettingsGroup(
                     title = stringResource(R.string.general),
                     items = listOf(
@@ -1103,6 +1105,21 @@ fun ContentSettings(
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            if (BuildConfig.DEBUG) {
+                Spacer(modifier = Modifier.height(56.dp))
+                Material3SettingsGroup(
+                    title = stringResource(R.string.design_test),
+                    items = listOf(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.palette),
+                            title = { Text(stringResource(R.string.design_test)) },
+                            onClick = { navController.navigate("settings/content/design-test") },
+                        ),
+                    ),
+                )
+                Spacer(modifier = Modifier.height(80.dp))
             }
         }
 

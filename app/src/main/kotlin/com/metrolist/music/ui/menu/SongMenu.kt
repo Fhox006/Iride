@@ -909,8 +909,6 @@ fun SongMenu(
                     context = context,
                     onDismiss = onDismiss,
                 )
-                Spacer(modifier = Modifier.height(20.dp))
-                CoverNoteRow(song = song, database = database)
             }
         }
 
@@ -1028,7 +1026,7 @@ private fun FavoriteIconButton(
                 }
             } else {
                 optimisticFavorite = !optimisticFavorite
-                val s = song.song.toggleLike()
+                val s = song.song.toggleLike(syncToYouTube = false)
                 database.query { update(s) }
                 syncUtils.likeSong(s)
             }

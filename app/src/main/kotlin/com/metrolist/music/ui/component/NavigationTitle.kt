@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -49,6 +50,8 @@ import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.textSecondary
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.utils.pressScale
 
 @Composable
@@ -62,16 +65,39 @@ fun NavigationTitle(
     onRefreshClick: (() -> Unit)? = null,
     isRefreshing: Boolean = false,
     useIrideStyle: Boolean = false,
+    sentenceCaseTitle: Boolean = false,
+    showNavigationArrow: Boolean = true,
     collapsed: Boolean = false,
     onCollapseToggle: (() -> Unit)? = null,
     topPadding: Dp? = null,
     bottomPadding: Dp? = null,
+    showDivider: Boolean = true,
+    prominentTitle: Boolean = false,
 ) {
     val headerInteractionSource = remember { MutableInteractionSource() }
+    val hairlineColor = MaterialTheme.colorScheme.strokeHairline
+    Column(
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        if (useIrideStyle && showDivider) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .height(1.dp),
+            ) {
+                drawLine(
+                    color = hairlineColor,
+                    start = androidx.compose.ui.geometry.Offset.Zero,
+                    end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2f),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            }
+        }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .pressScale(headerInteractionSource)
             .clickable(
@@ -106,13 +132,25 @@ fun NavigationTitle(
                     } else {
                         MaterialTheme.typography.labelLarge
                     },
+                    fontWeight = if (prominentTitle) FontWeight.Normal else null,
+                    color = if (prominentTitle) MaterialTheme.colorScheme.textSecondary else androidx.compose.ui.graphics.Color.Unspecified,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
 
             Text(
-                text = title,
-                style = if (useIrideStyle) {
+                text = when {
+                    prominentTitle -> title
+                    sentenceCaseTitle -> title.lowercase().replaceFirstChar { it.titlecase() }
+                    useIrideStyle -> title.uppercase()
+                    else -> title
+                },
+                style = if (prominentTitle) {
+                    MaterialTheme.typography.titleMedium.copy(
+                        fontFamily = SpaceMonoFontFamily,
+                        fontSize = 18.sp,
+                    )
+                } else if (useIrideStyle) {
                     MaterialTheme.typography.labelLarge.copy(
                         fontFamily = SpaceMonoFontFamily,
                         fontSize = 13.sp,
@@ -122,7 +160,7 @@ fun NavigationTitle(
                     MaterialTheme.typography.titleLarge
                 },
                 fontWeight = FontWeight.Bold,
-                color = if (useIrideStyle) MaterialTheme.colorScheme.textSecondary else MaterialTheme.colorScheme.primary,
+                color = if (useIrideStyle) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.primary,
                 overflow = TextOverflow.Ellipsis,
                 maxLines = 1,
             )
@@ -217,13 +255,14 @@ fun NavigationTitle(
                         onClick = onCollapseToggle,
                     ),
             )
-        } else if (onClick != null) {
+        } else if (showNavigationArrow && onClick != null) {
             Icon(
                 painter = painterResource(R.drawable.arrow_forward),
                 contentDescription = null,
                 tint = if (useIrideStyle) MaterialTheme.colorScheme.textSecondary else MaterialTheme.colorScheme.primary
             )
         }
+    }
     }
 }
 

@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="quick_picks_section_title">Picked for you</string>
+    <string name="home_mood_youtube_music">Mood &amp; Playlists for You (from YouTube Music)</string>
+    <string name="home_youtube_music_playlists">Your playlists from YouTube Music</string>
+    <string name="home_similar_to">Simile a</string>
+    <string name="home_radios_for_you">Radio per te</string>
+    <string name="home_radio_badge">Avvia radio</string>
+    <string name="home_artist_radio_title">Radio di %1$s</string>
+    <string name="home_artist_radio_subtitle">Un mix continuo ispirato a questo artista</string>
+    <string name="home_radio_unavailable">Radio non disponibile al momento</string>
+    <string name="home_no_mood_playlists">No playlists in this mood</string>
+    <string name="for_you_artists_title">Inspired by your favorite artists</string>
+    <string name="advanced_animation">Advanced animation</string>
+    <string name="advanced_animation_desc">Globe lens, motion blur and film viewfinder on Home. Turn off if the app stutters</string>
+    <string name="advanced_moving">Advanced moving</string>
+    <string name="advanced_moving_desc">Drag a shelf and the whole page follows like a map. The shelf stays put, the rest snaps back</string>
     <string name="eq_global_profile">Profilo EQ</string>
     <string name="eq_global_subtitle">Per tutti i dispositivi senza profilo</string>
     <string name="eq_use_for_all_devices">Applica a tutti i dispositivi</string>
@@ -21,4 +36,32 @@
     <string name="eq_header_offline">Offline</string>
     <string name="eq_bass_off">Off</string>
     <string name="eq_bass_punch">Punch</string>
+    <string name="design_test">Design test</string>
+    <string name="design_test_new_grain">Nuova grana</string>
+    <string name="design_test_reset">Ripristina</string>
+    <string name="design_test_edge_section">Bordo</string>
+    <string name="design_test_edge_blur">Raggio blur bordo</string>
+    <string name="design_test_edge_passes">Passaggi blur bordo</string>
+    <string name="design_test_edge_particles">Densità grana bordo</string>
+    <string name="design_test_mist_section">Alone spray</string>
+    <string name="design_test_mist_blur">Raggio blur alone</string>
+    <string name="design_test_mist_passes">Passaggi blur alone</string>
+    <string name="design_test_mist_strength">Intensità alone</string>
+    <string name="design_test_offset_x">Spostamento orizzontale</string>
+    <string name="design_test_offset_y">Spostamento verticale</string>
+    <string name="design_test_particles_section">Particelle</string>
+    <string name="design_test_particle_density">Numero particelle</string>
+    <string name="design_test_particle_size">Dimensione particelle</string>
+    <string name="design_test_show_circles">Mostra le ellissi</string>
+    <string name="design_test_drag_help">Trascina il centro per spostare. Trascina il bordo per ruotare e ingrandire.</string>
+    <string name="design_test_snap_letters">Aggancia al bordo delle lettere</string>
+    <string name="design_test_left_halo">Ellisse sinistra (ciano)</string>
+    <string name="design_test_right_halo">Ellisse destra (magenta)</string>
+    <string name="design_test_halo_x">Posizione X</string>
+    <string name="design_test_halo_y">Posizione Y</string>
+    <string name="design_test_halo_radius_x">Raggio orizzontale</string>
+    <string name="design_test_halo_radius_y">Raggio verticale</string>
+    <string name="design_test_halo_angle">Rotazione</string>
+    <string name="design_test_halo_feather">Sfumatura cerchio</string>
+    <string name="design_test_halo_strength">Intensità cerchio</string>
 </resources>

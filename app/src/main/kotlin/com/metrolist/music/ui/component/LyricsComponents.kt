@@ -16,6 +16,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,6 +37,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,8 +46,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -77,6 +81,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
 import androidx.palette.graphics.Palette
 import coil3.ImageLoader
@@ -88,6 +94,11 @@ import com.metrolist.music.lyrics.LyricsTranslationHelper
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.screens.settings.LyricsPosition
 import com.metrolist.music.utils.ComposeToImage
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.fillSelected
+import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.textPrimary
+import com.metrolist.music.ui.theme.textSecondary
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -702,21 +713,34 @@ internal fun GeminiSetupDialog(
     var selectedLanguage by remember { mutableStateOf(currentLanguage) }
     var isValidating by remember { mutableStateOf(false) }
     var validationError by remember { mutableStateOf<String?>(null) }
-    var isApiKeyValid by remember { mutableStateOf(false) }
+    var isApiKeyValid by remember { mutableStateOf(currentApiKey.isNotBlank()) }
     val deviceLanguage = java.util.Locale.getDefault().language
     val languages = com.metrolist.music.constants.LanguageCodeToName.entries.toList()
     val sortedLanguages = remember {
         val deviceEntry = languages.find { it.key == deviceLanguage }
         if (deviceEntry != null) listOf(deviceEntry) + (languages - deviceEntry) else languages
     }
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val geminiKeyRegex = Regex("^AIzaSy[A-Za-z0-9_-]{33}$")
+    val primaryColor = MaterialTheme.colorScheme.textPrimary
 
-    BasicAlertDialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.fillMaxWidth(),
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            modifier = Modifier
+                .padding(horizontal = 24.dp)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = Color.Black,
+            tonalElevation = 0.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.strokeHairline),
         ) {
+            val titleStyle = MaterialTheme.typography.headlineSmall.copy(
+                fontFamily = SpaceMonoFontFamily,
+                fontWeight = FontWeight.Bold,
+            )
+            val bodyStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceMonoFontFamily)
+            val smallStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = SpaceMonoFontFamily)
             Column(
                 modifier = Modifier
                     .padding(24.dp)
@@ -733,7 +757,7 @@ internal fun GeminiSetupDialog(
                         modifier = Modifier.size(24.dp),
                         tint = primaryColor,
                     )
-                    Text("AI Translation", style = MaterialTheme.typography.headlineSmall)
+                    Text("AI Translation", style = titleStyle, color = MaterialTheme.colorScheme.textPrimary)
                 }
 
                 val linkUrl = "https://ai.google.dev/gemini-api"
@@ -744,23 +768,30 @@ internal fun GeminiSetupDialog(
                     addLink(
                         LinkAnnotation.Url(
                             url = linkUrl,
-                            styles = TextLinkStyles(SpanStyle(color = primaryColor, textDecoration = TextDecoration.Underline)),
+                styles = TextLinkStyles(SpanStyle(color = primaryColor, textDecoration = TextDecoration.Underline)),
                         ),
                         start = start,
                         end = length,
                     )
                     append(", configure a project, then start creating an API key and paste it below.")
                 }
-                Text(annotatedString, style = MaterialTheme.typography.bodyMedium)
+                Text(annotatedString, style = bodyStyle, color = MaterialTheme.colorScheme.textPrimary)
 
                 OutlinedTextField(
                     value = keyInput,
                     onValueChange = { value ->
                         keyInput = value
-                        isApiKeyValid = geminiKeyRegex.matches(value.trim())
+                        isApiKeyValid = value.isNotBlank()
                     },
-                    label = { Text("Gemini API Key") },
-                    placeholder = { Text("AIzaSyA0q.....") },
+                    label = { Text("Gemini API Key", style = smallStyle) },
+                    placeholder = { Text("AIzaSyA0q.....", style = smallStyle) },
+                    textStyle = bodyStyle,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.textPrimary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.textSecondary,
+                        focusedLabelColor = MaterialTheme.colorScheme.textPrimary,
+                        cursorColor = MaterialTheme.colorScheme.textPrimary,
+                    ),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     leadingIcon = { Icon(painterResource(R.drawable.key), contentDescription = null) },
@@ -768,14 +799,14 @@ internal fun GeminiSetupDialog(
 
                 Text(
                     "If something doesn't work, you can explore more in Settings",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = smallStyle,
+                    color = MaterialTheme.colorScheme.textSecondary,
                 )
 
                 Text(
                     "Translation language",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = smallStyle,
+                    color = MaterialTheme.colorScheme.textSecondary,
                 )
 
                 Column(
@@ -793,6 +824,11 @@ internal fun GeminiSetupDialog(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    if (selectedLanguage == code) MaterialTheme.colorScheme.fillSelected
+                                    else Color.Transparent,
+                                )
                                 .clickable(enabled = isApiKeyValid) {
                                     selectedLanguage = code
                                     onLanguageSelected(code)
@@ -802,9 +838,9 @@ internal fun GeminiSetupDialog(
                         ) {
                             Text(
                                 text = name,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = bodyStyle,
                                 modifier = Modifier.weight(1f),
-                                color = if (selectedLanguage == code) primaryColor
+                                color = if (selectedLanguage == code) MaterialTheme.colorScheme.textPrimary
                                         else MaterialTheme.colorScheme.onSurface,
                             )
                             if (selectedLanguage == code) {
@@ -812,7 +848,7 @@ internal fun GeminiSetupDialog(
                                     painterResource(R.drawable.check),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
-                                    tint = primaryColor,
+                                    tint = MaterialTheme.colorScheme.textPrimary,
                                 )
                             }
                         }
@@ -824,8 +860,13 @@ internal fun GeminiSetupDialog(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(android.R.string.cancel))
+                    TextButton(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.textSecondary,
+                        ),
+                    ) {
+                        Text(stringResource(android.R.string.cancel), style = smallStyle)
                     }
                     Spacer(Modifier.width(8.dp))
                     Button(
@@ -834,8 +875,14 @@ internal fun GeminiSetupDialog(
                             onSetupCompleted()
                         },
                         enabled = isApiKeyValid && selectedLanguage.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.textPrimary,
+                            contentColor = Color.Black,
+                            disabledContainerColor = MaterialTheme.colorScheme.fillSelected,
+                            disabledContentColor = MaterialTheme.colorScheme.textSecondary,
+                        ),
                     ) {
-                        Text("Next")
+                        Text("Next", style = smallStyle.copy(fontWeight = FontWeight.Bold))
                     }
                 }
             }

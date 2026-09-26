@@ -15,8 +15,8 @@ fun String.resize(
         val (W, H) = group.drop(1).map { it.toInt() }
         var w = width
         var h = height
-        if (w != null && h == null) h = (w / W) * H
-        if (w == null && h != null) w = (h / H) * W
+        if (w != null && h == null) h = (w.toLong() * H / W.coerceAtLeast(1)).toInt().coerceAtLeast(1)
+        if (w == null && h != null) w = (h.toLong() * W / H.coerceAtLeast(1)).toInt().coerceAtLeast(1)
         return "${split("=w")[0]}=w$w-h$h-p-l90-rj"
     }
     if (this.contains("lh3.googleusercontent.com") && !this.contains("=w")) {
@@ -33,13 +33,6 @@ fun String.resize(
             "$this=s$size"
         }
     }
-    if (this.contains("i.ytimg.com")) {
-        val maxSize = maxOf(width ?: 0, height ?: 0)
-        if (maxSize >= 480) {
-            return replace("hqdefault.jpg", "maxresdefault.jpg")
-                .replace("mqdefault.jpg", "maxresdefault.jpg")
-                .replace("sddefault.jpg", "maxresdefault.jpg")
-        }
-    }
+    // Videos do not always have maxresdefault artwork; preserve the URL supplied by YouTube.
     return this
 }

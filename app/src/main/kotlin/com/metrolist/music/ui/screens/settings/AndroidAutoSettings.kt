@@ -165,7 +165,7 @@ fun AndroidAutoSettings(
 
     val settingsScrollState = rememberScrollState()
     val frostBackdrop = rememberFrostBackdrop()
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
     val playerConnection = LocalPlayerConnection.current
     val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()

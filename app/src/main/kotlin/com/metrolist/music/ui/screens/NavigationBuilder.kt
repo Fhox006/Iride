@@ -54,6 +54,7 @@ import com.metrolist.music.ui.screens.settings.AiSettings
 import com.metrolist.music.ui.screens.settings.AndroidAutoSettings
 import com.metrolist.music.ui.screens.settings.BackupAndRestore
 import com.metrolist.music.ui.screens.settings.ContentSettings
+import com.metrolist.music.ui.screens.settings.DesignTestScreen
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.theme.ForceDarkTheme
 import com.metrolist.music.ui.screens.settings.DiscordLoginScreen
@@ -310,6 +311,10 @@ fun NavGraphBuilder.NavigationBuilder(
 
     composable("settings/content") {
         ContentSettings(navController)
+    }
+
+    composable("settings/content/design-test") {
+        DesignTestScreen(navController)
     }
 
     composable("settings/content/romanization") {

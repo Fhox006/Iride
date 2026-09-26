@@ -6,6 +6,7 @@
 package com.metrolist.music.ui.utils
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.provider.Settings
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.metrolist.music.R
 import com.metrolist.music.constants.IrideAnimationsKey
 import com.metrolist.music.utils.rememberPreference
 import kotlin.random.Random

@@ -80,6 +80,7 @@ import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LocalFilter
 import com.metrolist.music.viewmodels.LocalSearchViewModel
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.collect
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -90,6 +91,7 @@ fun LocalSearchScreen(
     isFromCache: Boolean = false,
     pureBlack: Boolean,
     header: (@Composable () -> Unit)? = null,
+    onScrollChanged: (Boolean) -> Unit = {},
     viewModel: LocalSearchViewModel = hiltViewModel(),
 ) {
     val queueSearchedSongsStr = stringResource(R.string.queue_searched_songs)
@@ -105,9 +107,14 @@ fun LocalSearchScreen(
     val searchFilter by viewModel.filter.collectAsState()
     val result by viewModel.result.collectAsState()
 
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
 
     val lazyListState = rememberLazyListState()
+
+    LaunchedEffect(lazyListState) {
+        snapshotFlow { lazyListState.firstVisibleItemIndex > 0 }
+            .collect(onScrollChanged)
+    }
 
     LaunchedEffect(Unit) {
         snapshotFlow { lazyListState.firstVisibleItemScrollOffset }
@@ -164,7 +171,6 @@ fun LocalSearchScreen(
                         }
                     },
         ) {
-            header()
             LazyColumn(
                 state = lazyListState,
                 modifier = Modifier
@@ -175,6 +181,7 @@ fun LocalSearchScreen(
                         .only(WindowInsetsSides.Bottom)
                         .asPaddingValues(),
             ) {
+                item(key = "search_header") { header() }
                 item(key = "local_search_chips") { chipsRow() }
                 localSearchResultItems(
                     result = result,

@@ -845,7 +845,7 @@ class SyncUtils @Inject constructor(
                     } else {
                         localSongs.filterNot { it.id in remoteIds }.forEach { song ->
                             try {
-                                database.update(song.song.toggleLibrary())
+                                database.update(song.song.toggleLibrary(syncToYouTube = false))
                                 delay(DB_OPERATION_DELAY_MS)
                             } catch (e: Exception) {
                                 Timber.e(e, "Failed to update song: ${song.id}")
@@ -858,9 +858,9 @@ class SyncUtils @Inject constructor(
                             val dbSong = database.song(song.id).firstOrNull()
                             database.transaction {
                                 if (dbSong == null) {
-                                    insert(song.toMediaMetadata()) { it.toggleLibrary() }
+                                    insert(song.toMediaMetadata()) { it.toggleLibrary(syncToYouTube = false) }
                                 } else if (dbSong.song.inLibrary == null) {
-                                    update(dbSong.song.toggleLibrary())
+                                    update(dbSong.song.toggleLibrary(syncToYouTube = false))
                                 }
                             }
                             delay(DB_OPERATION_DELAY_MS)

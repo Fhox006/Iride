@@ -228,7 +228,7 @@ fun QueueMenu(
                                     }
                                 }
                             } else {
-                                val s = songEntity.toggleLike()
+                                val s = songEntity.toggleLike(syncToYouTube = false)
                                 database.query {
                                     update(s)
                                 }

@@ -112,6 +112,7 @@ import com.metrolist.music.viewmodels.HomeViewModel
 import com.metrolist.music.viewmodels.OnlineSearchSuggestionViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 
@@ -126,6 +127,7 @@ fun OnlineSearchScreen(
     pureBlack: Boolean,
     isFocused: Boolean = false,
     header: (@Composable () -> Unit)? = null,
+    onScrollChanged: (Boolean) -> Unit = {},
     viewModel: OnlineSearchSuggestionViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -141,12 +143,16 @@ fun OnlineSearchScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val viewState by viewModel.viewState.collectAsState()
     val explorePage by homeViewModel.explorePage.collectAsState()
-    val discoveryWeeklyPlaylist by homeViewModel.discoveryWeeklyPlaylist.collectAsState()
 
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
 
     val lazyListState = rememberLazyListState()
+
+    LaunchedEffect(lazyListState) {
+        snapshotFlow { lazyListState.firstVisibleItemIndex > 0 }
+            .collect(onScrollChanged)
+    }
 
     LaunchedEffect(Unit) {
         snapshotFlow { lazyListState.firstVisibleItemScrollOffset }
@@ -160,10 +166,6 @@ fun OnlineSearchScreen(
         snapshotFlow { query }.debounce(300L).collectLatest {
             viewModel.query.value = it
         }
-    }
-
-    LaunchedEffect(Unit) {
-        homeViewModel.syncDiscoveryWeeklyIfNeeded()
     }
 
     LaunchedEffect(explorePage?.moodAndGenres?.isNotEmpty()) {
@@ -184,7 +186,6 @@ fun OnlineSearchScreen(
                     },
                 ),
     ) {
-    header?.invoke()
     LazyColumn(
         state = lazyListState,
         contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Bottom).asPaddingValues(),
@@ -192,33 +193,35 @@ fun OnlineSearchScreen(
             .weight(1f)
             .rubberBandOverscroll(Orientation.Vertical, lazyListState),
     ) {
+        if (header != null) {
+            item(key = "search_header") { header() }
+        }
         if (query.isEmpty() && !isFocused) {
-            val discoveryWeeklyEntry: Any =
-                discoveryWeeklyPlaylist?.takeIf { it.songCount > 0 } ?: DiscoveryWeeklyPending
             val moods = explorePage?.moodAndGenres.orEmpty()
-            item(key = "moods_header") {
-                Text(
-                    text = stringResource(R.string.mood_and_genres),
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontSize = 13.sp,
-                        letterSpacing = (-0.1).sp,
-                    ),
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.textSecondary,
-                    modifier = Modifier
-                        .padding(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = 20.dp,
-                            bottom = 6.dp,
-                        )
-                        .animateItem(),
-                )
+            if (moods.isNotEmpty()) {
+                item(key = "moods_header") {
+                    Text(
+                        text = stringResource(R.string.mood_and_genres),
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = SpaceMonoFontFamily,
+                            fontSize = 13.sp,
+                            letterSpacing = (-0.1).sp,
+                        ),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.textSecondary,
+                        modifier = Modifier
+                            .padding(
+                                start = 20.dp,
+                                end = 20.dp,
+                                top = 20.dp,
+                                bottom = 6.dp,
+                            )
+                            .animateItem(),
+                    )
+                }
             }
 
-            val gridEntries: List<Any> = listOf(discoveryWeeklyEntry) + moods
-            val gridRows = gridEntries.chunked(2)
+            val gridRows = moods.chunked(2)
             itemsIndexed(
                 items = gridRows,
                 key = { index, _ -> "mood_row_$index" },
@@ -234,35 +237,14 @@ fun OnlineSearchScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     row.forEach { entry ->
-                        when (entry) {
-                            is com.metrolist.music.db.entities.Playlist -> {
-                                DiscoveryWeeklyCard(
-                                    thumbnails = entry.thumbnails,
-                                    onClick = { navController.navigate("local_playlist/${entry.id}") },
-                                    useIrideStyle = true,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                            is com.metrolist.innertube.pages.MoodAndGenres.Item -> {
-                                SearchMoodCard(
-                                    title = entry.title,
-                                    onClick = {
-                                        navController.navigate("youtube_browse/${entry.endpoint.browseId}?params=${entry.endpoint.params}")
-                                    },
-                                    useIrideStyle = true,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                            is DiscoveryWeeklyPending -> {
-                                DiscoveryWeeklyCard(
-                                    thumbnails = emptyList(),
-                                    onClick = { homeViewModel.syncDiscoveryWeeklyIfNeeded(force = true) },
-                                    useIrideStyle = true,
-                                    pendingLabel = stringResource(R.string.discovery_weekly_creating),
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                        }
+                        SearchMoodCard(
+                            title = entry.title,
+                            onClick = {
+                                navController.navigate("youtube_browse/${entry.endpoint.browseId}?params=${entry.endpoint.params}")
+                            },
+                            useIrideStyle = true,
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                     if (row.size < 2) {
                         Spacer(Modifier.weight(1f))

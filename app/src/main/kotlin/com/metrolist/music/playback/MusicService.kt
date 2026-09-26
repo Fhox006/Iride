@@ -30,6 +30,7 @@ import android.os.Binder
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.AtomicFile
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
@@ -224,6 +225,7 @@ import okhttp3.OkHttpClient
 import timber.log.Timber
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
+import java.io.Serializable
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
@@ -284,6 +286,9 @@ class MusicService :
     private var skipFadeEnabled = false
     private var skipFadeDuration = 3500f
     private var persistentQueueEnabled = true
+    private val queuePersistenceLock = Any()
+    private var queueSaveGeneration = 0L
+    private var queueHasMediaItems = false
     private var shufflePlaylistFirst = false
     private var rememberShuffleAndRepeat = true
     private var preloadJob: Job? = null
@@ -558,6 +563,8 @@ class MusicService :
 
     override fun onCreate() {
         super.onCreate()
+        // Load before creating the player: its callbacks and restore must use the saved preference.
+        persistentQueueEnabled = dataStore.get(PersistentQueueKey, true)
         isRunning = true
 
         playerInitialized.value = false
@@ -992,7 +999,13 @@ class MusicService :
         dataStore.data
             .map { prefs -> prefs[PersistentQueueKey] ?: true }
             .distinctUntilChanged()
-            .collect(scope) { persistentQueueEnabled = it }
+            .collect(scope) { enabled ->
+                synchronized(queuePersistenceLock) {
+                    persistentQueueEnabled = enabled
+                    if (!enabled) clearPersistedQueueFiles()
+                }
+                if (enabled && playerInitialized.value) saveQueueToDisk()
+            }
 
         dataStore.data
             .map { prefs -> prefs[ShufflePlaylistFirstKey] ?: false }
@@ -1014,7 +1027,7 @@ class MusicService :
             if (queueFile.exists()) {
                 pendingQueueRestore.value = true
                 runCatching {
-                    queueFile.inputStream().use { fis ->
+                    AtomicFile(queueFile).openRead().use { fis ->
                         ObjectInputStream(fis).use { oos ->
                             oos.readObject() as PersistQueue
                         }
@@ -1051,30 +1064,24 @@ class MusicService :
             val playerStateFile = filesDir.resolve(PERSISTENT_PLAYER_STATE_FILE)
             if (playerStateFile.exists()) {
                 runCatching {
-                    playerStateFile.inputStream().use { fis ->
+                    AtomicFile(playerStateFile).openRead().use { fis ->
                         ObjectInputStream(fis).use { oos ->
                             oos.readObject() as PersistPlayerState
                         }
                     }
                 }.onSuccess { playerState ->
-                    scope.launch {
-                        delay(1000)
-                        playerVolume.value = playerState.volume
-
-                        if (playerState.currentMediaItemIndex < player.mediaItemCount) {
-                            player.seekTo(playerState.currentMediaItemIndex, playerState.currentPosition)
-                        }
-                    }
+                    // Position belongs to PersistQueue; a delayed seek can rewind a new user queue.
+                    playerVolume.value = playerState.volume
                 }.onFailure { error ->
-                    Timber.tag(TAG).w(error, "Failed to read player state, clearing data")
-                    clearPersistedQueueFiles()
+                    Timber.tag(TAG).w(error, "Failed to read player state, clearing player state")
+                    AtomicFile(playerStateFile).delete()
                 }
             }
         }
 
         scope.launch {
             while (isActive) {
-                delay(30.seconds)
+                delay(if (player.isPlaying) 10.seconds else 15.seconds)
                 if (persistentQueueEnabled) {
                     saveQueueToDisk()
                 }
@@ -1238,9 +1245,12 @@ class MusicService :
     }
 
     private fun clearPersistedQueueFiles() {
-        runCatching { filesDir.resolve(PERSISTENT_QUEUE_FILE).delete() }
-        runCatching { filesDir.resolve(PERSISTENT_AUTOMIX_FILE).delete() }
-        runCatching { filesDir.resolve(PERSISTENT_PLAYER_STATE_FILE).delete() }
+        synchronized(queuePersistenceLock) {
+            queueSaveGeneration++
+            AtomicFile(filesDir.resolve(PERSISTENT_QUEUE_FILE)).delete()
+            AtomicFile(filesDir.resolve(PERSISTENT_PLAYER_STATE_FILE)).delete()
+            filesDir.resolve(PERSISTENT_AUTOMIX_FILE).delete()
+        }
     }
 
     fun hasAudioFocusForPlayback(): Boolean = hasAudioFocus
@@ -1983,7 +1993,7 @@ class MusicService :
                     return@let
                 }
 
-                val song = songEntity.toggleLike()
+                val song = songEntity.toggleLike(syncToYouTube = false)
                 database.query {
                     update(song)
 
@@ -2404,6 +2414,23 @@ class MusicService :
         }
         if (events.containsAny(EVENT_TIMELINE_CHANGED, EVENT_POSITION_DISCONTINUITY)) {
             currentMediaMetadata.value = player.currentMetadata
+        }
+        val queueWasCleared = events.contains(EVENT_TIMELINE_CHANGED) &&
+            queueHasMediaItems && player.mediaItemCount == 0
+        if (events.contains(EVENT_TIMELINE_CHANGED)) {
+            queueHasMediaItems = player.mediaItemCount > 0
+        }
+        if (persistentQueueEnabled && !isSilenceSkipping && events.containsAny(
+                EVENT_TIMELINE_CHANGED,
+                EVENT_POSITION_DISCONTINUITY,
+                Player.EVENT_PLAY_WHEN_READY_CHANGED,
+            )
+        ) {
+            if (queueWasCleared) {
+                clearPersistedQueueFiles()
+            } else {
+                saveQueueToDisk()
+            }
         }
 
         if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED)) {
@@ -3321,8 +3348,8 @@ class MusicService :
     }
 
     private fun saveQueueToDisk(sync: Boolean = false) {
+        if (!persistentQueueEnabled) return
         if (player.mediaItemCount == 0) {
-            Timber.tag(TAG).d("Skipping queue save - no media items")
             return
         }
 
@@ -3345,9 +3372,15 @@ class MusicService :
                 playbackState = player.playbackState,
             )
 
-        val writeToDisk = writeToDisk@{
+        val generation = synchronized(queuePersistenceLock) { ++queueSaveGeneration }
+        val writeToDisk = {
             try {
-                writeQueueFiles(persistQueue, persistPlayerState)
+                synchronized(queuePersistenceLock) {
+                    // A late IO job must never overwrite a newer snapshot or recreate a cleared queue.
+                    if (persistentQueueEnabled && generation == queueSaveGeneration) {
+                        writeQueueFiles(persistQueue, persistPlayerState)
+                    }
+                }
             } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "Error during queue save operation")
                 reportException(e)
@@ -3366,11 +3399,7 @@ class MusicService :
         persistPlayerState: PersistPlayerState,
     ) {
         runCatching {
-            filesDir.resolve(PERSISTENT_QUEUE_FILE).outputStream().use { fos ->
-                ObjectOutputStream(fos).use { oos ->
-                    oos.writeObject(persistQueue)
-                }
-            }
+            writeQueueFile(PERSISTENT_QUEUE_FILE, persistQueue)
             Timber.tag(TAG).d("Queue saved successfully")
         }.onFailure {
             Timber.tag(TAG).e(it, "Failed to save queue")
@@ -3380,15 +3409,25 @@ class MusicService :
         runCatching { filesDir.resolve(PERSISTENT_AUTOMIX_FILE).delete() }
 
         runCatching {
-            filesDir.resolve(PERSISTENT_PLAYER_STATE_FILE).outputStream().use { fos ->
-                ObjectOutputStream(fos).use { oos ->
-                    oos.writeObject(persistPlayerState)
-                }
-            }
+            writeQueueFile(PERSISTENT_PLAYER_STATE_FILE, persistPlayerState)
             Timber.tag(TAG).d("Player state saved successfully")
         }.onFailure {
             Timber.tag(TAG).e(it, "Failed to save player state")
             reportException(it)
+        }
+    }
+
+    private fun writeQueueFile(name: String, value: Serializable) {
+        val file = AtomicFile(filesDir.resolve(name))
+        val output = file.startWrite()
+        try {
+            val objectOutput = ObjectOutputStream(output)
+            objectOutput.writeObject(value)
+            objectOutput.flush()
+            file.finishWrite(output)
+        } catch (error: Exception) {
+            file.failWrite(output)
+            throw error
         }
     }
 

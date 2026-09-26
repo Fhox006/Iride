@@ -52,6 +52,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.collect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -104,7 +105,6 @@ import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.utils.recordSearchHistoryOpen
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.EmptyPlaceholder
-import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.YouTubeGridItem
@@ -177,7 +177,7 @@ fun OnlineSearchResult(
     }
 
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
 
     BackHandler(enabled = isSearchFocused) {
         isSearchFocused = false
@@ -287,6 +287,7 @@ fun OnlineSearchResultsBody(
     onDismissSuggestions: () -> Unit,
     modifier: Modifier = Modifier,
     header: (@Composable () -> Unit)? = null,
+    onScrollChanged: (Boolean) -> Unit = {},
 ) {
     val menuState = LocalMenuState.current
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -296,6 +297,10 @@ fun OnlineSearchResultsBody(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
+    LaunchedEffect(lazyListState) {
+        snapshotFlow { lazyListState.firstVisibleItemIndex > 0 }
+            .collect(onScrollChanged)
+    }
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
 
     var smartSelected by rememberSaveable { mutableStateOf(true) }
@@ -677,8 +682,8 @@ fun OnlineSearchResultsBody(
 
         Box(modifier = modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
-                header()
                 if (isSearchFocused) {
+                    header()
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -700,18 +705,13 @@ fun OnlineSearchResultsBody(
                             .weight(1f)
                             .fillMaxWidth(),
                     ) {
+                        item(key = "search_header") { header() }
                         item(key = "chips_row") { chipsRow() }
                         resultsListContent()
                     }
                 }
             }
 
-            HideOnScrollFAB(
-                lazyListState = lazyListState,
-                icon = R.drawable.mic,
-                onClick = { navController.navigate("recognition") },
-                useIrideStyle = useIrideStyle,
-            )
         }
     } else {
         Column(modifier = modifier.fillMaxWidth()) {
@@ -735,12 +735,6 @@ fun OnlineSearchResultsBody(
                     )
                 }
 
-                HideOnScrollFAB(
-                    lazyListState = lazyListState,
-                    icon = R.drawable.mic,
-                    onClick = { navController.navigate("recognition") },
-                    useIrideStyle = useIrideStyle,
-                )
             }
         }
     }

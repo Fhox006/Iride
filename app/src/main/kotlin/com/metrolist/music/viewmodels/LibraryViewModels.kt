@@ -744,9 +744,9 @@ constructor(
         .flatMapLatest { (hideExplicit, hideVideoSongs, _) ->
             combine(
                 database.songs(SongSortType.CREATE_DATE, true),
-                database.songsInBookmarkedPlaylists()
-            ) { librarySongs, playlistSongs ->
-                (librarySongs + playlistSongs)
+                database.likedSongs(SongSortType.CREATE_DATE, true)
+            ) { librarySongs, likedSongs ->
+                (librarySongs + likedSongs)
                     .distinctBy { it.id }
                     .filterExplicit(hideExplicit)
                     .filterVideoSongs(hideVideoSongs)

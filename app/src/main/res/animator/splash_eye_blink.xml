@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="1400"
+    android:interpolator="@android:interpolator/fast_out_slow_in"
+    android:propertyName="pathData"
+    android:repeatCount="infinite"
+    android:repeatMode="reverse"
+    android:startOffset="2500"
+    android:valueFrom="M60,100 Q100,65 140,100 Q100,135 60,100 Z M100,100 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0"
+    android:valueTo="M60,100 Q100,94 140,100 Q100,106 60,100 Z M100,100 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0"
+    android:valueType="pathType" />

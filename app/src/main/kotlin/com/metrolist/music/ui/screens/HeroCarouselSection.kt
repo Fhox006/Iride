@@ -20,19 +20,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,267 +43,154 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.metrolist.music.R
 import com.metrolist.music.models.HeroCarouselItem
 import com.metrolist.music.models.stableKey
-import com.metrolist.music.ui.component.IrideCollapsibleSection
 import com.metrolist.music.ui.component.NavigationTitle
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.theme.textPrimary
+import kotlinx.coroutines.delay
 import sv.lib.squircleshape.SquircleShape
-import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 
 private val HeroScrimColor = Color(0xFF1C1C1E)
 
 @Composable
 fun HeroCarouselSection(
-    items: List<HeroCarouselItem>,
-    onAlbumClick: (String) -> Unit,
-    onArtistClick: (String) -> Unit,
-    onArtistRadioClick: (String, String) -> Unit,
+    items: List<HeroCarouselItem.ArtistRadio>,
+    onRadioClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    collapsed: Boolean = false,
-    onCollapseToggle: (() -> Unit)? = null,
+    pagerState: PagerState? = null,
+    onCoverError: (String) -> Unit = {},
 ) {
     if (items.isEmpty()) return
-    val featuredTitle = stringResource(R.string.featured_for_you)
-    val pagerState = rememberPagerState(pageCount = { items.size })
+    val internalPagerState = rememberPagerState(pageCount = { items.size })
+    val activePagerState = pagerState ?: internalPagerState
 
     Column(modifier = modifier.fillMaxWidth()) {
-        NavigationTitle(
-            title = featuredTitle,
-            useIrideStyle = true,
-            collapsed = collapsed,
-            onCollapseToggle = onCollapseToggle,
-        )
-
-        IrideCollapsibleSection(collapsed = collapsed) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            HorizontalPager(
-                state = pagerState,
-                key = { page -> items[page].stableKey() },
-                contentPadding = PaddingValues(horizontal = 24.dp),
-                pageSpacing = 12.dp,
-                modifier = Modifier.fillMaxWidth(),
-            ) { page ->
-                HeroCard(
-                    item = items[page],
-                    onAlbumClick = onAlbumClick,
-                    onArtistClick = onArtistClick,
-                    onArtistRadioClick = onArtistRadioClick,
-                )
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                items.indices.forEach { index ->
-                    val selected = pagerState.currentPage == index
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 3.dp)
-                            .size(if (selected) 8.dp else 6.dp)
-                            .clip(CircleShape)
-                            .background(
-                                when {
-                                    selected -> MaterialTheme.colorScheme.textPrimary
-                                    else -> MaterialTheme.colorScheme.strokeCard
-                                }
-                            ),
-                    )
-                }
+        RadioSectionTitle()
+        HorizontalPager(
+            state = activePagerState,
+            key = { page -> items.getOrNull(page)?.stableKey() ?: "hero_page_$page" },
+            contentPadding = PaddingValues(horizontal = 20.dp),
+            pageSpacing = 12.dp,
+            modifier = Modifier.fillMaxWidth(),
+        ) { page ->
+            items.getOrNull(page)?.let { item ->
+                HeroCard(item, onRadioClick, onCoverError)
             }
         }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            items.indices.forEach { index ->
+                val selected = activePagerState.currentPage == index
+                Box(
+                    modifier = Modifier.padding(horizontal = 3.dp)
+                        .size(if (selected) 8.dp else 6.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (selected) MaterialTheme.colorScheme.textPrimary
+                            else MaterialTheme.colorScheme.strokeCard
+                        ),
+                )
+            }
         }
     }
 }
 
 @Composable
-fun HeroCarouselSkeleton(modifier: Modifier = Modifier) {
-    val cardHeight = 148.dp
-    val cardShape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.48f)
+private fun RadioSectionTitle() {
+    NavigationTitle(
+        title = stringResource(R.string.home_radios_for_you),
+        useIrideStyle = true,
+        sentenceCaseTitle = true,
+        showDivider = false,
+        topPadding = 16.dp,
+        bottomPadding = 12.dp,
+        showNavigationArrow = false,
+    )
+}
 
+@Composable
+fun HeroCarouselSkeleton(modifier: Modifier = Modifier) {
+    val cardShape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.48f)
     Column(modifier = modifier.fillMaxWidth()) {
-        NavigationTitle(title = stringResource(R.string.featured_for_you), useIrideStyle = true)
+        RadioSectionTitle()
         ShimmerHost(modifier = Modifier.fillMaxWidth()) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .height(cardHeight)
+                modifier = Modifier.fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .height(148.dp)
                     .clip(cardShape)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             )
         }
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(Modifier.height(18.dp))
     }
 }
 
 @Composable
 private fun HeroCard(
-    item: HeroCarouselItem,
-    onAlbumClick: (String) -> Unit,
-    onArtistClick: (String) -> Unit,
-    onArtistRadioClick: (String, String) -> Unit,
+    item: HeroCarouselItem.ArtistRadio,
+    onRadioClick: (String) -> Unit,
+    onCoverError: (String) -> Unit,
 ) {
-    val badgeLabel: String
-    val badgeIcon: Int
-    val title: String
-    val subtitle: String
-    val coverUrl: String?
-    val onClick: () -> Unit
-
-    when (item) {
-        is HeroCarouselItem.NewRelease -> {
-            badgeLabel = stringResource(R.string.adv_badge_new)
-            badgeIcon = R.drawable.trending_up
-            title = item.title
-            subtitle = item.artistName
-            coverUrl = item.coverUrl
-            onClick = { onAlbumClick(item.albumId) }
-        }
-        is HeroCarouselItem.InRotation -> {
-            badgeLabel = stringResource(R.string.adv_badge_rotation)
-            badgeIcon = R.drawable.album
-            title = item.title
-            subtitle = item.artistName
-            coverUrl = item.coverUrl
-            onClick = { onAlbumClick(item.albumId) }
-        }
-        is HeroCarouselItem.RecommendedAlbum -> {
-            badgeLabel = stringResource(R.string.adv_badge_foryou)
-            badgeIcon = R.drawable.star
-            title = item.title
-            subtitle = item.artistName
-            coverUrl = item.coverUrl
-            onClick = { onAlbumClick(item.albumId) }
-        }
-        is HeroCarouselItem.TrendingArtist -> {
-            badgeLabel = stringResource(R.string.adv_badge_trending)
-            badgeIcon = R.drawable.trending_up
-            title = item.artistName
-            subtitle = stringResource(R.string.trending_artist_subtitle)
-            coverUrl = item.coverUrl
-            onClick = { onArtistClick(item.artistId) }
-        }
-        is HeroCarouselItem.ArtistRadio -> {
-            badgeLabel = stringResource(R.string.adv_badge_radio)
-            badgeIcon = R.drawable.radio
-            title = stringResource(R.string.artist_radio_title, item.artistName)
-            subtitle = stringResource(R.string.artist_radio_subtitle)
-            coverUrl = item.coverUrl
-            onClick = { onArtistRadioClick(item.artistId, item.artistName) }
-        }
-        is HeroCarouselItem.GenreNewRelease -> {
-            badgeLabel = item.genreLabel
-            badgeIcon = R.drawable.palette
-            title = item.title
-            subtitle = item.artistName
-            coverUrl = item.coverUrl
-            onClick = { onAlbumClick(item.albumId) }
-        }
-    }
-
-    val cardHeight = 148.dp
+    val title = stringResource(R.string.home_artist_radio_title, item.artistName)
+    val subtitle = stringResource(R.string.home_artist_radio_subtitle)
     val cardShape = SquircleShape(radius = 12.dp, cornerSmoothing = 0.48f)
 
-    val cardModifier = Modifier
-        .fillMaxWidth()
-        .height(cardHeight)
-        .clip(cardShape)
-        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), cardShape)
-        .clickable(onClick = onClick)
-
-    Box(modifier = cardModifier) {
-        HeroCardContent(coverUrl, badgeIcon, badgeLabel, title, subtitle)
-    }
-}
-
-@Composable
-private fun HeroCardContent(
-    coverUrl: String?,
-    badgeIcon: Int,
-    badgeLabel: String,
-    title: String,
-    subtitle: String,
-) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (coverUrl != null) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(coverUrl)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primaryContainer,
-                                MaterialTheme.colorScheme.tertiaryContainer,
-                            ),
-                        )
-                    ),
-            )
-        }
-
+    Box(
+        modifier = Modifier.fillMaxWidth()
+            .height(148.dp)
+            .clip(cardShape)
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), cardShape)
+            .clickable(role = Role.Button, onClickLabel = title) { onRadioClick(item.artistId) },
+    ) {
+        RadioCover(item, Modifier.fillMaxSize(), onCoverError)
         Box(
-            modifier = Modifier
-                .fillMaxSize()
+            modifier = Modifier.fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         0f to Color.Transparent,
                         0.55f to Color.Transparent,
                         1f to HeroScrimColor.copy(alpha = 0.78f),
-                    )
+                    ),
                 ),
         )
-
         Box(
-            modifier = Modifier
-                .padding(12.dp)
-                .align(Alignment.TopStart)
-                .background(HeroScrimColor.copy(alpha = 0.85f), RoundedCornerShape(3.dp))
-                .border(
-                    BorderStroke(0.8.dp, Color.White.copy(alpha = 0.55f)),
-                    RoundedCornerShape(3.dp),
-                )
-                .padding(horizontal = 6.dp, vertical = 3.dp),
+            modifier = Modifier.padding(12.dp)
+                .align(Alignment.TopStart),
         ) {
-            Text(
-                text = badgeLabel.uppercase(),
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = SpaceMonoFontFamily,
-                    fontSize = 9.sp,
-                    letterSpacing = 0.10.em,
-                ),
-                color = Color.White.copy(alpha = 0.90f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Box(
+                modifier = Modifier.size(30.dp)
+                    .clip(CircleShape)
+                    .background(HeroScrimColor.copy(alpha = 0.85f), CircleShape)
+                    .border(BorderStroke(0.8.dp, Color.White.copy(alpha = 0.55f)), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.radio),
+                    contentDescription = stringResource(R.string.home_radio_badge),
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
-
         Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
+            modifier = Modifier.align(Alignment.BottomStart)
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 14.dp),
         ) {
@@ -331,6 +219,54 @@ private fun HeroCardContent(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun RadioCover(
+    item: HeroCarouselItem.ArtistRadio,
+    modifier: Modifier,
+    onCoverError: (String) -> Unit,
+) {
+    val cover = item.coverUrl?.takeIf { it.isNotBlank() }
+    var attempt by remember(item.artistId, cover) { mutableIntStateOf(0) }
+    var failed by remember(item.artistId, cover) { mutableStateOf(false) }
+    val context = LocalContext.current
+    val request = remember(context, cover, attempt) {
+        ImageRequest.Builder(context)
+            .data(cover)
+            .crossfade(true)
+            .diskCachePolicy(if (attempt == 0) CachePolicy.ENABLED else CachePolicy.WRITE_ONLY)
+            .build()
+    }
+    LaunchedEffect(failed, attempt) {
+        if (failed && attempt == 0) {
+            delay(1_000)
+            failed = false
+            attempt = 1
+        } else if (failed) {
+            onCoverError(item.artistId)
+        }
+    }
+    Box(
+        modifier = modifier.background(
+            Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                    MaterialTheme.colorScheme.surfaceContainerHighest,
+                ),
+            ),
+        ),
+    ) {
+        if (cover != null) {
+            AsyncImage(
+                model = request,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                onError = { failed = true },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }

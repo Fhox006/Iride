@@ -603,7 +603,7 @@ fun SelectionSongMenu(
                                     database.query {
                                         songSelection.forEach { song ->
                                             if ((!allLiked && !song.song.liked) || allLiked) {
-                                                val s = song.song.toggleLike()
+                                                val s = song.song.toggleLike(syncToYouTube = false)
                                                 update(s)
                                                 syncUtils.likeSong(s)
                                             }

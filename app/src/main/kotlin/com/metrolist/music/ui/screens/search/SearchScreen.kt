@@ -13,15 +13,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -67,7 +68,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -90,15 +90,17 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalIsPlayerExpanded
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
-import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.SearchSource
 import com.metrolist.music.constants.SearchSourceKey
 import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.playback.queues.YouTubeQueue
-import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IrideSegmentedToggle
-import com.metrolist.music.ui.component.TopNavigationBar
+import com.metrolist.music.ui.component.IridePageTitle
+import com.metrolist.music.ui.component.FrostedPageTitleBar
+import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.fillSubtle
 import com.metrolist.music.ui.theme.textPrimary
@@ -132,9 +134,7 @@ fun SearchScreen(
     val playerConnection = LocalPlayerConnection.current
     val isPlayerExpanded = LocalIsPlayerExpanded.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    val lazyListState = rememberLazyListState()
     var isHandlingScrollToTop by remember { mutableStateOf(false) }
-
     val scrollToTopCount by savedStateHandle.getStateFlow("scrollToTopCount", 0).collectAsState(initial = 0)
     var lastHandledCount by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(scrollToTopCount) {
@@ -151,12 +151,14 @@ fun SearchScreen(
         }
     }
 
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
     var searchSource by rememberEnumPreference(SearchSourceKey, SearchSource.ONLINE)
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue())
     }
     var isFocused by remember { mutableStateOf(false) }
+    var headerScrolled by remember { mutableStateOf(false) }
+    val frostBackdrop = rememberFrostBackdrop()
+    val titleRevealProgress = rememberDiscreteProgress(headerScrolled && !isFocused)
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
 
     var submittedQuery by rememberSaveable { mutableStateOf<String?>(null) }
@@ -205,16 +207,9 @@ fun SearchScreen(
         }
     }
 
-    val topNavBarController = com.metrolist.music.LocalTopNavBarController.current
     val irideHeaderContent = remember {
         movableContentOf {
-            val controller = com.metrolist.music.LocalTopNavBarController.current
             SearchScrollableHeader(
-                navigationItems = controller?.navigationItems ?: emptyList(),
-                currentRoute = controller?.currentRoute,
-                onItemClick = controller?.onItemClick ?: { _, _ -> },
-                compact = controller?.compact ?: false,
-                accountImageUrl = controller?.accountImageUrl,
                 query = query,
                 onQueryChange = { query = it },
                 searchSource = searchSource,
@@ -226,7 +221,7 @@ fun SearchScreen(
                 onSearch = { handleSearch(query.text) },
                 onClear = { query = TextFieldValue(""); submittedQuery = null },
                 pureBlack = pureBlack,
-                transparentBackground = mainTopGradient,
+                transparentBackground = false,
             )
         }
     }
@@ -241,15 +236,19 @@ fun SearchScreen(
         Box(
             modifier = Modifier
                 .padding(paddingValues)
-                .fillMaxSize()
-                .background(
+                .fillMaxSize(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .recordFrostBackdrop(frostBackdrop, enabled = titleRevealProgress > 0f)
+                    .background(
                     when {
                         pureBlack -> Color.Black
-                        mainTopGradient -> Color.Transparent
                         else -> MaterialTheme.colorScheme.background
                     },
-                ),
-        ) {
+                    ),
+            ) {
             val showInlineResults = searchSource == SearchSource.ONLINE && submittedQuery != null
             if (showInlineResults) {
                 OnlineSearchResultsBody(
@@ -267,6 +266,7 @@ fun SearchScreen(
                         focusManager.clearFocus()
                     },
                     header = irideHeader,
+                    onScrollChanged = { headerScrolled = it },
                 )
             } else {
                 when (searchSource) {
@@ -277,6 +277,7 @@ fun SearchScreen(
                             onDismiss = { navController.navigateUp() },
                             pureBlack = pureBlack,
                             header = irideHeader,
+                            onScrollChanged = { headerScrolled = it },
                         )
                     }
                     SearchSource.ONLINE -> {
@@ -289,17 +290,20 @@ fun SearchScreen(
                             pureBlack = pureBlack,
                             isFocused = isFocused,
                             header = irideHeader,
+                            onScrollChanged = { headerScrolled = it },
                         )
                     }
                 }
 
-                HideOnScrollFAB(
-                    lazyListState = lazyListState,
-                    icon = R.drawable.mic,
-                    onClick = { navController.navigate("recognition") },
-                    useIrideStyle = true,
-                )
             }
+            }
+
+            FrostedPageTitleBar(
+                titleRes = R.string.search,
+                progress = titleRevealProgress,
+                backdrop = frostBackdrop,
+            )
+
         }
     }
 
@@ -331,18 +335,10 @@ fun SearchScreen(
 }
 
 /**
- * New Iride UI: flat, non-collapsing replacement for [SearchCollapsingHeader] — TopNavigationBar,
- * the online/library source toggle and the search box, all fully visible at all times (no
- * scroll-driven animation), meant to be embedded as the leading item of the scrollable list
- * instead of pinned in a Scaffold topBar. See SearchScreen's `irideHeader`.
+ * Search controls embedded at the start of the scrollable list.
  */
 @Composable
 private fun SearchScrollableHeader(
-    navigationItems: List<com.metrolist.music.ui.screens.Screens>,
-    currentRoute: String?,
-    onItemClick: (com.metrolist.music.ui.screens.Screens, Boolean) -> Unit,
-    compact: Boolean,
-    accountImageUrl: String?,
     query: TextFieldValue,
     onQueryChange: (TextFieldValue) -> Unit,
     searchSource: SearchSource,
@@ -354,14 +350,10 @@ private fun SearchScrollableHeader(
     pureBlack: Boolean,
     transparentBackground: Boolean,
 ) {
-    Column {
-        TopNavigationBar(
-            navigationItems = navigationItems,
-            currentRoute = currentRoute,
-            onItemClick = onItemClick,
-            containerColor = Color.Transparent,
-            compact = compact,
-            accountImageUrl = accountImageUrl,
+    Column(modifier = Modifier.statusBarsPadding()) {
+        IridePageTitle(
+            titleRes = R.string.search,
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp),
         )
 
         Box(modifier = Modifier.padding(start = 20.dp, top = 8.dp, bottom = 8.dp)) {

@@ -10,6 +10,11 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.metrolist.innertube.YouTube
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.time.LocalDateTime
 
 /**
@@ -83,19 +88,35 @@ data class SongEntity(
             likedDate = if (!liked) LocalDateTime.now() else null,
         )
 
-    fun toggleLike() =
+    fun toggleLike(): SongEntity = toggleLike(syncToYouTube = true)
+
+    fun toggleLike(syncToYouTube: Boolean): SongEntity =
         copy(
             liked = !liked,
             likedDate = if (!liked) LocalDateTime.now() else null,
             inLibrary = if (!liked) inLibrary ?: LocalDateTime.now() else inLibrary,
-        )
+        ).also {
+            if (syncToYouTube && !isLocal) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    YouTube.likeVideo(id, !liked)
+                        .onFailure { error -> Timber.e(error, "Failed to sync song like: %s", id) }
+                }
+            }
+        }
 
-    fun toggleLibrary(syncToYouTube: Boolean = true) =
+    fun toggleLibrary(syncToYouTube: Boolean = true): SongEntity =
         copy(
             liked = if (inLibrary == null) liked else false,
             inLibrary = if (inLibrary == null) LocalDateTime.now() else null,
             likedDate = if (inLibrary == null) likedDate else null,
-        )
+        ).also {
+            if (syncToYouTube && !isLocal) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    YouTube.toggleSongLibrary(id, inLibrary == null)
+                        .onFailure { error -> Timber.e(error, "Failed to sync song library state: %s", id) }
+                }
+            }
+        }
 
     fun toggleUploaded() =
         copy(

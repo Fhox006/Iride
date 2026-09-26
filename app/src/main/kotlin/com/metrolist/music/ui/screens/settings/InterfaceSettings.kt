@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
@@ -42,6 +42,7 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.HeroCarouselEnabledKey
+import com.metrolist.music.constants.AdvancedAnimationKey
 import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.HideDurationForStandardSongsKey
@@ -75,7 +76,7 @@ fun InterfaceSettings(
 ) {
     val scrollState = rememberScrollState()
     val frostBackdrop = rememberFrostBackdrop()
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
     val playerConnection = LocalPlayerConnection.current
     val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
@@ -92,6 +93,8 @@ fun InterfaceSettings(
         rememberPreference(ShowFeaturedArtistsInTopSongsKey, defaultValue = true)
     val (heroCarouselEnabled, onHeroCarouselEnabledChange) =
         rememberPreference(HeroCarouselEnabledKey, defaultValue = false)
+    val (advancedAnimation, onAdvancedAnimationChange) =
+        rememberPreference(AdvancedAnimationKey, defaultValue = true)
     val (smartBootEnabled, onSmartBootEnabledChange) =
         rememberPreference(SmartBootKey, defaultValue = true)
     val (enableHighRefreshRate, onEnableHighRefreshRateChange) =
@@ -195,7 +198,28 @@ fun InterfaceSettings(
                                 )
                             },
                             onClick = { onHeroCarouselEnabledChange(!heroCarouselEnabled) },
-                        )
+                        ),
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.palette),
+                            title = { Text(stringResource(R.string.advanced_animation)) },
+                            description = { Text(stringResource(R.string.advanced_animation_desc)) },
+                            trailingContent = {
+                                IrideSwitch(
+                                    checked = advancedAnimation,
+                                    onCheckedChange = onAdvancedAnimationChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter = painterResource(
+                                                if (advancedAnimation) R.drawable.check else R.drawable.close
+                                            ),
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                            contentDescription = null,
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onAdvancedAnimationChange(!advancedAnimation) },
+                        ),
                     )
                 )
 

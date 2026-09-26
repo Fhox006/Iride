@@ -41,12 +41,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.ui.utils.isScrollingUp
 import com.metrolist.music.ui.utils.pressScale
 import com.metrolist.music.ui.theme.strokeCard
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 
 /**
  * New Iride UI: flat, monochrome, borderless-fill replacement for the default Material
@@ -62,6 +66,7 @@ private fun IrideFlatFAB(
     modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val description = if (icon == R.drawable.add) stringResource(R.string.new_playlist) else null
     Box(
         modifier = modifier
             .size(56.dp)
@@ -69,6 +74,7 @@ private fun IrideFlatFAB(
             .clip(CircleShape)
             .background(Color.Black.copy(alpha = 0.85f))
             .border(1.dp, MaterialTheme.colorScheme.strokeCard, CircleShape)
+            .semantics { description?.let { contentDescription = it } }
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -76,11 +82,20 @@ private fun IrideFlatFAB(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.9f),
-        )
+        if (icon == R.drawable.add) {
+            Text(
+                text = "+",
+                fontFamily = SpaceMonoFontFamily,
+                fontSize = 32.sp,
+                color = Color.White.copy(alpha = 0.9f),
+            )
+        } else {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.9f),
+            )
+        }
     }
 }
 
@@ -161,6 +176,7 @@ fun BoxScope.HideOnScrollFAB(
     label: String? = null,
     onClick: () -> Unit,
     onRecognitionClick: (() -> Unit)? = null,
+    useIrideStyle: Boolean = false,
 ) {
     AnimatedVisibility(
         visible = visible && lazyListState.isScrollingUp(),
@@ -205,6 +221,8 @@ fun BoxScope.HideOnScrollFAB(
                     onClick = onClick,
                     expanded = lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset == 0,
                 )
+            } else if (useIrideStyle) {
+                IrideFlatFAB(icon = icon, onClick = onClick)
             } else {
                 FloatingActionButton(
                     onClick = onClick,

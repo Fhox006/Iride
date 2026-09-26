@@ -52,6 +52,7 @@ enum class DensityScale(
 val DefaultOpenTabKey = stringPreferencesKey("defaultOpenTab")
 val CompactTopNavigationBarKey = booleanPreferencesKey("compactTopNavigationBar")
 val IrideAnimationsKey = booleanPreferencesKey("irideAnimations")
+val AdvancedAnimationKey = booleanPreferencesKey("advancedAnimation")
 val PlayerAutoHideTopPanelKey = booleanPreferencesKey("playerAutoHideTopPanel")
 val GridItemsSizeKey = stringPreferencesKey("gridItemSize")
 val SliderStyleKey = stringPreferencesKey("sliderStyle")

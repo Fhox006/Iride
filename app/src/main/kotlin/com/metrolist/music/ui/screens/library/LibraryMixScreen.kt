@@ -43,6 +43,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -88,14 +89,10 @@ import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.LibraryViewType
-import com.metrolist.music.constants.MainTopGradientKey
-import com.metrolist.music.constants.PlayerBackgroundStyle
-import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.MixSortDescendingKey
 import com.metrolist.music.constants.MixSortType
 import com.metrolist.music.constants.MixSortTypeKey
 import com.metrolist.music.constants.MixViewTypeKey
-import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.ShowCachedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
 import com.metrolist.music.constants.ShowUploadedPlaylistKey
@@ -117,12 +114,11 @@ import com.metrolist.music.ui.component.LibraryPlaylistListItem
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.IrideSegmentedToggle
-import com.metrolist.music.ui.component.LibrarySectionLabel
-import com.metrolist.music.ui.component.TopNavigationBar
-import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.component.frostedTopBarBackground
-import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.component.IridePageTitle
+import com.metrolist.music.ui.component.FrostedPageTitleBar
 import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.component.LibrarySectionLabel
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
@@ -141,9 +137,9 @@ import com.metrolist.music.ui.menu.ArtistMenu
 import com.metrolist.music.ui.menu.PlaylistMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.utils.IrideMotion
+import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.IrideTabEntrance
 import com.metrolist.music.ui.utils.irideEnter
-import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.revealMask
 import com.metrolist.music.ui.utils.rememberEnterProgress
 import com.metrolist.music.ui.utils.rememberSectionEnter
@@ -171,9 +167,6 @@ fun LibraryMixScreen(
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
-    val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
-    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = true)
-    val topNavBarController = com.metrolist.music.LocalTopNavBarController.current
     val irideStart = 20.dp
     var viewType by rememberEnumPreference(MixViewTypeKey, LibraryViewType.GRID)
     val isListView = viewType == LibraryViewType.LIST
@@ -427,6 +420,10 @@ fun LibraryMixScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val lazyGridState = rememberLazyGridState()
+    val frostBackdrop = rememberFrostBackdrop()
+    val titleRevealProgress = rememberDiscreteProgress(
+        lazyGridState.firstVisibleItemIndex > 0,
+    )
     val backStackEntry by navController.currentBackStackEntryAsState()
     val scrollToTop =
         backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
@@ -452,16 +449,22 @@ fun LibraryMixScreen(
     val fraction = scrollBehavior.state.collapsedFraction
     val onFilterToggle = { isLibraryFilter = !isLibraryFilter }
 
-    val libraryHeaderScrolled by remember(lazyGridState) {
-        androidx.compose.runtime.derivedStateOf {
-            val atTop = lazyGridState.firstVisibleItemIndex == 0 && lazyGridState.firstVisibleItemScrollOffset == 0 && !lazyGridState.canScrollBackward
-            !atTop
-        }
-    }
-    val topBarRevealProgress = rememberDiscreteProgress(libraryHeaderScrolled)
-    val frostBackdrop = rememberFrostBackdrop()
-    val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
-
+    MaterialTheme(
+        colorScheme = MaterialTheme.colorScheme.copy(
+            background = Color.Black,
+            surface = Color.Black,
+            surfaceContainer = Color.Black,
+            surfaceContainerHigh = Color(0xFF202020),
+            secondary = Color.White,
+            tertiary = Color.White,
+            onBackground = Color.White,
+            onSurface = Color.White,
+            onSurfaceVariant = Color.White,
+            onPrimaryContainer = Color.White,
+            onSecondaryContainer = Color.White,
+        ),
+    ) {
+    CompositionLocalProvider(LocalContentColor provides Color.White) {
     Scaffold(
         modifier = Modifier,
         containerColor = Color.Transparent,
@@ -471,19 +474,13 @@ fun LibraryMixScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .recordFrostBackdrop(frostBackdrop),
+                    .recordFrostBackdrop(frostBackdrop, enabled = titleRevealProgress > 0f),
             ) {
-                if (!pureBlack && mainTopGradient) {
-                    TopScreenGradientBackground(
-                        mediaMetadata = mediaMetadata,
-                        playerBackground = playerBackgroundStyle,
-                    )
-                } else {
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
-                    )
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                ) {
+                    Box(Modifier.fillMaxSize().background(Color.Black))
                 }
                 CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
                     LazyVerticalGrid(
@@ -502,16 +499,23 @@ fun LibraryMixScreen(
                         contentPadding = PaddingValues(
                             start = irideStart,
                             end = irideStart,
-                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp,
+                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 16.dp,
                             bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
                         ),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(0.dp),
                     ) {
+                        item(key = "library_page_title", span = { GridItemSpan(maxLineSpan) }) {
+                            IridePageTitle(
+                                titleRes = R.string.filter_library,
+                                modifier = Modifier.padding(bottom = 16.dp),
+                            )
+                        }
+
                         item(key = "library_filter_toggle", span = { GridItemSpan(maxLineSpan) }) {
                             Row(
                                 modifier = Modifier
-                                    .padding(top = 8.dp, bottom = 4.dp)
+                                    .padding(top = 4.dp, bottom = 0.dp)
                                     .animateItem(placementSpec = IrideMotion.PlacementSpec)
                                     .irideEnter(rememberSectionEnter("library_filter_toggle", revealedSections), 8.dp),
                             ) {
@@ -532,9 +536,7 @@ fun LibraryMixScreen(
                                 showUploads = uploadedSongs.isNotEmpty(),
                                 isOffline = !isLibraryFilter,
                                 useIrideStyle = true,
-                                modifier = Modifier
-                                    .animateItem(placementSpec = IrideMotion.PlacementSpec)
-                                    .revealMask(rememberSectionEnter("categories", revealedSections)),
+                                modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
                             )
                         }
 
@@ -925,23 +927,15 @@ fun LibraryMixScreen(
                 }
             }
 
-            TopNavigationBar(
-                navigationItems = topNavBarController?.navigationItems ?: emptyList(),
-                currentRoute = topNavBarController?.currentRoute,
-                onItemClick = topNavBarController?.onItemClick ?: { _, _ -> },
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .frostedTopBarBackground(
-                        progress = topBarRevealProgress,
-                        barColor = MaterialTheme.colorScheme.background,
-                        strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                        backdrop = frostBackdrop,
-                    ),
-                containerColor = Color.Transparent,
-                compact = topNavBarController?.compact ?: false,
-                accountImageUrl = topNavBarController?.accountImageUrl,
+            FrostedPageTitleBar(
+                titleRes = R.string.filter_library,
+                progress = titleRevealProgress,
+                backdrop = frostBackdrop,
             )
+
         }
+    }
+    }
     }
 }
 
@@ -953,15 +947,7 @@ private fun LibraryRefreshButton(
     modifier: Modifier = Modifier,
 ) {
     val label = stringResource(if (isRefreshing) R.string.library_refreshing else R.string.library_refresh)
-    val contentColor = if (useIrideStyle) {
-        if (isRefreshing) {
-            MaterialTheme.colorScheme.textTertiary
-        } else {
-            MaterialTheme.colorScheme.textSecondary
-        }
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val contentColor = if (useIrideStyle) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,

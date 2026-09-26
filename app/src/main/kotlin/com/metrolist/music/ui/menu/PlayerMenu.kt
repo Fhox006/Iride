@@ -460,10 +460,6 @@ fun PlayerMenu(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(20.dp))
-                librarySong?.let { song ->
-                    CoverNoteRow(song = song, database = database)
-                }
             }
         }
 
