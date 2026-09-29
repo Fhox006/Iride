@@ -22,9 +22,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -37,9 +37,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -51,7 +49,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -72,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.datastore.preferences.core.edit
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
@@ -108,13 +110,24 @@ import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.utils.recordSearchHistoryOpen
 import com.metrolist.music.utils.rememberPreference
-import com.metrolist.music.viewmodels.HomeViewModel
+import com.metrolist.music.utils.GenreProvider
+import com.metrolist.music.utils.dataStore
+import com.metrolist.music.utils.get
 import com.metrolist.music.viewmodels.OnlineSearchSuggestionViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.launch
+import org.json.JSONObject
+import java.net.URLEncoder
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
@@ -129,9 +142,9 @@ fun OnlineSearchScreen(
     header: (@Composable () -> Unit)? = null,
     onScrollChanged: (Boolean) -> Unit = {},
     viewModel: OnlineSearchSuggestionViewModel = hiltViewModel(),
-    homeViewModel: HomeViewModel = hiltViewModel(),
 ) {
     val database = LocalDatabase.current
+    val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val menuState = LocalMenuState.current
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -142,7 +155,16 @@ fun OnlineSearchScreen(
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val viewState by viewModel.viewState.collectAsState()
-    val explorePage by homeViewModel.explorePage.collectAsState()
+
+    var listeningGenreScores by remember(context) {
+        mutableStateOf(decodeGenreListeningScores(context.dataStore[SearchGenrePersonalization.listeningScoresKey]))
+    }
+    var tappedGenreScores by remember(context) {
+        mutableStateOf(decodeGenreTapScores(context.dataStore[SearchGenrePersonalization.tapScoresKey]))
+    }
+    val searchGenres = remember(listeningGenreScores, tappedGenreScores) {
+        SearchGenrePersonalization.rank(listeningGenreScores, tappedGenreScores)
+    }
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
@@ -168,9 +190,45 @@ fun OnlineSearchScreen(
         }
     }
 
-    LaunchedEffect(explorePage?.moodAndGenres?.isNotEmpty()) {
-        if (explorePage?.moodAndGenres?.isNotEmpty() == true && query.isEmpty() && !isFocused) {
-            lazyListState.scrollToItem(0)
+    LaunchedEffect(database, query.isEmpty(), isFocused) {
+        if (query.isNotEmpty() || isFocused) return@LaunchedEffect
+        val preferences = context.dataStore.data.first()
+        tappedGenreScores = decodeGenreTapScores(preferences[SearchGenrePersonalization.tapScoresKey])
+        listeningGenreScores = decodeGenreListeningScores(preferences[SearchGenrePersonalization.listeningScoresKey])
+
+        val songs = runCatching {
+            database.mostPlayedSongs(0L, limit = SearchGenrePersonalization.MAX_LISTENING_SEEDS).first()
+        }.getOrDefault(emptyList())
+        if (songs.isEmpty()) return@LaunchedEffect
+        val semaphore = Semaphore(3)
+        val listening = coroutineScope {
+            songs.map { song ->
+                async {
+                    val tags = try {
+                        semaphore.withPermit {
+                            GenreProvider.getGenres(
+                                songId = song.id,
+                                title = song.title,
+                                artist = song.orderedArtists.firstOrNull()?.name,
+                            )
+                        }
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                    SearchGenreListening(tags, song.song.totalPlayTime)
+                }
+            }.map { it.await() }
+        }
+        val freshScores = SearchGenrePersonalization.listeningScores(listening)
+        if (freshScores.isNotEmpty()) {
+            listeningGenreScores = freshScores
+            runCatching {
+                context.dataStore.edit {
+                    it[SearchGenrePersonalization.listeningScoresKey] = JSONObject(freshScores).toString()
+                }
+            }
         }
     }
 
@@ -197,34 +255,10 @@ fun OnlineSearchScreen(
             item(key = "search_header") { header() }
         }
         if (query.isEmpty() && !isFocused) {
-            val moods = explorePage?.moodAndGenres.orEmpty()
-            if (moods.isNotEmpty()) {
-                item(key = "moods_header") {
-                    Text(
-                        text = stringResource(R.string.mood_and_genres),
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = SpaceMonoFontFamily,
-                            fontSize = 13.sp,
-                            letterSpacing = (-0.1).sp,
-                        ),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.textSecondary,
-                        modifier = Modifier
-                            .padding(
-                                start = 20.dp,
-                                end = 20.dp,
-                                top = 20.dp,
-                                bottom = 6.dp,
-                            )
-                            .animateItem(),
-                    )
-                }
-            }
-
-            val gridRows = moods.chunked(2)
+            val gridRows = searchGenres.chunked(2)
             itemsIndexed(
                 items = gridRows,
-                key = { index, _ -> "mood_row_$index" },
+                key = { _, row -> "genre_row_${row.firstOrNull()?.name.orEmpty()}" },
             ) { _, row ->
                 Row(
                     modifier = Modifier
@@ -236,13 +270,25 @@ fun OnlineSearchScreen(
                         .animateItem(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    row.forEach { entry ->
-                        SearchMoodCard(
-                            title = entry.title,
+                    row.forEach { genre ->
+                        SearchGenreCard(
+                            genre = genre,
                             onClick = {
-                                navController.navigate("youtube_browse/${entry.endpoint.browseId}?params=${entry.endpoint.params}")
+                                coroutineScope.launch {
+                                    var updated = tappedGenreScores
+                                    context.dataStore.edit {
+                                        val latest = decodeGenreTapScores(it[SearchGenrePersonalization.tapScoresKey])
+                                        updated = latest + (genre.name to ((latest[genre.name] ?: 0) + 1))
+                                        it[SearchGenrePersonalization.tapScoresKey] = JSONObject(updated).toString()
+                                    }
+                                    tappedGenreScores = updated
+                                    if (genre.name == "Rock") {
+                                        navController.navigate("rock_module")
+                                    } else {
+                                        navController.navigate("search/${URLEncoder.encode(genre.name, "UTF-8")}")
+                                    }
+                                }
                             },
-                            useIrideStyle = true,
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -252,44 +298,6 @@ fun OnlineSearchScreen(
                 }
             }
 
-            if (false) item(key = "genres_card") {
-                ElevatedCard(
-                    onClick = { navController.navigate("genres_screen") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(96.dp)
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    ),
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                        contentAlignment = Alignment.CenterStart,
-                    ) {
-                        Column {
-                            Text(
-                                text = "Find your genres",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
-                            Text(
-                                text = "Explore all music genres",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
-                            )
-                        }
-                        Icon(
-                            painter = painterResource(R.drawable.music_note),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.3f),
-                            modifier = Modifier
-                                .size(64.dp)
-                                .align(Alignment.CenterEnd),
-                        )
-                    }
-                }
-            }
         } else {
 
             if (viewState.isUrlQuery && viewState.parsedUrlItem != null) {
@@ -822,56 +830,44 @@ fun OnlineSearchScreen(
 private object DiscoveryWeeklyPending
 
 @Composable
-private fun SearchMoodCard(
-    title: String,
+private fun SearchGenreCard(
+    genre: SearchGenre,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    useIrideStyle: Boolean = false,
 ) {
-    if (useIrideStyle) {
-        Box(
-            contentAlignment = Alignment.BottomStart,
-            modifier = modifier
-                .height(72.dp)
-                .clip(RoundedCornerShape(5.dp))
-                .background(MaterialTheme.colorScheme.fillSubtle)
-                .clickable(onClick = onClick)
-                .padding(12.dp),
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = SpaceMonoFontFamily,
-                    fontSize = 13.sp,
-                    letterSpacing = (-0.1).sp,
-                ),
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.textPrimary,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        return
-    }
-
     Box(
         contentAlignment = Alignment.BottomStart,
         modifier = modifier
-            .height(80.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .height(72.dp)
+            .clip(RoundedCornerShape(5.dp))
+            .background(MaterialTheme.colorScheme.fillSubtle)
             .clickable(onClick = onClick)
             .padding(12.dp),
     ) {
         Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            text = genre.name,
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontFamily = SpaceMonoFontFamily,
+                fontSize = 13.sp,
+                letterSpacing = (-0.1).sp,
+            ),
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.textPrimary,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
     }
 }
+
+private fun decodeGenreListeningScores(encoded: String?): Map<String, Float> = runCatching {
+    val json = JSONObject(encoded ?: "{}")
+    json.keys().asSequence().associateWith { json.optDouble(it).toFloat() }
+}.getOrDefault(emptyMap())
+
+private fun decodeGenreTapScores(encoded: String?): Map<String, Int> = runCatching {
+    val json = JSONObject(encoded ?: "{}")
+    json.keys().asSequence().associateWith { json.optInt(it) }
+}.getOrDefault(emptyMap())
 
 @Composable
 private fun DiscoveryWeeklyCard(

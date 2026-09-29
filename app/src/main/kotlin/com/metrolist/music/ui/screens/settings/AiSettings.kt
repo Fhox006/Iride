@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageHeaderLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,10 +71,7 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
-import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.TextFieldDialog
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.rememberEnumPreference
@@ -497,17 +496,20 @@ fun AiSettings(navController: NavController) {
     }
 
     val settingsScrollState = rememberScrollState()
-    val frostBackdrop = rememberFrostBackdrop()
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
     val playerConnection = LocalPlayerConnection.current
     val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    IridePageHeaderLayout(
+        title = stringResource(R.string.ai_lyrics_translation),
+        initiallyCollapsed = true,
+        navigationIcon = { IridePageBackButton(navController) },
+        modifier = Modifier.fillMaxSize(),
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .recordFrostBackdrop(frostBackdrop)
         ) {
             if (mainTopGradient) {
                 TopScreenGradientBackground(
@@ -524,7 +526,7 @@ fun AiSettings(navController: NavController) {
             Column(
                 Modifier
                     .windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom).only(
                             WindowInsetsSides.Horizontal,
                         ),
                     ).verticalScroll(settingsScrollState)
@@ -532,7 +534,7 @@ fun AiSettings(navController: NavController) {
             ) {
                 Spacer(
                     Modifier.windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom).only(
                             WindowInsetsSides.Top,
                         ),
                     ),
@@ -728,11 +730,5 @@ fun AiSettings(navController: NavController) {
             }
         }
 
-        SettingsBackTopBar(
-            title = stringResource(R.string.ai_lyrics_translation),
-            navController = navController,
-            backdrop = frostBackdrop,
-            revealProgress = rememberDiscreteProgress(active = settingsScrollState.value > 0),
-        )
     }
 }

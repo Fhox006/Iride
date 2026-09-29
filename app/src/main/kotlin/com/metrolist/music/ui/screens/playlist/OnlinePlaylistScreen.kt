@@ -5,6 +5,12 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.ui.component.iridePageContentInsets
+import com.metrolist.music.ui.component.iridePageTitleTextStyle
+import com.metrolist.music.ui.component.iridePageTitleClip
+import androidx.compose.ui.layout.positionInWindow
+import com.metrolist.music.ui.component.iridePageTitleProgress
+import com.metrolist.music.ui.component.IridePageTopBar
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -123,6 +129,10 @@ import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.db.entities.PlaylistSongMap
+import com.metrolist.music.discovery.MixMood
+import com.metrolist.music.discovery.MixPosterPhotoSource
+import com.metrolist.music.discovery.MixPosterRepository
+import com.metrolist.music.discovery.MoodMixes
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
@@ -138,19 +148,17 @@ import com.metrolist.music.ui.component.IrideOutlineIconButton
 import com.metrolist.music.ui.component.IridePlaylistControlPanel
 import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.LocalMenuState
+import com.metrolist.music.ui.component.MixPosterPlaceholder
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.TypewriterText
 import com.metrolist.music.ui.component.YouTubeListItem
-import com.metrolist.music.ui.component.frostedTopBarBackground
-import com.metrolist.music.ui.component.recordFrostBackdrop
-import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.rememberGenreFilter
 import com.metrolist.music.ui.component.rememberRubberBandPull
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.menu.YouTubePlaylistMenu
 import com.metrolist.music.ui.menu.YouTubeSelectionSongMenu
 import com.metrolist.music.ui.menu.YouTubeSongMenu
-import com.metrolist.music.ui.screens.search.IrideSearchBox
+import com.metrolist.music.ui.component.IrideSearchBox
 import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.headerEnter
@@ -169,6 +177,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -190,6 +199,26 @@ fun OnlinePlaylistScreen(
     val queueTitle by playerConnection.queueTitle.collectAsState()
 
     val playlist by viewModel.playlist.collectAsState()
+    val isMoodMixPlaylist = playlist?.let {
+        it.id.startsWith("RDTMA") || MoodMixes.hasMixTitle(it.title)
+    } == true
+    var moodPosterPath by remember(playlist?.id) { mutableStateOf<String?>(null) }
+    LaunchedEffect(playlist?.id, isMoodMixPlaylist) {
+        val currentPlaylist = playlist ?: return@LaunchedEffect
+        moodPosterPath = null
+        if (isMoodMixPlaylist) {
+            repeat(60) {
+                val poster = withContext(Dispatchers.IO) {
+                    MixPosterRepository.cachedPoster(context, currentPlaylist.id, currentPlaylist.thumbnail)
+                }
+                moodPosterPath = poster?.imagePath
+                if (poster?.photoSource == MixPosterPhotoSource.ARTIST) {
+                    return@LaunchedEffect
+                }
+                delay(500)
+            }
+        }
+    }
     val songs by viewModel.playlistSongs.collectAsState()
     val dbPlaylist by viewModel.dbPlaylist.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -209,7 +238,6 @@ fun OnlinePlaylistScreen(
 
     val lazyListState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val frostBackdrop = rememberFrostBackdrop()
     val headerPull = rememberRubberBandPull()
 
 
@@ -241,17 +269,17 @@ fun OnlinePlaylistScreen(
     val genrePillsProgress = rememberSectionEnter("online_playlist_genre_pills", revealedSections)
     val songsSectionProgress = rememberSectionEnter("online_playlist_songs", revealedSections)
 
-    var nameBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
+    var nameTopPx by remember { mutableStateOf(Float.MAX_VALUE) }
+    var nameHeightPx by remember { mutableStateOf(0f) }
     var topBarBottomPx by remember { mutableStateOf(0f) }
-    val headerTitleCovered by remember {
+    val topBarRevealProgress by remember {
         derivedStateOf {
-            headerRevealed && (
-                lazyListState.firstVisibleItemIndex > 1 ||
-                    nameBottomPx <= topBarBottomPx
-                )
+            if (!headerRevealed) 0f else iridePageTitleProgress(
+                nameTopPx, nameHeightPx, topBarBottomPx,
+                pastTitle = lazyListState.firstVisibleItemIndex > 1,
+            )
         }
     }
-    val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
 
     val genreFilter =
         rememberGenreFilter(
@@ -464,7 +492,7 @@ fun OnlinePlaylistScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .recordFrostBackdrop(frostBackdrop)
+
             .graphicsLayer { alpha = screenProgress },
     ) {
         if (albumTopGradientEnabled) {
@@ -478,22 +506,31 @@ fun OnlinePlaylistScreen(
             state = lazyListState,
             modifier = Modifier
                 .rubberBandOverscroll(Orientation.Vertical, lazyListState, headerPull),
-            contentPadding = LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime).asPaddingValues(),
+            contentPadding = iridePageContentInsets(LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime)).asPaddingValues(),
         ) {
-            item(key = "search_bar") {
-                IrideSearchBox(
-                    query = query,
-                    onQueryChange = { query = it },
-                    placeholderText = stringResource(R.string.search),
-                    focusRequester = focusRequester,
-                    onFocusChanged = { if (it.isFocused) isSearching = true },
-                    onSearch = {},
-                    onClear = { query = TextFieldValue() },
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                )
-            }
-
             if (playlist == null || songs.isEmpty()) {
+                playlist?.let { currentPlaylist ->
+                    item(key = "empty_page_title") {
+                        Text(
+                            text = currentPlaylist.title,
+                            style = iridePageTitleTextStyle(),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    item(key = "search_bar") {
+                        IrideSearchBox(
+                            query = query,
+                            onQueryChange = { query = it },
+                            placeholderText = stringResource(R.string.search_playlists),
+                            focusRequester = focusRequester,
+                            onFocusChanged = { if (it.isFocused) isSearching = true },
+                            onSearch = {},
+                            onClear = { query = TextFieldValue() },
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        )
+                    }
+                }
                 if (isLoading) {
                     item(key = "loading_placeholder") {
                         Box(
@@ -545,12 +582,28 @@ fun OnlinePlaylistScreen(
                         }
                     }
                 }
+                if (playlist == null) {
+                    item(key = "search_bar") {
+                        IrideSearchBox(
+                            query = query,
+                            onQueryChange = { query = it },
+                            placeholderText = stringResource(R.string.search_playlists),
+                            focusRequester = focusRequester,
+                            onFocusChanged = { if (it.isFocused) isSearching = true },
+                            onSearch = {},
+                            onClear = { query = TextFieldValue() },
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        )
+                    }
+                }
             } else {
                 playlist?.let { playlist ->
                     if (!isSearching) {
                         item(key = "playlist_header") {
                             OnlinePlaylistHeader(
                                 playlist = playlist,
+                                coverThumbnail = if (isMoodMixPlaylist) moodPosterPath else playlist.thumbnail,
+                                isMoodMixPlaylist = isMoodMixPlaylist,
                                 songs = songs,
                                 dbPlaylist = dbPlaylist,
                                 navController = navController,
@@ -559,7 +612,11 @@ fun OnlinePlaylistScreen(
                                 isPodcastPlaylist = isPodcastPlaylist,
                                 headerRevealed = headerRevealed,
                                 titleTypingMs = titleTypingMs,
-                                onTitleBoundsChanged = { nameBottomPx = it },
+                                onTitleBoundsChanged = { top, height ->
+                                    nameTopPx = top
+                                    nameHeightPx = height
+                                },
+                                titleProgress = topBarRevealProgress,
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -584,6 +641,19 @@ fun OnlinePlaylistScreen(
                                     .irideEnterScale(controlPanelProgress),
                             )
                         }
+                    }
+
+                    item(key = "search_bar") {
+                        IrideSearchBox(
+                            query = query,
+                            onQueryChange = { query = it },
+                            placeholderText = stringResource(R.string.search_playlists),
+                            focusRequester = focusRequester,
+                            onFocusChanged = { if (it.isFocused) isSearching = true },
+                            onSearch = {},
+                            onClear = { query = TextFieldValue() },
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        )
                     }
 
                     if (!isSearching) {
@@ -782,20 +852,9 @@ fun OnlinePlaylistScreen(
             }
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
-                .frostedTopBarBackground(
-                    progress = if (inSelectMode) 1f else topBarRevealProgress,
-                    barColor = MaterialTheme.colorScheme.background,
-                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                    backdrop = frostBackdrop,
-                )
-                .statusBarsPadding()
-                .height(40.dp)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        IridePageTopBar(
+            progress = if (inSelectMode) 1f else topBarRevealProgress,
+            modifier = Modifier.onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom },
         ) {
             topBarNavigationIcon()
             Text(
@@ -805,28 +864,18 @@ fun OnlinePlaylistScreen(
                     } else {
                         pluralStringResource(R.plurals.n_song, selection.size, selection.size)
                     }
-                    isSearching -> ""
-                    else -> playlist?.title.orEmpty()
+                    else -> ""
                 },
-                style = TextStyle(
+                style = MaterialTheme.typography.titleMedium.copy(
                     fontFamily = SpaceMonoFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    letterSpacing = (-0.1).sp,
+                    fontWeight = FontWeight.SemiBold,
                 ),
-                color = MaterialTheme.colorScheme.onBackground,
+                color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 4.dp)
-                    .then(
-                        if (inSelectMode || isSearching) {
-                            Modifier
-                        } else {
-                            Modifier.irideEnter(topBarRevealProgress, 6.dp).revealMask(topBarRevealProgress)
-                        },
-                    ),
+                    .padding(start = 4.dp),
             )
             if (!inSelectMode && !isSearching) {
                 playlist?.let { current ->
@@ -858,6 +907,8 @@ fun OnlinePlaylistScreen(
 @Composable
 private fun OnlinePlaylistHeader(
     playlist: PlaylistItem,
+    coverThumbnail: String?,
+    isMoodMixPlaylist: Boolean,
     songs: List<SongItem>,
     dbPlaylist: Playlist?,
     navController: NavController,
@@ -867,7 +918,8 @@ private fun OnlinePlaylistHeader(
     headerRevealed: Boolean = false,
     titleTypingMs: Int = 0,
     modifier: Modifier = Modifier,
-    onTitleBoundsChanged: (Float) -> Unit = {},
+    onTitleBoundsChanged: (Float, Float) -> Unit = { _, _ -> },
+    titleProgress: Float = 0f,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val listenTogetherManager = LocalListenTogetherManager.current
@@ -947,55 +999,62 @@ private fun OnlinePlaylistHeader(
     ) {
         var coverLoaded by remember(playlist.id) { mutableStateOf(false) }
         var skipCoverEnterAnim by remember(playlist.id) { mutableStateOf(false) }
+        LaunchedEffect(playlist.id, coverThumbnail, isMoodMixPlaylist) {
+            if (isMoodMixPlaylist && coverThumbnail == null) coverLoaded = true
+        }
         val animatedCoverProgress = rememberEnterProgress(play = coverLoaded, durationMillis = 420, easing = IrideMotion.EaseOutQuart)
         val coverProgress = if (skipCoverEnterAnim) 1f else animatedCoverProgress
+        val coverModifier = Modifier
+            .size(240.dp)
+            .graphicsLayer {
+                alpha = coverProgress
+                val s = lerp(0.94f, 1f, coverProgress)
+                scaleX = s
+                scaleY = s
+            }
+            .irideArtworkOverlayBorder(
+                IrideBaseBorderWidth,
+                MaterialTheme.colorScheme.strokeCard,
+                playlistCoverSquircle,
+            )
+            .shadow(
+                elevation = 20.dp,
+                shape = playlistCoverSquircle,
+                spotColor = Color.Black.copy(alpha = 0.5f),
+            )
+            .clip(playlistCoverSquircle)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
 
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            AsyncImage(
-                model = ImageRequest.Builder(context).data(playlist.thumbnail).build(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                onState = { state ->
-                    if (state is AsyncImagePainter.State.Success) {
-                        if (state.result.dataSource == DataSource.MEMORY_CACHE) {
-                            skipCoverEnterAnim = true
+            if (isMoodMixPlaylist && coverThumbnail == null) {
+                MixPosterPlaceholder(
+                    title = playlist.title,
+                    mood = MixMood.fromMixTitle(playlist.title) ?: MixMood.CHILL,
+                    modifier = coverModifier,
+                )
+            } else {
+                AsyncImage(
+                    model = ImageRequest.Builder(context).data(coverThumbnail).build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    onState = { state ->
+                        if (state is AsyncImagePainter.State.Success) {
+                            if (state.result.dataSource == DataSource.MEMORY_CACHE) {
+                                skipCoverEnterAnim = true
+                            }
+                            coverLoaded = true
                         }
-                        coverLoaded = true
-                    }
-                },
-                modifier = Modifier
-                    .size(240.dp)
-                    .graphicsLayer {
-                        alpha = coverProgress
-                        val s = lerp(0.94f, 1f, coverProgress)
-                        scaleX = s
-                        scaleY = s
-                    }
-                    .irideArtworkOverlayBorder(
-                        IrideBaseBorderWidth,
-                        MaterialTheme.colorScheme.strokeCard,
-                        playlistCoverSquircle,
-                    )
-                    .shadow(
-                        elevation = 20.dp,
-                        shape = playlistCoverSquircle,
-                        spotColor = Color.Black.copy(alpha = 0.5f),
-                    )
-                    .clip(playlistCoverSquircle)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-            )
+                    },
+                    modifier = coverModifier,
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
         TypewriterText(
             text = playlist.title,
-            style = TextStyle(
-                fontFamily = SpaceMonoFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                letterSpacing = (-0.2).sp,
-            ),
+            style = iridePageTitleTextStyle(),
             color = MaterialTheme.colorScheme.onBackground,
             resetKey = playlist.id,
             animate = !headerRevealed,
@@ -1003,7 +1062,8 @@ private fun OnlinePlaylistHeader(
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .onGloballyPositioned { onTitleBoundsChanged(it.boundsInWindow().bottom) },
+                .onGloballyPositioned { onTitleBoundsChanged(it.positionInWindow().y, it.size.height.toFloat()) }
+                .iridePageTitleClip { titleProgress },
         )
 
         Spacer(modifier = Modifier.height(8.dp))

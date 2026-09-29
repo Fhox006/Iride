@@ -5,6 +5,10 @@
 
 package com.metrolist.music.ui.screens.settings.integrations
 
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageHeaderLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,10 +42,7 @@ import com.metrolist.music.R
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IntegrationCard
 import com.metrolist.music.ui.component.IntegrationCardItem
-import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -53,7 +54,6 @@ fun IntegrationScreen(
     navController: NavController
 ) {
     val settingsScrollState = rememberScrollState()
-    val frostBackdrop = rememberFrostBackdrop()
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val playerBackgroundStyle by rememberEnumPreference(
         PlayerBackgroundStyleKey,
@@ -64,11 +64,15 @@ fun IntegrationScreen(
         playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
     }.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    IridePageHeaderLayout(
+        title = stringResource(R.string.integrations),
+        initiallyCollapsed = true,
+        navigationIcon = { IridePageBackButton(navController) },
+        modifier = Modifier.fillMaxSize(),
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .recordFrostBackdrop(frostBackdrop)
         ) {
             if (mainTopGradient) {
                 TopScreenGradientBackground(
@@ -84,7 +88,7 @@ fun IntegrationScreen(
             }
             Column(
                 Modifier
-                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
+                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                     .verticalScroll(settingsScrollState)
                     .padding(horizontal = 16.dp),
             ) {
@@ -110,11 +114,5 @@ fun IntegrationScreen(
             }
         }
 
-        SettingsBackTopBar(
-            title = stringResource(R.string.integrations),
-            navController = navController,
-            backdrop = frostBackdrop,
-            revealProgress = rememberDiscreteProgress(active = settingsScrollState.value > 0),
-        )
     }
 }

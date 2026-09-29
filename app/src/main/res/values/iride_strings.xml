@@ -16,13 +16,13 @@
     <string name="continuous">Continuous</string>
 
     <string name="liked">Liked Songs</string>
-    <string name="starred">Starred Songs</string>
+    <string name="starred">Starred</string>
     <string name="offline">Downloaded</string>
     <string name="downloads">Downloads</string>
     <string name="my_top">My Top</string>
     <string name="weekly_most_playlist_name">Weekly Most</string>
     <string name="monthly_most_playlist_name">Monthly Most</string>
-    <string name="cached_playlist">Cached</string>
+    <string name="cached_playlist">Temporary Downloads</string>
     <string name="uploaded_playlist">Uploaded</string>
     <string name="recently_added">Recently Added</string>
     <string name="recently_downloaded">Recently Downloaded</string>
@@ -172,7 +172,7 @@
     <string name="show_liked_playlist">Show Liked Songs playlist</string>
     <string name="show_downloaded_playlist">Show Downloaded playlist</string>
     <string name="show_top_playlist">Show Top playlist</string>
-    <string name="show_cached_playlist">Show Cached playlist</string>
+    <string name="show_cached_playlist">Show temporary downloads playlist</string>
     <string name="enable_song_cache">Enable song cache</string>
     <string name="enable_song_cache_desc">Automatically cache songs for faster future playback</string>
     <string name="show_uploaded_playlist">Show Uploaded playlist</string>

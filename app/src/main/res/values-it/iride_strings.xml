@@ -16,16 +16,17 @@
     <string name="continuous">Continuo</string>
 
     <string name="liked">Piaciuti</string>
-    <string name="starred">Brani preferiti</string>
+    <string name="starred">Preferiti</string>
     <string name="offline">Scaricati</string>
     <string name="downloads">Download</string>
     <string name="my_top">I miei migliori</string>
     <string name="weekly_most_playlist_name">Il meglio della settimana</string>
     <string name="monthly_most_playlist_name">Il meglio del mese</string>
-    <string name="cached_playlist">In cache</string>
+    <string name="cached_playlist">Scaricati temporaneamente</string>
     <string name="uploaded_playlist">Caricato</string>
     <string name="recently_added">Aggiunti di recente</string>
     <string name="recently_downloaded">Scaricati di recente</string>
+    <string name="download_songs_to_see_recent">Scarica dei brani per vederli qui.</string>
     <string name="filter_uploaded">Caricato</string>
     <string name="sync_playlist">Sincronizza playlist</string>
     <string name="sync_disabled">Sincronizzazione disabilitata</string>
@@ -173,7 +174,7 @@
     <string name="show_liked_playlist">Mostra la playlist dei brani piaciuti</string>
     <string name="show_downloaded_playlist">Mostra la playlist dei brani scaricati</string>
     <string name="show_top_playlist">Mostra la playlist dei migliori brani</string>
-    <string name="show_cached_playlist">Mostra la playlist dei brani in cache</string>
+    <string name="show_cached_playlist">Mostra la playlist dei brani scaricati temporaneamente</string>
     <string name="enable_song_cache">Abilita la cache del brano</string>
     <string name="enable_song_cache_desc">Memorizza automaticamente nella cache i brani per una riproduzione più rapida futura</string>
     <string name="show_uploaded_playlist">Mostra la playlist dei brani caricati</string>

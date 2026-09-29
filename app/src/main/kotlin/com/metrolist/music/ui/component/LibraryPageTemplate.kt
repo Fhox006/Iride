@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -16,7 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,8 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -40,7 +41,10 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -52,24 +56,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
-import com.metrolist.music.ui.theme.textSecondary
-import com.metrolist.music.ui.utils.IrideMotion
 import com.metrolist.music.ui.utils.irideEnter
-import com.metrolist.music.ui.utils.rememberDiscreteProgress
-import com.metrolist.music.ui.utils.rememberEnterProgress
-import com.metrolist.music.ui.utils.revealMask
 
 object LibraryPageDefaults {
     val SidePadding = 20.dp
-    val HeroTopSpace = 28.dp
-    val HeroToControlsGap = 16.dp
+    val HeroTopSpace = IridePageLayoutDefaults.BarHeight + IridePageLayoutDefaults.ContentTopSpacing
+    val HeroToControlsGap = IridePageLayoutDefaults.TitleBottomSpacing
     val GridSpacing = 12.dp
     val TopBarHeight = 40.dp
 }
 
 @Stable
 class LibraryPageRevealState {
-    var titleBottomPx by mutableFloatStateOf(Float.MAX_VALUE)
+    var titleTopPx by mutableFloatStateOf(Float.MAX_VALUE)
+    var titleHeightPx by mutableFloatStateOf(0f)
+    val progress: Float
+        get() = iridePageTitleProgress(titleTopPx, titleHeightPx, topBarBottomPx, pastTitle = false)
     var topBarBottomPx by mutableFloatStateOf(0f)
 }
 
@@ -83,10 +85,7 @@ fun rememberLibraryTopBarProgress(
     state: LibraryPageRevealState,
     scrolledPastHeader: Boolean,
 ): Float {
-    val covered by remember(scrolledPastHeader) {
-        derivedStateOf { scrolledPastHeader || state.titleBottomPx <= state.topBarBottomPx }
-    }
-    return rememberDiscreteProgress(covered)
+    return if (scrolledPastHeader) 1f else state.progress
 }
 
 @Composable
@@ -105,19 +104,21 @@ fun LibraryHeroTitle(
         Spacer(modifier = Modifier.height(LibraryPageDefaults.HeroTopSpace))
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .onGloballyPositioned { revealState.titleBottomPx = it.boundsInWindow().bottom },
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(
-                text = title,
-                style = TextStyle(
-                    fontFamily = SpaceMonoFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 40.sp,
-                    letterSpacing = (-0.6).sp,
-                ),
-                color = MaterialTheme.colorScheme.onBackground,
+            IridePageTitle(
+                title = title,
+                color = Color.White,
+                modifier = Modifier.weight(1f)
+                    .onGloballyPositioned {
+                        revealState.titleTopPx = it.positionInWindow().y
+                        revealState.titleHeightPx = it.size.height.toFloat()
+                    }
+                    .drawWithContent {
+                        clipRect(top = size.height * revealState.progress) {
+                            this@drawWithContent.drawContent()
+                        }
+                    },
             )
             if (badge != null) {
                 Spacer(modifier = Modifier.width(10.dp))
@@ -132,13 +133,14 @@ fun LibraryHeroTitle(
 fun LibrarySectionLabel(
     text: String,
     modifier: Modifier = Modifier,
+    verticalPadding: Dp = 12.dp,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp),
+            .padding(vertical = verticalPadding),
     ) {
         Text(
             text = text,
@@ -148,10 +150,66 @@ fun LibrarySectionLabel(
                 letterSpacing = 0.2.sp,
             ),
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.textSecondary,
+            color = Color.White,
             modifier = Modifier.weight(1f),
         )
         trailing?.invoke()
+    }
+}
+
+@Composable
+fun LibraryPlaybackActions(
+    onShuffle: () -> Unit,
+    onRotation: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = LibraryPageDefaults.SidePadding, vertical = 8.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp),
+    ) {
+        LibraryPlaybackAction(
+            label = stringResource(R.string.shuffle),
+            icon = R.drawable.shuffle,
+            onClick = onShuffle,
+            modifier = Modifier.weight(1f),
+        )
+        LibraryPlaybackAction(
+            label = stringResource(R.string.in_rotation),
+            icon = R.drawable.graphic_eq,
+            onClick = onRotation,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun LibraryPlaybackAction(
+    label: String,
+    icon: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(48.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = Color.White,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+        ) {
+            Icon(painter = painterResource(icon), contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily),
+                maxLines = 1,
+            )
+        }
     }
 }
 
@@ -172,7 +230,7 @@ fun LibraryCollapsibleSectionLabel(
         trailing = { Icon(
                 painter = painterResource(R.drawable.expand_more),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.textSecondary,
+                tint = Color.White,
                 modifier = Modifier
                     .rotate(rotation)
                     .clickable(
@@ -199,7 +257,7 @@ fun LibraryFooterCount(
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = Color.White,
         )
     }
 }
@@ -209,19 +267,18 @@ fun LibraryPageTopBar(
     title: String,
     revealProgress: Float,
     revealState: LibraryPageRevealState,
-    backdrop: FrostBackdrop?,
-    isSearchActive: Boolean,
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit,
+    isSearchActive: Boolean = false,
+    searchQuery: String = "",
+    onSearchQueryChange: (String) -> Unit = {},
     onNavigateUp: () -> Unit,
-    onSearchClick: () -> Unit,
-    onCloseSearch: () -> Unit,
-    keyboardController: SoftwareKeyboardController?,
+    onSearchClick: () -> Unit = {},
+    onCloseSearch: () -> Unit = {},
+    keyboardController: SoftwareKeyboardController? = null,
     modifier: Modifier = Modifier,
     extraActions: @Composable RowScope.() -> Unit = {},
+    showSearchAction: Boolean = true,
 ) {
     val focusRequester = remember { FocusRequester() }
-    val backProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
 
     LaunchedEffect(isSearchActive) {
         if (isSearchActive) {
@@ -230,95 +287,66 @@ fun LibraryPageTopBar(
         }
     }
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .fillMaxWidth()
-            .onGloballyPositioned { revealState.topBarBottomPx = it.boundsInWindow().bottom }
-            .frostedTopBarBackground(
-                progress = revealProgress,
-                barColor = MaterialTheme.colorScheme.background,
-                strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                backdrop = backdrop,
-            )
-            .statusBarsPadding()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = {},
-            )
-            .height(LibraryPageDefaults.TopBarHeight)
-            .padding(horizontal = 4.dp),
-    ) {
-        if (isSearchActive) {
-            TextField(
-                value = searchQuery,
-                onValueChange = onSearchQueryChange,
-                placeholder = {
-                    Text(
-                        text = stringResource(R.string.search_library),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.titleMedium,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent,
-                ),
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .focusRequester(focusRequester),
-            )
-
-            IconButton(onClick = onCloseSearch) {
-                Icon(
-                    painter = painterResource(R.drawable.close),
-                    contentDescription = stringResource(R.string.close),
-                )
-            }
-        } else {
-            Box(modifier = Modifier.irideEnter(backProgress, 6.dp)) {
-                IconButton(onClick = onNavigateUp) {
+    IridePageTopBar(
+        title = title,
+        progress = if (isSearchActive) 1f else revealProgress,
+        modifier = modifier.onGloballyPositioned {
+            revealState.topBarBottomPx = it.positionInWindow().y + it.size.height
+        },
+        navigationIcon = if (isSearchActive) null else ({
+            IconButton(onClick = onNavigateUp) {
+                IrideIconTile(size = 36.dp) {
                     Icon(
                         painter = painterResource(R.drawable.arrow_back),
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.back),
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp),
                     )
                 }
             }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 4.dp)
-                    .irideEnter(revealProgress, 6.dp)
-                    .revealMask(revealProgress),
-            ) {
-                Text(
-                    text = title,
-                    style = TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        letterSpacing = (-0.1).sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
+        }),
+        titleContent = if (isSearchActive) ({
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BasicTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.titleMedium.copy(color = Color.White),
+                    cursorBrush = SolidColor(Color.White),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+                    modifier = Modifier.weight(1f).focusRequester(focusRequester),
+                    decorationBox = { innerTextField ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (searchQuery.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.search_library),
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
+                            }
+                            innerTextField()
+                        }
+                    },
                 )
+                IconButton(onClick = onCloseSearch) {
+                    Icon(
+                        painter = painterResource(R.drawable.close),
+                        contentDescription = stringResource(R.string.close),
+                    )
+                }
             }
-            extraActions()
-            IconButton(onClick = onSearchClick) {
-                Icon(
-                    painter = painterResource(R.drawable.search),
-                    contentDescription = stringResource(R.string.search),
-                )
+        }) else null,
+        actions = {
+            if (!isSearchActive) {
+                extraActions()
+                if (showSearchAction) IconButton(onClick = onSearchClick) {
+                    Icon(
+                        painter = painterResource(R.drawable.search),
+                        contentDescription = stringResource(R.string.search),
+                    )
+                }
             }
-        }
-    }
+        },
+    )
 }

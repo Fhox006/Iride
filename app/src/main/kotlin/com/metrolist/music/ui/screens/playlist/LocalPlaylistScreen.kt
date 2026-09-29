@@ -5,6 +5,12 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.ui.component.iridePageContentInsets
+import com.metrolist.music.ui.component.iridePageTitleTextStyle
+import com.metrolist.music.ui.component.iridePageTitleClip
+import androidx.compose.ui.layout.positionInWindow
+import com.metrolist.music.ui.component.iridePageTitleProgress
+import com.metrolist.music.ui.component.IridePageTopBar
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -139,6 +145,7 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.AlbumTopGradientKey
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.IrideBaseBorderWidth
+import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlaylistSongSortDescendingKey
@@ -168,9 +175,6 @@ import com.metrolist.music.ui.component.IridePlaylistControlPanel
 import com.metrolist.music.ui.component.IridePressEffect
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
-import com.metrolist.music.ui.component.frostedTopBarBackground
-import com.metrolist.music.ui.component.recordFrostBackdrop
-import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.rememberRubberBandPull
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.OverlayEditButton
@@ -184,7 +188,7 @@ import com.metrolist.music.ui.menu.CustomThumbnailMenu
 import com.metrolist.music.ui.menu.LocalPlaylistMenu
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
-import com.metrolist.music.ui.screens.search.IrideSearchBox
+import com.metrolist.music.ui.component.IrideSearchBox
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.component.rememberGenreFilter
 import com.metrolist.music.ui.utils.IrideMotion
@@ -286,7 +290,8 @@ fun LocalPlaylistScreen(
         }
     }
 
-    var nameBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
+    var nameTopPx by remember { mutableStateOf(Float.MAX_VALUE) }
+    var nameHeightPx by remember { mutableStateOf(0f) }
     var topBarBottomPx by remember { mutableStateOf(0f) }
     val headerPull = rememberRubberBandPull()
 
@@ -540,15 +545,14 @@ fun LocalPlaylistScreen(
         else -> 5
     }
     val lazyListState = rememberLazyListState()
-    val headerTitleCovered by remember {
+    val topBarRevealProgress by remember {
         derivedStateOf {
-            headerRevealed && (
-                lazyListState.firstVisibleItemIndex > 1 ||
-                    nameBottomPx <= topBarBottomPx
-                )
+            if (!headerRevealed) 0f else iridePageTitleProgress(
+                nameTopPx, nameHeightPx, topBarBottomPx,
+                pastTitle = lazyListState.firstVisibleItemIndex > 1,
+            )
         }
     }
-    val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
     var dragInfo by remember {
         mutableStateOf<Pair<Int, Int>?>(null)
     }
@@ -618,7 +622,6 @@ fun LocalPlaylistScreen(
         prefetchThumbnails(context, displayedSongs.map { it.song.thumbnailUrl })
     }
 
-    val frostBackdrop = rememberFrostBackdrop()
 
     val onTopBarShuffleClick: () -> Unit = {
         playlist?.let { current ->
@@ -687,7 +690,7 @@ fun LocalPlaylistScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .recordFrostBackdrop(frostBackdrop)
+
             .graphicsLayer { alpha = screenProgress },
     ) {
         if (albumTopGradientEnabled) {
@@ -701,23 +704,30 @@ fun LocalPlaylistScreen(
             modifier = Modifier
                 .rubberBandOverscroll(Orientation.Vertical, lazyListState, headerPull),
             state = lazyListState,
-            contentPadding = LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime).asPaddingValues(),
+            contentPadding = iridePageContentInsets(LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime)).asPaddingValues(),
         ) {
-            item(key = "search_bar") {
-                IrideSearchBox(
-                    query = query,
-                    onQueryChange = { query = it },
-                    placeholderText = stringResource(R.string.search),
-                    focusRequester = focusRequester,
-                    onFocusChanged = { if (it.isFocused) isSearching = true },
-                    onSearch = {},
-                    onClear = { query = TextFieldValue() },
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                )
-            }
-
             playlist?.let { playlist ->
                 if (playlist.songCount == 0 && playlist.playlist.remoteSongCount == 0) {
+                    item(key = "empty_page_title") {
+                        Text(
+                            text = playlist.title,
+                            style = iridePageTitleTextStyle(),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                    }
+                    item(key = "search_bar") {
+                        IrideSearchBox(
+                            query = query,
+                            onQueryChange = { query = it },
+                            placeholderText = stringResource(R.string.search_playlists),
+                            focusRequester = focusRequester,
+                            onFocusChanged = { if (it.isFocused) isSearching = true },
+                            onSearch = {},
+                            onClear = { query = TextFieldValue() },
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        )
+                    }
                     item(key = "empty_placeholder") {
                         EmptyPlaceholder(
                             icon = R.drawable.music_note,
@@ -738,7 +748,11 @@ fun LocalPlaylistScreen(
                                 snackbarHostState = snackbarHostState,
                                 headerRevealed = headerRevealed,
                                 titleTypingMs = titleTypingMs,
-                                onTitleBoundsChanged = { nameBottomPx = it },
+                                onTitleBoundsChanged = { top, height ->
+                                    nameTopPx = top
+                                    nameHeightPx = height
+                                },
+                                titleProgress = topBarRevealProgress,
                             )
                         }
                     }
@@ -756,6 +770,19 @@ fun LocalPlaylistScreen(
                                     .irideEnterScale(controlPanelProgress),
                             )
                         }
+                    }
+
+                    item(key = "search_bar") {
+                        IrideSearchBox(
+                            query = query,
+                            onQueryChange = { query = it },
+                            placeholderText = stringResource(R.string.search_playlists),
+                            focusRequester = focusRequester,
+                            onFocusChanged = { if (it.isFocused) isSearching = true },
+                            onSearch = {},
+                            onClear = { query = TextFieldValue() },
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        )
                     }
 
                     item(key = "controls_row") {
@@ -783,6 +810,7 @@ fun LocalPlaylistScreen(
                                 sortDescending = sortDescending,
                                 onSortDescendingChange = onSortDescendingChange,
                                 showDescending = sortType != PlaylistSongSortType.CUSTOM,
+                                availableViewTypes = listOf(LibraryViewType.GRID, LibraryViewType.GRID_WIDE),
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -795,6 +823,19 @@ fun LocalPlaylistScreen(
                             modifier = Modifier.irideEnter(genrePillsProgress, 6.dp),
                         )
                     }
+                }
+            } ?: run {
+                item(key = "search_bar") {
+                    IrideSearchBox(
+                        query = query,
+                        onQueryChange = { query = it },
+                        placeholderText = stringResource(R.string.search_playlists),
+                        focusRequester = focusRequester,
+                        onFocusChanged = { if (it.isFocused) isSearching = true },
+                        onSearch = {},
+                        onClear = { query = TextFieldValue() },
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
                 }
             }
 
@@ -1134,48 +1175,27 @@ fun LocalPlaylistScreen(
             }
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
-                .frostedTopBarBackground(
-                    progress = if (!locked || inSelectMode) 1f else topBarRevealProgress,
-                    barColor = MaterialTheme.colorScheme.background,
-                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                    backdrop = frostBackdrop,
-                )
-                .statusBarsPadding()
-                .height(40.dp)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        IridePageTopBar(
+            progress = if (!locked || inSelectMode) 1f else topBarRevealProgress,
+            modifier = Modifier.onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom },
         ) {
                 topBarNavigationIcon()
                 Text(
                     text = when {
-                        inSelectMode -> pluralStringResource(R.plurals.n_selected, selection.size, selection.size)
-                        !locked -> stringResource(R.string.reorder)
-                        isSearching -> ""
-                        else -> playlist?.playlist?.name.orEmpty()
+                    inSelectMode -> pluralStringResource(R.plurals.n_selected, selection.size, selection.size)
+                    !locked -> stringResource(R.string.reorder)
+                    else -> ""
                     },
-                    style = TextStyle(
-                        fontFamily = SpaceMonoFontFamily,
-                        fontWeight = if (inSelectMode) FontWeight.SemiBold else FontWeight.Bold,
-                        fontSize = if (inSelectMode) 14.sp else 18.sp,
-                        letterSpacing = (-0.1).sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                    fontFamily = SpaceMonoFontFamily,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                    color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .weight(1f)
-                        .padding(start = 4.dp)
-                        .then(
-                            if (inSelectMode || isSearching || !locked) {
-                                Modifier
-                            } else {
-                                Modifier.irideEnter(topBarRevealProgress, 6.dp).revealMask(topBarRevealProgress)
-                            },
-                        ),
+                        .padding(start = 4.dp),
                 )
                 if (!inSelectMode && locked && !isSearching) {
                     playlist?.let { current ->
@@ -1219,7 +1239,8 @@ fun LocalPlaylistHeader(
     headerRevealed: Boolean,
     titleTypingMs: Int,
     modifier: Modifier = Modifier,
-    onTitleBoundsChanged: (Float) -> Unit = {},
+    onTitleBoundsChanged: (Float, Float) -> Unit = { _, _ -> },
+    titleProgress: Float = 0f,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -1688,12 +1709,7 @@ fun LocalPlaylistHeader(
 
             TypewriterText(
                 text = playlist.playlist.name,
-                style = TextStyle(
-                    fontFamily = SpaceMonoFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp,
-                    letterSpacing = (-0.2).sp,
-                ),
+                style = iridePageTitleTextStyle(),
                 color = MaterialTheme.colorScheme.onBackground,
                 resetKey = playlist.playlist.id,
                 animate = !headerRevealed,
@@ -1701,7 +1717,8 @@ fun LocalPlaylistHeader(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .onGloballyPositioned { onTitleBoundsChanged(it.boundsInWindow().bottom) },
+                    .onGloballyPositioned { onTitleBoundsChanged(it.positionInWindow().y, it.size.height.toFloat()) }
+                .iridePageTitleClip { titleProgress },
             )
 
             Spacer(modifier = Modifier.height(8.dp))

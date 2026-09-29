@@ -225,8 +225,12 @@ fun GenresScreen(navController: NavController) {
             GenreChip(
                 genre = genre,
                 onClick = {
-                    // TODO: no filter pre-selection mechanism in OnlineSearchResult (filter resets to null on launch)
-                    navController.navigate("search/${URLEncoder.encode(genre.name, "UTF-8")}")
+                    if (genre.name == "Rock") {
+                        navController.navigate("rock_module")
+                    } else {
+                        // TODO: no filter pre-selection mechanism in OnlineSearchResult (filter resets to null on launch)
+                        navController.navigate("search/${URLEncoder.encode(genre.name, "UTF-8")}")
+                    }
                 },
             )
         }

@@ -1,3 +1,7 @@
+# Preferenze per Iride
+
+Quando lavori in `C:\Users\mrffh\Desktop\Iride` o in una sua sottocartella, applica sempre le skill `build` e `caveman` in `C:\Users\mrffh\.agents\skills\`. Per `build`, segui le istruzioni della skill al posto delle istruzioni di verifica del repository che richiedono di assemblare l'app.
+
 # Working with Metrolist as an AI agent
 
 Metrolist is a 3rd party YouTube Music client written in Kotlin. It follows material 3 design guidelines closely.

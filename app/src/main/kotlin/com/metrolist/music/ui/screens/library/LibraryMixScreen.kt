@@ -8,7 +8,6 @@ package com.metrolist.music.ui.screens.library
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -19,7 +18,6 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -30,11 +28,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.items as listItems
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.layout.offset
@@ -47,7 +45,6 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -61,10 +58,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLocale
@@ -75,6 +72,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -110,14 +109,13 @@ import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.AlbumGridItem
 import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.LibraryAlbumListItem
+import com.metrolist.music.ui.component.LibraryArtistListItem
 import com.metrolist.music.ui.component.LibraryPlaylistListItem
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
-import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.IrideSegmentedToggle
-import com.metrolist.music.ui.component.IridePageTitle
-import com.metrolist.music.ui.component.FrostedPageTitleBar
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.IridePageLayoutDefaults
+import com.metrolist.music.ui.component.IrideSearchBox
 import com.metrolist.music.ui.component.LibrarySectionLabel
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
@@ -126,7 +124,6 @@ import com.metrolist.music.ui.component.PlaylistListItem
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongListItem
-import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.strokeHairline
 import com.metrolist.music.ui.theme.textPrimary
@@ -137,7 +134,7 @@ import com.metrolist.music.ui.menu.ArtistMenu
 import com.metrolist.music.ui.menu.PlaylistMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.utils.IrideMotion
-import com.metrolist.music.ui.utils.rememberDiscreteProgress
+import com.metrolist.music.ui.utils.rememberReducedMotion
 import com.metrolist.music.ui.utils.IrideTabEntrance
 import com.metrolist.music.ui.utils.irideEnter
 import com.metrolist.music.ui.utils.revealMask
@@ -146,6 +143,7 @@ import com.metrolist.music.ui.utils.rememberSectionEnter
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LibraryMixViewModel
+import com.metrolist.music.viewmodels.CachePlaylistViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -161,13 +159,11 @@ fun LibraryMixScreen(
 ) {
     val menuState = LocalMenuState.current
     val haptic = LocalHapticFeedback.current
-    val keyboardController = LocalSoftwareKeyboardController.current
     val queueSearchedSongsStr = stringResource(R.string.queue_searched_songs)
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
-    val irideStart = 20.dp
     var viewType by rememberEnumPreference(MixViewTypeKey, LibraryViewType.GRID)
     val isListView = viewType == LibraryViewType.LIST
     val contentGutter = if (isListView) 0.dp else 12.dp
@@ -188,6 +184,7 @@ fun LibraryMixScreen(
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
 
     var isLibraryFilter by viewModel.isLibraryMode
+    val isOffline = !isLibraryFilter
     val libraryTabKey = "library_$isLibraryFilter"
     val screenProgress = if (IrideTabEntrance.wasRevealed(libraryTabKey)) {
         1f
@@ -196,16 +193,9 @@ fun LibraryMixScreen(
             .also { if (it >= 1f) IrideTabEntrance.markRevealed(libraryTabKey) }
     }
     val revealedSections = remember(isLibraryFilter) { IrideTabEntrance.sectionsFor(libraryTabKey) }
-    var isSearchActive by rememberSaveable { mutableStateOf(false) }
     val searchQuery by viewModel.searchQuery.collectAsState()
     val debouncedSearchQuery by viewModel.debouncedSearchQuery.collectAsState()
-    val normalizedQuery = remember(isSearchActive, searchQuery, debouncedSearchQuery) {
-        if (isSearchActive) {
-            searchQuery.normalizeForSearch()
-        } else {
-            debouncedSearchQuery.normalizeForSearch()
-        }
-    }
+    val normalizedQuery = remember(debouncedSearchQuery) { debouncedSearchQuery.normalizeForSearch() }
 
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val hardResetContext = LocalContext.current
@@ -268,7 +258,7 @@ fun LibraryMixScreen(
             playlist =
                 PlaylistEntity(
                     id = UUID.randomUUID().toString(),
-                    name = stringResource(R.string.cached_playlist),
+                    name = stringResource(R.string.offline_ready_songs),
                 ),
             songCount = 0,
             songThumbnails = emptyList(),
@@ -285,16 +275,22 @@ fun LibraryMixScreen(
             songThumbnails = emptyList(),
         )
 
+    val downloadedSongs by viewModel.downloadedSongs.collectAsState()
+    val downloadedPlaylistIds by viewModel.downloadedPlaylistIds.collectAsState()
+    val cacheViewModel: CachePlaylistViewModel = hiltViewModel()
+    val cachedSongs by cacheViewModel.cachedSongs.collectAsState()
+
     val (showDownloaded) = rememberPreference(ShowDownloadedPlaylistKey, false)
     val (showCached) = rememberPreference(ShowCachedPlaylistKey, false)
     val (showUploaded) = rememberPreference(ShowUploadedPlaylistKey, false)
 
     val showDownloadedPlaylist =
-        showDownloaded && matchesNormalizedQuery(normalizedQuery, downloadPlaylist.playlist.name)
+        showDownloaded && downloadedSongs.isNotEmpty() && matchesNormalizedQuery(normalizedQuery, downloadPlaylist.playlist.name)
     val showTopPlaylists = false
     val showUploadedPlaylists =
         showUploaded && matchesNormalizedQuery(normalizedQuery, uploadedPlaylist.playlist.name)
-    val showCachedPlaylists = showCached && matchesNormalizedQuery(normalizedQuery, cachedPlaylist.playlist.name)
+    val showCachedPlaylists = isOffline && !isLibraryFilter && showCached && cachedSongs.isNotEmpty() &&
+        matchesNormalizedQuery(normalizedQuery, cachedPlaylist.playlist.name)
 
 
     val albums = viewModel.albums.collectAsState()
@@ -303,6 +299,7 @@ fun LibraryMixScreen(
     val playlist = viewModel.playlists.collectAsState()
     val uploadedSongs by viewModel.uploadedSongs.collectAsState()
     val downloadedAlbums by viewModel.downloadedAlbums.collectAsState()
+    val localSongs by viewModel.localSongs.collectAsState()
     val locale = LocalLocale.current.platformLocale
     val collator = remember(locale) {
         Collator.getInstance(locale).apply {
@@ -420,22 +417,21 @@ fun LibraryMixScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val lazyGridState = rememberLazyGridState()
-    val frostBackdrop = rememberFrostBackdrop()
-    val titleRevealProgress = rememberDiscreteProgress(
-        lazyGridState.firstVisibleItemIndex > 0,
-    )
+    val lazyListState = rememberLazyListState()
+    val reducedMotion = rememberReducedMotion()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val scrollToTop =
         backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
 
     LaunchedEffect(scrollToTop?.value) {
         if (scrollToTop?.value == true) {
-            lazyGridState.animateScrollToItem(0)
+            if (isListView) lazyListState.animateScrollToItem(0) else lazyGridState.animateScrollToItem(0)
             backStackEntry?.savedStateHandle?.set("scrollToTop", false)
         }
     }
 
     LaunchedEffect(Unit) {
+        viewModel.updateSearchQuery("")
         if (ytmSync) {
             withContext(Dispatchers.IO) {
                 viewModel.syncAllLibrary()
@@ -443,10 +439,6 @@ fun LibraryMixScreen(
         }
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-        snapAnimationSpec = tween(durationMillis = 200),
-    )
-    val fraction = scrollBehavior.state.collapsedFraction
     val onFilterToggle = { isLibraryFilter = !isLibraryFilter }
 
     MaterialTheme(
@@ -470,469 +462,584 @@ fun LibraryMixScreen(
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .recordFrostBackdrop(frostBackdrop, enabled = titleRevealProgress > 0f),
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                ) {
-                    Box(Modifier.fillMaxSize().background(Color.Black))
-                }
-                CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
-                    LazyVerticalGrid(
-                        state = lazyGridState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer { alpha = screenProgress }
-                            .rubberBandOverscroll(Orientation.Vertical, lazyGridState),
-                        columns = when (viewType) {
-                            LibraryViewType.LIST -> GridCells.Fixed(1)
-                            LibraryViewType.GRID_WIDE -> GridCells.Fixed(3)
-                            LibraryViewType.GRID -> GridCells.Adaptive(
-                                minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
-                            )
-                        },
-                        contentPadding = PaddingValues(
-                            start = irideStart,
-                            end = irideStart,
-                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 16.dp,
-                            bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(0.dp),
+        Box(
+            modifier = Modifier.fillMaxSize()
+                .background(Color.Black)
+                .rubberBandOverscroll(
+                    Orientation.Vertical,
+                    if (isListView) lazyListState else lazyGridState,
+                ),
+        ) {
+            CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
+                if (isListView) {
+                    IridePageLayout(
+                        titleRes = R.string.filter_library,
+                        state = lazyListState,
+                        reducedMotion = reducedMotion,
+                        listModifier = Modifier
+                            .graphicsLayer { alpha = screenProgress },
+                        contentHorizontalPadding = 20.dp,
+                        bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
                     ) {
-                        item(key = "library_page_title", span = { GridItemSpan(maxLineSpan) }) {
-                            IridePageTitle(
-                                titleRes = R.string.filter_library,
-                                modifier = Modifier.padding(bottom = 16.dp),
+                        item(key = "library_filter_toggle") {
+                            IrideSegmentedToggle(
+                                options = listOf(
+                                    true to stringResource(R.string.filter_library),
+                                    false to stringResource(R.string.filter_downloaded),
+                                ),
+                                selected = isLibraryFilter,
+                                onSelect = { value -> if (value != isLibraryFilter) onFilterToggle() },
+                                modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
                             )
                         }
-
-                        item(key = "library_filter_toggle", span = { GridItemSpan(maxLineSpan) }) {
-                            Row(
-                                modifier = Modifier
-                                    .padding(top = 4.dp, bottom = 0.dp)
-                                    .animateItem(placementSpec = IrideMotion.PlacementSpec)
-                                    .irideEnter(rememberSectionEnter("library_filter_toggle", revealedSections), 8.dp),
-                            ) {
-                                IrideSegmentedToggle(
-                                    options = listOf(
-                                        true to stringResource(R.string.filter_library),
-                                        false to stringResource(R.string.filter_downloaded),
-                                    ),
-                                    selected = isLibraryFilter,
-                                    onSelect = { value -> if (value != isLibraryFilter) onFilterToggle() },
-                                )
-                            }
-                        }
-
-                        item(key = "categories", span = { GridItemSpan(maxLineSpan) }) {
+                        item(key = "categories") {
                             CategoriesContent(
                                 navController = navController,
                                 showUploads = uploadedSongs.isNotEmpty(),
+                                showLocalSongs = localSongs.isNotEmpty(),
+                                showDownloadedPlaylists = downloadedPlaylistIds.isNotEmpty(),
+                                showDownloadedAlbums = downloadedAlbums.isNotEmpty(),
+                                showDownloadedSongs = downloadedSongs.isNotEmpty(),
+                                showOfflineReady = cachedSongs.isNotEmpty(),
                                 isOffline = !isLibraryFilter,
                                 useIrideStyle = true,
-                                modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
                             )
                         }
-
                         if (normalizedQuery.isBlank()) {
-                            item(
-                                key = "recently_added_label",
-                                span = { GridItemSpan(maxLineSpan) },
-                                contentType = CONTENT_TYPE_HEADER,
-                            ) {
+                            item(key = "recently_added_label", contentType = CONTENT_TYPE_HEADER) {
                                 LibrarySectionLabel(
-                                    text = if (isLibraryFilter) {
-                                        stringResource(R.string.recently_added)
+                                    text = if (isOffline && downloadedSongs.isEmpty() && localSongs.isEmpty()) {
+                                        stringResource(R.string.download_songs_to_see_recent)
                                     } else {
-                                        stringResource(R.string.recently_downloaded)
+                                        stringResource(if (isLibraryFilter) R.string.recently_added else R.string.recently_downloaded)
                                     },
-                                    modifier = Modifier
-                                        .animateItem(placementSpec = IrideMotion.PlacementSpec)
-                                        .revealMask(rememberSectionEnter("recently_added_label", revealedSections)),
-                                )
-                            }
-                            item(
-                                key = "sort_header",
-                                span = { GridItemSpan(maxLineSpan) },
-                                contentType = CONTENT_TYPE_HEADER,
-                            ) {
-                                LibrarySortRow(
-                                    sortOptions = sortOptions,
-                                    currentSort = sortType,
-                                    onSortChange = onSortTypeChange,
-                                    sortDescending = sortDescending,
-                                    onSortDescendingChange = onSortDescendingChange,
-                                    viewType = viewType,
-                                    onViewTypeChange = { viewType = it },
-                                    modifier = Modifier
-                                        .animateItem(placementSpec = IrideMotion.PlacementSpec)
-                                        .irideEnter(rememberSectionEnter("sort_header", revealedSections), 6.dp),
+                                    modifier = Modifier.padding(top = 20.dp),
                                 )
                             }
                         }
-
-                        if (showDownloadedPlaylist) {
-                            item(key = "downloadedPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
-                                Box(
-                                    modifier = Modifier
-                                        .padding(bottom = contentGutter)
-                                        .irideEnter(rememberSectionEnter("downloadedPlaylist", revealedSections)),
-                                ) {
-                                    if (isListView) {
+                        if (showDownloadedPlaylist) item(key = "downloadedPlaylist") {
+                            PlaylistListItem(
+                                playlist = downloadPlaylist,
+                                autoPlaylist = true,
+                                modifier = Modifier.fillMaxWidth().clickable { navController.navigate("auto_playlist/downloaded") },
+                            )
+                        }
+                        if (showCachedPlaylists) item(key = "cachedPlaylist") {
+                            PlaylistListItem(
+                                playlist = cachedPlaylist,
+                                autoPlaylist = true,
+                                modifier = Modifier.fillMaxWidth().clickable { navController.navigate("cache_playlist/cached") },
+                            )
+                        }
+                        if (showTopPlaylists) item(key = "TopPlaylist") {
+                            PlaylistListItem(
+                                playlist = topPlaylist,
+                                autoPlaylist = true,
+                                modifier = Modifier.fillMaxWidth().clickable { navController.navigate("top_playlist/$topSize") },
+                            )
+                        }
+                        if (showUploadedPlaylists) item(key = "uploadedPlaylist") {
+                            PlaylistListItem(
+                                playlist = uploadedPlaylist,
+                                autoPlaylist = true,
+                                modifier = Modifier.fillMaxWidth().clickable { navController.navigate("auto_playlist/uploaded") },
+                            )
+                        }
+                        listItems(filteredItems, key = { it.id }) { item ->
+                            when (item) {
+                                is Playlist -> {
+                                    if (item.id == PlaylistEntity.LIKED_PLAYLIST_ID) {
                                         PlaylistListItem(
-                                            playlist = downloadPlaylist,
+                                            playlist = item,
                                             autoPlaylist = true,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable { navController.navigate("auto_playlist/downloaded") }
-                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
+                                            modifier = Modifier.fillMaxWidth().clickable { navController.navigate("auto_playlist/liked") },
                                         )
                                     } else {
-                                        PlaylistGridItem(
-                                            playlist = downloadPlaylist,
-                                            fillMaxWidth = true,
-                                            autoPlaylist = true,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .combinedClickable(
-                                                    onClick = { navController.navigate("auto_playlist/downloaded") },
-                                                )
-                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
-                                        )
+                                        LibraryPlaylistListItem(navController, menuState, coroutineScope, item)
                                     }
                                 }
-                            }
-                        }
-
-                        if (showCachedPlaylists) {
-                            item(key = "cachedPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
-                                Box(
-                                    modifier = Modifier
-                                        .padding(bottom = contentGutter)
-                                        .irideEnter(rememberSectionEnter("cachedPlaylist", revealedSections)),
-                                ) {
-                                    if (isListView) {
-                                        PlaylistListItem(
-                                            playlist = cachedPlaylist,
-                                            autoPlaylist = true,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable { navController.navigate("cache_playlist/cached") }
-                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
-                                        )
-                                    } else {
-                                        PlaylistGridItem(
-                                            playlist = cachedPlaylist,
-                                            fillMaxWidth = true,
-                                            autoPlaylist = true,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .combinedClickable(
-                                                    onClick = { navController.navigate("cache_playlist/cached") },
-                                                )
-                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        if (showTopPlaylists) {
-                            item(key = "TopPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
-                                Box(
-                                    modifier = Modifier
-                                        .padding(bottom = contentGutter)
-                                        .irideEnter(rememberSectionEnter("TopPlaylist", revealedSections)),
-                                ) {
-                                    if (isListView) {
-                                        PlaylistListItem(
-                                            playlist = topPlaylist,
-                                            autoPlaylist = true,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable { navController.navigate("top_playlist/$topSize") }
-                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
-                                        )
-                                    } else {
-                                        PlaylistGridItem(
-                                            playlist = topPlaylist,
-                                            fillMaxWidth = true,
-                                            autoPlaylist = true,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .combinedClickable(
-                                                    onClick = { navController.navigate("top_playlist/$topSize") },
-                                                )
-                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        if (showUploadedPlaylists) {
-                            item(key = "uploadedPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
-                                Box(
-                                    modifier = Modifier
-                                        .padding(bottom = contentGutter)
-                                        .irideEnter(rememberSectionEnter("uploadedPlaylist", revealedSections)),
-                                ) {
-                                    if (isListView) {
-                                        PlaylistListItem(
-                                            playlist = uploadedPlaylist,
-                                            autoPlaylist = true,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable { navController.navigate("auto_playlist/uploaded") }
-                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
-                                        )
-                                    } else {
-                                        PlaylistGridItem(
-                                            playlist = uploadedPlaylist,
-                                            fillMaxWidth = true,
-                                            autoPlaylist = true,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable { navController.navigate("auto_playlist/uploaded") }
-                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        items(
-                            items = filteredItems,
-                            key = { it.id },
-                            contentType = { CONTENT_TYPE_PLAYLIST },
-                        ) { item ->
-                            Box(modifier = Modifier.padding(bottom = contentGutter)) {
-                                when (item) {
-                                    is Playlist -> {
-                                        if (isListView) {
-                                            if (item.id == PlaylistEntity.LIKED_PLAYLIST_ID) {
-                                                PlaylistListItem(
-                                                    playlist = item,
-                                                    autoPlaylist = true,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clickable { navController.navigate("auto_playlist/liked") }
-                                                        .animateItem(placementSpec = IrideMotion.PlacementSpec),
-                                                )
-                                            } else {
-                                                LibraryPlaylistListItem(
-                                                    navController = navController,
-                                                    menuState = menuState,
-                                                    coroutineScope = coroutineScope,
-                                                    playlist = item,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .animateItem(placementSpec = IrideMotion.PlacementSpec),
-                                                )
-                                            }
+                                is Album -> LibraryAlbumListItem(
+                                    navController = navController,
+                                    menuState = menuState,
+                                    album = item,
+                                    isActive = item.id == mediaMetadata?.album?.id,
+                                    isPlaying = isPlaying,
+                                )
+                                is Artist -> LibraryArtistListItem(navController, menuState, coroutineScope, item)
+                                is Song -> {
+                                    val onClick = {
+                                        if (item.id == mediaMetadata?.id) {
+                                            playerConnection.togglePlayPause()
                                         } else {
-                                            PlaylistGridItem(
-                                                playlist = item,
-                                                fillMaxWidth = true,
-                                                autoPlaylist = item.id == PlaylistEntity.LIKED_PLAYLIST_ID,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .combinedClickable(
-                                                        onClick = {
-                                                            if (item.id == PlaylistEntity.LIKED_PLAYLIST_ID) {
-                                                                navController.navigate("auto_playlist/liked")
-                                                            } else if (!item.playlist.isEditable && item.songCount == 0 &&
-                                                                item.playlist.browseId != null
-                                                            ) {
-                                                                navController.navigate("online_playlist/${item.playlist.browseId}")
-                                                            } else {
-                                                                navController.navigate("local_playlist/${item.id}")
-                                                            }
-                                                        },
-                                                        onLongClick = {
-                                                            if (item.id != PlaylistEntity.LIKED_PLAYLIST_ID) {
-                                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                                menuState.show {
-                                                                    PlaylistMenu(
-                                                                        playlist = item,
-                                                                        coroutineScope = coroutineScope,
-                                                                        onDismiss = menuState::dismiss,
-                                                                    )
-                                                                }
-                                                            }
-                                                        },
+                                            val filteredSongs = filteredItems.filterIsInstance<Song>()
+                                            playerConnection.playQueue(
+                                                ListQueue(
+                                                    title = queueSearchedSongsStr,
+                                                    items = filteredSongs.map { it.toMediaItem() },
+                                                    startIndex = filteredSongs.indexOfFirst { it.id == item.id },
+                                                ),
+                                            )
+                                        }
+                                    }
+                                    SongListItem(
+                                        song = item,
+                                        isActive = item.id == mediaMetadata?.id,
+                                        isPlaying = isPlaying,
+                                        modifier = Modifier.fillMaxWidth().combinedClickable(
+                                            onClick = onClick,
+                                            onLongClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                menuState.show {
+                                                    SongMenu(
+                                                        originalSong = item,
+                                                        navController = navController,
+                                                        onDismiss = menuState::dismiss,
                                                     )
-                                                    .animateItem(placementSpec = IrideMotion.PlacementSpec),
-                                            )
-                                        }
-                                    }
+                                                }
+                                            },
+                                        ),
+                                    )
+                                }
+                            }
+                        }
+                        if (isLibraryFilter && normalizedQuery.isBlank()) item(key = "manual_refresh") {
+                            LibraryRefreshButton(
+                                isRefreshing = isRefreshing,
+                                useIrideStyle = true,
+                                onClick = { viewModel.refresh() },
+                            )
+                        }
+                        if (filteredItems.isEmpty() && !showDownloadedPlaylist && !showCachedPlaylists &&
+                            !showTopPlaylists && !showUploadedPlaylists && searchQuery.isNotBlank()
+                        ) item(key = "empty_search_result") {
+                            LibrarySearchEmptyPlaceholder()
+                        }
+                    }
+                } else {
+                IridePageLayout(
+                    titleRes = R.string.filter_library,
+                    state = lazyGridState,
+                    reducedMotion = reducedMotion,
+                    gridModifier = Modifier
+                        .graphicsLayer { alpha = screenProgress },
+                    columns = when (viewType) {
+                        LibraryViewType.GRID_WIDE -> GridCells.Fixed(3)
+                        else -> GridCells.Adaptive(
+                            minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
+                        )
+                    },
+                    bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    item(key = "library_filter_toggle", span = { GridItemSpan(maxLineSpan) }) {
+                        Row(
+                            modifier = Modifier
+                                .padding(top = 4.dp, bottom = 12.dp)
+                                .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                .irideEnter(rememberSectionEnter("library_filter_toggle", revealedSections), 8.dp),
+                        ) {
+                            IrideSegmentedToggle(
+                                options = listOf(
+                                    true to stringResource(R.string.filter_library),
+                                    false to stringResource(R.string.filter_downloaded),
+                                ),
+                                selected = isLibraryFilter,
+                                onSelect = { value -> if (value != isLibraryFilter) onFilterToggle() },
+                            )
+                        }
+                    }
 
-                                    is Song -> {
-                                        val onClick = {
-                                            if (item.id == mediaMetadata?.id) {
-                                                playerConnection.togglePlayPause()
-                                            } else {
-                                                val filteredSongs = filteredItems.filterIsInstance<Song>()
-                                                playerConnection.playQueue(
-                                                    ListQueue(
-                                                        title = queueSearchedSongsStr,
-                                                        items = filteredSongs.map { it.toMediaItem() },
-                                                        startIndex = filteredSongs.indexOfFirst { it.id == item.id },
-                                                    ),
-                                                )
-                                            }
-                                        }
-                                        val onLongClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            menuState.show {
-                                                SongMenu(
-                                                    originalSong = item,
-                                                    navController = navController,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-                                        }
-                                        if (isListView) {
-                                            SongListItem(
-                                                song = item,
-                                                isActive = item.id == mediaMetadata?.id,
-                                                isPlaying = isPlaying,
-                                                showLikedIcon = false,
+                    item(key = "categories", span = { GridItemSpan(maxLineSpan) }) {
+                        CategoriesContent(
+                            navController = navController,
+                            showUploads = uploadedSongs.isNotEmpty(),
+                            showLocalSongs = localSongs.isNotEmpty(),
+                            showDownloadedPlaylists = downloadedPlaylistIds.isNotEmpty(),
+                            showDownloadedAlbums = downloadedAlbums.isNotEmpty(),
+                            showDownloadedSongs = downloadedSongs.isNotEmpty(),
+                            showOfflineReady = cachedSongs.isNotEmpty(),
+                            isOffline = !isLibraryFilter,
+                            useIrideStyle = true,
+                            modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
+                        )
+                    }
+
+                    if (normalizedQuery.isBlank()) {
+                        item(
+                            key = "recently_added_label",
+                            span = { GridItemSpan(maxLineSpan) },
+                            contentType = CONTENT_TYPE_HEADER,
+                        ) {
+                            LibrarySectionLabel(
+                                text = if (isOffline && downloadedSongs.isEmpty() && localSongs.isEmpty()) {
+                                    stringResource(R.string.download_songs_to_see_recent)
+                                } else if (isLibraryFilter) {
+                                    stringResource(R.string.recently_added)
+                                } else {
+                                    stringResource(R.string.recently_downloaded)
+                                },
+                                modifier = Modifier
+                                    .padding(top = 20.dp)
+                                    .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                    .revealMask(rememberSectionEnter("recently_added_label", revealedSections)),
+                            )
+                        }
+                    }
+
+                    if (showDownloadedPlaylist) {
+                        item(key = "downloadedPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(bottom = contentGutter)
+                                    .irideEnter(rememberSectionEnter("downloadedPlaylist", revealedSections)),
+                            ) {
+                                if (isListView) {
+                                    PlaylistListItem(
+                                        playlist = downloadPlaylist,
+                                        autoPlaylist = true,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { navController.navigate("auto_playlist/downloaded") }
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
+                                    )
+                                } else {
+                                    PlaylistGridItem(
+                                        playlist = downloadPlaylist,
+                                        fillMaxWidth = true,
+                                        autoPlaylist = true,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .combinedClickable(
+                                                onClick = { navController.navigate("auto_playlist/downloaded") },
+                                            )
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (showCachedPlaylists) {
+                        item(key = "cachedPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(bottom = contentGutter)
+                                    .irideEnter(rememberSectionEnter("cachedPlaylist", revealedSections)),
+                            ) {
+                                if (isListView) {
+                                    PlaylistListItem(
+                                        playlist = cachedPlaylist,
+                                        autoPlaylist = true,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { navController.navigate("cache_playlist/cached") }
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
+                                    )
+                                } else {
+                                    PlaylistGridItem(
+                                        playlist = cachedPlaylist,
+                                        fillMaxWidth = true,
+                                        autoPlaylist = true,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .combinedClickable(
+                                                onClick = { navController.navigate("cache_playlist/cached") },
+                                            )
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (showTopPlaylists) {
+                        item(key = "TopPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(bottom = contentGutter)
+                                    .irideEnter(rememberSectionEnter("TopPlaylist", revealedSections)),
+                            ) {
+                                if (isListView) {
+                                    PlaylistListItem(
+                                        playlist = topPlaylist,
+                                        autoPlaylist = true,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { navController.navigate("top_playlist/$topSize") }
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
+                                    )
+                                } else {
+                                    PlaylistGridItem(
+                                        playlist = topPlaylist,
+                                        fillMaxWidth = true,
+                                        autoPlaylist = true,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .combinedClickable(
+                                                onClick = { navController.navigate("top_playlist/$topSize") },
+                                            )
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (showUploadedPlaylists) {
+                        item(key = "uploadedPlaylist", contentType = { CONTENT_TYPE_PLAYLIST }) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(bottom = contentGutter)
+                                    .irideEnter(rememberSectionEnter("uploadedPlaylist", revealedSections)),
+                            ) {
+                                if (isListView) {
+                                    PlaylistListItem(
+                                        playlist = uploadedPlaylist,
+                                        autoPlaylist = true,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { navController.navigate("auto_playlist/uploaded") }
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
+                                    )
+                                } else {
+                                    PlaylistGridItem(
+                                        playlist = uploadedPlaylist,
+                                        fillMaxWidth = true,
+                                        autoPlaylist = true,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { navController.navigate("auto_playlist/uploaded") }
+                                            .animateItem(placementSpec = IrideMotion.PlacementSpec),
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    items(
+                        items = filteredItems,
+                        key = { it.id },
+                        contentType = { CONTENT_TYPE_PLAYLIST },
+                    ) { item ->
+                        Box(modifier = Modifier.padding(bottom = contentGutter)) {
+                            when (item) {
+                                is Playlist -> {
+                                    if (isListView) {
+                                        if (item.id == PlaylistEntity.LIKED_PLAYLIST_ID) {
+                                            PlaylistListItem(
+                                                playlist = item,
+                                                autoPlaylist = true,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                                                    .clickable { navController.navigate("auto_playlist/liked") }
                                                     .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                             )
                                         } else {
-                                            SongGridItem(
-                                                song = item,
-                                                isActive = item.id == mediaMetadata?.id,
-                                                isPlaying = isPlaying,
-                                                showLikedIcon = false,
-                                                fillMaxWidth = true,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-                                                    .animateItem(placementSpec = IrideMotion.PlacementSpec),
-                                            )
-                                        }
-                                    }
-
-                                    is Album -> {
-                                        if (isListView) {
-                                            LibraryAlbumListItem(
+                                            LibraryPlaylistListItem(
                                                 navController = navController,
                                                 menuState = menuState,
-                                                album = item,
-                                                isActive = item.id == mediaMetadata?.album?.id,
-                                                isPlaying = isPlaying,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .animateItem(placementSpec = IrideMotion.PlacementSpec),
-                                            )
-                                        } else {
-                                            AlbumGridItem(
-                                                album = item,
-                                                showLikedIcon = false,
-                                                isActive = item.id == mediaMetadata?.album?.id,
-                                                isPlaying = isPlaying,
                                                 coroutineScope = coroutineScope,
-                                                fillMaxWidth = true,
+                                                playlist = item,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .combinedClickable(
-                                                        onClick = { navController.navigate("album/${item.id}") },
-                                                        onLongClick = {
-                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                            menuState.show {
-                                                                AlbumMenu(
-                                                                    originalAlbum = item,
-                                                                    navController = navController,
-                                                                    onDismiss = menuState::dismiss,
-                                                                )
-                                                            }
-                                                        },
-                                                    )
                                                     .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                             )
                                         }
-                                    }
-
-                                    is Artist -> {
-                                        if (!isListView) {
-                                            ArtistGridItem(
-                                                artist = item,
-                                                showLikedIcon = false,
-                                                fillMaxWidth = true,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .combinedClickable(
-                                                        onClick = { navController.navigate("artist/${item.id}") },
-                                                        onLongClick = {
+                                    } else {
+                                        PlaylistGridItem(
+                                            playlist = item,
+                                            fillMaxWidth = true,
+                                            autoPlaylist = item.id == PlaylistEntity.LIKED_PLAYLIST_ID,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .combinedClickable(
+                                                    onClick = {
+                                                        if (item.id == PlaylistEntity.LIKED_PLAYLIST_ID) {
+                                                            navController.navigate("auto_playlist/liked")
+                                                        } else if (!item.playlist.isEditable && item.songCount == 0 &&
+                                                            item.playlist.browseId != null
+                                                        ) {
+                                                            navController.navigate("online_playlist/${item.playlist.browseId}")
+                                                        } else {
+                                                            navController.navigate("local_playlist/${item.id}")
+                                                        }
+                                                    },
+                                                    onLongClick = {
+                                                        if (item.id != PlaylistEntity.LIKED_PLAYLIST_ID) {
                                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                             menuState.show {
-                                                                ArtistMenu(
-                                                                    originalArtist = item,
+                                                                PlaylistMenu(
+                                                                    playlist = item,
                                                                     coroutineScope = coroutineScope,
                                                                     onDismiss = menuState::dismiss,
                                                                 )
                                                             }
-                                                        },
-                                                    )
+                                                        }
+                                                    },
+                                                )
+                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
+                                        )
+                                    }
+                                }
+
+                                is Song -> {
+                                    val onClick = {
+                                        if (item.id == mediaMetadata?.id) {
+                                            playerConnection.togglePlayPause()
+                                        } else {
+                                            val filteredSongs = filteredItems.filterIsInstance<Song>()
+                                            playerConnection.playQueue(
+                                                ListQueue(
+                                                    title = queueSearchedSongsStr,
+                                                    items = filteredSongs.map { it.toMediaItem() },
+                                                    startIndex = filteredSongs.indexOfFirst { it.id == item.id },
+                                                ),
+                                            )
+                                        }
+                                    }
+                                    val onLongClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        menuState.show {
+                                            SongMenu(
+                                                originalSong = item,
+                                                navController = navController,
+                                                onDismiss = menuState::dismiss,
+                                            )
+                                        }
+                                    }
+                                    if (isListView) {
+                                        CompositionLocalProvider(LocalItemHorizontalPadding provides true) {
+                                            SongListItem(
+                                                song = item,
+                                                isActive = item.id == mediaMetadata?.id,
+                                                isPlaying = isPlaying,
+                                                showLikedIcon = true,
+                                                showDivider = true,
+                                                hairlineBorder = false,
+                                                softBorder = true,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .combinedClickable(onClick = onClick, onLongClick = onLongClick)
                                                     .animateItem(placementSpec = IrideMotion.PlacementSpec),
                                             )
                                         }
+                                    } else {
+                                        SongGridItem(
+                                            song = item,
+                                            isActive = item.id == mediaMetadata?.id,
+                                            isPlaying = isPlaying,
+                                            showLikedIcon = false,
+                                            fillMaxWidth = true,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
+                                        )
+                                    }
+                                }
+
+                                is Album -> {
+                                    if (isListView) {
+                                        LibraryAlbumListItem(
+                                            navController = navController,
+                                            menuState = menuState,
+                                            album = item,
+                                            isActive = item.id == mediaMetadata?.album?.id,
+                                            isPlaying = isPlaying,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
+                                        )
+                                    } else {
+                                        AlbumGridItem(
+                                            album = item,
+                                            showLikedIcon = false,
+                                            isActive = item.id == mediaMetadata?.album?.id,
+                                            isPlaying = isPlaying,
+                                            coroutineScope = coroutineScope,
+                                            fillMaxWidth = true,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .combinedClickable(
+                                                    onClick = { navController.navigate("album/${item.id}") },
+                                                    onLongClick = {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        menuState.show {
+                                                            AlbumMenu(
+                                                                originalAlbum = item,
+                                                                navController = navController,
+                                                                onDismiss = menuState::dismiss,
+                                                            )
+                                                        }
+                                                    },
+                                                )
+                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
+                                        )
+                                    }
+                                }
+
+                                is Artist -> {
+                                    if (!isListView) {
+                                        ArtistGridItem(
+                                            artist = item,
+                                            showLikedIcon = false,
+                                            fillMaxWidth = true,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .combinedClickable(
+                                                    onClick = { navController.navigate("artist/${item.id}") },
+                                                    onLongClick = {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        menuState.show {
+                                                            ArtistMenu(
+                                                                originalArtist = item,
+                                                                coroutineScope = coroutineScope,
+                                                                onDismiss = menuState::dismiss,
+                                                            )
+                                                        }
+                                                    },
+                                                )
+                                                .animateItem(placementSpec = IrideMotion.PlacementSpec),
+                                        )
                                     }
                                 }
                             }
                         }
+                    }
 
-                        if (normalizedQuery.isBlank()) {
-                            item(key = "manual_refresh", span = { GridItemSpan(maxLineSpan) }) {
-                                LibraryRefreshButton(
-                                    isRefreshing = isRefreshing,
-                                    useIrideStyle = true,
-                                    onClick = { viewModel.refresh() },
-                                    modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
-                                )
-                            }
+                    if (isLibraryFilter && normalizedQuery.isBlank()) {
+                        item(key = "manual_refresh", span = { GridItemSpan(maxLineSpan) }) {
+                            LibraryRefreshButton(
+                                isRefreshing = isRefreshing,
+                                useIrideStyle = true,
+                                onClick = { viewModel.refresh() },
+                                modifier = Modifier.animateItem(placementSpec = IrideMotion.PlacementSpec),
+                            )
                         }
+                    }
 
-                        if (
-                            filteredItems.isEmpty() &&
-                            !showDownloadedPlaylist &&
-                            !showCachedPlaylists &&
-                            !showTopPlaylists &&
-                            !showUploadedPlaylists &&
-                            searchQuery.isNotBlank()
+                    if (
+                        filteredItems.isEmpty() &&
+                        !showDownloadedPlaylist &&
+                        !showCachedPlaylists &&
+                        !showTopPlaylists &&
+                        !showUploadedPlaylists &&
+                        searchQuery.isNotBlank()
+                    ) {
+                        item(
+                            key = "empty_search_result",
+                            span = { GridItemSpan(maxLineSpan) },
                         ) {
-                            item(
-                                key = "empty_search_result",
-                                span = { GridItemSpan(maxLineSpan) },
-                            ) {
-                                LibrarySearchEmptyPlaceholder(
-                                    modifier = Modifier
-                                        .animateItem(placementSpec = IrideMotion.PlacementSpec)
-                                        .irideEnter(rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)),
-                                )
-                            }
+                            LibrarySearchEmptyPlaceholder(
+                                modifier = Modifier
+                                    .animateItem(placementSpec = IrideMotion.PlacementSpec)
+                                    .irideEnter(rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)),
+                            )
                         }
                     }
                 }
+                }
             }
-
-            FrostedPageTitleBar(
-                titleRes = R.string.filter_library,
-                progress = titleRevealProgress,
-                backdrop = frostBackdrop,
-            )
-
         }
     }
     }
@@ -993,6 +1100,11 @@ private data class CategoryItem(
 private fun CategoriesContent(
     navController: NavController,
     showUploads: Boolean,
+    showLocalSongs: Boolean,
+    showDownloadedPlaylists: Boolean,
+    showDownloadedAlbums: Boolean,
+    showDownloadedSongs: Boolean,
+    showOfflineReady: Boolean,
     isOffline: Boolean,
     useIrideStyle: Boolean = false,
     modifier: Modifier = Modifier,
@@ -1000,16 +1112,19 @@ private fun CategoriesContent(
     val albumsStr = stringResource(R.string.albums)
     val artistsStr = stringResource(R.string.artists)
     val playlistsStr = stringResource(R.string.playlists)
-    val cacheStr = stringResource(R.string.cache)
+    val cacheStr = stringResource(R.string.offline_ready_songs)
+    val allTracksStr = stringResource(R.string.all_tracks)
+    val localSongsStr = stringResource(R.string.local_songs)
     val uploadedStr = stringResource(R.string.filter_uploaded)
 
-    val items = remember(isOffline, showUploads, albumsStr, artistsStr, playlistsStr, cacheStr, uploadedStr) {
+    val items = remember(isOffline, showUploads, showLocalSongs, showDownloadedPlaylists, showDownloadedAlbums, showDownloadedSongs, showOfflineReady, albumsStr, artistsStr, playlistsStr, allTracksStr, cacheStr, localSongsStr, uploadedStr) {
         buildList {
-            add(CategoryItem(playlistsStr, R.drawable.queue_music, if (isOffline) "library_playlists_offline" else "library_playlists"))
-            add(CategoryItem(albumsStr, R.drawable.album, if (isOffline) "library_albums_offline" else "library_albums"))
-            add(CategoryItem(artistsStr, R.drawable.artist, if (isOffline) "library_artists_offline" else "library_artists"))
-            add(CategoryItem("All Tracks", R.drawable.library_music, if (isOffline) "library_songs_offline" else "library_songs"))
-            if (isOffline) add(CategoryItem(cacheStr, R.drawable.cached, "cache_playlist/cached"))
+            if (!isOffline || showDownloadedPlaylists) add(CategoryItem(playlistsStr, R.drawable.queue_music, if (isOffline) "library_playlists_offline" else "library_playlists"))
+            if (!isOffline || showDownloadedAlbums) add(CategoryItem(albumsStr, R.drawable.album, if (isOffline) "library_albums_offline" else "library_albums"))
+            if (!isOffline) add(CategoryItem(artistsStr, R.drawable.artist, "library_artists"))
+            if (!isOffline || showDownloadedSongs || showLocalSongs) add(CategoryItem(allTracksStr, R.drawable.music_note, if (isOffline) "library_songs_offline" else "library_songs"))
+            if (showLocalSongs) add(CategoryItem(localSongsStr, R.drawable.storage, "library_songs_local"))
+            if (isOffline && showOfflineReady) add(CategoryItem(cacheStr, R.drawable.cached, "cache_playlist/cached"))
             if (isOffline && showUploads) add(CategoryItem(uploadedStr, R.drawable.upload, "auto_playlist/uploaded"))
         }
     }

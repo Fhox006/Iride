@@ -10,8 +10,6 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.metrolist.innertube.YouTube
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
@@ -23,6 +21,7 @@ data class AlbumEntity(
     val playlistId: String? = null,
     val title: String,
     val year: Int? = null,
+    @ColumnInfo(defaultValue = "NULL") val albumType: String? = null,
     @ColumnInfo(defaultValue = "NULL") val releaseDate: String? = null,
     val thumbnailUrl: String? = null,
     val themeColor: Int? = null,
@@ -57,10 +56,12 @@ data class AlbumEntity(
         inLibrary = if (inLibrary != null) null else LocalDateTime.now()
     )
 
+    // Immediate sync via shared supervised scope (same package: SongEntity.kt).
+    // runCatching: nothing ever reaches the uncaught handler.
     fun toggleLike(): AlbumEntity = localToggleLike().also {
         playlistId?.let { id ->
-            CoroutineScope(Dispatchers.IO).launch {
-                YouTube.likePlaylist(id, bookmarkedAt == null)
+            EntitySyncScope.launch {
+                runCatching { YouTube.likePlaylist(id, bookmarkedAt == null).getOrThrow() }
                     .onFailure { error -> Timber.e(error, "Failed to sync album like: %s", id) }
             }
         }

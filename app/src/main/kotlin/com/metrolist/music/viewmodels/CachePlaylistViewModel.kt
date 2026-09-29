@@ -17,6 +17,7 @@ import com.metrolist.music.di.DownloadCache
 import com.metrolist.music.di.PlayerCache
 import com.metrolist.music.extensions.filterExplicit
 import com.metrolist.music.extensions.filterVideoSongs
+import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -74,6 +75,9 @@ class CachePlaylistViewModel
 
                     _cachedSongs.value =
                         completeSongs
+                            .map { song ->
+                                song.copy(song = song.song.copy(thumbnailUrl = song.song.thumbnailUrl?.resize(1024, 1024)))
+                            }
                             .filter { it.song.dateDownload != null }
                             .sortedByDescending { it.song.dateDownload }
                             .filterExplicit(hideExplicit)

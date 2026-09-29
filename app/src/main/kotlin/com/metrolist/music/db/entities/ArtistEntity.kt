@@ -10,8 +10,6 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.metrolist.innertube.YouTube
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import org.apache.commons.lang3.RandomStringUtils
@@ -41,14 +39,17 @@ data class ArtistEntity(
         bookmarkedAt = if (bookmarkedAt != null) null else LocalDateTime.now(),
     )
 
+    // Immediate sync via shared supervised scope (same package: SongEntity.kt).
+    // runCatching: nothing ever reaches the uncaught handler.
     fun toggleLike(): ArtistEntity = localToggleLike().also {
         if (!isLocal && !isPrivatelyOwnedArtist) {
-            CoroutineScope(Dispatchers.IO).launch {
-                val targetChannelId = channelId ?: YouTube.getChannelId(id)
-                if (targetChannelId.isNotEmpty()) {
-                    YouTube.subscribeChannel(targetChannelId, bookmarkedAt == null)
-                        .onFailure { error -> Timber.e(error, "Failed to sync artist subscription: %s", id) }
-                }
+            EntitySyncScope.launch {
+                runCatching {
+                    val targetChannelId = channelId ?: YouTube.getChannelId(id)
+                    if (targetChannelId.isNotEmpty()) {
+                        YouTube.subscribeChannel(targetChannelId, bookmarkedAt == null).getOrThrow()
+                    }
+                }.onFailure { error -> Timber.e(error, "Failed to sync artist subscription: %s", id) }
             }
         }
     }

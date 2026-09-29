@@ -5,6 +5,10 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import com.metrolist.music.ui.component.rememberLibraryPageRevealState
+import com.metrolist.music.ui.component.IridePageTopBar
 import android.app.Activity
 import android.content.Intent
 import android.os.Build
@@ -63,6 +67,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -99,9 +104,7 @@ import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.component.IridePageTitle
-import com.metrolist.music.ui.component.frostedTopBarBackground
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.component.IridePageLayoutDefaults
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.Updater
@@ -168,18 +171,6 @@ fun SettingsScreen(
             }
         }
     }
-    val backNavigationIcon: @Composable () -> Unit = {
-        IconButton(
-            onClick = navController::navigateUp,
-            onLongClick = navController::backToMain,
-        ) {
-            Icon(
-                painterResource(R.drawable.arrow_back),
-                contentDescription = null,
-            )
-        }
-    }
-
     val (accountEmail, _) = rememberPreference(AccountEmailKey, "")
     val (accountChannelHandle, _) = rememberPreference(AccountChannelHandleKey, "")
     val (innerTubeCookie, _) = rememberPreference(InnerTubeCookieKey, "")
@@ -195,12 +186,22 @@ fun SettingsScreen(
     val accountImageUrl: String? = accountImageUrlFlow ?: accountPhotoUrlPref.takeIf { it.isNotEmpty() }
 
     val settingsScrollState = rememberScrollState()
-    val frostBackdrop = rememberFrostBackdrop()
-    val topBarRevealProgress = rememberDiscreteProgress(settingsScrollState.value > 8)
+    val headerRevealState = rememberLibraryPageRevealState()
+    val topBarRevealProgress = headerRevealState.progress
 
     Scaffold(
         modifier = Modifier,
         topBar = {
+            IridePageTopBar(
+                title = stringResource(R.string.account),
+                progress = topBarRevealProgress,
+                modifier = Modifier.onGloballyPositioned {
+                    headerRevealState.topBarBottomPx = it.positionInWindow().y + it.size.height
+                },
+                actions = {
+                    if (topNavBarController != null && topBarRevealProgress >= 1f) advancedMenuButton()
+                },
+            )
         },
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
@@ -209,7 +210,6 @@ fun SettingsScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .recordFrostBackdrop(frostBackdrop)
     ) {
         Box(
             Modifier
@@ -226,19 +226,26 @@ fun SettingsScreen(
             )
             .rubberBandOverscroll(Orientation.Vertical, settingsScrollState)
             .verticalScroll(settingsScrollState)
-            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 16.dp)
+            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + IridePageLayoutDefaults.BarHeight + IridePageLayoutDefaults.ContentTopSpacing)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 16.dp, bottom = 12.dp),
+                .padding(start = 20.dp, end = 16.dp, bottom = IridePageLayoutDefaults.TitleBottomSpacing),
         ) {
             IridePageTitle(
                 titleRes = R.string.account,
-                modifier = Modifier.weight(1f),
+                monospace = true,
+                maxLines = 2,
+                modifier = Modifier.weight(1f)
+                    .onGloballyPositioned {
+                        headerRevealState.titleTopPx = it.positionInWindow().y
+                        headerRevealState.titleHeightPx = it.size.height.toFloat()
+                    }
+                    .alpha(1f - headerRevealState.progress),
             )
-            if (topNavBarController != null) {
+            if (topNavBarController != null && topBarRevealProgress < 1f) {
                 advancedMenuButton()
             }
         }
@@ -381,7 +388,7 @@ fun SettingsScreen(
                     description = { Text(stringResource(R.string.settings_account_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = {
                         Icon(
-                            painter = painterResource(R.drawable.arrow_forward),
+                            painter = painterResource(R.drawable.navigate_next),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
@@ -394,7 +401,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        val arrowIcon = painterResource(R.drawable.arrow_forward)
+        val arrowIcon = painterResource(R.drawable.navigate_next)
 
         Material3SettingsGroup(
             items = listOf(

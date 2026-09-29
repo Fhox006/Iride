@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageHeaderLayout
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -32,6 +34,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -65,10 +68,7 @@ import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
-import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
@@ -148,15 +148,17 @@ fun AboutScreen(
 ) {
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
-    val windowInsets = LocalPlayerAwareWindowInsets.current
+    val windowInsets = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
     val scrollState = rememberScrollState()
-    val frostBackdrop = rememberFrostBackdrop()
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
     val playerConnection = LocalPlayerConnection.current
     val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
 
-    Box(
+    IridePageHeaderLayout(
+        title = stringResource(R.string.about),
+        initiallyCollapsed = true,
+        navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent)
@@ -164,7 +166,6 @@ fun AboutScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .recordFrostBackdrop(frostBackdrop)
         ) {
             if (mainTopGradient) {
                 TopScreenGradientBackground(
@@ -182,15 +183,10 @@ fun AboutScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Horizontal))
-                .rubberBandOverscroll(Orientation.Vertical, scrollState)
+
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp),
         ) {
-            Spacer(
-                Modifier.windowInsetsPadding(
-                    windowInsets.only(WindowInsetsSides.Top)
-                )
-            )
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -240,6 +236,10 @@ fun AboutScreen(
             Button(
                 onClick = { navController.navigate("settings/updater") },
                 shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.onSurface,
+                    contentColor = MaterialTheme.colorScheme.background,
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
@@ -300,7 +300,7 @@ fun AboutScreen(
                         title = { Text(stringResource(R.string.credits_github)) },
                         trailingContent = {
                             Icon(
-                                painter = painterResource(R.drawable.arrow_forward),
+                                painter = painterResource(R.drawable.navigate_next),
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(18.dp)
@@ -385,11 +385,5 @@ fun AboutScreen(
         }
         }
 
-        SettingsBackTopBar(
-            title = stringResource(R.string.about),
-            navController = navController,
-            backdrop = frostBackdrop,
-            revealProgress = rememberDiscreteProgress(active = scrollState.value > 0),
-        )
     }
 }

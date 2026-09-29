@@ -4,6 +4,10 @@
  */
 
 package com.metrolist.music.ui.screens.settings
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageHeaderLayout
 import com.metrolist.music.ui.component.IrideSlider
 import com.metrolist.music.ui.component.IrideSwitch
 
@@ -100,12 +104,9 @@ import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
-import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.DraggableLyricsProviderItem
 import com.metrolist.music.ui.component.DraggableLyricsProviderList
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.lyrics.LyricsProviderRegistry
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.utils.backToMain
@@ -730,17 +731,20 @@ fun ContentSettings(
     }
 
     val contentScrollState = rememberScrollState()
-    val frostBackdrop = rememberFrostBackdrop()
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
     val playerConnection = LocalPlayerConnection.current
     val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    IridePageHeaderLayout(
+        title = stringResource(R.string.content),
+        initiallyCollapsed = true,
+        navigationIcon = { IridePageBackButton(navController) },
+        modifier = Modifier.fillMaxSize(),
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .recordFrostBackdrop(frostBackdrop)
         ) {
             if (mainTopGradient) {
                 TopScreenGradientBackground(
@@ -756,11 +760,10 @@ fun ContentSettings(
             }
             Column(
                 Modifier
-                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
+                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                     .verticalScroll(contentScrollState)
                     .padding(horizontal = 16.dp),
             ) {
-                Spacer(modifier = Modifier.height(56.dp))
                 Material3SettingsGroup(
                     title = stringResource(R.string.general),
                     items = listOf(
@@ -877,7 +880,7 @@ fun ContentSettings(
                             description = { Text(stringResource(R.string.listen_together_description), style = MaterialTheme.typography.bodySmall) },
                             trailingContent = {
                                 Icon(
-                                    painter = painterResource(R.drawable.arrow_forward),
+                                    painter = painterResource(R.drawable.navigate_next),
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
@@ -939,7 +942,6 @@ fun ContentSettings(
                     }
                 }
 
-
                 AnimatedVisibility(visible = advancedMode) {
                     Column {
                         Spacer(modifier = Modifier.height(27.dp))
@@ -992,7 +994,7 @@ fun ContentSettings(
                                     description = { Text(stringResource(R.string.settings_ai_desc), style = MaterialTheme.typography.bodySmall) },
                                     trailingContent = {
                                         Icon(
-                                            painter = painterResource(R.drawable.arrow_forward),
+                                            painter = painterResource(R.drawable.navigate_next),
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(18.dp)
@@ -1123,11 +1125,5 @@ fun ContentSettings(
             }
         }
 
-        SettingsBackTopBar(
-            title = stringResource(R.string.content),
-            navController = navController,
-            backdrop = frostBackdrop,
-            revealProgress = rememberDiscreteProgress(active = contentScrollState.value > 0),
-        )
     }
 }

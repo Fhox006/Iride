@@ -596,6 +596,9 @@ val DismissedListenedAlbumsKey = stringPreferencesKey("dismissedListenedAlbums")
 val RecentlySuggestedAlbumsKey = stringPreferencesKey("recentlySuggestedAlbums")
 
 val DismissedContinueListeningAlbumsKey = stringPreferencesKey("dismissedContinueListeningAlbums")
+val ContinueListeningIgnoredVisitsKey = intPreferencesKey("continueListeningIgnoredVisits")
+val ContinueListeningLastIgnoredVisitKey = longPreferencesKey("continueListeningLastIgnoredVisit")
+val ContinueListeningHiddenKey = booleanPreferencesKey("continueListeningHidden")
 
 val DismissedSuggestedFollowArtistsKey = stringPreferencesKey("dismissedSuggestedFollowArtists")
 

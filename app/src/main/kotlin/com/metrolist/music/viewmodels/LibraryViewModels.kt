@@ -43,12 +43,16 @@ import com.metrolist.music.constants.SongSortType
 import com.metrolist.music.constants.SongSortTypeKey
 import com.metrolist.music.constants.DismissedListenedAlbumsKey
 import com.metrolist.music.constants.DismissedContinueListeningAlbumsKey
+import com.metrolist.music.constants.ContinueListeningHiddenKey
+import com.metrolist.music.constants.ContinueListeningIgnoredVisitsKey
+import com.metrolist.music.constants.ContinueListeningLastIgnoredVisitKey
 import com.metrolist.music.constants.DismissedSuggestedFollowArtistsKey
 import com.metrolist.music.constants.RecentlySuggestedAlbumsKey
 import com.metrolist.music.constants.TopSize
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.GlobalAlbumPlayEvent
+import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.discovery.AlbumRecommendationsGenerator
 import com.metrolist.music.extensions.filterExplicit
 import com.metrolist.music.extensions.filterExplicitAlbums
@@ -97,8 +101,8 @@ import javax.inject.Inject
 class LibrarySongsViewModel
 @Inject
 constructor(
-    @ApplicationContext context: Context,
-    database: MusicDatabase,
+    @ApplicationContext private val context: Context,
+    private val database: MusicDatabase,
     downloadUtil: DownloadUtil,
     private val syncUtils: SyncUtils,
 ) : ViewModel() {
@@ -147,6 +151,9 @@ constructor(
             .flatMapLatest { (sortType, descending, hideExplicit) ->
                 database.downloadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit) }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val localSongs = database.localSongs()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun syncLikedSongs() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedSongs() }
@@ -300,6 +307,16 @@ private fun deriveContinueListeningCandidates(events: List<GlobalAlbumPlayEvent>
         i = j
     }
     return result
+}
+
+private fun Album.isEligibleContinueListeningRelease(): Boolean {
+    val type = album.albumType?.trim()?.lowercase() ?: return false
+    return when {
+        type.contains("single") || type.contains("singol") -> false
+        type == "ep" || type.startsWith("ep ") || type.contains("extended play") -> album.songCount > 1
+        type.contains("album") -> true
+        else -> false
+    }
 }
 
 @HiltViewModel
@@ -507,8 +524,20 @@ constructor(
             }.orEmpty().associate { it.id to it.timestamp }
         }
 
+    val isContinueListeningHidden = context.dataStore.data
+        .map { it[ContinueListeningHiddenKey] ?: false }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    private val recentAlbumPlayEvents = database.recentGlobalAlbumPlayEvents(300)
+
+    private val likedContinueListeningCandidate = combine(recentAlbumPlayEvents, allAlbums) { events, saved ->
+        val savedIds = saved.map { it.id }.toSet()
+        deriveContinueListeningCandidates(events).keys.any { it in savedIds }
+    }.distinctUntilChanged()
+
     val continueListeningAlbums: StateFlow<List<Album>> = combine(
-        database.recentGlobalAlbumPlayEvents(300),
+        recentAlbumPlayEvents,
         allAlbums,
         dismissedContinueListeningAlbums,
     ) { events, saved, dismissed ->
@@ -524,10 +553,42 @@ constructor(
             flowOf(emptyList<Album>())
         } else {
             database.albumsByIds(candidates.keys.toList()).map { albums ->
-                albums.sortedByDescending { candidates[it.id] }
+                albums
+                    .filter { it.isEligibleContinueListeningRelease() }
+                    .sortedByDescending { candidates[it.id] }
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            likedContinueListeningCandidate.collect { isLiked ->
+                if (isLiked) hideContinueListening()
+            }
+        }
+    }
+
+    fun recordContinueListeningVisit(selectedAlbum: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            context.dataStore.edit { prefs ->
+                val current = ContinueListeningVisibilityState(
+                    ignoredVisits = prefs[ContinueListeningIgnoredVisitsKey] ?: 0,
+                    lastIgnoredVisitAtMs = prefs[ContinueListeningLastIgnoredVisitKey],
+                    hidden = prefs[ContinueListeningHiddenKey] ?: false,
+                )
+                val next = current.recordVisit(selectedAlbum, System.currentTimeMillis())
+                prefs[ContinueListeningIgnoredVisitsKey] = next.ignoredVisits
+                next.lastIgnoredVisitAtMs?.let { prefs[ContinueListeningLastIgnoredVisitKey] = it }
+                if (next.hidden) prefs[ContinueListeningHiddenKey] = true
+            }
+        }
+    }
+
+    fun hideContinueListening() {
+        viewModelScope.launch(Dispatchers.IO) {
+            context.dataStore.edit { it[ContinueListeningHiddenKey] = true }
+        }
+    }
 
     fun dismissContinueListeningAlbum(albumId: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -601,8 +662,8 @@ constructor(
 class LibraryPlaylistsViewModel
 @Inject
 constructor(
-    @ApplicationContext context: Context,
-    database: MusicDatabase,
+    @ApplicationContext private val context: Context,
+    private val database: MusicDatabase,
     private val syncUtils: SyncUtils,
 ) : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
@@ -637,6 +698,32 @@ constructor(
 
     fun sync() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncSavedPlaylists() }
+    }
+
+    fun downloadAllPlaylists() {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { syncUtils.syncSavedPlaylistsSuspend() }
+            val playlists = database.playlists(PlaylistSortType.CREATE_DATE, descending = true).first()
+            val songs = mutableListOf<com.metrolist.music.db.entities.PlaylistSong>()
+            for (playlist in playlists.filterNot { it.id == PlaylistEntity.LIKED_PLAYLIST_ID }) {
+                songs += database.playlistSongs(playlist.id).first()
+            }
+            songs.distinctBy { it.song.id }.forEach { playlistSong ->
+                val song = playlistSong.song.song
+                val request = androidx.media3.exoplayer.offline.DownloadRequest.Builder(
+                    song.id,
+                    song.id.toUri(),
+                ).setCustomCacheKey(song.id)
+                    .setData(song.title.toByteArray())
+                    .build()
+                androidx.media3.exoplayer.offline.DownloadService.sendAddDownload(
+                    context,
+                    com.metrolist.music.playback.ExoDownloadService::class.java,
+                    request,
+                    false,
+                )
+            }
+        }
     }
 
     val topValue =
@@ -752,11 +839,16 @@ constructor(
                     .filterVideoSongs(hideVideoSongs)
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val localSongs = database.localSongs()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     var uploadedSongs = database
         .uploadedSongs(SongSortType.CREATE_DATE, true)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     var downloadedAlbums = database
         .albumsDownloadedByDateDesc()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val downloadedSongs = database
+        .downloadedSongs(SongSortType.CREATE_DATE, descending = true)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val downloadedPlaylistIds = database.playlistIdsWithDownloadedSongs()
         .map { it.toSet() }

@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageHeaderLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -68,10 +70,7 @@ import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
-import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.menu.NoteRatingStars
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
@@ -92,7 +91,6 @@ fun NotesScreen(
 
     val albumsListState = rememberLazyListState()
     val songsListState = rememberLazyListState()
-    val frostBackdrop = rememberFrostBackdrop()
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val playerBackgroundStyle by rememberEnumPreference(
         PlayerBackgroundStyleKey,
@@ -103,11 +101,15 @@ fun NotesScreen(
         playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
     }.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    IridePageHeaderLayout(
+        title = stringResource(R.string.notes_screen_title),
+        initiallyCollapsed = true,
+        navigationIcon = { IridePageBackButton(navController) },
+        modifier = Modifier.fillMaxSize(),
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .recordFrostBackdrop(frostBackdrop)
         ) {
         if (mainTopGradient) {
             TopScreenGradientBackground(
@@ -128,8 +130,8 @@ fun NotesScreen(
         ) {
             Column(
                 modifier = Modifier
-                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top))
-                    .padding(top = 56.dp, start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom).only(WindowInsetsSides.Top))
+                    .padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
             ) {
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     val tabColors = SegmentedButtonDefaults.colors(
@@ -178,7 +180,7 @@ fun NotesScreen(
                         contentPadding = PaddingValues(
                             start = 16.dp,
                             end = 16.dp,
-                            bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding() + 32.dp,
+                            bottom = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding() + 32.dp,
                         ),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
@@ -204,7 +206,7 @@ fun NotesScreen(
                         contentPadding = PaddingValues(
                             start = 16.dp,
                             end = 16.dp,
-                            bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding() + 32.dp,
+                            bottom = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding() + 32.dp,
                         ),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
@@ -225,14 +227,6 @@ fun NotesScreen(
         }
         }
 
-        SettingsBackTopBar(
-            title = stringResource(R.string.notes_screen_title),
-            navController = navController,
-            backdrop = frostBackdrop,
-            revealProgress = rememberDiscreteProgress(
-                active = (if (tabIndex == 0) albumsListState else songsListState).firstVisibleItemIndex > 0,
-            ),
-        )
     }
 }
 

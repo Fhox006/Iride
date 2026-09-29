@@ -54,7 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.PlaylistCategoryWithCount
-import com.metrolist.music.ui.screens.search.IrideSearchBox
+import com.metrolist.music.ui.component.IrideSearchBox
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.fillSelected
 import com.metrolist.music.ui.theme.textPrimary

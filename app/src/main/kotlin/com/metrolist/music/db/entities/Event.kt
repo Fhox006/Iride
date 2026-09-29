@@ -37,6 +37,12 @@ data class Event(
 )
 
 @Immutable
+data class RotationSongStats(
+    val songId: String,
+    val playTime: Long,
+)
+
+@Immutable
 data class AlbumPlayEvent(
     val songId: String,
     val songIndex: Int,

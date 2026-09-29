@@ -11,7 +11,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -53,7 +52,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.gestures.ScrollableDefaults
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
@@ -499,32 +497,22 @@ fun InlineQueuePanel(
         }
     }
 
-    // Center the currently playing song every time the queue is (re-)opened — keyed on
-    // openNonce rather than Unit so this fires again even if the panel stayed composed.
-    // History is intentionally NOT eagerly preloaded here anymore: doing so used to prepend
-    // items above the current song right after the initial scroll landed, shoving the
-    // playing song down out of view instead of keeping it centered at the top.
-    LaunchedEffect(openNonce) {
-        // Layout: index 0 = spacer, then history items (none loaded yet on a fresh open),
-        // then the divider row, then the CONTINUE LISTENING header, then the current song
-        // as the first queue entry.
-        val targetIndex = historyItems.size + 3
-        val itemInfo = lazyListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == targetIndex }
-        if (itemInfo == null) {
-            lazyListState.scrollToItem(maxOf(0, targetIndex - 3))
-        }
-        val updatedItem = lazyListState.layoutInfo.visibleItemsInfo
-            .firstOrNull { it.index == targetIndex }
-        val viewportCenter = lazyListState.layoutInfo.viewportSize.height / 2
-        val scrollTarget = ((updatedItem?.offset ?: 0) - viewportCenter
-            + (updatedItem?.size ?: 0) / 2).toFloat()
-        lazyListState.animateScrollBy(
-            value = scrollTarget,
-            animationSpec = tween(
-                durationMillis = 400,
-                easing = EaseInOut,
-            ),
-        )
+    // Keep current song at top on open and after every track change, including skips.
+    // The next song may already exist in the old list, so wait until it becomes the first
+    // queue slot before resolving its index. Otherwise the list rebuild can shift the target.
+    LaunchedEffect(openNonce, currentPlayingUid) {
+        val currentUid = currentPlayingUid ?: return@LaunchedEffect
+        val queueSlotIndex = snapshotFlow {
+            val firstQueueSlotIndex = combinedList.indexOfFirst { it is QueueSlot.QueueEntry }
+            val currentSlotIndex = combinedList.indexOfFirst { slot ->
+                slot is QueueSlot.QueueEntry && slot.window.uid == currentUid
+            }
+            currentSlotIndex.takeIf { it >= 0 && it == firstQueueSlotIndex } ?: -1
+        }.first { it >= 0 }
+
+        // LazyColumn adds one top spacer, the history divider, and the queue header
+        // before the first queue slot.
+        lazyListState.animateScrollToItem(queueSlotIndex + 3)
     }
 
     // Load history when user scrolls near top of list

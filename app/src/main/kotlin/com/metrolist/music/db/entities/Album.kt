@@ -44,6 +44,7 @@ fun AlbumItem.toAlbumEntity() = Album(
         playlistId = playlistId,
         title = title,
         year = year,
+        albumType = albumType,
         thumbnailUrl = thumbnail,
         explicit = explicit,
         songCount = if (albumType?.contains("Single", ignoreCase = true) == true) 1 else 0,

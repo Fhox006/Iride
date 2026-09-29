@@ -309,6 +309,48 @@ internal fun PillShimmerSkeleton(isTopLevelRoute: Boolean) {
 }
 
 @Composable
+internal fun IrideMiniPlayerPreview(metadata: MediaMetadata?) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IrideMiniPlayerHeight)
+            .padding(horizontal = 42.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (metadata != null) {
+            PillSongInfo(
+                mediaMetadata = metadata,
+                onSurfaceColor = Color.White,
+                errorColor = Color(0xFFFF6B6B),
+                isIrideStyle = true,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            Spacer(
+                Modifier.weight(1f).height(18.dp).shimmer()
+                    .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(4.dp)),
+            )
+        }
+        Spacer(Modifier.width(2.dp))
+        listOf(
+            (if (metadata?.liked == true) R.drawable.favorite else R.drawable.favorite_border) to 24.dp,
+            R.drawable.ic_iride_play to 28.dp,
+            R.drawable.ic_iride_fast_forward_filled to 28.dp,
+        ).forEachIndexed { index, (icon, iconSize) ->
+            if (index == 1) Spacer(Modifier.width(2.dp))
+            Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                Icon(
+                    painter = painterResource(icon),
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.6f),
+                    modifier = Modifier.size(iconSize),
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun PillContent(
     navigationItems: List<Screens>,
     currentRoute: String?,
@@ -554,7 +596,17 @@ fun PillPlayerRow(
         modifier = modifier
             .fillMaxWidth()
             .height(if (isIrideStyle) IrideMiniPlayerHeight else MiniPlayerHeight)
-            .clickable { onExpandClick() },
+            .then(
+                if (isIrideStyle) {
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onExpandClick,
+                    )
+                } else {
+                    Modifier.clickable(onClick = onExpandClick)
+                },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Row(

@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import timber.log.Timber
 import com.metrolist.innertube.models.WatchEndpoint
@@ -39,6 +40,9 @@ import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.HomeCacheLastLoadedKey
 import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.ArtistSortType
+import com.metrolist.music.constants.AlbumSortType
+import com.metrolist.music.constants.PlaylistSortType
+import com.metrolist.music.constants.SongSortType
 import com.metrolist.music.constants.AccountPhotoUrlKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.VisitorDataKey
@@ -57,6 +61,12 @@ import com.metrolist.music.constants.HomeCollapsedSectionsKey
 import com.metrolist.music.constants.ShowWrappedCardKey
 import com.metrolist.music.discovery.AlbumRecommendationsGenerator
 import com.metrolist.music.discovery.DiscoveryWeeklyGenerator
+import com.metrolist.music.discovery.MixMood
+import com.metrolist.music.discovery.MoodMixes
+import com.metrolist.music.discovery.MixPosterRepository
+import com.metrolist.music.discovery.MoodLoadRetry
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.update
 import com.metrolist.music.discovery.HeroCarouselGenerator
 import com.metrolist.music.models.DischiPerTeItem
 import com.metrolist.music.models.ForYouShelfItem
@@ -75,10 +85,12 @@ import kotlinx.serialization.json.Json
 import com.metrolist.music.ui.screens.HomeSection
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Album
+import com.metrolist.music.db.entities.toAlbumEntity
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.LocalItem
 import com.metrolist.music.db.entities.PlaylistEntity
+import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistSongMap
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.db.entities.SongEntity
@@ -98,9 +110,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -108,11 +121,38 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlin.random.Random
+
+private const val QUICK_PICKS_TARGET_COUNT = 60
+private const val HOME_MIX_CONTINUATION_LIMIT = 3
+private const val MAX_SIMILAR_RECOMMENDATIONS = 30
+private const val HOME_SIMILAR_CONTINUATION_LIMIT = 6
+
+private val HomeMixTitleMatchers = listOf(
+    listOf("new release", "nuove uscite", "nuova uscita", "novita", "fresh"),
+    listOf("discover", "discovery", "scopri", "scoperta"),
+    listOf("archive", "archivio"),
+    listOf("replay", "riproduzione", "ripetizione"),
+)
+
+private fun HomePage?.freshFindOldFavoritePlaylists(): List<PlaylistItem> {
+    val mixes = this?.sections.orEmpty()
+        .flatMap { it.items }
+        .filterIsInstance<PlaylistItem>()
+        .distinctBy { it.id }
+
+    return HomeMixTitleMatchers.mapNotNull { matchers ->
+        mixes.firstOrNull { playlist ->
+            val normalizedTitle = java.text.Normalizer.normalize(
+                playlist.title.lowercase(),
+                java.text.Normalizer.Form.NFD,
+            ).replace(Regex("\\p{Mn}+"), "")
+            matchers.any { matcher -> normalizedTitle.contains(matcher) }
+        }
+    }.distinctBy { it.id }
+}
 
 data class DailyDiscoverItem(
     val seed: Song,
@@ -166,32 +206,20 @@ class HomeViewModel @Inject constructor(
     val similarRecommendations = MutableStateFlow<List<SimilarRecommendation>?>(null)
     val accountPlaylists = MutableStateFlow<List<PlaylistItem>?>(null)
     val homePage = MutableStateFlow<HomePage?>(null)
+    val homePersonalMixes = MutableStateFlow<List<PlaylistItem>>(emptyList())
+    val starredPlaylistThumbnails = database.lastLikedSongThumbnails()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private var homeMixContinuationJob: Job? = null
     val explorePage = MutableStateFlow<ExplorePage?>(null)
     val communityPlaylists = MutableStateFlow<List<CommunityPlaylistItem>?>(null)
     val selectedChip = MutableStateFlow<HomePage.Chip?>(null)
     private val previousHomePage = MutableStateFlow<HomePage?>(null)
 
-    private val moodMapping = mapOf(
-        "Energize" to "Dopaminergic",
-        "Workout" to "Dopaminergic",
-        "Gym" to "Dopaminergic",
-        "Relax" to "Rest",
-        "Sleep" to "Rest",
-        "Sad" to "Melancholic",
-        "Focus" to "Wellness",
-        "Feel Good" to "Wellness",
-        "Party" to "Festive",
-        "Commute" to "Travel",
-        "Romance" to "Love"
-    )
-
     private fun transformChips(chips: List<HomePage.Chip>?): List<HomePage.Chip>? {
         return chips?.filter { chip ->
             val title = chip.title.lowercase()
             !title.contains("home") && !title.contains("podcast")
-        }?.shuffled()?.map { chip ->
-            chip.copy(title = moodMapping[chip.title] ?: chip.title)
-        }
+        }?.shuffled()
     }
 
     val savedPodcastShows = MutableStateFlow<List<com.metrolist.innertube.models.PodcastItem>>(emptyList())
@@ -208,7 +236,6 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val moodPage = MutableStateFlow<HomePage?>(null)
-    private var lastMoodChipParams: String? = null
 
     val isHeroCarouselEnabled: StateFlow<Boolean> = context.dataStore.data
         .map { it[HeroCarouselEnabledKey] ?: true }
@@ -406,17 +433,17 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun saveMoodSnapshotAfterLoad(chipTitle: String, chipParams: String?, page: HomePage) {
-        val mixItems = page.sections
-            .flatMap { it.items }
-            .filterIsInstance<PlaylistItem>()
-            .take(10)
-        if (mixItems.isEmpty()) return
+        if (!MoodMixes.isAllowedCategory(chipTitle)) return
+        val label = MixMood.fromChip(chipTitle)?.label ?: chipTitle
+        val mixItems = MoodMixes.select(page.sections.flatMap { it.items })
         val snapshotItems = mixItems.mapNotNull { mapYTItemToSnapshot(it) }
         val existingIds = cachedMoodSnapshot.value
             ?.takeIf { it.chipParams == chipParams }
             ?.items?.map { it.id }
-        if (existingIds == snapshotItems.map { it.id }) return
-        val snapshot = MoodSnapshot(System.currentTimeMillis(), chipTitle, chipParams, snapshotItems)
+        if (existingIds == snapshotItems.map { it.id } &&
+            cachedMoodSnapshot.value?.chipTitle == label &&
+            cachedMoodSnapshot.value?.chipParams == chipParams) return
+        val snapshot = MoodSnapshot(System.currentTimeMillis(), label, chipParams, snapshotItems)
         cachedMoodSnapshot.value = snapshot
         refreshHeroCarousel()
         val json = runCatching { snapshotJson.encodeToString(snapshot) }.getOrNull() ?: return
@@ -425,27 +452,98 @@ class HomeViewModel @Inject constructor(
 
     val moodMixItems = MutableStateFlow<List<PlaylistItem>?>(null)
     val isMoodLoading = MutableStateFlow(false)
+    val isMoodError = MutableStateFlow(false)
+    val preferredMoodParams = MutableStateFlow<String?>(null)
+    val isMoodPreferenceReady = MutableStateFlow(false)
+    private var loadedMoodFilters: Triple<Boolean, Boolean, Boolean>? = null
+    val loadedMoodParams = MutableStateFlow<String?>(null)
     private var moodPageJob: kotlinx.coroutines.Job? = null
 
-    fun loadMoodPage(params: String?, chipTitle: String? = null, hideExplicit: Boolean, hideVideoSongs: Boolean, hideYoutubeShorts: Boolean) {
-        if (params == lastMoodChipParams && moodPage.value != null && !isMoodLoading.value) return
-        lastMoodChipParams = params
-        if (params == null) {
+    private val moodPostersLazy = lazy { MixPosterRepository(context) }
+    private val moodPosters by moodPostersLazy
+    val moodPosterImageLoader get() = moodPosters.imageLoader
+    val moodPosterUrls = MutableStateFlow<Map<String, String>>(emptyMap())
+    private var moodPosterJob: Job? = null
+    private var moodPosterSize = 448
+    private var requestedMoodParams: String? = null
+    private var requestedMoodFilters: Triple<Boolean, Boolean, Boolean>? = null
+
+    private fun publishMoodMixes(items: List<PlaylistItem>, mood: MixMood?, revalidate: Boolean) {
+        moodPosterJob?.cancel()
+        moodMixItems.value = items
+        val ids = items.map { it.id }.toSet()
+        moodPosterUrls.update { urls -> urls.filterKeys { it in ids } }
+        if (items.isEmpty()) return
+        val size = moodPosterSize
+        moodPosterJob = viewModelScope.launch(Dispatchers.IO) {
+            var pending = items
+            val delays = longArrayOf(0, 1_500, 4_000, 10_000)
+            for (attempt in delays.indices) {
+                if (delays[attempt] > 0) kotlinx.coroutines.delay(delays[attempt])
+                val missing = moodPosters.prepare(pending, mood ?: MixMood.CHILL, size, revalidate) { id, path ->
+                    coroutineContext.ensureActive()
+                    moodPosterUrls.update { if (path == null) it - id else it + (id to path) }
+                }
+                pending = items.filter { it.id in missing }
+                if (pending.isEmpty() || !revalidate) break
+            }
+        }
+    }
+
+    fun loadMoodPage(
+        params: String?,
+        chipTitle: String? = null,
+        hideExplicit: Boolean,
+        hideVideoSongs: Boolean,
+        hideYoutubeShorts: Boolean,
+        posterSize: Int = moodPosterSize,
+        forceReload: Boolean = false,
+    ) {
+        val mood = MixMood.fromChip(chipTitle)
+        val sizeChanged = moodPosterSize != posterSize.coerceIn(128, 768)
+        moodPosterSize = posterSize.coerceIn(128, 768)
+        val filters = Triple(hideExplicit, hideVideoSongs, hideYoutubeShorts)
+        if (!forceReload && isMoodLoading.value && params == requestedMoodParams &&
+            filters == requestedMoodFilters) return
+        if (!forceReload && !isMoodError.value && params == loadedMoodParams.value &&
+            loadedMoodFilters == filters && moodPage.value != null && !isMoodLoading.value) {
+            if (sizeChanged) publishMoodMixes(moodMixItems.value.orEmpty(), mood, revalidate = false)
+            return
+        }
+        requestedMoodParams = params
+        requestedMoodFilters = filters
+        isMoodError.value = false
+        if (params == null || !MoodMixes.isAllowedCategory(chipTitle)) {
             moodPageJob?.cancel()
+            moodPosterJob?.cancel()
+            moodPosterUrls.value = emptyMap()
             moodPage.value = null
             moodMixItems.value = null
             isMoodLoading.value = false
+            loadedMoodParams.value = null
+            loadedMoodFilters = null
             return
         }
         moodPageJob?.cancel()
-        moodPage.value = null
-        moodMixItems.value = null
+        moodPosterJob?.cancel()
+        if (params != loadedMoodParams.value ||
+            (loadedMoodFilters != null && filters != loadedMoodFilters)) {
+            moodPage.value = null
+            moodMixItems.value = null
+            moodPosterUrls.value = emptyMap()
+            loadedMoodParams.value = null
+            loadedMoodFilters = null
+        }
+        isMoodLoading.value = true
         moodPageJob = viewModelScope.launch(Dispatchers.IO) {
             val myJob = coroutineContext[kotlinx.coroutines.Job]
-            isMoodLoading.value = true
             try {
-                val result = withTimeout(15_000L) { YouTube.home(params = params) }
+                val result = Result.success(MoodLoadRetry.load {
+                    withTimeout(15_000L) { YouTube.home(params = params).getOrThrow() }
+                })
                 result.onSuccess { nextSections ->
+                    coroutineContext.ensureActive()
+                    if (moodPageJob !== myJob || params != requestedMoodParams) return@onSuccess
                     val filteredPage = nextSections.copy(
                         sections = nextSections.sections.mapNotNull { section ->
                             val filteredItems = section.items
@@ -456,13 +554,11 @@ class HomeViewModel @Inject constructor(
                         }
                     )
                     moodPage.value = filteredPage
-                    val mixItems = filteredPage.sections
-                        .flatMap { it.items }
-                        .filterIsInstance<PlaylistItem>()
-                        .distinctBy { it.id }
-                        .shuffled()
-                        .take(10)
-                    moodMixItems.value = mixItems
+                    val mixItems = MoodMixes.select(filteredPage.sections.flatMap { it.items })
+                    publishMoodMixes(mixItems, mood, revalidate = true)
+                    loadedMoodParams.value = params
+                    loadedMoodFilters = filters
+                    preferredMoodParams.value = params
                     if (chipTitle != null) {
                         context.dataStore.edit { prefs ->
                             prefs[LastMoodChipTitleKey] = chipTitle
@@ -470,11 +566,11 @@ class HomeViewModel @Inject constructor(
                         }
                         saveMoodSnapshotAfterLoad(chipTitle, params, filteredPage)
                     }
-                }.onFailure {
-                    reportException(it)
                 }
-            } catch (e: TimeoutCancellationException) {
-                reportException(e)
+            } catch (error: Exception) {
+                coroutineContext.ensureActive()
+                if (moodPageJob === myJob) isMoodError.value = true
+                Timber.w(error, "Mood playlists will retry automatically")
             } finally {
                 if (moodPageJob === myJob) isMoodLoading.value = false
             }
@@ -902,7 +998,9 @@ class HomeViewModel @Inject constructor(
         forYouEnrichmentJob?.cancel()
         forYouEnrichmentJob = viewModelScope.launch(Dispatchers.IO) {
             val albumIds = forYouShelves.value.flatMap { it.tiles }.mapTo(mutableSetOf()) { it.id }
-            val semaphore = Semaphore(2)
+            // Serialized enrichment: shares the InnerTube pool (5) with home/account
+            // reloads, so a burst here must never starve them after a network switch.
+            val semaphore = Semaphore(1)
             forYouShelves.value.forEach { shelf ->
                 launch {
                     val alreadyUsed = synchronized(albumIds) { albumIds.toSet() }
@@ -941,7 +1039,7 @@ class HomeViewModel @Inject constructor(
             ?.shuffled()
             .orEmpty()
 
-        for (artist in relatedArtists.take(2)) {
+        for (artist in relatedArtists.take(1)) {
             val albums = YouTube.artist(artist.id).getOrNull()
                 ?.sections?.flatMap { it.items }
                 ?.filterIsInstance<AlbumItem>()
@@ -1056,63 +1154,102 @@ class HomeViewModel @Inject constructor(
         dailyDiscover.value = items.toList().distinctBy { it.recommendation.id }.shuffled()
     }
 
-    private suspend fun getQuickPicks() {
-        when (quickPicksEnum.first()) {
-            QuickPicks.QUICK_PICKS -> {
-                val relatedSongs = database.quickPicks().first().filterVideoSongs(true)
-                val forgotten = database.forgottenFavorites().first().filterVideoSongs(true).take(8)
-                quickPicks.value = (relatedSongs + forgotten)
-                    .distinctBy { it.id }
-                    .shuffled()
-                    .take(20)
-                    .ifEmpty { relatedSongs.shuffled().take(20) }
+    private fun eligibleQuickPicks(songs: List<Song>, hideExplicit: Boolean): List<Song> =
+        songs.filter { !it.song.isVideo && !it.song.isEpisode && (!hideExplicit || !it.song.explicit) }
+            .distinctBy { it.id }
+
+    private suspend fun quickPickSong(item: SongItem): Song =
+        database.song(item.id).first() ?: Song(
+            song = item.toMediaMetadata().toSongEntity(),
+            artists = item.artists.map { artist ->
+                ArtistEntity(id = artist.id ?: ArtistEntity.generateArtistId(), name = artist.name)
+            },
+        )
+
+    private suspend fun fillQuickPicksFromHome(page: HomePage, hideExplicit: Boolean) {
+        if (quickPicks.value.orEmpty().size >= QUICK_PICKS_TARGET_COUNT) return
+        val homeSongs = page.sections.flatMap { it.items }
+            .filterIsInstance<SongItem>()
+            .filter { !it.isVideoSong && !it.isEpisode && (!hideExplicit || !it.explicit) }
+            .distinctBy { it.id }
+            .shuffled()
+        val songs = eligibleQuickPicks(quickPicks.value.orEmpty(), hideExplicit).toMutableList()
+        val usedIds = songs.mapTo(mutableSetOf()) { it.id }
+        for (item in homeSongs) {
+            if (songs.size >= QUICK_PICKS_TARGET_COUNT) break
+            if (item.id in usedIds) continue
+            val song = quickPickSong(item)
+            if (eligibleQuickPicks(listOf(song), hideExplicit).isNotEmpty() && usedIds.add(song.id)) {
+                songs += song
             }
-            QuickPicks.LAST_LISTEN -> {
-                val song = database.latestEvent().first()?.song
-                if (song != null && database.hasRelatedSongs(song.id)) {
-                    quickPicks.value = database.getRelatedSongs(song.id).first().filterVideoSongs(true).shuffled().take(20)
-                } else {
-                    quickPicks.value = emptyList()
-                }
+        }
+        quickPicks.update { current ->
+            eligibleQuickPicks(current.orEmpty() + songs, hideExplicit).take(QUICK_PICKS_TARGET_COUNT)
+        }
+    }
+
+    private suspend fun getQuickPicks() {
+        val mode = quickPicksEnum.first()
+        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+        val previous = eligibleQuickPicks(quickPicks.value.orEmpty(), hideExplicit)
+        val primary = when (mode) {
+            QuickPicks.QUICK_PICKS -> database.quickPicks().first()
+            QuickPicks.LAST_LISTEN -> database.latestEvent().first()?.song?.let { song ->
+                database.getRelatedSongs(song.id).first()
+            }.orEmpty()
+        }
+        val songs = eligibleQuickPicks(primary, hideExplicit).shuffled().toMutableList()
+        if (mode == QuickPicks.QUICK_PICKS && songs.size < QUICK_PICKS_TARGET_COUNT) {
+            songs += eligibleQuickPicks(database.forgottenFavorites().first(), hideExplicit).shuffled()
+            if (songs.distinctBy { it.id }.size < QUICK_PICKS_TARGET_COUNT) {
+                songs += eligibleQuickPicks(
+                    database.mostPlayedSongs(0L, limit = QUICK_PICKS_TARGET_COUNT * 3).first(),
+                    hideExplicit,
+                ).shuffled()
+            }
+        }
+        quickPicks.value = songs.distinctBy { it.id }.take(QUICK_PICKS_TARGET_COUNT)
+        if (mode == QuickPicks.QUICK_PICKS) {
+            homePage.value?.let { fillQuickPicksFromHome(it, hideExplicit) }
+            quickPicks.update { current ->
+                (current.orEmpty() + previous.shuffled()).distinctBy { it.id }.take(QUICK_PICKS_TARGET_COUNT)
             }
         }
     }
 
     private suspend fun enrichQuickPicksFromNetwork() {
-        if (quickPicksEnum.first() != QuickPicks.QUICK_PICKS) return
-        val recentSong = database.latestEvent().first()?.song ?: return
-        val endpoint = YouTube.next(WatchEndpoint(videoId = recentSong.id)).getOrNull()?.relatedEndpoint ?: return
-        val ytSimilarSongs = mutableListOf<Song>()
-        YouTube.related(endpoint).onSuccess { page ->
-            page.songs.take(10).forEach { ytSong ->
-                if (ytSong.isVideoSong) return@forEach
-                val localSong = database.song(ytSong.id).first()
-                if (localSong != null) {
-                    ytSimilarSongs.add(localSong)
-                } else {
-                    ytSimilarSongs.add(
-                        Song(
-                            song = SongEntity(
-                                id = ytSong.id,
-                                title = ytSong.title,
-                                thumbnailUrl = ytSong.thumbnail,
-                                explicit = ytSong.explicit,
-                                isVideo = ytSong.isVideoSong,
-                                duration = ytSong.duration ?: -1
-                            ),
-                            artists = ytSong.artists.map { artist ->
-                                ArtistEntity(
-                                    id = artist.id ?: ArtistEntity.generateArtistId(),
-                                    name = artist.name
-                                )
-                            }
-                        )
-                    )
-                }
+        if (quickPicks.value.orEmpty().size >= QUICK_PICKS_TARGET_COUNT) return
+        val mode = quickPicksEnum.first()
+        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+        val recentSong = database.latestEvent().first()?.song
+        val seeds = (if (mode == QuickPicks.LAST_LISTEN) {
+            listOfNotNull(recentSong)
+        } else {
+            listOfNotNull(recentSong) + database.mostPlayedSongs(0L, limit = 12).first().shuffled()
+        }).filter { !it.song.isVideo && !it.song.isEpisode }.distinctBy { it.id }.take(3)
+        for (seed in seeds) {
+            currentCoroutineContext().ensureActive()
+            if (quickPicks.value.orEmpty().size >= QUICK_PICKS_TARGET_COUNT) break
+            // Fetch sequentially and bound each seed so enrichment cannot flood the shared network pool.
+            val related = withTimeoutOrNull(12_000L) {
+                val endpoint = YouTube.next(WatchEndpoint(videoId = seed.id)).getOrNull()?.relatedEndpoint
+                    ?: return@withTimeoutOrNull null
+                YouTube.related(endpoint).getOrNull()
             }
-        }
-        if (ytSimilarSongs.isNotEmpty()) {
-            quickPicks.value = (quickPicks.value.orEmpty() + ytSimilarSongs).distinctBy { it.id }.shuffled().take(20)
+            currentCoroutineContext().ensureActive()
+            if (related == null) continue
+            val existingIds = quickPicks.value.orEmpty().mapTo(mutableSetOf()) { it.id }
+            val candidates = related.songs
+                .filter { it.id != seed.id && !it.isVideoSong && !it.isEpisode && (!hideExplicit || !it.explicit) }
+                .distinctBy { it.id }
+                .filterNot { it.id in existingIds }
+                .shuffled()
+                .take(QUICK_PICKS_TARGET_COUNT - existingIds.size)
+                .map { quickPickSong(it) }
+            quickPicks.update { current ->
+                eligibleQuickPicks(current.orEmpty() + candidates, hideExplicit)
+                    .take(QUICK_PICKS_TARGET_COUNT)
+            }
         }
     }
 
@@ -1189,153 +1326,214 @@ class HomeViewModel @Inject constructor(
         communityPlaylists.value = playlists.shuffled()
     }
 
-    private suspend fun getSimilarRecommendations() {
+    private suspend fun getSimilarRecommendations(onlySeedId: String? = null) = coroutineScope {
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-        val fromTimeStamp = System.currentTimeMillis() - 86400000L * 7 * 2
-        val generated = similarRecommendations.value.orEmpty().toMutableList()
+        val fromTimeStamp = System.currentTimeMillis() - 86400000L * 14
+        val artists = (
+            database.mostPlayedArtists(fromTimeStamp, limit = 40).first() +
+                database.artistsBookmarked(ArtistSortType.CREATE_DATE, descending = true).first() +
+                database.artists(ArtistSortType.PLAY_TIME, descending = true).first()
+            ).distinctBy { it.id }.filter { it.artist.isYouTubeArtist && !it.thumbnailUrl.isNullOrBlank() }
+            .shuffled().take(20)
+        val albums = (
+            database.mostPlayedAlbums(fromTimeStamp, limit = 40).first() +
+                database.albums(AlbumSortType.PLAY_TIME, descending = true).first()
+            ).distinctBy { it.id }.filter { !it.thumbnailUrl.isNullOrBlank() && it.artists.isNotEmpty() }
+            .shuffled().take(20)
+        val playlists = database.playlists(PlaylistSortType.LAST_UPDATED, descending = true).first()
+            .filter { !it.playlist.isLocal && !it.playlist.browseId.isNullOrBlank() && it.thumbnails.isNotEmpty() }
+            .distinctBy { it.playlist.browseId }.shuffled().take(20)
 
-        fun publish(recommendation: SimilarRecommendation): SimilarRecommendation {
-            val existingIndex = generated.indexOfFirst { it.title.id == recommendation.title.id }
-            if (existingIndex >= 0) generated[existingIndex] = recommendation
-            else generated += recommendation
-            val current = generated.toList()
-            similarRecommendations.value = current
-            HomeCache.similarRecommendations = current
-            return recommendation
+        val localSeeds = buildList<LocalItem> {
+            repeat(maxOf(artists.size, albums.size, playlists.size)) { index ->
+                artists.getOrNull(index)?.let(::add)
+                albums.getOrNull(index)?.let(::add)
+                playlists.getOrNull(index)?.let(::add)
+            }
+        }
+        val generated: MutableList<SimilarRecommendation> = similarRecommendations.value.orEmpty()
+            .filter { it.title is Artist || it.title is Album || it.title is Playlist }
+            .filter { recommendation ->
+                !recommendation.thumbnailUrl.isNullOrBlank() &&
+                    recommendation.items.distinctBy { it.id }.count { item ->
+                        item is SongItem && !item.isVideoSong || item is AlbumItem ||
+                            item is ArtistItem || item is PlaylistItem
+                    } >= 2
+            }
+                .distinctBy { it.title.id }.take(MAX_SIMILAR_RECOMMENDATIONS).toMutableList()
+        val refreshSeed = onlySeedId?.let { id ->
+            similarRecommendations.value.orEmpty().firstOrNull { it.title.id == id }?.title
+        }
+        val seedsToGenerate = if (refreshSeed != null) listOf(refreshSeed) else localSeeds
+        val semaphore = Semaphore(4)
+        val publishLock = kotlinx.coroutines.sync.Mutex()
+        val shelfFallbacks = java.util.concurrent.ConcurrentHashMap<String, List<YTItem>>()
+
+        suspend fun recommendationFor(seed: LocalItem): SimilarRecommendation? {
+            val candidates: List<YTItem> = when (seed) {
+                is Artist -> {
+                    val page = YouTube.artist(seed.id).getOrNull() ?: return null
+                    val related = page.sections.flatMap { it.items }.filterIsInstance<ArtistItem>()
+                        .filterNot { it.id == seed.id }.distinctBy { it.id }
+                    val extendedRelated = related.take(4).flatMap { artist ->
+                        YouTube.artist(artist.id).getOrNull()?.sections.orEmpty()
+                            .flatMap { it.items }.filterIsInstance<ArtistItem>()
+                    }
+                    (related + extendedRelated).distinctBy { it.id }
+                }
+                is Album -> {
+                    val artist = seed.artists.first()
+                    val page = YouTube.artist(artist.id).getOrNull() ?: return null
+                    val related = page.sections.flatMap { it.items }.filterIsInstance<ArtistItem>()
+                        .filterNot { it.id == artist.id }.distinctBy { it.id }
+                    val relatedAlbums = related.firstOrNull()?.let { item ->
+                        YouTube.artist(item.id).getOrNull()?.sections.orEmpty()
+                            .flatMap { it.items }.filterIsInstance<AlbumItem>()
+                    }.orEmpty()
+                    relatedAlbums + related + page.sections.flatMap { it.items }.filterIsInstance<AlbumItem>()
+                        .filterNot { it.id == seed.id }
+                }
+                is Playlist -> {
+                    val page = YouTube.playlist(seed.playlist.browseId!!.removePrefix("VL")).getOrNull()
+                        ?: return null
+                    val anchor = page.songs.firstOrNull() ?: return null
+                    val endpoint = YouTube.next(WatchEndpoint(videoId = anchor.id))
+                        .getOrNull()?.relatedEndpoint ?: return null
+                    val related = YouTube.related(endpoint).getOrNull() ?: return null
+                    related.albums + related.artists + related.playlists + related.songs
+                }
+                else -> return null
+            }
+            val existingIds = generated.asSequence()
+                .filterNot { it.title.id == seed.id }
+                .flatMap { it.items.asSequence() }
+                .map { it.id }
+                .toSet()
+            val items = candidates.distinctBy { it.id }
+                .filterExplicit(hideExplicit)
+                .filter { it is SongItem && !it.isVideoSong || it is AlbumItem || it is ArtistItem || it is PlaylistItem }
+                .filterNot { it.id == seed.id }
+                .filterNot { it.id in existingIds }
+                .shuffled()
+                .take(12)
+            if (items.size < 2) return null
+            return SimilarRecommendation(
+                title = seed,
+                thumbnailUrl = if (seed is Playlist) seed.thumbnails.firstOrNull() else seed.thumbnailUrl,
+                items = items,
+            )
         }
 
-        val artistRecommendations = database.mostPlayedArtists(fromTimeStamp, limit = 35).first()
-            .filter { it.artist.isYouTubeArtist }
-            .shuffled().take(8)
-            .mapNotNull { seed ->
-                val artistPage = YouTube.artist(seed.id).getOrNull() ?: return@mapNotNull null
-                val relatedArtists = artistPage.sections.flatMap { it.items }
-                    .filterIsInstance<ArtistItem>()
-                    .filterNot { it.id == seed.id || it.title.equals(seed.title, ignoreCase = true) }
-                    .distinctBy { it.id }
-                    .shuffled()
-                val items = mutableListOf<YTItem>()
-                for (relatedArtist in relatedArtists.take(3)) {
-                    if (items.size >= 4) break
-                    val page = YouTube.artist(relatedArtist.id).getOrNull() ?: continue
-                    items += page.sections.flatMap { it.items }
-                        .filter { candidate ->
-                            when (candidate) {
-                                is AlbumItem -> candidate.artists.orEmpty().any { artist ->
-                                    artist.id == relatedArtist.id || artist.name.equals(relatedArtist.title, ignoreCase = true)
-                                }
-                                is SongItem -> candidate.artists.any { artist ->
-                                    artist.id == relatedArtist.id || artist.name.equals(relatedArtist.title, ignoreCase = true)
-                                }
-                                else -> false
-                            }
-                        }
-                        .shuffled()
-                        .take(8)
-                }
-                SimilarRecommendation(
-                    title = seed,
-                    thumbnailUrl = artistPage.artist.thumbnail ?: seed.thumbnailUrl,
-                    items = (items + relatedArtists)
-                        .distinctBy { item -> item.id }
+        suspend fun publishSeed(seed: LocalItem) {
+            semaphore.withPermit {
+                if (publishLock.withLock {
+                        generated.size >= MAX_SIMILAR_RECOMMENDATIONS &&
+                            generated.none { it.title.id == seed.id }
+                    }) return@withPermit
+                val recommendation = withTimeoutOrNull(if (shelfFallbacks.containsKey(seed.id)) 5_000 else 12_000) {
+                    recommendationFor(seed)
+                } ?: shelfFallbacks[seed.id]?.let { shelfItems ->
+                    val items = shelfItems.distinctBy { it.id }
                         .filterExplicit(hideExplicit)
-                        .filter { item -> item is SongItem && !item.isVideoSong || item is AlbumItem || item is ArtistItem }
-                        .filterNot { item ->
-                            when (item) {
-                                is ArtistItem -> item.id == seed.id || item.title.equals(seed.title, ignoreCase = true)
-                                is SongItem -> item.artists.any { artist -> artist.id == seed.id || artist.name.equals(seed.title, ignoreCase = true) }
-                                is AlbumItem -> item.artists.orEmpty().any { artist -> artist.id == seed.id || artist.name.equals(seed.title, ignoreCase = true) }
-                                else -> false
-                            }
-                        }
-                        .shuffled()
-                        .sortedBy { item -> item is ArtistItem }
+                        .filter { it is SongItem && !it.isVideoSong || it is AlbumItem || it is ArtistItem || it is PlaylistItem }
+                        .filterNot { it.id == seed.id }
                         .take(12)
-                        .takeIf { candidates -> candidates.size >= 4 && candidates.firstOrNull() !is ArtistItem }
-                        ?: return@mapNotNull null
-                ).let(::publish)
-            }
-
-        val songRecommendations = database.mostPlayedSongs(fromTimeStamp, limit = 35).first()
-            .filter { it.album != null }
-            .shuffled().take(6)
-            .mapNotNull { song ->
-                val endpoint = YouTube.next(WatchEndpoint(videoId = song.id)).getOrNull()?.relatedEndpoint
-                    ?: return@mapNotNull null
-                val page = YouTube.related(endpoint).getOrNull() ?: return@mapNotNull null
-                SimilarRecommendation(
-                    title = song,
-                    items = (page.songs.shuffled().take(10) +
-                            page.albums.shuffled().take(5) +
-                            page.artists.shuffled().take(3))
-                        .distinctBy { it.id }
-                        .filterExplicit(hideExplicit)
-                        .filter { item -> item is SongItem && !item.isVideoSong || item is AlbumItem || item is ArtistItem }
-                        .filterNot { item ->
-                            when (item) {
-                                is SongItem -> item.artists.any { artist -> song.artists.any { it.id == artist.id || it.name.equals(artist.name, ignoreCase = true) } }
-                                is AlbumItem -> item.artists.orEmpty().any { artist -> song.artists.any { it.id == artist.id || it.name.equals(artist.name, ignoreCase = true) } }
-                                is ArtistItem -> song.artists.any { it.id == item.id }
-                                else -> false
-                            }
+                    if (items.size < 2) null else SimilarRecommendation(
+                        title = seed,
+                        thumbnailUrl = if (seed is Playlist) seed.thumbnails.firstOrNull() else seed.thumbnailUrl,
+                        items = items,
+                    )
+                } ?: return@withPermit
+                publishLock.withLock {
+                    val index = generated.indexOfFirst { it.title.id == seed.id }
+                    if (index >= 0) generated[index] = recommendation
+                    else if (generated.size < MAX_SIMILAR_RECOMMENDATIONS) generated += recommendation
+                    val byType = listOf(
+                        generated.filter { it.title is Artist },
+                        generated.filter { it.title is Album },
+                        generated.filter { it.title is Playlist },
+                    )
+                    val ordered = buildList {
+                        repeat(byType.maxOf { it.size }) { position ->
+                            byType.forEach { group -> group.getOrNull(position)?.let(::add) }
                         }
-                        .shuffled()
-                        .sortedBy { item -> item is ArtistItem }
-                        .takeIf { it.size >= 4 && it.firstOrNull() !is ArtistItem }
-                        ?: return@mapNotNull null
-                ).let(::publish)
-            }
-
-        val albumRecommendations = database.mostPlayedAlbums(fromTimeStamp, limit = 25).first()
-            .filter { it.album.thumbnailUrl != null }
-            .shuffled().take(4)
-            .mapNotNull { album ->
-                val sourceArtist = album.artists.firstOrNull() ?: return@mapNotNull null
-                val sourcePage = YouTube.artist(sourceArtist.id).getOrNull() ?: return@mapNotNull null
-                val relatedArtists = sourcePage.sections.flatMap { it.items }
-                    .filterIsInstance<ArtistItem>()
-                    .filterNot { it.id == sourceArtist.id || it.title.equals(sourceArtist.name, ignoreCase = true) }
-                    .distinctBy { it.id }
-                    .shuffled()
-                val items = mutableListOf<YTItem>()
-                for (relatedArtist in relatedArtists.take(3)) {
-                    if (items.size >= 4) break
-                    val page = YouTube.artist(relatedArtist.id).getOrNull() ?: continue
-                    items += page.sections.flatMap { it.items }
-                        .filterIsInstance<AlbumItem>()
-                        .filter { candidate -> candidate.artists.orEmpty().any { artist ->
-                            artist.id == relatedArtist.id || artist.name.equals(relatedArtist.title, ignoreCase = true)
-                        } }
-                        .shuffled()
-                        .take(8)
+                    }.take(MAX_SIMILAR_RECOMMENDATIONS)
+                    similarRecommendations.value = ordered
+                    HomeCache.similarRecommendations = ordered
                 }
-                SimilarRecommendation(
-                    title = album,
-                    thumbnailUrl = album.thumbnailUrl,
-                    items = (items + relatedArtists)
-                        .distinctBy { item -> item.id }
-                        .filterExplicit(hideExplicit)
-                        .filter { item -> item is SongItem && !item.isVideoSong || item is AlbumItem || item is ArtistItem }
-                        .filterNot { item ->
-                            when (item) {
-                                is AlbumItem -> item.id == album.id || item.artists.orEmpty().any { artist -> album.artists.any { it.id == artist.id || it.name.equals(artist.name, ignoreCase = true) } }
-                                is SongItem -> item.artists.any { artist -> album.artists.any { it.id == artist.id || it.name.equals(artist.name, ignoreCase = true) } }
-                                is ArtistItem -> album.artists.any { it.id == item.id || it.name.equals(item.title, ignoreCase = true) }
-                                else -> false
+            }
+        }
+
+        fun YTItem.toSimilarSeed(): LocalItem? = when (this) {
+            is ArtistItem -> takeIf { id.startsWith("UC") && !thumbnail.isNullOrBlank() }?.let {
+                Artist(ArtistEntity(id = id, name = title, thumbnailUrl = thumbnail), songCount = 0)
+            }
+            is AlbumItem -> takeIf { thumbnail.isNotBlank() }?.toAlbumEntity()
+                ?.takeIf { it.artists.isNotEmpty() }
+            is PlaylistItem -> takeIf { !isMixtape && !thumbnail.isNullOrBlank() }?.let {
+                val browseId = id.removePrefix("VL")
+                Playlist(
+                    playlist = PlaylistEntity(
+                        id = browseId,
+                        name = title,
+                        browseId = browseId,
+                        thumbnailUrl = thumbnail,
+                        isEditable = false,
+                    ),
+                    songCount = 0,
+                    songThumbnails = emptyList(),
+                )
+            }
+            else -> null
+        }
+
+        coroutineScope {
+            seedsToGenerate.forEach { seed -> launch(Dispatchers.IO) { publishSeed(seed) } }
+            if (onlySeedId == null) {
+            launch(Dispatchers.IO) {
+                val remoteIds = localSeeds.mapTo(mutableSetOf()) { it.id }
+                val pageFromState = withTimeoutOrNull(5_000) {
+                    homePage.filter { it?.sections?.isNotEmpty() == true }.first()
+                }
+                var page = pageFromState ?: withTimeoutOrNull(8_000) {
+                    YouTube.home().getOrNull()
+                } ?: return@launch
+                val seenContinuations = mutableSetOf<String>()
+                var requestedFreshPage = false
+                repeat(HOME_SIMILAR_CONTINUATION_LIMIT + 1) {
+                    if (publishLock.withLock { generated.size >= MAX_SIMILAR_RECOMMENDATIONS }) return@launch
+                    val seeds = page.sections.flatMap { section ->
+                        val peers = section.items.distinctBy { it.id }
+                        section.items.mapNotNull { item ->
+                            item.toSimilarSeed()?.also { seed ->
+                                shelfFallbacks.putIfAbsent(seed.id, peers)
                             }
                         }
-                        .shuffled()
-                        .sortedBy { item -> item is ArtistItem }
-                        .take(10)
-                        .takeIf { it.size >= 4 && it.firstOrNull() !is ArtistItem }
-                        ?: return@mapNotNull null
-                ).let(::publish)
+                    }.filter { remoteIds.add(it.id) }
+                    seeds.forEach { seed -> launch(Dispatchers.IO) { publishSeed(seed) } }
+                    if (remoteIds.size - localSeeds.size >= 50) return@launch
+                    val continuation = page.continuation
+                    page = when {
+                        !continuation.isNullOrEmpty() && seenContinuations.add(continuation) ->
+                            withTimeoutOrNull(8_000) { YouTube.home(continuation = continuation).getOrNull() }
+                        !requestedFreshPage && pageFromState != null -> {
+                            requestedFreshPage = true
+                            withTimeoutOrNull(8_000) { YouTube.home().getOrNull() }
+                        }
+                        else -> null
+                    } ?: return@launch
+                }
             }
-
-        similarRecommendations.value = generated.toList()
+            }
+        }
         allYtItems.value = similarRecommendations.value?.flatMap { it.items }.orEmpty() +
-                homePage.value?.sections?.flatMap { it.items }.orEmpty()
-        HomeCache.similarRecommendations = similarRecommendations.value
+            homePage.value?.sections?.flatMap { it.items }.orEmpty()
+        Timber.tag("HomeSimilar").d(
+            "Published %d of %d panels from %d local seeds",
+            similarRecommendations.value.orEmpty().size,
+            MAX_SIMILAR_RECOMMENDATIONS,
+            seedsToGenerate.size,
+        )
     }
 
     /**
@@ -1393,6 +1591,7 @@ class HomeViewModel @Inject constructor(
                 currentIds = { quickPicks.value?.map { it.id }?.toSet().orEmpty() },
                 generate = { getQuickPicks() },
             )
+            enrichQuickPicksFromNetwork()
             HomeCache.quickPicks = quickPicks.value
         }
     }
@@ -1429,12 +1628,12 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun regenerateSimilarRecommendations() {
+    fun regenerateSimilarRecommendation(seedId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             regenerateSection(
-                key = "similar_recommendations",
-                currentIds = { similarRecommendations.value?.flatMap { it.items }?.map { it.id }?.toSet().orEmpty() },
-                generate = { getSimilarRecommendations() },
+                key = "similar_recommendation_$seedId",
+                currentIds = { similarRecommendations.value.orEmpty().firstOrNull { it.title.id == seedId }?.items?.map { it.id }?.toSet().orEmpty() },
+                generate = { getSimilarRecommendations(onlySeedId = seedId) },
             )
         }
     }
@@ -1472,6 +1671,9 @@ class HomeViewModel @Inject constructor(
             sectionId.startsWith("similar_recommendation_") && similarRecommendationsLaunchJob == null -> {
                 similarRecommendationsLaunchJob = viewModelScope.launch(Dispatchers.IO) {
                     try {
+                        // Gate behind phase 1 like the other sections: the similar fan-out
+                        // must not race (and starve) the home/account load on reconnect.
+                        phase1Complete.filter { it }.first()
                         getSimilarRecommendations()
                     } finally {
                         phase2SimilarDone.value = true
@@ -1513,6 +1715,10 @@ class HomeViewModel @Inject constructor(
         val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
         val fromTimeStamp = System.currentTimeMillis() - 86400000L * 7 * 2
 
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { getForYouShelves() }.onFailure { reportException(it) }
+        }
+
         try {
             coroutineScope {
                 launch(Dispatchers.IO) {
@@ -1529,9 +1735,6 @@ class HomeViewModel @Inject constructor(
                         keepListening.value = (songs + albums + artists).shuffled()
                     }.onFailure { reportException(it) }
                 }
-                launch(Dispatchers.IO) {
-                    runCatching { getForYouShelves() }.onFailure { reportException(it) }
-                }
             }
             allLocalItems.value = (quickPicks.value.orEmpty() + keepListening.value.orEmpty())
                 .filter { it is Song || it is Album }
@@ -1541,14 +1744,12 @@ class HomeViewModel @Inject constructor(
         } finally {
             isLoading.value = false
             phase1Complete.value = true
-        }
-
-        val cachedMoodParams = cachedMoodSnapshot.value?.chipParams
-        val cachedMoodTitle = cachedMoodSnapshot.value?.chipTitle
-        if (!cachedMoodParams.isNullOrEmpty()) {
-            viewModelScope.launch(Dispatchers.IO) {
-                loadMoodPage(cachedMoodParams, cachedMoodTitle, hideExplicit, hideVideoSongs, hideYoutubeShorts)
-            }
+            // Reload cancels pending section jobs; restart those already requested by the screen.
+            val sectionsToRestart = setOf(
+                "daily_discover", "from_the_community", "similar_recommendation_0",
+            ).intersect(visibleSections.value)
+            visibleSections.value = visibleSections.value - sectionsToRestart
+            sectionsToRestart.forEach(::onSectionBecameVisible)
         }
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -1605,40 +1806,20 @@ class HomeViewModel @Inject constructor(
                     }
                 )
                 homePage.value = transformedPage
+                updateHomePersonalMixes(transformedPage)
 
-                if (quickPicks.value.isNullOrEmpty()) {
-                    val homeSongs = transformedPage.sections.flatMap { it.items }
-                        .filterIsInstance<SongItem>()
-                        .distinctBy { it.id }
-                        .shuffled()
-                        .take(20)
-                    if (homeSongs.isNotEmpty()) {
-                        quickPicks.value = homeSongs.map { ytSong ->
-                            Song(
-                                song = SongEntity(
-                                    id = ytSong.id,
-                                    title = ytSong.title,
-                                    thumbnailUrl = ytSong.thumbnail,
-                                    explicit = ytSong.explicit,
-                                    isVideo = ytSong.isVideoSong,
-                                    duration = ytSong.duration ?: -1
-                                ),
-                                artists = ytSong.artists.map { artist ->
-                                    ArtistEntity(id = artist.id ?: ArtistEntity.generateArtistId(), name = artist.name)
-                                }
-                            )
-                        }
-                        HomeCache.quickPicks = quickPicks.value
-                    }
-                }
+                fillQuickPicksFromHome(transformedPage, hideExplicit)
+                HomeCache.quickPicks = quickPicks.value
 
                 val savedParamsForChip = cachedMoodSnapshot.value?.chipParams
+                val allowedMoodChips = MoodMixes.chips(transformedChips)
                 val preferredChip = if (!savedParamsForChip.isNullOrEmpty())
                     transformedChips?.firstOrNull { it.endpoint?.params == savedParamsForChip }
                 else null
 
                 if (smartBootEnabled) {
-                    (preferredChip ?: transformedChips?.firstOrNull())
+                    (allowedMoodChips.firstOrNull { it.endpoint?.params == savedParamsForChip }
+                        ?: allowedMoodChips.firstOrNull() ?: preferredChip ?: transformedChips?.firstOrNull())
                         ?.takeIf { !it.endpoint?.params.isNullOrEmpty() }
                         ?.let { chip ->
                             applyChipWithSingleFetch(chip, hideExplicit, hideVideoSongs, hideYoutubeShorts)
@@ -1646,13 +1827,6 @@ class HomeViewModel @Inject constructor(
                 } else {
                     if (selectedChip.value == null) {
                         (preferredChip ?: transformedChips?.firstOrNull())?.let { chip -> toggleChip(chip) }
-                    }
-                    val savedParams = cachedMoodSnapshot.value?.chipParams
-                    val moodChip = if (!savedParams.isNullOrEmpty())
-                        transformedChips?.firstOrNull { it.endpoint?.params == savedParams } ?: transformedChips?.firstOrNull()
-                    else transformedChips?.firstOrNull()
-                    moodChip?.let { chip ->
-                        loadMoodPage(chip.endpoint?.params, chip.title, hideExplicit, hideVideoSongs, hideYoutubeShorts)
                     }
                 }
                 HomeCache.homePage = homePage.value
@@ -1712,13 +1886,7 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * Smart Boot cold start: applies the preferred chip with ONE network fetch where the old
-     * path used two (toggleChip + loadMoodPage). Updates both consumers of that page:
-     *  - feed half (what toggleChip did): swap homePage, mark chip selected, podcast hook
-     *  - mood half (what loadMoodPage did): fill moodPage/moodMixItems, persist snapshot
-     * Deliberately does NOT touch moodPageJob/isMoodLoading: an early cached-params load may
-     * still be in flight — its own finally resets the spinner, and since it targets the same
-     * params its late result is identical to this one.
+     * Applies the preferred chip to the main feed during Smart Boot.
      */
     private fun applyChipWithSingleFetch(
         chip: HomePage.Chip,
@@ -1748,20 +1916,6 @@ class HomeViewModel @Inject constructor(
                 fetchPodcastData()
             }
 
-            val params = chip.endpoint?.params
-            val moodFilteredPage = nextSections.copy(chips = null, sections = filteredSections)
-            lastMoodChipParams = params
-            moodPage.value = moodFilteredPage
-            moodMixItems.value = filteredSections
-                .flatMap { it.items }
-                .filterIsInstance<PlaylistItem>()
-                .take(10)
-                .takeIf { it.isNotEmpty() } ?: moodMixItems.value
-            context.dataStore.edit { prefs ->
-                prefs[LastMoodChipTitleKey] = chip.title
-                if (params != null) prefs[LastMoodChipParamsKey] = params
-            }
-            saveMoodSnapshotAfterLoad(chip.title, params, moodFilteredPage)
         }
     }
 
@@ -1790,6 +1944,40 @@ class HomeViewModel @Inject constructor(
                 .filterYoutubeShorts(hideYoutubeShorts)
         }.onFailure {
             reportException(it)
+        }
+    }
+
+    private fun updateHomePersonalMixes(page: HomePage?) {
+        val initialPage = page ?: return
+        val initialMixes = initialPage.freshFindOldFavoritePlaylists()
+        homePersonalMixes.value = initialMixes
+        homeMixContinuationJob?.cancel()
+
+        if (initialMixes.size >= HomeMixTitleMatchers.size || initialPage.continuation.isNullOrEmpty()) {
+            return
+        }
+
+        homeMixContinuationJob = viewModelScope.launch(Dispatchers.IO) {
+            var currentPage = initialPage
+            var sections = initialPage.sections
+            val seenContinuations = mutableSetOf<String>()
+
+            repeat(HOME_MIX_CONTINUATION_LIMIT) {
+                val continuation = currentPage.continuation ?: return@launch
+                if (!seenContinuations.add(continuation)) return@launch
+
+                val result = YouTube.home(continuation = continuation)
+                val nextPage = result.getOrNull() ?: run {
+                    result.exceptionOrNull()?.let(::reportException)
+                    return@launch
+                }
+
+                sections = sections + nextPage.sections
+                val mixes = initialPage.copy(sections = sections).freshFindOldFavoritePlaylists()
+                if (mixes.isNotEmpty()) homePersonalMixes.value = mixes
+                if (mixes.size >= HomeMixTitleMatchers.size) return@launch
+                currentPage = nextPage
+            }
         }
     }
 
@@ -1849,11 +2037,23 @@ class HomeViewModel @Inject constructor(
             prefs[MoodSnapshotKey]?.let { json ->
                 runCatching { snapshotJson.decodeFromString<MoodSnapshot>(json) }
                     .getOrNull()?.let { snapshot ->
-                        cachedMoodSnapshot.value = snapshot
-                        moodMixItems.value = snapshot.items.mapNotNull { it.toPlaylistItem() }
-                            .takeIf { it.isNotEmpty() }
+                        val restored = snapshot.items.mapNotNull { it.toPlaylistItem() }
+                        val mood = MixMood.fromChip(snapshot.chipTitle)
+                        val allowedCategory = MoodMixes.isAllowedCategory(snapshot.chipTitle)
+                        val mixes = if (allowedCategory) MoodMixes.select(restored) else emptyList()
+                        val clean = snapshot.copy(chipTitle = mood?.label ?: snapshot.chipTitle,
+                            items = snapshot.items.filter { item -> mixes.any { it.id == item.id } }.distinctBy { it.id })
+                        cachedMoodSnapshot.value = clean.takeIf { allowedCategory }
+                        if (allowedCategory && moodPage.value == null && moodPageJob?.isActive != true) {
+                            publishMoodMixes(mixes, mood, revalidate = false)
+                            loadedMoodParams.value = snapshot.chipParams
+                        }
+                        if (clean != snapshot) context.dataStore.edit { it[MoodSnapshotKey] = snapshotJson.encodeToString(clean) }
                     }
             }
+            preferredMoodParams.value = cachedMoodSnapshot.value?.chipParams
+                ?: prefs[LastMoodChipParamsKey]
+            isMoodPreferenceReady.value = true
             prefs[AccountNameKey]?.takeIf { it.isNotEmpty() }?.let { accountName.value = it }
             prefs[AccountPhotoUrlKey]?.takeIf { it.isNotEmpty() }?.let { accountImageUrl.value = it }
         }
@@ -1878,8 +2078,9 @@ class HomeViewModel @Inject constructor(
             if (HomeCache.lastLoadedAt == 0L) {
                 HomeCache.lastLoadedAt = context.dataStore.get(HomeCacheLastLoadedKey, 0L)
             }
-            if (HomeCache.homePage == null) {
-                HomeFeedSnapshotStore.load(context)?.let { snap ->
+            HomeFeedSnapshotStore.load(context)?.let { snap ->
+                updateHomePersonalMixes(snap.page)
+                if (HomeCache.homePage == null) {
                     homePage.value = snap.page
                     restoredHomeFeed = true
                 }
@@ -1898,11 +2099,19 @@ class HomeViewModel @Inject constructor(
             }
             if (!HomeCache.isStale() && HomeCache.homePage != null) {
                 homePage.value = HomeCache.homePage
+                if (homePersonalMixes.value.isEmpty()) {
+                    HomeCache.homePage?.freshFindOldFavoritePlaylists()
+                        ?.takeIf { it.isNotEmpty() }
+                        ?.let { homePersonalMixes.value = it }
+                }
                 quickPicks.value = HomeCache.quickPicks
                 keepListening.value = HomeCache.keepListening
                 forgottenFavorites.value = HomeCache.forgottenFavorites
                 explorePage.value = HomeCache.explorePage
-                similarRecommendations.value = HomeCache.similarRecommendations
+                similarRecommendations.value = HomeCache.similarRecommendations.orEmpty()
+                    .distinctBy { it.title.id }
+                    .take(MAX_SIMILAR_RECOMMENDATIONS)
+                HomeCache.similarRecommendations = similarRecommendations.value
                 dailyDiscover.value = HomeCache.dailyDiscover
                 communityPlaylists.value = HomeCache.communityPlaylists
                 dischiPerTe.value = HomeCache.dischiPerTe
@@ -1916,6 +2125,11 @@ class HomeViewModel @Inject constructor(
                 phase2SimilarDone.value = true
                 phase2DischiPerTeDone.value = true
                 isLoading.value = false
+                if (quickPicks.value.orEmpty().size < QUICK_PICKS_TARGET_COUNT) {
+                    getQuickPicks()
+                    enrichQuickPicksFromNetwork()
+                    HomeCache.quickPicks = quickPicks.value
+                }
             } else {
                 load()
             }
@@ -2010,4 +2224,10 @@ class HomeViewModel @Inject constructor(
                 }
         }
     }
+
+    override fun onCleared() {
+        if (moodPostersLazy.isInitialized()) moodPosters.imageLoader.shutdown()
+        super.onCleared()
+    }
+
 }

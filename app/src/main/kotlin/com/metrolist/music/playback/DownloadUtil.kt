@@ -7,6 +7,7 @@ package com.metrolist.music.playback
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.core.content.getSystemService
 import androidx.core.net.toUri
 import androidx.media3.database.DatabaseProvider
@@ -17,6 +18,9 @@ import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
+import coil3.SingletonImageLoader
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
 import com.metrolist.innertube.YouTube
 import com.metrolist.music.constants.AudioQuality
 import com.metrolist.music.constants.AudioQualityKey
@@ -29,6 +33,7 @@ import com.metrolist.music.di.PlayerCache
 import com.metrolist.music.utils.YTPlayerUtils
 import com.metrolist.music.utils.enumPreference
 import com.metrolist.music.utils.preference
+import com.metrolist.music.ui.utils.resize
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -53,7 +58,7 @@ import javax.inject.Singleton
 class DownloadUtil
 @Inject
 constructor(
-    @ApplicationContext context: Context,
+    @ApplicationContext private val context: Context,
     val database: MusicDatabase,
     val databaseProvider: DatabaseProvider,
     @DownloadCache val downloadCache: SimpleCache,
@@ -64,6 +69,8 @@ constructor(
     private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
     private val muzzaPlayerLogicEnabled by preference(context, MuzzaPlayerLogicKey, true)
     private val songUrlCache = HashMap<String, Pair<String, Long>>()
+    private val artworkPrefetches = mutableSetOf<String>()
+    private val artworkPrefetchLock = Any()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -93,6 +100,13 @@ constructor(
             val length = if (dataSpec.length >= 0) dataSpec.length else 1
 
             if (playerCache.isCached(mediaId, dataSpec.position, length)) {
+                scope.launch {
+                    val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
+                    if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
+                        val artworkUrl = database.getSongByIdBlocking(mediaId)?.song?.thumbnailUrl
+                        if (artworkUrl != null) prefetchArtwork(mediaId, artworkUrl)
+                    }
+                }
                 return@Factory dataSpec
             }
 
@@ -155,6 +169,7 @@ constructor(
 
                 upsert(updatedSong)
             }
+            database.getSongByIdBlocking(mediaId)?.song?.thumbnailUrl?.let { prefetchArtwork(mediaId, it) }
 
             val streamUrl = playbackData.streamUrl.let {
                 "${it}&range=0-${format.contentLength ?: 10000000}"
@@ -163,6 +178,28 @@ constructor(
             songUrlCache[mediaId] = streamUrl to (System.currentTimeMillis() + playbackData.streamExpiresInSeconds * 1000L)
             dataSpec.withUri(streamUrl.toUri())
         }
+
+    private fun prefetchArtwork(songId: String, url: String) {
+        val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
+        if (capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) != true ||
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI).not() ||
+            !synchronized(artworkPrefetchLock) { artworkPrefetches.add(songId) }
+        ) return
+
+        scope.launch {
+            runCatching {
+                SingletonImageLoader.get(context).execute(
+                    ImageRequest.Builder(context)
+                        .data(url.resize(1024, 1024))
+                        .size(1024, 1024)
+                        .memoryCachePolicy(CachePolicy.DISABLED)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .networkCachePolicy(CachePolicy.ENABLED)
+                        .build(),
+                )
+            }
+        }
+    }
 
     val downloadNotificationHelper =
         DownloadNotificationHelper(context, ExoDownloadService.CHANNEL_ID)

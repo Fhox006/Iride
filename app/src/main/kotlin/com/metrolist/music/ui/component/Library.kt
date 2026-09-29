@@ -190,40 +190,30 @@ fun LibraryContinueListeningAlbumItem(
     isActive: Boolean,
     isPlaying: Boolean,
     size: Dp,
-    onDismiss: () -> Unit,
+    onAlbumSelected: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier.width(size)) {
-        AlbumGridItem(
-            album = album,
-            showLikedIcon = false,
-            isActive = isActive,
-            isPlaying = isPlaying,
-            coroutineScope = coroutineScope,
-            size = size,
-            modifier = Modifier.combinedClickable(
-                onClick = { navController.navigate("album/${album.id}") },
-                onLongClick = {
-                    menuState.show {
-                        AlbumMenu(originalAlbum = album, navController = navController, onDismiss = menuState::dismiss)
-                    }
-                },
-            ),
-        )
-        IconButton(
-            onClick = onDismiss,
-            modifier = Modifier.align(Alignment.TopEnd),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.close),
-                contentDescription = stringResource(R.string.remove_from_continue_listening),
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier
-                    .size(16.dp)
-                    .shadow(2.dp, CircleShape),
-            )
-        }
-    }
+    AlbumGridItem(
+        album = album,
+        showLikedIcon = false,
+        isActive = isActive,
+        isPlaying = isPlaying,
+        coroutineScope = coroutineScope,
+        size = size,
+        fillMaxWidth = true,
+        modifier = modifier.width(size).combinedClickable(
+            onClick = {
+                onAlbumSelected()
+                navController.navigate("album/${album.id}")
+            },
+            onLongClick = {
+                onAlbumSelected()
+                menuState.show {
+                    AlbumMenu(originalAlbum = album, navController = navController, onDismiss = menuState::dismiss)
+                }
+            },
+        ),
+    )
 }
 
 @Composable

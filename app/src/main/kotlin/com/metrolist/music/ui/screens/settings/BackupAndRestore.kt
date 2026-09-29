@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageHeaderLayout
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -66,10 +68,7 @@ import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
-import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.menu.AddToPlaylistDialogOnline
 import com.metrolist.music.ui.menu.CsvColumnMappingDialog
 import com.metrolist.music.ui.menu.CsvImportProgressDialog
@@ -176,17 +175,20 @@ fun BackupAndRestore(
         }
 
     val settingsScrollState = rememberScrollState()
-    val frostBackdrop = rememberFrostBackdrop()
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
     val playerConnection = LocalPlayerConnection.current
     val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    IridePageHeaderLayout(
+        title = stringResource(R.string.app_management_backup),
+        initiallyCollapsed = true,
+        navigationIcon = { IridePageBackButton(navController) },
+        modifier = Modifier.fillMaxSize(),
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .recordFrostBackdrop(frostBackdrop)
         ) {
             if (mainTopGradient) {
                 TopScreenGradientBackground(
@@ -202,20 +204,20 @@ fun BackupAndRestore(
             }
             Column(
                 Modifier
-                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom).only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                     .verticalScroll(settingsScrollState)
                     .padding(horizontal = 16.dp),
             ) {
                 Spacer(
                     Modifier.windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom).only(
                             WindowInsetsSides.Top,
                         ),
                     ),
                 )
 
                 val appName = stringResource(R.string.app_name)
-                val arrowIcon = painterResource(R.drawable.arrow_forward)
+                val arrowIcon = painterResource(R.drawable.navigate_next)
 
                 Material3SettingsGroup(
                     items =
@@ -289,12 +291,6 @@ fun BackupAndRestore(
             }
         }
 
-        SettingsBackTopBar(
-            title = stringResource(R.string.app_management_backup),
-            navController = navController,
-            backdrop = frostBackdrop,
-            revealProgress = rememberDiscreteProgress(active = settingsScrollState.value > 0),
-        )
 
 
     AddToPlaylistDialogOnline(

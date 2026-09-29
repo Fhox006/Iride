@@ -29,6 +29,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
@@ -49,6 +50,7 @@ fun FrostedPageTitleBar(
     shadeTopEdge: Boolean = false,
     solidBackgroundColor: Color? = null,
     fadeTitle: Boolean = true,
+    titleHorizontalPadding: Dp = 20.dp,
 ) {
     var titleHeightPx by remember { mutableStateOf(0) }
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -61,7 +63,7 @@ fun FrostedPageTitleBar(
                 val strokeWidth = 1.dp.toPx()
                 val y = size.height - strokeWidth / 2f
                 drawLine(
-                    Color.White.copy(alpha = 0.22f),
+                    Color.White.copy(alpha = 0.08f),
                     Offset(0f, y),
                     Offset(size.width, y),
                     strokeWidth = strokeWidth,
@@ -94,10 +96,10 @@ fun FrostedPageTitleBar(
         Box(
             modifier = if (fullWidth) {
                 if (centerTitleVertically) {
-                    Modifier.padding(start = 20.dp, end = 20.dp).height(barHeight)
+                    Modifier.padding(start = titleHorizontalPadding, end = titleHorizontalPadding).height(barHeight)
                         .then(if (titleEnterFromBottom) Modifier.clipToBounds() else Modifier)
                 } else {
-                    Modifier.padding(start = 20.dp, bottom = 12.dp).height(32.dp)
+                    Modifier.padding(start = titleHorizontalPadding, bottom = 12.dp).height(32.dp)
                 }
             } else {
                 Modifier
@@ -117,6 +119,8 @@ fun FrostedPageTitleBar(
         ) {
             Text(
                 text = stringResource(titleRes),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.titleMedium
                     .copy(fontWeight = FontWeight.SemiBold)
                     .let { if (fullWidth) it.copy(fontFamily = SpaceMonoFontFamily) else it },

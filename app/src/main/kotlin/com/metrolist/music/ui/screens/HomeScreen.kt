@@ -8,6 +8,7 @@ package com.metrolist.music.ui.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -31,16 +32,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -58,7 +58,6 @@ import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.ui.theme.textTertiary
 import com.metrolist.music.ui.utils.resize
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
@@ -86,6 +85,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -101,14 +101,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -119,6 +116,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.delay
+import com.metrolist.music.utils.isInternetAvailable
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
@@ -132,6 +135,9 @@ import com.metrolist.innertube.models.PodcastItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.innertube.models.YTItem
+import com.metrolist.music.discovery.MixMood
+import com.metrolist.music.ui.component.MixPosterPlaceholder
+import com.metrolist.music.discovery.MoodMixes
 import com.metrolist.innertube.models.isMixtape
 import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.music.LocalListenTogetherManager
@@ -145,7 +151,6 @@ import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.InnerTubeCookieKey
-import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.SmartBootKey
 import com.metrolist.music.db.entities.Album
@@ -164,8 +169,7 @@ import com.metrolist.music.ui.component.ArtistGridItem
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
-import com.metrolist.music.ui.component.IridePageTitle
-import com.metrolist.music.ui.component.FrostedPageTitleBar
+import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.HomeFilmViewfinderOverlay
 import com.metrolist.music.ui.component.homeGlobeField
 import com.metrolist.music.ui.component.rememberHomeScrollVelocity
@@ -173,6 +177,9 @@ import com.metrolist.music.ui.component.RandomizeGridItem
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.SongGridItem
 import com.metrolist.music.ui.component.SongCarousel
+import com.metrolist.music.ui.component.SharedHomeSectionTitle
+import com.metrolist.music.ui.component.SharedQuickPicksCarousel
+import com.metrolist.music.ui.component.SharedYouTubePlaylistRow
 import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import androidx.compose.ui.draw.clipToBounds
@@ -288,20 +295,6 @@ private fun <E> IrideMoodChipsRow(
 }
 
 @Composable
-private fun QuickPicksSkeleton(contentPadding: Dp, modifier: Modifier = Modifier) {
-    ShimmerHost(modifier = modifier.fillMaxWidth()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = contentPadding)
-                .height(ListItemHeight * 4)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-        )
-    }
-}
-
-@Composable
 private fun ForYouShelfSkeleton(boxSize: Dp, contentPadding: Dp, modifier: Modifier = Modifier) {
     ShimmerHost(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -373,6 +366,7 @@ fun HomeScreen(
     val menuState = LocalMenuState.current
     val playerConnection = LocalPlayerConnection.current
     val database = LocalDatabase.current
+    val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val listenTogetherManager = LocalListenTogetherManager.current
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
@@ -398,6 +392,8 @@ fun HomeScreen(
     val communityPlaylists by viewModel.communityPlaylists.collectAsStateWithLifecycle()
     val dailyDiscover by viewModel.dailyDiscover.collectAsStateWithLifecycle()
     val accountPlaylists by viewModel.accountPlaylists.collectAsStateWithLifecycle()
+    val homePersonalMixes by viewModel.homePersonalMixes.collectAsStateWithLifecycle()
+    val starredPlaylistThumbnails by viewModel.starredPlaylistThumbnails.collectAsStateWithLifecycle()
     val similarRecommendations by viewModel.similarRecommendations.collectAsStateWithLifecycle()
     val quickPicks by viewModel.quickPicks.collectAsStateWithLifecycle()
     val forYouShelves by viewModel.forYouShelves.collectAsStateWithLifecycle()
@@ -425,26 +421,6 @@ fun HomeScreen(
 
     // Declared up here: the globe state, the shelf counter and the item helpers below need them.
     val lazyListState = rememberLazyListState()
-    val homeBarHeight = 40.dp
-    val homeStatusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val homeBarBottomPx = with(LocalDensity.current) { (homeStatusBarHeight + homeBarHeight).toPx() }
-    var homeTitleHeightPx by remember { mutableStateOf(0) }
-    val compactTitleProgress by remember(lazyListState, homeBarBottomPx) {
-        derivedStateOf {
-            val layout = lazyListState.layoutInfo
-            val titleItem = layout.visibleItemsInfo.firstOrNull { it.key == "home_page_title" }
-            when {
-                lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset == 0 -> 0f
-                titleItem == null -> if (lazyListState.firstVisibleItemIndex > 0) 1f else 0f
-                homeTitleHeightPx <= 0 -> 0f
-                else -> {
-                    val titleTop = titleItem.offset + layout.beforeContentPadding
-                    ((homeBarBottomPx - titleTop) / homeTitleHeightPx).coerceIn(0f, 1f)
-                }
-            }
-        }
-    }
-
     // Ball effect (Home only, default ON): master switch + reduced motion.
     // When off, the velocity tracker / shader never
     // start, so the cost is zero and the feed renders exactly like before.
@@ -461,25 +437,52 @@ fun HomeScreen(
         label = "homeLean",
     )
     val moodMixItems by viewModel.moodMixItems.collectAsStateWithLifecycle()
+    val moodPosterUrls by viewModel.moodPosterUrls.collectAsStateWithLifecycle()
+    val moodPosterSize = with(LocalDensity.current) { currentGridHeight.roundToPx() }.coerceIn(128, 768)
     val isMoodLoading by viewModel.isMoodLoading.collectAsStateWithLifecycle()
+    val isMoodError by viewModel.isMoodError.collectAsStateWithLifecycle()
+    val loadedMoodParams by viewModel.loadedMoodParams.collectAsStateWithLifecycle()
+    val preferredMoodParams by viewModel.preferredMoodParams.collectAsStateWithLifecycle()
+    val isMoodPreferenceReady by viewModel.isMoodPreferenceReady.collectAsStateWithLifecycle()
     var selectedMoodCategory by remember { mutableStateOf<com.metrolist.innertube.pages.HomePage.Chip?>(null) }
     val moodChips = remember(homePage?.chips) {
-        homePage?.chips?.map { it to it.title } ?: emptyList()
+        MoodMixes.chips(homePage?.chips).map { it to it.title }
     }
     val moodMixesState = rememberLazyListState()
-
-    LaunchedEffect(moodChips) {
-        if (moodChips.isNotEmpty() && moodChips.none { it.first == selectedMoodCategory }) {
-            selectedMoodCategory = moodChips.first().first
+    val moodLifecycleOwner = LocalLifecycleOwner.current
+    val moodContext = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(moodLifecycleOwner, selectedMoodCategory, hideExplicit, hideVideoSongs, hideYoutubeShorts, moodPosterSize) {
+        moodLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.isMoodError.collectLatest { failed ->
+                while (failed && viewModel.isMoodError.value) {
+                    delay(30_000)
+                    if (isInternetAvailable(moodContext)) {
+                        viewModel.loadMoodPage(selectedMoodCategory?.endpoint?.params, selectedMoodCategory?.title,
+                            hideExplicit, hideVideoSongs, hideYoutubeShorts, moodPosterSize, forceReload = true)
+                    }
+                }
+            }
         }
     }
-    LaunchedEffect(selectedMoodCategory, hideExplicit, hideVideoSongs, hideYoutubeShorts) {
+
+    LaunchedEffect(moodChips, isMoodPreferenceReady) {
+        if (isMoodPreferenceReady && moodChips.isNotEmpty()) {
+            val current = moodChips.firstOrNull {
+                it.first.endpoint?.params == selectedMoodCategory?.endpoint?.params
+            }?.first
+            selectedMoodCategory = current
+                ?: moodChips.firstOrNull { it.first.endpoint?.params == preferredMoodParams }?.first
+                ?: moodChips.first().first
+        }
+    }
+    LaunchedEffect(selectedMoodCategory, hideExplicit, hideVideoSongs, hideYoutubeShorts, moodPosterSize) {
         moodMixesState.scrollToItem(0)
         if (selectedMoodCategory != null) {
             viewModel.loadMoodPage(
                 selectedMoodCategory?.endpoint?.params,
                 selectedMoodCategory?.title,
                 hideExplicit, hideVideoSongs, hideYoutubeShorts,
+                posterSize = moodPosterSize,
             )
         }
     }
@@ -666,7 +669,7 @@ fun HomeScreen(
                                 }
                                 is AlbumItem -> navController.navigate("album/${item.id}")
                                 is ArtistItem -> navController.navigate("artist/${item.id}")
-                                is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
+                                is PlaylistItem -> navController.navigate("online_playlist/${item.id.removePrefix("VL")}")
                                 is PodcastItem -> navController.navigate("online_podcast/${item.id}")
                                 is EpisodeItem -> {
                                     if (!isListenTogetherGuest) {
@@ -792,7 +795,9 @@ fun HomeScreen(
                 }
             }
             val forYouBlock: @Composable (ForYouShelfItem) -> Unit = { shelf ->
-                val cells: List<Any> = remember(shelf) { (listOf(shelf.artist) + shelf.tiles).shuffled().take(4) }
+                val cells: List<Any> = remember(shelf) {
+                    listOf(shelf.artist) + shelf.tiles.shuffled().take(3)
+                }
                 Column(modifier = Modifier.width(forYouBoxSize)) {
                     Column(verticalArrangement = Arrangement.spacedBy(forYouCellGap)) {
                         cells.chunked(2).forEach { rowCells ->
@@ -866,41 +871,24 @@ fun HomeScreen(
                 }
             }
 
-            Box(
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                LazyColumn(
-                    state = lazyListState,
-                    overscrollEffect = null,
-                    contentPadding = PaddingValues(
-                        top = homeStatusBarHeight + homeBarHeight + 8.dp,
-                        bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-                    ),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .homeGlobeField(
-                            lean = homeLean,
-                            contentAlpha = screenProgress,
-                            enabled = globeOn,
-                        )
-                        .rubberBandOverscroll(Orientation.Vertical, lazyListState)
-                ) {
-                item(key = "home_page_title") {
-                    IridePageTitle(
-                        titleRes = R.string.home,
-                        modifier = Modifier
-                            .padding(start = 20.dp, end = 20.dp, bottom = 8.dp)
-                            .onSizeChanged { homeTitleHeightPx = it.height }
-                            .drawWithContent {
-                                // Cut the page title at the bar edge even while its background is translucent.
-                                clipRect(top = size.height * compactTitleProgress) {
-                                    this@drawWithContent.drawContent()
-                                }
-                            },
-                        monospace = true,
+            IridePageLayout(
+                titleRes = R.string.home,
+                state = lazyListState,
+                reducedMotion = homeReducedMotion,
+                bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+                listModifier = Modifier
+                    .homeGlobeField(
+                        lean = homeLean,
+                        contentAlpha = screenProgress,
+                        enabled = globeOn,
                     )
-                }
-
+                    .rubberBandOverscroll(Orientation.Vertical, lazyListState),
+                overlay = {
+                    if (globeOn) {
+                        HomeFilmViewfinderOverlay()
+                    }
+                },
+            ) {
                 if (isLoading) {
                     item(key = "loading_indicator") {
                         LinearProgressIndicator(
@@ -1153,10 +1141,15 @@ fun HomeScreen(
                                 ) {
                                     repeat(realPageCount) { index ->
                                         val isSelected = currentRealPage == index
+                                        val dotSize by animateDpAsState(
+                                            targetValue = if (isSelected) 5.dp else 4.dp,
+                                            animationSpec = tween(durationMillis = 180),
+                                            label = "radioPageIndicatorSize",
+                                        )
                                         Box(
                                             modifier = Modifier
                                                 .padding(horizontal = 3.dp)
-                                                .size(if (isSelected) 5.dp else 4.dp)
+                                                .size(dotSize)
                                                 .clip(CircleShape)
                                                 .background(
                                                     if (isSelected) MaterialTheme.colorScheme.textPrimary
@@ -1171,33 +1164,22 @@ fun HomeScreen(
 
                 if (quickPicks == null || pickedSongs.size >= 4) {
                     item(key = "picked_for_you_title") {
-                        NavigationTitle(
+                        SharedHomeSectionTitle(
                             title = stringResource(R.string.quick_picks_section_title),
                             modifier = homeTitleMotion("picked_for_you"),
                             onRefreshClick = { viewModel.regenerateQuickPicks() },
                             isRefreshing = "quick_picks" in regeneratingSections,
-                            useIrideStyle = true,
-                            sentenceCaseTitle = true,
-                            showDivider = false,
-                            topPadding = 24.dp,
-                            bottomPadding = 12.dp,
-                            showNavigationArrow = false,
                         )
                     }
                     item(key = "picked_for_you_row") {
-                        if (quickPicks == null) {
-                            QuickPicksSkeleton(
-                                contentPadding = irideListItemStart,
-                                modifier = homeRowMotion("picked_for_you_row"),
-                            )
-                        } else {
-                            SongCarousel(
-                                items = pickedSongs,
-                                key = { "picked_${it.id}" },
-                                contentPadding = PaddingValues(horizontal = irideListItemStart - 4.dp),
-                                gridState = rememberLazyGridState(),
-                                modifier = homeRowMotion("picked_for_you_row"),
-                            ) { originalSong, itemWidth ->
+                        SharedQuickPicksCarousel(
+                            items = pickedSongs,
+                            key = { "picked_${it.id}" },
+                            loading = quickPicks == null,
+                            contentPadding = irideListItemStart - 4.dp,
+                            gridState = rememberLazyGridState(),
+                            modifier = homeRowMotion("picked_for_you_row"),
+                        ) { originalSong, itemWidth ->
                                 val song by database.song(originalSong.id)
                                     .collectAsStateWithLifecycle(initialValue = originalSong)
                                 val currentSong = song ?: originalSong
@@ -1251,7 +1233,6 @@ fun HomeScreen(
                                         )
                                     )
                                 }
-                            }
                         }
                     }
                 }
@@ -1367,7 +1348,7 @@ fun HomeScreen(
                         }
                     }
                 }
-                if (moodChips.isNotEmpty() && (moodMixItems?.size ?: 4) >= 4) {
+                if (moodChips.isNotEmpty()) {
                     item(key = "your_mood_title") {
                         NavigationTitle(
                             title = stringResource(R.string.home_mood_youtube_music),
@@ -1387,54 +1368,44 @@ fun HomeScreen(
                                 .fillMaxWidth()
                                 .then(homeRowMotion("your_mood_row")),
                         ) {
-                        if (moodChips.isNotEmpty()) {
                             IrideMoodChipsRow(
                                 chips = moodChips,
                                 currentValue = selectedMoodCategory,
                                 onValueUpdate = { selectedMoodCategory = it },
                                 horizontalPadding = irideStart,
                             )
-                        }
 
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(currentGridHeight + 64.dp),
-                        ) {
-                            val mixItems = remember(moodMixItems) { moodMixItems?.shuffled() }
-                            if (mixItems.isNullOrEmpty()) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    if (isMoodLoading || mixItems == null) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            strokeWidth = 2.dp,
-                                            color = MaterialTheme.colorScheme.textSecondary,
-                                        )
-                                    } else {
-                                        Text(
-                                            text = stringResource(R.string.home_no_mood_playlists),
-                                            color = MaterialTheme.colorScheme.textSecondary,
-                                        )
-                                    }
-                                }
-                            } else {
+                            val mixItems = moodMixItems.orEmpty()
+                            Box(Modifier.fillMaxWidth().height(currentGridHeight + 64.dp)) {
                                 LazyRow(
                                     state = moodMixesState,
                                     contentPadding = PaddingValues(horizontal = irideGridItemStart),
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     overscrollEffect = null,
                                     modifier = Modifier
-                                        .fillMaxSize()
+                                        .fillMaxWidth()
+                                        .height(currentGridHeight + 64.dp)
                                         .padding(bottom = 4.dp)
-                                        .alpha(if (isMoodLoading) 0.4f else 1f)
+                                        .alpha(if (isMoodLoading) 0.65f else 1f)
                                         .rubberBandOverscroll(Orientation.Horizontal, moodMixesState),
                                 ) {
                                     items(mixItems, key = { it.id }) { mix ->
                                         YouTubeGridItem(
                                             item = mix,
+                                            thumbnailUrlOverride = moodPosterUrls[mix.id] ?: mix.thumbnail,
+                                            thumbnailImageLoader = if (moodPosterUrls[mix.id] != null)
+                                                viewModel.moodPosterImageLoader else null,
+                                            useThumbnailOverride = true,
+                                            thumbnailPlaceholder = {
+                                                MixPosterPlaceholder(
+                                                    title = mix.title,
+                                                    mood = MixMood.fromMixTitle(mix.title)
+                                                        ?: MixMood.fromChip(moodChips.firstOrNull {
+                                                            it.first.endpoint?.params == loadedMoodParams
+                                                        }?.second)
+                                                        ?: MixMood.CHILL,
+                                                )
+                                            },
                                             isActive = mix.id == mediaMetadata?.album?.id,
                                             isPlaying = isPlaying,
                                             coroutineScope = scope,
@@ -1461,25 +1432,95 @@ fun HomeScreen(
                                         )
                                     }
                                 }
-                                androidx.compose.animation.AnimatedVisibility(
-                                    visible = isMoodLoading,
-                                    modifier = Modifier.align(Alignment.Center),
-                                    enter = fadeIn(),
-                                    exit = fadeOut(),
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
+                                when {
+                                    isMoodLoading -> CircularProgressIndicator(
+                                        modifier = Modifier.align(if (mixItems.isEmpty()) Alignment.Center else Alignment.TopEnd)
+                                            .padding(12.dp)
+                                            .background(MaterialTheme.colorScheme.surface, CircleShape)
+                                            .padding(6.dp).size(24.dp),
                                         strokeWidth = 2.dp,
+                                    )
+                                    isMoodError -> Column(
+                                        modifier = Modifier.align(Alignment.Center).padding(horizontal = 24.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.home_mood_load_error),
+                                            color = MaterialTheme.colorScheme.textSecondary,
+                                        )
+                                        TextButton(onClick = {
+                                            selectedMoodCategory?.let { chip ->
+                                                viewModel.loadMoodPage(chip.endpoint?.params, chip.title,
+                                                    hideExplicit, hideVideoSongs, hideYoutubeShorts,
+                                                    moodPosterSize, forceReload = true)
+                                            }
+                                        }) {
+                                            Text(stringResource(R.string.home_mood_retry))
+                                        }
+                                    }
+                                    mixItems.isEmpty() -> Text(
+                                        text = stringResource(R.string.home_mood_empty),
                                         color = MaterialTheme.colorScheme.textSecondary,
+                                        modifier = Modifier.align(Alignment.Center).padding(horizontal = 24.dp),
                                     )
                                 }
                             }
-                        }
                         }
                     }
                 }
 
                 forYouSection()
+                item(key = "home_personal_mixes_title") {
+                    NavigationTitle(
+                        title = stringResource(R.string.home_fresh_find_old_favorite),
+                        modifier = homeTitleMotion("home_personal_mixes"),
+                        useIrideStyle = true,
+                        showDivider = false,
+                        topPadding = 24.dp,
+                        bottomPadding = 12.dp,
+                        sentenceCaseTitle = true,
+                        showNavigationArrow = false,
+                    )
+                }
+                item(key = "home_personal_mixes_content") {
+                    val personalMixesState = rememberLazyListState()
+                    val starredPlaylistName = stringResource(R.string.starred)
+                    val starredPlaylist = remember(starredPlaylistName, starredPlaylistThumbnails) {
+                        Playlist(
+                            playlist = PlaylistEntity(
+                                id = PlaylistEntity.LIKED_PLAYLIST_ID,
+                                name = starredPlaylistName,
+                            ),
+                            songCount = 0,
+                            songThumbnails = starredPlaylistThumbnails,
+                        )
+                    }
+                    LazyRow(
+                        state = personalMixesState,
+                        contentPadding = PaddingValues(horizontal = irideGridItemStart),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        overscrollEffect = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(homeRowMotion("home_personal_mixes_row"))
+                            .rubberBandOverscroll(Orientation.Horizontal, personalMixesState),
+                    ) {
+                        item(key = "home_personal_mixes_starred") {
+                            PlaylistGridItem(
+                                playlist = starredPlaylist,
+                                autoPlaylist = true,
+                                modifier = Modifier
+                                    .animateItem()
+                                    .combinedClickable(
+                                        onClick = { navController.navigate("auto_playlist/liked") },
+                                    ),
+                            )
+                        }
+                        items(homePersonalMixes, key = { "home_personal_mix_${it.id}" }) { mix ->
+                            ytGridItem(mix)
+                        }
+                    }
+                }
                 val feedSection: LazyListScope.() -> Unit = {
                     shuffledFeedSections.forEach { addFeedSection(it) }
                 }
@@ -1594,9 +1635,9 @@ fun HomeScreen(
                     similarRecommendations?.forEachIndexed { index, rec ->
                     val similarItems = rec.items
                         .distinctBy { it.id }
-                        .filter { item -> item is SongItem && !item.isVideoSong || item is AlbumItem || item is ArtistItem }
+                        .filter { item -> item is SongItem && !item.isVideoSong || item is AlbumItem || item is ArtistItem || item is PlaylistItem }
                         .sortedBy { item -> item is ArtistItem }
-                    if (similarItems.size < 4 || similarItems.none { it !is ArtistItem } ||
+                    if (similarItems.size < 2 ||
                             rec.thumbnailUrl.isNullOrBlank()
                         ) return@forEachIndexed
                         item(key = "similar_to_title_$index") {
@@ -1609,11 +1650,13 @@ fun HomeScreen(
                                         is Song -> navController.navigate("album/${rec.title.album!!.id}")
                                         is Album -> navController.navigate("album/${rec.title.id}")
                                         is Artist -> navController.navigate("artist/${rec.title.id}")
-                                        is Playlist -> {}
+                                        is Playlist -> rec.title.playlist.browseId?.let {
+                                            navController.navigate("online_playlist/${it.removePrefix("VL")}")
+                                        }
                                     }
                                 },
-                                onRefreshClick = { viewModel.regenerateSimilarRecommendations() },
-                                isRefreshing = "similar_recommendations" in regeneratingSections,
+                                onRefreshClick = { viewModel.regenerateSimilarRecommendation(rec.title.id) },
+                                isRefreshing = "similar_recommendation_${rec.title.id}" in regeneratingSections,
                                 modifier = homeTitleMotion("similar_to_$index"),
                             )
                         }
@@ -1637,33 +1680,21 @@ fun HomeScreen(
                 val accountSection: LazyListScope.() -> Unit = {
                     accountPlaylists?.takeIf { it.distinctBy { playlist -> playlist.id }.size >= 4 }?.let { playlists ->
                         item(key = "account_playlists_title") {
-                            NavigationTitle(
+                            SharedHomeSectionTitle(
                                 title = stringResource(R.string.home_youtube_music_playlists),
                                 onClick = { navController.navigate("account") },
                                 modifier = homeTitleMotion("account_playlists"),
-                                useIrideStyle = true,
-                                sentenceCaseTitle = true,
-                                showDivider = false,
-                                topPadding = 24.dp,
-                                bottomPadding = 12.dp,
-                                showNavigationArrow = false,
                             )
                         }
                         item(key = "account_playlists_list") {
-                            val accountPlaylistsState = rememberLazyListState()
                             val shuffledPlaylists = remember(playlists) { playlists.distinctBy { it.id }.shuffled() }
-                            LazyRow(
-                                state = accountPlaylistsState,
-                                contentPadding = PaddingValues(horizontal = irideGridItemStart),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                overscrollEffect = null,
-                                modifier = homeRowMotion("account_playlists_row")
-                                    .rubberBandOverscroll(Orientation.Horizontal, accountPlaylistsState),
-                            ) {
-                                items(shuffledPlaylists, key = { "home_account_playlist_${it.id}" }) { playlist ->
-                                    ytGridItem(playlist)
-                                }
-                            }
+                            SharedYouTubePlaylistRow(
+                                items = shuffledPlaylists,
+                                key = { "home_account_playlist_${it.id}" },
+                                contentPadding = irideGridItemStart,
+                                modifier = homeRowMotion("account_playlists_row"),
+                                itemContent = { playlist -> ytGridItem(playlist) },
+                            )
                         }
                     }
 
@@ -1675,26 +1706,6 @@ fun HomeScreen(
                 similarSection()
                 accountSection()
             }
-            }
-
-            if (globeOn) {
-                HomeFilmViewfinderOverlay(
-                )
-            }
-
-            FrostedPageTitleBar(
-                titleRes = R.string.home,
-                progress = compactTitleProgress,
-                backdrop = null,
-                fullWidth = true,
-                titleProgress = compactTitleProgress,
-                barHeight = homeBarHeight,
-                centerTitleVertically = true,
-                titleEnterFromBottom = !homeReducedMotion,
-                solidBackgroundColor = Color(0xFF070707),
-                fadeTitle = false,
-            )
-
         }
     }
     }

@@ -5,6 +5,12 @@
 
 package com.metrolist.music.ui.screens.search
 
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import com.metrolist.music.ui.component.rememberLibraryPageRevealState
+import com.metrolist.music.ui.component.LibraryPageRevealState
+import com.metrolist.music.ui.component.LibraryHeroTitle
+import com.metrolist.music.ui.component.IridePageTopBar
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -56,6 +62,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -96,10 +103,9 @@ import com.metrolist.music.constants.SearchSourceKey
 import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.IrideSegmentedToggle
-import com.metrolist.music.ui.component.IridePageTitle
-import com.metrolist.music.ui.component.FrostedPageTitleBar
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
+import com.metrolist.music.ui.component.IridePageLayoutDefaults
+import com.metrolist.music.ui.component.IrideSearchBox
+import com.metrolist.music.ui.component.IrideSearchBoxHeight
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.fillSubtle
@@ -117,7 +123,6 @@ import com.metrolist.music.viewmodels.OnlineSearchViewModel
 
 private val LargeTitleHeightDp = 80.dp
 private val SmallTitleBarHeightDp = 56.dp
-private val SearchBoxHeightDp = 52.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -157,8 +162,8 @@ fun SearchScreen(
     }
     var isFocused by remember { mutableStateOf(false) }
     var headerScrolled by remember { mutableStateOf(false) }
-    val frostBackdrop = rememberFrostBackdrop()
-    val titleRevealProgress = rememberDiscreteProgress(headerScrolled && !isFocused)
+    val headerRevealState = rememberLibraryPageRevealState()
+    val titleRevealProgress = if (isFocused) 0f else if (headerScrolled) 1f else headerRevealState.progress
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
 
     var submittedQuery by rememberSaveable { mutableStateOf<String?>(null) }
@@ -217,15 +222,24 @@ fun SearchScreen(
                     searchSource = if (searchSource == SearchSource.ONLINE) SearchSource.LOCAL else SearchSource.ONLINE
                 },
                 focusRequester = focusRequester,
-                onFocusChanged = { isFocused = it.isFocused },
+                onFocusChanged = { if (it.isFocused) isFocused = true },
                 onSearch = { handleSearch(query.text) },
                 onClear = { query = TextFieldValue(""); submittedQuery = null },
                 pureBlack = pureBlack,
                 transparentBackground = false,
+                revealState = headerRevealState,
             )
         }
     }
     val irideHeader: (@Composable () -> Unit)? = irideHeaderContent
+
+    LaunchedEffect(isFocused, submittedQuery) {
+        if (isFocused && submittedQuery != null) {
+            withFrameNanos { }
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
 
     Scaffold(
         topBar = {},
@@ -241,7 +255,6 @@ fun SearchScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .recordFrostBackdrop(frostBackdrop, enabled = titleRevealProgress > 0f)
                     .background(
                     when {
                         pureBlack -> Color.Black
@@ -298,10 +311,12 @@ fun SearchScreen(
             }
             }
 
-            FrostedPageTitleBar(
-                titleRes = R.string.search,
+            IridePageTopBar(
+                title = stringResource(R.string.search),
                 progress = titleRevealProgress,
-                backdrop = frostBackdrop,
+                modifier = Modifier.onGloballyPositioned {
+                    headerRevealState.topBarBottomPx = it.positionInWindow().y + it.size.height
+                },
             )
 
         }
@@ -349,11 +364,14 @@ private fun SearchScrollableHeader(
     onClear: () -> Unit,
     pureBlack: Boolean,
     transparentBackground: Boolean,
+    revealState: LibraryPageRevealState,
 ) {
     Column(modifier = Modifier.statusBarsPadding()) {
-        IridePageTitle(
-            titleRes = R.string.search,
-            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp),
+        LibraryHeroTitle(
+            title = stringResource(R.string.search),
+            entranceAlpha = 1f,
+            revealState = revealState,
+            modifier = Modifier.padding(horizontal = IridePageLayoutDefaults.HorizontalPadding),
         )
 
         Box(modifier = Modifier.padding(start = 20.dp, top = 8.dp, bottom = 8.dp)) {
@@ -385,80 +403,6 @@ private fun SearchScrollableHeader(
     }
 }
 
-/**
- * New Iride UI: shared flat monospace/white-alpha search box, matching the look of
- * [com.metrolist.music.ui.component.ChipsRow] / [com.metrolist.music.ui.component.NavigationTitle]
- * / [SuggestionItem] instead of default Material text field styling. Reused by both this screen's
- * own header and [OnlineSearchResult]'s search bar so the two look identical.
- */
-@Composable
-fun IrideSearchBox(
-    query: TextFieldValue,
-    onQueryChange: (TextFieldValue) -> Unit,
-    placeholderText: String,
-    focusRequester: FocusRequester,
-    onFocusChanged: (FocusState) -> Unit,
-    onSearch: () -> Unit,
-    onClear: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(SearchBoxHeightDp)
-            .clip(RoundedCornerShape(5.dp))
-            .background(MaterialTheme.colorScheme.fillSubtle),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 16.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                modifier = Modifier
-                    .weight(1f)
-                    .focusRequester(focusRequester)
-                    .onFocusChanged(onFocusChanged),
-                textStyle = TextStyle(
-                    color = MaterialTheme.colorScheme.textPrimary.copy(alpha = 0.95f),
-                    fontFamily = SpaceMonoFontFamily,
-                    fontSize = 15.sp,
-                ),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.textPrimary),
-                singleLine = true,
-                decorationBox = { innerTextField ->
-                    if (query.text.isEmpty()) {
-                        Text(
-                            text = placeholderText,
-                            style = TextStyle(
-                                color = MaterialTheme.colorScheme.textSecondary,
-                                fontFamily = SpaceMonoFontFamily,
-                                fontSize = 15.sp,
-                            ),
-                        )
-                    }
-                    innerTextField()
-                },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-            )
-
-            if (query.text.isNotEmpty()) {
-                IconButton(onClick = onClear) {
-                    Icon(
-                        painter = painterResource(R.drawable.close),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.textSecondary,
-                    )
-                }
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SearchCollapsingHeader(
@@ -485,7 +429,7 @@ private fun SearchCollapsingHeader(
     }
 
     val fraction = if (hideTitle) 0f else scrollBehavior.state.collapsedFraction
-    val totalHeightDp = SmallTitleBarHeightDp + (if (hideTitle) 0.dp else LargeTitleHeightDp) + SearchBoxHeightDp + 12.dp
+    val totalHeightDp = SmallTitleBarHeightDp + (if (hideTitle) 0.dp else LargeTitleHeightDp) + IrideSearchBoxHeight + 12.dp
 
     val indicatorOffset by animateDpAsState(
         targetValue = if (searchSource == SearchSource.ONLINE) 2.dp else 42.dp,
@@ -628,7 +572,7 @@ private fun SearchCollapsingHeader(
                         translationY = startOffset + scrollBehavior.state.heightOffset
                     }
                     .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp)
-                    .height(SearchBoxHeightDp)
+                    .height(IrideSearchBoxHeight)
                     .clip(RoundedCornerShape(26.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainer),
             ) {

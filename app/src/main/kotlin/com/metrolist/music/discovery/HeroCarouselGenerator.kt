@@ -6,9 +6,6 @@
 package com.metrolist.music.discovery
 
 import com.metrolist.innertube.YouTube
-import com.metrolist.innertube.models.ArtistItem
-import com.metrolist.innertube.models.AlbumItem
-import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.pages.HomePage
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.models.HeroCarouselItem
@@ -26,6 +23,7 @@ class HeroCarouselGenerator(
 ) {
     private val resolvedCovers = ConcurrentHashMap<String, String>()
 
+    @Suppress("UNUSED_PARAMETER")
     suspend fun generate(
         homePage: HomePage?,
         seed: Long,
@@ -47,30 +45,13 @@ class HeroCarouselGenerator(
         val bookmarkedArtists = database.artistsBookmarkedByCreateDateAsc().first()
             .filter { it.id.startsWith("UC") && !it.artist.isPodcastChannel }
             .map { HeroCarouselItem.ArtistRadio(it.id, it.artist.name, it.artist.thumbnailUrl) }
-        val feedItems = homePage?.sections.orEmpty()
-            .flatMap { it.items }
-        val discoveryArtists = feedItems
-            .filterIsInstance<ArtistItem>()
-            .map { artist ->
-                HeroCarouselItem.ArtistRadio(
-                    artistId = artist.id,
-                    artistName = artist.title,
-                    coverUrl = artist.thumbnail,
-                )
-            }
-        val creditedArtists = feedItems.flatMap { item ->
-            when (item) {
-                is SongItem -> item.artists
-                is AlbumItem -> item.artists.orEmpty()
-                else -> emptyList()
-            }
-        }.mapNotNull { artist ->
-            artist.id?.takeIf { it.startsWith("UC") }?.let {
-                HeroCarouselItem.ArtistRadio(it, artist.name, null)
-            }
-        }
+        val libraryArtists = database.artistsByCreateDateAsc().first()
+            .filter { it.id.startsWith("UC") && !it.artist.isPodcastChannel }
+            .map { HeroCarouselItem.ArtistRadio(it.id, it.artist.name, it.artist.thumbnailUrl) }
+        // homePage feed is intentionally ignored: "Radio per te" must only suggest
+        // artists the user knows (library/bookmarked) or has played, never random feed artists.
         return selectArtistRadios(
-            (recentArtists + bookmarkedArtists + discoveryArtists + creditedArtists).map { radio ->
+            (recentArtists + bookmarkedArtists + libraryArtists).map { radio ->
                 radio.copy(coverUrl = resolvedCovers[radio.artistId] ?: radio.coverUrl)
             },
             previousArtistIds,

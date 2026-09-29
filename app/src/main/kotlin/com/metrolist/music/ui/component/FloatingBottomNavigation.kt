@@ -3,6 +3,8 @@ package com.metrolist.music.ui.component
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateValueAsState
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -10,7 +12,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,7 +60,6 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -76,6 +77,7 @@ import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.utils.rememberReducedMotion
 import kotlin.math.roundToInt
 import kotlin.math.abs
+import kotlin.math.sqrt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -114,9 +116,8 @@ fun FloatingBottomNavigation(
     var visualGroupIndex by remember { mutableIntStateOf(selectedGroupIndex) }
     var dragPosition by remember { mutableFloatStateOf(selectedGroupIndex.toFloat()) }
     var isDragging by remember { mutableStateOf(false) }
-    var dragVerticalOffset by remember { mutableFloatStateOf(0f) }
-    var dragEdgeOffset by remember { mutableFloatStateOf(0f) }
-    var dragTilt by remember { mutableFloatStateOf(0f) }
+    var floatingDragOffset by remember { mutableStateOf(Offset.Zero) }
+    var isFloatingDragged by remember { mutableStateOf(false) }
     var snapFromSearch by remember { mutableStateOf(false) }
     val reducedMotion = rememberReducedMotion()
     val coroutineScope = rememberCoroutineScope()
@@ -165,27 +166,102 @@ fun FloatingBottomNavigation(
         animationSpec = tween(180),
         label = "bottomNavigationIndicatorAlpha",
     )
-    val floatingSpring = spring<Float>(
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMedium,
-    )
-    val floatingVerticalOffset = animateFloatAsState(
-        targetValue = if (isDragging && !reducedMotion) dragVerticalOffset else 0f,
-        animationSpec = if (reducedMotion) snap() else floatingSpring,
-        label = "bottomNavigationVerticalOffset",
-    )
-    val floatingEdgeOffset = animateFloatAsState(
-        targetValue = if (isDragging && !reducedMotion) dragEdgeOffset else 0f,
-        animationSpec = if (reducedMotion) snap() else floatingSpring,
-        label = "bottomNavigationEdgeOffset",
-    )
-    val floatingTilt = animateFloatAsState(
-        targetValue = if (isDragging && !reducedMotion) dragTilt else 0f,
-        animationSpec = if (reducedMotion) snap() else floatingSpring,
-        label = "bottomNavigationTilt",
+    val floatingOffset = animateValueAsState(
+        targetValue = if (reducedMotion) Offset.Zero else floatingDragOffset,
+        typeConverter = Offset.VectorConverter,
+        animationSpec = if (reducedMotion) snap() else spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = if (isFloatingDragged) 180f else 55f,
+            visibilityThreshold = Offset(0.002f, 0.002f),
+        ),
+        label = "bottomNavigationFloatingOffset",
     )
     Row(
-        modifier = modifier.widthIn(max = 320.dp).fillMaxWidth(),
+        modifier = modifier.widthIn(max = 320.dp).fillMaxWidth()
+            .graphicsLayer {
+                val offset = floatingOffset.value
+                translationX = offset.x * 6.dp.toPx()
+                translationY = offset.y * 6.dp.toPx()
+            }
+            .pointerInput(visible, selectedRoute, reducedMotion) {
+                if (!visible) return@pointerInput
+                val groupWidthPx = size.width - (FloatingBottomNavigationPillHeight + 8.dp).toPx()
+                val segmentWidthPx = groupWidthPx / groupedScreens.size
+                if (segmentWidthPx <= 0f) return@pointerInput
+                val activationThresholdPx = 24.dp.toPx()
+                val resistancePx = 120.dp.toPx()
+                var startedOnGroup = false
+                var horizontalNavigation: Boolean? = null
+                var rawDragPosition = 0f
+                var travel = Offset.Zero
+                try {
+                    detectDragGestures(
+                        onDragStart = { start ->
+                            navigationJob?.cancel()
+                            startedOnGroup = start.x < groupWidthPx
+                            horizontalNavigation = null
+                            rawDragPosition = selectedGroupIndex.toFloat()
+                            travel = Offset.Zero
+                            floatingDragOffset = Offset.Zero
+                            isFloatingDragged = false
+                        },
+                        onDragEnd = {
+                            if (isDragging) {
+                                val targetIndex = dragPosition.roundToInt()
+                                visualGroupIndex = targetIndex
+                                isDragging = false
+                                val targetScreen = groupedScreens[targetIndex]
+                                if (selectedRoute != targetScreen.route) {
+                                    selectScreen(targetScreen, false)
+                                }
+                            }
+                            isFloatingDragged = false
+                            floatingDragOffset = Offset.Zero
+                        },
+                        onDragCancel = {
+                            isDragging = false
+                            visualGroupIndex = selectedGroupIndex
+                            isFloatingDragged = false
+                            floatingDragOffset = Offset.Zero
+                        },
+                        onDrag = { change, amount ->
+                            travel += amount
+                            if (horizontalNavigation == null) {
+                                horizontalNavigation = startedOnGroup && abs(travel.x) > abs(travel.y)
+                                isDragging = horizontalNavigation == true
+                                if (isDragging) dragPosition = rawDragPosition
+                            }
+                            if (isDragging) {
+                                rawDragPosition += amount.x / segmentWidthPx
+                                dragPosition = rawDragPosition
+                                    .coerceIn(0f, groupedScreens.lastIndex.toFloat())
+                            }
+                            if (!reducedMotion) {
+                                // Horizontal navigation only pulls the pill beyond the first/last tab.
+                                val resistedTravel = if (isDragging) {
+                                    Offset((rawDragPosition - dragPosition) * segmentWidthPx, 0f)
+                                } else {
+                                    travel
+                                }
+                                val distance = resistedTravel.getDistance()
+                                isFloatingDragged = distance > activationThresholdPx
+                                floatingDragOffset = if (isFloatingDragged) {
+                                    val pull = resistedTravel *
+                                        ((distance - activationThresholdPx) / (distance * resistancePx))
+                                    pull / sqrt(1f + pull.getDistanceSquared())
+                                } else {
+                                    Offset.Zero
+                                }
+                            }
+                            change.consume()
+                        },
+                    )
+                } finally {
+                    isDragging = false
+                    isFloatingDragged = false
+                    floatingDragOffset = Offset.Zero
+                }
+            },
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -193,14 +269,6 @@ fun FloatingBottomNavigation(
             modifier = Modifier
                 .weight(1f)
                 .height(FloatingBottomNavigationPillHeight)
-                .graphicsLayer {
-                    translationX = floatingEdgeOffset.value * 5.dp.toPx()
-                    translationY = floatingVerticalOffset.value * 3.dp.toPx()
-                    rotationX = -floatingVerticalOffset.value * 2f
-                    rotationY = floatingEdgeOffset.value * 2f
-                    rotationZ = floatingTilt.value * 2f
-                    cameraDistance = 16f * density
-                }
                 .frostedNavigationSurface(backdrop, surface, groupShape)
                 .border(1.dp, borderColor, groupShape),
         ) {
@@ -222,63 +290,7 @@ fun FloatingBottomNavigation(
             }
             Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(visible, segmentWidthPx, selectedRoute, reducedMotion) {
-                        if (!visible || segmentWidthPx <= 0f) return@pointerInput
-                        var rawDragPosition = 0f
-                        var verticalTravel = 0f
-                        val verticalResistancePx = 36.dp.toPx()
-                        try {
-                            detectHorizontalDragGestures(
-                                onDragStart = { start ->
-                                    navigationJob?.cancel()
-                                    dragPosition = (start.x / segmentWidthPx - 0.5f)
-                                        .coerceIn(0f, groupedScreens.lastIndex.toFloat())
-                                    rawDragPosition = dragPosition
-                                    verticalTravel = 0f
-                                    dragVerticalOffset = 0f
-                                    dragEdgeOffset = 0f
-                                    dragTilt = 0f
-                                    isDragging = true
-                                },
-                                onDragEnd = {
-                                    val targetIndex = dragPosition.roundToInt()
-                                    visualGroupIndex = targetIndex
-                                    isDragging = false
-                                    val targetScreen = groupedScreens[targetIndex]
-                                    if (selectedRoute != targetScreen.route) {
-                                        selectScreen(targetScreen, false)
-                                    }
-                                },
-                                onDragCancel = {
-                                    isDragging = false
-                                    visualGroupIndex = selectedGroupIndex
-                                },
-                                onHorizontalDrag = { change, dragAmount ->
-                                    rawDragPosition += dragAmount / segmentWidthPx
-                                    dragPosition = rawDragPosition
-                                        .coerceIn(0f, groupedScreens.lastIndex.toFloat())
-                                    if (!reducedMotion) {
-                                        verticalTravel += change.positionChange().y
-                                        val verticalPull = verticalTravel / verticalResistancePx
-                                        val edgePull = rawDragPosition - dragPosition
-                                        // Resistance keeps diagonal and edge pulls subtle, even on long drags.
-                                        dragVerticalOffset = verticalPull / (1f + abs(verticalPull))
-                                        dragEdgeOffset = edgePull / (1f + abs(edgePull))
-                                        val lever = (change.position.x / size.width * 2f - 1f)
-                                            .coerceIn(-1f, 1f)
-                                        dragTilt = dragVerticalOffset * lever
-                                    }
-                                    change.consume()
-                                },
-                            )
-                        } finally {
-                            isDragging = false
-                            dragVerticalOffset = 0f
-                            dragEdgeOffset = 0f
-                            dragTilt = 0f
-                        }
-                    },
+                    .fillMaxSize(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -415,20 +427,24 @@ private fun NavigationButtonContent(
     }
 }
 
-private fun Modifier.frostedNavigationSurface(
+internal fun Modifier.frostedNavigationSurface(
     backdrop: FrostBackdrop?,
     surface: Color,
     shape: androidx.compose.ui.graphics.Shape,
+    progress: Float = 1f,
 ): Modifier {
     var position = Offset.Zero
     return this
         .onGloballyPositioned { position = it.positionInRoot() }
         .clip(shape)
         .drawBehind {
+            val reveal = progress.coerceIn(0f, 1f)
+            if (reveal <= 0f) return@drawBehind
             if (backdrop != null && backdrop.content.size.width > 0) {
+                backdrop.blurred.alpha = reveal
                 backdrop.blurred.record(size = backdrop.content.size) { drawLayer(backdrop.content) }
                 translate(-position.x, -position.y) { drawLayer(backdrop.blurred) }
             }
-            drawRect(surface, alpha = if (backdrop == null) 0.96f else 0.84f)
+            drawRect(surface, alpha = reveal * if (backdrop == null) 0.96f else 0.84f)
         }
 }

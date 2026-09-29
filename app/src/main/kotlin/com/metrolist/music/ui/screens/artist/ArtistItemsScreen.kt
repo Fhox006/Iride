@@ -5,6 +5,12 @@
 
 package com.metrolist.music.ui.screens.artist
 
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.layout.statusBars
+import com.metrolist.music.ui.component.IridePageLayoutDefaults
+import com.metrolist.music.ui.component.rememberLibraryPageRevealState
+import com.metrolist.music.ui.component.LibraryHeroTitle
+import com.metrolist.music.ui.component.LibraryPageTopBar
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -63,7 +69,6 @@ import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.YouTubeQueue
-import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
@@ -146,29 +151,22 @@ fun ArtistItemsScreen(
         }
     }
 
+    val headerRevealState = rememberLibraryPageRevealState()
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier,
         topBar = {
-            CollapsingScreenHeader(
+            LibraryPageTopBar(
                 title = title,
-                scrollBehavior = scrollBehavior,
-                pureBlack = pureBlack,
+                revealState = headerRevealState,
+                revealProgress = if (if (itemsPage?.items?.firstOrNull() is SongItem) lazyListState.firstVisibleItemIndex > 0 else lazyGridState.firstVisibleItemIndex > 0) 1f else headerRevealState.progress,
                 isSearchActive = false,
-                onSearchActiveChange = {},
                 searchQuery = "",
                 onSearchQueryChange = {},
+                onNavigateUp = { navController.navigateUp() },
+                onSearchClick = {},
+                onCloseSearch = {},
                 keyboardController = keyboardController,
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
+                showSearchAction = false,
             )
         },
         containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
@@ -176,7 +174,7 @@ fun ArtistItemsScreen(
     ) { paddingValues ->
     if (itemsPage == null) {
         ShimmerHost(
-            modifier = Modifier.padding(paddingValues),
+            modifier = Modifier,
         ) {
             repeat(8) {
                 ListItemPlaceHolder()
@@ -187,11 +185,21 @@ fun ArtistItemsScreen(
     if (itemsPage?.items?.firstOrNull() is SongItem) {
         LazyColumn(
             state = lazyListState,
-            modifier = Modifier.padding(paddingValues),
+            modifier = Modifier,
             contentPadding = PaddingValues(
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
                 bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
             ),
         ) {
+            item(key = "artist_page_title") {
+                LibraryHeroTitle(
+                    title = title,
+                    entranceAlpha = 1f,
+                    revealState = headerRevealState,
+                    modifier = Modifier.padding(horizontal = IridePageLayoutDefaults.HorizontalPadding),
+                )
+            }
+
             item(key = "sort") {
                 LibrarySortRow(
                     sortOptions = listOf(
@@ -345,11 +353,21 @@ fun ArtistItemsScreen(
         LazyVerticalGrid(
             state = lazyGridState,
             columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
-            modifier = Modifier.padding(paddingValues),
+            modifier = Modifier,
             contentPadding = PaddingValues(
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
                 bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
             ),
         ) {
+            item(key = "artist_page_title", span = { GridItemSpan(maxLineSpan) }) {
+                LibraryHeroTitle(
+                    title = title,
+                    entranceAlpha = 1f,
+                    revealState = headerRevealState,
+                    modifier = Modifier.padding(horizontal = IridePageLayoutDefaults.HorizontalPadding),
+                )
+            }
+
             items(
                 items = itemsPage?.items.orEmpty().distinctBy { it.id },
                 key = { "artist_items_grid_${it.id}" },

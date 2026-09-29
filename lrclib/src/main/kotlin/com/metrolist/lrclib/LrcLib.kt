@@ -8,6 +8,7 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.serialization.kotlinx.json.json
@@ -33,6 +34,13 @@ object LrcLib {
 
             defaultRequest {
                 url("https://lrclib.net")
+            }
+
+            // Never hang forever on a dead network (wifi switch): bound every request.
+            install(HttpTimeout) {
+                requestTimeoutMillis = 15000
+                connectTimeoutMillis = 10000
+                socketTimeoutMillis = 15000
             }
 
             expectSuccess = true

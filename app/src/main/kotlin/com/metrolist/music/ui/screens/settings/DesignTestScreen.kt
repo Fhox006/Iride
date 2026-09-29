@@ -1,5 +1,9 @@
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageHeaderLayout
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -32,7 +36,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.R
-import com.metrolist.music.ui.component.SettingsBackTopBar
 import java.util.Locale
 import kotlin.math.roundToInt
 import org.json.JSONObject
@@ -57,15 +60,16 @@ fun DesignTestScreen(navController: NavController) {
         preferences.edit().putString("settings", draft.toJson().toString()).apply()
     }
 
-    Column(
+    IridePageHeaderLayout(
+        title = stringResource(R.string.design_test),
+        initiallyCollapsed = true,
+        navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        SettingsBackTopBar(
-            title = stringResource(R.string.design_test),
-            navController = navController,
-        )
+        Column(modifier = Modifier.fillMaxSize()) {
+
         AndroidView(
             factory = { context -> SprayTextView(context).also { previewView = it } },
             update = { view ->
@@ -168,7 +172,8 @@ fun DesignTestScreen(navController: NavController) {
                 onFinish = applyChanges)
             Spacer(Modifier.height(140.dp))
         }
-    }
+        }
+}
 }
 
 @Composable

@@ -4,6 +4,8 @@
  */
 
 package com.metrolist.music.ui.screens.settings
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageHeaderLayout
 import com.metrolist.music.ui.component.IrideSlider
 import com.metrolist.music.ui.component.IrideSwitch
 
@@ -91,14 +93,11 @@ import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
-import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.SleepTimerDialog
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.decodeDayTimes
 import com.metrolist.music.ui.component.encodeDayTimes
 import com.metrolist.music.ui.utils.backToMain
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -257,17 +256,20 @@ fun PlayerSettings(
     }
 
     val playerScrollState = rememberScrollState()
-    val frostBackdrop = rememberFrostBackdrop()
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
     val playerConnection = LocalPlayerConnection.current
     val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    IridePageHeaderLayout(
+        title = stringResource(R.string.settings_section_player),
+        initiallyCollapsed = true,
+        navigationIcon = { IridePageBackButton(navController) },
+        modifier = Modifier.fillMaxSize(),
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .recordFrostBackdrop(frostBackdrop)
         ) {
             if (mainTopGradient) {
                 TopScreenGradientBackground(
@@ -284,9 +286,7 @@ fun PlayerSettings(
             Column(
                 Modifier
                     .windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(
-                            WindowInsetsSides.Horizontal
-                        )
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal)
                     )
                     .verticalScroll(playerScrollState)
                     .padding(horizontal = 16.dp)
@@ -348,12 +348,6 @@ fun PlayerSettings(
                         initialDayTimes = dayTimesMap
                     )
                 }
-
-                Spacer(
-                    Modifier.windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top)
-                    )
-                )
 
                 Material3SettingsGroup(
                     title = stringResource(R.string.settings_section_audio),
@@ -610,7 +604,7 @@ fun PlayerSettings(
                             onClick = { onVarispeedChange(!varispeed) }
                         ))
                         if (advancedMode) add(Material3SettingsItem(
-                            icon = painterResource(R.drawable.arrow_forward),
+                            icon = painterResource(R.drawable.navigate_next),
                             title = { Text(stringResource(R.string.seek_seconds_addup)) },
                             description = { Text(stringResource(R.string.seek_seconds_addup_description)) },
                             trailingContent = {
@@ -1027,12 +1021,6 @@ fun PlayerSettings(
             }
         }
 
-        SettingsBackTopBar(
-            title = stringResource(R.string.player_and_audio),
-            navController = navController,
-            backdrop = frostBackdrop,
-            revealProgress = rememberDiscreteProgress(active = playerScrollState.value > 0),
-        )
     }
 }
 

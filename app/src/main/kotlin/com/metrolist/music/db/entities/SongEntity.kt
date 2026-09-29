@@ -13,6 +13,7 @@ import androidx.room.PrimaryKey
 import com.metrolist.innertube.YouTube
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDateTime
@@ -22,6 +23,13 @@ import java.time.LocalDateTime
  * around a "0" center). Compensates for the word-timing animation being perceptibly early.
  */
 const val LYRICS_OFFSET_BIAS_MS = 250L
+
+/**
+ * Single shared scope for immediate YouTube sync of like/library toggles.
+ * SupervisorJob: one failing sync never cancels the others; every body below
+ * is wrapped in runCatching so nothing ever reaches the uncaught handler.
+ */
+internal val EntitySyncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 @Immutable
 @Entity(
@@ -97,8 +105,8 @@ data class SongEntity(
             inLibrary = if (!liked) inLibrary ?: LocalDateTime.now() else inLibrary,
         ).also {
             if (syncToYouTube && !isLocal) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    YouTube.likeVideo(id, !liked)
+                EntitySyncScope.launch {
+                    runCatching { YouTube.likeVideo(id, !liked).getOrThrow() }
                         .onFailure { error -> Timber.e(error, "Failed to sync song like: %s", id) }
                 }
             }
@@ -111,8 +119,8 @@ data class SongEntity(
             likedDate = if (inLibrary == null) likedDate else null,
         ).also {
             if (syncToYouTube && !isLocal) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    YouTube.toggleSongLibrary(id, inLibrary == null)
+                EntitySyncScope.launch {
+                    runCatching { YouTube.toggleSongLibrary(id, inLibrary == null).getOrThrow() }
                         .onFailure { error -> Timber.e(error, "Failed to sync song library state: %s", id) }
                 }
             }

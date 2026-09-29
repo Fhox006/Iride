@@ -97,6 +97,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.graphicsLayer
@@ -184,6 +188,7 @@ import com.metrolist.music.lyrics.LyricsProviderRegistry
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.DownloadUtil
 import com.metrolist.music.playback.MusicService
+import com.metrolist.music.utils.MiniPlayerSnapshotStore
 import com.metrolist.music.playback.MusicService.MusicBinder
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.YouTubeQueue
@@ -208,7 +213,7 @@ import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.collapsedAnchor
 import com.metrolist.music.ui.component.dismissedAnchor
-import com.metrolist.music.ui.component.expandedAnchor
+import com.metrolist.music.ui.component.persistablePlayerAnchor
 import com.metrolist.music.ui.component.rememberBottomSheetState
 import com.metrolist.music.ui.component.shimmer.ShimmerTheme
 import com.metrolist.music.ui.menu.YouTubeSongMenu
@@ -422,8 +427,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun persistableAnchor(anchor: Int): Int =
-        if (anchor == expandedAnchor) collapsedAnchor else anchor
+    private fun persistableAnchor(anchor: Int): Int = persistablePlayerAnchor(anchor)
 
     override fun onDestroy() {
         updateDownloadReceiver?.let {
@@ -847,7 +851,17 @@ class MainActivity : ComponentActivity() {
                 val configuration = LocalWindowInfo.current
                 val cutoutInsets = WindowInsets.displayCutout
                 val windowsInsets = WindowInsets.systemBars
-                val bottomInset = with(density) { windowsInsets.getBottom(density).toDp() }
+                val insetLayoutKey = "${resources.configuration.orientation}_${density.density}"
+                val liveBottomInsetPx = windowsInsets.getBottom(density)
+                val rootInsets = androidx.core.view.ViewCompat.getRootWindowInsets(window.decorView)
+                val bottomInsetPx = if (liveBottomInsetPx > 0) liveBottomInsetPx else {
+                    rootInsets?.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())?.bottom
+                        ?: MiniPlayerSnapshotStore.bottomInsetPx(insetLayoutKey)
+                }
+                val bottomInset = with(density) { bottomInsetPx.toDp() }
+                LaunchedEffect(insetLayoutKey, bottomInsetPx) {
+                    MiniPlayerSnapshotStore.updateBottomInset(insetLayoutKey, bottomInsetPx)
+                }
                 val bottomInsetDp = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
 
                 val navController = rememberNavController()
@@ -1358,7 +1372,20 @@ class MainActivity : ComponentActivity() {
                                 }
                                 Box(
                                     Modifier
-                                        .weight(1f),
+                                        .weight(1f)
+                                        .drawWithContent {
+                                            drawContent()
+                                            val fadeHeight = 52.dp.toPx()
+                                            drawRect(
+                                                brush = Brush.verticalGradient(
+                                                    colors = listOf(Color.Black, Color.Black.copy(alpha = 0.72f), Color.Transparent),
+                                                    startY = 0f,
+                                                    endY = fadeHeight,
+                                                ),
+                                                topLeft = Offset.Zero,
+                                                size = Size(size.width, fadeHeight),
+                                            )
+                                        },
                                 ) {
                                     val playerCoversScreen by remember(playerBottomSheetState) {
                                         derivedStateOf { playerBottomSheetState.progress >= 0.99f }
@@ -1464,13 +1491,16 @@ class MainActivity : ComponentActivity() {
                         }
 
                         if (curtainActive && currentRoute != "wrapped") {
+                            val animateMiniPlayerBackdrop by remember(playerBottomSheetState) {
+                                derivedStateOf { playerBottomSheetState.progress < 0.18f }
+                            }
                             BlackMiniPlayerBackdrop(
                                 height = playerBottomSheetState.collapsedBound + FloatingBottomNavigationHeight -
                                     FloatingBottomNavigationOffset -
                                     (FloatingBottomNavigationHeight - FloatingBottomNavigationPillHeight) / 2,
                                 fadeHeight = FloatingBottomNavigationPillHeight,
                                 mediaMetadata = topGradientMediaMetadata,
-                                animated = playerBottomSheetState.progress < 0.18f,
+                                animated = animateMiniPlayerBackdrop,
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
                                     .graphicsLayer {
@@ -1480,8 +1510,11 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    val floatingNavigationSettled by remember(playerBottomSheetState) {
+                        derivedStateOf { playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed }
+                    }
                     val floatingNavigationVisible = currentRoute != "wrapped" &&
-                        currentRoute != "onboarding" && playerBottomSheetState.progress < 0.18f
+                        currentRoute != "onboarding" && floatingNavigationSettled
                     FloatingBottomNavigation(
                         navigationItems = navigationItems,
                         currentRoute = currentRoute,
@@ -1492,11 +1525,10 @@ class MainActivity : ComponentActivity() {
                             .align(Alignment.BottomCenter)
                             .padding(bottom = if (playerBottomSheetState.isDismissed) bottomInset else playerBottomSheetState.collapsedBound)
                             .offset(y = FloatingBottomNavigationOffset)
-                            .zIndex(1f)
                             .height(FloatingBottomNavigationHeight)
                             .graphicsLayer {
                                 alpha = if (currentRoute == "wrapped" || currentRoute == "onboarding") 0f else
-                                    (1f - playerBottomSheetState.progress / 0.18f).coerceIn(0f, 1f)
+                                    (1f - playerBottomSheetState.progress / 0.05f).coerceIn(0f, 1f)
                             },
                     )
 

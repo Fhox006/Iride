@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -45,8 +46,6 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
 import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
-import com.metrolist.music.ui.theme.textPrimary
-import com.metrolist.music.ui.theme.textSecondary
 
 @Composable
 fun <T> LibrarySortRow(
@@ -57,7 +56,9 @@ fun <T> LibrarySortRow(
     onSortDescendingChange: (Boolean) -> Unit,
     viewType: LibraryViewType? = null,
     onViewTypeChange: (LibraryViewType) -> Unit = {},
+    availableViewTypes: List<LibraryViewType> = LibraryViewType.entries,
     showDescending: Boolean = true,
+    verticalPadding: Dp = 6.dp,
     modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -68,7 +69,7 @@ fun <T> LibrarySortRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 0.dp, vertical = 6.dp),
+            .padding(horizontal = 0.dp, vertical = verticalPadding),
     ) {
         Box {
             SortMenuChip(
@@ -92,7 +93,7 @@ fun <T> LibrarySortRow(
                                     fontFamily = SpaceMonoFontFamily,
                                 ),
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (isSelected) MaterialTheme.colorScheme.textPrimary else MaterialTheme.colorScheme.textSecondary,
+                                color = Color.White,
                             )
                         },
                         trailingIcon = if (isSelected) {
@@ -100,7 +101,7 @@ fun <T> LibrarySortRow(
                                 Icon(
                                     painter = painterResource(R.drawable.check),
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.textPrimary,
+                                    tint = Color.White,
                                     modifier = Modifier.size(18.dp),
                                 )
                             }
@@ -126,6 +127,7 @@ fun <T> LibrarySortRow(
             LibraryViewTypeButton(
                 viewType = viewType,
                 onViewTypeChange = onViewTypeChange,
+                availableViewTypes = availableViewTypes,
             )
         }
     }
@@ -160,14 +162,14 @@ private fun SortMenuChip(
                 fontFamily = SpaceMonoFontFamily,
             ),
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.textPrimary,
+            color = Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Icon(
             painter = painterResource(R.drawable.expand_more),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.textSecondary,
+            tint = Color.White,
             modifier = Modifier
                 .size(16.dp)
                 .graphicsLayer { rotationZ = arrowRotation },
@@ -200,7 +202,7 @@ private fun SortDirectionButton(
         Icon(
             painter = painterResource(R.drawable.arrow_downward),
             contentDescription = stringResource(if (descending) R.string.sort_descending else R.string.sort_ascending),
-            tint = MaterialTheme.colorScheme.textSecondary,
+            tint = Color.White,
             modifier = Modifier
                 .size(18.dp)
                 .graphicsLayer { rotationZ = rotation },
@@ -212,16 +214,18 @@ private fun SortDirectionButton(
 fun LibraryViewTypeButton(
     viewType: LibraryViewType,
     onViewTypeChange: (LibraryViewType) -> Unit,
+    availableViewTypes: List<LibraryViewType> = LibraryViewType.entries,
     modifier: Modifier = Modifier,
     size: Dp = 32.dp,
 ) {
+    val nextViewType = availableViewTypes[(availableViewTypes.indexOf(viewType) + 1) % availableViewTypes.size]
     Box(
         modifier = modifier
             .size(size)
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
-            ) { onViewTypeChange(viewType.toggle()) },
+            ) { onViewTypeChange(nextViewType) },
         contentAlignment = Alignment.Center,
     ) {
         AnimatedContent(
@@ -241,13 +245,13 @@ fun LibraryViewTypeButton(
                     },
                 ),
                 contentDescription = stringResource(
-                    when (currentViewType) {
-                        LibraryViewType.LIST -> R.string.switch_to_grid_view
-                        LibraryViewType.GRID -> R.string.switch_to_wide_grid_view
-                        LibraryViewType.GRID_WIDE -> R.string.switch_to_list_view
+                    when (availableViewTypes[(availableViewTypes.indexOf(currentViewType) + 1) % availableViewTypes.size]) {
+                        LibraryViewType.LIST -> R.string.switch_to_list_view
+                        LibraryViewType.GRID -> R.string.switch_to_grid_view
+                        LibraryViewType.GRID_WIDE -> R.string.switch_to_wide_grid_view
                     },
                 ),
-                tint = MaterialTheme.colorScheme.textSecondary,
+                tint = Color.White,
                 modifier = Modifier.size(18.dp),
             )
         }

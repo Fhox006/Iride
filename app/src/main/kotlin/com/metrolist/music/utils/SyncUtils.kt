@@ -181,7 +181,9 @@ class SyncUtils @Inject constructor(
                         Timber.d("Network restored after a failed full sync — re-syncing now")
                         performFullSync()
                     } else {
-                        tryAutoSync()
+                        // Forced: the cooldown is for periodic auto-sync, not for coming
+                        // back online with potentially stale account data.
+                        tryAutoSync(force = true)
                     }
                 }
         }
@@ -345,7 +347,7 @@ class SyncUtils @Inject constructor(
         executeFullSync()
     }
 
-    fun tryAutoSync() {
+    fun tryAutoSync(force: Boolean = false) {
         syncScope.launch {
             if (!isLoggedIn()) {
                 Timber.d("Skipping auto sync - user not logged in")
@@ -358,7 +360,7 @@ class SyncUtils @Inject constructor(
 
             val lastSync = context.dataStore.get(LastFullSyncKey, 0L)
             val currentTime = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
-            if (lastSync > 0 && (currentTime - lastSync) < SYNC_COOLDOWN) {
+            if (!force && lastSync > 0 && (currentTime - lastSync) < SYNC_COOLDOWN) {
                 return@launch
             }
 

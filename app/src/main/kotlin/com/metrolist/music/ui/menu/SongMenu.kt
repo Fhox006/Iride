@@ -212,10 +212,13 @@ fun SongMenu(
 
     AddToPlaylistDialog(
         isVisible = showChoosePlaylistDialog,
+        allowSyncing = !song.song.isLocal,
         onGetSong = { playlist ->
-            coroutineScope.launch(Dispatchers.IO) {
-                playlist.playlist.browseId?.let { browseId ->
-                    YouTube.addToPlaylist(browseId, song.id)
+            if (!song.song.isLocal) {
+                coroutineScope.launch(Dispatchers.IO) {
+                    playlist.playlist.browseId?.let { browseId ->
+                        YouTube.addToPlaylist(browseId, song.id)
+                    }
                 }
             }
             listOf(song.id)
@@ -1028,7 +1031,7 @@ private fun FavoriteIconButton(
                 optimisticFavorite = !optimisticFavorite
                 val s = song.song.toggleLike(syncToYouTube = false)
                 database.query { update(s) }
-                syncUtils.likeSong(s)
+                if (!song.song.isLocal) syncUtils.likeSong(s)
             }
         },
     ) {

@@ -24,12 +24,14 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -41,6 +43,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -72,6 +75,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.NavController
+import com.metrolist.music.ui.component.IrideSearchBox
+import com.metrolist.music.ui.component.LocalItemHorizontalPadding
+import com.metrolist.music.ui.component.SharedHomeSectionTitle
+import com.metrolist.music.ui.component.SharedQuickPicksCarousel
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.YouTube.SearchFilter.Companion.FILTER_ALBUM
 import com.metrolist.innertube.YouTube.SearchFilter.Companion.FILTER_ARTIST
@@ -304,6 +311,9 @@ fun OnlineSearchResultsBody(
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
 
     var smartSelected by rememberSaveable { mutableStateOf(true) }
+    LaunchedEffect(viewModel.query) {
+        smartSelected = true
+    }
     LaunchedEffect(smartSelected, viewModel.query) {
         if (smartSelected) viewModel.loadSmartSearch()
     }
@@ -346,6 +356,7 @@ fun OnlineSearchResultsBody(
                 }
             }
         }
+        CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
         YouTubeListItem(
             item = item,
             isActive = when (item) {
@@ -369,7 +380,7 @@ fun OnlineSearchResultsBody(
                 }
             },
             modifier = Modifier
-                .padding(horizontal = if (useIrideStyle) 20.dp else 16.dp)
+                .padding(horizontal = 16.dp)
                 .combinedClickable(
                     onClick = {
                         if (!pauseSearchHistory) database.recordSearchHistoryOpen(viewModel.query, item)
@@ -392,6 +403,7 @@ fun OnlineSearchResultsBody(
                 )
                 .animateItem(),
         )
+        }
     }
 
     val searchResultRow: @Composable (List<YTItem>) -> Unit = { rowItems ->
@@ -539,13 +551,10 @@ fun OnlineSearchResultsBody(
     val visibleChips = buildList {
         add(SearchChipKey.Smart to stringResource(R.string.filter_smart_search))
         add(SearchChipKey.Filter(FILTER_SONG) to stringResource(R.string.filter_songs))
-        if (!hideVideoSongs) add(SearchChipKey.Filter(FILTER_VIDEO) to stringResource(R.string.filter_videos))
         add(SearchChipKey.Filter(FILTER_ALBUM) to stringResource(R.string.filter_albums))
         add(SearchChipKey.Filter(FILTER_ARTIST) to stringResource(R.string.filter_artists))
         add(SearchChipKey.Filter(FILTER_COMMUNITY_PLAYLIST) to stringResource(R.string.filter_community_playlists))
         add(SearchChipKey.Filter(FILTER_FEATURED_PLAYLIST) to stringResource(R.string.filter_featured_playlists))
-        add(SearchChipKey.Filter(FILTER_PODCAST) to stringResource(R.string.filter_podcasts))
-        add(SearchChipKey.Filter(FILTER_EPISODE) to stringResource(R.string.filter_episodes))
     }
 
     val chipsRow: @Composable () -> Unit = {
@@ -577,7 +586,12 @@ fun OnlineSearchResultsBody(
                 if (order.isNotEmpty()) {
                     topResult?.let { top ->
                         item(key = "smart_top_title") {
-                            NavigationTitle(top.title, useIrideStyle = useIrideStyle)
+                            NavigationTitle(
+                                top.title,
+                                useIrideStyle = useIrideStyle,
+                                topPadding = if (useIrideStyle) 16.dp else null,
+                                bottomPadding = if (useIrideStyle) 12.dp else null,
+                            )
                         }
                         items(
                             items = top.items,
@@ -594,20 +608,69 @@ fun OnlineSearchResultsBody(
                         val revealed = page != null && !awaitingPreviousSection
 
                         item(key = "smart_title_${sectionFilter.value}") {
-                            NavigationTitle(
-                                title = stringResource(filterSectionTitleRes(sectionFilter)),
-                                useIrideStyle = useIrideStyle,
-                                onClick = {
-                                    smartSelected = false
-                                    if (viewModel.filter.value != sectionFilter) viewModel.filter.value = sectionFilter
-                                    coroutineScope.launch { lazyListState.animateScrollToItem(0) }
-                                },
-                            )
+                            if (sectionFilter == FILTER_SONG && useIrideStyle) {
+                                SharedHomeSectionTitle(
+                                    title = stringResource(R.string.filter_songs),
+                                    onClick = {
+                                        smartSelected = false
+                                        if (viewModel.filter.value != sectionFilter) viewModel.filter.value = sectionFilter
+                                        coroutineScope.launch { lazyListState.animateScrollToItem(0) }
+                                    },
+                                )
+                            } else {
+                                if (useIrideStyle) Spacer(modifier = Modifier.height(8.dp))
+                                NavigationTitle(
+                                    title = stringResource(filterSectionTitleRes(sectionFilter)),
+                                    useIrideStyle = useIrideStyle,
+                                    topPadding = if (useIrideStyle) 16.dp else null,
+                                    bottomPadding = if (useIrideStyle) 12.dp else null,
+                                    onClick = {
+                                        smartSelected = false
+                                        if (viewModel.filter.value != sectionFilter) viewModel.filter.value = sectionFilter
+                                        coroutineScope.launch { lazyListState.animateScrollToItem(0) }
+                                    },
+                                )
+                            }
                         }
 
                         item(key = "smart_row_${sectionFilter.value}") {
                             if (page != null && revealed) {
-                                searchResultRow(page.items)
+                                if (sectionFilter == FILTER_SONG && useIrideStyle) {
+                                    SharedQuickPicksCarousel(
+                                        items = page.items.filterIsInstance<SongItem>(),
+                                        key = { "search_pick_${it.id}" },
+                                        loading = false,
+                                        contentPadding = 16.dp,
+                                        gridState = rememberLazyGridState(),
+                                    ) { song, itemWidth ->
+                                        CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
+                                            YouTubeListItem(
+                                                item = song,
+                                                isActive = mediaMetadata?.id == song.id,
+                                                isPlaying = isPlaying,
+                                                isSwipeable = false,
+                                                trailingContent = {
+                                                    IconButton(onClick = {
+                                                        menuState.show {
+                                                            YouTubeSongMenu(song = song, navController = navController, onDismiss = menuState::dismiss)
+                                                        }
+                                                    }) {
+                                                        Icon(painter = painterResource(R.drawable.more_vert), contentDescription = null)
+                                                    }
+                                                },
+                                                modifier = Modifier.width(itemWidth).combinedClickable(
+                                                    onClick = {
+                                                        if (!pauseSearchHistory) database.recordSearchHistoryOpen(viewModel.query, song)
+                                                        if (song.id == mediaMetadata?.id) playerConnection.togglePlayPause()
+                                                        else playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = song.id), song.toMediaMetadata()))
+                                                    },
+                                                ),
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    searchResultRow(page.items)
+                                }
                             } else {
                                 searchResultRowPlaceholder()
                             }

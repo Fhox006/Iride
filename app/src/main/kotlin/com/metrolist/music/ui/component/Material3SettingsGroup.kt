@@ -127,25 +127,26 @@ private fun IrideSettingsItemRow(item: Material3SettingsItem) {
             item.leadingContent.invoke()
             Spacer(modifier = Modifier.width(16.dp))
         } else if (item.icon != null) {
-            val iconTint = MaterialTheme.colorScheme.textPrimary.copy(alpha = if (item.isHighlighted) 1f else 0.85f)
-            if (item.showBadge) {
-                BadgedBox(
-                    badge = { Badge(containerColor = MaterialTheme.colorScheme.error) }
-                ) {
+            IrideIconTile {
+                if (item.showBadge) {
+                    BadgedBox(
+                        badge = { Badge(containerColor = MaterialTheme.colorScheme.error) }
+                    ) {
+                        Icon(
+                            painter = item.icon,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                } else {
                     Icon(
                         painter = item.icon,
                         contentDescription = null,
-                        tint = iconTint,
+                        tint = Color.White,
                         modifier = Modifier.size(22.dp)
                     )
                 }
-            } else {
-                Icon(
-                    painter = item.icon,
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier.size(22.dp)
-                )
             }
             Spacer(modifier = Modifier.width(16.dp))
         }

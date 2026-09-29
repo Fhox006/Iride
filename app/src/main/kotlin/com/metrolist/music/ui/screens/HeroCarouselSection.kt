@@ -118,7 +118,7 @@ private fun RadioSectionTitle() {
         useIrideStyle = true,
         sentenceCaseTitle = true,
         showDivider = false,
-        topPadding = 16.dp,
+        topPadding = 4.dp,
         bottomPadding = 12.dp,
         showNavigationArrow = false,
     )

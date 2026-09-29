@@ -5,11 +5,14 @@
 
 package com.metrolist.music.ui.screens.library
 
+import com.metrolist.music.ui.utils.rememberReducedMotion
+import com.metrolist.music.ui.component.IridePageLayout
 import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,6 +54,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -83,9 +89,14 @@ import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.PodcastEntity
 import com.metrolist.music.db.entities.SpeedDialItem
 import com.metrolist.music.extensions.toMediaItem
+import com.metrolist.music.extensions.matchesNormalizedQuery
+import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.ChipsRow
+import com.metrolist.music.ui.component.IrideSearchBox
+import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.HideOnScrollFAB
+import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
@@ -110,6 +121,7 @@ fun LibraryPodcastsScreen(
     val downloadedEpisodesStr = stringResource(R.string.downloaded_episodes)
     val database = LocalDatabase.current
     val menuState = LocalMenuState.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
@@ -145,6 +157,31 @@ fun LibraryPodcastsScreen(
     }
 
     val lazyListState = rememberLazyListState()
+    var searchFieldValue by androidx.compose.runtime.saveable.rememberSaveable(
+        stateSaver = TextFieldValue.Saver,
+    ) { mutableStateOf(TextFieldValue()) }
+    val normalizedSearch = remember(searchFieldValue.text) {
+        searchFieldValue.text.normalizeForSearch()
+    }
+    val searchFocusRequester = remember { FocusRequester() }
+    val matchingSubscribedChannels = remember(subscribedChannels, normalizedSearch) {
+        subscribedChannels.filter {
+            matchesNormalizedQuery(normalizedSearch, it.title, it.author.orEmpty())
+        }
+    }
+    val matchingPodcastChannels = remember(podcastChannels, normalizedSearch) {
+        podcastChannels.filter { matchesNormalizedQuery(normalizedSearch, it.title) }
+    }
+    val matchingDownloadedEpisodes = remember(downloadedEpisodes, normalizedSearch) {
+        downloadedEpisodes.filter { episode ->
+            matchesNormalizedQuery(
+                normalizedSearch,
+                episode.song.title,
+                episode.song.albumName.orEmpty(),
+                *episode.artists.map { it.name }.toTypedArray(),
+            )
+        }
+    }
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val scrollToTop =
@@ -215,18 +252,36 @@ fun LibraryPodcastsScreen(
                 )
             }
         }
+        val searchBox: @Composable () -> Unit = {
+            IrideSearchBox(
+                query = searchFieldValue,
+                onQueryChange = { searchFieldValue = it },
+                placeholderText = stringResource(R.string.search_podcasts),
+                focusRequester = searchFocusRequester,
+                onFocusChanged = {},
+                onSearch = { keyboardController?.hide() },
+                onClear = { searchFieldValue = TextFieldValue() },
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
 
         when (podcastFilter) {
             PodcastFilter.EPISODES -> {
-                LazyColumn(
+                IridePageLayout(
+                    titleRes = R.string.filter_podcasts,
+                    showTopBar = true,
+                    modifier = Modifier.rubberBandOverscroll(Orientation.Vertical, lazyListState),
                     state = lazyListState,
-                    contentPadding = PaddingValues(
-                        start = 12.dp,
-                        end = 12.dp,
-                        top = insets.calculateTopPadding(),
-                        bottom = insets.calculateBottomPadding(),
-                    ),
+                    reducedMotion = rememberReducedMotion(),
+                    bottomPadding = insets.calculateBottomPadding(),
+                    contentHorizontalPadding = 20.dp,
+                    navigationIcon = {
+                        IconButton(onClick = { navController.navigateUp() }) {
+                            Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back))
+                        }
+                    },
                 ) {
+                    item(key = "search_box", contentType = CONTENT_TYPE_HEADER) { searchBox() }
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
                         chipsHeader()
                     }
@@ -255,7 +310,7 @@ fun LibraryPodcastsScreen(
                     }
 
                     itemsIndexed(
-                        items = subscribedChannels,
+                        items = matchingSubscribedChannels,
                         key = { _, item -> item.id },
                         contentType = { _, _ -> CONTENT_TYPE_SONG },
                     ) { _, podcast ->
@@ -277,19 +332,30 @@ fun LibraryPodcastsScreen(
                                     .animateItem(),
                         )
                     }
+                    if (matchingSubscribedChannels.isEmpty() && normalizedSearch.isNotBlank()) {
+                        item(key = "empty_search_result") {
+                            LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
+                        }
+                    }
                 }
             }
 
             PodcastFilter.CHANNELS -> {
-                LazyColumn(
+                IridePageLayout(
+                    titleRes = R.string.filter_podcasts,
+                    showTopBar = true,
+                    modifier = Modifier.rubberBandOverscroll(Orientation.Vertical, lazyListState),
                     state = lazyListState,
-                    contentPadding = PaddingValues(
-                        start = 12.dp,
-                        end = 12.dp,
-                        top = insets.calculateTopPadding(),
-                        bottom = insets.calculateBottomPadding(),
-                    ),
+                    reducedMotion = rememberReducedMotion(),
+                    bottomPadding = insets.calculateBottomPadding(),
+                    contentHorizontalPadding = 20.dp,
+                    navigationIcon = {
+                        IconButton(onClick = { navController.navigateUp() }) {
+                            Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back))
+                        }
+                    },
                 ) {
+                    item(key = "search_box", contentType = CONTENT_TYPE_HEADER) { searchBox() }
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
                         chipsHeader()
                     }
@@ -306,8 +372,8 @@ fun LibraryPodcastsScreen(
                                 text =
                                     pluralStringResource(
                                         R.plurals.n_channel,
-                                        podcastChannels.size,
-                                        podcastChannels.size,
+                                        matchingPodcastChannels.size,
+                                        matchingPodcastChannels.size,
                                     ),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.secondary,
@@ -316,7 +382,7 @@ fun LibraryPodcastsScreen(
                     }
 
                     itemsIndexed(
-                        items = podcastChannels,
+                        items = matchingPodcastChannels,
                         key = { _, item -> item.id },
                         contentType = { _, _ -> CONTENT_TYPE_SONG },
                     ) { _, channel ->
@@ -332,20 +398,21 @@ fun LibraryPodcastsScreen(
                         )
                     }
 
-                    if (podcastChannels.isEmpty()) {
+                    if (matchingPodcastChannels.isEmpty()) {
                         item(key = "empty") {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 48.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.no_subscribed_channels),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                            if (normalizedSearch.isNotBlank()) {
+                                LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
+                            } else {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.no_subscribed_channels),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                         }
                     }
@@ -353,15 +420,21 @@ fun LibraryPodcastsScreen(
             }
 
             PodcastFilter.DOWNLOADED -> {
-                LazyColumn(
+                IridePageLayout(
+                    titleRes = R.string.filter_podcasts,
+                    showTopBar = true,
+                    modifier = Modifier.rubberBandOverscroll(Orientation.Vertical, lazyListState),
                     state = lazyListState,
-                    contentPadding = PaddingValues(
-                        start = 12.dp,
-                        end = 12.dp,
-                        top = insets.calculateTopPadding(),
-                        bottom = insets.calculateBottomPadding(),
-                    ),
+                    reducedMotion = rememberReducedMotion(),
+                    bottomPadding = insets.calculateBottomPadding(),
+                    contentHorizontalPadding = 20.dp,
+                    navigationIcon = {
+                        IconButton(onClick = { navController.navigateUp() }) {
+                            Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back))
+                        }
+                    },
                 ) {
+                    item(key = "search_box", contentType = CONTENT_TYPE_HEADER) { searchBox() }
                     item(key = "filter", contentType = CONTENT_TYPE_HEADER) {
                         chipsHeader()
                     }
@@ -390,8 +463,8 @@ fun LibraryPodcastsScreen(
                                 text =
                                     pluralStringResource(
                                         R.plurals.n_episode,
-                                        downloadedEpisodes.size,
-                                        downloadedEpisodes.size,
+                                        matchingDownloadedEpisodes.size,
+                                        matchingDownloadedEpisodes.size,
                                     ),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.secondary,
@@ -400,7 +473,7 @@ fun LibraryPodcastsScreen(
                     }
 
                     itemsIndexed(
-                        items = downloadedEpisodes,
+                        items = matchingDownloadedEpisodes,
                         key = { _, item -> item.song.id },
                         contentType = { _, _ -> CONTENT_TYPE_SONG },
                     ) { index, episode ->
@@ -457,20 +530,21 @@ fun LibraryPodcastsScreen(
                         )
                     }
 
-                    if (downloadedEpisodes.isEmpty()) {
+                    if (matchingDownloadedEpisodes.isEmpty()) {
                         item(key = "empty") {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 48.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.no_downloaded_episodes),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                            if (normalizedSearch.isNotBlank()) {
+                                LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
+                            } else {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.no_downloaded_episodes),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                         }
                     }

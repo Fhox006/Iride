@@ -111,7 +111,7 @@ constructor(
     }
 
     private fun categoryPriorityOrder(topCategory: Category): List<Category> = when (topCategory) {
-        Category.ARTIST -> listOf(Category.SONG, Category.ALBUM, Category.PLAYLIST, Category.VIDEO, Category.PODCAST, Category.PROFILE, Category.ARTIST, Category.EPISODE)
+        Category.ARTIST -> listOf(Category.ALBUM, Category.SONG, Category.PLAYLIST, Category.VIDEO, Category.PODCAST, Category.PROFILE, Category.ARTIST, Category.EPISODE)
         Category.ALBUM -> listOf(Category.ALBUM, Category.SONG, Category.ARTIST, Category.PLAYLIST, Category.VIDEO, Category.PODCAST, Category.PROFILE, Category.EPISODE)
         Category.PLAYLIST -> listOf(Category.PLAYLIST, Category.PODCAST, Category.SONG, Category.ARTIST, Category.ALBUM, Category.VIDEO, Category.EPISODE, Category.PROFILE)
         Category.PODCAST -> listOf(Category.PODCAST, Category.EPISODE, Category.PLAYLIST, Category.ARTIST, Category.SONG, Category.ALBUM, Category.VIDEO, Category.PROFILE)
@@ -195,8 +195,10 @@ constructor(
         if (smartSearchStarted || query.isBlank()) return
         smartSearchStarted = true
         searchJob = viewModelScope.launch {
+            loadSummaryPage()
+            val topCategory = categoryOf(summaryPage?.summaries?.firstOrNull()?.items?.firstOrNull())
             val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-            val order = categoryPriorityOrder(Category.SONG)
+            val order = categoryPriorityOrder(topCategory)
                 .flatMap { it.toFilters() }
                 .let { filters -> if (hideVideoSongs) filters.filter { it != YouTube.SearchFilter.FILTER_VIDEO } else filters }
                 .filter { it != YouTube.SearchFilter.FILTER_PROFILE }
@@ -207,7 +209,6 @@ constructor(
                     launch { fetchAndStoreFilterResults(sectionFilter) }
                 }
             }
-            loadSummaryPage()
             if (viewStateMap[YouTube.SearchFilter.FILTER_EPISODE.value] == null) {
                 viewStateMap[YouTube.SearchFilter.FILTER_EPISODE.value] = ItemsPage(episodesFromSummary(), null)
             }

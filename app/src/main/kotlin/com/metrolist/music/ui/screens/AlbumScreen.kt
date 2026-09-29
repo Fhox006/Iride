@@ -6,11 +6,15 @@
 package com.metrolist.music.ui.screens
 
 /*import android.graphics.Bitmap*/
+import com.metrolist.music.ui.component.iridePageContentInsets
+import com.metrolist.music.ui.component.iridePageTitleTextStyle
+import com.metrolist.music.ui.component.iridePageTitleClip
+import androidx.compose.ui.layout.positionInWindow
+import com.metrolist.music.ui.component.iridePageTitleProgress
+import com.metrolist.music.ui.component.irideCompactTitleReveal
+import com.metrolist.music.ui.component.IridePageTopBar
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import com.metrolist.music.ui.component.frostedTopBarBackground
-import com.metrolist.music.ui.component.recordFrostBackdrop
-import com.metrolist.music.ui.component.rememberFrostBackdrop
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -263,33 +267,26 @@ fun AlbumScreen(
     val hideVideoSongs by rememberPreference(key = HideVideoSongsKey, defaultValue = false)
     val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
     val lazyListState = rememberLazyListState()
-    val frostBackdrop = rememberFrostBackdrop()
     // Stretch of the vertical rubber band, hoisted so the header art can answer the pull.
     val headerPull = rememberRubberBandPull()
 
-    // Screen's own one-shot "have I landed" flag: the header title types out only once, and the top
-    // bar's glass may only turn on after a real frame exists to blur (frostBackdrop's GraphicsLayer
-    // isn't saveable, so navigating back to an already-scrolled album must wait for one real frame).
+    // Keep the title entrance from replaying when returning to this album.
     var headerRevealed by rememberSaveable { mutableStateOf(false) }
     // Sections that have already played their entrance — LazyColumn disposes items scrolled far off
     // screen, so without this a shelf would replay its wipe-in every time it scrolled back into view.
     val revealedSections = remember { mutableSetOf<String>() }
 
-    // Window-space Y of the header title's bottom edge and of the top bar's bottom edge — the bar's
-    // glass and mirrored title fade in exactly when the big title goes behind the bar (same crossing
-    // ArtistScreen uses), and tweens in/out at a fixed duration instead of following the scroll
-    // pixel-by-pixel.
-    var nameBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
+    var nameTopPx by remember { mutableStateOf(Float.MAX_VALUE) }
+    var nameHeightPx by remember { mutableStateOf(0f) }
     var topBarBottomPx by remember { mutableStateOf(0f) }
-    val headerTitleCovered by remember {
+    val topBarRevealProgress by remember {
         derivedStateOf {
-            headerRevealed && (
-                lazyListState.firstVisibleItemIndex > 0 ||
-                    nameBottomPx <= topBarBottomPx
-                )
+            if (!headerRevealed) 0f else iridePageTitleProgress(
+                nameTopPx, nameHeightPx, topBarBottomPx,
+                pastTitle = lazyListState.firstVisibleItemIndex > 0,
+            )
         }
     }
-    val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
 
     val albumTitle = albumWithSongs?.album?.title
     // Everything in the header waits for the title to finish typing, so the block reads as one
@@ -533,13 +530,10 @@ fun AlbumScreen(
         }
     }
 
-    // Everything the frosted top bar sees through its "glass" is captured here: the gradient belongs
-    // inside the snapshot too, otherwise the bar blurs the song list over a hard-edged gradient.
-    // Contents left at their original indentation — wrapping alone, no reflow.
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .recordFrostBackdrop(frostBackdrop)
+
             // Fade only, covering the gap between navigation and first layout — a scale-down here
             // would inset edge-to-edge content and show a hairline of window background at the edges.
             .graphicsLayer { alpha = screenProgress },
@@ -557,7 +551,7 @@ fun AlbumScreen(
             .fillMaxSize()
             .rubberBandOverscroll(Orientation.Vertical, lazyListState, headerPull),
         state = lazyListState,
-        contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+        contentPadding = iridePageContentInsets(LocalPlayerAwareWindowInsets.current).asPaddingValues(),
     ) {
             val albumWithSongs = albumWithSongs
             if (albumWithSongs != null && albumWithSongs.songs.isNotEmpty()) {
@@ -828,11 +822,10 @@ fun AlbumScreen(
 
                             TypewriterText(
                                 text = albumWithSongs.album.title,
-                                style = TextStyle(
-                                    fontFamily = SpaceMonoFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 20.sp,
-                                    letterSpacing = (-0.2).sp,
+                                style = iridePageTitleTextStyle().copy(
+                                    fontWeight = FontWeight.Normal,
+                                    fontSize = 30.sp,
+                                    lineHeight = 37.sp,
                                 ),
                                 color = MaterialTheme.colorScheme.onBackground,
                                 // Keyed on the album, not the string: recomposing this screen must
@@ -845,7 +838,11 @@ fun AlbumScreen(
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .onGloballyPositioned { nameBottomPx = it.boundsInWindow().bottom },
+                                    .onGloballyPositioned {
+                                        nameTopPx = it.positionInWindow().y
+                                        nameHeightPx = it.size.height.toFloat()
+                                    }
+                                    .iridePageTitleClip { topBarRevealProgress },
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -1310,20 +1307,9 @@ fun AlbumScreen(
         }
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
-                .frostedTopBarBackground(
-                    progress = topBarRevealProgress,
-                    barColor = MaterialTheme.colorScheme.background,
-                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                    backdrop = frostBackdrop,
-                )
-                .statusBarsPadding()
-                .height(40.dp)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    IridePageTopBar(
+            progress = topBarRevealProgress,
+            modifier = Modifier.onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom },
         ) {
             val backProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
             Box(modifier = Modifier.irideEnterScale(backProgress, from = 0.8f)) {
@@ -1337,13 +1323,12 @@ fun AlbumScreen(
                 } else {
                     albumWithSongs?.album?.title.orEmpty()
                 },
-                style = TextStyle(
+                style = MaterialTheme.typography.titleMedium.copy(
                     fontFamily = SpaceMonoFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    letterSpacing = (-0.1).sp,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 15.sp,
                 ),
-                color = MaterialTheme.colorScheme.onBackground,
+                color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
@@ -1353,7 +1338,7 @@ fun AlbumScreen(
                         if (inSelectMode) {
                             Modifier
                         } else {
-                            Modifier.irideEnter(topBarRevealProgress, 6.dp).revealMask(topBarRevealProgress)
+                            Modifier.irideCompactTitleReveal(topBarRevealProgress)
                         },
                     ),
             )

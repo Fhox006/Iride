@@ -5,6 +5,12 @@
 
 package com.metrolist.music.ui.screens.artist
 
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.layout.statusBars
+import com.metrolist.music.ui.component.IridePageLayoutDefaults
+import com.metrolist.music.ui.component.rememberLibraryPageRevealState
+import com.metrolist.music.ui.component.LibraryHeroTitle
+import com.metrolist.music.ui.component.LibraryPageTopBar
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -61,7 +67,6 @@ import com.metrolist.music.extensions.matchesNormalizedQuery
 import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.queues.ListQueue
-import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LibrarySortRow
@@ -121,32 +126,22 @@ fun ArtistSongsScreen(
         snapAnimationSpec = tween(durationMillis = 200),
     )
 
+    val headerRevealState = rememberLibraryPageRevealState()
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier,
         topBar = {
-            CollapsingScreenHeader(
+            LibraryPageTopBar(
                 title = stringResource(R.string.songs),
-                scrollBehavior = scrollBehavior,
-                pureBlack = pureBlack,
+                revealState = headerRevealState,
+                revealProgress = if (lazyListState.firstVisibleItemIndex > 0) 1f else headerRevealState.progress,
                 isSearchActive = isSearchActive,
-                onSearchActiveChange = { active ->
-                    isSearchActive = active
-                    if (!active) searchQuery = ""
-                },
                 searchQuery = searchQuery,
                 onSearchQueryChange = { searchQuery = it },
+                onNavigateUp = { navController.navigateUp() },
+                onSearchClick = { isSearchActive = true },
+                onCloseSearch = { isSearchActive = false; searchQuery = "" },
                 keyboardController = keyboardController,
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
+                showSearchAction = true,
             )
         },
         containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
@@ -155,14 +150,24 @@ fun ArtistSongsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(paddingValues),
+            ,
     ) {
         LazyColumn(
             state = lazyListState,
             contentPadding = PaddingValues(
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
                 bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
             ),
         ) {
+            item(key = "artist_page_title") {
+                LibraryHeroTitle(
+                    title = stringResource(R.string.songs),
+                    entranceAlpha = 1f,
+                    revealState = headerRevealState,
+                    modifier = Modifier.padding(horizontal = IridePageLayoutDefaults.HorizontalPadding),
+                )
+            }
+
             item(key = "sort", contentType = CONTENT_TYPE_HEADER) {
                 LibrarySortRow(
                     sortOptions = listOf(

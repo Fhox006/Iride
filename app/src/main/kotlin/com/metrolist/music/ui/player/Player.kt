@@ -199,8 +199,10 @@ import com.metrolist.music.ui.component.Lyrics
 import com.metrolist.music.ui.component.LyricsPillController
 import com.metrolist.music.ui.component.PillPlayerRow
 import com.metrolist.music.ui.component.PillProgressState
-import com.metrolist.music.ui.component.PillShimmerSkeleton
 import com.metrolist.music.ui.component.PlaceholderMediaMetadata
+import com.metrolist.music.ui.component.IrideMiniPlayerPreview
+import com.metrolist.music.ui.component.IrideMiniPlayerHeight
+import com.metrolist.music.utils.MiniPlayerSnapshotStore
 import com.metrolist.music.ui.component.PlayerSliderTrack
 import com.metrolist.music.ui.component.SquigglySlider
 import com.metrolist.music.ui.component.WavySlider
@@ -251,7 +253,22 @@ fun BottomSheetPlayer(
     val copiedTitleStr = stringResource(R.string.copied_title)
     val copiedArtistStr = stringResource(R.string.copied_artist)
     val bottomSheetPageState = LocalBottomSheetPageState.current
-    val playerConnection = LocalPlayerConnection.current ?: return
+    val playerConnection = LocalPlayerConnection.current
+    if (playerConnection == null) {
+        if (!showPeekContent) {
+            val cachedMetadata by MiniPlayerSnapshotStore.metadata.collectAsState()
+            Box(modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().height(state.collapsedBound)
+                        .padding(bottom = (state.collapsedBound - IrideMiniPlayerHeight - 20.dp).coerceAtLeast(0.dp)),
+                    verticalArrangement = Arrangement.Bottom,
+                ) {
+                    IrideMiniPlayerPreview(cachedMetadata)
+                }
+            }
+        }
+        return
+    }
 
     val (hidePlayerThumbnail, onHidePlayerThumbnailChange) = rememberPreference(HidePlayerThumbnailKey, false)
     val thumbnailCarouselMode by rememberPreference(ThumbnailCarouselModeKey, defaultValue = false)
@@ -858,8 +875,6 @@ fun BottomSheetPlayer(
     // lighter Material surfaceContainer peek through around its edges/insets.
     val bottomSheetBackgroundColor = IrideMp3BackgroundColor
 
-    val backgroundAlpha = state.progress.coerceIn(0f, 1f)
-
     val onSheetDismiss: (() -> Unit)? =
         if (!isListenTogetherGuest) {
             {
@@ -929,7 +944,7 @@ fun BottomSheetPlayer(
                                 Box(
                                     Modifier
                                         .fillMaxSize()
-                                        .alpha(backgroundAlpha)
+                                        .graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) }
                                         .background(Brush.verticalGradient(colorStops = gradientColorStops))
                                         .background(Color.Black.copy(alpha = 0.2f)),
                                 )
@@ -956,7 +971,7 @@ fun BottomSheetPlayer(
 
                         AnimatedAlbumGradientBackground(
                             thumbnail = currentBitmap,
-                            modifier = Modifier.fillMaxSize().alpha(backgroundAlpha)
+                            modifier = Modifier.fillMaxSize().graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) }
                         )
                     }
 
@@ -995,7 +1010,7 @@ fun BottomSheetPlayer(
                             thumbnail = displayedBitmap,
                             incomingThumbnail = incomingBitmap,
                             crossfadeProgress = crossfadeProgress.value,
-                            modifier = Modifier.fillMaxSize().alpha(backgroundAlpha)
+                            modifier = Modifier.fillMaxSize().graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) }
                         )
                     }
 
@@ -1005,23 +1020,14 @@ fun BottomSheetPlayer(
         },
         onDismiss = onSheetDismiss,
         collapsedContent = {
-            // curtainMode never shows the classic legacy MiniPlayer or the classic FloatingPill —
-            // only ever this row. While mediaMetadata is still null (cold start, before
-            // MusicService's restored queue lands, or nothing has ever played) it falls back to
-            // PlaceholderMediaMetadata so the very first frame already reads as the mp3 mini
-            // player's own placeholder, not a different pill design swapped in underneath it.
             val currentMetadata = mediaMetadata
             if (curtainMode) {
                 val displayMetadata = currentMetadata ?: PlaceholderMediaMetadata
                 val pillProgressState = remember(positionState, durationState) {
                     PillProgressState(positionState, durationState)
                 }
-                // While a persisted queue is still being restored, mediaMetadata reads null just
-                // like the genuine "nothing ever played" case — without this check the row would
-                // briefly render PlaceholderMediaMetadata with live play/pause/skip, then pop the
-                // real cover/title in a moment later. Hold the skeleton until restore resolves so
-                // the swap to real content happens once, atomically.
                 val hasPendingQueueRestore by playerConnection.service.hasPendingQueueRestoreFlow.collectAsState()
+                val cachedMetadata by MiniPlayerSnapshotStore.metadata.collectAsState()
                 Box(
                     modifier = Modifier
                         .fillMaxSize(),
@@ -1029,19 +1035,16 @@ fun BottomSheetPlayer(
                     // Info row pinned to the bottom, with the reserved CurtainCornerRevealHeight
                     // gap left empty above the handle — that's the strip the app layer's rounded
                     // corner cuts into, so it must stay plain curtain-colored background, not UI.
-                    // windowInsetsPadding lifts the row above the system nav bar — without it the
-                    // row sat flush against the physical bottom edge (under/behind the nav bar),
-                    // and the whole bottomInset share of collapsedBound piled up as dead space
-                    // above the handle instead, hiding the corner-reveal strip behind the nav bar.
+                    // Use the same bottom inset as the panel bounds, including during startup.
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .align(Alignment.BottomStart)
-                            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom)),
+                            .padding(bottom = (state.collapsedBound - IrideMiniPlayerHeight - 20.dp).coerceAtLeast(0.dp)),
                         verticalArrangement = Arrangement.Bottom,
                     ) {
-                        if (hasPendingQueueRestore) {
-                            PillShimmerSkeleton(isTopLevelRoute = false)
+                        if (hasPendingQueueRestore || (currentMetadata == null && cachedMetadata != null)) {
+                            IrideMiniPlayerPreview(cachedMetadata)
                         } else {
                         // The drag-handle indicator used to live here as a static Box, but it
                         // disappeared once the sheet started expanding (this whole collapsedContent

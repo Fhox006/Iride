@@ -5,6 +5,19 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.ui.component.LibraryHeroTitle
+import com.metrolist.music.ui.component.iridePageContentInsets
+import com.metrolist.music.ui.component.iridePageTitleTextStyle
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.component.iridePageTitleClip
+import com.metrolist.music.ui.component.IridePageLayoutDefaults
+import com.metrolist.music.ui.component.rememberLibraryPageRevealState
+import com.metrolist.music.ui.component.LibraryPageRevealState
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -27,24 +40,19 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import sv.lib.squircleshape.SquircleShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -68,7 +76,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -87,6 +94,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.MyTopFilter
+import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.db.entities.Song
@@ -100,13 +108,12 @@ import com.metrolist.music.ui.component.GenrePillsRow
 import com.metrolist.music.ui.component.GenreSongInfo
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideAdaptiveTopBar
+import com.metrolist.music.ui.component.IrideSearchBox
 import com.metrolist.music.ui.component.LibrarySortRow
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.TopScreenGradientBackground
 import com.metrolist.music.ui.component.rememberGenreFilter
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.menu.SelectionSongMenu
 import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.menu.TopPlaylistMenu
@@ -271,12 +278,11 @@ fun TopPlaylistScreen(
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val playerBackgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT)
-    val headerScrolled by remember {
-        derivedStateOf {
-            state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 8
-        }
+    val headerRevealState = rememberLibraryPageRevealState()
+    headerRevealState.topBarBottomPx = with(LocalDensity.current) {
+        (WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + IridePageLayoutDefaults.BarHeight).toPx()
     }
-    val frostBackdrop = rememberFrostBackdrop()
+    val topBarRevealProgress = if (songs == null || state.firstVisibleItemIndex > 0) 1f else headerRevealState.progress
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -284,7 +290,7 @@ fun TopPlaylistScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .recordFrostBackdrop(frostBackdrop),
+                ,
         ) {
             if (mainTopGradient) {
                 TopScreenGradientBackground(
@@ -296,10 +302,30 @@ fun TopPlaylistScreen(
             }
             LazyColumn(
                 state = state,
-                contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                contentPadding = iridePageContentInsets(LocalPlayerAwareWindowInsets.current).asPaddingValues(),
             ) {
             if (songs != null) {
                 if (songs!!.isEmpty()) {
+                    item(key = "empty_page_title") {
+                        LibraryHeroTitle(
+                            title = name,
+                            entranceAlpha = 1f,
+                            revealState = headerRevealState,
+                            modifier = Modifier.padding(horizontal = IridePageLayoutDefaults.HorizontalPadding),
+                        )
+                    }
+                    item(key = "search_bar") {
+                        IrideSearchBox(
+                            query = query,
+                            onQueryChange = { query = it },
+                            placeholderText = stringResource(R.string.search_playlists),
+                            focusRequester = focusRequester,
+                            onFocusChanged = { if (it.isFocused) isSearching = true },
+                            onSearch = {},
+                            onClear = { query = TextFieldValue() },
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        )
+                    }
                     item(key = "empty_placeholder") {
                         EmptyPlaceholder(
                             icon = R.drawable.music_note,
@@ -311,6 +337,7 @@ fun TopPlaylistScreen(
                         item(key = "playlist_header") {
                             TopPlaylistHeader(
                                 name = name,
+                                revealState = headerRevealState,
                                 songs = songs!!,
                                 likeLength = likeLength,
                                 downloadState = downloadState,
@@ -319,6 +346,19 @@ fun TopPlaylistScreen(
                                 modifier = Modifier.animateItem()
                             )
                         }
+                    }
+
+                    item(key = "search_bar") {
+                        IrideSearchBox(
+                            query = query,
+                            onQueryChange = { query = it },
+                            placeholderText = stringResource(R.string.search_playlists),
+                            focusRequester = focusRequester,
+                            onFocusChanged = { if (it.isFocused) isSearching = true },
+                            onSearch = {},
+                            onClear = { query = TextFieldValue() },
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        )
                     }
 
                     item(key = "songs_header") {
@@ -340,6 +380,7 @@ fun TopPlaylistScreen(
                                 sortDescending = false,
                                 onSortDescendingChange = {},
                                 showDescending = false,
+                                availableViewTypes = listOf(LibraryViewType.GRID, LibraryViewType.GRID_WIDE),
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -441,6 +482,19 @@ fun TopPlaylistScreen(
                         )
                     }
                 }
+            } else {
+                item(key = "search_bar") {
+                    IrideSearchBox(
+                        query = query,
+                        onQueryChange = { query = it },
+                        placeholderText = stringResource(R.string.search_playlists),
+                        focusRequester = focusRequester,
+                        onFocusChanged = { if (it.isFocused) isSearching = true },
+                        onSearch = {},
+                        onClear = { query = TextFieldValue() },
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
+                }
             }
         }
         }
@@ -463,34 +517,6 @@ fun TopPlaylistScreen(
                         Text(
                             text = pluralStringResource(R.plurals.n_song, selection.size, selection.size),
                         )
-                    }
-                    isSearching -> {
-                        TextField(
-                            value = query,
-                            onValueChange = { query = it },
-                            placeholder = {
-                                Text(
-                                    text = stringResource(R.string.search),
-                                    style = LocalTextStyle.current
-                                )
-                            },
-                            singleLine = true,
-                            textStyle = LocalTextStyle.current,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                disabledIndicatorColor = Color.Transparent,
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequester)
-                        )
-                    }
-                    else -> {
-                        Text(text = name)
                     }
                 }
             },
@@ -557,14 +583,6 @@ fun TopPlaylistScreen(
                     }
                 } else if (!isSearching) {
                     IconButton(
-                        onClick = { isSearching = true }
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.search),
-                            contentDescription = null
-                        )
-                    }
-                    IconButton(
                         onClick = {
                             menuState.show {
                                 TopPlaylistMenu(
@@ -619,8 +637,8 @@ fun TopPlaylistScreen(
                      }
                  }
              },
-            backdrop = frostBackdrop,
-            revealProgress = rememberDiscreteProgress(headerScrolled),
+
+            revealProgress = if (inSelectMode || isSearching) 1f else topBarRevealProgress,
         )
     }
 }
@@ -628,6 +646,7 @@ fun TopPlaylistScreen(
 @Composable
 private fun TopPlaylistHeader(
     name: String,
+    revealState: LibraryPageRevealState,
     songs: List<Song>,
     likeLength: Int,
     downloadState: Int,
@@ -667,12 +686,17 @@ private fun TopPlaylistHeader(
 
         Text(
             text = name,
-            style = MaterialTheme.typography.headlineSmall,
+            style = iridePageTitleTextStyle(),
             fontWeight = FontWeight.Bold,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 32.dp)
+            modifier = Modifier.padding(horizontal = 20.dp)
+                .onGloballyPositioned {
+                    revealState.titleTopPx = it.positionInWindow().y
+                    revealState.titleHeightPx = it.size.height.toFloat()
+                }
+                .iridePageTitleClip { revealState.progress }
         )
 
         Spacer(modifier = Modifier.height(12.dp))

@@ -40,17 +40,24 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -77,19 +84,13 @@ import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.db.entities.PodcastEntity
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.ChipsRow
-import com.metrolist.music.ui.component.IridePageTitle
-import com.metrolist.music.ui.component.FrostedPageTitleBar
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
-import com.metrolist.music.ui.utils.rememberDiscreteProgress
-import com.metrolist.music.ui.component.CollapsingScreenHeader
+import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.component.FloatingPillBottomSpacing
 import com.metrolist.music.ui.component.FloatingPillHeight
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.TopNavigationBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.component.frostedTopBarBackground
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.shimmer.GridItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
@@ -139,10 +140,6 @@ fun AccountScreen(
     }
 
     val scrollState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
-    val frostBackdrop = rememberFrostBackdrop()
-    val titleRevealProgress = rememberDiscreteProgress(
-        scrollState.firstVisibleItemIndex > 0,
-    )
     val backStackEntry by navController.currentBackStackEntryAsState()
     val scrollToTop =
         backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
@@ -152,37 +149,13 @@ fun AccountScreen(
             backStackEntry?.savedStateHandle?.set("scrollToTop", false)
         }
     }
-    Scaffold(
-        containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0),
-    ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .recordFrostBackdrop(frostBackdrop, enabled = titleRevealProgress > 0f),
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
-                )
-                LazyVerticalGrid(
-                state = scrollState,
-                columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
-                contentPadding = PaddingValues(
-                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 16.dp,
-                    bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
-                ),
-                modifier = Modifier.fillMaxSize(),
-                ) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                IridePageTitle(
-                    titleRes = R.string.account,
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
-                )
-            }
-
+    IridePageLayout(
+        titleRes = R.string.account,
+        columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
+        state = scrollState,
+        modifier = Modifier.fillMaxSize().background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
+        bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+    ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 ChipsRow(
                     chips =
@@ -212,14 +185,6 @@ fun AccountScreen(
                 podcastPlaylists = podcastPlaylists,
                 podcastChannels = podcastChannels,
             )
-            }
-            }
-            FrostedPageTitleBar(
-                titleRes = R.string.account,
-                progress = titleRevealProgress,
-                backdrop = frostBackdrop,
-            )
-        }
     }
 }
 

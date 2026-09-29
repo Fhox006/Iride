@@ -7,6 +7,8 @@
 
 package com.metrolist.music.playback
 
+import com.metrolist.music.utils.MiniPlayerSnapshotStore
+
 import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.NotificationChannel
@@ -289,6 +291,7 @@ class MusicService :
     private val queuePersistenceLock = Any()
     private var queueSaveGeneration = 0L
     private var queueHasMediaItems = false
+    private var lastQueueSaveMs = 0L
     private var shufflePlaylistFirst = false
     private var rememberShuffleAndRepeat = true
     private var preloadJob: Job? = null
@@ -408,7 +411,7 @@ class MusicService :
     private val playerInitialized = MutableStateFlow(false)
     val isPlayerReady: kotlinx.coroutines.flow.StateFlow<Boolean> = playerInitialized.asStateFlow()
 
-    private val pendingQueueRestore = MutableStateFlow(false)
+    private val pendingQueueRestore = MutableStateFlow(true)
     val hasPendingQueueRestoreFlow: kotlinx.coroutines.flow.StateFlow<Boolean> = pendingQueueRestore.asStateFlow()
 
     private val _playerFlow = MutableStateFlow<ExoPlayer?>(null)
@@ -565,6 +568,7 @@ class MusicService :
         super.onCreate()
         // Load before creating the player: its callbacks and restore must use the saved preference.
         persistentQueueEnabled = dataStore.get(PersistentQueueKey, true)
+        pendingQueueRestore.value = persistentQueueEnabled && filesDir.resolve(PERSISTENT_QUEUE_FILE).exists()
         isRunning = true
 
         playerInitialized.value = false
@@ -1245,6 +1249,7 @@ class MusicService :
     }
 
     private fun clearPersistedQueueFiles() {
+        MiniPlayerSnapshotStore.update(null)
         synchronized(queuePersistenceLock) {
             queueSaveGeneration++
             AtomicFile(filesDir.resolve(PERSISTENT_QUEUE_FILE)).delete()
@@ -2414,9 +2419,15 @@ class MusicService :
         }
         if (events.containsAny(EVENT_TIMELINE_CHANGED, EVENT_POSITION_DISCONTINUITY)) {
             currentMediaMetadata.value = player.currentMetadata
+            if (persistentQueueEnabled) {
+                player.currentMetadata?.let(MiniPlayerSnapshotStore::update)
+            }
         }
         val queueWasCleared = events.contains(EVENT_TIMELINE_CHANGED) &&
-            queueHasMediaItems && player.mediaItemCount == 0
+            queueHasMediaItems && player.mediaItemCount == 0 &&
+            // Never wipe during startup restore: a transient 0-item timeline while the
+            // persisted queue is being reloaded is not a user clear.
+            pendingQueueRestore.value != true
         if (events.contains(EVENT_TIMELINE_CHANGED)) {
             queueHasMediaItems = player.mediaItemCount > 0
         }
@@ -2429,7 +2440,13 @@ class MusicService :
             if (queueWasCleared) {
                 clearPersistedQueueFiles()
             } else {
-                saveQueueToDisk()
+                // Throttle event-driven saves: the periodic loop (10/15s) already persists.
+                // Bursts of timeline/position events (seek/restore) must not flood IO.
+                val nowMs = System.currentTimeMillis()
+                if (nowMs - lastQueueSaveMs >= 4000L) {
+                    lastQueueSaveMs = nowMs
+                    saveQueueToDisk()
+                }
             }
         }
 
@@ -3352,6 +3369,7 @@ class MusicService :
         if (player.mediaItemCount == 0) {
             return
         }
+        lastQueueSaveMs = System.currentTimeMillis()
 
         val persistQueue =
             currentQueue.toPersistQueue(

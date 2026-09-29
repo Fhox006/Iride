@@ -48,7 +48,10 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -122,15 +125,18 @@ import coil3.request.allowHardware
 import coil3.size.Size
 import coil3.toBitmap
 import com.metrolist.music.LocalDatabase
+import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.IrideBaseBorderWidth
+import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.constants.LyricsRomanizeToggleKey
 import com.metrolist.music.extensions.metadata
 import com.metrolist.music.extensions.move
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
+import com.metrolist.music.listentogether.RoomRole
 import androidx.compose.foundation.layout.BoxWithConstraints
 import com.metrolist.music.ui.component.BetterAnimatedGradientBackground
 import com.metrolist.music.ui.component.BottomSheetState
@@ -378,7 +384,7 @@ fun IrideMp3PlayerContent(
 
                 val lyricsAlpha by animateFloatAsState(
                     targetValue = if (isLyricsActive) 1f else 0f,
-                    animationSpec = tween(if (reducedMotion) 0 else IrideMotion.Short, easing = IrideMotion.EaseOutQuart),
+                    animationSpec = tween(if (reducedMotion) 0 else IrideMotion.Medium, easing = IrideMotion.EaseOutQuart),
                     label = "irideLyricsAlpha",
                 )
                 val currentDragFraction by rememberUpdatedState(dragFraction)
@@ -405,7 +411,8 @@ fun IrideMp3PlayerContent(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .zIndex(if (isLyricsActive) 1f else 0f)
+                        // Keep the outgoing panel above the cover until its fade finishes.
+                        .zIndex(if (isLyricsActive || lyricsAlpha > 0f) 1f else 0f)
                         .alpha(lyricsAlpha)
                         .background(IrideMp3BackgroundColor),
                 ) {
@@ -450,13 +457,14 @@ fun IrideMp3PlayerContent(
 
                 val queueAlpha by animateFloatAsState(
                     targetValue = if (isQueueActive) 1f else 0f,
-                    animationSpec = tween(if (reducedMotion) 0 else IrideMotion.Short, easing = IrideMotion.EaseOutQuart),
+                    animationSpec = tween(if (reducedMotion) 0 else IrideMotion.Medium, easing = IrideMotion.EaseOutQuart),
                     label = "irideQueueAlpha",
                 )
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .zIndex(if (isQueueActive) 1f else 0f)
+                        // Keep the outgoing panel above the cover until its fade finishes.
+                        .zIndex(if (isQueueActive || queueAlpha > 0f) 2f else 0f)
                         .alpha(queueAlpha)
                         .background(IrideMp3BackgroundColor),
                 ) {
@@ -1012,6 +1020,10 @@ private fun IrideQueuePreview(
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val database = LocalDatabase.current
+    val listenTogetherManager = LocalListenTogetherManager.current
+    val listenTogetherRole by listenTogetherManager?.role?.collectAsState(initial = RoomRole.NONE)
+        ?: remember { mutableStateOf(RoomRole.NONE) }
+    val isListenTogetherGuest = listenTogetherRole == RoomRole.GUEST
     val queueWindows by playerConnection.queueWindows.collectAsState()
     val currentWindowIndex by playerConnection.currentWindowIndex.collectAsState()
 
@@ -1207,7 +1219,7 @@ private fun IrideQueuePreview(
                         model = item.thumbnailUrl,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(34.dp).clip(irideSquircle(8.dp)),
+                        modifier = Modifier.size(34.dp).clip(SquircleShape(radius = ThumbnailCornerRadius, cornerSmoothing = 0.5f)),
                     )
                     Spacer(Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -1261,25 +1273,41 @@ private fun IrideQueuePreview(
                 ReorderableItem(state = reorderableState, key = window.uid.hashCode()) {
                     val metadata = window.mediaItem.metadata
                     val isActive = window.uid == currentPlayingUid
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateItem()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                            ) {
-                                playerConnection.player.seekToDefaultPosition(window.firstPeriodIndex)
-                            },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        positionalThreshold = { distance -> distance * 0.45f },
+                    )
+                    var processedDismiss by remember(window.uid) { mutableStateOf(false) }
+                    LaunchedEffect(dismissState.currentValue) {
+                        val dismissed = dismissState.currentValue
+                        if (!processedDismiss && !isListenTogetherGuest && (
+                                dismissed == SwipeToDismissBoxValue.StartToEnd
+                            )
+                        ) {
+                            processedDismiss = true
+                            playerConnection.player.removeMediaItem(window.firstPeriodIndex)
+                        }
+                        if (dismissed == SwipeToDismissBoxValue.Settled) processedDismiss = false
+                    }
+                    val row: @Composable () -> Unit = {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateItem()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) {
+                                    playerConnection.player.seekToDefaultPosition(window.firstPeriodIndex)
+                                },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                         AsyncImage(
                             model = metadata?.thumbnailUrl,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .size(34.dp)
-                                .clip(irideSquircle(8.dp)),
+                                .clip(SquircleShape(radius = ThumbnailCornerRadius, cornerSmoothing = 0.5f)),
                         )
                         Spacer(Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -1311,6 +1339,29 @@ private fun IrideQueuePreview(
                                 .size(18.dp)
                                 .draggableHandle(),
                         )
+                        }
+                    }
+                    if (!isListenTogetherGuest) {
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            enableDismissFromEndToStart = false,
+                            backgroundContent = {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.CenterStart,
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.delete),
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.72f),
+                                        modifier = Modifier.padding(horizontal = 16.dp).size(18.dp),
+                                    )
+                                }
+                            },
+                            content = { row() },
+                        )
+                    } else {
+                        row()
                     }
                 }
             }

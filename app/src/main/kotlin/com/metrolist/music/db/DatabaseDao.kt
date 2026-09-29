@@ -35,6 +35,7 @@ import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.Event
 import com.metrolist.music.db.entities.EventWithSong
+import com.metrolist.music.db.entities.RotationSongStats
 import com.metrolist.music.db.entities.GlobalAlbumPlayEvent
 import com.metrolist.music.db.entities.FormatEntity
 import com.metrolist.music.db.entities.LyricsEntity
@@ -198,6 +199,9 @@ interface DatabaseDao {
 
     @Query("SELECT thumbnailUrl FROM song WHERE liked = 1 AND thumbnailUrl IS NOT NULL ORDER BY likedDate DESC LIMIT :limit")
     fun lastLikedSongThumbnails(limit: Int = 4): Flow<List<String>>
+
+    @Query("SELECT thumbnailUrl FROM song WHERE starred = 1 AND thumbnailUrl IS NOT NULL ORDER BY rowId DESC LIMIT :limit")
+    fun starredSongThumbnails(limit: Int = 4): Flow<List<String>>
 
     @Transaction
     @Query("SELECT * FROM song WHERE starred ORDER BY rowId")
@@ -424,11 +428,9 @@ interface DatabaseDao {
     @Query(
         """
         SELECT song.*
-        FROM (SELECT *, COUNT(1) AS referredCount
+        FROM (SELECT relatedSongId, COUNT(1) AS referredCount
               FROM related_song_map
-              GROUP BY relatedSongId) map
-                 JOIN song ON song.id = map.relatedSongId
-        WHERE songId IN (SELECT songId
+              WHERE songId IN (SELECT songId
                          FROM (SELECT songId
                                FROM event
                                ORDER BY ROWID DESC
@@ -447,6 +449,8 @@ interface DatabaseDao {
                                FROM song
                                ORDER BY totalPlayTime DESC
                                LIMIT 10))
+              GROUP BY relatedSongId) map
+                 JOIN song ON song.id = map.relatedSongId
         ORDER BY referredCount DESC
         LIMIT 100
     """,
@@ -841,6 +845,10 @@ interface DatabaseDao {
     @Transaction
     @Query("SELECT * FROM song")
     fun allSongs(): Flow<List<Song>>
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE isLocal = 1")
+    fun localSongs(): Flow<List<Song>>
 
     @Query("SELECT DISTINCT songId FROM event")
     suspend fun allPlayedSongIds(): List<String>
@@ -1647,6 +1655,12 @@ interface DatabaseDao {
     @Query("SELECT * FROM event ORDER BY rowId DESC")
     fun events(): Flow<List<EventWithSong>>
 
+    @Query("SELECT songId, SUM(playTime) AS playTime FROM event WHERE timestamp >= :fromTimestamp GROUP BY songId")
+    fun rotationSongStats(fromTimestamp: Long): Flow<List<RotationSongStats>>
+
+    @Query("SELECT DISTINCT songId FROM event WHERE timestamp >= :fromTimestamp")
+    fun recentlyPlayedSongIds(fromTimestamp: Long): Flow<List<String>>
+
     @Query("SELECT DISTINCT songId FROM event WHERE songId IN (:songIds)")
     fun playedSongIds(songIds: List<String>): Flow<List<String>>
 
@@ -1767,7 +1781,7 @@ interface DatabaseDao {
 
     @Transaction
     @Query(
-        "SELECT song.* FROM (SELECT * from related_song_map GROUP BY relatedSongId) map JOIN song ON song.id = map.relatedSongId where songId = :songId",
+        "SELECT song.* FROM song WHERE id IN (SELECT relatedSongId FROM related_song_map WHERE songId = :songId)",
     )
     fun getRelatedSongs(songId: String): Flow<List<Song>>
 
@@ -1823,6 +1837,9 @@ interface DatabaseDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(album: AlbumEntity): Long
+
+    @Query("UPDATE album SET albumType = :albumType WHERE id = :albumId AND albumType IS NULL")
+    fun updateAlbumTypeIfMissing(albumId: String, albumType: String)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(playlist: PlaylistEntity)
@@ -1899,13 +1916,17 @@ interface DatabaseDao {
                     playlistId = albumPage.album.playlistId,
                     title = albumPage.album.title,
                     year = albumPage.album.year,
+                    albumType = albumPage.album.albumType,
                     thumbnailUrl = albumPage.album.thumbnail,
                     songCount = albumPage.songs.size,
                     duration = albumPage.songs.sumOf { it.duration ?: 0 },
                     explicit = albumPage.album.explicit || albumPage.songs.any { it.explicit },
                 ),
-            ) == -1L
+        ) == -1L
         ) {
+            albumPage.album.albumType?.let {
+                updateAlbumTypeIfMissing(albumPage.album.browseId, it)
+            }
             return
         }
         albumPage.songs
@@ -2046,6 +2067,7 @@ interface DatabaseDao {
                 playlistId = albumPage.album.playlistId,
                 title = albumPage.album.title,
                 year = albumPage.album.year,
+                albumType = albumPage.album.albumType ?: album.albumType,
                 thumbnailUrl = albumPage.album.thumbnail,
                 songCount = albumPage.songs.size,
                 duration = albumPage.songs.sumOf { it.duration ?: 0 },

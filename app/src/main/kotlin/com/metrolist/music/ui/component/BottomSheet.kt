@@ -29,8 +29,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,11 +50,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import com.metrolist.music.constants.NavigationBarAnimationSpec
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.pow
+import kotlin.math.sign
 
 /**
  * Bottom Sheet
@@ -103,54 +109,58 @@ fun BottomSheet(
             }
             .pointerInput(state, isExpandable) {
                 if (!isExpandable) return@pointerInput
-                // Plain detectVerticalDragGestures claims the gesture at the platform's default
-                // touch slop (~8dp) — a real finger's ordinary jitter during a tap on a button
-                // anywhere in this full-surface Box crosses that easily, canceling the button's
-                // own click mid-press (Compose cancels a pressed clickable the moment an ancestor
-                // consumes a position change for that pointer) and, on release, can even read as a
-                // downward fling into performFling(onDismiss) — closing the whole player from what
-                // was meant to be a tap. Requiring a much larger, unambiguous vertical move before
-                // this Box claims the pointer lets ordinary taps reach their target reliably, while
-                // real swipes (expand/collapse/dismiss) still clear it well within a normal gesture.
-                val dragSlop = 32.dp.toPx()
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    // The sheet is translated inside this full-screen layer. Convert the down
+                    // point back to window coordinates so the guard stays aligned with the
+                    // system navigation handle while the sheet is collapsed.
+                    val densityScale = density
+                    val screenStartY =
+                        (down.position.y + (state.expandedBound - state.value).toPx()) / densityScale
+                    val sideDragSlop = if (backgroundFollowsContent && state.isCollapsed) {
+                        viewConfiguration.touchSlop
+                    } else {
+                        32.dp.toPx()
+                    }
+                    val dragSlop = bottomSheetDragSlop(
+                        startYDp = screenStartY,
+                        screenHeightDp = size.height / densityScale,
+                        sideDragSlopPx = sideDragSlop,
+                        densityScale = densityScale,
+                    )
                     val velocityTracker = VelocityTracker()
                     velocityTracker.addPointerInputChange(down)
                     var accumulatedY = 0f
                     var accumulatedX = 0f
                     var dragging = false
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                        if (!dragging) {
-                            if (change.isConsumed) break
-                            val delta = change.positionChange()
-                            accumulatedY += delta.y
-                            accumulatedX += delta.x
-                            if (abs(accumulatedY) > dragSlop && abs(accumulatedY) > abs(accumulatedX)) {
-                                dragging = true
-                                change.consume()
-                                velocityTracker.addPointerInputChange(change)
-                                state.dispatchRawDelta(accumulatedY)
-                            }
-                            if (!change.pressed) break
-                        } else {
+                    try {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
                             velocityTracker.addPointerInputChange(change)
-                            state.dispatchRawDelta(change.positionChange().y)
-                            change.consume()
-                            if (!change.pressed) {
-                                val velocity = -velocityTracker.calculateVelocity().y
-                                state.performFling(velocity, onDismiss)
-                                dragging = false
-                                break
+                            if (!dragging) {
+                                if (change.isConsumed || !change.pressed) break
+                                val delta = change.positionChange()
+                                accumulatedY += delta.y
+                                accumulatedX += delta.x
+                                if (isVerticalDragPastSlop(accumulatedY, accumulatedX, dragSlop)) {
+                                    dragging = true
+                                    change.consume()
+                                    state.dispatchRawDelta(accumulatedY - sign(accumulatedY) * dragSlop)
+                                }
+                            } else {
+                                state.dispatchRawDelta(change.positionChange().y)
+                                change.consume()
+                                if (!change.pressed) {
+                                    val velocity = -velocityTracker.calculateVelocity().y
+                                    state.performFling(velocity, onDismiss)
+                                    dragging = false
+                                    break
+                                }
                             }
                         }
-                    }
-                    if (dragging) {
-                        // Pointer left the stream without a normal lift (e.g. another gesture
-                        // took over) mid-drag — same as the old onDragCancel path.
-                        state.performFling(0f, onDismiss)
+                    } finally {
+                        if (dragging) state.performFling(0f, onDismiss)
                     }
                 }
             }
@@ -235,7 +245,30 @@ class BottomSheetState(
     val expandedBound: Dp
         get() = animatable.upperBound!!
 
-    val value by animatable.asState()
+    private var dragValue by mutableStateOf<Dp?>(null)
+    private var animationJob: Job? = null
+
+    val value: Dp
+        get() = dragValue ?: animatable.value
+
+    internal fun dragBy(delta: Dp, preventDismissDrag: Boolean) {
+        val currentValue = value
+        animationJob?.cancel()
+        val lowerBound = if (preventDismissDrag) collapsedBound else dismissedBound
+        dragValue = (currentValue - delta).coerceIn(lowerBound, expandedBound)
+    }
+
+    private suspend fun animateTo(target: Dp, animationSpec: AnimationSpec<Dp>) {
+        // Transfer the last synchronous drag position before exposing animated values again.
+        dragValue?.let { animatable.snapTo(it) }
+        dragValue = null
+        animatable.animateTo(target, animationSpec)
+    }
+
+    private fun launchAnimation(target: Dp, animationSpec: AnimationSpec<Dp>) {
+        animationJob?.cancel()
+        animationJob = coroutineScope.launch { animateTo(target, animationSpec) }
+    }
 
     val isDismissed by derivedStateOf {
         value == animatable.lowerBound!!
@@ -250,7 +283,8 @@ class BottomSheetState(
     }
 
     val progress by derivedStateOf {
-        1f - (animatable.upperBound!! - animatable.value) / (animatable.upperBound!! - collapsedBound)
+        val range = expandedBound - collapsedBound
+        if (range > 0.dp) (value - collapsedBound) / range else 0f
     }
 
     // Set whenever an expand is triggered. Lets callers tell "just opened, no time to interact
@@ -261,50 +295,51 @@ class BottomSheetState(
 
     fun collapse(animationSpec: AnimationSpec<Dp>) {
         onAnchorChanged(collapsedAnchor)
-        coroutineScope.launch {
-            animatable.animateTo(collapsedBound, animationSpec)
-        }
+        launchAnimation(collapsedBound, animationSpec)
     }
 
     fun expand(animationSpec: AnimationSpec<Dp>) {
         lastExpandedAtMs = android.os.SystemClock.elapsedRealtime()
         onAnchorChanged(expandedAnchor)
-        coroutineScope.launch {
-            animatable.animateTo(animatable.upperBound!!, animationSpec)
-        }
+        launchAnimation(expandedBound, animationSpec)
     }
 
     private fun collapse() {
-        collapse(spring(stiffness = Spring.StiffnessMediumLow))
+        collapse(spring(stiffness = PlayerSheetSettleStiffness))
     }
 
     private fun expand() {
-        expand(spring(stiffness = Spring.StiffnessMediumLow))
+        expand(spring(stiffness = PlayerSheetSettleStiffness))
     }
 
     fun collapseSoft() {
-        collapse(spring(stiffness = Spring.StiffnessMediumLow))
+        collapse(spring(stiffness = PlayerSheetSettleStiffness))
     }
 
     fun expandSoft() {
-        expand(spring(stiffness = Spring.StiffnessMediumLow))
+        expand(spring(stiffness = PlayerSheetSettleStiffness))
     }
 
     fun dismiss() {
         onAnchorChanged(dismissedAnchor)
-        coroutineScope.launch {
-            animatable.animateTo(animatable.lowerBound!!)
-        }
+        launchAnimation(dismissedBound, spring())
     }
-    
+
     suspend fun dismissAndWait() {
         onAnchorChanged(dismissedAnchor)
-        animatable.animateTo(animatable.lowerBound!!)
+        coroutineScope {
+            animationJob?.cancel()
+            val job = launch { animateTo(dismissedBound, spring()) }
+            animationJob = job
+            job.join()
+        }
     }
 
     fun snapTo(value: Dp) {
-        coroutineScope.launch {
+        animationJob?.cancel()
+        animationJob = coroutineScope.launch {
             animatable.snapTo(value)
+            dragValue = null
         }
     }
 
@@ -320,8 +355,8 @@ class BottomSheetState(
             }
         } else {
             val l0 = dismissedBound
-            val l1 = (collapsedBound - dismissedBound) / 2
-            val l2 = (expandedBound - collapsedBound) / 2
+            val l1 = dismissedBound + (collapsedBound - dismissedBound) / 2
+            val l2 = collapsedBound + (expandedBound - collapsedBound) / 2
             val l3 = expandedBound
 
             when (value) {
@@ -397,6 +432,8 @@ const val expandedAnchor = 2
 const val collapsedAnchor = 1
 const val dismissedAnchor = 0
 
+private val PlayerSheetSettleStiffness = Spring.StiffnessMediumLow * 0.8f
+
 @Composable
 fun rememberBottomSheetState(
     dismissedBound: Dp,
@@ -417,45 +454,54 @@ fun rememberBottomSheetState(
 ): BottomSheetState {
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
+    var anchor by rememberSaveable { mutableIntStateOf(initialAnchor) }
+    val currentOnAnchorPersist by rememberUpdatedState(onAnchorPersist)
 
-    val initialValue = when (initialAnchor) {
+    val initialValue = when (anchor) {
         expandedAnchor -> expandedBound
         collapsedAnchor -> collapsedBound
-        else -> dismissedBound
+        dismissedAnchor -> dismissedBound
+        else -> error("Unknown BottomSheet anchor")
     }
 
-    val animatable = remember(initialAnchor, dismissedBound, expandedBound, collapsedBound) {
+    // Persisting a new target must not recreate the animation at its destination.
+    // Recreate only for new bounds, restoring the last requested anchor in that layout.
+    val animatable = remember(dismissedBound, expandedBound, collapsedBound, density) {
         Animatable(initialValue, Dp.VectorConverter)
     }
 
-    return remember(initialAnchor, dismissedBound, expandedBound, collapsedBound, coroutineScope) {
-        val targetValue = when (initialAnchor) {
-            expandedAnchor -> expandedBound
-            collapsedAnchor -> collapsedBound
-            dismissedAnchor -> dismissedBound
-            else -> error("Unknown BottomSheet anchor")
-        }
-
+    return remember(animatable, coroutineScope, density, preventDismissDrag) {
         animatable.updateBounds(dismissedBound.coerceAtMost(expandedBound), expandedBound)
-        coroutineScope.launch {
-            if (animatable.value <= dismissedBound) {
-                animatable.snapTo(dismissedBound)
-            } else if (animatable.value != targetValue) {
-                animatable.snapTo(targetValue)
-            }
-        }
-
-        BottomSheetState(
+        lateinit var state: BottomSheetState
+        state = BottomSheetState(
             draggableState = DraggableState { delta ->
-                coroutineScope.launch {
-                    val target = animatable.value - with(density) { delta.toDp() }
-                    animatable.snapTo(if (preventDismissDrag) target.coerceAtLeast(collapsedBound) else target)
-                }
+                state.dragBy(with(density) { delta.toDp() }, preventDismissDrag)
             },
-            onAnchorChanged = onAnchorPersist,
+            onAnchorChanged = {
+                anchor = it
+                currentOnAnchorPersist(it)
+            },
             coroutineScope = coroutineScope,
             animatable = animatable,
-            collapsedBound = collapsedBound
+            collapsedBound = collapsedBound,
         )
+        state
     }
 }
+
+internal fun bottomSheetDragSlop(
+    startYDp: Float,
+    screenHeightDp: Float,
+    sideDragSlopPx: Float,
+    densityScale: Float,
+): Float {
+    val isBottomGuardStart = startYDp >= screenHeightDp - BottomCenterGuardHeight
+
+    return if (isBottomGuardStart) BottomGuardDragSlop * densityScale else sideDragSlopPx
+}
+
+internal fun isVerticalDragPastSlop(accumulatedY: Float, accumulatedX: Float, dragSlop: Float): Boolean =
+    abs(accumulatedY) > dragSlop && abs(accumulatedY) > abs(accumulatedX)
+
+private const val BottomCenterGuardHeight = 80f
+private const val BottomGuardDragSlop = 56f

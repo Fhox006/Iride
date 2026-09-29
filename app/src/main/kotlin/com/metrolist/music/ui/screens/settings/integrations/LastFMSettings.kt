@@ -4,6 +4,8 @@
  */
 
 package com.metrolist.music.ui.screens.settings.integrations
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageHeaderLayout
 import com.metrolist.music.ui.component.IrideSlider
 import com.metrolist.music.ui.component.IrideSwitch
 
@@ -80,10 +82,7 @@ import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
-import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.utils.makeTimeString
@@ -291,7 +290,6 @@ fun LastFMSettings(
     }
 
     val settingsScrollState = rememberScrollState()
-    val frostBackdrop = rememberFrostBackdrop()
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val playerBackgroundStyle by rememberEnumPreference(
         PlayerBackgroundStyleKey,
@@ -302,11 +300,15 @@ fun LastFMSettings(
         playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
     }.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    IridePageHeaderLayout(
+        title = stringResource(R.string.lastfm_integration),
+        initiallyCollapsed = true,
+        navigationIcon = { IridePageBackButton(navController) },
+        modifier = Modifier.fillMaxSize(),
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .recordFrostBackdrop(frostBackdrop)
         ) {
             if (mainTopGradient) {
                 TopScreenGradientBackground(
@@ -323,20 +325,11 @@ fun LastFMSettings(
             Column(
                 Modifier
                     .windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(
-                            WindowInsetsSides.Horizontal
-                        )
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal)
                     )
                     .verticalScroll(settingsScrollState)
                     .padding(horizontal = 16.dp)
             ) {
-                Spacer(
-                    Modifier.windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(
-                            WindowInsetsSides.Top
-                        )
-                    )
-                )
 
                 Material3SettingsGroup(
                     title = stringResource(R.string.account),
@@ -672,11 +665,5 @@ fun LastFMSettings(
             }
         }
 
-        SettingsBackTopBar(
-            title = stringResource(R.string.lastfm_integration),
-            navController = navController,
-            backdrop = frostBackdrop,
-            revealProgress = rememberDiscreteProgress(active = settingsScrollState.value > 0),
-        )
     }
 }

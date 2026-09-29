@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens.artist
 
+import com.metrolist.music.ui.utils.rememberReducedMotion
+import com.metrolist.music.ui.component.IridePageLayout
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
@@ -42,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import androidx.compose.ui.unit.dp
@@ -105,10 +108,17 @@ fun ArtistAlbumsScreen(
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
-        LazyVerticalGrid(
+        IridePageLayout(
+            titleRes = R.string.albums,
+            reducedMotion = rememberReducedMotion(),
+            navigationIcon = {
+                IconButton(onClick = navController::navigateUp, onLongClick = navController::backToMain) {
+                    Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back))
+                }
+            },
             state = lazyGridState,
             columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
-            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
         ) {
             item(
                 key = "header",
@@ -146,22 +156,6 @@ fun ArtistAlbumsScreen(
                 )
             }
         }
-
-        TopAppBar(
-            title = { Text(artist?.artist?.name.orEmpty()) },
-            navigationIcon = {
-                IconButton(
-                    onClick = navController::navigateUp,
-                    onLongClick = navController::backToMain,
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.arrow_back),
-                        contentDescription = null,
-                    )
-                }
-            },
-            scrollBehavior = scrollBehavior,
-        )
 
         SnackbarHost(
             hostState = snackbarHostState,

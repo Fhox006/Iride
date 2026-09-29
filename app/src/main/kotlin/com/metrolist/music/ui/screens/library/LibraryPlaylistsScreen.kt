@@ -5,11 +5,13 @@
 
 package com.metrolist.music.ui.screens.library
 
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +35,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -46,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import com.metrolist.music.LocalDatabase
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -57,6 +61,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -64,14 +69,21 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.metrolist.innertube.utils.parseCookieString
+import com.metrolist.innertube.YouTube
+import com.metrolist.innertube.utils.completed
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.extensions.toMediaItem
+import com.metrolist.music.models.toMediaMetadata
+import com.metrolist.music.playback.queues.ListQueue
+import com.metrolist.music.playback.queues.buildRotationQueue
 import com.metrolist.music.R
-import com.metrolist.music.constants.AlbumTopGradientKey
 import com.metrolist.music.constants.CONTENT_TYPE_HEADER
 import com.metrolist.music.constants.CONTENT_TYPE_PLAYLIST
 import com.metrolist.music.constants.GridItemSize
@@ -79,7 +91,6 @@ import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.LibraryViewType
-import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlaylistSortDescendingKey
 import com.metrolist.music.constants.PlaylistSortType
 import com.metrolist.music.constants.PlaylistSortTypeKey
@@ -101,13 +112,16 @@ import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.PlaylistGridItem
 import com.metrolist.music.ui.component.PlaylistListItem
-import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.component.frostedTopBarBackground
-import com.metrolist.music.ui.component.recordFrostBackdrop
-import com.metrolist.music.ui.component.rememberFrostBackdrop
+import com.metrolist.music.ui.component.LocalLibraryTextColor
 import com.metrolist.music.ui.component.LibraryHeroTitle
 import com.metrolist.music.ui.component.LibraryFooterCount
 import com.metrolist.music.ui.component.LibraryPageTopBar
+import com.metrolist.music.ui.component.IrideSearchBox
+import com.metrolist.music.ui.component.LibraryGridPage
+import com.metrolist.music.ui.component.LibraryPageMenuAction
+import com.metrolist.music.ui.component.LibraryPlaybackActions
+import com.metrolist.music.ui.component.IridePageLayout
+import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.rememberLibraryPageRevealState
 import com.metrolist.music.ui.component.rememberLibraryTopBarProgress
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
@@ -120,7 +134,9 @@ import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.LibraryPlaylistsViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 
 private data class VisiblePlaylistItem(
     val key: String,
@@ -143,6 +159,7 @@ fun LibraryPlaylistsScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()
     val playerConnection = LocalPlayerConnection.current ?: return
+    val database = LocalDatabase.current
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
     var viewType by rememberEnumPreference(PlaylistViewTypeKey, LibraryViewType.GRID)
@@ -154,11 +171,6 @@ fun LibraryPlaylistsScreen(
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
     val betterLibraryBeta by rememberPreference(com.metrolist.music.constants.BetterLibraryBetaKey, defaultValue = false)
-    val albumTopGradientEnabled by rememberPreference(AlbumTopGradientKey, defaultValue = true)
-    val playerBackgroundStyle by rememberEnumPreference(
-        PlayerBackgroundStyleKey,
-        defaultValue = com.metrolist.music.constants.PlayerBackgroundStyle.BETTER_ANIMATED_GRADIENT,
-    )
 
     val playlists by viewModel.allPlaylists.collectAsState()
     val downloadedPlaylistIds by viewModel.downloadedPlaylistIds.collectAsState()
@@ -176,8 +188,16 @@ fun LibraryPlaylistsScreen(
         )
     }
 
-    var isSearchActive by rememberSaveable { mutableStateOf(false) }
     val searchQuery by viewModel.searchQuery.collectAsState()
+    var searchFieldValue by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(searchQuery))
+    }
+    LaunchedEffect(searchQuery) {
+        if (searchFieldValue.text != searchQuery) {
+            searchFieldValue = TextFieldValue(searchQuery, TextRange(searchQuery.length))
+        }
+    }
+    val searchFocusRequester = remember { FocusRequester() }
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForSearch() }
     val filteredPlaylists = remember(playlists, normalizedQuery, isOffline, downloadedPlaylistIds) {
         val base = if (isOffline) playlists.filter { it.id in downloadedPlaylistIds } else playlists
@@ -208,6 +228,7 @@ fun LibraryPlaylistsScreen(
     )
 
     val itemCountText = pluralStringResource(R.plurals.n_playlist, visibleResults.size, visibleResults.size)
+    val queueTitle = stringResource(R.string.queue_all_songs)
 
     val lazyListState = rememberLazyListState()
     val lazyGridState = rememberLazyGridState()
@@ -233,7 +254,7 @@ fun LibraryPlaylistsScreen(
 
     LaunchedEffect(scrollToTop?.value) {
         if (scrollToTop?.value == true) {
-            when (viewType) {
+            when (if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else viewType) {
                 LibraryViewType.LIST -> lazyListState.animateScrollToItem(0)
                 else -> lazyGridState.animateScrollToItem(0)
             }
@@ -263,7 +284,6 @@ fun LibraryPlaylistsScreen(
         )
     }
 
-    val frostBackdrop = rememberFrostBackdrop()
     val revealState = rememberLibraryPageRevealState()
     val topBarRevealProgress = rememberLibraryTopBarProgress(
         state = revealState,
@@ -280,149 +300,99 @@ fun LibraryPlaylistsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
-            .recordFrostBackdrop(frostBackdrop)
+
             .graphicsLayer { alpha = screenProgress },
     ) {
-        if (albumTopGradientEnabled) {
-            TopScreenGradientBackground(
-                mediaMetadata = mediaMetadata,
-                playerBackground = playerBackgroundStyle,
-            )
-        }
-        CompositionLocalProvider(LocalItemHorizontalPadding provides false) {
-            when (viewType) {
-                LibraryViewType.LIST -> {
-                    LazyColumn(
-                        state = lazyListState,
-                        contentPadding = PaddingValues(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateTopPadding(),
-                            bottom = LocalPlayerAwareWindowInsets.current
-                                .asPaddingValues().calculateBottomPadding(),
-                        ),
-                    ) {
-                        item(key = "page_header", contentType = CONTENT_TYPE_HEADER) {
-                            LibraryHeroTitle(
-                                title = stringResource(R.string.playlists),
-                                entranceAlpha = screenProgress,
-                                revealState = revealState,
-                            )
-                            LibrarySortRow(
-                                sortOptions = sortOptions,
-                                currentSort = sortType,
-                                onSortChange = onSortTypeChange,
-                                sortDescending = sortDescending,
-                                onSortDescendingChange = onSortDescendingChange,
-                                viewType = viewType,
-                                onViewTypeChange = { viewType = it },
-                            )
-                        }
-
-                        item(key = "liked_pinned", contentType = CONTENT_TYPE_PLAYLIST) {
-                            PlaylistListItem(
-                                playlist = likedPlaylistPinned,
-                                autoPlaylist = true,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { navController.navigate("auto_playlist/liked") }
-                                    .animateItem(),
-                            )
-                        }
-
-                        if (visibleResults.isEmpty()) {
-                            item(key = "empty_placeholder") {
-                                if (searchQuery.isNotBlank()) {
-                                    LibrarySearchEmptyPlaceholder(modifier = Modifier.animateItem())
-                                } else {
-                                    LibrarySearchEmptyPlaceholder(
-                                        modifier = Modifier.animateItem(),
-                                        icon = R.drawable.playlist_play,
-                                        text = stringResource(R.string.library_playlist_empty),
-                                    )
-                                }
-                            }
-                        }
-
-                        items(
-                            items = visibleResults,
-                            key = { it.key },
-                            contentType = { CONTENT_TYPE_PLAYLIST },
-                        ) { item ->
-                            if (item.autoPlaylist) {
-                                PlaylistListItem(
-                                    playlist = item.playlist,
-                                    autoPlaylist = true,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            item.route?.let(navController::navigate)
-                                        }
-                                        .animateItem(),
-                                )
-                            } else {
-                                LibraryPlaylistListItem(
-                                    navController = navController,
-                                    menuState = menuState,
-                                    coroutineScope = coroutineScope,
-                                    playlist = item.playlist,
-                                    modifier = Modifier.animateItem(),
-                                )
-                            }
-                        }
-
-                        item(key = "footer") {
-                            LibraryFooterCount(text = itemCountText)
-                        }
-                    }
-
-                    HideOnScrollFAB(
-                        lazyListState = lazyListState,
-                        icon = R.drawable.add,
-                        useIrideStyle = true,
-                        onClick = { showCreatePlaylistDialog = true },
-                    )
-                }
-
+        CompositionLocalProvider(
+            LocalItemHorizontalPadding provides false,
+            LocalContentColor provides Color.White,
+            LocalLibraryTextColor provides Color.White,
+        ) {
+            when (if (viewType == LibraryViewType.LIST) LibraryViewType.GRID else viewType) {
+                LibraryViewType.LIST -> Unit
                 LibraryViewType.GRID, LibraryViewType.GRID_WIDE -> {
-                    LazyVerticalGrid(
+                    LibraryGridPage(
+                        titleRes = R.string.playlists,
+                        onNavigateUp = { navController.navigateUp() },
+                        modifier = Modifier.rubberBandOverscroll(Orientation.Vertical, lazyGridState),
                         state = lazyGridState,
-                        columns = if (viewType == LibraryViewType.GRID_WIDE) {
-                            GridCells.Fixed(3)
-                        } else {
-                            GridCells.Adaptive(
-                                minSize = GridThumbnailHeight +
-                                    if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
+                        columns = if (viewType == LibraryViewType.GRID_WIDE) GridCells.Fixed(3) else GridCells.Fixed(2),
+                        bottomPadding = LocalPlayerAwareWindowInsets.current
+                            .asPaddingValues().calculateBottomPadding(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        menuActions = buildList {
+                            if (!isOffline) add(
+                                LibraryPageMenuAction(
+                                    label = stringResource(R.string.download_all_playlists),
+                                    icon = R.drawable.download,
+                                    onClick = viewModel::downloadAllPlaylists,
+                                ),
+                            )
+                            add(
+                                LibraryPageMenuAction(
+                                    label = stringResource(R.string.create_playlist),
+                                    icon = R.drawable.add,
+                                    onClick = { showCreatePlaylistDialog = true },
+                                ),
                             )
                         },
-                        contentPadding = PaddingValues(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateTopPadding(),
-                            bottom = LocalPlayerAwareWindowInsets.current
-                                .asPaddingValues().calculateBottomPadding(),
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        playbackActions = {
+                            LibraryPlaybackActions(
+                                onShuffle = {
+                                    coroutineScope.launch {
+                                        val chosen = filteredPlaylists.randomOrNull() ?: return@launch
+                                        val queue = loadPlaylistMediaItems(database, chosen).shuffled()
+                                        if (queue.isNotEmpty()) playerConnection.playQueue(ListQueue(queueTitle, queue, 0))
+                                    }
+                                },
+                                onRotation = {
+                                    coroutineScope.launch {
+                                        val items = filteredPlaylists.flatMap { loadPlaylistMediaItems(database, it) }
+                                        val queue = database.buildRotationQueue(items)
+                                        if (queue.isNotEmpty()) playerConnection.playQueue(ListQueue(queueTitle, queue, 0))
+                                    }
+                                },
+                            )
+                        },
                     ) {
                         item(
                             key = "page_header",
                             span = { GridItemSpan(maxLineSpan) },
                             contentType = CONTENT_TYPE_HEADER,
                         ) {
-                            LibraryHeroTitle(
-                                title = stringResource(R.string.playlists),
-                                entranceAlpha = screenProgress,
-                                revealState = revealState,
+                            IrideSearchBox(
+                                query = searchFieldValue,
+                                onQueryChange = { value ->
+                                    searchFieldValue = value
+                                    viewModel.updateSearchQuery(value.text)
+                                },
+                                placeholderText = stringResource(R.string.search_playlists),
+                                focusRequester = searchFocusRequester,
+                                onFocusChanged = {},
+                                onSearch = { keyboardController?.hide() },
+                                onClear = {
+                                    searchFieldValue = TextFieldValue()
+                                    viewModel.updateSearchQuery("")
+                                },
+                                modifier = Modifier.padding(bottom = 8.dp),
                             )
+                        }
+
+                        item(
+                            key = "sort",
+                            span = { GridItemSpan(maxLineSpan) },
+                            contentType = CONTENT_TYPE_HEADER,
+                        ) {
                             LibrarySortRow(
                                 sortOptions = sortOptions,
                                 currentSort = sortType,
                                 onSortChange = onSortTypeChange,
                                 sortDescending = sortDescending,
                                 onSortDescendingChange = onSortDescendingChange,
-                                viewType = viewType,
+                                viewType = if (viewType == LibraryViewType.GRID_WIDE) LibraryViewType.GRID_WIDE else LibraryViewType.GRID,
                                 onViewTypeChange = { viewType = it },
+                                availableViewTypes = listOf(LibraryViewType.GRID, LibraryViewType.GRID_WIDE),
+                                verticalPadding = 4.dp,
                             )
                         }
 
@@ -492,32 +462,23 @@ fun LibraryPlaylistsScreen(
                         }
                     }
 
-                    HideOnScrollFAB(
-                        lazyListState = lazyGridState,
-                        icon = R.drawable.add,
-                        useIrideStyle = true,
-                        onClick = { showCreatePlaylistDialog = true },
-                    )
                 }
             }
         }
     }
 
-        LibraryPageTopBar(
-            title = stringResource(R.string.playlists),
-            revealProgress = topBarRevealProgress,
-            revealState = revealState,
-            backdrop = frostBackdrop,
-            isSearchActive = isSearchActive,
-            searchQuery = searchQuery,
-            onSearchQueryChange = viewModel::updateSearchQuery,
-            onNavigateUp = { navController.navigateUp() },
-            onSearchClick = { isSearchActive = true },
-            onCloseSearch = {
-                isSearchActive = false
-                viewModel.updateSearchQuery("")
-            },
-            keyboardController = keyboardController,
-        )
     }
+}
+private suspend fun loadPlaylistMediaItems(
+    database: com.metrolist.music.db.MusicDatabase,
+    playlist: Playlist,
+): List<androidx.media3.common.MediaItem> {
+    val storedSongs = database.playlistSongs(playlist.id).first()
+    if (storedSongs.isNotEmpty()) return storedSongs.map { it.song.toMediaItem() }
+    return YouTube.playlist(playlist.playlist.id)
+        .completed()
+        .getOrNull()
+        ?.songs
+        .orEmpty()
+        .map { it.toMediaMetadata().toMediaItem() }
 }

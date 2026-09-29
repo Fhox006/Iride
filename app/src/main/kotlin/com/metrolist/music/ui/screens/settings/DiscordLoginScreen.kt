@@ -5,6 +5,10 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import com.metrolist.music.ui.component.IridePageBackButton
+import com.metrolist.music.ui.component.IridePageHeaderLayout
 import android.annotation.SuppressLint
 import android.os.Build
 import android.view.View
@@ -43,10 +47,7 @@ import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.IconButton
-import com.metrolist.music.ui.component.SettingsBackTopBar
 import com.metrolist.music.ui.component.TopScreenGradientBackground
-import com.metrolist.music.ui.component.rememberFrostBackdrop
-import com.metrolist.music.ui.component.recordFrostBackdrop
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -70,7 +71,6 @@ fun DiscordLoginScreen(navController: NavController) {
     var discordToken by rememberPreference(DiscordTokenKey, "")
     var webView: WebView? = null
 
-    val frostBackdrop = rememberFrostBackdrop()
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val playerBackgroundStyle by rememberEnumPreference(
         PlayerBackgroundStyleKey,
@@ -81,11 +81,15 @@ fun DiscordLoginScreen(navController: NavController) {
         playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
     }.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    IridePageHeaderLayout(
+        title = stringResource(R.string.action_login),
+        initiallyCollapsed = true,
+        navigationIcon = { IridePageBackButton(navController) },
+        modifier = Modifier.fillMaxSize(),
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .recordFrostBackdrop(frostBackdrop)
         ) {
         if (mainTopGradient) {
             TopScreenGradientBackground(
@@ -101,7 +105,7 @@ fun DiscordLoginScreen(navController: NavController) {
         }
         AndroidView(
         modifier = Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
+            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .fillMaxSize(),
         factory = { context ->
             WebView(context).apply {
@@ -159,11 +163,6 @@ fun DiscordLoginScreen(navController: NavController) {
     )
         }
 
-        SettingsBackTopBar(
-            title = stringResource(R.string.action_login),
-            navController = navController,
-            backdrop = frostBackdrop,
-        )
     }
 
     BackHandler(enabled = webView?.canGoBack() == true) {

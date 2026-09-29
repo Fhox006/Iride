@@ -40,7 +40,6 @@ import com.metrolist.music.ui.screens.library.LibraryPlaylistsScreen
 import com.metrolist.music.ui.screens.library.LibrarySongsScreen
 import com.metrolist.music.ui.screens.library.LibraryScreen
 import com.metrolist.music.ui.screens.playlist.AutoPlaylistScreen
-import com.metrolist.music.ui.screens.playlist.CachePlaylistScreen
 import com.metrolist.music.ui.screens.playlist.LocalPlaylistScreen
 import com.metrolist.music.ui.screens.playlist.OnlinePlaylistScreen
 import com.metrolist.music.ui.screens.playlist.TopPlaylistScreen
@@ -49,6 +48,7 @@ import com.metrolist.music.ui.screens.recognition.RecognitionHistoryScreen
 import com.metrolist.music.ui.screens.recognition.RecognitionScreen
 import com.metrolist.music.ui.screens.search.OnlineSearchResult
 import com.metrolist.music.ui.screens.search.SearchScreen
+import com.metrolist.music.ui.screens.search.RockModuleScreen
 import com.metrolist.music.ui.screens.settings.AboutScreen
 import com.metrolist.music.ui.screens.settings.AiSettings
 import com.metrolist.music.ui.screens.settings.AndroidAutoSettings
@@ -151,6 +151,7 @@ fun NavGraphBuilder.NavigationBuilder(
     }
     composable("mood_and_genres") { MoodAndGenresScreen(navController) }
     composable("genres_screen") { GenresScreen(navController = navController) }
+    composable("rock_module") { RockModuleScreen(navController = navController) }
     composable("account") { AccountScreen(navController) }
 
     composable(
@@ -277,7 +278,7 @@ fun NavGraphBuilder.NavigationBuilder(
         route = "cache_playlist/{playlist}",
         arguments = listOf(navArgument("playlist") { type = NavType.StringType })
     ) {
-        CachePlaylistScreen(navController)
+        LibrarySongsScreen(navController = navController, isCache = true)
     }
 
     composable(
@@ -405,6 +406,9 @@ fun NavGraphBuilder.NavigationBuilder(
     }
     composable("library_songs") {
         LibrarySongsScreen(navController = navController)
+    }
+    composable("library_songs_local") {
+        LibrarySongsScreen(navController = navController, isLocal = true)
     }
     composable("library_albums") {
         LibraryAlbumsScreen(navController = navController)

@@ -5,6 +5,11 @@
 
 package com.metrolist.music.ui.screens.artist
 
+import androidx.compose.foundation.layout.statusBars
+import com.metrolist.music.ui.component.IridePageLayoutDefaults
+import com.metrolist.music.ui.component.rememberLibraryPageRevealState
+import com.metrolist.music.ui.component.LibraryHeroTitle
+import com.metrolist.music.ui.component.LibraryPageTopBar
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -60,7 +65,6 @@ import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.GridThumbnailHeight
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.ui.component.ChipsRow
-import com.metrolist.music.ui.component.CollapsingScreenHeader
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.IrideSegmentedToggle
 import com.metrolist.music.ui.component.LocalMenuState
@@ -126,41 +130,22 @@ fun ArtistDiscographyScreen(
     var selectedType by rememberSaveable(activeCategory) { mutableStateOf<AlbumReleaseType?>(null) }
     val filteredReleases = selectedType?.let { type -> typeGroups[type].orEmpty() } ?: activeReleases
 
+    val headerRevealState = rememberLibraryPageRevealState()
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier,
         topBar = {
-            CollapsingScreenHeader(
+            LibraryPageTopBar(
                 title = artistName.orEmpty(),
-                scrollBehavior = scrollBehavior,
-                pureBlack = pureBlack,
+                revealState = headerRevealState,
+                revealProgress = if (lazyGridState.firstVisibleItemIndex > 0) 1f else headerRevealState.progress,
                 isSearchActive = false,
-                onSearchActiveChange = {},
                 searchQuery = "",
                 onSearchQueryChange = {},
+                onNavigateUp = { navController.navigateUp() },
+                onSearchClick = {},
+                onCloseSearch = {},
                 keyboardController = keyboardController,
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = stringResource(R.string.back),
-                        )
-                    }
-                },
-                trailingContent = if (buckets.size > 1) {
-                    {
-                        IrideSegmentedToggle(
-                            options = buckets.map { it.category to stringResource(it.category.labelRes()) },
-                            selected = activeCategory,
-                            onSelect = { selectedCategory = it },
-                            spacing = 12.dp,
-                        )
-                    }
-                } else {
-                    null
-                },
+                showSearchAction = false,
             )
         },
         containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
@@ -171,11 +156,30 @@ fun ArtistDiscographyScreen(
             columns = GridCells.Adaptive(
                 minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp,
             ),
-            modifier = Modifier.padding(paddingValues),
+            modifier = Modifier,
             contentPadding = PaddingValues(
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
                 bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
             ),
         ) {
+            item(key = "artist_page_title", span = { GridItemSpan(maxLineSpan) }) {
+                LibraryHeroTitle(
+                    title = artistName.orEmpty(),
+                    entranceAlpha = 1f,
+                    revealState = headerRevealState,
+                    modifier = Modifier.padding(horizontal = IridePageLayoutDefaults.HorizontalPadding),
+                )
+
+                    if (buckets.size > 1) {
+                        IrideSegmentedToggle(
+                            options = buckets.map { it.category to stringResource(it.category.labelRes()) },
+                            selected = activeCategory,
+                            onSelect = { selectedCategory = it },
+                            spacing = 12.dp,
+                        )
+                    }
+            }
+
             if (typeGroups.size > 1) {
                 item(key = "type_filter", span = { GridItemSpan(maxLineSpan) }) {
                     ChipsRow(

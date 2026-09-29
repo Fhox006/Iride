@@ -27,6 +27,7 @@ import com.metrolist.kugou.KuGou
 import com.metrolist.lastfm.LastFM
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.constants.*
+import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.di.ApplicationScope
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.extensions.toInetSocketAddress
@@ -34,6 +35,7 @@ import com.metrolist.music.lyrics.JapaneseDictManager
 import com.metrolist.music.utils.CrashHandler
 import com.metrolist.music.utils.DiagnosticLog
 import com.metrolist.music.utils.GenreProvider
+import com.metrolist.music.utils.MiniPlayerSnapshotStore
 import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
 import com.metrolist.music.utils.dataStore
@@ -72,6 +74,9 @@ class App :
     @Inject
     lateinit var connectivityObserver: NetworkConnectivityObserver
 
+    @Inject
+    lateinit var database: MusicDatabase
+
     override fun onCreate() {
         super.onCreate()
 
@@ -86,9 +91,12 @@ class App :
         dataStore.keepPreferencesWarm(applicationScope)
 
         playerAnchorCache = dataStore.get(PlayerAnchorKey, dismissedAnchor)
+        MiniPlayerSnapshotStore.initialize(this)
+        if (!dataStore.get(PersistentQueueKey, true)) MiniPlayerSnapshotStore.update(null)
 
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
+            removeLibraryPreviewSong()
         }
         Timber.plant(DiagnosticLog.tree)
 
@@ -104,6 +112,14 @@ class App :
         super.onTrimMemory(level)
         if (level >= TRIM_MEMORY_MODERATE) {
             coil3.SingletonImageLoader.get(this).memoryCache?.clear()
+        }
+    }
+
+    private fun removeLibraryPreviewSong() {
+        applicationScope.launch(Dispatchers.IO) {
+            database.query {
+                getSongByIdBlocking("iride-debug-local-track")?.let { delete(it.song) }
+            }
         }
     }
 
@@ -124,6 +140,22 @@ class App :
                         val prefs = dataStore.data.first()
                         prefs[InnerTubeCookieKey]?.takeIf { it.isNotEmpty() }?.let { YouTube.cookie = it }
                         prefs[VisitorDataKey]?.takeIf { it.isNotEmpty() && it != "null" }?.let { YouTube.visitorData = it }
+                        prefs[DataSyncIdKey]?.let { raw ->
+                            YouTube.dataSyncId =
+                                raw.takeIf { !it.contains("||") }
+                                    ?: raw.takeIf { it.endsWith("||") }?.substringBefore("||")
+                                    ?: raw.substringAfter("||")
+                        }
+                        // A reconnect keeps working only if visitorData is fresh: a stale id
+                        // makes every later browse/account call fail without retry.
+                        if (YouTube.visitorData.isNullOrEmpty() || YouTube.visitorData == "null") {
+                            YouTube.visitorData().getOrNull()?.also { fresh ->
+                                YouTube.visitorData = fresh
+                                dataStore.edit { settings ->
+                                    settings[VisitorDataKey] = fresh
+                                }
+                            }
+                        }
                     }
                 }
         }

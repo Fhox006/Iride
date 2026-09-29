@@ -2,6 +2,11 @@
 <resources>
     <string name="quick_picks_section_title">Picked for you</string>
     <string name="home_mood_youtube_music">Mood &amp; Playlists for You (from YouTube Music)</string>
+    <string name="offline_ready_songs">Downloads</string>
+    <string name="in_rotation">In rotation</string>
+    <string name="download_all_albums">Download all albums</string>
+    <string name="download_all_playlists">Download all playlists</string>
+    <string name="download_songs_to_see_recent">Download songs to see them here.</string>
     <string name="home_youtube_music_playlists">Your playlists from YouTube Music</string>
     <string name="home_similar_to">Simile a</string>
     <string name="home_radios_for_you">Radio per te</string>
@@ -9,8 +14,9 @@
     <string name="home_artist_radio_title">Radio di %1$s</string>
     <string name="home_artist_radio_subtitle">Un mix continuo ispirato a questo artista</string>
     <string name="home_radio_unavailable">Radio non disponibile al momento</string>
-    <string name="home_no_mood_playlists">No playlists in this mood</string>
+    <string name="home_no_mood_playlists">No mixes in this mood</string>
     <string name="for_you_artists_title">Inspired by your favorite artists</string>
+    <string name="home_fresh_find_old_favorite">Fresh, Find, Old, Favorite</string>
     <string name="advanced_animation">Advanced animation</string>
     <string name="advanced_animation_desc">Globe lens, motion blur and film viewfinder on Home. Turn off if the app stutters</string>
     <string name="advanced_moving">Advanced moving</string>
@@ -64,4 +70,22 @@
     <string name="design_test_halo_angle">Rotazione</string>
     <string name="design_test_halo_feather">Sfumatura cerchio</string>
     <string name="design_test_halo_strength">Intensità cerchio</string>
+    <string name="home_mood_empty">No playlists available for this filter</string>
+    <string name="home_mood_load_error">Couldn’t load playlists</string>
+    <string name="home_mood_retry">Retry</string>
+    <string name="search_albums">Cerca album</string>
+    <string name="search_artists">Cerca artisti</string>
+    <string name="search_playlists">Cerca playlist</string>
+    <string name="search_songs">Cerca brani</string>
+    <string name="search_podcasts">Cerca podcast</string>
+    <string name="search_downloads">Cerca download</string>
+    <string name="no_downloads_yet">No downloads yet</string>
+    <string name="local_songs">Local Songs</string>
+    <string name="rock_module_title">Rock</string>
+    <string name="rock_trending_songs">Brani del momento</string>
+    <string name="rock_community_playlists">Playlist della community</string>
+    <string name="rock_module_empty_songs">Nessun brano Rock trovato</string>
+    <string name="rock_module_empty_playlists">Nessuna playlist Rock trovata</string>
+    <string name="rock_module_load_error">Impossibile caricare i risultati</string>
+    <string name="rock_module_loading">Caricamento…</string>
 </resources>

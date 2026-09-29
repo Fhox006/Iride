@@ -5,6 +5,13 @@
 
 package com.metrolist.music.ui.screens.artist
 
+import com.metrolist.music.ui.component.iridePageContentInsets
+import com.metrolist.music.ui.component.iridePageTitleTextStyle
+import com.metrolist.music.ui.component.iridePageTitleClip
+import androidx.compose.ui.layout.positionInWindow
+import com.metrolist.music.ui.component.iridePageTitleProgress
+import com.metrolist.music.ui.component.irideCompactTitleReveal
+import com.metrolist.music.ui.component.IridePageTopBar
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -133,9 +140,6 @@ import com.metrolist.music.ui.component.SongCarousel
 import com.metrolist.music.ui.component.SongListItem
 import com.metrolist.music.ui.component.YouTubeGridItem
 import com.metrolist.music.ui.component.YouTubeListItem
-import com.metrolist.music.ui.component.frostedTopBarBackground
-import com.metrolist.music.ui.component.recordFrostBackdrop
-import com.metrolist.music.ui.component.rememberFrostBackdrop
 import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.component.shimmer.TextPlaceholder
@@ -340,7 +344,6 @@ fun ArtistScreen(
         }
     }
     var headerRevealed by rememberSaveable { mutableStateOf(false) }
-    val frostBackdrop = rememberFrostBackdrop()
 
     val headerPull = rememberRubberBandPull()
     val grainBrush = rememberGrainBrush()
@@ -350,23 +353,17 @@ fun ArtistScreen(
     val screenProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short, easing = IrideMotion.EaseOutQuart)
 
     val artistName = artistPage?.artist?.title ?: libraryArtist?.artist?.name
-    var nameBottomPx by remember { mutableStateOf(Float.MAX_VALUE) }
+    var nameTopPx by remember { mutableStateOf(Float.MAX_VALUE) }
+    var nameHeightPx by remember { mutableStateOf(0f) }
     var topBarBottomPx by remember { mutableStateOf(0f) }
-    val headerTitleCovered by remember {
+    val topBarRevealProgress by remember {
         derivedStateOf {
-            if (!headerRevealed) return@derivedStateOf false
-            // Fallback to scroll offset when header is off-screen (nameBottom disposed)
-            // and require a bit more scroll (100px like transparentAppBar) to avoid
-            // flicker after a few pixels; this keeps frost stable even after the
-            // header item is recycled.
-            headerRevealed && (
-                lazyListState.firstVisibleItemIndex > 0 ||
-                    lazyListState.firstVisibleItemScrollOffset > 100 ||
-                    nameBottomPx <= topBarBottomPx
-                )
+            if (!headerRevealed) 0f else iridePageTitleProgress(
+                nameTopPx, nameHeightPx, topBarBottomPx,
+                pastTitle = lazyListState.firstVisibleItemIndex > 0,
+            )
         }
     }
-    val topBarRevealProgress = rememberDiscreteProgress(headerTitleCovered)
     LaunchedEffect(artistName) {
         if (artistName != null && !headerRevealed) {
             headerRevealed = true
@@ -395,11 +392,11 @@ fun ArtistScreen(
     ) {
         LazyColumn(
             modifier = Modifier
-                .recordFrostBackdrop(frostBackdrop)
+
                 .rubberBandOverscroll(Orientation.Vertical, lazyListState, headerPull),
             state = lazyListState,
             overscrollEffect = null,
-            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            contentPadding = iridePageContentInsets(LocalPlayerAwareWindowInsets.current).asPaddingValues(),
         ) {
             item(key = "header") {
                     val thumbnail = artistPage?.artist?.thumbnail ?: libraryArtist?.artist?.thumbnailUrl
@@ -501,11 +498,10 @@ fun ArtistScreen(
                                         .fillMaxWidth()
                                         .padding(horizontal = irideHorizontalPadding),
                             ) {
-                                val irideNameStyle = TextStyle(
-                                    fontFamily = SpaceMonoFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 28.sp,
-                                    letterSpacing = (-0.3).sp,
+                                val irideNameStyle = iridePageTitleTextStyle().copy(
+                                    fontWeight = FontWeight.Normal,
+                                    fontSize = 30.sp,
+                                    lineHeight = 37.sp,
                                 )
                                 if (artistName != null) {
                                     val shuffleEndpointForPlay = artistPage?.artist?.shuffleEndpoint
@@ -515,7 +511,11 @@ fun ArtistScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(top = 6.dp)
-                                            .onGloballyPositioned { nameBottomPx = it.boundsInWindow().bottom },
+                                            .onGloballyPositioned {
+                                        nameTopPx = it.positionInWindow().y
+                                        nameHeightPx = it.size.height.toFloat()
+                                    }
+                                    .iridePageTitleClip { topBarRevealProgress },
                                     ) {
                                         TypewriterText(
                                             text = artistName,
@@ -1274,20 +1274,9 @@ fun ArtistScreen(
         )
     }
 
-    Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom }
-                .frostedTopBarBackground(
-                    progress = topBarRevealProgress,
-                    barColor = MaterialTheme.colorScheme.background,
-                    strokeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                    backdrop = frostBackdrop,
-                )
-                .statusBarsPadding()
-                .height(40.dp)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    IridePageTopBar(
+            progress = topBarRevealProgress,
+            modifier = Modifier.onGloballyPositioned { topBarBottomPx = it.boundsInWindow().bottom },
         ) {
             val backProgress = rememberEnterProgress(play = true, durationMillis = IrideMotion.Short)
             Box(modifier = Modifier.irideEnterScale(backProgress, from = 0.8f)) {
@@ -1303,19 +1292,18 @@ fun ArtistScreen(
             }
             Text(
                 text = artistPage?.artist?.title ?: libraryArtist?.artist?.name.orEmpty(),
-                style = TextStyle(
+                style = MaterialTheme.typography.titleMedium.copy(
                     fontFamily = SpaceMonoFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 15.sp,
                 ),
-                color = MaterialTheme.colorScheme.onBackground,
+                color = Color.White,
                 overflow = TextOverflow.Ellipsis,
                 maxLines = 1,
                 modifier = Modifier
                     .weight(1f)
                     .padding(start = 4.dp)
-                    .irideEnter(topBarRevealProgress, 6.dp)
-                    .revealMask(topBarRevealProgress),
+                    .irideCompactTitleReveal(topBarRevealProgress),
             )
             val shareLinkAction = artistPage?.artist?.shareLink
             val radioEndpointAction = artistPage?.artist?.radioEndpoint

@@ -36,6 +36,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.metrolist.music.constants.IrideBaseBorderWidth
+import com.metrolist.music.constants.IrideSoftBorderWidth
+import com.metrolist.music.ui.theme.strokeItemSoft
+import com.metrolist.music.ui.utils.irideArtworkOverlayBorder
 import com.metrolist.music.ui.utils.rememberReducedMotion
 
 /**
@@ -52,6 +55,7 @@ fun GlassPlaylistCover(
     shape: Shape,
     iconSizeFraction: Float = 0.65f,
     modifier: Modifier = Modifier,
+    softBorder: Boolean = false,
 ) {
     val mosaicThumbnails = thumbnails.distinct().take(4)
     val reducedMotion = rememberReducedMotion()
@@ -59,6 +63,17 @@ fun GlassPlaylistCover(
         modifier =
             modifier
                 .size(size)
+                .then(
+                    if (softBorder) {
+                        Modifier.irideArtworkOverlayBorder(
+                            IrideSoftBorderWidth,
+                            MaterialTheme.colorScheme.strokeItemSoft,
+                            shape,
+                        )
+                    } else {
+                        Modifier
+                    },
+                )
                 .clip(shape)
                 .background(MaterialTheme.colorScheme.surfaceContainer),
     ) {
