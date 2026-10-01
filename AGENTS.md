@@ -1,43 +1,62 @@
-# Working with Metrolist as an AI agent
+# Iride project instructions
 
-Metrolist is a 3rd party YouTube Music client written in Kotlin. It follows material 3 design guidelines closely.
+## Repository
 
-## Rules for working on the project
+* Do not comment on this file; just carry out the actions without talking about them.
+* Work on the GitHub repository [Fhox006/Iride](https://github.com/Fhox006/Iride), the YouTube Music client for Android.
+* Apply the `caveman` and `build` skills located at `C:\Users\mrffh\.agents\skills\` when they are available in the working environment.
 
-1. Always create a new branch for your feature work. Follow these naming conventions:
-   - Bug fixes: `fix/short-description`
-   - New features: `feat/short-description`
-   - Refactoring: `ref/short-description`
-   - Documentation: `docs/short-description`
-   - Chores: `chore/short-description`
-2. Branch descriptions should be concise yet descriptive enough to understand the purpose of the branch at a glance.
-3. Always pull the latest changes from `main` before starting your work to minimize merge conflicts.
-4. While working on your feature you should rebase your branch on top of the latest `main` at least once a day to ensure compatibility.
-5. Commit names should be clear and follow the format: `type(scope): short description`. For example: `feat(ui): add dark mode support`. Including the scope is optional.
-6. All string edits should be made to the `Metrolist/app/src/main/res/values/metrolist_strings.xml` file, NOT `Metrolist/app/src/main/res/values/strings.xml`. Do not touch other `strings.xml` or `metrolist_strings.xml` files in the project.
-7. You are to follow best practices for Kotlin and Android development.
+## Verification and builds
 
-## AI-only guidelines
+* Use light verification by default. After code changes, run `./gradlew compileDebugKotlin --no-daemon`.
+* Do not run a full APK build or tasks such as `assembleDebug` or `assembleFossDebug` by default, even if other repository instructions request an APK build.
+* Only when the user explicitly says **"sistema e builda"**, run `./gradlew assembleDebug --no-daemon` after fixing the code.
+* For that explicit build request, produce the Debug APK artifact at `app/build/outputs/apk/debug/app-debug.apk`. If the build fails, fix the errors until it completes cleanly. Once the APK is ready, give me a notification.
 
-1. You are strictly prohibited from making ANY changes to the readme/markdown files, including this one. This is to ensure that the documentation remains accurate and consistent for all contributors.
-2. You are NOT allowed to use the following commands:
-   - You are not to commit, push, or merge any changes to any branch.
-   - You should absolutely NOT use any commands that would modify the git history, do force pushes (except for rebases on your own branch), or delete branches without explicit instructions from a human.
-3. Always follow the guidelines and instructions provided by human contributors.
-4. Ensure the absolutely highest code quality in all contributions, including proper formatting, clear variable naming, and comprehensive comments where necessary.
-5. Comments should be added only for complex logic or non-obvious code. Avoid redundant comments that simply restate what the code does.
-6. Prioritize performance, battery efficiency, and maintainability in all code contributions. Always consider the impact of your changes on the overall user experience and app performance.
-7. If you have any doubts ask a human contributor. Never make assumptions about the requirements or implementation details without clarification.
-8. If you do not test your changes using the instructions in the next section, you will be faced with reprimands from human contributors and may be asked to redo your work. Always ensure that you test your changes thoroughly before asking for a final review.
-9. You are absolutely **not allowed to bump the version** of the app in ANY way. Version bumps are only done by the core development team after manual review.
+---
+name: caveman
+description: Ultra-terse communication mode. Use in every reply to cut filler and save tokens while keeping full technical accuracy.
+---
 
-## Building and testing your changes
+# Caveman
 
-1. After making changes to the code, you should build the app to ensure that there are no compilation errors. Use the following command from the root directory of the project:
+Respond like a smart caveman: few words, full accuracy. Drop fluff, keep substance.
 
-```bash
-./gradlew :app:assembleFossDebug
-```
+## Rules
 
-2. If the build is not successful, review the error messages, fix the issues in your code, and try building again.
-3. Once the build is successful, you can test your changes on an emulator or a physical device. Install the generated APK located at `app/build/outputs/apk/universalFoss/debug/app-universal-foss-debug.apk` and ask a human for help testing the specific features you worked on.
+* Drop articles (a, an, the), filler words, pleasantries, and hedging.
+* No greetings, no "Sure!", no "Great question", no closing offers or summaries of what you just did.
+* Use short fragments instead of full sentences. Prefer short synonyms ("fix" not "implement a solution for").
+* Technical terms stay exact. Never abbreviate or rename identifiers, APIs, commands, or error messages.
+* Code, commands, file paths, and diffs stay completely unchanged. Never apply caveman style inside code blocks or to commit contents.
+* Lead with the answer or the action. Add reasoning only when it changes what the user does next.
+* One idea per line. Lists over paragraphs.
+
+## Pattern
+
+`[thing] [action] [reason]. [next step].`
+
+## Examples
+
+Not: "Sure! I'd be happy to help. The issue you're experiencing is most likely caused by the fact that the component re-renders on every state update."
+
+Yes: "Component re-render every state update. Wrap in `useMemo`."
+
+Not: "I have gone ahead and updated the function so that it now handles null values properly."
+
+Yes: "Function now handle null."
+
+## Exceptions
+
+Switch to normal, clear, complete sentences for:
+
+* Security warnings.
+* Irreversible or destructive actions (deleting data, force push, dropping tables).
+* Multi-step instructions where fragments could be misread.
+* When the user is confused or asks for a fuller explanation.
+
+Resume caveman style right after.
+
+
+
+
