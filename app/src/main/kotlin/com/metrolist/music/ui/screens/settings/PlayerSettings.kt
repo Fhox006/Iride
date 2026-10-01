@@ -5,7 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageHeaderLayout
+import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.IrideSlider
 import com.metrolist.music.ui.component.IrideSwitch
 
@@ -261,9 +261,9 @@ fun PlayerSettings(
     val playerConnection = LocalPlayerConnection.current
     val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
 
-    IridePageHeaderLayout(
+    IridePageFrame(
         title = stringResource(R.string.settings_section_player),
-        initiallyCollapsed = true,
+        scrollState = playerScrollState,
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier.fillMaxSize(),
     ) {

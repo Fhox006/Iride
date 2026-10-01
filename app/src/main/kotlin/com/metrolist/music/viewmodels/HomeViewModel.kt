@@ -65,6 +65,7 @@ import com.metrolist.music.discovery.MixMood
 import com.metrolist.music.discovery.MoodMixes
 import com.metrolist.music.discovery.MixPosterRepository
 import com.metrolist.music.discovery.MoodLoadRetry
+import com.metrolist.music.discovery.MoodPageCache
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.update
 import com.metrolist.music.discovery.HeroCarouselGenerator
@@ -127,7 +128,7 @@ import kotlin.random.Random
 
 private const val QUICK_PICKS_TARGET_COUNT = 60
 private const val HOME_MIX_CONTINUATION_LIMIT = 3
-private const val MAX_SIMILAR_RECOMMENDATIONS = 30
+private const val MAX_SIMILAR_RECOMMENDATIONS = 14
 private const val HOME_SIMILAR_CONTINUATION_LIMIT = 6
 
 private val HomeMixTitleMatchers = listOf(
@@ -467,15 +468,25 @@ class HomeViewModel @Inject constructor(
     private var moodPosterSize = 448
     private var requestedMoodParams: String? = null
     private var requestedMoodFilters: Triple<Boolean, Boolean, Boolean>? = null
+    private val moodPageCache = MoodPageCache(context)
 
     private fun publishMoodMixes(items: List<PlaylistItem>, mood: MixMood?, revalidate: Boolean) {
         moodPosterJob?.cancel()
-        moodMixItems.value = items
         val ids = items.map { it.id }.toSet()
         moodPosterUrls.update { urls -> urls.filterKeys { it in ids } }
-        if (items.isEmpty()) return
+        if (items.isEmpty()) {
+            moodMixItems.value = items
+            return
+        }
         val size = moodPosterSize
         moodPosterJob = viewModelScope.launch(Dispatchers.IO) {
+            moodPosters.prepare(items, mood ?: MixMood.CHILL, size, revalidate = false) { id, path ->
+                coroutineContext.ensureActive()
+                moodPosterUrls.update { if (path == null) it - id else it + (id to path) }
+            }
+            coroutineContext.ensureActive()
+            moodMixItems.value = items
+            if (!revalidate) return@launch
             var pending = items
             val delays = longArrayOf(0, 1_500, 4_000, 10_000)
             for (attempt in delays.indices) {
@@ -535,15 +546,41 @@ class HomeViewModel @Inject constructor(
             loadedMoodFilters = null
         }
         isMoodLoading.value = true
-        moodPageJob = viewModelScope.launch(Dispatchers.IO) {
+        val cacheFile = moodPageCache.file(chipTitle.orEmpty(), filters)
+        moodPageJob = viewModelScope.launch(Dispatchers.IO, start = kotlinx.coroutines.CoroutineStart.LAZY) {
             val myJob = coroutineContext[kotlinx.coroutines.Job]
             try {
+                moodPageCache.read(cacheFile)?.let { cached ->
+                    coroutineContext.ensureActive()
+                    if (moodPageJob !== myJob) return@launch
+                    moodPage.value = cached
+                    loadedMoodParams.value = params
+                    loadedMoodFilters = filters
+                    publishMoodMixes(MoodMixes.select(cached.sections.flatMap { it.items }), mood, revalidate = false)
+                }
                 val result = Result.success(MoodLoadRetry.load {
-                    withTimeout(15_000L) { YouTube.home(params = params).getOrThrow() }
+                    withTimeout(25_000L) {
+                        // Chip parameters belong to the current YouTube session. Resolve them
+                        // again so waking the phone cannot reuse an expired filter endpoint.
+                        val freshHome = YouTube.home().getOrThrow()
+                        val chip = MoodMixes.chips(freshHome.chips).firstOrNull {
+                            it.title.equals(chipTitle, ignoreCase = true)
+                        } ?: error("Requested mood is missing from YouTube")
+                        val page = YouTube.home(params = chip.endpoint?.params).getOrThrow()
+                        val selected = page.chips?.firstOrNull { it.isSelected }
+                        check(selected == null ||
+                            (MixMood.fromChip(selected.title)?.label ?: selected.title)
+                                .equals(chipTitle, ignoreCase = true)) { "YouTube returned a different mood" }
+                        check(MoodMixes.select(page.sections.flatMap { it.items }).isNotEmpty()) {
+                            "YouTube returned no mood mixes"
+                        }
+                        page
+                    }
                 })
                 result.onSuccess { nextSections ->
                     coroutineContext.ensureActive()
-                    if (moodPageJob !== myJob || params != requestedMoodParams) return@onSuccess
+                    if (moodPageJob !== myJob || params != requestedMoodParams ||
+                        filters != requestedMoodFilters) return@onSuccess
                     val filteredPage = nextSections.copy(
                         sections = nextSections.sections.mapNotNull { section ->
                             val filteredItems = section.items
@@ -559,6 +596,7 @@ class HomeViewModel @Inject constructor(
                     loadedMoodParams.value = params
                     loadedMoodFilters = filters
                     preferredMoodParams.value = params
+                    moodPageCache.write(cacheFile, filteredPage)
                     if (chipTitle != null) {
                         context.dataStore.edit { prefs ->
                             prefs[LastMoodChipTitleKey] = chipTitle
@@ -575,6 +613,7 @@ class HomeViewModel @Inject constructor(
                 if (moodPageJob === myJob) isMoodLoading.value = false
             }
         }
+        moodPageJob?.start()
     }
 
     val pinnedSpeedDialItems: StateFlow<List<SpeedDialItem>> =

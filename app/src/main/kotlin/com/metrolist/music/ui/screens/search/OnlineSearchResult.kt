@@ -16,20 +16,17 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,6 +72,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.NavController
+import com.metrolist.music.LocalPlayerAwareWindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import com.metrolist.music.ui.component.LibraryListPage
+import com.metrolist.music.ui.component.LibraryPageMenuAction
 import com.metrolist.music.ui.component.IrideSearchBox
 import com.metrolist.music.ui.component.LocalItemHorizontalPadding
 import com.metrolist.music.ui.component.SharedHomeSectionTitle
@@ -163,6 +164,7 @@ fun OnlineSearchResult(
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
+    val lazyListState = rememberLazyListState()
     val keyboardController = LocalSoftwareKeyboardController.current
     val scrollToTopCount by savedStateHandle
         ?.getStateFlow("scrollToTopCount", 0)
@@ -174,6 +176,7 @@ fun OnlineSearchResult(
     LaunchedEffect(scrollToTopCount) {
         if (scrollToTopCount > lastHandledCount) {
             lastHandledCount = scrollToTopCount
+            lazyListState.scrollToItem(0)
             kotlinx.coroutines.delay(100)
             try {
                 focusRequester.requestFocus()
@@ -230,8 +233,7 @@ fun OnlineSearchResult(
                     mainTopGradient -> Color.Transparent
                     else -> MaterialTheme.colorScheme.background
                 },
-            )
-            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
+            ),
     ) {
         OnlineSearchResultsBody(
             navController = navController,
@@ -246,20 +248,14 @@ fun OnlineSearchResult(
                 isSearchFocused = false
                 focusManager.clearFocus()
             },
+            lazyListState = lazyListState,
             header = {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                        .padding(horizontal = 20.dp),
                 ) {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = stringResource(R.string.dismiss),
-                            tint = MaterialTheme.colorScheme.textSecondary,
-                        )
-                    }
                     IrideSearchBox(
                         query = query,
                         onQueryChange = { query = it },
@@ -269,8 +265,10 @@ fun OnlineSearchResult(
                         onSearch = { onSearch(query.text) },
                         onClear = { query = TextFieldValue("") },
                         modifier = Modifier.weight(1f),
+                        showBorder = false,
                     )
                 }
+                Spacer(Modifier.height(8.dp))
             },
         )
     }
@@ -295,6 +293,8 @@ fun OnlineSearchResultsBody(
     modifier: Modifier = Modifier,
     header: (@Composable () -> Unit)? = null,
     onScrollChanged: (Boolean) -> Unit = {},
+    pageMenuSections: List<List<LibraryPageMenuAction>> = emptyList(),
+    lazyListState: LazyListState = rememberLazyListState(),
 ) {
     val menuState = LocalMenuState.current
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -303,7 +303,6 @@ fun OnlineSearchResultsBody(
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val coroutineScope = rememberCoroutineScope()
-    val lazyListState = rememberLazyListState()
     LaunchedEffect(lazyListState) {
         snapshotFlow { lazyListState.firstVisibleItemIndex > 0 }
             .collect(onScrollChanged)
@@ -582,19 +581,24 @@ fun OnlineSearchResultsBody(
             if (smartSelected) {
                 val order = viewModel.smartSearchOrder
                 val topResult = searchSummary?.summaries?.firstOrNull()
+                val bestResults = searchSummary?.summaries
+                    ?.flatMap { it.items }
+                    ?.distinctBy { it.id }
+                    ?.take(4)
+                    .orEmpty()
 
                 if (order.isNotEmpty()) {
-                    topResult?.let { top ->
+                    if (bestResults.isNotEmpty()) {
                         item(key = "smart_top_title") {
                             NavigationTitle(
-                                top.title,
+                                if (useIrideStyle) stringResource(R.string.filter_smart_search) else topResult?.title.orEmpty(),
                                 useIrideStyle = useIrideStyle,
                                 topPadding = if (useIrideStyle) 16.dp else null,
                                 bottomPadding = if (useIrideStyle) 12.dp else null,
                             )
                         }
                         items(
-                            items = top.items,
+                            items = bestResults,
                             key = { "smart_top_${it.id}" },
                             itemContent = ytItemContent,
                         )
@@ -611,11 +615,6 @@ fun OnlineSearchResultsBody(
                             if (sectionFilter == FILTER_SONG && useIrideStyle) {
                                 SharedHomeSectionTitle(
                                     title = stringResource(R.string.filter_songs),
-                                    onClick = {
-                                        smartSelected = false
-                                        if (viewModel.filter.value != sectionFilter) viewModel.filter.value = sectionFilter
-                                        coroutineScope.launch { lazyListState.animateScrollToItem(0) }
-                                    },
                                 )
                             } else {
                                 if (useIrideStyle) Spacer(modifier = Modifier.height(8.dp))
@@ -624,11 +623,6 @@ fun OnlineSearchResultsBody(
                                     useIrideStyle = useIrideStyle,
                                     topPadding = if (useIrideStyle) 16.dp else null,
                                     bottomPadding = if (useIrideStyle) 12.dp else null,
-                                    onClick = {
-                                        smartSelected = false
-                                        if (viewModel.filter.value != sectionFilter) viewModel.filter.value = sectionFilter
-                                        coroutineScope.launch { lazyListState.animateScrollToItem(0) }
-                                    },
                                 )
                             }
                         }
@@ -733,53 +727,43 @@ fun OnlineSearchResultsBody(
                 }
             }
 
-            item(key = "bottom_spacer") {
-                Spacer(modifier = Modifier.height(MiniPlayerHeight + MiniPlayerBottomSpacing + NavigationBarHeight))
+            if (header == null) {
+                item(key = "bottom_spacer") {
+                    Spacer(modifier = Modifier.height(MiniPlayerHeight + MiniPlayerBottomSpacing + NavigationBarHeight))
+                }
             }
     }
 
     if (header != null) {
-        LaunchedEffect(isSearchFocused) {
-            if (!isSearchFocused) lazyListState.scrollToItem(0)
-        }
-
-        Box(modifier = modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                if (isSearchFocused) {
-                    header()
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                    ) {
-                        OnlineSearchScreen(
-                            query = queryText,
-                            onQueryChange = onQueryChange,
-                            navController = navController,
-                            onSearch = onSearch,
-                            onDismiss = onDismissSuggestions,
-                            pureBlack = pureBlack,
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        state = lazyListState,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                    ) {
-                        item(key = "search_header") { header() }
-                        item(key = "chips_row") { chipsRow() }
-                        resultsListContent()
-                    }
-                }
+        if (queryText.isBlank() || isSearchFocused) {
+            OnlineSearchScreen(
+                query = queryText,
+                onQueryChange = onQueryChange,
+                navController = navController,
+                onSearch = onSearch,
+                onDismiss = onDismissSuggestions,
+                pureBlack = pureBlack,
+                isFocused = isSearchFocused,
+                header = header,
+                pageMenuSections = pageMenuSections,
+                lazyListState = lazyListState,
+            )
+        } else {
+            LibraryListPage(
+                titleRes = R.string.search,
+                state = lazyListState,
+                bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+                onNavigateUp = { navController.navigateUp() },
+                modifier = modifier,
+                contentHorizontalPadding = 0.dp,
+                menuSections = pageMenuSections,
+            ) {
+                item(key = "search_header") { header() }
+                resultsListContent()
             }
-
         }
     } else {
         Column(modifier = modifier.fillMaxWidth()) {
-            chipsRow()
-
             Box(modifier = Modifier.weight(1f)) {
                 LazyColumn(
                     state = lazyListState,

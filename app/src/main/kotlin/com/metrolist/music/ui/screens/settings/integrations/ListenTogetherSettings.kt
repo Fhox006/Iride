@@ -5,7 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings.integrations
 import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageHeaderLayout
+import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.IrideSwitch
 
 import android.widget.Toast
@@ -372,9 +372,9 @@ fun ListenTogetherSettings(
         playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
     }.collectAsStateWithLifecycle()
 
-    IridePageHeaderLayout(
+    IridePageFrame(
         title = stringResource(R.string.listen_together),
-        initiallyCollapsed = true,
+        scrollState = settingsScrollState,
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier.fillMaxSize(),
     ) {

@@ -19,6 +19,8 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 
@@ -30,7 +32,9 @@ private val FROST_BLUR_RADIUS = 20.dp
 class FrostBackdrop internal constructor(
     internal val content: GraphicsLayer,
     internal val blurred: GraphicsLayer,
-)
+) {
+    internal var positionOnScreen: Offset = Offset.Zero
+}
 
 /**
  * Screen-wide frost snapshot recorded once around the tab surface (gradient included), so every
@@ -47,7 +51,7 @@ fun rememberFrostBackdrop(): FrostBackdrop? {
     val blurred = rememberGraphicsLayer()
     val radiusPx = with(LocalDensity.current) { FROST_BLUR_RADIUS.toPx() }
     blurred.renderEffect = remember(radiusPx) { BlurEffect(radiusPx, radiusPx, TileMode.Clamp) }
-    return FrostBackdrop(content, blurred)
+    return remember(content, blurred) { FrostBackdrop(content, blurred) }
 }
 
 /**
@@ -61,7 +65,7 @@ fun rememberFrostBackdrop(): FrostBackdrop? {
 fun Modifier.recordFrostBackdrop(backdrop: FrostBackdrop?, enabled: Boolean = true): Modifier {
     val layer = backdrop?.content ?: return this
     if (!enabled) return this
-    return drawWithContent {
+    return onGloballyPositioned { backdrop.positionOnScreen = it.positionOnScreen() }.drawWithContent {
         layer.record { this@drawWithContent.drawContent() }
         drawLayer(layer)
     }

@@ -34,6 +34,7 @@ data class HomePage(
         val title: String,
         val endpoint: BrowseEndpoint?,
         val deselectEndPoint: BrowseEndpoint?,
+        val isSelected: Boolean = false,
     ) {
         companion object {
             fun fromChipCloudChipRenderer(renderer: SectionListRenderer.Header.ChipCloudRenderer.Chip): Chip? {
@@ -41,6 +42,7 @@ data class HomePage(
                     title = renderer.chipCloudChipRenderer.text?.runs?.firstOrNull()?.text ?: return null,
                     endpoint = renderer.chipCloudChipRenderer.navigationEndpoint?.browseEndpoint,
                     deselectEndPoint = renderer.chipCloudChipRenderer.onDeselectedCommand?.browseEndpoint,
+                    isSelected = renderer.chipCloudChipRenderer.isSelected,
                 )
             }
         }

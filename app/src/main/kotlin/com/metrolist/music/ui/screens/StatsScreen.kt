@@ -321,6 +321,8 @@ fun StatsScreen(
                 title = stringResource(R.string.stats),
                 scrollBehavior = scrollBehavior,
                 pureBlack = pureBlack,
+                // Keep the expanded title area transparent to avoid a solid panel above the page content.
+                transparentBackground = true,
                 isSearchActive = isSearching,
                 onSearchActiveChange = { isSearching = it },
                 searchQuery = query.text,

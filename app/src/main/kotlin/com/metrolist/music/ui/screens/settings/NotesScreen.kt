@@ -6,7 +6,7 @@
 package com.metrolist.music.ui.screens.settings
 
 import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageHeaderLayout
+import com.metrolist.music.ui.component.IridePageFrame
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -101,9 +101,13 @@ fun NotesScreen(
         playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
     }.collectAsStateWithLifecycle()
 
-    IridePageHeaderLayout(
+    IridePageFrame(
         title = stringResource(R.string.notes_screen_title),
-        initiallyCollapsed = true,
+        scrollState = if (tabIndex == 0) albumsListState else songsListState,
+        scrollOffset = {
+            val state = if (tabIndex == 0) albumsListState else songsListState
+            if (state.firstVisibleItemIndex > 0) Int.MAX_VALUE else state.firstVisibleItemScrollOffset
+        },
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -177,6 +181,7 @@ fun NotesScreen(
                 } else {
                     LazyColumn(
                         state = albumsListState,
+                        overscrollEffect = null,
                         contentPadding = PaddingValues(
                             start = 16.dp,
                             end = 16.dp,
@@ -203,6 +208,7 @@ fun NotesScreen(
                 } else {
                     LazyColumn(
                         state = songsListState,
+                        overscrollEffect = null,
                         contentPadding = PaddingValues(
                             start = 16.dp,
                             end = 16.dp,

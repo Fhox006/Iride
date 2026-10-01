@@ -42,9 +42,11 @@ internal data class CachedMixPoster(val imagePath: String, val photoSource: MixP
 internal class MixPosterRepository(private val context: Context) {
     companion object {
         fun cachedPoster(context: Context, mixId: String, excludedThumbnail: String? = null): CachedMixPoster? = try {
-            val directory = File(context.cacheDir, "mood_mix_posters")
             val key = MessageDigest.getInstance("SHA-256")
                 .digest(mixId.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+            val directory = listOf(context.filesDir, context.cacheDir)
+                .map { File(it, "mood_mix_posters") }
+                .firstOrNull { File(it, "$key.json").isFile } ?: throw IOException("No cached poster")
             val json = Json { ignoreUnknownKeys = true }
             val entry = json.decodeFromString<Entry>(
                 AtomicFile(File(directory, "$key.json")).openRead().bufferedReader().use { it.readText() },
@@ -67,9 +69,11 @@ internal class MixPosterRepository(private val context: Context) {
         .diskCache(null)
         .build()
 
-    private val directory = File(context.cacheDir, "mood_mix_posters")
+    private val directory = File(context.filesDir, "mood_mix_posters")
     private val json = Json { ignoreUnknownKeys = true }
     private val mutex = Mutex()
+    private val displayedPosters = mutableMapOf<String, String>()
+    private var migrated = false
 
     suspend fun prepare(
         mixes: List<PlaylistItem>,
@@ -80,6 +84,17 @@ internal class MixPosterRepository(private val context: Context) {
     ): Set<String> = withContext(Dispatchers.IO) {
         mutex.withLock {
             if (!directory.exists() && !directory.mkdirs()) return@withLock mixes.map { it.id }.toSet()
+            if (!migrated) {
+                val legacy = File(context.cacheDir, "mood_mix_posters")
+                // Copy images before metadata so an interrupted migration remains recoverable.
+                legacy.listFiles().orEmpty().sortedBy { it.extension == "json" }.forEach { source ->
+                    val target = File(directory, source.name)
+                    if (source.isFile && !target.exists()) {
+                        recover { atomicWrite(target) { output -> source.inputStream().use { it.copyTo(output) } } }
+                    }
+                }
+                migrated = true
+            }
             val entries = mixes.associate { it.id to read(it.id) }.toMutableMap()
             for (mix in mixes) {
                 currentCoroutineContext().ensureActive()
@@ -89,13 +104,15 @@ internal class MixPosterRepository(private val context: Context) {
                     (!mix.thumbnail.isNullOrBlank() && old?.photoUrl == mix.thumbnail)
                 if (old != null && image(old).isFile && !obsoleteSource) {
                     image(old).setLastModified(System.currentTimeMillis())
-                    onPoster(mix.id, image(old).absolutePath)
+                    val path = displayedPosters.getOrPut(mix.id) { image(old).absolutePath }
+                    onPoster(mix.id, path)
                 } else if (old == null || obsoleteSource) {
                     val fallback = renderAndSave(mix, MixMood.fromMixTitle(mix.title) ?: mood,
                         size, null, null, mix.id.hashCode().toLong(),
                         0, null, photoSource = MixPosterPhotoSource.GRAPHIC)
                     if (fallback != null) {
                         entries[mix.id] = fallback
+                        displayedPosters[mix.id] = image(fallback).absolutePath
                         onPoster(mix.id, image(fallback).absolutePath)
                     } else onPoster(mix.id, null)
                 } else onPoster(mix.id, null)
@@ -135,7 +152,7 @@ internal class MixPosterRepository(private val context: Context) {
                 val page = pages[mix.id]
                 val firstTrack = page?.songs?.firstOrNull()?.id ?: old?.firstTrackId
                 val firstArtist = firstArtist(page?.songs?.firstOrNull()?.artists) ?: old?.firstArtistId
-                val refresh = revalidate && (mix.id in changing || old?.rendererVersion != MixPosterRenderer.VERSION)
+                val refresh = revalidate && mix.id in changing
                 val rerender = old == null || old.size != size || old.title != mix.title ||
                     old.mood != mixMood.name || old.rendererVersion != MixPosterRenderer.VERSION || !image(old).isFile
                 val sourceFile = old?.takeIf {
@@ -191,7 +208,7 @@ internal class MixPosterRepository(private val context: Context) {
                     } else bitmap?.recycle()
                 }
                 if (selected?.luminance?.let { it >= MixPosterPolicy.MIN_AVERAGE_LUMINANCE } != true &&
-                    old != null && MixPosterPolicy.isArtistSource(old.photoSource, old.photoUrl, mix.thumbnail) &&
+                    revalidate && old != null && MixPosterPolicy.isArtistSource(old.photoSource, old.photoUrl, mix.thumbnail) &&
                     !old.photoUrl.isNullOrBlank()) {
                     when (val photo = loadPhoto(old.photoUrl)) {
                         is PhotoLoadResult.Ready -> {
@@ -206,7 +223,8 @@ internal class MixPosterRepository(private val context: Context) {
                         PhotoLoadResult.Unavailable -> Unit
                     }
                 }
-                if (selected == null && old != null && image(old).isFile && !rerender) {
+                if (selected == null && old != null && image(old).isFile &&
+                    (!rerender || old.photoSource == MixPosterPhotoSource.ARTIST)) {
                     old.artistId?.let { assigned[mix.id] = it }
                     continue
                 }
@@ -229,7 +247,12 @@ internal class MixPosterRepository(private val context: Context) {
                     entries[mix.id] = saved
                     selected?.artist?.let { assigned[mix.id] = it }
                     currentCoroutineContext().ensureActive()
-                    onPoster(mix.id, image(saved).absolutePath)
+                    // Weekly photo replacements become visible in the next session. Initial
+                    // photos and layout repairs can replace placeholders immediately.
+                    if (old?.photoSource != MixPosterPhotoSource.ARTIST || rerender) {
+                        displayedPosters[mix.id] = image(saved).absolutePath
+                        onPoster(mix.id, image(saved).absolutePath)
+                    }
                 }
             }
             trim(entries.values.filterNotNull().flatMap { listOfNotNull(it.imageName, it.sourceImageName) }.toSet())
@@ -366,20 +389,14 @@ internal class MixPosterRepository(private val context: Context) {
 
     private fun trim(protectedNames: Set<String>) {
         val files = directory.listFiles().orEmpty()
-        val now = System.currentTimeMillis()
-        val freshNames = files.filter { it.extension == "json" }.flatMap { file ->
+        val referencedNames = files.filter { it.extension == "json" }.flatMap { file ->
             val entry = try { json.decodeFromString<Entry>(file.readText()) } catch (_: Exception) { null }
-            if (entry != null && now - entry.photoFetchedAt < MixPosterPolicy.WEEK_MS) {
-                listOfNotNull(entry.imageName, entry.sourceImageName)
-            } else emptyList()
+            entry?.let { listOfNotNull(it.imageName, it.sourceImageName) }.orEmpty()
         }.toSet()
-        var bytes = files.sumOf { it.length() }
-        val limit = 100L * 1024 * 1024
-        for (file in files.filter { it.extension == "png" && it.name !in protectedNames && it.name !in freshNames }
-            .sortedBy { it.lastModified() }) {
-            if (bytes <= limit) break
-            val length = file.length()
-            if (file.delete()) bytes -= length
+        val displayedNames = displayedPosters.values.map { File(it).name }.toSet()
+        for (file in files.filter { it.extension == "png" && it.name !in protectedNames &&
+            it.name !in referencedNames && it.name !in displayedNames }) {
+            file.delete()
         }
         for (file in files.filter { it.extension == "json" }) {
             val entry = try { json.decodeFromString<Entry>(file.readText()) } catch (_: Exception) { null }

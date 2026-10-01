@@ -12,7 +12,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -94,7 +93,6 @@ import com.metrolist.music.extensions.normalizeForSearch
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.IrideSearchBox
-import com.metrolist.music.ui.component.rubberBandOverscroll
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.LocalMenuState
@@ -270,7 +268,6 @@ fun LibraryPodcastsScreen(
                 IridePageLayout(
                     titleRes = R.string.filter_podcasts,
                     showTopBar = true,
-                    modifier = Modifier.rubberBandOverscroll(Orientation.Vertical, lazyListState),
                     state = lazyListState,
                     reducedMotion = rememberReducedMotion(),
                     bottomPadding = insets.calculateBottomPadding(),
@@ -344,7 +341,6 @@ fun LibraryPodcastsScreen(
                 IridePageLayout(
                     titleRes = R.string.filter_podcasts,
                     showTopBar = true,
-                    modifier = Modifier.rubberBandOverscroll(Orientation.Vertical, lazyListState),
                     state = lazyListState,
                     reducedMotion = rememberReducedMotion(),
                     bottomPadding = insets.calculateBottomPadding(),
@@ -423,7 +419,6 @@ fun LibraryPodcastsScreen(
                 IridePageLayout(
                     titleRes = R.string.filter_podcasts,
                     showTopBar = true,
-                    modifier = Modifier.rubberBandOverscroll(Orientation.Vertical, lazyListState),
                     state = lazyListState,
                     reducedMotion = rememberReducedMotion(),
                     bottomPadding = insets.calculateBottomPadding(),

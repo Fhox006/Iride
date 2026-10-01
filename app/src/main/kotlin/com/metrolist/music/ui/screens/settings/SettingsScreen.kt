@@ -5,16 +5,11 @@
 
 package com.metrolist.music.ui.screens.settings
 
-import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
-import com.metrolist.music.ui.component.rememberLibraryPageRevealState
-import com.metrolist.music.ui.component.IridePageTopBar
 import android.app.Activity
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -22,7 +17,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,13 +31,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -54,7 +46,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -67,7 +58,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -101,10 +91,8 @@ import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
-import com.metrolist.music.ui.component.rubberBandOverscroll
-import com.metrolist.music.ui.component.TopNavigationBar
-import com.metrolist.music.ui.component.IridePageTitle
-import com.metrolist.music.ui.component.IridePageLayoutDefaults
+import com.metrolist.music.ui.component.IrideIconTile
+import com.metrolist.music.ui.component.IridePageLayout
 import com.metrolist.music.ui.utils.rememberDiscreteProgress
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.Updater
@@ -185,72 +173,26 @@ fun SettingsScreen(
     val accountName = if (accountNameFlow != "Guest") accountNameFlow else accountNamePref
     val accountImageUrl: String? = accountImageUrlFlow ?: accountPhotoUrlPref.takeIf { it.isNotEmpty() }
 
-    val settingsScrollState = rememberScrollState()
-    val headerRevealState = rememberLibraryPageRevealState()
-    val topBarRevealProgress = headerRevealState.progress
-
-    Scaffold(
-        modifier = Modifier,
-        topBar = {
-            IridePageTopBar(
-                title = stringResource(R.string.account),
-                progress = topBarRevealProgress,
-                modifier = Modifier.onGloballyPositioned {
-                    headerRevealState.topBarBottomPx = it.positionInWindow().y + it.size.height
-                },
-                actions = {
-                    if (topNavBarController != null && topBarRevealProgress >= 1f) advancedMenuButton()
-                },
-            )
+    val settingsListState = rememberLazyListState()
+    IridePageLayout(
+        titleRes = R.string.account,
+        state = settingsListState,
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+        // PageFrame guidance: keep this off for Account settings. Enabling the fixed top bar adds a black panel above the expanded title; showTopBar = false removes it and keeps the Home-style title presentation.
+        showTopBar = false,
+        topBarStrokeColor = Color.Transparent,
+        actions = {
+            if (topNavBarController != null) advancedMenuButton()
         },
-        containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0),
-    ) { paddingValues ->
-    Box(Modifier.fillMaxSize()) {
-    Box(
-        Modifier
-            .fillMaxSize()
     ) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
-        )
-    Column(
-        Modifier
-            .fillMaxSize()
-            .windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(
-                    WindowInsetsSides.Horizontal
-                )
-            )
-            .rubberBandOverscroll(Orientation.Vertical, settingsScrollState)
-            .verticalScroll(settingsScrollState)
-            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + IridePageLayoutDefaults.BarHeight + IridePageLayoutDefaults.ContentTopSpacing)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 16.dp, bottom = IridePageLayoutDefaults.TitleBottomSpacing),
-        ) {
-            IridePageTitle(
-                titleRes = R.string.account,
-                monospace = true,
-                maxLines = 2,
-                modifier = Modifier.weight(1f)
-                    .onGloballyPositioned {
-                        headerRevealState.titleTopPx = it.positionInWindow().y
-                        headerRevealState.titleHeightPx = it.size.height.toFloat()
-                    }
-                    .alpha(1f - headerRevealState.progress),
-            )
-            if (topNavBarController != null && topBarRevealProgress < 1f) {
-                advancedMenuButton()
-            }
-        }
-
-    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+        item(key = "settings_content") {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal)),
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -384,6 +326,7 @@ fun SettingsScreen(
             items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.person),
+                    iconContainerColor = Color(0xFF526A83),
                     title = { Text(stringResource(R.string.my_account)) },
                     description = { Text(stringResource(R.string.settings_account_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = {
@@ -407,6 +350,7 @@ fun SettingsScreen(
             items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.play),
+                    iconContainerColor = Color(0xFF80585B),
                     title = { Text(stringResource(R.string.playback)) },
                     description = { Text(stringResource(R.string.settings_playback_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
@@ -414,6 +358,7 @@ fun SettingsScreen(
                 ),
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.language),
+                    iconContainerColor = Color(0xFF5E744B),
                     title = { Text(stringResource(R.string.content)) },
                     description = { Text(stringResource(R.string.settings_content_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
@@ -421,6 +366,7 @@ fun SettingsScreen(
                 ),
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.grid_view),
+                    iconContainerColor = Color(0xFF47766D),
                     title = { Text(stringResource(R.string.interface_settings)) },
                     description = { Text(stringResource(R.string.settings_appearance_interface_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
@@ -435,10 +381,19 @@ fun SettingsScreen(
             items = listOfNotNull(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.storage),
+                    iconContainerColor = Color(0xFF806247),
                     title = { Text(stringResource(R.string.app_management_backup)) },
                     description = { Text(stringResource(R.string.settings_storage_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
                     onClick = { navController.navigate("settings/backup_restore") }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.download),
+                    iconContainerColor = Color(0xFF47766D),
+                    title = { Text(stringResource(R.string.spotify_exportify_title)) },
+                    description = { Text(stringResource(R.string.spotify_exportify_description), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = { Icon(painter = arrowIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
+                    onClick = { navController.navigate("spotify_import") }
                 ),
                 if (hasAndroidAuto && advancedMode) Material3SettingsItem(
                     icon = painterResource(R.drawable.ic_android_auto),
@@ -449,6 +404,7 @@ fun SettingsScreen(
                 ) else null,
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.info),
+                    iconContainerColor = Color(0xFF62666B),
                     title = { Text(stringResource(R.string.about)) },
                     description = { Text(stringResource(R.string.settings_system_desc), style = MaterialTheme.typography.bodySmall) },
                     showBadge = BuildConfig.UPDATER_AVAILABLE && latestVersionName != BuildConfig.VERSION_NAME,
@@ -463,7 +419,11 @@ fun SettingsScreen(
         Material3SettingsGroup(
             items = listOf(
                 Material3SettingsItem(
-                    leadingContent = { DonationIconBounce() },
+                    leadingContent = {
+                        IrideIconTile(color = Color(0xFF79673C)) {
+                            DonationIconBounce()
+                        }
+                    },
                     title = { Text(stringResource(R.string.credits_donations)) },
                     description = { Text(stringResource(R.string.credits_donations_desc), style = MaterialTheme.typography.bodySmall) },
                     trailingContent = {
@@ -481,39 +441,27 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        Spacer(
-            Modifier.windowInsetsPadding(
-                LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom)
-            )
-        )
-    }
-    }
-    }
-    }
-    }
+                }
+            }
+        }
+}
 }
 
 /** One-shot on mount: heart pops yellow with a small bounce, then settles back to white/still. */
 @Composable
 private fun DonationIconBounce() {
     val reducedMotion = rememberReducedMotion()
-    val settledTint = MaterialTheme.colorScheme.onSurface
-    var targetTint by remember { mutableStateOf(settledTint) }
-    val tint by animateColorAsState(targetTint, tween(IrideMotion.Quick), label = "donationTint")
     val scale = remember { Animatable(1f) }
     LaunchedEffect(Unit) {
         if (reducedMotion) return@LaunchedEffect
         delay(400)
-        targetTint = Color(0xFFFFD54F)
         scale.animateTo(1.22f, tween(120, easing = IrideMotion.EaseOutExpo))
         scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-        delay(250)
-        targetTint = settledTint
     }
     Icon(
         painter = painterResource(R.drawable.favorite),
         contentDescription = null,
-        tint = tint,
+        tint = Color.White,
         modifier = Modifier
             .size(22.dp)
             .graphicsLayer { scaleX = scale.value; scaleY = scale.value }

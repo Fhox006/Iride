@@ -6,6 +6,7 @@
 package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.fillSubtle
+import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 
@@ -58,6 +60,7 @@ fun IrideSearchBox(
     onSearch: () -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
+    showBorder: Boolean = true,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -65,8 +68,15 @@ fun IrideSearchBox(
         modifier = modifier
             .fillMaxWidth()
             .height(IrideSearchBoxHeight)
-            .clip(RoundedCornerShape(5.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.fillSubtle)
+            .then(
+                if (showBorder) {
+                    Modifier.border(1.dp, MaterialTheme.colorScheme.strokeCard, RoundedCornerShape(18.dp))
+                } else {
+                    Modifier
+                },
+            )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,

@@ -7,6 +7,7 @@ package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -371,11 +372,19 @@ fun LibraryPlaylistGridItem(
     menuState: MenuState,
     coroutineScope: CoroutineScope,
     playlist: Playlist,
+    isActive: Boolean = false,
     modifier: Modifier = Modifier
 ) = PlaylistGridItem(
     playlist = playlist,
     fillMaxWidth = true,
     modifier = modifier
+        .then(
+            if (isActive) Modifier.border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.primary,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+            ) else Modifier,
+        )
         .fillMaxWidth()
         .combinedClickable(
             onClick = {

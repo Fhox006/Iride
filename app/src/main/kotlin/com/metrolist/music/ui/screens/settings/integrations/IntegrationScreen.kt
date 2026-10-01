@@ -8,7 +8,7 @@ package com.metrolist.music.ui.screens.settings.integrations
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.WindowInsetsSides
 import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageHeaderLayout
+import com.metrolist.music.ui.component.IridePageFrame
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,9 +64,9 @@ fun IntegrationScreen(
         playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
     }.collectAsStateWithLifecycle()
 
-    IridePageHeaderLayout(
+    IridePageFrame(
         title = stringResource(R.string.integrations),
-        initiallyCollapsed = true,
+        scrollState = settingsScrollState,
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier.fillMaxSize(),
     ) {

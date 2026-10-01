@@ -457,16 +457,6 @@ private fun NewMiniPlayer(
                     Spacer(modifier = Modifier.width(12.dp))
                 }
 
-// Like button
-                mediaMetadata?.let {
-                    FavoriteButton(
-                        songId = it.id,
-                        errorColor = errorColor,
-                        outlineColor = outlineColor,
-                        onSurfaceColor = onSurfaceColor,
-                    )
-                }
-
                 Spacer(modifier = Modifier.width(4.dp))
 
 // Play/pause button (icon only)
@@ -673,29 +663,3 @@ private fun SkipNextIconButton(
     }
 }
 
-@Composable
-private fun FavoriteButton(
-    songId: String,
-    errorColor: Color,
-    outlineColor: Color,
-    onSurfaceColor: Color,
-) {
-    val database = LocalDatabase.current
-    val playerConnection = LocalPlayerConnection.current ?: return
-    val librarySong by database.song(songId).collectAsState(initial = null)
-    // For episodes, show saved state (inLibrary); for songs, show liked state
-    val isEpisode = librarySong?.song?.isEpisode == true
-    val isLiked = if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
-
-    IconButton(
-        onClick = { playerConnection.service.toggleLike() },
-        modifier = Modifier.size(40.dp).clip(CircleShape),
-    ) {
-        Icon(
-            painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
-            contentDescription = null,
-            tint = onSurfaceColor,
-            modifier = Modifier.size(20.dp),
-        )
-    }
-}

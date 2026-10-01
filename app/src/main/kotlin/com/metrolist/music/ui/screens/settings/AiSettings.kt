@@ -6,7 +6,7 @@
 package com.metrolist.music.ui.screens.settings
 
 import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageHeaderLayout
+import com.metrolist.music.ui.component.IridePageFrame
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -501,9 +501,9 @@ fun AiSettings(navController: NavController) {
     val playerConnection = LocalPlayerConnection.current
     val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
 
-    IridePageHeaderLayout(
+    IridePageFrame(
         title = stringResource(R.string.ai_lyrics_translation),
-        initiallyCollapsed = true,
+        scrollState = settingsScrollState,
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier.fillMaxSize(),
     ) {

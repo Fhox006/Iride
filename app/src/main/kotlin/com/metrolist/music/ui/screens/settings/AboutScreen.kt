@@ -6,7 +6,7 @@
 package com.metrolist.music.ui.screens.settings
 
 import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageHeaderLayout
+import com.metrolist.music.ui.component.IridePageFrame
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -34,7 +34,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -155,9 +154,9 @@ fun AboutScreen(
     val playerConnection = LocalPlayerConnection.current
     val mediaMetadata by remember(playerConnection) { playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null) }.collectAsStateWithLifecycle()
 
-    IridePageHeaderLayout(
+    IridePageFrame(
         title = stringResource(R.string.about),
-        initiallyCollapsed = true,
+        scrollState = scrollState,
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier
             .fillMaxSize()
@@ -236,10 +235,6 @@ fun AboutScreen(
             Button(
                 onClick = { navController.navigate("settings/updater") },
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.onSurface,
-                    contentColor = MaterialTheme.colorScheme.background,
-                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),

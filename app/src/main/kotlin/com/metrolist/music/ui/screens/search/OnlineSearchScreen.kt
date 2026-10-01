@@ -7,6 +7,7 @@ package com.metrolist.music.ui.screens.search
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
@@ -30,9 +31,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.lazy.LazyListScope
+import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.ui.component.LibraryListPage
+import com.metrolist.music.ui.component.LibraryPageMenuAction
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -103,6 +109,7 @@ import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
 import com.metrolist.music.ui.theme.fillSubtle
 import com.metrolist.music.ui.theme.strokeHairline
+import com.metrolist.music.ui.theme.strokeCard
 import com.metrolist.music.ui.theme.textPrimary
 import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.ui.theme.textTertiary
@@ -141,6 +148,8 @@ fun OnlineSearchScreen(
     isFocused: Boolean = false,
     header: (@Composable () -> Unit)? = null,
     onScrollChanged: (Boolean) -> Unit = {},
+    pageMenuSections: List<List<LibraryPageMenuAction>> = emptyList(),
+    lazyListState: LazyListState = rememberLazyListState(),
     viewModel: OnlineSearchSuggestionViewModel = hiltViewModel(),
 ) {
     val database = LocalDatabase.current
@@ -169,7 +178,6 @@ fun OnlineSearchScreen(
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
 
-    val lazyListState = rememberLazyListState()
 
     LaunchedEffect(lazyListState) {
         snapshotFlow { lazyListState.firstVisibleItemIndex > 0 }
@@ -232,25 +240,7 @@ fun OnlineSearchScreen(
         }
     }
 
-    Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .background(
-                    when {
-                        pureBlack -> Color.Black
-                        mainTopGradient -> Color.Transparent
-                        else -> MaterialTheme.colorScheme.background
-                    },
-                ),
-    ) {
-    LazyColumn(
-        state = lazyListState,
-        contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Bottom).asPaddingValues(),
-        modifier = Modifier
-            .weight(1f)
-            .rubberBandOverscroll(Orientation.Vertical, lazyListState),
-    ) {
+    val suggestionContent: LazyListScope.() -> Unit = {
         if (header != null) {
             item(key = "search_header") { header() }
         }
@@ -282,11 +272,8 @@ fun OnlineSearchScreen(
                                         it[SearchGenrePersonalization.tapScoresKey] = JSONObject(updated).toString()
                                     }
                                     tappedGenreScores = updated
-                                    if (genre.name == "Rock") {
-                                        navController.navigate("rock_module")
-                                    } else {
-                                        navController.navigate("search/${URLEncoder.encode(genre.name, "UTF-8")}")
-                                    }
+                                    onQueryChange(TextFieldValue(genre.name, TextRange(genre.name.length)))
+                                    onSearch(genre.name)
                                 }
                             },
                             modifier = Modifier.weight(1f),
@@ -820,10 +807,37 @@ fun OnlineSearchScreen(
             }
         }
 
-        item(key = "pill_spacer") {
-            Spacer(modifier = Modifier.height(136.dp))
+        if (header == null) {
+            item(key = "pill_spacer") {
+                Spacer(modifier = Modifier.height(136.dp))
+            }
         }
     }
+    val pageModifier = Modifier.fillMaxSize().background(
+        when {
+            pureBlack -> Color.Black
+            mainTopGradient -> Color.Transparent
+            else -> MaterialTheme.colorScheme.background
+        },
+    )
+    if (header != null) {
+        LibraryListPage(
+            titleRes = R.string.search,
+            state = lazyListState,
+            bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+            onNavigateUp = { navController.navigateUp() },
+            modifier = pageModifier,
+            contentHorizontalPadding = 0.dp,
+            menuSections = pageMenuSections,
+            content = suggestionContent,
+        )
+    } else {
+        LazyColumn(
+            state = lazyListState,
+            contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Bottom).asPaddingValues(),
+            modifier = pageModifier.rubberBandOverscroll(Orientation.Vertical, lazyListState),
+            content = suggestionContent,
+        )
     }
 }
 
@@ -839,7 +853,7 @@ private fun SearchGenreCard(
         contentAlignment = Alignment.BottomStart,
         modifier = modifier
             .height(72.dp)
-            .clip(RoundedCornerShape(5.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.fillSubtle)
             .clickable(onClick = onClick)
             .padding(12.dp),
@@ -883,8 +897,11 @@ private fun DiscoveryWeeklyCard(
     Box(
         modifier = modifier
             .height(height)
-            .clip(RoundedCornerShape(if (useIrideStyle) 5.dp else 18.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(if (useIrideStyle) MaterialTheme.colorScheme.fillSubtle else MaterialTheme.colorScheme.secondaryContainer)
+            .then(
+                if (useIrideStyle) Modifier else Modifier.border(1.dp, MaterialTheme.colorScheme.strokeCard, RoundedCornerShape(18.dp)),
+            )
             .clickable(onClick = onClick),
     ) {
         if (mosaicThumbnails.isNotEmpty()) {

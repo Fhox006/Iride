@@ -28,7 +28,7 @@ import kotlin.random.Random
 import kotlinx.coroutines.ensureActive
 
 internal object MixPosterRenderer {
-    const val VERSION = 8
+    const val VERSION = 9
 
     suspend fun render(
         context: Context,
@@ -124,7 +124,7 @@ internal object MixPosterRenderer {
     }
 
     private fun rosettePath(size: Int, mood: MixMood, random: Random): Path {
-        val radius = size * random.between(0.14f, 0.30f)
+        val radius = size * random.between(0.14f, 0.22f)
         val center = rosetteCenter(size.toFloat(), radius, random)
         val rotation = random.nextFloat() * (2 * PI).toFloat()
         val path = Path()
@@ -148,25 +148,11 @@ internal object MixPosterRenderer {
     internal data class RosetteCenter(val x: Float, val y: Float)
 
     internal fun rosetteCenter(size: Float, radius: Float, random: Random): RosetteCenter {
-        val minimumY = radius
-        val maximumY = (size * 0.62f - radius).coerceAtLeast(minimumY)
-        if (random.nextFloat() < 0.15f) {
-            val side = random.nextInt(2)
-            return when (side) {
-                0 -> RosetteCenter(random.between(radius * 0.4f, radius * 0.85f),
-                    random.between(minimumY, maximumY))
-                else -> RosetteCenter(random.between(size - radius * 0.85f, size - radius * 0.4f),
-                    random.between(minimumY, maximumY))
-            }
-        }
-
-        val minimum = radius
-        val maximum = size - radius
-        repeat(16) {
-            val center = RosetteCenter(random.between(minimum, maximum), random.between(minimumY, maximumY))
-            if (kotlin.math.hypot(center.x - size / 2f, center.y - size / 2f) >= size * 0.12f) return center
-        }
-        return RosetteCenter(minimum, random.between(minimumY, maximumY))
+        // Keep the entire ornament outside the central portrait area and above the title.
+        val edge = size * 0.28f - radius
+        val x = random.between(edge - radius * 0.25f, edge)
+        val y = random.between(radius, (size * 0.60f - radius).coerceAtLeast(radius))
+        return RosetteCenter(if (random.nextBoolean()) x else size - x, y)
     }
 
     internal fun drawGraphicBackground(canvas: Canvas, size: Int, mood: MixMood, seed: Long) {

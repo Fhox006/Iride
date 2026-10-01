@@ -5,9 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageHeaderLayout
-import com.metrolist.music.ui.component.IrideIconTile
-import com.metrolist.music.ui.component.IrideIconTileColor
+import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.IrideSwitch
 
 import androidx.compose.animation.AnimatedVisibility
@@ -207,9 +205,9 @@ fun MyAccountScreen(
         playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
     }.collectAsStateWithLifecycle()
 
-    IridePageHeaderLayout(
+    IridePageFrame(
         title = stringResource(R.string.my_account),
-        initiallyCollapsed = true,
+        scrollState = scrollState,
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier
             .fillMaxSize()
@@ -251,16 +249,13 @@ fun MyAccountScreen(
         val rowTextStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = SpaceMonoFontFamily, fontSize = 15.sp, letterSpacing = (-0.1).sp, fontWeight = FontWeight.Bold)
         val rowDividerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f)
 
-        Material3SettingsGroup(
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.storage),
-                    title = { Text(stringResource(R.string.settings_section_sync_data)) },
-                )
-            )
+        Text(
+            text = stringResource(R.string.settings_section_sync_data),
+            style = MaterialTheme.typography.labelLarge.copy(fontFamily = SpaceMonoFontFamily, letterSpacing = (-0.1).sp, fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+            modifier = Modifier.padding(bottom = 6.dp, top = 4.dp)
         )
 
-        Spacer(Modifier.height(8.dp))
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -282,14 +277,12 @@ fun MyAccountScreen(
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IrideIconTile(size = 36.dp, color = IrideIconTileColor.copy(alpha = if (isLoggedIn) 1f else 0.5f)) {
-                            Icon(
-                                painter = painterResource(R.drawable.library_music),
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                        Icon(
+                            painter = painterResource(R.drawable.library_music),
+                            contentDescription = null,
+                            tint = rowIconTint(isLoggedIn),
+                            modifier = Modifier.size(20.dp)
+                        )
                         Spacer(Modifier.width(16.dp))
                         Text(
                             text = stringResource(R.string.other_content),
@@ -325,14 +318,12 @@ fun MyAccountScreen(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IrideIconTile(size = 36.dp, color = IrideIconTileColor.copy(alpha = if (isLoggedIn) 1f else 0.5f)) {
-                        Icon(
-                            painter = painterResource(R.drawable.sync),
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                    Icon(
+                        painter = painterResource(R.drawable.sync),
+                        contentDescription = null,
+                        tint = rowIconTint(isLoggedIn),
+                        modifier = Modifier.size(20.dp)
+                    )
                     Spacer(Modifier.width(16.dp))
                     Text(
                         text = stringResource(R.string.auto_sync),
@@ -366,14 +357,12 @@ fun MyAccountScreen(
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IrideIconTile(size = 36.dp, color = IrideIconTileColor.copy(alpha = if (isLoggedIn) 1f else 0.5f)) {
-                            Icon(
-                                painter = painterResource(R.drawable.token),
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                        Icon(
+                            painter = painterResource(R.drawable.token),
+                            contentDescription = null,
+                            tint = rowIconTint(isLoggedIn),
+                            modifier = Modifier.size(20.dp)
+                        )
                         Spacer(Modifier.width(16.dp))
                         Column(Modifier.weight(1f)) {
                             Text(
@@ -415,14 +404,12 @@ fun MyAccountScreen(
                                     .padding(horizontal = 16.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                IrideIconTile(size = 36.dp) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.edit),
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
+                                Icon(
+                                    painter = painterResource(R.drawable.edit),
+                                    contentDescription = null,
+                                    tint = rowIconTint(true),
+                                    modifier = Modifier.size(20.dp)
+                                )
                                 Spacer(Modifier.width(16.dp))
                                 Text(
                                     text = stringResource(R.string.advanced_login),
@@ -445,6 +432,8 @@ fun MyAccountScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
         Material3SettingsGroup(
             items = listOf(
                 Material3SettingsItem(
@@ -460,14 +449,20 @@ fun MyAccountScreen(
                     },
                     onClick = { navController.navigate("stats") }
                 ),
-            ),
-            useLowContrast = true
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Material3SettingsGroup(
-            items = listOf(
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.music_note),
+                    title = { Text(stringResource(R.string.notes_screen_title)) },
+                    description = { Text(stringResource(R.string.notes_screen_desc), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = {
+                        Icon(
+                            painter = painterResource(R.drawable.navigate_next),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    onClick = { navController.navigate("notes") }
+                ),
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.integration),
                     title = { Text(stringResource(R.string.integrations)) },
@@ -496,6 +491,20 @@ fun MyAccountScreen(
                     },
                     onClick = { navController.navigate("settings/privacy") }
                 ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.download),
+                    title = { Text(stringResource(R.string.spotify_exportify_title)) },
+                    description = { Text(stringResource(R.string.spotify_exportify_description), style = MaterialTheme.typography.bodySmall) },
+                    trailingContent = {
+                        Icon(
+                            painter = painterResource(R.drawable.navigate_next),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    onClick = { navController.navigate("spotify_import") }
+                )
             ),
             useLowContrast = true
         )
@@ -505,20 +514,27 @@ fun MyAccountScreen(
         if (isLoggedIn) {
             Material3SettingsGroup(
                 items = listOf(
-                        Material3SettingsItem(
+                    Material3SettingsItem(
                         leadingContent = {
-                            IrideIconTile {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f)),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Icon(
                                     painter = painterResource(R.drawable.logout),
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = MaterialTheme.colorScheme.error,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
                         },
                         title = {
                             Text(
-                                text = stringResource(R.string.action_logout)
+                                text = stringResource(R.string.action_logout),
+                                color = MaterialTheme.colorScheme.error
                             )
                         },
                         onClick = { showLogoutDialog = true }

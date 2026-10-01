@@ -5,7 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings.integrations
 import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageHeaderLayout
+import com.metrolist.music.ui.component.IridePageFrame
 import com.metrolist.music.ui.component.IrideSwitch
 
 import android.content.Intent
@@ -372,9 +372,9 @@ fun DiscordSettings(
     )
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
-    IridePageHeaderLayout(
+    IridePageFrame(
         title = stringResource(R.string.discord_integration),
-        initiallyCollapsed = true,
+        scrollState = settingsScrollState,
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier.fillMaxSize(),
     ) {

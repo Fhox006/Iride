@@ -82,6 +82,7 @@ fun IridePageHeaderLayout(
     Box(
         modifier = modifier.fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .rubberBandOverscroll(Orientation.Vertical)
             .nestedScroll(connection),
     ) {
         Box(
@@ -111,6 +112,7 @@ fun IridePageHeaderLayout(
         IridePageTopBar(
             title = title,
             progress = progress,
+            strokeColor = androidx.compose.ui.graphics.Color.Transparent,
             modifier = Modifier.draggable(headerDrag, Orientation.Vertical),
             navigationIcon = navigationIcon,
             actions = actions,

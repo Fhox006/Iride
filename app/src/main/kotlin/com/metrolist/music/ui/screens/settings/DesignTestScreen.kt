@@ -3,7 +3,7 @@ package com.metrolist.music.ui.screens.settings
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.WindowInsetsSides
 import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageHeaderLayout
+import com.metrolist.music.ui.component.IridePageFrame
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -55,14 +55,15 @@ fun DesignTestScreen(navController: NavController) {
     var applied by remember { mutableStateOf(draft) }
     var previewView by remember { mutableStateOf<SprayTextView?>(null) }
     var showGuides by remember { mutableStateOf(true) }
+    val scrollState = rememberScrollState()
     val applyChanges: () -> Unit = {
         applied = draft
         preferences.edit().putString("settings", draft.toJson().toString()).apply()
     }
 
-    IridePageHeaderLayout(
+    IridePageFrame(
         title = stringResource(R.string.design_test),
-        initiallyCollapsed = true,
+        scrollState = scrollState,
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier
             .fillMaxSize()
@@ -133,7 +134,7 @@ fun DesignTestScreen(navController: NavController) {
             modifier = Modifier
                 .weight(1f)
                 .navigationBarsPadding()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp),
         ) {
             SpraySection(stringResource(R.string.design_test_edge_section))

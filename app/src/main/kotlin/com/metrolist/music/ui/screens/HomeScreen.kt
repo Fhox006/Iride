@@ -453,6 +453,10 @@ fun HomeScreen(
     val moodContext = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(moodLifecycleOwner, selectedMoodCategory, hideExplicit, hideVideoSongs, hideYoutubeShorts, moodPosterSize) {
         moodLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            if (selectedMoodCategory != null) {
+                viewModel.loadMoodPage(selectedMoodCategory?.endpoint?.params, selectedMoodCategory?.title,
+                    hideExplicit, hideVideoSongs, hideYoutubeShorts, moodPosterSize, forceReload = true)
+            }
             viewModel.isMoodError.collectLatest { failed ->
                 while (failed && viewModel.isMoodError.value) {
                     delay(30_000)
@@ -475,16 +479,8 @@ fun HomeScreen(
                 ?: moodChips.first().first
         }
     }
-    LaunchedEffect(selectedMoodCategory, hideExplicit, hideVideoSongs, hideYoutubeShorts, moodPosterSize) {
+    LaunchedEffect(selectedMoodCategory) {
         moodMixesState.scrollToItem(0)
-        if (selectedMoodCategory != null) {
-            viewModel.loadMoodPage(
-                selectedMoodCategory?.endpoint?.params,
-                selectedMoodCategory?.title,
-                hideExplicit, hideVideoSongs, hideYoutubeShorts,
-                posterSize = moodPosterSize,
-            )
-        }
     }
 
     val revealedSections = remember { IrideTabEntrance.sectionsFor("home") }
@@ -831,6 +827,7 @@ fun HomeScreen(
                             onRefreshClick = { viewModel.regenerateForYouShelves() },
                             isRefreshing = "for_you_shelf" in regeneratingSections,
                             useIrideStyle = true,
+                            prominentTitle = true,
                             showDivider = false,
                             topPadding = 24.dp,
                             bottomPadding = 12.dp,
@@ -881,8 +878,7 @@ fun HomeScreen(
                         lean = homeLean,
                         contentAlpha = screenProgress,
                         enabled = globeOn,
-                    )
-                    .rubberBandOverscroll(Orientation.Vertical, lazyListState),
+                    ),
                 overlay = {
                     if (globeOn) {
                         HomeFilmViewfinderOverlay()
@@ -1325,6 +1321,7 @@ fun HomeScreen(
                                 onClick = onSectionClick,
                                 modifier = homeTitleMotion("home_section_$index"),
                                 useIrideStyle = true,
+                                prominentTitle = true,
                                 showDivider = false,
                                 topPadding = 24.dp,
                                 bottomPadding = 12.dp,
@@ -1354,6 +1351,7 @@ fun HomeScreen(
                             title = stringResource(R.string.home_mood_youtube_music),
                             modifier = homeTitleMotion("your_mood"),
                             useIrideStyle = true,
+                            prominentTitle = true,
                             showDivider = false,
                             topPadding = 24.dp,
                             bottomPadding = 12.dp,
@@ -1371,7 +1369,13 @@ fun HomeScreen(
                             IrideMoodChipsRow(
                                 chips = moodChips,
                                 currentValue = selectedMoodCategory,
-                                onValueUpdate = { selectedMoodCategory = it },
+                                onValueUpdate = { chip ->
+                                    if (chip == selectedMoodCategory) {
+                                        viewModel.loadMoodPage(chip.endpoint?.params, chip.title,
+                                            hideExplicit, hideVideoSongs, hideYoutubeShorts,
+                                            moodPosterSize, forceReload = true)
+                                    } else selectedMoodCategory = chip
+                                },
                                 horizontalPadding = irideStart,
                             )
 
@@ -1386,7 +1390,6 @@ fun HomeScreen(
                                         .fillMaxWidth()
                                         .height(currentGridHeight + 64.dp)
                                         .padding(bottom = 4.dp)
-                                        .alpha(if (isMoodLoading) 0.65f else 1f)
                                         .rubberBandOverscroll(Orientation.Horizontal, moodMixesState),
                                 ) {
                                     items(mixItems, key = { it.id }) { mix ->
@@ -1433,14 +1436,14 @@ fun HomeScreen(
                                     }
                                 }
                                 when {
-                                    isMoodLoading -> CircularProgressIndicator(
-                                        modifier = Modifier.align(if (mixItems.isEmpty()) Alignment.Center else Alignment.TopEnd)
+                                    isMoodLoading && mixItems.isEmpty() -> CircularProgressIndicator(
+                                        modifier = Modifier.align(Alignment.Center)
                                             .padding(12.dp)
                                             .background(MaterialTheme.colorScheme.surface, CircleShape)
                                             .padding(6.dp).size(24.dp),
                                         strokeWidth = 2.dp,
                                     )
-                                    isMoodError -> Column(
+                                    isMoodError && mixItems.isEmpty() -> Column(
                                         modifier = Modifier.align(Alignment.Center).padding(horizontal = 24.dp),
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                     ) {
@@ -1534,6 +1537,7 @@ fun HomeScreen(
                                 onRefreshClick = { viewModel.regenerateDailyDiscover() },
                                 isRefreshing = "daily_discover" in regeneratingSections,
                                 useIrideStyle = true,
+                                prominentTitle = true,
                                 showDivider = false,
                                 topPadding = 24.dp,
                                 bottomPadding = 12.dp,
@@ -1585,6 +1589,7 @@ fun HomeScreen(
                                 onRefreshClick = { viewModel.regenerateCommunityPlaylists() },
                                 isRefreshing = "community_playlists" in regeneratingSections,
                                 useIrideStyle = true,
+                                prominentTitle = true,
                                 showDivider = false,
                                 topPadding = 24.dp,
                                 bottomPadding = 12.dp,
@@ -1705,9 +1710,104 @@ fun HomeScreen(
                 communitySection()
                 similarSection()
                 accountSection()
+
+                item(key = "iride_features_title") {
+                    SharedHomeSectionTitle(
+                        title = stringResource(R.string.home_iride_features_title),
+                        modifier = homeTitleMotion("iride_features"),
+                    )
+                }
+                item(key = "iride_features_cards") {
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 24.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(2) { index ->
+                            if (index == 0) {
+                                IrideFeatureCard(
+                                    title = stringResource(R.string.home_iride_feature_stats_title),
+                                    subtitle = stringResource(R.string.home_iride_feature_stats_description),
+                                    iconRes = R.drawable.stats,
+                                    onClick = { navController.navigate("stats") },
+                                    modifier = homeRowMotion("iride_feature_stats").width(300.dp),
+                                )
+                            } else {
+                                IrideFeatureCard(
+                                    title = stringResource(R.string.home_iride_feature_spotify_title),
+                                    subtitle = stringResource(R.string.home_iride_feature_spotify_description),
+                                    iconRes = R.drawable.playlist_add,
+                                    onClick = { navController.navigate("spotify_import") },
+                                    modifier = homeRowMotion("iride_feature_spotify").width(300.dp),
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
+    }
+}
+
+@Composable
+private fun IrideFeatureCard(
+    title: String,
+    subtitle: String,
+    iconRes: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(112.dp)
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.fillSelected,
+                modifier = Modifier.size(56.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(iconRes),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.textPrimary,
+                        modifier = Modifier.size(26.dp),
+                    )
+                }
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.textPrimary,
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.textSecondary,
+                )
+            }
+            Icon(
+                painter = painterResource(R.drawable.arrow_forward),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.textSecondary,
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }
 

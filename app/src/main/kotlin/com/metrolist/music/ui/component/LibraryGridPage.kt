@@ -1,9 +1,6 @@
 package com.metrolist.music.ui.component
 
 import androidx.annotation.StringRes
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -13,14 +10,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.LazyListScope
@@ -30,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,8 +36,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
+import com.metrolist.music.constants.LibraryViewType
 import com.metrolist.music.ui.theme.strokeCard
 
 /** Shared visual shell for Album and Playlist library grids. */
@@ -56,37 +55,26 @@ fun LibraryGridPage(
     horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(12.dp),
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(8.dp),
     controls: (@Composable () -> Unit)? = null,
-    playbackActions: (@Composable () -> Unit)? = null,
     menuActions: List<LibraryPageMenuAction> = emptyList(),
+    menuSections: List<List<LibraryPageMenuAction>> = emptyList(),
     content: LazyGridScope.() -> Unit,
 ) {
-    val backdrop = rememberFrostBackdrop()
-    val controlsProgress by animateFloatAsState(
-        targetValue = if (state.firstVisibleItemIndex > 0) 1f else 0f,
-        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-        label = "libraryControlsReveal",
+    val pageModifier = modifier
+    IridePageLayout(
+        titleRes = titleRes,
+        modifier = pageModifier,
+        columns = columns,
+        state = state,
+        bottomPadding = bottomPadding,
+        horizontalArrangement = horizontalArrangement,
+        verticalArrangement = verticalArrangement,
+        pageControls = {
+            LibraryNavigationPill(LocalScreenFrostBackdrop.current, LocalPageControlsProgress.current, onNavigateUp, controls, menuActions, menuSections)
+        },
+        content = {
+            content()
+        },
     )
-    Box(modifier = Modifier.fillMaxSize()) {
-        IridePageLayout(
-            titleRes = titleRes,
-            modifier = modifier.recordFrostBackdrop(backdrop),
-            columns = columns,
-            state = state,
-            titleTopSpacing = IridePageLayoutDefaults.BarHeight + IridePageLayoutDefaults.ContentTopSpacing + 16.dp,
-            bottomPadding = bottomPadding,
-            horizontalArrangement = horizontalArrangement,
-            verticalArrangement = verticalArrangement,
-            content = {
-                if (playbackActions != null) {
-                    item(key = "library_playback_actions", span = { GridItemSpan(maxLineSpan) }) {
-                        playbackActions()
-                    }
-                }
-                content()
-            },
-        )
-        LibraryNavigationPill(backdrop, controlsProgress, onNavigateUp, controls, menuActions)
-    }
 }
 
 @Composable
@@ -98,38 +86,32 @@ fun LibraryListPage(
     modifier: Modifier = Modifier,
     contentHorizontalPadding: androidx.compose.ui.unit.Dp = 20.dp,
     titleTopSpacing: androidx.compose.ui.unit.Dp =
-        IridePageLayoutDefaults.BarHeight + IridePageLayoutDefaults.ContentTopSpacing + 16.dp,
+        IridePageLayoutDefaults.ContentTopSpacing,
     showNavigationPill: Boolean = true,
-    playbackActions: (@Composable () -> Unit)? = null,
+    menuSections: List<List<LibraryPageMenuAction>> = emptyList(),
     overlay: @Composable BoxScope.() -> Unit = {},
     content: LazyListScope.() -> Unit,
 ) {
-    val backdrop = rememberFrostBackdrop()
-    val controlsProgress by animateFloatAsState(
-        targetValue = if (state.firstVisibleItemIndex > 0) 1f else 0f,
-        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-        label = "libraryControlsReveal",
+    val pageModifier = modifier
+    IridePageLayout(
+        titleRes = titleRes,
+        modifier = pageModifier,
+        state = state,
+        bottomPadding = bottomPadding,
+        contentHorizontalPadding = contentHorizontalPadding,
+        titleTopSpacing = titleTopSpacing,
+        overlay = overlay,
+        pageControls = if (showNavigationPill) {
+            {
+                LibraryNavigationPill(LocalScreenFrostBackdrop.current, LocalPageControlsProgress.current, onNavigateUp, menuSections = menuSections)
+            }
+        } else {
+            null
+        },
+        content = {
+            content()
+        },
     )
-    Box(modifier = Modifier.fillMaxSize()) {
-        IridePageLayout(
-            titleRes = titleRes,
-            modifier = modifier.recordFrostBackdrop(backdrop),
-            state = state,
-            bottomPadding = bottomPadding,
-            contentHorizontalPadding = contentHorizontalPadding,
-            titleTopSpacing = titleTopSpacing,
-            overlay = overlay,
-            content = {
-                if (playbackActions != null) {
-                    item(key = "library_playback_actions") { playbackActions() }
-                }
-                content()
-            },
-        )
-        if (showNavigationPill) {
-            LibraryNavigationPill(backdrop, controlsProgress, onNavigateUp)
-        }
-    }
 }
 
 @Composable
@@ -139,18 +121,22 @@ private fun LibraryNavigationPill(
     onNavigateUp: () -> Unit,
     controls: (@Composable () -> Unit)? = null,
     menuActions: List<LibraryPageMenuAction> = emptyList(),
+    menuSections: List<List<LibraryPageMenuAction>> = emptyList(),
 ) {
+    val sections = (listOf(menuActions) + menuSections).filter { it.isNotEmpty() }
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
-    val baseStroke = MaterialTheme.colorScheme.strokeCard
-    val stroke = baseStroke.copy(alpha = baseStroke.alpha * progress)
+    val surface = MaterialTheme.colorScheme.surface
+    val borderColor = MaterialTheme.colorScheme.strokeCard
+    val revealedBorder = borderColor.copy(alpha = borderColor.alpha * progress)
+    var expanded by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(top = statusBarPadding + 4.dp, start = IridePageLayoutDefaults.HorizontalPadding)
-                .frostedNavigationSurface(backdrop, MaterialTheme.colorScheme.surface, shape, progress)
-                .border(1.dp, stroke, shape)
+                .frostedNavigationSurface(backdrop, surface, shape, progress)
+                .border(1.dp, revealedBorder, shape)
                 .padding(horizontal = 2.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -158,33 +144,59 @@ private fun LibraryNavigationPill(
                 Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.back), tint = Color.White)
             }
             if (controls != null) {
-                Box(Modifier.width(1.dp).height(20.dp).background(stroke))
+                Box(Modifier.width(1.dp).height(20.dp).background(revealedBorder))
                 controls()
             }
         }
-        if (menuActions.isNotEmpty()) {
-            var expanded by remember { mutableStateOf(false) }
+        if (sections.isNotEmpty()) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = statusBarPadding + 4.dp, end = IridePageLayoutDefaults.HorizontalPadding)
-                    .frostedNavigationSurface(backdrop, MaterialTheme.colorScheme.surface, shape, progress)
-                    .border(1.dp, stroke, shape)
+                    .frostedNavigationSurface(backdrop, surface, shape, progress)
+                    .border(1.dp, revealedBorder, shape)
                     .padding(horizontal = 2.dp, vertical = 2.dp),
             ) {
-                IconButton(onClick = { expanded = true }, modifier = Modifier.size(44.dp)) {
+                IconButton(onClick = { expanded = true }, modifier = Modifier.size(48.dp)) {
                     Icon(painterResource(R.drawable.more_vert), stringResource(R.string.more_options), tint = Color.White)
                 }
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    menuActions.forEach { action ->
-                        DropdownMenuItem(
-                            text = { androidx.compose.material3.Text(action.label) },
-                            leadingIcon = { Icon(painterResource(action.icon), contentDescription = null) },
-                            onClick = {
-                                expanded = false
-                                action.onClick()
-                            },
-                        )
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.width(224.dp)
+                        .frostedNavigationSurface(backdrop, surface, shape)
+                        .border(1.dp, borderColor, shape),
+                    offset = androidx.compose.ui.unit.DpOffset(0.dp, 8.dp),
+                    shape = shape,
+                    containerColor = Color.Transparent,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp,
+                ) {
+                    androidx.compose.foundation.layout.Column(Modifier.padding(2.dp)) {
+                        sections.forEachIndexed { index, actions ->
+                            if (index > 0) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp),
+                                    color = borderColor,
+                                )
+                            }
+                            actions.forEach { action ->
+                                DropdownMenuItem(
+                                    text = { androidx.compose.material3.Text(action.label, color = Color.White) },
+                                    leadingIcon = if (action.icon != null) ({
+                                        Icon(painterResource(action.icon), contentDescription = null, tint = Color.White)
+                                    }) else null,
+                                    trailingIcon = if (action.selected) ({
+                                        Icon(painterResource(R.drawable.check), contentDescription = null, tint = Color.White)
+                                    }) else null,
+                                    onClick = {
+                                        expanded = false
+                                        action.onClick()
+                                    },
+                                    modifier = Modifier.height(42.dp).semantics { selected = action.selected },
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -194,6 +206,38 @@ private fun LibraryNavigationPill(
 
 data class LibraryPageMenuAction(
     val label: String,
-    val icon: Int,
+    val icon: Int? = null,
     val onClick: () -> Unit,
+    val selected: Boolean = false,
 )
+
+@Composable
+fun libraryGridMenuActions(
+    viewType: LibraryViewType,
+    onViewTypeChange: (LibraryViewType) -> Unit,
+): List<LibraryPageMenuAction> = listOf(
+    LibraryPageMenuAction(
+        label = stringResource(R.string.library_simple_grid),
+        icon = R.drawable.grid_view,
+        onClick = { onViewTypeChange(LibraryViewType.GRID) },
+        selected = viewType != LibraryViewType.GRID_WIDE,
+    ),
+    LibraryPageMenuAction(
+        label = stringResource(R.string.library_dense_grid),
+        icon = R.drawable.library_filter_lines,
+        onClick = { onViewTypeChange(LibraryViewType.GRID_WIDE) },
+        selected = viewType == LibraryViewType.GRID_WIDE,
+    ),
+)
+
+fun <T> librarySortMenuActions(
+    sortOptions: List<Pair<T, String>>,
+    currentSort: T,
+    onSortChange: (T) -> Unit,
+): List<LibraryPageMenuAction> = sortOptions.map { (type, label) ->
+    LibraryPageMenuAction(
+        label = label,
+        onClick = { onSortChange(type) },
+        selected = type == currentSort,
+    )
+}

@@ -32,6 +32,7 @@ fun IridePageTopBar(
     progress: Float,
     modifier: Modifier = Modifier,
     backgroundColor: Color = IridePageLayoutDefaults.BarColor,
+    strokeColor: Color = Color.White.copy(alpha = 0.08f),
     titleProgress: Float = progress,
     navigationIcon: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
@@ -42,6 +43,7 @@ fun IridePageTopBar(
         progress = progress,
         modifier = modifier,
         backgroundColor = backgroundColor,
+        strokeColor = strokeColor,
         horizontalPadding = if (navigationIcon == null) IridePageLayoutDefaults.HorizontalPadding else 12.dp,
     ) {
         navigationIcon?.invoke()
@@ -93,13 +95,14 @@ fun IridePageTopBar(
     progress: Float,
     modifier: Modifier = Modifier,
     backgroundColor: Color = IridePageLayoutDefaults.BarColor,
+    strokeColor: Color = Color.White.copy(alpha = 0.08f),
     horizontalPadding: androidx.compose.ui.unit.Dp = 12.dp,
     content: @Composable RowScope.() -> Unit,
 ) {
     CompositionLocalProvider(LocalContentColor provides Color.White) {
         Row(
             modifier = modifier.fillMaxWidth()
-                .scrolledTopBarBackground(progress, backgroundColor, Color.White.copy(alpha = 0.08f))
+                .scrolledTopBarBackground(progress, backgroundColor, strokeColor)
                 .statusBarsPadding()
                 .height(IridePageLayoutDefaults.BarHeight)
                 .clipToBounds()

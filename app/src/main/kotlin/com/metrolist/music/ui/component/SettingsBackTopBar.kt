@@ -48,14 +48,10 @@ fun IridePageBackButton(navController: NavController) {
         onClick = navController::navigateUp,
         onLongClick = navController::backToMain,
     ) {
-        IrideIconTile(size = 36.dp) {
-            Icon(
-                painter = painterResource(R.drawable.arrow_back),
-                contentDescription = stringResource(R.string.back),
-                tint = Color.White,
-                modifier = Modifier.size(22.dp),
-            )
-        }
+        Icon(
+            painter = painterResource(R.drawable.arrow_back),
+            contentDescription = stringResource(R.string.back),
+        )
     }
 }
 

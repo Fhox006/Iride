@@ -127,26 +127,43 @@ private fun IrideSettingsItemRow(item: Material3SettingsItem) {
             item.leadingContent.invoke()
             Spacer(modifier = Modifier.width(16.dp))
         } else if (item.icon != null) {
-            IrideIconTile {
-                if (item.showBadge) {
-                    BadgedBox(
-                        badge = { Badge(containerColor = MaterialTheme.colorScheme.error) }
-                    ) {
-                        Icon(
-                            painter = item.icon,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(22.dp)
-                        )
+            val iconTint = MaterialTheme.colorScheme.textPrimary.copy(alpha = if (item.isHighlighted) 1f else 0.85f)
+            val icon: @Composable () -> Unit = {
+                Icon(
+                    painter = item.icon,
+                    contentDescription = null,
+                    tint = if (item.iconContainerColor != null) Color.White else iconTint,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            if (item.iconContainerColor != null) {
+                IrideIconTile(color = item.iconContainerColor) {
+                    if (item.showBadge) {
+                        BadgedBox(badge = { Badge(containerColor = MaterialTheme.colorScheme.textPrimary) }) {
+                            icon()
+                        }
+                    } else {
+                        icon()
                     }
-                } else {
+                }
+            } else if (item.showBadge) {
+                BadgedBox(
+                    badge = { Badge(containerColor = MaterialTheme.colorScheme.error) }
+                ) {
                     Icon(
                         painter = item.icon,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = iconTint,
                         modifier = Modifier.size(22.dp)
                     )
                 }
+            } else {
+                Icon(
+                    painter = item.icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(22.dp)
+                )
             }
             Spacer(modifier = Modifier.width(16.dp))
         }
@@ -274,5 +291,6 @@ data class Material3SettingsItem(
     val showBadge: Boolean = false,
     val isHighlighted: Boolean = false,
     val enabled: Boolean = true,
-    val onClick: (() -> Unit)? = null
+    val onClick: (() -> Unit)? = null,
+    val iconContainerColor: Color? = null,
 )

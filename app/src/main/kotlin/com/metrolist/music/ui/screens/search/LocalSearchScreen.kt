@@ -21,10 +21,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.gestures.Orientation
+import com.metrolist.music.LocalPlayerAwareWindowInsets
+import com.metrolist.music.ui.component.LibraryListPage
+import com.metrolist.music.ui.component.LibraryPageMenuAction
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -92,6 +96,8 @@ fun LocalSearchScreen(
     pureBlack: Boolean,
     header: (@Composable () -> Unit)? = null,
     onScrollChanged: (Boolean) -> Unit = {},
+    pageMenuSections: List<List<LibraryPageMenuAction>> = emptyList(),
+    lazyListState: LazyListState = rememberLazyListState(),
     viewModel: LocalSearchViewModel = hiltViewModel(),
 ) {
     val queueSearchedSongsStr = stringResource(R.string.queue_searched_songs)
@@ -109,7 +115,6 @@ fun LocalSearchScreen(
 
     val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
 
-    val lazyListState = rememberLazyListState()
 
     LaunchedEffect(lazyListState) {
         snapshotFlow { lazyListState.firstVisibleItemIndex > 0 }
@@ -150,55 +155,44 @@ fun LocalSearchScreen(
     }
 
     if (header != null) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(
-                        when {
-                            pureBlack -> Color.Black
-                            mainTopGradient -> Color.Transparent
-                            else -> MaterialTheme.colorScheme.background
-                        },
-                    )
-                    .let { base ->
-                        if (isLandscape) {
-                            base.windowInsetsPadding(
-                                WindowInsets.systemBars.only(WindowInsetsSides.Horizontal),
-                            )
-                        } else {
-                            base
-                        }
-                    },
+        LibraryListPage(
+            titleRes = R.string.search,
+            state = lazyListState,
+            bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+            onNavigateUp = { navController.navigateUp() },
+            contentHorizontalPadding = 0.dp,
+            menuSections = pageMenuSections,
+            modifier = Modifier.fillMaxSize().background(
+                when {
+                    pureBlack -> Color.Black
+                    mainTopGradient -> Color.Transparent
+                    else -> MaterialTheme.colorScheme.background
+                },
+            ).let { base ->
+                if (isLandscape) {
+                    base.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
+                } else {
+                    base
+                }
+            },
         ) {
-            LazyColumn(
-                state = lazyListState,
-                modifier = Modifier
-                    .weight(1f)
-                    .rubberBandOverscroll(Orientation.Vertical, lazyListState),
-                contentPadding =
-                    WindowInsets.systemBars
-                        .only(WindowInsetsSides.Bottom)
-                        .asPaddingValues(),
-            ) {
-                item(key = "search_header") { header() }
-                item(key = "local_search_chips") { chipsRow() }
-                localSearchResultItems(
-                    result = result,
-                    navController = navController,
-                    menuState = menuState,
-                    onDismiss = onDismiss,
-                    isFromCache = isFromCache,
-                    isPlaying = isPlaying,
-                    mediaMetadata = mediaMetadata,
-                    queueSearchedSongsStr = queueSearchedSongsStr,
-                    onFilterChange = { viewModel.filter.value = it },
-                    playerConnection = playerConnection,
-                    coroutineScope = coroutineScope,
-                    haptic = haptic,
-                    useIrideStyle = true,
-                )
-            }
+            item(key = "search_header") { header() }
+            item(key = "local_search_chips") { chipsRow() }
+            localSearchResultItems(
+                result = result,
+                navController = navController,
+                menuState = menuState,
+                onDismiss = onDismiss,
+                isFromCache = isFromCache,
+                isPlaying = isPlaying,
+                mediaMetadata = mediaMetadata,
+                queueSearchedSongsStr = queueSearchedSongsStr,
+                onFilterChange = { viewModel.filter.value = it },
+                playerConnection = playerConnection,
+                coroutineScope = coroutineScope,
+                haptic = haptic,
+                useIrideStyle = true,
+            )
         }
         return
     }

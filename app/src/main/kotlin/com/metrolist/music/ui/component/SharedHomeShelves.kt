@@ -38,6 +38,7 @@ fun SharedHomeSectionTitle(
         onRefreshClick = onRefreshClick,
         isRefreshing = isRefreshing,
         useIrideStyle = true,
+        prominentTitle = true,
         sentenceCaseTitle = true,
         showDivider = false,
         showNavigationArrow = false,

@@ -6,7 +6,7 @@
 package com.metrolist.music.ui.screens.settings
 
 import com.metrolist.music.ui.component.IridePageBackButton
-import com.metrolist.music.ui.component.IridePageHeaderLayout
+import com.metrolist.music.ui.component.IridePageFrame
 import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -117,9 +117,9 @@ fun InterfaceSettings(
         )
     }
 
-    IridePageHeaderLayout(
+    IridePageFrame(
         title = stringResource(R.string.interface_settings),
-        initiallyCollapsed = true,
+        scrollState = scrollState,
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier.fillMaxSize(),
     ) {

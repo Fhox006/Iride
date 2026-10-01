@@ -83,7 +83,7 @@ fun DiscordLoginScreen(navController: NavController) {
 
     IridePageHeaderLayout(
         title = stringResource(R.string.action_login),
-        initiallyCollapsed = true,
+        initiallyCollapsed = false,
         navigationIcon = { IridePageBackButton(navController) },
         modifier = Modifier.fillMaxSize(),
     ) {

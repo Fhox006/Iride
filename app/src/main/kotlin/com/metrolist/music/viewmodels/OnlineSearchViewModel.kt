@@ -195,10 +195,8 @@ constructor(
         if (smartSearchStarted || query.isBlank()) return
         smartSearchStarted = true
         searchJob = viewModelScope.launch {
-            loadSummaryPage()
-            val topCategory = categoryOf(summaryPage?.summaries?.firstOrNull()?.items?.firstOrNull())
             val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-            val order = categoryPriorityOrder(topCategory)
+            val order = categoryPriorityOrder(Category.SONG)
                 .flatMap { it.toFilters() }
                 .let { filters -> if (hideVideoSongs) filters.filter { it != YouTube.SearchFilter.FILTER_VIDEO } else filters }
                 .filter { it != YouTube.SearchFilter.FILTER_PROFILE }
@@ -209,6 +207,7 @@ constructor(
                     launch { fetchAndStoreFilterResults(sectionFilter) }
                 }
             }
+            loadSummaryPage()
             if (viewStateMap[YouTube.SearchFilter.FILTER_EPISODE.value] == null) {
                 viewStateMap[YouTube.SearchFilter.FILTER_EPISODE.value] = ItemsPage(episodesFromSummary(), null)
             }

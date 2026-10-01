@@ -58,7 +58,7 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -435,15 +435,20 @@ internal fun Modifier.frostedNavigationSurface(
 ): Modifier {
     var position = Offset.Zero
     return this
-        .onGloballyPositioned { position = it.positionInRoot() }
+        .onGloballyPositioned { position = it.positionOnScreen() }
         .clip(shape)
         .drawBehind {
             val reveal = progress.coerceIn(0f, 1f)
             if (reveal <= 0f) return@drawBehind
+            // Cover the original sharp pixels before compositing a potentially transparent snapshot.
+            drawRect(surface.copy(alpha = 1f), alpha = reveal)
             if (backdrop != null && backdrop.content.size.width > 0) {
                 backdrop.blurred.alpha = reveal
                 backdrop.blurred.record(size = backdrop.content.size) { drawLayer(backdrop.content) }
-                translate(-position.x, -position.y) { drawLayer(backdrop.blurred) }
+                translate(
+                    backdrop.positionOnScreen.x - position.x,
+                    backdrop.positionOnScreen.y - position.y,
+                ) { drawLayer(backdrop.blurred) }
             }
             drawRect(surface, alpha = reveal * if (backdrop == null) 0.96f else 0.84f)
         }

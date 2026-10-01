@@ -5,54 +5,16 @@
 
 package com.metrolist.music.ui.screens.search
 
-import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
-import com.metrolist.music.ui.component.rememberLibraryPageRevealState
-import com.metrolist.music.ui.component.LibraryPageRevealState
-import com.metrolist.music.ui.component.LibraryHeroTitle
-import com.metrolist.music.ui.component.IridePageTopBar
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
@@ -61,32 +23,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.FocusState
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.SavedStateHandle
@@ -98,33 +46,23 @@ import com.metrolist.music.LocalIsPlayerExpanded
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.PauseSearchHistoryKey
+import com.metrolist.music.constants.MainTopGradientKey
 import com.metrolist.music.constants.SearchSource
 import com.metrolist.music.constants.SearchSourceKey
 import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.playback.queues.YouTubeQueue
-import com.metrolist.music.ui.component.IrideSegmentedToggle
-import com.metrolist.music.ui.component.IridePageLayoutDefaults
+import com.metrolist.music.ui.component.LibraryPageMenuAction
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import com.metrolist.music.ui.component.IrideSearchBox
-import com.metrolist.music.ui.component.IrideSearchBoxHeight
-import com.metrolist.music.ui.utils.rememberDiscreteProgress
-import com.metrolist.music.ui.theme.SpaceMonoFontFamily
-import com.metrolist.music.ui.theme.fillSubtle
-import com.metrolist.music.ui.theme.textPrimary
-import com.metrolist.music.ui.theme.textSecondary
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.net.URLEncoder
-import androidx.compose.ui.util.lerp as lerpFloat
 import androidx.activity.compose.BackHandler
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.metrolist.music.viewmodels.OnlineSearchViewModel
 
-private val LargeTitleHeightDp = 80.dp
-private val SmallTitleBarHeightDp = 56.dp
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     navController: NavController,
@@ -135,6 +73,7 @@ fun SearchScreen(
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
+    val lazyListState = rememberLazyListState()
     val keyboardController = LocalSoftwareKeyboardController.current
     val playerConnection = LocalPlayerConnection.current
     val isPlayerExpanded = LocalIsPlayerExpanded.current
@@ -146,6 +85,8 @@ fun SearchScreen(
         if (scrollToTopCount > lastHandledCount) {
             lastHandledCount = scrollToTopCount
             isHandlingScrollToTop = true
+            lazyListState.scrollToItem(0)
+            withFrameNanos { }
             kotlinx.coroutines.delay(100)
             if (!isPlayerExpanded) {
                 focusRequester.requestFocus()
@@ -161,10 +102,8 @@ fun SearchScreen(
         mutableStateOf(TextFieldValue())
     }
     var isFocused by remember { mutableStateOf(false) }
-    var headerScrolled by remember { mutableStateOf(false) }
-    val headerRevealState = rememberLibraryPageRevealState()
-    val titleRevealProgress = if (isFocused) 0f else if (headerScrolled) 1f else headerRevealState.progress
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
+    val mainTopGradient by rememberPreference(MainTopGradientKey, defaultValue = false)
 
     var submittedQuery by rememberSaveable { mutableStateOf<String?>(null) }
     val onlineSearchResultViewModel: OnlineSearchViewModel = hiltViewModel()
@@ -216,109 +155,79 @@ fun SearchScreen(
         movableContentOf {
             SearchScrollableHeader(
                 query = query,
-                onQueryChange = { query = it },
-                searchSource = searchSource,
-                onSearchSourceToggle = {
-                    searchSource = if (searchSource == SearchSource.ONLINE) SearchSource.LOCAL else SearchSource.ONLINE
+                onQueryChange = {
+                    query = it
                 },
+                searchSource = searchSource,
                 focusRequester = focusRequester,
                 onFocusChanged = { if (it.isFocused) isFocused = true },
                 onSearch = { handleSearch(query.text) },
                 onClear = { query = TextFieldValue(""); submittedQuery = null },
-                pureBlack = pureBlack,
-                transparentBackground = false,
-                revealState = headerRevealState,
             )
         }
     }
     val irideHeader: (@Composable () -> Unit)? = irideHeaderContent
 
-    LaunchedEffect(isFocused, submittedQuery) {
-        if (isFocused && submittedQuery != null) {
-            withFrameNanos { }
-            focusRequester.requestFocus()
-            keyboardController?.show()
-        }
-    }
-
-    Scaffold(
-        topBar = {},
-        modifier = Modifier,
-        containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0),
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize(),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                    when {
-                        pureBlack -> Color.Black
-                        else -> MaterialTheme.colorScheme.background
-                    },
-                    ),
-            ) {
-            val showInlineResults = searchSource == SearchSource.ONLINE && submittedQuery != null
-            if (showInlineResults) {
-                OnlineSearchResultsBody(
-                    modifier = Modifier.fillMaxSize(),
-                    navController = navController,
-                    viewModel = onlineSearchResultViewModel,
-                    pureBlack = pureBlack,
-                    useIrideStyle = true,
-                    isSearchFocused = isFocused,
-                    queryText = query.text,
-                    onQueryChange = { query = it },
-                    onSearch = { handleSearch(it) },
-                    onDismissSuggestions = {
-                        isFocused = false
-                        focusManager.clearFocus()
-                    },
-                    header = irideHeader,
-                    onScrollChanged = { headerScrolled = it },
-                )
-            } else {
-                when (searchSource) {
-                    SearchSource.LOCAL -> {
-                        LocalSearchScreen(
-                            query = query.text,
-                            navController = navController,
-                            onDismiss = { navController.navigateUp() },
-                            pureBlack = pureBlack,
-                            header = irideHeader,
-                            onScrollChanged = { headerScrolled = it },
-                        )
-                    }
-                    SearchSource.ONLINE -> {
-                        OnlineSearchScreen(
-                            query = query.text,
-                            onQueryChange = { query = it },
-                            navController = navController,
-                            onSearch = { handleSearch(it) },
-                            onDismiss = {  },
-                            pureBlack = pureBlack,
-                            isFocused = isFocused,
-                            header = irideHeader,
-                            onScrollChanged = { headerScrolled = it },
-                        )
-                    }
-                }
-
-            }
-            }
-
-            IridePageTopBar(
-                title = stringResource(R.string.search),
-                progress = titleRevealProgress,
-                modifier = Modifier.onGloballyPositioned {
-                    headerRevealState.topBarBottomPx = it.positionInWindow().y + it.size.height
+    val pageMenuSections = listOf(
+        listOf(
+            LibraryPageMenuAction(
+                label = stringResource(R.string.online),
+                selected = searchSource == SearchSource.ONLINE,
+                onClick = {
+                    searchSource = SearchSource.ONLINE
+                    submittedQuery = query.text.trim().takeIf(String::isNotEmpty)
                 },
+            ),
+            LibraryPageMenuAction(
+                label = stringResource(R.string.filter_library),
+                selected = searchSource == SearchSource.LOCAL,
+                onClick = {
+                    searchSource = SearchSource.LOCAL
+                    submittedQuery = null
+                },
+            ),
+        ),
+    )
+    Box(
+        modifier = Modifier.fillMaxSize().background(
+            when {
+                pureBlack -> Color.Black
+                mainTopGradient -> Color.Transparent
+                else -> MaterialTheme.colorScheme.background
+            },
+        ),
+    ) {
+        if (searchSource == SearchSource.ONLINE) {
+            OnlineSearchResultsBody(
+                modifier = Modifier.fillMaxSize(),
+                navController = navController,
+                viewModel = onlineSearchResultViewModel,
+                pureBlack = pureBlack,
+                useIrideStyle = true,
+                isSearchFocused = isFocused,
+                queryText = query.text,
+                onQueryChange = {
+                    query = it
+                },
+                onSearch = { handleSearch(it) },
+                onDismissSuggestions = {
+                    isFocused = false
+                    focusManager.clearFocus()
+                },
+                header = irideHeader,
+                pageMenuSections = pageMenuSections,
+                lazyListState = lazyListState,
             )
-
+        } else {
+            LocalSearchScreen(
+                query = query.text,
+                navController = navController,
+                onDismiss = { navController.navigateUp() },
+                pureBlack = pureBlack,
+                header = irideHeader,
+                pageMenuSections = pageMenuSections,
+                lazyListState = lazyListState,
+            )
         }
     }
 
@@ -357,34 +266,12 @@ private fun SearchScrollableHeader(
     query: TextFieldValue,
     onQueryChange: (TextFieldValue) -> Unit,
     searchSource: SearchSource,
-    onSearchSourceToggle: () -> Unit,
     focusRequester: FocusRequester,
     onFocusChanged: (FocusState) -> Unit,
     onSearch: () -> Unit,
     onClear: () -> Unit,
-    pureBlack: Boolean,
-    transparentBackground: Boolean,
-    revealState: LibraryPageRevealState,
 ) {
-    Column(modifier = Modifier.statusBarsPadding()) {
-        LibraryHeroTitle(
-            title = stringResource(R.string.search),
-            entranceAlpha = 1f,
-            revealState = revealState,
-            modifier = Modifier.padding(horizontal = IridePageLayoutDefaults.HorizontalPadding),
-        )
-
-        Box(modifier = Modifier.padding(start = 20.dp, top = 8.dp, bottom = 8.dp)) {
-            IrideSegmentedToggle(
-                options = listOf(
-                    SearchSource.ONLINE to stringResource(R.string.online),
-                    SearchSource.LOCAL to stringResource(R.string.filter_library),
-                ),
-                selected = searchSource,
-                onSelect = { value -> if (value != searchSource) onSearchSourceToggle() },
-            )
-        }
-
+    Column {
         IrideSearchBox(
             query = query,
             onQueryChange = onQueryChange,
@@ -398,235 +285,9 @@ private fun SearchScrollableHeader(
             onFocusChanged = onFocusChanged,
             onSearch = onSearch,
             onClear = onClear,
-            modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp),
+            showBorder = false,
+            modifier = Modifier.padding(horizontal = 20.dp),
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SearchCollapsingHeader(
-    scrollBehavior: TopAppBarScrollBehavior,
-    query: TextFieldValue,
-    onQueryChange: (TextFieldValue) -> Unit,
-    searchSource: SearchSource,
-    onSearchSourceToggle: () -> Unit,
-    focusRequester: FocusRequester,
-    onFocusChanged: (FocusState) -> Unit,
-    onSearch: () -> Unit,
-    onClear: () -> Unit,
-    pureBlack: Boolean,
-    transparentBackground: Boolean = false,
-    hideTitle: Boolean = false,
-) {
-    val density = LocalDensity.current
-    val largeTitleHeightPx = if (hideTitle) 0f else with(density) { LargeTitleHeightDp.toPx() }
-
-    SideEffect {
-        if (scrollBehavior.state.heightOffsetLimit != -largeTitleHeightPx) {
-            scrollBehavior.state.heightOffsetLimit = -largeTitleHeightPx
-        }
-    }
-
-    val fraction = if (hideTitle) 0f else scrollBehavior.state.collapsedFraction
-    val totalHeightDp = SmallTitleBarHeightDp + (if (hideTitle) 0.dp else LargeTitleHeightDp) + IrideSearchBoxHeight + 12.dp
-
-    val indicatorOffset by animateDpAsState(
-        targetValue = if (searchSource == SearchSource.ONLINE) 2.dp else 42.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "searchSourceIndicator",
-    )
-
-    Surface(
-        color = when {
-            transparentBackground -> Color.Transparent
-            pureBlack -> Color.Black
-            else -> MaterialTheme.colorScheme.background
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .height(totalHeightDp + with(density) { scrollBehavior.state.heightOffset.toDp() }),
-    ) {
-        Box {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(SmallTitleBarHeightDp)
-                    .padding(horizontal = 12.dp)
-                    .graphicsLayer {
-                        translationY = if (hideTitle) 0f else lerpFloat(with(density) { (LargeTitleHeightDp - 12.dp).toPx() }, 0f, fraction)
-                    },
-                contentAlignment = if (hideTitle) Alignment.CenterEnd else Alignment.CenterStart
-            ) {
-                val pillAlpha = if (hideTitle) 1f else (1f - fraction * 2f).coerceIn(0f, 1f)
-                val pillEnabled = hideTitle || fraction < 0.05f
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    val searchStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold)
-
-                    if (!hideTitle) {
-                        Text(
-                            text = stringResource(R.string.search),
-                            style = searchStyle,
-                            maxLines = 1,
-                            modifier = Modifier.graphicsLayer {
-                                val targetScale = 0.61f
-                                val scale = lerpFloat(1f, targetScale, fraction)
-                                scaleX = scale
-                                scaleY = scale
-                                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
-                                },
-
-                        )
-                    }
-                    if (hideTitle) {
-                        Box(modifier = Modifier.alpha(pillAlpha).padding(bottom = 4.dp)) {
-                            IrideSegmentedToggle(
-                                options = listOf(
-                                    SearchSource.ONLINE to stringResource(R.string.online),
-                                    SearchSource.LOCAL to stringResource(R.string.filter_library),
-                                ),
-                                selected = searchSource,
-                                enabled = pillEnabled,
-                                onSelect = { value -> if (value != searchSource) onSearchSourceToggle() },
-                            )
-                        }
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .alpha(pillAlpha)
-                                .padding(bottom = 4.dp)
-                                .width(80.dp)
-                                .height(40.dp)
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .offset(x = indicatorOffset, y = 2.dp)
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                            )
-                            Row(modifier = Modifier.fillMaxSize()) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clickable(
-                                            enabled = pillEnabled,
-                                            indication = null,
-                                            interactionSource = remember { MutableInteractionSource() },
-                                        ) { if (searchSource != SearchSource.ONLINE) onSearchSourceToggle() },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.language),
-                                        contentDescription = null,
-                                        tint = if (searchSource == SearchSource.ONLINE)
-                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                        else
-                                            MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clickable(
-                                            enabled = pillEnabled,
-                                            indication = null,
-                                            interactionSource = remember { MutableInteractionSource() },
-                                        ) { if (searchSource != SearchSource.LOCAL) onSearchSourceToggle() },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.bookmark_outlined),
-                                        contentDescription = null,
-                                        tint = if (searchSource == SearchSource.LOCAL)
-                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                        else
-                                            MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .graphicsLayer {
-                        val startOffset = with(density) {
-                            (SmallTitleBarHeightDp + (if (hideTitle) 0.dp else LargeTitleHeightDp)).toPx()
-                        }
-                        translationY = startOffset + scrollBehavior.state.heightOffset
-                    }
-                    .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp)
-                    .height(IrideSearchBoxHeight)
-                    .clip(RoundedCornerShape(26.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainer),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 16.dp, end = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BasicTextField(
-                        value = query,
-                        onValueChange = onQueryChange,
-                        modifier = Modifier
-                            .weight(1f)
-                            .focusRequester(focusRequester)
-                            .onFocusChanged(onFocusChanged),
-                        textStyle = TextStyle(
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 16.sp,
-                        ),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        singleLine = true,
-                        decorationBox = { innerTextField ->
-                            if (query.text.isEmpty()) {
-                                Text(
-                                    text = stringResource(
-                                        when (searchSource) {
-                                            SearchSource.LOCAL -> R.string.search_library
-                                            SearchSource.ONLINE -> R.string.search_yt_music
-                                        },
-                                    ),
-                                    style = TextStyle(
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                        fontSize = 16.sp,
-                                    ),
-                                )
-                            }
-                            innerTextField()
-                        },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-                    )
-
-                    if (query.text.isNotEmpty()) {
-                        IconButton(onClick = onClear) {
-                            Icon(
-                                painter = painterResource(R.drawable.close),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        Spacer(Modifier.height(8.dp))
     }
 }

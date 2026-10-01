@@ -34,10 +34,7 @@ import com.metrolist.music.ui.screens.artist.ArtistItemsScreen
 import com.metrolist.music.ui.screens.artist.ArtistScreen
 import com.metrolist.music.ui.screens.artist.ArtistSongsScreen
 import com.metrolist.music.ui.screens.equalizer.EqEditorScreen
-import com.metrolist.music.ui.screens.library.LibraryAlbumsScreen
-import com.metrolist.music.ui.screens.library.LibraryArtistsScreen
-import com.metrolist.music.ui.screens.library.LibraryPlaylistsScreen
-import com.metrolist.music.ui.screens.library.LibrarySongsScreen
+import com.metrolist.music.ui.screens.library.LibraryCategory
 import com.metrolist.music.ui.screens.library.LibraryScreen
 import com.metrolist.music.ui.screens.playlist.AutoPlaylistScreen
 import com.metrolist.music.ui.screens.playlist.LocalPlaylistScreen
@@ -278,7 +275,7 @@ fun NavGraphBuilder.NavigationBuilder(
         route = "cache_playlist/{playlist}",
         arguments = listOf(navArgument("playlist") { type = NavType.StringType })
     ) {
-        LibrarySongsScreen(navController = navController, isCache = true)
+        LibraryScreen(navController = navController, initialCategory = LibraryCategory.CACHE, initialCache = true)
     }
 
     composable(
@@ -402,30 +399,30 @@ fun NavGraphBuilder.NavigationBuilder(
     }
 
     composable("library_playlists") {
-        LibraryPlaylistsScreen(navController = navController)
+        LibraryScreen(navController = navController, initialCategory = LibraryCategory.PLAYLISTS)
     }
     composable("library_songs") {
-        LibrarySongsScreen(navController = navController)
+        LibraryScreen(navController = navController, initialCategory = LibraryCategory.SONGS)
     }
     composable("library_songs_local") {
-        LibrarySongsScreen(navController = navController, isLocal = true)
+        LibraryScreen(navController = navController, initialCategory = LibraryCategory.LOCAL_SONGS)
     }
     composable("library_albums") {
-        LibraryAlbumsScreen(navController = navController)
+        LibraryScreen(navController = navController, initialCategory = LibraryCategory.ALBUMS)
     }
     composable("library_artists") {
-        LibraryArtistsScreen(navController = navController)
+        LibraryScreen(navController = navController, initialCategory = LibraryCategory.ARTISTS)
     }
     composable("library_playlists_offline") {
-        LibraryPlaylistsScreen(navController = navController, isOffline = true)
+        LibraryScreen(navController = navController, initialCategory = LibraryCategory.PLAYLISTS, initialOffline = true)
     }
     composable("library_songs_offline") {
-        LibrarySongsScreen(navController = navController, isOffline = true)
+        LibraryScreen(navController = navController, initialCategory = LibraryCategory.SONGS, initialOffline = true)
     }
     composable("library_albums_offline") {
-        LibraryAlbumsScreen(navController = navController, isOffline = true)
+        LibraryScreen(navController = navController, initialCategory = LibraryCategory.ALBUMS, initialOffline = true)
     }
     composable("library_artists_offline") {
-        LibraryArtistsScreen(navController = navController, isOffline = true)
+        LibraryScreen(navController = navController, initialCategory = LibraryCategory.ARTISTS, initialOffline = true)
     }
 }

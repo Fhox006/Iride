@@ -38,6 +38,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 import com.metrolist.music.ui.theme.SpaceMonoFontFamily
+import com.metrolist.music.ui.theme.fillSubtle
 import com.metrolist.music.ui.utils.irideEnter
 
 object LibraryPageDefaults {
@@ -95,17 +97,28 @@ fun LibraryHeroTitle(
     revealState: LibraryPageRevealState,
     modifier: Modifier = Modifier,
     badge: (@Composable RowScope.() -> Unit)? = null,
+    topSpace: Dp = LibraryPageDefaults.HeroTopSpace,
+    fadeOnReveal: Boolean = false,
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
             .irideEnter(entranceAlpha, 10.dp),
     ) {
-        Spacer(modifier = Modifier.height(LibraryPageDefaults.HeroTopSpace))
+        Spacer(modifier = Modifier.height(topSpace))
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
         ) {
+            val revealModifier = if (fadeOnReveal) {
+                Modifier.alpha(1f - revealState.progress)
+            } else {
+                Modifier.drawWithContent {
+                    clipRect(top = size.height * revealState.progress) {
+                        this@drawWithContent.drawContent()
+                    }
+                }
+            }
             IridePageTitle(
                 title = title,
                 color = Color.White,
@@ -114,11 +127,7 @@ fun LibraryHeroTitle(
                         revealState.titleTopPx = it.positionInWindow().y
                         revealState.titleHeightPx = it.size.height.toFloat()
                     }
-                    .drawWithContent {
-                        clipRect(top = size.height * revealState.progress) {
-                            this@drawWithContent.drawContent()
-                        }
-                    },
+                    .then(revealModifier),
             )
             if (badge != null) {
                 Spacer(modifier = Modifier.width(10.dp))
@@ -164,7 +173,7 @@ fun LibraryPlaybackActions(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = LibraryPageDefaults.SidePadding, vertical = 8.dp),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp),
     ) {
         LibraryPlaybackAction(
@@ -192,10 +201,9 @@ private fun LibraryPlaybackAction(
     Surface(
         onClick = onClick,
         modifier = modifier.height(48.dp),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.fillSubtle,
         contentColor = Color.White,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
@@ -295,14 +303,11 @@ fun LibraryPageTopBar(
         },
         navigationIcon = if (isSearchActive) null else ({
             IconButton(onClick = onNavigateUp) {
-                IrideIconTile(size = 36.dp) {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_back),
-                        contentDescription = stringResource(R.string.back),
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
+                Icon(
+                    painter = painterResource(R.drawable.arrow_back),
+                    contentDescription = stringResource(R.string.back),
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }),
         titleContent = if (isSearchActive) ({
